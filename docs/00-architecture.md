@@ -99,8 +99,11 @@ is incompatible with GPLv2. See [01-licensing.md](01-licensing.md).
 | `husk-ios-jit.c` | **compiles clean** (`-Wall -Wextra`), iOS arm64 |
 | TCG splitwx diverted to the iOS allocator | **patched**, `patches/husk-qemu-ios-jit.patch` |
 | Phase 0 guest (Alpine 3.24.1 aarch64) | **fetched**, sha256 verified |
-| Guest boots under TCG | not yet run |
-| Runs on a real iPhone | **not yet run — needs the device** |
+| JIT allocation + execute self-test on device | **PASS** — iPhone18,1 / iOS 27.0, 749 ms for 256 MiB |
+| Guest boots under TCG on device | in progress |
+| Guest reaches userspace on device | not yet |
+| Frames reach Metal, touch reaches guest | not yet |
 
-Nothing in the last two rows should be described as working until it has been
-seen working on hardware.
+Nothing in the unproven rows should be described as working until it has been seen
+working on hardware. The JIT row moved to PASS only because the self-test executed
+generated code from the RX alias and returned 42 on a real device.

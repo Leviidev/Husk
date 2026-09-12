@@ -15,6 +15,28 @@ host. This is what remains, and it needs the phone.
 | The guest gives us a framebuffer and a pointer | host dmesg: `fb0: virtio_gpudrmfb`, `QEMU Virtio Tablet`, `QEMU Virtio Keyboard` |
 | The app compiles, links and bundles | `BUILD SUCCEEDED`; 51 MB bundle with dylib, guest, shaders, script |
 
+## Measured on device (iPhone18,1, iOS 27.0, 11.7 GB RAM)
+
+First successful JIT bring-up:
+
+```
+#1: StikDebug attach probe OK (0xcccccccc690000e0)
+#1: requesting execute-capable region, size=268435456 (256.0 MiB), attempt 1/3
+#1: BreakGetJITMapping returned 0x115254000          <- 749 ms later
+#1: dual mapping established: rw=0x125254000 rx=0x115254000 diff=-268435456
+selftest: PASS -- executed generated code from the RX alias, got 42
+```
+
+| Measurement | Value | Implication |
+|---|---|---|
+| `BreakGetJITMapping`, 256 MiB | **749 ms** (16,384 pages) | ~46 us per page over the debugger. 1 GiB would cost ~3 s, so `tb-size` has real room to grow for Android |
+| Footprint after JIT alloc | 274.9 MiB phys | On 11.7 GB this is irrelevant; the caution behind `-m 1024` was unnecessary |
+| Footprint before `qemu_init` | 13.9 MiB | App overhead is negligible |
+| Probe to allocation start | 80 ms | StikDebug round trips are cheap |
+
+The dual-mapping `diff` is negative (`rx` sits below `rw`), which is fine --
+`tcg_splitwx_diff` is a signed offset.
+
 ## What is NOT proven, in the order it will break
 
 1. **StikDebug services our `brk`.** Everything rests on this.
