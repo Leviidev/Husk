@@ -79,29 +79,64 @@ write_files:
     permissions: '0755'
     content: |
       #!/bin/bash
-      exec > >(tee -a /var/log/husk-firstboot.log > /dev/ttyAMA0) 2>&1
-      if [ -f /var/lib/waydroid/waydroid.cfg ]; then
+      # Status goes to the framebuffer console as well as the serial line: the
+      # serial line feeds Husk's log, the console is the screen being looked at.
+      exec > >(tee -a /var/log/husk-firstboot.log | tee /dev/console > /dev/ttyAMA0) 2>&1
+
+      IMAGES=/var/lib/waydroid/images
+      if [ -f "$IMAGES/system.img" ]; then
           echo "HUSK-SETUP: already initialised"
           exit 0
       fi
-      echo "HUSK-SETUP: downloading Android images (this is the one-time setup)"
-      # Let Waydroid pick the image variant; it resolves arm64_only on this host.
-      if waydroid init -f; then
-          echo "HUSK-SETUP: waydroid init OK"
+
+      # Fetch the images ourselves rather than letting `waydroid init` choose.
+      #
+      # Its choice depends on whether the CPU can execute AArch32, and QEMU's
+      # cortex-a72 can -- so on device it selects waydroid_arm64 (1.8 GB system +
+      # 402 MB vendor) where the HVF build with -cpu host selected
+      # waydroid_arm64_only (728 MB + 77 MB). That is 2.2 GB instead of 805 MB,
+      # pulled over emulated networking, which is why first boot never finished.
+      #
+      # arm64_only drops the ARM32 translation layer. The cost is that a 32-bit-only
+      # app will not run; the benefit is a download that completes.
+      BASE="https://downloads.sourceforge.net/project/waydroid/images"
+      SYS_URL="$BASE/system/lineage/waydroid_arm64_only/lineage-20.0-20260403-VANILLA-waydroid_arm64_only-system.zip"
+      VEN_URL="$BASE/vendor/waydroid_arm64_only/lineage-20.0-20260403-MAINLINE-waydroid_arm64_only-vendor.zip"
+
+      mkdir -p "$IMAGES" /var/cache/husk
+      cd /var/cache/husk
+
+      fetch() {
+          local url="$1" out="$2" label="$3"
+          echo "HUSK-SETUP: downloading $label"
+          wget -q -c -O "$out.part" "$url" &
+          local pid=$!
+          while kill -0 $pid 2>/dev/null; do
+              local mb=$(du -m "$out.part" 2>/dev/null | cut -f1)
+              echo "HUSK-SETUP: $label ${mb:-0} MB"
+              sleep 10
+          done
+          wait $pid || return 1
+          mv "$out.part" "$out"
+          echo "HUSK-SETUP: $label complete"
+      }
+
+      if fetch "$SYS_URL" system.zip "Android system (728 MB)" && \
+         fetch "$VEN_URL" vendor.zip "Android vendor (77 MB)"; then
+          echo "HUSK-SETUP: extracting"
+          unzip -o -q system.zip -d "$IMAGES"
+          unzip -o -q vendor.zip -d "$IMAGES"
+          rm -f system.zip vendor.zip
+          ls -la "$IMAGES"
       else
-          echo "HUSK-SETUP: waydroid init FAILED rc=$?"
-          exit 1
+          echo "HUSK-SETUP: direct download FAILED; falling back to waydroid init"
+          waydroid init -f || { echo "HUSK-SETUP: waydroid init FAILED rc=$?"; exit 1; }
       fi
+
+      # No -f: with the images already present this only writes the config.
+      waydroid init || echo "HUSK-SETUP: waydroid init returned $?"
       echo "HUSK-SETUP: complete"
 
-
-  # The host/guest bridge. Husk shares a folder over virtio-9p and this agent
-  # watches it: APKs appear in inbox/, commands appear as JSON, and the agent
-  # writes back the installed-app catalogue and command results.
-  #
-  # Deliberately file-based rather than a socket protocol. Every message is a
-  # file both sides can inspect after the fact, which on a device with no
-  # debugger is worth more than the latency a 500 ms poll costs.
   - path: /usr/local/bin/husk-agent.py
     permissions: '0755'
     content: |
@@ -372,13 +407,15 @@ write_files:
       # waydroid init runs on first boot and downloads ~800 MB; there is nothing
       # to show until it has finished.
       waited=0
-      while [ ! -f /var/lib/waydroid/waydroid.cfg ]; do
-          sz=$(du -sm /var/lib/waydroid/images 2>/dev/null | cut -f1)
-          echo "HUSK-UI: Android is still downloading (${sz:-0} MB so far, ${waited}s elapsed)"
+      # Gate on the system image, not waydroid.cfg: init writes the config
+      # BEFORE downloading, so the config existing proves nothing.
+      while [ ! -f /var/lib/waydroid/images/system.img ]; do
+          sz=$(du -sm /var/cache/husk /var/lib/waydroid/images 2>/dev/null | awk '{t+=$1} END{print t}')
+          echo "HUSK-UI: waiting for Android images (${sz:-0} MB fetched, ${waited}s elapsed)"
           sleep 10
           waited=$((waited + 10))
       done
-      echo "HUSK-UI: waydroid is initialised"
+      echo "HUSK-UI: Android images are present"
 
       for d in /dev/dri/card*; do
           echo "HUSK-UI: drm node $d"
@@ -399,7 +436,10 @@ write_files:
     content: |
       [Unit]
       Description=Husk Android UI (cage + waydroid)
-      After=waydroid-container.service seatd.service husk-firstboot.service
+      # NOT After=husk-firstboot.service: first boot can take many minutes,
+      # and ordering behind it left husk-ui queued (systemd Job 137) so it
+      # could not even report why nothing was on screen.
+      After=waydroid-container.service seatd.service
       Wants=waydroid-container.service seatd.service
       [Service]
       Type=simple

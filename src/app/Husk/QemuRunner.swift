@@ -129,7 +129,11 @@ final class QemuRunner: ObservableObject {
     private func guestMemoryMiB() -> Int {
         let availableMiB = Int(husk_ios_available_memory() / (1024 * 1024))
         let jitMiB = 512          // tb-size
-        let qemuOverheadMiB = 400 // device models, translation state, block cache
+        // Measured, not guessed. A run with a 1708 MiB guest and 512 MiB of JIT
+        // settled at 2966 MiB of footprint, so QEMU's own use is ~750 MiB -- nearly
+        // double the 400 MiB originally assumed. That run survived with only
+        // 409 MiB of headroom left, which is closer to the edge than it should be.
+        let qemuOverheadMiB = 750
 
         guard availableMiB > 0 else {
             HuskLog.log("qemu", "available memory unknown; falling back to 2048 MiB guest")
@@ -139,7 +143,7 @@ final class QemuRunner: ObservableObject {
         // Spend at most 70% of what remains after our own fixed costs. The rest is
         // margin: the figure moves as the rest of the system comes under pressure.
         let spendable = availableMiB - jitMiB - qemuOverheadMiB
-        let target = max(1536, min(6144, Int(Double(spendable) * 0.70)))
+        let target = max(1280, min(6144, Int(Double(spendable) * 0.75)))
 
         HuskLog.log("qemu", "memory budget: iOS reports \(availableMiB) MiB available; "
                           + "reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) MiB overhead; "
@@ -314,40 +318,75 @@ final class QemuRunner: ObservableObject {
     }
 
     /// Fold the guest's kernel console into the unified log as it appears.
+    ///
+    /// Uses open(2)/read(2) rather than FileHandle. The FileHandle version opened
+    /// the right file -- it logged "serial log opened" and the size probe showed
+    /// that file growing from 51 KB to 63 KB -- yet never produced a single line.
+    /// A plain fd advances its own offset on every read and returns 0 at EOF, so
+    /// there is no seek/offset bookkeeping to get wrong, and it reports what it
+    /// actually did.
     private func startSerialTailer() {
         let path = guestSerialLogPath
         try? FileManager.default.removeItem(atPath: path)
 
         let t = Thread {
-            var offset: UInt64 = 0
-            var handle: FileHandle?
-            var pending = ""
+            var fd: Int32 = -1
+            var pending = Data()
+            var buf = [UInt8](repeating: 0, count: 64 * 1024)
+            var totalRead = 0
+            var reportedOpen = false
 
             while true {
-                if handle == nil {
-                    handle = FileHandle(forReadingAtPath: path)
-                    if handle != nil { HuskLog.log("guest", "serial log opened: \(path)") }
+                if fd < 0 {
+                    fd = open(path, O_RDONLY)
+                    if fd >= 0, !reportedOpen {
+                        reportedOpen = true
+                        HuskLog.log("guest", "serial log opened (fd \(fd))")
+                    }
+                    if fd < 0 { Thread.sleep(forTimeInterval: 0.5); continue }
                 }
-                if let h = handle {
-                    try? h.seek(toOffset: offset)
-                    if let data = try? h.readToEnd(), !data.isEmpty {
-                        offset += UInt64(data.count)
-                        pending += String(decoding: data, as: UTF8.self)
-                        while let nl = pending.firstIndex(of: "\n") {
-                            let line = String(pending[pending.startIndex..<nl])
-                            pending = String(pending[pending.index(after: nl)...])
-                            if line.isEmpty { continue }
-                            HuskLog.log("guest", line)
-                            if let r = line.range(of: "HUSK-SETUP: ") {
-                                let msg = String(line[r.upperBound...])
-                                Task { @MainActor in
-                                    QemuRunner.shared.setupMessage = msg
-                                }
-                            }
-                        }
+
+                let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, 64 * 1024) }
+                if n < 0 {
+                    if errno == EINTR { continue }
+                    HuskLog.log("guest", "serial read failed: errno \(errno); reopening")
+                    close(fd); fd = -1
+                    Thread.sleep(forTimeInterval: 1)
+                    continue
+                }
+                if n == 0 {
+                    // EOF for now; the fd keeps its offset, so appended bytes are
+                    // picked up on the next read.
+                    Thread.sleep(forTimeInterval: 0.25)
+                    continue
+                }
+
+                totalRead += n
+                pending.append(contentsOf: buf[0..<n])
+
+                while let nl = pending.firstIndex(of: 0x0A) {
+                    let lineData = pending.subdata(in: pending.startIndex..<nl)
+                    pending.removeSubrange(pending.startIndex...nl)
+                    // Serial consoles emit CRLF; strip the CR or every line ends
+                    // with a stray carriage return.
+                    var line = String(decoding: lineData, as: UTF8.self)
+                    line = line.replacingOccurrences(of: "\r", with: "")
+                    line = line.trimmingCharacters(in: .whitespaces)
+                    if line.isEmpty { continue }
+
+                    HuskLog.log("guest", line)
+                    if let r = line.range(of: "HUSK-SETUP: ") ?? line.range(of: "HUSK-UI: ") {
+                        let msg = String(line[r.upperBound...])
+                        Task { @MainActor in QemuRunner.shared.setupMessage = msg }
                     }
                 }
-                Thread.sleep(forTimeInterval: 0.25)
+
+                // A runaway buffer means no newline is ever arriving; say so rather
+                // than growing without bound.
+                if pending.count > 1_000_000 {
+                    HuskLog.log("guest", "serial buffer exceeded 1 MB with no newline; discarding")
+                    pending.removeAll(keepingCapacity: true)
+                }
             }
         }
         t.name = "husk.serial-tail"
