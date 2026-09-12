@@ -38,7 +38,7 @@ write_files:
       apt-get update
       apt-get install -y --no-install-recommends \
           ca-certificates curl wget gnupg lxc python3 python3-gbinder \
-          cage seatd libgbm1 mesa-utils dbus-user-session unzip
+          cage seatd libgbm1 mesa-utils dbus-user-session dbus-x11 unzip
 
       curl -fsSL https://repo.waydro.id | bash
       apt-get update
@@ -84,66 +84,31 @@ write_files:
       exec > >(tee -a /var/log/husk-firstboot.log > /dev/console) 2>&1
 
       IMAGES=/var/lib/waydroid/images
-      if [ -f "$IMAGES/system.img" ]; then
+      if [ -f /var/lib/husk-setup-complete ]; then
           echo "HUSK-SETUP: already initialised"
           exit 0
       fi
 
-      # Fetch the images ourselves rather than letting `waydroid init` choose.
+      # Let waydroid init fetch its own images.
       #
-      # Its choice depends on whether the CPU can execute AArch32, and QEMU's
-      # cortex-a72 can -- so on device it selects waydroid_arm64 (1.8 GB system +
-      # 402 MB vendor) where the HVF build with -cpu host selected
-      # waydroid_arm64_only (728 MB + 77 MB). That is 2.2 GB instead of 805 MB,
-      # pulled over emulated networking, which is why first boot never finished.
-      #
-      # arm64_only drops the ARM32 translation layer. The cost is that a 32-bit-only
-      # app will not run; the benefit is a download that completes.
-      BASE="https://downloads.sourceforge.net/project/waydroid/images"
-      SYS_URL="$BASE/system/lineage/waydroid_arm64_only/lineage-20.0-20260403-VANILLA-waydroid_arm64_only-system.zip"
-      VEN_URL="$BASE/vendor/waydroid_arm64_only/lineage-20.0-20260403-MAINLINE-waydroid_arm64_only-vendor.zip"
-
-      mkdir -p "$IMAGES" /var/cache/husk
-      cd /var/cache/husk
-
-      fetch() {
-          local url="$1" out="$2" label="$3"
-          echo "HUSK-SETUP: downloading $label"
-          wget -q -c -O "$out.part" "$url" &
-          local pid=$!
-          while kill -0 $pid 2>/dev/null; do
-              local mb=$(du -m "$out.part" 2>/dev/null | cut -f1)
-              echo "HUSK-SETUP: $label ${mb:-0} MB"
-              sleep 10
-          done
-          wait $pid || return 1
-          mv "$out.part" "$out"
-          echo "HUSK-SETUP: $label complete"
-      }
-
-      if fetch "$SYS_URL" system.zip "Android system (728 MB)" && \
-         fetch "$VEN_URL" vendor.zip "Android vendor (77 MB)"; then
-          # Extraction is slow under emulation and unzip creates the target file
-          # immediately, so report progress rather than going silent for minutes.
-          echo "HUSK-SETUP: extracting Android images"
-          ( unzip -o -q system.zip -d "$IMAGES" && unzip -o -q vendor.zip -d "$IMAGES" ) &
-          upid=$!
-          while kill -0 $upid 2>/dev/null; do
-              mb=$(du -sm "$IMAGES" 2>/dev/null | cut -f1)
-              echo "HUSK-SETUP: extracting (${mb:-0} MB written)"
-              sleep 10
-          done
-          wait $upid || { echo "HUSK-SETUP: extraction FAILED"; exit 1; }
-          rm -f system.zip vendor.zip
-          ls -la "$IMAGES"
-      else
-          echo "HUSK-SETUP: direct download FAILED; falling back to waydroid init"
-          waydroid init -f || { echo "HUSK-SETUP: waydroid init FAILED rc=$?"; exit 1; }
-      fi
-
-      # No -f: with the images already present this only writes the config.
-      echo "HUSK-SETUP: initialising waydroid"
-      waydroid init || echo "HUSK-SETUP: waydroid init returned $?"
+      # A previous version downloaded waydroid_arm64_only first to save bandwidth,
+      # but init re-downloaded its own choice on top anyway -- 805 MB followed by
+      # another ~1 GB, for one usable copy. Its own fetch is ~1 GB total and runs
+      # at ~28 MB/s inside the guest, so there is nothing to gain by second-guessing
+      # it.
+      mkdir -p "$IMAGES"
+      echo "HUSK-SETUP: downloading Android (about 1 GB, one time)"
+      waydroid init &
+      wpid=$!
+      waited=0
+      while kill -0 $wpid 2>/dev/null; do
+          mb=$(du -sm "$IMAGES" /var/lib/waydroid/cache_http 2>/dev/null | awk '{t+=$1} END{print t}')
+          echo "HUSK-SETUP: Android ${mb:-0} MB (${waited}s)"
+          sleep 10
+          waited=$((waited + 10))
+      done
+      wait $wpid || echo "HUSK-SETUP: waydroid init returned $?"
+      ls -la "$IMAGES"
       echo "HUSK-SETUP: waydroid status: $(waydroid status 2>&1 | tr '\n' ' ')"
 
       # The completion marker. Everything downstream waits on THIS, not on the
@@ -431,7 +396,7 @@ write_files:
       # Waydroid is still uninitialised, which exits immediately and leaves
       # systemd restarting it every 5 seconds forever.
       while [ ! -f /var/lib/husk-setup-complete ]; do
-          sz=$(du -sm /var/cache/husk /var/lib/waydroid/images 2>/dev/null | awk '{t+=$1} END{print t}')
+          sz=$(du -sm /var/lib/waydroid/images /var/lib/waydroid/cache_http 2>/dev/null | awk '{t+=$1} END{print t}')
           echo "HUSK-UI: Android setup in progress (${sz:-0} MB, ${waited}s elapsed)"
           sleep 10
           waited=$((waited + 10))
@@ -453,9 +418,15 @@ write_files:
       echo "HUSK-UI: waydroid: $(waydroid status 2>&1 | tr '\n' ' ')"
       echo "HUSK-UI: launching cage + waydroid full UI"
 
-      # Not exec'd: when cage exits we want to say why. Restart=always would
-      # otherwise loop it forever with no explanation on screen.
-      cage -- /usr/bin/waydroid show-full-ui
+      # dbus-run-session, not bare cage.
+      #
+      # waydroid session start needs a D-Bus SESSION bus. This runs as a systemd
+      # system service, so there is no user bus and no DBUS_SESSION_BUS_ADDRESS --
+      # Waydroid falls back to spawning dbus-launch, which fails with
+      # "org.freedesktop.DBus.Error.Spawn.ExecFailed: /usr/bin/dbus-launch
+      # terminated abnormally". dbus-run-session creates the bus up front and
+      # exports the address to everything below it, which is what it exists for.
+      dbus-run-session -- cage -- /usr/bin/waydroid show-full-ui
       rc=$?
       echo "HUSK-UI: cage exited rc=$rc -- retrying in 5s"
       exit $rc
