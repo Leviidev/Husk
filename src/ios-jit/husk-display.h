@@ -63,6 +63,13 @@ HUSK_EXPORT uint64_t husk_display_sequence(void);
 HUSK_EXPORT void husk_display_send_pointer(int32_t x, int32_t y, bool button_down);
 
 /* Ask the guest to redraw. Safe from any thread. */
+/*
+ * Send one key transition to the guest. `qcode_name` is a QEMU QKeyCode name --
+ * "a", "ret", "shift", "left", "f1" and so on. Returns false if the name is not
+ * a key QEMU knows. Takes the BQL internally, so it is safe from the UI thread.
+ */
+HUSK_EXPORT bool husk_display_send_key(const char *qcode_name, bool down);
+
 HUSK_EXPORT void husk_display_request_update(void);
 
 #ifdef __cplusplus

@@ -11,6 +11,9 @@
 #include "qemu/thread.h"
 #include "ui/console.h"
 #include "ui/input.h"
+#include "qapi/error.h"
+#include "qapi/util.h"
+#include "qapi/qapi-types-ui.h"
 
 #include "husk-display.h"
 
@@ -220,6 +223,38 @@ void husk_display_send_pointer(int32_t x, int32_t y, bool button_down)
         HUSK_DLOG("pointer #%llu DROPPED -- no surface yet", (unsigned long long)ev);
     }
     bql_unlock();
+}
+
+bool husk_display_send_key(const char *qcode_name, bool down)
+{
+    if (!husk.inited || qcode_name == NULL) {
+        return false;
+    }
+
+    /*
+     * Resolved by name through QEMU's own QKeyCode table rather than by passing a
+     * raw enum value across the boundary. The numbers are positional in
+     * qapi/ui.json -- 162 of them -- so hardcoding them on the Swift side would
+     * silently remap every key the moment that list gains an entry.
+     */
+    int qcode = qapi_enum_parse(&QKeyCode_lookup, qcode_name, -1, NULL);
+    if (qcode < 0) {
+        HUSK_DLOG("key '%s' is not a QKeyCode; ignored", qcode_name);
+        return false;
+    }
+
+    static uint64_t keys = 0;
+    uint64_t n = ++keys;
+
+    bql_lock();
+    qemu_input_event_send_key_qcode(husk.dcl.con, (QKeyCode)qcode, down);
+    bql_unlock();
+
+    if (n <= 20 || (n % 100) == 0) {
+        HUSK_DLOG("key #%llu '%s' (qcode %d) down=%d",
+                  (unsigned long long)n, qcode_name, qcode, down ? 1 : 0);
+    }
+    return true;
 }
 
 void husk_display_request_update(void)

@@ -142,22 +142,40 @@ struct RunningAppView: View {
     let app: HuskBridgeFS.AndroidApp
     let onExit: () -> Void
     @State private var showChrome = false
+    @State private var keyboard = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
             HuskDisplay().ignoresSafeArea()
+            KeyCapture(active: $keyboard).frame(width: 0, height: 0)
+
+            if keyboard {
+                VStack {
+                    Spacer()
+                    SpecialKeysBar()
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.bottom, 6)
+                }
+            }
 
             // Chrome stays hidden: the point is that this looks like a native app.
             // A tap near the top-left corner reveals a way out, the way a
             // full-screen video player does.
             if showChrome {
-                Button(action: onExit) {
-                    Label(app.name, systemImage: "chevron.left")
-                        .font(.footnote.weight(.medium))
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
+                HStack(spacing: 10) {
+                    Button(action: onExit) {
+                        Label(app.name, systemImage: "chevron.left")
+                            .font(.footnote.weight(.medium))
+                    }
+                    Button { keyboard.toggle() } label: {
+                        Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
+                            .font(.footnote)
+                    }
                 }
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(.ultraThinMaterial, in: Capsule())
                 .padding(.leading, 16).padding(.top, 8)
                 .transition(.opacity)
             }

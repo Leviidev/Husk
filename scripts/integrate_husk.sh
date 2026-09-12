@@ -76,6 +76,7 @@ wanted = [
     "husk_display_sequence",
     "husk_display_send_pointer",
     "husk_display_request_update",
+    "husk_display_send_key",
     "husk_ios_jit_install_trap_handler",
     "husk_ios_jit_is_available",
     "husk_ios_jit_detach",

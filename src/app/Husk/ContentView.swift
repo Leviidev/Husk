@@ -90,11 +90,26 @@ struct GuestScreenView: View {
     @Binding var showLogs: Bool
     let canReturnToLibrary: Bool
     let onLibrary: () -> Void
+    @State private var keyboard = false
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
             HuskDisplay().ignoresSafeArea()
+
+            // Zero-sized: it exists only to hold first-responder status, which is
+            // what both the on-screen keyboard and hardware key events depend on.
+            KeyCapture(active: $keyboard).frame(width: 0, height: 0)
+
+            if keyboard {
+                VStack {
+                    Spacer()
+                    SpecialKeysBar()
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.bottom, 6)
+                }
+            }
 
             HStack(spacing: 10) {
                 if canReturnToLibrary {
@@ -107,6 +122,13 @@ struct GuestScreenView: View {
                     Text(runner.setupMessage ?? "Android is starting — complete its setup on screen")
                         .font(.caption2)
                         .lineLimit(2)
+                }
+                Button {
+                    keyboard.toggle()
+                    HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
+                } label: {
+                    Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
+                        .font(.caption)
                 }
                 Button { showLogs = true } label: {
                     Image(systemName: "doc.text.magnifyingglass").font(.caption)

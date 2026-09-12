@@ -36,6 +36,7 @@ bool     husk_display_lock_frame(HuskFrameInfo *out);
 void     husk_display_unlock_frame(void);
 uint64_t husk_display_sequence(void);
 void     husk_display_send_pointer(int32_t x, int32_t y, bool button_down);
+bool     husk_display_send_key(const char *qcode_name, bool down);
 void     husk_display_request_update(void);
 
 /* --- Husk's JIT substrate --- */
