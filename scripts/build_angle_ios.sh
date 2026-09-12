@@ -42,15 +42,47 @@ cd "$WK/Source/ThirdParty/ANGLE"
 # hiding, all of the form "MTLPixelFormatBC1_RGBA is only available on iOS
 # 16.4". Hence the deployment target: 17.0 is what Husk requires anyway, so the
 # annotations are satisfied honestly rather than suppressed.
-echo "==> building ANGLE for iOS arm64 (log: $LOG)"
-env -i PATH="$PATH" HOME="$HOME" xcodebuild archive \
-    -archivePath "ANGLE" -scheme "ANGLE" \
-    -sdk iphoneos -arch arm64 -configuration Release \
-    WEBCORE_LIBRARY_DIR="/usr/local/lib" NORMAL_UMBRELLA_FRAMEWORKS_DIR="" \
-    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    WK_AVAILABILITY_OVERLAY_FLAGS="" WK_AVAILABILITY_OVERLAY_SWIFT_FLAGS="" \
-    IPHONEOS_DEPLOYMENT_TARGET="17.0" > "$LOG" 2>&1 \
-  || { echo "ANGLE build failed; last errors:" >&2; grep -a "error:" "$LOG" | head -20 >&2; exit 1; }
+ALIASES="$GPU/angle-aliases.txt"
+
+angle_build () {
+    env -i PATH="$PATH" HOME="$HOME" xcodebuild archive \
+        -archivePath "ANGLE" -scheme "ANGLE" \
+        -sdk iphoneos -arch arm64 -configuration Release \
+        WEBCORE_LIBRARY_DIR="/usr/local/lib" NORMAL_UMBRELLA_FRAMEWORKS_DIR="" \
+        CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+        WK_AVAILABILITY_OVERLAY_FLAGS="" WK_AVAILABILITY_OVERLAY_SWIFT_FLAGS="" \
+        IPHONEOS_DEPLOYMENT_TARGET="17.0" \
+        ${1:+OTHER_LDFLAGS=$(printf '$(inherited) -Wl,-alias_list,%s' "$1")} \
+        > "$LOG" 2>&1 \
+      || { echo "ANGLE build failed; last errors:" >&2
+           grep -a "error:\|^ld: " "$LOG" | grep -v xcodebuild | head -10 >&2; exit 1; }
+}
+
+# Two passes, because of a name mismatch.
+#
+# WebKit builds ANGLE with its entry points renamed -- the dylib exports
+# EGL_ChooseConfig, not eglChooseConfig -- since WebCore reaches them through
+# ANGLE's own loader. libepoxy and virglrenderer expect the standard names.
+# Rather than hand-write ~115 forwarding functions, the second pass relinks with
+# ld's -alias_list, which adds the standard name as an alias of each renamed
+# symbol. No wrappers, no extra indirection at call time.
+#
+# EGL only, deliberately. Aliasing the 828 GL_* exports the same way fails with
+# "ld: 828 duplicate symbols" -- ANGLE already carries internal gl* symbols that
+# the aliases collide with. It is also unnecessary: epoxy resolves GL entry
+# points through eglGetProcAddress, so EGL is the only surface that must be
+# reachable by its standard name.
+echo "==> building ANGLE for iOS arm64, pass 1 (log: $LOG)"
+angle_build ""
+
+echo "==> generating EGL symbol aliases"
+nm -g "ANGLE.xcarchive/Products/usr/local/lib/libANGLE-shared.dylib" \
+  | awk '$2=="T"{print $3}' | grep -E '^_EGL_' \
+  | awk '{o=$1; a=$1; sub(/^_EGL_/,"_egl",a); print o, a}' > "$ALIASES"
+echo "    $(wc -l < "$ALIASES") aliases"
+
+echo "==> pass 2, relinking with standard EGL names"
+angle_build "$ALIASES"
 
 DYLIB="ANGLE.xcarchive/Products/usr/local/lib/libANGLE-shared.dylib"
 [ -f "$DYLIB" ] || { echo "no dylib at $DYLIB" >&2; exit 1; }
@@ -65,3 +97,4 @@ install_name_tool -id "@rpath/libANGLE-shared.dylib" "$PREFIX/lib/libANGLE-share
 
 echo "==> staged $(ls -lh "$PREFIX/lib/libANGLE-shared.dylib" | awk '{print $5}') to $PREFIX/lib"
 otool -D "$PREFIX/lib/libANGLE-shared.dylib" | tail -1
+echo "==> standard EGL entry points exported: $(nm -g "$PREFIX/lib/libANGLE-shared.dylib" | grep -c ' T _egl')"
