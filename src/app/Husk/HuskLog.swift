@@ -20,11 +20,14 @@ import os
 /// something goes wrong.
 enum HuskLog {
     private static let osLog = Logger(subsystem: "com.husk.app", category: "husk")
-    private static let queue = DispatchQueue(label: "com.husk.log", qos: .utility)
 
-    private static var fileHandle: FileHandle?
+    /// Exposed because a C signal handler closure cannot capture context.
+    fileprivate static var rawLogFD: Int32 { logFD }
+    private static var logFD: Int32 = -1
+    private static var pipeReadFD: Int32 = -1
+    private static var pipeWriteFD: Int32 = -1
     private static var started = false
-    private static var pendingWrites = 0
+    private static let writeLock = NSLock()
     private static let startTime = Date()
 
     /// Recent lines, for the in-app viewer. Bounded so a long session cannot grow
@@ -49,70 +52,61 @@ enum HuskLog {
         guard !started else { return }
         started = true
 
+        // A write to a pipe whose read end has closed raises SIGPIPE, and the
+        // default action for SIGPIPE is to terminate the process. Since stdout and
+        // stderr are about to become that pipe, ignore it outright -- a logging
+        // failure must never be able to kill the app it is trying to diagnose.
+        signal(SIGPIPE, SIG_IGN)
+
         // Fresh file each launch. StikDebug relaunches us after attaching, so the
         // run that matters is always the most recent one; keeping the previous
         // run's noise would make the log harder to read, not easier.
         let url = logFileURL
-        FileManager.default.createFile(atPath: url.path, contents: nil)
-        fileHandle = try? FileHandle(forWritingTo: url)
+        logFD = open(url.path, O_CREAT | O_WRONLY | O_TRUNC, 0o644)
 
         redirectStdio()
         installCrashHandlers()
         logBanner()
     }
 
-    /// Turn "the app vanished with no crash log" into a labelled last line.
-    ///
-    /// Deliberately does NOT touch SIGTRAP or SIGBUS: those belong to the JIT trap
-    /// guard in husk-ios-jit.c, which needs to step over an unserviced brk rather
-    /// than treat it as fatal. Stealing them here would break JIT detection.
-    private static func installCrashHandlers() {
-        let fatal: [Int32] = [SIGSEGV, SIGABRT, SIGILL, SIGFPE, SIGSYS]
-        for sig in fatal {
-            signal(sig) { received in
-                // Async-signal-safety: write(2) straight to the log fd, no
-                // allocation, no Swift runtime.
-                let msg = "\n*** FATAL SIGNAL \(received) -- process is dying ***\n"
-                msg.withCString { p in _ = write(STDERR_FILENO, p, strlen(p)) }
-                HuskLog.flushNow()
-                signal(received, SIG_DFL)
-                raise(received)
-            }
-        }
-        NSSetUncaughtExceptionHandler { ex in
-            HuskLog.log("crash", "uncaught exception: \(ex.name.rawValue) -- \(ex.reason ?? "")")
-            HuskLog.log("crash", (ex.callStackSymbols.prefix(20)).joined(separator: " | "))
-            HuskLog.flushNow()
-        }
-        log("boot", "crash handlers installed (SEGV/ABRT/ILL/FPE/SYS; TRAP+BUS left to the JIT guard)")
-    }
-
-    /// Force everything buffered out to disk. Safe to call from a signal handler
-    /// path -- worst case the sync barrier times out and we lose nothing we had.
+    /// Force everything out to disk.
     static func flushNow() {
-        queue.sync {
-            pendingWrites = 0
-            try? fileHandle?.synchronize()
-        }
+        if logFD >= 0 { fsync(logFD) }
     }
 
     /// Point stdout and stderr at a pipe we drain ourselves.
+    ///
+    /// Uses raw pipe(2) descriptors held in statics rather than Foundation's Pipe.
+    /// Pipe owns its FileHandles and closes their descriptors when it deallocates,
+    /// so a locally-scoped Pipe tears down the read end the moment this function
+    /// returns -- after which every write to stderr hits a reader-less pipe. These
+    /// descriptors belong to no object and are never closed.
     private static func redirectStdio() {
-        let pipe = Pipe()
-        let readFD = pipe.fileHandleForReading.fileDescriptor
-        let writeFD = pipe.fileHandleForWriting.fileDescriptor
+        var fds: [Int32] = [-1, -1]
+        guard pipe(&fds) == 0 else {
+            // Nothing to redirect into; keep going, the file and os_log still work
+            // for anything logged through HuskLog.log().
+            log("boot", "WARNING: pipe() failed (errno \(errno)); C-side stderr will not be captured")
+            return
+        }
+        pipeReadFD = fds[0]
+        pipeWriteFD = fds[1]
 
         setvbuf(stdout, nil, _IOLBF, 0)
         setvbuf(stderr, nil, _IONBF, 0)
-        dup2(writeFD, STDOUT_FILENO)
-        dup2(writeFD, STDERR_FILENO)
+        dup2(pipeWriteFD, STDOUT_FILENO)
+        dup2(pipeWriteFD, STDERR_FILENO)
 
         let t = Thread {
             var pending = Data()
+            var buf = [UInt8](repeating: 0, count: 16 * 1024)
             while true {
-                var buf = [UInt8](repeating: 0, count: 16 * 1024)
-                let n = read(readFD, &buf, buf.count)
-                if n <= 0 { break }
+                let n = read(pipeReadFD, &buf, buf.count)
+                if n < 0 {
+                    if errno == EINTR { continue }
+                    break
+                }
+                if n == 0 { break }
                 pending.append(contentsOf: buf[0..<n])
 
                 // Emit complete lines only, so a partial write never splits a
@@ -121,21 +115,52 @@ enum HuskLog {
                     let lineData = pending.subdata(in: pending.startIndex..<nl)
                     pending.removeSubrange(pending.startIndex...nl)
                     if let line = String(data: lineData, encoding: .utf8) {
-                        emit(line, alreadyOnStream: true)
+                        emit(line, fromStream: true)
                     }
                 }
             }
         }
         t.name = "com.husk.log.reader"
-        t.qualityOfService = .utility
+        t.qualityOfService = .userInitiated
         t.start()
+    }
+
+    /// Turn "the app vanished with no crash log" into a labelled last line.
+    ///
+    /// Deliberately does NOT touch SIGTRAP or SIGBUS: those belong to the JIT trap
+    /// guard in husk-ios-jit.c, which needs to step over an unserviced brk rather
+    /// than treat it as fatal. Stealing them here would break JIT detection.
+    /// SIGPIPE is already set to SIG_IGN in start() and must stay that way.
+    private static func installCrashHandlers() {
+        let fatal: [Int32] = [SIGSEGV, SIGABRT, SIGILL, SIGFPE, SIGSYS]
+        for sig in fatal {
+            signal(sig) { received in
+                // Async-signal-safe only: write(2) straight to the fds, no
+                // allocation, no locks, no Swift runtime.
+                let msg = "\n*** FATAL SIGNAL \(received) -- process is dying ***\n"
+                msg.withCString { p in
+                    let n = strlen(p)
+                    if HuskLog.rawLogFD >= 0 { _ = write(HuskLog.rawLogFD, p, n) }
+                }
+                if HuskLog.rawLogFD >= 0 { fsync(HuskLog.rawLogFD) }
+                signal(received, SIG_DFL)
+                raise(received)
+            }
+        }
+        NSSetUncaughtExceptionHandler { ex in
+            HuskLog.log("crash", "uncaught exception: \(ex.name.rawValue) -- \(ex.reason ?? "")")
+            HuskLog.log("crash", ex.callStackSymbols.prefix(20).joined(separator: " | "))
+            HuskLog.flushNow()
+        }
+        log("boot", "crash handlers installed (SEGV/ABRT/ILL/FPE/SYS; "
+                  + "TRAP+BUS left to the JIT guard; SIGPIPE ignored)")
     }
 
     // MARK: - Emitting
 
-    /// - Parameter alreadyOnStream: true when the line came out of the captured
-    ///   pipe, in which case writing it back to stderr would loop forever.
-    private static func emit(_ line: String, alreadyOnStream: Bool) {
+    /// - Parameter fromStream: true when the line came out of the captured pipe,
+    ///   meaning the C side already sent it to os_log itself.
+    private static func emit(_ line: String, fromStream: Bool) {
         ringLock.lock()
         ring.append(line)
         if ring.count > ringLimit { ring.removeFirst(ring.count - ringLimit) }
@@ -143,35 +168,33 @@ enum HuskLog {
 
         // The C side (husk-ios-jit.c, husk-display.c) writes to os_log itself as
         // well as stderr, because those are the lines most worth surviving a hard
-        // crash and os_log is more durable than our async file write. Mirroring
-        // them again here would show every one of them twice in Console.app, so
-        // skip the ones that already went out.
-        if !line.contains("[husk-jit]") && !line.contains("[husk-dpy]") {
+        // crash. Mirroring them again here would double every one of them in
+        // Console.app.
+        if !fromStream || (!line.contains("[husk-jit]") && !line.contains("[husk-dpy]")) {
             osLog.log("\(line, privacy: .public)")
         }
 
-        // Durability matters more here than throughput. The lines worth having are
-        // the last ones before a crash, so flush to disk on anything that looks
-        // like a failure, and periodically otherwise. Without this the async write
-        // can still be queued when the process dies and the log simply stops short
-        // of the interesting part.
-        let critical = line.contains("FAIL") || line.contains("FATAL")
-                    || line.contains("error") || line.contains("WARNING")
-        queue.async {
-            guard let data = (line + "\n").data(using: .utf8) else { return }
-            fileHandle?.write(data)
-            pendingWrites += 1
-            if critical || pendingWrites >= 32 {
-                pendingWrites = 0
-                try? fileHandle?.synchronize()
+        // Written synchronously with write(2) rather than queued. An async write
+        // can still be pending when the process dies, which loses exactly the
+        // lines that explain why it died -- and those are the whole point of this
+        // file. write(2) to a file lands in the page cache and is cheap.
+        guard logFD >= 0, let data = (line + "\n").data(using: .utf8) else { return }
+        writeLock.lock()
+        data.withUnsafeBytes { raw in
+            var off = 0
+            while off < raw.count {
+                let n = write(logFD, raw.baseAddress!.advanced(by: off), raw.count - off)
+                if n <= 0 { break }
+                off += n
             }
         }
+        writeLock.unlock()
     }
 
     /// Log from Swift. Lands in the same stream as QEMU's own output.
     static func log(_ category: String, _ message: String) {
         let t = Date().timeIntervalSince(startTime) * 1000
-        emit(String(format: "[%9.2fms][%@] %@", t, category, message), alreadyOnStream: false)
+        emit(String(format: "[%9.2fms][%@] %@", t, category, message), fromStream: false)
     }
 
     // MARK: - Context
