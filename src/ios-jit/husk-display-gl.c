@@ -353,14 +353,28 @@ bool husk_display_gl_bind(void)
     }
 
     husk_gl_ctx.ops = &husk_gl_ctx_ops;
+
+    fprintf(stderr, "[husk-gl] bind: qemu_console_lookup_by_index(0)\n");
     con = qemu_console_lookup_by_index(0);
     if (!con) {
         fprintf(stderr, "[husk-gl] no console 0\n");
         return false;
     }
+    /*
+     * console_compatible_with() reaches straight through con->hw_ops without
+     * checking it, so a console that is not a graphics console segfaults inside
+     * registration rather than being rejected. Report what we got before
+     * handing it over.
+     */
+    fprintf(stderr, "[husk-gl] bind: console=%p graphic=%d gl_block=%d\n",
+            (void *)con, qemu_console_is_graphic(con) ? 1 : 0, 0);
+
     husk_gl_dcl.con = con;
+    fprintf(stderr, "[husk-gl] bind: qemu_console_set_display_gl_ctx\n");
     qemu_console_set_display_gl_ctx(con, &husk_gl_ctx);
+    fprintf(stderr, "[husk-gl] bind: register_displaychangelistener\n");
     register_displaychangelistener(&husk_gl_dcl);
+    fprintf(stderr, "[husk-gl] bind: listener registered\n");
 
     fprintf(stderr, "[husk-gl] GL display up: %dx%d\n", husk_win_w, husk_win_h);
     return true;
