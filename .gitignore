@@ -1,0 +1,18 @@
+# Build outputs
+build/
+third_party/build/
+third_party/sources/
+third_party/qemu-upstream/
+third_party/utm/
+third_party/utm-qemu/
+
+# Guest images (large, redistributable only from upstream)
+guests/
+
+# Xcode
+*.xcuserdatad
+DerivedData/
+.DS_Store
+
+# stray ar(1) extraction artifact
+__.SYMDEF*

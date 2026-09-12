@@ -1,0 +1,73 @@
+name: Husk
+options:
+  bundleIdPrefix: com.husk
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+    ENABLE_BITCODE: NO
+    SWIFT_VERSION: "5.0"
+    # The guest framebuffer path is latency-sensitive and the JIT path is
+    # timing-sensitive; never let a debug build of the display loop mislead us.
+    SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+targets:
+  Husk:
+    type: application
+    platform: iOS
+    sources:
+      - path: Husk
+        excludes:
+          - "Resources/**"
+      # NOT `type: folder`: a folder reference copies the directory itself into the
+      # bundle, and Bundle.path(forResource:ofType:) does not search subdirectories,
+      # so the script would be present but unfindable at runtime.
+      - path: Husk/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.husk.app
+        # Set your team here rather than in Xcode's UI: this file is the source of
+        # truth, and `xcodegen generate` overwrites Husk.xcodeproj.
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: Husk/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Husk/Husk.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: Husk/HuskBridge.h
+        # libqemu-aarch64-softmmu.dylib has install_name @rpath/...
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        # Husk targets recent iPhones only; a real Android guest needs the RAM.
+        TARGETED_DEVICE_FAMILY: "1"
+        # XcodeGen links the dylib by -l, so the linker needs a library search
+        # path (not just the framework search path it infers from the file).
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../../build/ios-arm64/lib"
+    dependencies:
+      # Built by scripts/build_ios.sh. Embedded and signed into the bundle.
+      - framework: ../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib
+        embed: true
+        codeSign: true
+    preBuildScripts:
+      - name: Stage guest image
+        # The Phase 0 guest is far too large for git, so it is fetched rather than
+        # vendored, and copied into the bundle at build time.
+        script: |
+          set -e
+          GUEST="$SRCROOT/../../guests/phase0"
+          if [ ! -f "$GUEST/vmlinuz-virt" ]; then
+            echo "error: guest missing. Run ./scripts/fetch_phase0_guest.sh" >&2
+            exit 1
+          fi
+          mkdir -p "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          cp "$GUEST/vmlinuz-virt" "$GUEST/initramfs-virt" \
+             "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
+        outputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/vmlinuz-virt"
+          - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/initramfs-virt"

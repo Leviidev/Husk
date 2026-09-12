@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Lets StikDebug attach to us as a debugger. Without this there is no JIT. -->
+	<key>get-task-allow</key>
+	<true/>
+	<!-- Only honoured on TrollStore/jailbroken devices; harmless otherwise, and it
+	     lets the same build skip the StikDebug dance where it IS honoured. -->
+	<key>dynamic-codesigning</key>
+	<true/>
+	<!-- An Android guest needs real RAM on top of the host app's own footprint.
+	     Proven to work on sideloaded builds in AetherPS4-iOS. -->
+	<key>com.apple.developer.kernel.increased-memory-limit</key>
+	<true/>
+</dict>
+</plist>

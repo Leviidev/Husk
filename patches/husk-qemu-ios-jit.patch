@@ -1,0 +1,65 @@
+--- /tmp/region.c.orig	2026-09-11 22:56:49
++++ third_party/build/qemu-10.0.12-utm/tcg/region.c	2026-09-11 22:56:49
+@@ -35,7 +35,14 @@
+ #include "tcg-internal.h"
+ #include "host/cpuinfo.h"
+ 
++#ifdef __APPLE__
++#include <TargetConditionals.h>
++#endif
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++#include "husk-ios-jit.h"
++#endif
+ 
++
+ /*
+  * Local source-level compatibility with Unix.
+  * Used by tcg_region_init below.
+@@ -728,10 +735,46 @@
+ #endif /* CONFIG_DARWIN */
+ #endif /* CONFIG_TCG_INTERPRETER */
+ 
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++/*
++ * Husk: on iOS the RX half cannot be produced locally -- TXM forbids it. It must
++ * come from the attached debugger via BreakpointJIT, which also walks every
++ * 16 KiB page to make it usable. We then build the RW alias ourselves with
++ * vm_remap. This is the same shape as the vmremap path below, just sourced in
++ * the opposite order: RX first, then RW.
++ *
++ * This is a ONE-SHOT allocation. StikDebug detaches after startup and cannot
++ * service another request, so tb-size must be chosen large enough up front for
++ * the whole session; TCG flushes rather than grows, so that is sufficient.
++ */
++static int alloc_code_gen_buffer_splitwx_husk_ios(size_t size, Error **errp)
++{
++    HuskDualMapping m;
++    size_t page = 16384; /* StikDebug prepares whole 16 KiB pages */
++
++    size = ROUND_UP(size, page);
++    m = husk_ios_jit_allocate(size);
++    if (m.rw_addr == NULL) {
++        error_setg(errp,
++                   "husk: could not obtain %zu bytes of JIT memory. Attach "
++                   "StikDebug with the Universal JIT script before booting.",
++                   size);
++        return -1;
++    }
++
++    region.start_aligned = m.rw_addr;
++    region.total_size = m.size;
++    tcg_splitwx_diff = m.rx_addr - m.rw_addr;
++    return PROT_READ | PROT_WRITE;
++}
++#endif /* __APPLE__ && TARGET_OS_IPHONE */
++
+ static int alloc_code_gen_buffer_splitwx(size_t size, Error **errp)
+ {
+ #if !defined(CONFIG_TCG_INTERPRETER) && !defined(CONFIG_TCG_THREADED_INTERPRETER)
+-# ifdef CONFIG_DARWIN
++# if defined(__APPLE__) && TARGET_OS_IPHONE
++    return alloc_code_gen_buffer_splitwx_husk_ios(size, errp);
++# elif defined(CONFIG_DARWIN)
+     return alloc_code_gen_buffer_splitwx_vmremap(size, errp);
+ # endif
+ # ifdef CONFIG_POSIX
