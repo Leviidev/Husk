@@ -40,8 +40,11 @@ cd "$WK/Source/ThirdParty/ANGLE"
 # tree generates it, so the build dies looking for availability-overlay.yaml.
 # Clearing the flag drops the overlay -- which then surfaces the errors it was
 # hiding, all of the form "MTLPixelFormatBC1_RGBA is only available on iOS
-# 16.4". Hence the deployment target: 17.0 is what Husk requires anyway, so the
-# annotations are satisfied honestly rather than suppressed.
+# 16.4". Hence the deployment target: 16.4 is the version those annotations
+# actually ask for, so they are satisfied honestly rather than suppressed. It
+# was 17.0 while Husk itself required 17.0; Husk now deploys to 16.4, and
+# building ANGLE any higher than the app produces a dylib dyld refuses to load
+# on the oldest supported OS.
 ALIASES="$GPU/angle-aliases.txt"
 
 angle_build () {
@@ -51,7 +54,7 @@ angle_build () {
         WEBCORE_LIBRARY_DIR="/usr/local/lib" NORMAL_UMBRELLA_FRAMEWORKS_DIR="" \
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
         WK_AVAILABILITY_OVERLAY_FLAGS="" WK_AVAILABILITY_OVERLAY_SWIFT_FLAGS="" \
-        IPHONEOS_DEPLOYMENT_TARGET="17.0" \
+        IPHONEOS_DEPLOYMENT_TARGET="16.4" \
         ${1:+OTHER_LDFLAGS=$(printf '$(inherited) -Wl,-alias_list,%s' "$1")} \
         > "$LOG" 2>&1 \
       || { echo "ANGLE build failed; last errors:" >&2

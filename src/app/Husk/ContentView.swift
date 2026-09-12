@@ -43,7 +43,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showLogs) { LogView() }
         .onAppear { evaluate() }
-        .onChange(of: scenePhase) { _, phase in
+        // The two-parameter onChange is iOS 17; this single-parameter form is
+        // deprecated there but still works, and is the only one that compiles
+        // against the 16.4 deployment target.
+        .onChange(of: scenePhase) { phase in
             // StikDebug relaunches Husk after attaching, so returning to the
             // foreground is the moment worth re-checking, not first launch.
             if phase == .active { evaluate() }
@@ -190,7 +193,7 @@ struct SetupView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 30)
-                .onChange(of: profile) { _, p in
+                .onChange(of: profile) { p in
                     QemuRunner.shared.profile = p
                     HuskLog.log("ui", "guest profile set to \(p.rawValue)")
                 }
