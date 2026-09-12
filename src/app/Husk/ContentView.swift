@@ -233,14 +233,20 @@ struct SetupView: View {
                     Text("Something went wrong").font(.headline).foregroundStyle(.red)
                     Text(message).font(.caption).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal, 34)
-                    Button("Try again") { guest.download() }.buttonStyle(.borderedProminent)
+                    Button("Try again") { JITBootstrap.prewarm(); guest.download() }.buttonStyle(.borderedProminent)
                 }
             case .missing:
                 VStack(spacing: 12) {
                     Text("Husk needs its Android runtime — about 760 MB. Android itself is downloaded afterwards by the runtime.")
                         .font(.callout).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal, 36)
-                    Button("Download Android runtime") { guest.download() }
+                    Button("Download Android runtime") {
+                        // Claim the JIT region before the download, not after:
+                        // it takes about a minute, and StikDebug will have let
+                        // go by the end of it.
+                        JITBootstrap.prewarm()
+                        guest.download()
+                    }
                         .buttonStyle(.borderedProminent)
                 }
             case .ready:

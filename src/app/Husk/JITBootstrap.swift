@@ -39,6 +39,33 @@ enum JITBootstrap {
                          + "return 0 instead of killing the process")
     }
 
+    /// Size QEMU will ask for. Must match tb-size in the phase 1 command line:
+    /// a smaller region here means QEMU allocates a second one, at a point where
+    /// StikDebug may be long gone.
+    static let jitBytes = 256 * 1024 * 1024
+
+    /// Take the JIT region now, while StikDebug is definitely still attached.
+    ///
+    /// StikDebug lets go after a while, and a first run spends a minute
+    /// downloading 1.1 GB of guest image before QEMU starts. By the time
+    /// qemu_init() asked for memory the debugger had detached, and there is no
+    /// recovering from that in-process -- without a debugger there is no
+    /// executable memory at all, and asking again later is precisely what does
+    /// not work. So claim it first and hold it.
+    @discardableResult
+    static func prewarm() -> Bool {
+        guard isDebuggerAttached else {
+            HuskLog.log("jit", "no debugger attached yet; not prewarming")
+            return false
+        }
+        HuskLog.log("jit", "claiming \(jitBytes / (1024 * 1024)) MiB of JIT memory now, "
+                         + "before the guest download -- StikDebug does not stay attached")
+        let ok = husk_ios_jit_prewarm(jitBytes)
+        HuskLog.log("jit", ok ? "JIT region secured; it will be handed to QEMU later"
+                              : "JIT prewarm FAILED -- StikDebug is not servicing traps")
+        return ok
+    }
+
     /// True only after a JIT region has been allocated AND passed the execute
     /// self-test — which happens inside `qemu_init`. It is therefore always false
     /// before the guest starts, and must NOT be used to decide whether to start it.

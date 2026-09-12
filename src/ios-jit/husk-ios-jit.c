@@ -233,7 +233,54 @@ static bool husk_jit_selftest(const HuskDualMapping *m)
 
 /* ------------------------------------------------------------- allocation */
 
+/*
+ * Husk: take the JIT region early, before anything slow happens.
+ *
+ * StikDebug does not stay attached indefinitely. A first run downloads about
+ * 1.1 GB of guest image before QEMU starts, and by the time qemu_init() reached
+ * alloc_code_gen_buffer the debugger had let go:
+ *
+ *   StikDebug is NOT servicing traps -- probe returned 0
+ *   could not obtain 268435456 bytes of JIT memory
+ *
+ * Nothing can recover from that in-process: without a debugger there is no way
+ * to get executable memory, and asking again later is exactly what does not
+ * work. So the region is claimed at app launch, while the attachment is fresh,
+ * and held until QEMU asks for it.
+ */
+static HuskDualMapping husk_ios_jit_allocate_real(size_t bytes);
+
+static HuskDualMapping husk_prewarmed;
+static bool husk_prewarm_done;
+
+HUSK_EXPORT bool husk_ios_jit_prewarm(size_t bytes)
+{
+    if (husk_prewarm_done) {
+        return husk_prewarmed.rw_addr != NULL;
+    }
+    husk_prewarm_done = true;
+    husk_prewarmed = husk_ios_jit_allocate_real(bytes);
+    fprintf(stderr, "[husk-jit] prewarm %s: %zu bytes\n",
+            husk_prewarmed.rw_addr ? "OK" : "FAILED", bytes);
+    return husk_prewarmed.rw_addr != NULL;
+}
+
 HuskDualMapping husk_ios_jit_allocate(size_t bytes)
+{
+    /*
+     * Hand back the prewarmed region when it is big enough. QEMU asks for
+     * exactly tb-size, which is what prewarm was given, so this is the normal
+     * path -- the fallback below only runs if prewarm never happened.
+     */
+    if (husk_prewarmed.rw_addr && husk_prewarmed.size >= bytes) {
+        fprintf(stderr, "[husk-jit] using the prewarmed region (%zu bytes)\n",
+                husk_prewarmed.size);
+        return husk_prewarmed;
+    }
+    return husk_ios_jit_allocate_real(bytes);
+}
+
+static HuskDualMapping husk_ios_jit_allocate_real(size_t bytes)
 {
     HuskDualMapping region = { NULL, NULL, 0 };
     uint64_t n = atomic_fetch_add(&g_alloc_counter, 1) + 1;
@@ -385,12 +432,17 @@ bool husk_ios_jit_is_available(void)
 #else /* !iOS: keep the symbols so host builds and tests link */
 
 void husk_ios_jit_install_trap_handler(void) {}
-HuskDualMapping husk_ios_jit_allocate(size_t bytes)
+static HuskDualMapping husk_ios_jit_allocate_real(size_t bytes)
 {
     (void)bytes;
     HuskDualMapping m = { NULL, NULL, 0 };
     return m;
 }
+HuskDualMapping husk_ios_jit_allocate(size_t bytes)
+{
+    return husk_ios_jit_allocate_real(bytes);
+}
+bool husk_ios_jit_prewarm(size_t bytes) { (void)bytes; return false; }
 void husk_ios_jit_release(HuskDualMapping *m) { (void)m; }
 void husk_ios_jit_detach(void) {}
 bool husk_ios_jit_is_available(void) { return false; }

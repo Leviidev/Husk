@@ -49,7 +49,11 @@ final class GuestImage: ObservableObject {
     }
 
     nonisolated private var versionStampPath: String {
-        documents.appendingPathComponent("husk-guest.version").path
+        // Named for this guest, not the old one. It used to be
+        // "husk-guest.version", which cleanUpPreviousGuest() deletes as Waydroid
+        // leftovers -- so every launch wiped the stamp, decided the image was
+        // unversioned, and downloaded 1.1 GB again.
+        documents.appendingPathComponent("lineage-guest.version").path
     }
 
     // nonisolated: QEMU's own thread builds its command line from these, and they
