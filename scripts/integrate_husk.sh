@@ -28,6 +28,10 @@ echo "[cp  ] display bridge -> ui/"
 cp "$HUSK_ROOT/src/ios-jit/husk-display.c" \
    "$HUSK_ROOT/src/ios-jit/husk-display.h" "$Q/ui/"
 
+echo "[cp  ] GL display bridge -> ui/"
+cp "$HUSK_ROOT/src/ios-jit/husk-display-gl.c" \
+   "$HUSK_ROOT/src/ios-jit/husk-display-gl.h" "$Q/ui/"
+
 echo "[cp  ] balloon control -> system/"
 cp "$HUSK_ROOT/src/ios-jit/husk-balloon.c" \
    "$HUSK_ROOT/src/ios-jit/husk-balloon.h" "$Q/system/"
@@ -63,6 +67,18 @@ if "husk-display.c" not in s:
 else:
     print("  ui/meson.build: already wired")
 
+# husk-display-gl.c only builds with CONFIG_OPENGL, and it goes in the same
+# block as QEMU's own shader.c/console-gl.c so it inherits that condition.
+s = p.read_text()
+if "husk-display-gl.c" not in s:
+    old_gl = "if_true: files('shader.c', 'console-gl.c'))"
+    assert old_gl in s, "ui/meson.build GL block shape changed"
+    s = s.replace(old_gl, "if_true: files('shader.c', 'console-gl.c', 'husk-display-gl.c'))", 1)
+    p.write_text(s)
+    print("  ui/meson.build: added husk-display-gl.c (CONFIG_OPENGL)")
+else:
+    print("  ui/meson.build: GL bridge already wired")
+
 # system/meson.build: balloon control. It lives here rather than in ui/ because
 # it calls qmp_balloon(), which system/balloon.c defines.
 p = q / "system/meson.build"
@@ -94,6 +110,8 @@ wanted = [
     "husk_display_send_pointer",
     "husk_display_request_update",
     "husk_display_send_key",
+    "husk_display_gl_init",
+    "husk_display_gl_frames",
     "husk_balloon_set_bytes",
     "husk_ios_jit_install_trap_handler",
     "husk_ios_jit_is_available",

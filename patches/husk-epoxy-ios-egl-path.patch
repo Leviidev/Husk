@@ -1,0 +1,19 @@
+diff --git a/src/dispatch_common.c b/src/dispatch_common.c
+index 6fb7f02..a2feef9 100644
+--- a/src/dispatch_common.c
++++ b/src/dispatch_common.c
+@@ -183,7 +183,13 @@
+ #define GLES2_LIB "GLESv2.framework/Versions/Current/GLESv2"
+ #elif TARGET_OS_IPHONE
+ #define GLX_LIB "/opt/X11/lib/libGL.1.dylib"
+-#define EGL_LIB "EGL.framework/EGL"
++/*
++ * Husk: ANGLE ships as a plain dylib embedded in the app, not as an
++ * EGL.framework. dlopen resolves @rpath against the loading image's LC_RPATH,
++ * which for an iOS app is its own Frameworks directory -- the same way the
++ * QEMU dylib beside it is found.
++ */
++#define EGL_LIB "@rpath/libANGLE-shared.dylib"
+ #define OPENGL_LIB "/System/Library/Frameworks/OpenGL.framework/Versions/Current/OpenGL"
+ #define GLES1_LIB "GLESv1_CM.framework/GLESv1_CM"
+ #define GLES2_LIB "GLESv2.framework/GLESv2"

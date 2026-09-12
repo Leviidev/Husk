@@ -39,7 +39,14 @@ fetch virgl https://github.com/utmapp/virglrenderer.git "$VIRGL_COMMIT"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
 echo "==> libepoxy"
+# epoxy dlopens EGL by a hardcoded per-platform name, and on iOS that is
+# "EGL.framework/EGL". UTM satisfies it by packaging ANGLE as a framework; Husk
+# embeds plain dylibs, so the name is repointed at ours instead. dlopen resolves
+# @rpath against the loading image's LC_RPATH, which for an iOS app is its own
+# Frameworks directory -- exactly how the QEMU dylib beside it is found.
 ( cd "$GPU/epoxy"
+  git checkout -q -- src/dispatch_common.c 2>/dev/null || true
+  patch -p1 --silent < "$HUSK_ROOT/patches/husk-epoxy-ios-egl-path.patch"
   rm -rf _build
   $MESON setup _build --cross-file "$HUSK_ROOT/build/ios-arm64/cross-ios.meson" \
       --prefix "$PREFIX" --default-library=static \
