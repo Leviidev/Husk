@@ -130,23 +130,26 @@ uint64_t husk_display_gl_frames(void)
 bool husk_display_gl_early(void)
 {
     /*
-     * DISPLAY_GL_MODE_ES, not core. ANGLE speaks GLES, and so does everything
-     * the guest will send through virglrenderer.
+     * This sets a flag and does nothing else, deliberately.
+     *
+     * An earlier version brought EGL up here too and died before returning:
+     *
+     *   Assertion failed: (mutex->initialized), qemu_mutex_lock_impl, line 95
+     *
+     * Nothing in QEMU is safe to call before qemu_init(); its locks, logging
+     * and RCU machinery do not exist yet. Even error_report() is a trap.
+     *
+     * Fortunately none of it is needed. virtio_gpu_gl_device_realize() tests
+     * exactly one thing -- display_opengl -- and never touches a context, so
+     * the flag is the entire requirement at this point in startup. The EGL
+     * display, context, surface and listener are all built afterwards in
+     * husk_display_gl_init(), which still runs long before the guest issues
+     * its first GL command: Android takes tens of seconds to reach graphics.
+     *
+     * fprintf, not info_report, for the same reason.
      */
-    if (qemu_egl_init_dpy_cocoa(DISPLAY_GL_MODE_ES) < 0) {
-        error_report("[husk-gl] qemu_egl_init_dpy_cocoa failed");
-        return false;
-    }
-
-    husk_context = qemu_egl_init_ctx();
-    if (husk_context == EGL_NO_CONTEXT) {
-        error_report("[husk-gl] could not create the EGL context");
-        return false;
-    }
-
-    /* This is what virtio-gpu-gl checks. Without it the device will not realize. */
     display_opengl = 1;
-    info_report("[husk-gl] EGL is up before device creation; display_opengl = 1");
+    fprintf(stderr, "[husk-gl] display_opengl = 1 (before device creation)\n");
     return true;
 }
 
@@ -157,8 +160,18 @@ bool husk_display_gl_init(void *native_layer, int width, int height)
     husk_win_w = width;
     husk_win_h = height;
 
+    /*
+     * DISPLAY_GL_MODE_ES, not core. ANGLE speaks GLES, and so does everything
+     * the guest sends through virglrenderer.
+     */
+    if (qemu_egl_init_dpy_cocoa(DISPLAY_GL_MODE_ES) < 0) {
+        error_report("[husk-gl] qemu_egl_init_dpy_cocoa failed");
+        return false;
+    }
+
+    husk_context = qemu_egl_init_ctx();
     if (husk_context == EGL_NO_CONTEXT) {
-        error_report("[husk-gl] husk_display_gl_early() did not run or failed");
+        error_report("[husk-gl] could not create the EGL context");
         return false;
     }
 
