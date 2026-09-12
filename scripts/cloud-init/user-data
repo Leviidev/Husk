@@ -82,8 +82,12 @@ write_files:
       sed -i 's/^unsupported = \["nvidia"\]/unsupported = ["nvidia", "virtio_gpu", "virtio-gpu"]/' \
           /usr/lib/waydroid/tools/helpers/gpu.py
       grep -n '^unsupported' /usr/lib/waydroid/tools/helpers/gpu.py
+      # Editing a .py under a package that may ship precompiled bytecode does
+      # nothing if the old .pyc is still considered valid, which is one way the
+      # edit above could have been silently ignored.
+      find /usr/lib/waydroid -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 
-      echo "guest-v11" > /etc/husk-image-version
+      echo "guest-v12" > /etc/husk-image-version
 
       mkdir -p /mnt/husk
       systemctl enable seatd || true
@@ -518,6 +522,35 @@ write_files:
       done
 
       echo "HUSK-UI: seatd: $(systemctl is-active seatd 2>&1)"
+
+      # Waydroid derives the graphics stack ONCE, during "waydroid init", from
+      # whether a DRM render node exists (tools/helpers/lxc.py):
+      #
+      #     if dri:  gralloc = "gbm";     egl = "mesa"
+      #     else:    gralloc = "default"; egl = "swiftshader"
+      #
+      # virtio-gpu publishes /dev/dri/renderD128 whether or not it can render,
+      # and ours cannot: the kernel reports "[drm] features: -virgl". Waydroid
+      # then aims gralloc.gbm at a device with no driver behind it, hwcomposer
+      # takes SIGSEGV and SurfaceFlinger aborts with SIGABRT in a loop. Teaching
+      # its GPU probe to skip virtio_gpu should have been enough and measurably
+      # was not, so rewrite what it derived into what it would have chosen on a
+      # machine with no GPU at all. This edits the one file those properties
+      # come from, so it cannot miss for the reason the probe patch did, and it
+      # runs on every boot rather than only after init.
+      BP=/var/lib/waydroid/waydroid_base.prop
+      if [ -f "$BP" ]; then
+          sed -i -e 's/^ro\.hardware\.gralloc=.*/ro.hardware.gralloc=default/' \
+                 -e 's/^ro\.hardware\.egl=.*/ro.hardware.egl=swiftshader/' \
+                 -e '/^gralloc\.gbm\.device=/d' \
+                 -e '/^ro\.hardware\.vulkan=/d' "$BP"
+          grep -q '^ro.hardware.gralloc=' "$BP" || echo "ro.hardware.gralloc=default" >> "$BP"
+          grep -q '^ro.hardware.egl=' "$BP" || echo "ro.hardware.egl=swiftshader" >> "$BP"
+      else
+          echo "HUSK-UI: no waydroid_base.prop yet"
+      fi
+      # Why the probe patch missed, for next time.
+      echo "HUSK-UI: drm uevent: $(cat /sys/class/drm/renderD128/device/uevent 2>&1 | tr '\n' ' ')"
       # gralloc=default + egl=swiftshader means the software path was taken;
       # gralloc=gbm + egl=mesa means Waydroid still found the render node and
       # Android will crash in hwcomposer again.
