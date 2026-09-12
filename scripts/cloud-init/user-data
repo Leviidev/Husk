@@ -186,13 +186,18 @@ write_files:
           """
           parts = []
           for cmd in ("systemctl is-active husk-ui husk-agent waydroid-container seatd",
-                      "systemctl status husk-ui --no-pager -n 30",
                       "waydroid status",
-                      "ls -la /var/lib/waydroid /var/lib/waydroid/images",
+                      "ls -la /dev/binder /dev/hwbinder /dev/vndbinder",
                       "ls -la /dev/dri",
+                      "free -m",
+                      "tail -n 60 /var/lib/waydroid/waydroid.log",
+                      "cat /var/lib/waydroid/lxc/waydroid/config",
+                      "tail -n 60 /var/lib/waydroid/lxc/waydroid/waydroid.log",
+                      "lxc-info -P /var/lib/waydroid/lxc -n waydroid",
+                      "dmesg | tail -n 50",
                       "tail -n 40 /var/log/husk-ui.log",
                       "tail -n 40 /var/log/husk-firstboot.log",
-                      "journalctl -u husk-ui --no-pager -n 40"):
+                      "journalctl -u husk-ui --no-pager -n 30"):
               p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
               parts.append(f"$ {cmd}\n{p.stdout}{p.stderr}\n")
           try:
@@ -460,6 +465,31 @@ write_files:
       # exports the address to everything below it, which is what it exists for.
       dbus-run-session -- cage -- /usr/bin/waydroid show-full-ui
       rc=$?
+
+      # "container failed to start" is LXC's generic message; the reason is in
+      # Waydroid's and LXC's own logs. Dump them on the first couple of failures
+      # only -- Restart=always retries every 5s and repeating this each time would
+      # bury the run it first happened in.
+      FAILCOUNT=/run/husk-ui-failures
+      n=$(cat "$FAILCOUNT" 2>/dev/null || echo 0)
+      n=$((n + 1))
+      echo "$n" > "$FAILCOUNT"
+      if [ "$n" -gt 2 ]; then
+          echo "HUSK-UI: failure #$n (details already reported above)"
+          exit $rc
+      fi
+
+      echo "HUSK-UI: --- waydroid log ---"
+      tail -n 40 /var/lib/waydroid/waydroid.log 2>&1
+      echo "HUSK-UI: --- lxc log ---"
+      tail -n 40 /var/lib/waydroid/lxc/waydroid/waydroid.log 2>&1
+      echo "HUSK-UI: --- binder ---"
+      ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1
+      echo "HUSK-UI: --- memory ---"
+      free -m 2>&1
+      echo "HUSK-UI: --- dmesg tail ---"
+      dmesg | tail -n 25 2>&1
+      echo "HUSK-UI: --- end ---"
       echo "HUSK-UI: cage exited rc=$rc -- retrying in 5s"
       exit $rc
 
