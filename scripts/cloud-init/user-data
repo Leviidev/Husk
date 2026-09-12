@@ -38,7 +38,8 @@ write_files:
       apt-get update
       apt-get install -y --no-install-recommends \
           ca-certificates curl wget gnupg lxc python3 python3-gbinder \
-          cage seatd libgbm1 mesa-utils dbus-user-session dbus-x11 unzip
+          cage seatd libgbm1 mesa-utils dbus-user-session dbus-x11 unzip \
+          pipewire pipewire-pulse wireplumber
 
       curl -fsSL https://repo.waydro.id | bash
       apt-get update
@@ -53,6 +54,17 @@ write_files:
       echo "options binder_linux devices=binder,hwbinder,vndbinder" \
           > /etc/modprobe.d/waydroid.conf
       ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1 || true
+
+      # liblxc's own diagnosis of a failed start is thrown away by default.
+      # Waydroid runs "lxc-start -F" with output=background, which forwards the
+      # child's stderr to its log, but the useful detail -- which mount failed,
+      # which capability was refused -- goes to liblxc's log file, and Waydroid
+      # never sets one. The container config is rebuilt by concatenating these
+      # templates at every session start, so the template is the only place the
+      # setting survives.
+      printf '\nlxc.log.file = /var/log/waydroid-lxc.log\nlxc.log.level = DEBUG\n' \
+          >> /usr/lib/waydroid/data/configs/config_base
+      tail -n 5 /usr/lib/waydroid/data/configs/config_base
 
       mkdir -p /mnt/husk
       systemctl enable seatd || true
@@ -191,10 +203,9 @@ write_files:
                       "ls -la /dev/dri",
                       "free -m",
                       "tail -n 60 /var/lib/waydroid/waydroid.log",
-                      "cat /var/lib/waydroid/lxc/waydroid/config",
-                      "tail -n 60 /var/lib/waydroid/lxc/waydroid/waydroid.log",
+                      "grep -aE 'ERROR|WARN' /var/log/waydroid-lxc.log | tail -n 30",
                       "lxc-info -P /var/lib/waydroid/lxc -n waydroid",
-                      "dmesg | tail -n 50",
+                      "dmesg | tail -n 15",
                       "tail -n 40 /var/log/husk-ui.log",
                       "tail -n 40 /var/log/husk-firstboot.log",
                       "journalctl -u husk-ui --no-pager -n 30"):
@@ -463,26 +474,47 @@ write_files:
       # "org.freedesktop.DBus.Error.Spawn.ExecFailed: /usr/bin/dbus-launch
       # terminated abnormally". dbus-run-session creates the bus up front and
       # exports the address to everything below it, which is what it exists for.
-      dbus-run-session -- cage -- /usr/bin/waydroid show-full-ui
+      dbus-run-session -- /usr/local/bin/husk-session.sh
       rc=$?
 
-      # "container failed to start" is LXC's generic message; the reason is in
-      # Waydroid's and LXC's own logs. Dump them on the first couple of failures
-      # only -- Restart=always retries every 5s and repeating this each time would
-      # bury the run it first happened in.
+      # "container failed to start" is LXC's generic message and says nothing on
+      # its own. Dump the real evidence, once -- Restart=always retries every 5s
+      # and repeating this would bury the run it first happened in.
       FAILCOUNT=/run/husk-ui-failures
       n=$(cat "$FAILCOUNT" 2>/dev/null || echo 0)
       n=$((n + 1))
       echo "$n" > "$FAILCOUNT"
-      if [ "$n" -gt 2 ]; then
+      if [ "$n" -gt 1 ]; then
           echo "HUSK-UI: failure #$n (details already reported above)"
           exit $rc
       fi
 
+      # 200 lines, not 40. Waydroid polls lxc-info once a second for ten seconds
+      # and then prints an eight-frame traceback, which is about thirty lines of
+      # nothing -- enough to push the "% lxc-start" invocation and everything it
+      # wrote to stderr off the end of a short tail.
       echo "HUSK-UI: --- waydroid log ---"
-      tail -n 40 /var/lib/waydroid/waydroid.log 2>&1
-      echo "HUSK-UI: --- lxc log ---"
-      tail -n 40 /var/lib/waydroid/lxc/waydroid/waydroid.log 2>&1
+      tail -n 200 /var/lib/waydroid/waydroid.log 2>&1
+      echo "HUSK-UI: --- lxc errors ---"
+      grep -aE "ERROR|WARN" /var/log/waydroid-lxc.log 2>&1 | tail -n 60
+      echo "HUSK-UI: --- lxc log tail ---"
+      tail -n 80 /var/log/waydroid-lxc.log 2>&1
+      echo "HUSK-UI: --- container config ---"
+      cat /var/lib/waydroid/lxc/waydroid/config 2>&1
+      echo "HUSK-UI: --- container mount entries ---"
+      cat /var/lib/waydroid/lxc/waydroid/config_nodes 2>&1
+      cat /var/lib/waydroid/lxc/waydroid/config_session 2>&1
+      echo "HUSK-UI: --- lxc-checkconfig ---"
+      lxc-checkconfig 2>&1
+      echo "HUSK-UI: --- audio ---"
+      tail -n 20 /var/log/husk-audio.log 2>&1
+      ls -la "$XDG_RUNTIME_DIR/pulse" 2>&1
+      echo "HUSK-UI: --- apparmor ---"
+      aa-enabled 2>&1
+      grep -aE "waydroid" /sys/kernel/security/apparmor/profiles 2>&1
+      echo "HUSK-UI: --- rootfs ---"
+      ls /var/lib/waydroid/rootfs 2>&1 | head -n 20
+      mount | grep -a waydroid 2>&1
       echo "HUSK-UI: --- binder ---"
       ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1
       echo "HUSK-UI: --- memory ---"
@@ -492,6 +524,53 @@ write_files:
       echo "HUSK-UI: --- end ---"
       echo "HUSK-UI: cage exited rc=$rc -- retrying in 5s"
       exit $rc
+
+  - path: /usr/local/bin/husk-session.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # Runs inside dbus-run-session, and exists for one reason: Waydroid binds
+      # the PulseAudio socket into the container whether or not there is one.
+      #
+      # tools/helpers/lxc.py, generate_session_lxc_config():
+      #
+      #     pulse_host_socket = os.path.join(session["pulse_runtime_path"], "native")
+      #     make_entry(pulse_host_socket, pulse_container_socket[1:])
+      #
+      # make_entry defaults to "rbind,create=file 0 0" -- no "optional" -- and
+      # skips its own existence check whenever a destination is given, which it
+      # is here. On a desktop that never matters because PipeWire is running. In
+      # a headless systemd service it is fatal: LXC cannot mount a source that
+      # does not exist, so lxc_setup fails and the entire container is torn down
+      # about 100ms after its network comes up, which surfaces only as the
+      # useless "OSError: container failed to start".
+      exec >> /var/log/husk-audio.log 2>&1
+      echo "HUSK-AUDIO: starting pipewire in $XDG_RUNTIME_DIR"
+
+      mkdir -p "$XDG_RUNTIME_DIR"
+      pipewire &
+      pipewire-pulse &
+      wireplumber &
+
+      # Wait for the socket Waydroid is going to bind, up to ten seconds.
+      for _ in $(seq 1 50); do
+          [ -S "$XDG_RUNTIME_DIR/pulse/native" ] && break
+          sleep 0.2
+      done
+
+      if [ -S "$XDG_RUNTIME_DIR/pulse/native" ]; then
+          echo "HUSK-AUDIO: pulse socket is up"
+      else
+          # Never let audio decide whether Android runs. A plain file satisfies
+          # the bind mount; Android finds nothing listening and carries on
+          # without sound, which is worth incomparably more than no container.
+          echo "HUSK-AUDIO: no pulse socket after 10s -- placing a stand-in so the container can still start"
+          mkdir -p "$XDG_RUNTIME_DIR/pulse"
+          : > "$XDG_RUNTIME_DIR/pulse/native"
+      fi
+      ls -la "$XDG_RUNTIME_DIR/pulse" 2>&1
+
+      exec cage -- /usr/bin/waydroid show-full-ui
 
   - path: /etc/systemd/system/husk-ui.service
     content: |
