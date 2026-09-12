@@ -42,15 +42,66 @@ final class GuestImage: ObservableObject {
 
     private var task: URLSessionDownloadTask?
 
+    /// qcow2 magic: "QFI\xfb". Checked because a download that "succeeded" is not
+    /// the same as a download that produced an image -- a 404 body lands on disk
+    /// just as happily as 755 MB of guest would.
+    private static let qcow2Magic: [UInt8] = [0x51, 0x46, 0x49, 0xFB]
+
+    /// Anything smaller than this is definitionally not a guest image. The real
+    /// one is ~755 MB; the failure that prompted this check was 9 bytes of
+    /// "Not Found".
+    private static let minimumPlausibleSize: Int64 = 64 * 1024 * 1024
+
+    /// True if the file at `path` looks like a qcow2 of plausible size.
+    nonisolated static func validate(path: String) -> (size: Int64?, problem: String?) {
+        let fm = FileManager.default
+        guard let attrs = try? fm.attributesOfItem(atPath: path),
+              let size = (attrs[.size] as? NSNumber)?.int64Value else {
+            return (nil, "file is missing")
+        }
+        guard size >= minimumPlausibleSize else {
+            // Show a little of it: when this fires the content is usually a short
+            // error page, and quoting it names the real problem immediately.
+            var hint = ""
+            if size > 0, size < 512,
+               let d = fm.contents(atPath: path),
+               let text = String(data: d, encoding: .utf8) {
+                hint = " — content was: \(text.trimmingCharacters(in: .whitespacesAndNewlines))"
+            }
+            return (nil, "only \(size) bytes, expected at least "
+                        + "\(minimumPlausibleSize / (1024 * 1024)) MB\(hint)")
+        }
+        guard let fh = FileHandle(forReadingAtPath: path),
+              let head = try? fh.read(upToCount: 4), head.count == 4 else {
+            return (nil, "could not read the file header")
+        }
+        try? fh.close()
+        guard Array(head) == qcow2Magic else {
+            let hex = head.map { String(format: "%02x", $0) }.joined(separator: " ")
+            return (nil, "not a qcow2 image (header was \(hex), expected 51 46 49 fb)")
+        }
+        return (size, nil)
+    }
+
     func refresh() {
-        let exists = FileManager.default.fileExists(atPath: diskPath)
-        if exists, case .ready = state {} else if exists {
-            state = .ready
-            HuskLog.log("guest", "guest disk present: \(diskPath)")
-        } else if case .downloading = state {
-            // leave it alone
-        } else {
+        if case .downloading = state { return }
+        if case .installing = state { return }
+
+        guard FileManager.default.fileExists(atPath: diskPath) else {
             state = .missing
+            return
+        }
+        // Validate every time, not just after downloading: a previous run may have
+        // installed a corrupt file before this check existed, and the symptom of
+        // that ("Image is not in qcow2 format") points at QEMU rather than here.
+        let check = Self.validate(path: diskPath)
+        if let why = check.problem {
+            HuskLog.log("guest", "existing guest disk is INVALID (\(why)); removing it")
+            try? FileManager.default.removeItem(atPath: diskPath)
+            state = .failed("The runtime on disk is not a valid image (\(why)). Tap to retry.")
+        } else {
+            HuskLog.log("guest", "guest disk present and valid: \(check.size ?? 0) bytes")
+            state = .ready
         }
     }
 
@@ -101,16 +152,24 @@ final class GuestImage: ObservableObject {
     fileprivate func finished(tempURL: URL) {
         state = .installing
         HuskLog.log("guest", "download complete; installing")
+        // Validate BEFORE installing, so a bad download never becomes the thing
+        // QEMU is asked to boot.
+        let check = Self.validate(path: tempURL.path)
+        if let why = check.problem {
+            try? FileManager.default.removeItem(at: tempURL)
+            HuskLog.log("guest", "downloaded file rejected: \(why)")
+            state = .failed("Download did not produce a disk image: \(why)")
+            return
+        }
+        let size = check.size ?? 0
         do {
-            let dest = URL(fileURLWithPath: diskPath)
-            try? FileManager.default.removeItem(at: dest)
-            // Moved, not copied: the image is over a gigabyte and the device does
-            // not need two of them on disk at once.
-            try FileManager.default.moveItem(at: tempURL, to: dest)
-            let attrs = try? FileManager.default.attributesOfItem(atPath: diskPath)
-            let size = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
-            HuskLog.log("guest", "guest image ready (\(size) bytes)")
-            state = .ready
+                let dest = URL(fileURLWithPath: diskPath)
+                try? FileManager.default.removeItem(at: dest)
+                // Moved, not copied: the image is over a gigabyte and the device
+                // does not need two of them on disk at once.
+                try FileManager.default.moveItem(at: tempURL, to: dest)
+                HuskLog.log("guest", "guest image ready (\(size) bytes)")
+                state = .ready
         } catch {
             HuskLog.log("guest", "FAIL: \(error.localizedDescription)")
             state = .failed(error.localizedDescription)
@@ -134,12 +193,35 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
 
     func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
-        // The temp file is deleted when this returns, so copy it somewhere stable
+        // A download task reports "finished" for any completed HTTP exchange,
+        // including a 404 -- whose body then lands on disk as if it were the file
+        // asked for. This is exactly how a 9-byte "Not Found" once became the
+        // guest disk image. Check the status before treating it as the payload.
+        if let http = downloadTask.response as? HTTPURLResponse,
+           !(200...299).contains(http.statusCode) {
+            let body = (try? String(contentsOf: location, encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let detail = body.isEmpty ? "" : " — server said: \(body.prefix(200))"
+            let url = downloadTask.originalRequest?.url?.absoluteString ?? "?"
+            Task { @MainActor in
+                self.owner?.failed("HTTP \(http.statusCode) from \(url)\(detail)")
+            }
+            return
+        }
+
+        // The temp file is deleted when this returns, so move it somewhere stable
         // before handing it over.
         let stable = FileManager.default.temporaryDirectory
-            .appendingPathComponent("husk-guest-download.zst")
+            .appendingPathComponent("husk-guest-download.qcow2")
         try? FileManager.default.removeItem(at: stable)
-        try? FileManager.default.moveItem(at: location, to: stable)
+        do {
+            try FileManager.default.moveItem(at: location, to: stable)
+        } catch {
+            Task { @MainActor in
+                self.owner?.failed("could not stage download: \(error.localizedDescription)")
+            }
+            return
+        }
         Task { @MainActor in self.owner?.finished(tempURL: stable) }
     }
 
