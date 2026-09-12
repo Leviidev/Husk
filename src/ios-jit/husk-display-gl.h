@@ -16,7 +16,12 @@
  */
 bool husk_display_gl_early(void);
 
-bool husk_display_gl_init(void *native_layer, int width, int height);
+/* Create the EGL display, context and surface. MAIN THREAD only: ANGLE is
+   setting up a CAMetalLayer, and CALayer is not thread-safe. */
+bool husk_display_gl_create(void *native_layer, int width, int height);
+
+/* Make the context current and register the listener. QEMU thread. */
+bool husk_display_gl_bind(void);
 
 /* Frames presented, for the perf counter. */
 uint64_t husk_display_gl_frames(void);

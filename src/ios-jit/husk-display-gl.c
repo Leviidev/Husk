@@ -155,35 +155,39 @@ bool husk_display_gl_early(void)
     return true;
 }
 
-bool husk_display_gl_init(void *native_layer, int width, int height)
+/*
+ * Creation runs on the MAIN thread; binding runs on QEMU's.
+ *
+ * The previous version did everything on the QEMU thread. eglMakeCurrent
+ * returned TRUE and glGetString then returned NULL -- which is what ANGLE
+ * returns when no context is current, so the two disagreed. The likeliest
+ * explanation left is that ANGLE cannot set up a CAMetalLayer surface off the
+ * main thread: CALayer is not thread-safe, and the surface came back nominally
+ * valid but without working backing.
+ *
+ * So the display, context and surface are created on the main thread, the
+ * context is released there, and the QEMU thread makes it current afterwards.
+ * A context may only be current on one thread at a time, hence the release.
+ */
+bool husk_display_gl_create(void *native_layer, int width, int height)
 {
-    QemuConsole *con;
-    EGLBoolean ok;
-
-    /*
-     * Step-by-step, to stderr, because this sequence has crashed three times in
-     * places that were only distinguishable after the fact. fprintf rather than
-     * info_report so a crash mid-step still leaves the last line on the log.
-     */
-#define HUSK_GL_STEP(msg) fprintf(stderr, "[husk-gl] step: " msg "\n")
-
     husk_win_w = width;
     husk_win_h = height;
 
-    HUSK_GL_STEP("qemu_egl_init_dpy_cocoa");
+    fprintf(stderr, "[husk-gl] create: qemu_egl_init_dpy_cocoa\n");
     if (qemu_egl_init_dpy_cocoa(DISPLAY_GL_MODE_ES) < 0) {
         fprintf(stderr, "[husk-gl] qemu_egl_init_dpy_cocoa failed\n");
         return false;
     }
 
-    HUSK_GL_STEP("qemu_egl_init_ctx");
+    fprintf(stderr, "[husk-gl] create: eglCreateContext\n");
     husk_context = qemu_egl_init_ctx();
     if (husk_context == EGL_NO_CONTEXT) {
         fprintf(stderr, "[husk-gl] eglCreateContext failed: 0x%x\n", eglGetError());
         return false;
     }
 
-    HUSK_GL_STEP("qemu_egl_init_surface (CAMetalLayer)");
+    fprintf(stderr, "[husk-gl] create: eglCreateWindowSurface on the layer\n");
     husk_surface = qemu_egl_init_surface(husk_context,
                                          (EGLNativeWindowType)native_layer);
     if (husk_surface == EGL_NO_SURFACE) {
@@ -191,86 +195,49 @@ bool husk_display_gl_init(void *native_layer, int width, int height)
         return false;
     }
 
-    /*
-     * Checked, unlike before. If this fails, everything after it runs with no
-     * current context -- and the first GL call then dereferences null inside
-     * ANGLE, which is a segfault with no explanation attached.
-     */
-    HUSK_GL_STEP("eglMakeCurrent");
-    ok = eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface, husk_context);
-    if (ok != EGL_TRUE) {
+    /* qemu_egl_init_ctx() left the context current here. Release it so the
+     * QEMU thread can take it. */
+    eglMakeCurrent(qemu_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    fprintf(stderr, "[husk-gl] create: done, context released for the QEMU thread\n");
+    return true;
+}
+
+bool husk_display_gl_bind(void)
+{
+    QemuConsole *con;
+    const GLubyte *vendor;
+
+    if (husk_surface == EGL_NO_SURFACE || husk_context == EGL_NO_CONTEXT) {
+        fprintf(stderr, "[husk-gl] bind: nothing was created\n");
+        return false;
+    }
+
+    fprintf(stderr, "[husk-gl] bind: eglMakeCurrent\n");
+    if (eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface,
+                       husk_context) != EGL_TRUE) {
         fprintf(stderr, "[husk-gl] eglMakeCurrent failed: 0x%x\n", eglGetError());
         return false;
     }
 
-    /*
-     * glGetString came back NULL with a context that eglMakeCurrent said was
-     * current, which is contradictory enough to be worth separating properly.
-     * Three questions, answered independently:
-     *
-     *   1. Does EGL agree the context is current? eglGetCurrentContext and
-     *      eglQueryString need no GL context, so they isolate EGL from GL.
-     *   2. Does ANGLE hand out core GLES entry points via eglGetProcAddress?
-     *      The EGL spec says it need not, and epoxy's own comments say drivers
-     *      disagree about this.
-     *   3. What does ANGLE's own entry point say when called directly, with
-     *      epoxy's dispatch taken out of the path entirely?
-     *
-     * If (3) returns a vendor string while epoxy's glGetString returns NULL,
-     * the fault is in epoxy's dispatch. If (3) is NULL too, the context really
-     * is not current and EGL is lying.
-     */
-    {
-        EGLContext cur_ctx = eglGetCurrentContext();
-        EGLSurface cur_draw = eglGetCurrentSurface(EGL_DRAW);
-        const char *egl_vendor = eglQueryString(qemu_egl_display, EGL_VENDOR);
-        const char *egl_version = eglQueryString(qemu_egl_display, EGL_VERSION);
-        void *direct = dlsym(RTLD_DEFAULT, "GL_GetString");
-        const GLubyte *(*gl_get_string)(GLenum) = direct;
-
-        fprintf(stderr, "[husk-gl] egl: ctx=%p (created %p) draw=%p (surface %p)\n",
-                cur_ctx, husk_context, cur_draw, husk_surface);
-        fprintf(stderr, "[husk-gl] egl: vendor=%s version=%s\n",
-                egl_vendor ? egl_vendor : "(null)",
-                egl_version ? egl_version : "(null)");
-        fprintf(stderr, "[husk-gl] eglGetProcAddress(glGetString)=%p "
-                        "eglGetProcAddress(glCreateShader)=%p\n",
-                (void *)eglGetProcAddress("glGetString"),
-                (void *)eglGetProcAddress("glCreateShader"));
-        fprintf(stderr, "[husk-gl] dlsym(GL_GetString)=%p\n", direct);
-        if (gl_get_string) {
-            const GLubyte *v = gl_get_string(GL_VENDOR);
-            const GLubyte *r = gl_get_string(GL_RENDERER);
-            fprintf(stderr, "[husk-gl] ANGLE direct: vendor=%s renderer=%s\n",
-                    v ? (const char *)v : "(null)",
-                    r ? (const char *)r : "(null)");
-        }
-    }
-
-    fprintf(stderr, "[husk-gl] epoxy: GL_VENDOR=%s GL_RENDERER=%s GL_VERSION=%s\n",
-            (const char *)glGetString(GL_VENDOR),
+    vendor = glGetString(GL_VENDOR);
+    fprintf(stderr, "[husk-gl] bind: GL_VENDOR=%s GL_RENDERER=%s GL_VERSION=%s\n",
+            vendor ? (const char *)vendor : "(null)",
             (const char *)glGetString(GL_RENDERER),
             (const char *)glGetString(GL_VERSION));
 
-    /*
-     * Do not walk into qemu_gl_init_shader() without a working GL dispatch --
-     * that is where the segfault landed last time, calling through a pointer
-     * that resolution had already failed to produce.
-     */
-    if (!glGetString(GL_VENDOR)) {
-        fprintf(stderr, "[husk-gl] GL dispatch is not usable; refusing to "
-                        "compile shaders. Falling back to the software display.\n");
+    /* No usable dispatch means no shaders. Compiling them anyway is what
+     * segfaulted before, calling through a pointer resolution never produced. */
+    if (!vendor) {
+        fprintf(stderr, "[husk-gl] GL dispatch unusable; falling back to software\n");
         return false;
     }
 
-    HUSK_GL_STEP("qemu_gl_init_shader");
     husk_gls = qemu_gl_init_shader();
     if (!husk_gls) {
         fprintf(stderr, "[husk-gl] shader init failed\n");
         return false;
     }
 
-    HUSK_GL_STEP("register listener");
     husk_gl_ctx.ops = &husk_gl_ctx_ops;
     con = qemu_console_lookup_by_index(0);
     if (!con) {
@@ -281,7 +248,6 @@ bool husk_display_gl_init(void *native_layer, int width, int height)
     qemu_console_set_display_gl_ctx(con, &husk_gl_ctx);
     register_displaychangelistener(&husk_gl_dcl);
 
-    fprintf(stderr, "[husk-gl] GL display up: %dx%d\n", width, height);
+    fprintf(stderr, "[husk-gl] GL display up: %dx%d\n", husk_win_w, husk_win_h);
     return true;
-#undef HUSK_GL_STEP
 }

@@ -53,7 +53,10 @@ size_t husk_ios_available_memory(void);
 /* Must be called BEFORE qemu_init(): sets display_opengl so virtio-gpu-gl can
    realize, since devices are created inside qemu_init(). */
 bool     husk_display_gl_early(void);
-bool     husk_display_gl_init(void *native_layer, int32_t width, int32_t height);
+/* MAIN THREAD: ANGLE sets up a CAMetalLayer here, and CALayer is not thread-safe. */
+bool     husk_display_gl_create(void *native_layer, int32_t width, int32_t height);
+/* QEMU thread: make the context current and register the listener. */
+bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
 
 /* --- Husk's machine snapshots --- */

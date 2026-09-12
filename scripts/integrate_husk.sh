@@ -116,6 +116,12 @@ q = pathlib.Path(sys.argv[1])
 # from here stays local no matter what visibility attribute it carries.
 p = q / "system/qemu.symbols"
 s = p.read_text()
+
+# Drop husk symbols that no longer exist. Adding without pruning leaves stale
+# names in the export list, and the link then fails with "Undefined symbols"
+# for a function that was simply renamed.
+import re as _re
+_live = None
 wanted = [
     "husk_display_init",
     "husk_display_lock_frame",
@@ -124,7 +130,8 @@ wanted = [
     "husk_display_send_pointer",
     "husk_display_request_update",
     "husk_display_send_key",
-    "husk_display_gl_init",
+    "husk_display_gl_create",
+    "husk_display_gl_bind",
     "husk_display_gl_early",
     "husk_display_gl_frames",
     "husk_snapshot_save",
@@ -136,6 +143,11 @@ wanted = [
     "husk_ios_jit_log_footprint",
     "husk_ios_available_memory",
 ]
+_present = _re.findall(r"^\s*(husk_\w+);", s, _re.M)
+for _stale in [n for n in _present if n not in wanted]:
+    s = _re.sub(r"^\s*" + _stale + r";\n", "", s, flags=_re.M)
+    print("  system/qemu.symbols: pruned stale " + _stale)
+
 missing = [w for w in wanted if f"  {w};" not in s]
 if missing:
     assert s.lstrip().startswith("{"), "qemu.symbols shape changed"

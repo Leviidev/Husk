@@ -406,12 +406,20 @@ final class QemuRunner: ObservableObject {
 
         var glUp = false
         if let layer {
-            HuskLog.log("qemu", "calling husk_display_gl_init() on a "
+            HuskLog.log("qemu", "setting up GL on a "
                               + "\(Int(size.width))x\(Int(size.height)) layer")
-            glUp = husk_display_gl_init(Unmanaged.passUnretained(layer).toOpaque(),
-                                        Int32(size.width), Int32(size.height))
+            // Created on the main thread: ANGLE is building a surface against a
+            // CAMetalLayer, and CALayer is not thread-safe. Bound here, because
+            // a context belongs to whichever thread made it current and the
+            // guest renders from this one.
+            var created = false
+            DispatchQueue.main.sync {
+                created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
+                                                 Int32(size.width), Int32(size.height))
+            }
+            glUp = created && husk_display_gl_bind()
             HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
-                                     : "GL display FAILED to initialise")
+                                     : "GL display unavailable; using the software display")
         } else {
             HuskLog.log("qemu", "no CAMetalLayer after 10s; falling back to the software display")
         }
