@@ -251,6 +251,18 @@ final class QemuRunner: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("husk-ram-proven").path
     }
+    /// Smallest size ever seen to fail, remembered permanently.
+    ///
+    /// Comparing the last attempt against the last success was not enough. One
+    /// failed launch at 6144 MiB followed by a good launch at 5120 left
+    /// attempt == proven, the guard disengaged, and the next launch tried 6144
+    /// again -- which failed again, in exactly the same place. A size that has
+    /// once killed qemu_init has to stay excluded, not be forgotten as soon as
+    /// something smaller works.
+    nonisolated var ramFailedPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-ram-failed").path
+    }
 
     private func readInt(_ path: String) -> Int? {
         guard let t = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
@@ -383,11 +395,23 @@ final class QemuRunner: ObservableObject {
         // exactly when the real mapping would, so stepping down through these
         // sizes and keeping the first that succeeds turns a crash into a
         // slightly smaller guest.
-        var candidates = [6144, 5120, 4096, 3584, 3072, 2560, 2048]
+        // 6144 is deliberately absent. It passed every check that could be
+        // made for it -- the address space is there, the file maps and writes
+        // -- and then killed qemu_init three times regardless. Whatever objects
+        // to it is not something this code can see, so it is simply not offered.
+        var candidates = [5120, 4096, 3584, 3072, 2560, 2048]
+
+        // Fold a failed attempt into the permanent floor before using it.
         if let attempted = readInt(ramAttemptPath), readInt(ramProvenPath) != attempted {
+            let worst = min(attempted, readInt(ramFailedPath) ?? Int.max)
+            try? String(worst).write(toFile: ramFailedPath, atomically: true, encoding: .utf8)
             HuskLog.log("qemu", "last launch attempted \(attempted) MiB and never got "
-                              + "past qemu_init; staying below that this time")
-            candidates = candidates.filter { $0 < attempted }
+                              + "past qemu_init; remembering that permanently")
+        }
+        if let failed = readInt(ramFailedPath) {
+            candidates = candidates.filter { $0 < failed }
+            HuskLog.log("qemu", "\(failed) MiB is known to fail on this device; "
+                              + "staying below it")
         }
         let fileBackedTarget = ramFileReady ? largestMappableMiB(candidates) : nil
         let target = fileBackedTarget.map { max(anonymousTarget, $0) } ?? anonymousTarget
