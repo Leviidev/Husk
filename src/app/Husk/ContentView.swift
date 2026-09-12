@@ -2,203 +2,174 @@
 import SwiftUI
 import UIKit
 
-/// Phase 0 UI: enough to drive the JIT handoff, watch what happens, and get the
-/// logs off the device. This is scaffolding, not the product — Phase 3 replaces
-/// it with the library grid and full-screen per-app presentation.
+/// Routes between the four things Husk can be doing.
+///
+/// The guest runs continuously once started; these are presentation states, not
+/// lifecycle states. In particular `library` and `running` are the same VM --
+/// the difference is only whether its surface is on screen.
 struct ContentView: View {
     @StateObject private var guest = GuestImage.shared
     @StateObject private var runner = QemuRunner.shared
-    @State private var booted = false
-    @State private var status = "Checking…"
+    @StateObject private var bridge = HuskBridgeFS.shared
+
+    @State private var started = false
+    @State private var runningApp: HuskBridgeFS.AndroidApp?
     @State private var showLogs = false
-    @State private var profile: QemuRunner.Profile = .phase1Waydroid
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            if booted {
-                HuskDisplay().ignoresSafeArea()
-                if let msg = runner.setupMessage, !msg.contains("complete") {
-                    // First-run Android setup happens inside the guest and takes
-                    // minutes; without this the screen is just black and idle.
-                    VStack {
-                        Spacer()
-                        HStack(spacing: 10) {
-                            ProgressView().controlSize(.small)
-                            Text(msg).font(.caption)
-                        }
-                        .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .padding(.bottom, 40)
-                    }
+        Group {
+            if let app = runningApp {
+                RunningAppView(app: app) {
+                    HuskLog.log("ui", "returning to library from \(app.package)")
+                    runningApp = nil
                 }
-                // Always reachable: if the guest never draws, this button is the
-                // only way to find out why without plugging into a Mac.
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button { showLogs = true } label: {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.title3)
-                                .padding(10)
-                                .background(.ultraThinMaterial, in: Circle())
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.top, 8)
-                    }
-                    Spacer()
-                }
+            } else if started && androidReady {
+                LibraryView(running: $runningApp)
             } else {
-                setupView
+                SetupView(showLogs: $showLogs, onStart: start)
             }
         }
         .sheet(isPresented: $showLogs) { LogView() }
         .onAppear { evaluate() }
         .onChange(of: scenePhase) { _, phase in
-            // StikDebug relaunches us after attaching, so the interesting moment is
-            // coming back to the foreground, not first launch.
+            // StikDebug relaunches Husk after attaching, so returning to the
+            // foreground is the moment worth re-checking, not first launch.
             if phase == .active { evaluate() }
         }
     }
 
-    @ViewBuilder
-    private var setupView: some View {
-        VStack(spacing: 22) {
-            Text("Husk")
-                .font(.system(size: 44, weight: .semibold, design: .rounded))
+    /// The catalogue only appears once the guest agent is running AND Waydroid
+    /// reports a live session, so its presence is a good proxy for "Android is up".
+    private var androidReady: Bool {
+        !bridge.apps.isEmpty || bridge.lastAgentMessage != nil
+    }
 
+    private func evaluate() {
+        try? guest.prepareFirmware()
+        guest.refresh()
+        HuskBridgeFS.shared.prepare()
+
+        guard !started else { return }
+        guard runner.profile == .phase0Alpine || guest.state == .ready else { return }
+        guard JITBootstrap.isDebuggerAttached else {
+            HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
+            return
+        }
+        start()
+    }
+
+    private func start() {
+        guard !started else { return }
+        guard JITBootstrap.isDebuggerAttached else { return }
+        HuskLog.log("ui", "CS_DEBUGGED set; starting QEMU")
+        started = true
+        QemuRunner.shared.start()
+        bridge.startWatching()
+    }
+}
+
+/// Everything before the library: download the runtime, attach the debugger, wait
+/// for Android to come up.
+struct SetupView: View {
+    @ObservedObject private var guest = GuestImage.shared
+    @ObservedObject private var runner = QemuRunner.shared
+    @ObservedObject private var bridge = HuskBridgeFS.shared
+    @Binding var showLogs: Bool
+    let onStart: () -> Void
+
+    @State private var profile: QemuRunner.Profile = .phase1Waydroid
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 22) {
+                Text("Husk")
+                    .font(.system(size: 44, weight: .semibold, design: .rounded))
+
+                content
+
+                Picker("Guest", selection: $profile) {
+                    ForEach(QemuRunner.Profile.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 30)
+                .onChange(of: profile) { _, p in
+                    QemuRunner.shared.profile = p
+                    HuskLog.log("ui", "guest profile set to \(p.rawValue)")
+                }
+
+                Button { showLogs = true } label: {
+                    Label("View logs", systemImage: "doc.text.magnifyingglass")
+                }
+                .font(.footnote)
+            }
+            .foregroundStyle(.white)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if runner.isRunning {
+            // Android's first boot is slow under TCG and its one-time setup is
+            // slower still, so say what is happening rather than showing a black
+            // screen for minutes.
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(runner.setupMessage.map { "Android: \($0)" } ?? "Starting Android…")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(.horizontal, 36)
+                Text("First run downloads Android and can take several minutes.")
+                    .font(.caption2).foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center).padding(.horizontal, 40)
+            }
+        } else {
             switch guest.state {
             case .downloading(let p, let received, let total):
                 VStack(spacing: 10) {
                     Text("Downloading Android runtime").font(.headline)
                     ProgressView(value: p).padding(.horizontal, 50)
                     Text("\(fmt(received)) of \(total > 0 ? fmt(total) : "…")")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     Button("Cancel") { guest.cancel() }.font(.footnote)
                 }
-
             case .installing:
-                VStack(spacing: 10) {
-                    ProgressView()
-                    Text("Installing…").font(.callout).foregroundStyle(.secondary)
-                }
-
+                VStack(spacing: 10) { ProgressView(); Text("Installing…").font(.callout) }
             case .failed(let message):
                 VStack(spacing: 10) {
-                    Text("Download failed").font(.headline).foregroundStyle(.red)
-                    Text(message)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center).padding(.horizontal, 36)
+                    Text("Something went wrong").font(.headline).foregroundStyle(.red)
+                    Text(message).font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).padding(.horizontal, 34)
                     Button("Try again") { guest.download() }.buttonStyle(.borderedProminent)
                 }
-
             case .missing:
-                VStack(spacing: 10) {
-                    Text(status)
+                VStack(spacing: 12) {
+                    Text("Husk needs its Android runtime — about 760 MB. Android itself is downloaded afterwards by the runtime.")
                         .font(.callout).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal, 36)
-                    // The Android runtime is a ~1.2 GB download rather than part of
-                    // the app, and Android itself is fetched by the guest after
-                    // that, from Waydroid's own servers.
                     Button("Download Android runtime") { guest.download() }
                         .buttonStyle(.borderedProminent)
                 }
-
             case .ready:
-                VStack(spacing: 10) {
-                    Text(status)
-                        .font(.callout).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center).padding(.horizontal, 36)
-                    if !JITBootstrap.isDebuggerAttached {
+                VStack(spacing: 12) {
+                    if JITBootstrap.isDebuggerAttached {
+                        Button("Start Android", action: onStart).buttonStyle(.borderedProminent)
+                    } else {
+                        Text("Husk needs executable memory, which on iOS only an attached debugger can grant.")
+                            .font(.callout).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center).padding(.horizontal, 36)
                         Button("Enable JIT with StikDebug") {
-                            if !JITBootstrap.requestAttach() {
-                                status = "StikDebug is not installed, or refused the request."
-                            }
+                            _ = JITBootstrap.requestAttach()
                         }
                         .buttonStyle(.borderedProminent)
                     }
                 }
             }
-
-            Picker("Guest", selection: $profile) {
-                ForEach(QemuRunner.Profile.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 30)
-            .onChange(of: profile) { _, p in
-                QemuRunner.shared.profile = p
-                HuskLog.log("ui", "guest profile set to \(p.rawValue)")
-            }
-
-            Button { showLogs = true } label: {
-                Label("View logs", systemImage: "doc.text.magnifyingglass")
-            }
-            .font(.footnote)
         }
-        .foregroundStyle(.white)
     }
 
     private func fmt(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-
-    private func evaluate() {
-        guard !booted else { return }
-
-        try? guest.prepareFirmware()
-        guest.refresh()
-
-        // Phase 1 cannot start without the downloaded guest; Phase 0 boots from
-        // the app bundle and needs nothing.
-        if profile == .phase1Waydroid, guest.state != .ready {
-            if case .missing = guest.state {
-                status = """
-                Husk needs its Android runtime — a Debian guest with Waydroid, \
-                about 1.2 GB. Android itself is downloaded afterwards by the guest.
-                """
-            }
-            return
-        }
-
-        // The gate is "a debugger is attached", not "JIT is live". A JIT region is
-        // only allocated inside qemu_init, so isLive cannot be true until after the
-        // guest has started -- gating on it would mean never starting at all.
-        if JITBootstrap.isDebuggerAttached {
-            status = "Debugger attached — booting guest"
-            HuskLog.log("ui", "CS_DEBUGGED set; starting QEMU")
-            QemuRunner.shared.start()
-            booted = true
-            verifyJITCameUp()
-            return
-        }
-
-        HuskLog.log("ui", "no debugger attached; showing StikDebug handoff")
-        status = """
-        Husk needs executable memory, which on iOS 27 only an attached debugger can grant.
-
-        Tap below to hand off to StikDebug. It will attach, set up the JIT region, and \
-        relaunch Husk automatically.
-        """
-    }
-}
-
-extension ContentView {
-    /// The allocation and its self-test happen inside qemu_init, so give it a few
-    /// seconds and then say plainly whether JIT actually came up. Without this the
-    /// only symptom of a failed self-test is a black screen.
-    func verifyJITCameUp() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
-            if JITBootstrap.isLive {
-                HuskLog.log("ui", "confirmed: JIT region allocated and self-test passed")
-            } else {
-                HuskLog.log("ui", "WARNING: 8s after start, no JIT region has passed "
-                                + "the self-test. The guest is probably not running. "
-                                + "Check the [husk-jit] lines above.")
-            }
-        }
     }
 }
 

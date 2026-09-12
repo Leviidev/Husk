@@ -156,6 +156,16 @@ final class QemuRunner: ObservableObject {
             "-device", "virtio-tablet-pci",
             "-device", "virtio-keyboard-pci",
 
+            // The host/guest bridge. APKs and commands cross as files in a shared
+            // directory rather than over a socket protocol, so every message is
+            // inspectable from both sides afterwards.
+            //
+            // security_model=none: the app and the guest are the only participants
+            // and the app's sandbox makes the xattr-based models awkward. Files the
+            // guest creates land owned by the app's uid, which is what we want.
+            "-fsdev", "local,id=huskfs,path=\(HuskBridgeFS.shared.shareRoot.path),security_model=none",
+            "-device", "virtio-9p-pci,fsdev=huskfs,mount_tag=husk",
+
             "-chardev", "file,id=ser0,path=\(guestSerialLogPath)",
             "-serial", "chardev:ser0",
 
@@ -179,6 +189,8 @@ final class QemuRunner: ObservableObject {
         t.stackSize = 16 * 1024 * 1024
         thread = t
 
+        // 9p exports a directory that must already exist when QEMU starts.
+        HuskBridgeFS.shared.prepare()
         HuskLog.log("qemu", "spawning QEMU thread (stack 16 MiB)")
         t.start()
         startSerialTailer()

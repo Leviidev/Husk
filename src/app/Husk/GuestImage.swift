@@ -28,8 +28,20 @@ final class GuestImage: ObservableObject {
     /// matters because iOS's Compression framework offers LZFSE/LZ4/LZMA/zlib and
     /// neither zstd nor bzip2, so any external container would have meant shipping
     /// a decompressor.
-    static let imageURL = URL(string:
-        "https://github.com/Leviidev/Husk/releases/download/guest-v1/husk-guest.qcow2")!
+    /// Bumped whenever the guest image itself changes. Without this the app keeps
+    /// whatever it downloaded first: the disk exists, so nothing re-fetches it, and
+    /// a guest missing a newly-added component fails in ways that look like app
+    /// bugs rather than a stale image.
+    static let imageVersion = "guest-v2"
+
+    static var imageURL: URL {
+        URL(string: "https://github.com/Leviidev/Husk/releases/download/"
+                  + "\(imageVersion)/husk-guest.qcow2")!
+    }
+
+    nonisolated private var versionStampPath: String {
+        documents.appendingPathComponent("husk-guest.version").path
+    }
 
     // nonisolated: QEMU's own thread builds its command line from these, and they
     // are pure path arithmetic with no mutable state to protect.
@@ -41,6 +53,11 @@ final class GuestImage: ObservableObject {
     nonisolated var firmwarePath: String { documents.appendingPathComponent("edk2-aarch64-code.fd").path }
 
     private var task: URLSessionDownloadTask?
+
+    /// Bump whenever the set or order of virtio devices in the Phase 1 command
+    /// line changes. Any change renumbers the PCI bus and invalidates recorded
+    /// UEFI boot entries.
+    nonisolated static let deviceLayoutSignature = "v2-gpu-tablet-kbd-net-9p"
 
     /// qcow2 magic: "QFI\xfb". Checked because a download that "succeeded" is not
     /// the same as a download that produced an image -- a 404 body lands on disk
@@ -94,6 +111,16 @@ final class GuestImage: ObservableObject {
         // Validate every time, not just after downloading: a previous run may have
         // installed a corrupt file before this check existed, and the symptom of
         // that ("Image is not in qcow2 format") points at QEMU rather than here.
+        // A valid image of the wrong version is still the wrong image.
+        let installed = try? String(contentsOfFile: versionStampPath, encoding: .utf8)
+        if installed != Self.imageVersion {
+            HuskLog.log("guest", "installed guest is \(installed ?? "unversioned"), "
+                               + "need \(Self.imageVersion); re-downloading")
+            try? FileManager.default.removeItem(atPath: diskPath)
+            state = .missing
+            return
+        }
+
         let check = Self.validate(path: diskPath)
         if let why = check.problem {
             HuskLog.log("guest", "existing guest disk is INVALID (\(why)); removing it")
@@ -123,11 +150,26 @@ final class GuestImage: ObservableObject {
             try fm.copyItem(atPath: src, toPath: firmwarePath)
             HuskLog.log("guest", "firmware staged to Documents")
         }
-        if !fm.fileExists(atPath: varsPath) {
-            // UEFI wants a 64 MiB writable variable store next to the code volume.
-            HuskLog.log("guest", "creating UEFI variable store")
+        // The UEFI variable store records boot entries as PCI device paths. Adding
+        // or removing a virtio device renumbers the bus, so entries written under a
+        // previous device layout stop resolving -- and the firmware then falls
+        // through to PXE and drops to the EFI Shell instead of booting the disk.
+        // The symptom looks nothing like its cause, so the store is stamped with a
+        // signature of the layout and rebuilt whenever that changes.
+        let stamp = URL(fileURLWithPath: varsPath + ".layout")
+        let current = Self.deviceLayoutSignature
+        let previous = try? String(contentsOf: stamp, encoding: .utf8)
+
+        if !fm.fileExists(atPath: varsPath) || previous != current {
+            if previous != nil, previous != current {
+                HuskLog.log("guest", "device layout changed (\(previous ?? "?") -> \(current)); "
+                                   + "resetting the UEFI variable store so it re-discovers the disk")
+            } else {
+                HuskLog.log("guest", "creating UEFI variable store")
+            }
             let vars = Data(count: 64 * 1024 * 1024)
             try vars.write(to: URL(fileURLWithPath: varsPath))
+            try? current.write(to: stamp, atomically: true, encoding: .utf8)
         }
     }
 
@@ -168,7 +210,9 @@ final class GuestImage: ObservableObject {
                 // Moved, not copied: the image is over a gigabyte and the device
                 // does not need two of them on disk at once.
                 try FileManager.default.moveItem(at: tempURL, to: dest)
-                HuskLog.log("guest", "guest image ready (\(size) bytes)")
+                try? Self.imageVersion.write(toFile: versionStampPath,
+                                             atomically: true, encoding: .utf8)
+                HuskLog.log("guest", "guest image ready (\(size) bytes, \(Self.imageVersion))")
                 state = .ready
         } catch {
             HuskLog.log("guest", "FAIL: \(error.localizedDescription)")

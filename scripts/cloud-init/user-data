@@ -54,8 +54,19 @@ write_files:
           > /etc/modprobe.d/waydroid.conf
       ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1 || true
 
+      mkdir -p /mnt/husk
+      systemctl enable mnt-husk.mount husk-agent.service
       systemctl enable husk-firstboot.service
       systemctl enable waydroid-container || true
+
+      # Install GRUB at the removable-media fallback path (\EFI\BOOT\BOOTAA64.EFI)
+      # as well as its own. Debian's cloud image relies on an NVRAM boot entry, and
+      # those record PCI device paths -- so adding a virtio device renumbers the bus
+      # and the entry stops resolving, at which point the firmware tries PXE and
+      # lands in the EFI Shell. The fallback path is found by scanning, so it
+      # survives any device reordering.
+      grub-install --removable --target=arm64-efi --efi-directory=/boot/efi 2>&1 || \
+          echo "HUSK-PROVISION: grub-install --removable failed (non-fatal)"
 
       echo "HUSK-PROVISION: done"
       touch /var/lib/husk-provisioned
@@ -81,6 +92,222 @@ write_files:
           exit 1
       fi
       echo "HUSK-SETUP: complete"
+
+
+  # The host/guest bridge. Husk shares a folder over virtio-9p and this agent
+  # watches it: APKs appear in inbox/, commands appear as JSON, and the agent
+  # writes back the installed-app catalogue and command results.
+  #
+  # Deliberately file-based rather than a socket protocol. Every message is a
+  # file both sides can inspect after the fact, which on a device with no
+  # debugger is worth more than the latency a 500 ms poll costs.
+  - path: /usr/local/bin/husk-agent.py
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import json, os, shutil, subprocess, sys, time, glob, traceback
+
+      SHARE   = "/mnt/husk"
+      INBOX   = f"{SHARE}/inbox"
+      CMDS    = f"{SHARE}/commands"
+      RESULTS = f"{SHARE}/results"
+      CATALOG = f"{SHARE}/catalog"
+      ICONS   = f"{CATALOG}/icons"
+      STATE   = "/var/lib/husk-agent"
+
+      def log(msg):
+          # Goes to the serial console, which Husk already folds into its own log.
+          print(f"HUSK-AGENT: {msg}", flush=True)
+          try:
+              with open("/dev/ttyAMA0", "w") as f:
+                  f.write(f"HUSK-AGENT: {msg}\n")
+          except Exception:
+              pass
+
+      def run(cmd, timeout=300):
+          log(f"run {cmd}")
+          p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+          if p.returncode != 0:
+              log(f"  rc={p.returncode} err={p.stderr.strip()[:300]}")
+          return p
+
+      def ensure_dirs():
+          for d in (INBOX, CMDS, RESULTS, CATALOG, ICONS, STATE):
+              os.makedirs(d, exist_ok=True)
+
+      def session_up():
+          p = run("waydroid status", timeout=30)
+          return "RUNNING" in p.stdout
+
+      def parse_app_list(text):
+          apps, cur = [], {}
+          for line in text.splitlines():
+              line = line.strip()
+              if not line:
+                  if cur.get("packageName"):
+                      apps.append(cur)
+                  cur = {}
+                  continue
+              if ":" in line:
+                  k, v = line.split(":", 1)
+                  cur[k.strip()] = v.strip()
+          if cur.get("packageName"):
+              apps.append(cur)
+          return apps
+
+      def find_icon(pkg):
+          # Waydroid exports launchers as .desktop files with icons alongside.
+          # Where exactly varies by version, so search rather than assume, and say
+          # what was found -- guessing here would fail silently as a blank grid.
+          pats = [
+              f"/root/.local/share/icons/**/waydroid.{pkg}.*",
+              f"/home/*/.local/share/icons/**/waydroid.{pkg}.*",
+              f"/usr/share/icons/**/waydroid.{pkg}.*",
+              f"/var/lib/waydroid/data/**/waydroid.{pkg}.*",
+          ]
+          for pat in pats:
+              hits = glob.glob(pat, recursive=True)
+              if hits:
+                  return sorted(hits, key=os.path.getsize)[-1]
+          return None
+
+      def refresh_catalog():
+          p = run("waydroid app list", timeout=120)
+          apps = parse_app_list(p.stdout)
+          out = []
+          for a in apps:
+              pkg  = a.get("packageName")
+              name = a.get("Name") or pkg
+              if not pkg:
+                  continue
+              entry = {"package": pkg, "name": name}
+              icon = find_icon(pkg)
+              if icon:
+                  dest = f"{ICONS}/{pkg}.png"
+                  try:
+                      shutil.copyfile(icon, dest)
+                      entry["icon"] = f"icons/{pkg}.png"
+                  except Exception as e:
+                      log(f"icon copy failed for {pkg}: {e}")
+              out.append(entry)
+          tmp = f"{CATALOG}/apps.json.tmp"
+          with open(tmp, "w") as f:
+              json.dump({"apps": out, "updated": time.time()}, f)
+          os.replace(tmp, f"{CATALOG}/apps.json")
+          log(f"catalog refreshed: {len(out)} apps, "
+              f"{sum(1 for a in out if 'icon' in a)} with icons")
+
+      def write_result(cid, ok, detail=""):
+          tmp = f"{RESULTS}/{cid}.json.tmp"
+          with open(tmp, "w") as f:
+              json.dump({"id": cid, "ok": ok, "detail": detail, "at": time.time()}, f)
+          os.replace(tmp, f"{RESULTS}/{cid}.json")
+
+      def handle_command(path):
+          cid = os.path.splitext(os.path.basename(path))[0]
+          try:
+              with open(path) as f:
+                  cmd = json.load(f)
+          except Exception as e:
+              write_result(cid, False, f"unreadable command: {e}")
+              os.remove(path); return
+          os.remove(path)
+
+          action = cmd.get("action")
+          log(f"command {cid}: {action} {cmd}")
+          try:
+              if action == "launch":
+                  pkg = cmd["package"]
+                  p = run(f"waydroid app launch {pkg}")
+                  write_result(cid, p.returncode == 0, p.stderr.strip()[:500])
+              elif action == "stop":
+                  p = run("waydroid session stop")
+                  write_result(cid, p.returncode == 0, p.stderr.strip()[:500])
+              elif action == "refresh":
+                  refresh_catalog()
+                  write_result(cid, True)
+              else:
+                  write_result(cid, False, f"unknown action {action}")
+          except Exception:
+              write_result(cid, False, traceback.format_exc()[-500:])
+
+      def handle_apk(path):
+          name = os.path.basename(path)
+          log(f"installing {name}")
+          p = run(f"waydroid app install '{path}'", timeout=900)
+          ok = p.returncode == 0
+          write_result(f"install-{name}", ok, (p.stderr or p.stdout).strip()[:500])
+          # Move it out of the inbox either way, so a failing APK is not retried
+          # forever on every poll.
+          done = f"{SHARE}/installed" if ok else f"{SHARE}/failed"
+          os.makedirs(done, exist_ok=True)
+          try:
+              shutil.move(path, f"{done}/{name}")
+          except Exception as e:
+              log(f"could not move {name}: {e}")
+          if ok:
+              refresh_catalog()
+
+      def main():
+          log("starting")
+          while not os.path.ismount(SHARE):
+              log(f"waiting for {SHARE} to be mounted")
+              time.sleep(2)
+          ensure_dirs()
+          log("share is mounted; waiting for the Waydroid session")
+
+          warned = False
+          last_catalog = 0
+          while True:
+              try:
+                  if not session_up():
+                      if not warned:
+                          log("waydroid session is not RUNNING yet")
+                          warned = True
+                      time.sleep(3)
+                      continue
+                  if warned:
+                      log("waydroid session is up")
+                      warned = False
+
+                  for c in sorted(glob.glob(f"{CMDS}/*.json")):
+                      handle_command(c)
+                  for a in sorted(glob.glob(f"{INBOX}/*.apk")):
+                      handle_apk(a)
+                  if time.time() - last_catalog > 30:
+                      refresh_catalog()
+                      last_catalog = time.time()
+              except Exception:
+                  log("loop error: " + traceback.format_exc()[-400:])
+              time.sleep(0.5)
+
+      if __name__ == "__main__":
+          main()
+
+  - path: /etc/systemd/system/mnt-husk.mount
+    content: |
+      [Unit]
+      Description=Husk host share (virtio-9p)
+      [Mount]
+      What=husk
+      Where=/mnt/husk
+      Type=9p
+      Options=trans=virtio,version=9p2000.L,msize=512000,rw
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/husk-agent.service
+    content: |
+      [Unit]
+      Description=Husk guest agent
+      After=mnt-husk.mount waydroid-container.service
+      Wants=mnt-husk.mount
+      [Service]
+      ExecStart=/usr/local/bin/husk-agent.py
+      Restart=always
+      RestartSec=3
+      [Install]
+      WantedBy=multi-user.target
 
   - path: /etc/systemd/system/husk-firstboot.service
     content: |
