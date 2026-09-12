@@ -188,7 +188,13 @@ final class QemuRunner: ObservableObject {
             // Android build assumes; pauth-impdef picks a cheap implementation
             // -defined pointer-auth algorithm instead of QARMA, which TCG
             // emulates at ruinous cost.
-            "-cpu", "max,pauth-impdef=on",
+            // pauth and sve OFF, not merely cheap. Pointer-auth instructions sit
+            // in the HINT space precisely so they degrade to no-ops on a CPU
+            // without the feature, so turning it off is safe for binaries built
+            // with it -- and strictly cheaper than emulating even the impdef
+            // algorithm on every function entry and return. Android gates SVE
+            // use on HWCAP, so without it the plain NEON paths run instead.
+            "-cpu", "max,pauth=off,sve=off",
             "-smp", "4",
             "-m", "\(memMiB)",
             "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
@@ -212,7 +218,17 @@ final class QemuRunner: ObservableObject {
             "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:5555-:5555",
             "-L", "\(Bundle.main.bundlePath)/pc-bios",
 
-            "-device", "virtio-gpu-pci",
+            // 360x640 rather than 1280x800: a quarter of the pixels.
+            //
+            // This is the dominant term. There is no GPU, so every pixel is
+            // rasterised in software by a CPU that is itself emulated, and the
+            // cost is paid twice -- ~1M pixels per frame at a ~10x emulation
+            // penalty lands almost exactly on the 2 FPS observed. Cutting pixel
+            // count 4.4x attacks the multiplication rather than one of its
+            // factors. It is also a measurement: if the frame rate does not move
+            // roughly in proportion then fill is not the bottleneck and this
+            // model is wrong, which is worth knowing before tuning anything else.
+            "-device", "virtio-gpu-pci,xres=360,yres=640",
 
             // USB HID rather than virtio-input, which is what their config uses.
             // Every Android kernel has usbhid; virtio-input is not guaranteed,
@@ -326,10 +342,22 @@ final class QemuRunner: ObservableObject {
     private func startMemoryWatch() {
         let t = Thread {
             var tick = 0
+            var lastFrames: UInt64 = 0
             while true {
                 Thread.sleep(forTimeInterval: 5)
                 tick += 1
                 HuskLog.logFootprint("t+\(tick * 5)s")
+
+                // Frame rate, as a number rather than an impression. "Slow" is
+                // not something two people can compare across builds; frames per
+                // second is. The sequence counter increments once per surface
+                // update the guest pushed, so this is what the guest actually
+                // produced, not what we managed to draw.
+                let frames = husk_display_sequence()
+                let delta = frames >= lastFrames ? frames - lastFrames : 0
+                lastFrames = frames
+                HuskLog.log("perf", "guest produced \(delta) frames in 5s "
+                                  + "(\(String(format: "%.1f", Double(delta) / 5.0)) fps)")
 
                 // No [guest] lines appeared at all in one session, which is either
                 // the guest writing nothing or the tailer failing to read it. The
