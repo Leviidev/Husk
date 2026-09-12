@@ -127,36 +127,34 @@ final class QemuRunner: ObservableObject {
     /// guest RAM, and leave genuine headroom -- Android dirties most of what it is
     /// given, and dirty pages count against the footprint.
     private func guestMemoryMiB() -> Int {
-        let availableMiB = Int(husk_ios_available_memory() / (1024 * 1024))
-        // 256, not 512. A run that got Android as far as SurfaceFlinger settled at
-        // 2878 MiB of footprint with 498 MiB left before jetsam -- and those two
-        // add up to everything iOS offered, so there was no slack at all while the
-        // guest still had pages left to dirty. Halving the code cache hands back
-        // 256 MiB outright. TCG does not need it: a full buffer is flushed and
-        // retranslated, never grown, so this costs throughput at worst and cannot
-        // fail. It is still one allocation up front, never a second request.
-        let jitMiB = 256          // tb-size
-        // Measured, not guessed. A run with a 1708 MiB guest and 512 MiB of JIT
-        // settled at 2966 MiB of footprint, so QEMU's own use is ~750 MiB -- nearly
-        // double the 400 MiB originally assumed. That run survived with only
-        // 409 MiB of headroom left, which is closer to the edge than it should be.
-        let qemuOverheadMiB = 750
+        let physMiB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024))
+        let reportedMiB = Int(husk_ios_available_memory() / (1024 * 1024))
 
-        guard availableMiB > 0 else {
-            HuskLog.log("qemu", "available memory unknown; falling back to 2048 MiB guest")
+        // os_proc_available_memory() is a floor, not a ceiling. It reports
+        // headroom against the DEFAULT per-app jetsam limit and does not account
+        // for com.apple.developer.kernel.increased-memory-limit, which this app
+        // holds: on a 12 GB iPhone it says ~3.3 GB while AetherPS4-iOS runs at
+        // about 5 GB on the same device with the same entitlement. Sizing the
+        // guest from it left Android with 1.5 GB, which starved both its heap
+        // and the TCG translation cache.
+        let jitMiB = 512          // tb-size
+        let qemuOverheadMiB = 750 // measured, not guessed
+
+        guard physMiB > 0 else {
+            HuskLog.log("qemu", "physical memory unknown; falling back to 2048 MiB guest")
             return 2048
         }
 
-        // Spend at most 70% of what remains after our own fixed costs. The rest is
-        // margin: the figure moves as the rest of the system comes under pressure.
-        // 0.65, down from 0.75: the reclaimed JIT budget is headroom, not more guest
-        // RAM. Spending it on the guest would put the footprint straight back where
-        // it was. At 3362 MiB available this gives a ~1530 MiB guest -- about what
-        // Android was already booting in -- and roughly 800 MiB of margin.
-        let spendable = availableMiB - jitMiB - qemuOverheadMiB
-        let target = max(1280, min(6144, Int(Double(spendable) * 0.65)))
+        // 40% of physical RAM, capped at 5 GB of total footprint. The cap is
+        // what matters: the rest of the system still has to live here, and a
+        // jetsam kill costs the whole session.
+        let budgetMiB = min(physMiB * 2 / 5, 5120)
+        let target = max(1280, min(6144, budgetMiB - jitMiB - qemuOverheadMiB))
 
-        HuskLog.log("qemu", "memory budget: iOS reports \(availableMiB) MiB available; "
+        HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical, "
+                          + "os_proc_available_memory() says \(reportedMiB) MiB "
+                          + "(a floor -- the increased-memory-limit entitlement is not "
+                          + "reflected there); budgeting \(budgetMiB) MiB total, "
                           + "reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) MiB overhead; "
                           + "guest gets \(target) MiB")
         return target
@@ -182,7 +180,7 @@ final class QemuRunner: ObservableObject {
             // so doubling it costs about a second and a half of one-time setup.
             // Android translates far more code than Alpine ever will, and the
             // region cannot be grown later -- StikDebug is gone by then.
-            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
+            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
 
             // Debian's cloud image boots through GRUB under UEFI, so the firmware
             // pair is required: read-only code volume plus a writable variable
@@ -196,7 +194,12 @@ final class QemuRunner: ObservableObject {
             "-nic", "user,model=virtio-net-pci",
             "-L", "\(Bundle.main.bundlePath)/pc-bios",
 
-            "-device", "virtio-gpu-pci",
+            // A phone-shaped display, not a 1280x800 laptop one. This is both
+            // the right shape for the product and cheaper to draw: with no GPU
+            // behind virtio-gpu every pixel is rasterised by SwiftShader on an
+            // emulated CPU, so fill cost is paid twice over and scales directly
+            // with the pixel count.
+            "-device", "virtio-gpu-pci,xres=720,yres=1280",
             "-device", "virtio-tablet-pci",
             "-device", "virtio-keyboard-pci",
 
@@ -229,6 +232,13 @@ final class QemuRunner: ObservableObject {
 
         let t = Thread { [weak self] in self?.run() }
         t.name = "husk.qemu"
+        // Darwin propagates QoS to threads a thread creates, and every vCPU is
+        // created from this one. Left at the default they read as background
+        // work -- CPU-saturated for the guest's whole life -- and get parked on
+        // efficiency cores, which on a phone are several times slower than the
+        // performance cores. The guest's speed is the app's speed, so this is
+        // user-interactive by definition.
+        t.qualityOfService = .userInteractive
         // QEMU's main loop is not shy with stack.
         t.stackSize = 16 * 1024 * 1024
         thread = t

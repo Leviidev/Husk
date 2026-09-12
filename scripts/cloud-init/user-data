@@ -87,7 +87,7 @@ write_files:
       # edit above could have been silently ignored.
       find /usr/lib/waydroid -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 
-      echo "guest-v12" > /etc/husk-image-version
+      echo "guest-v13" > /etc/husk-image-version
 
       mkdir -p /mnt/husk
       systemctl enable seatd || true
@@ -371,6 +371,24 @@ write_files:
       boot_reports = 0
       last_boot_report = 0.0
 
+      def tune_for_speed():
+          """Turn off UI animations once Android is up.
+
+          Window, transition and animator scales are Settings.Global values
+          living in /data, so unlike the graphics properties they cannot be set
+          before boot. Every animation is composited by a software rasteriser
+          running on an emulated CPU, which makes them disproportionately
+          expensive here -- and they are pure latency between a tap and the
+          thing the user asked for. Setting all three to 0 is what the
+          developer options "animations off" switch does.
+          """
+          for k in ("window_animation_scale",
+                    "transition_animation_scale",
+                    "animator_duration_scale"):
+              p = subprocess.run(f"timeout 20 waydroid shell settings put global {k} 0",
+                                 shell=True, capture_output=True, text=True)
+              log(f"tune: {k}=0 rc={p.returncode} {p.stderr.strip()[:80]}")
+
       def android_ready():
           try:
               p = subprocess.run("timeout 15 waydroid shell getprop sys.boot_completed",
@@ -417,6 +435,7 @@ write_files:
                           boot_reports += 1
                       else:
                           log("android reports boot_completed")
+                          tune_for_speed()
                           boot_reports = 8
                       last_boot_report = time.time()
 
@@ -546,6 +565,26 @@ write_files:
                  -e '/^ro\.hardware\.vulkan=/d' "$BP"
           grep -q '^ro.hardware.gralloc=' "$BP" || echo "ro.hardware.gralloc=default" >> "$BP"
           grep -q '^ro.hardware.egl=' "$BP" || echo "ro.hardware.egl=swiftshader" >> "$BP"
+
+          # Everything below is about speed. There is no GPU and no hardware
+          # virtualisation, so every pixel is rasterised in software by a CPU
+          # that is itself emulated -- the cost of drawing is paid twice. The
+          # cheapest frame is the one never drawn.
+          #
+          # The boot animation is the clearest example: a full-screen loop,
+          # composited continuously, showing nothing but that we are waiting.
+          set_prop() {
+              sed -i "/^$1=/d" "$BP"
+              echo "$1=$2" >> "$BP"
+          }
+          set_prop debug.sf.nobootanimation 1
+          # Android's own low-memory profile: smaller heaps, fewer cached
+          # processes, less background work. It fits a 1.5 GB guest honestly
+          # and costs far less than being pushed into the low-memory killer.
+          set_prop ro.config.low_ram true
+          # 720x1280 at xhdpi is a normal phone. Left at the default the density
+          # would not match the mode QEMU is now asked for.
+          set_prop ro.sf.lcd_density 320
       else
           echo "HUSK-UI: no waydroid_base.prop yet"
       fi
