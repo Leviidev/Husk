@@ -61,6 +61,9 @@ final class QemuRunner: ObservableObject {
     /// inferred, and inferring it was the bug. Nil until the guest says so.
     nonisolated(unsafe) static var bootCompletedAt: Date?
     nonisolated(unsafe) static var pendingSnapshotMiB = 0
+    /// Current balloon target, once the guest has been shrunk. Nil while it
+    /// still has everything it was given.
+    nonisolated(unsafe) static var balloonTargetMiB: Int?
     /// Guest size actually handed to QEMU, recorded alongside any snapshot.
     nonisolated(unsafe) var lastGuestMiB = 0
 
@@ -158,12 +161,92 @@ final class QemuRunner: ObservableObject {
         FileManager.default.fileExists(atPath: snapshotSizePath)
     }
 
+    /// Backing file for guest RAM.
+    ///
+    /// Guest RAM allocated the ordinary way is dirty anonymous memory, which is
+    /// precisely what jetsam counts and what caps the guest at roughly 1.9 GiB
+    /// on an 11.7 GiB phone. Backing it with a MAP_SHARED file instead makes
+    /// those pages file-backed: the kernel can write them back and evict them,
+    /// and clean external pages are not charged to phys_footprint the way
+    /// anonymous ones are. That is the whole point -- it turns guest RAM into
+    /// something the OS can page rather than something that must all stay
+    /// resident.
+    nonisolated var guestRamPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("guest-ram.bin").path
+    }
+
+    /// How RAM was provided on the run that took the snapshot.
+    ///
+    /// A snapshot records a machine shape, and changing the memory backend
+    /// changes that shape. Restoring a file-backed machine into an anonymous
+    /// one (or the reverse) is not something to find out about at load time.
+    nonisolated var memoryStrategyPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-memory-strategy").path
+    }
+
+    /// Bumped whenever the memory layout changes, to retire old snapshots.
+    static let memoryStrategy = "file-backed-v1"
+
+    /// Whether guest RAM can be backed by a file on this device, this run.
+    ///
+    /// Checked rather than assumed: QEMU creates and ftruncates the backing file
+    /// itself, and if that fails the machine does not start at all. Falling back
+    /// to anonymous RAM costs the guest some size; failing to start costs the
+    /// user the app. Evaluated once and cached, because the answer is used both
+    /// to size the guest and to build the command line, and they must agree.
+    private lazy var ramFileReady: Bool = {
+        let needBytes = Int64(2560 + 768) * 1024 * 1024
+        let dir = (guestRamPath as NSString).deletingLastPathComponent
+
+        if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: dir),
+           let free = (attrs[.systemFreeSize] as? NSNumber)?.int64Value {
+            let freeMiB = free / (1024 * 1024)
+            guard free > needBytes else {
+                HuskLog.log("qemu", "only \(freeMiB) MiB free; not backing guest RAM "
+                                  + "with a file, falling back to anonymous memory")
+                return false
+            }
+            HuskLog.log("qemu", "\(freeMiB) MiB free for the guest RAM file")
+        }
+
+        // Create it now so the no-backup flag can be set. iOS evicts nothing it
+        // has been told to back up, and a multi-gigabyte scratch file has no
+        // business in iCloud.
+        if !FileManager.default.fileExists(atPath: guestRamPath) {
+            guard FileManager.default.createFile(atPath: guestRamPath, contents: nil) else {
+                HuskLog.log("qemu", "could not create \(guestRamPath); "
+                                  + "falling back to anonymous memory")
+                return false
+            }
+        }
+        var url = URL(fileURLWithPath: guestRamPath)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? url.setResourceValues(values)
+        return true
+    }()
+
     private func guestMemoryMiB() -> Int {
         // A snapshot pins the size. Restoring into a differently sized machine
         // does not work, and the adaptive budget below is derived from
         // os_proc_available_memory(), which moves with whatever else the phone
         // is doing.
-        if let recorded = try? String(contentsOfFile: snapshotSizePath, encoding: .utf8),
+        // A snapshot from a differently shaped machine is not restorable, and
+        // the memory backend is part of that shape. Retire it rather than
+        // discover the mismatch inside load_snapshot.
+        let priorStrategy = try? String(contentsOfFile: memoryStrategyPath, encoding: .utf8)
+        let strategyChanged = priorStrategy?.trimmingCharacters(in: .whitespacesAndNewlines)
+            != QemuRunner.memoryStrategy
+        if strategyChanged, FileManager.default.fileExists(atPath: snapshotSizePath) {
+            HuskLog.log("qemu", "memory layout changed to \(QemuRunner.memoryStrategy); "
+                              + "retiring the old snapshot, so this boot is a cold one")
+            try? FileManager.default.removeItem(atPath: snapshotSizePath)
+        }
+
+        if !strategyChanged,
+           let recorded = try? String(contentsOfFile: snapshotSizePath, encoding: .utf8),
            let mib = Int(recorded.trimmingCharacters(in: .whitespacesAndNewlines)), mib > 0 {
             HuskLog.log("qemu", "snapshot exists; using its guest size of \(mib) MiB")
             return mib
@@ -203,15 +286,32 @@ final class QemuRunner: ObservableObject {
         // fallen by that much -- subtracting again charged for it twice and cut
         // the guest from 1906 MiB to 1650.
         let jitStillToCome = JITBootstrap.prewarmed ? 0 : jitMiB
-        let target = max(1024, min(6144,
+        let anonymousTarget = max(1024, min(6144,
             availableMiB - safetyMarginMiB - jitStillToCome - qemuOverheadMiB))
+
+        // With a file-backed RAM block the arithmetic above is the wrong shape:
+        // it measures room for pages that must stay resident, and these do not
+        // have to. Ask for more than that ceiling allows, because the excess
+        // lives in the page cache rather than in our footprint.
+        //
+        // Deliberately not the largest number that fits. Whether iOS really
+        // keeps these pages out of phys_footprint is the thing this build is
+        // measuring, and the footprint line logged every five seconds is the
+        // evidence: if resident stays flat while the guest grows, the next
+        // build can raise this. Jumping straight to 4096 would instead risk
+        // regressing a configuration that currently boots.
+        let fileBackedTarget = 2560
+        let target = ramFileReady ? max(anonymousTarget, fileBackedTarget)
+                                  : anonymousTarget
 
         QemuRunner.shared.lastGuestMiB = target
         HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical but "
                           + "\(availableMiB) MiB before jetsam -- that is the real "
                           + "ceiling; reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) "
                           + "MiB overhead + \(safetyMarginMiB) MiB margin; "
-                          + "guest gets \(target) MiB")
+                          + "anonymous RAM would allow \(anonymousTarget) MiB; "
+                          + "guest gets \(target) MiB "
+                          + (ramFileReady ? "from a file-backed block" : "as anonymous memory"))
         return target
     }
 
@@ -229,7 +329,8 @@ final class QemuRunner: ObservableObject {
         // that fits iOS's jetsam ceiling rather than their flat 2048.
         return [
             "qemu-system-aarch64",
-            "-M", "virt,highmem=on",
+            "-M", ramFileReady ? "virt,highmem=on,memory-backend=huskram"
+                               : "virt,highmem=on",
 
             // Their emulation line, not cortex-a72. "max" is what the image is
             // tested against and avoids guessing which ARMv8 extensions this
@@ -252,6 +353,11 @@ final class QemuRunner: ObservableObject {
             "-smp", "4",
             "-m", "\(memMiB)",
             "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
+
+            // The balloon was written earlier and never put on the machine, so
+            // nothing could ever reclaim guest memory. With it present the guest
+            // can be told to hand pages back when the host gets tight.
+            "-device", "virtio-balloon-pci,id=huskballoon",
 
             // UEFI: our bundled code volume, and the variable store that shipped
             // with the image.
@@ -315,7 +421,20 @@ final class QemuRunner: ObservableObject {
             // simply stopped. A guest that loops will show up in the log; a
             // guest that cannot reboot cannot recover.
             "-d", "guest_errors,unimp",
-        ]
+        ] + (ramFileReady ? [
+            // Guest RAM as a MAP_SHARED file rather than anonymous memory, so
+            // the kernel can write it back and evict it instead of counting all
+            // of it against our jetsam footprint. share=on is what makes the
+            // mapping shared and therefore external; without it the file maps
+            // private and every dirtied page becomes anonymous again, which is
+            // the thing being avoided.
+            //
+            // prealloc is deliberately off. Touching the whole block up front
+            // would make every page resident immediately and hand back exactly
+            // the problem this is here to solve.
+            "-object", "memory-backend-file,id=huskram,size=\(memMiB)M,"
+                     + "mem-path=\(guestRamPath),share=on,prealloc=off",
+        ] : [])
     }
 
     func start() {
@@ -531,6 +650,9 @@ final class QemuRunner: ObservableObject {
                             try? String(QemuRunner.pendingSnapshotMiB)
                                 .write(toFile: QemuRunner.shared.snapshotSizePath,
                                        atomically: true, encoding: .utf8)
+                            try? QemuRunner.memoryStrategy
+                                .write(toFile: QemuRunner.shared.memoryStrategyPath,
+                                       atomically: true, encoding: .utf8)
                             HuskLog.log("snap", "next launch will restore instead of booting")
                         }
                     }
@@ -540,6 +662,28 @@ final class QemuRunner: ObservableObject {
                 // the guest writing nothing or the tailer failing to read it. The
                 // file's size separates the two, and guessing wrong would send the
                 // next fix in entirely the wrong direction.
+                // Give memory back before jetsam takes the whole app.
+                //
+                // A SIGKILL from jetsam is unsurvivable and silent; an inflated
+                // balloon merely makes the guest tighter. So when headroom gets
+                // genuinely low, shrink the guest by whatever is missing plus a
+                // margin, and leave it shrunk -- re-growing it on a dip would
+                // just oscillate against the same ceiling.
+                let availMiB = Int(husk_ios_available_memory() / (1024 * 1024))
+                let floorMiB = 350
+                if availMiB > 0, availMiB < floorMiB,
+                   QemuRunner.shared.lastGuestMiB > 0 {
+                    let shortfall = floorMiB - availMiB + 128
+                    let newSize = max(768, QemuRunner.balloonTargetMiB
+                                         ?? QemuRunner.shared.lastGuestMiB) - shortfall
+                    if newSize >= 768, newSize != QemuRunner.balloonTargetMiB {
+                        QemuRunner.balloonTargetMiB = newSize
+                        HuskLog.log("mem", "only \(availMiB) MiB before jetsam; "
+                                         + "ballooning the guest down to \(newSize) MiB")
+                        husk_balloon_set_bytes(Int64(newSize) * 1024 * 1024)
+                    }
+                }
+
                 if tick % 6 == 0 {
                     let attrs = try? FileManager.default
                         .attributesOfItem(atPath: QemuRunner.shared.guestSerialLogPath)
