@@ -49,7 +49,14 @@ final class QemuRunner {
             // after startup and a second allocation is impossible, so this has to
             // be right up front. It also costs attach time: StikDebug touches every
             // 16 KiB page through the debugger, so 256 MiB is 16384 round trips.
-            "-accel", "tcg,tb-size=256,thread=multi",
+            // split-wx=on is NOT optional here. It defaults to 0 (see
+            // tcg_accel_instance_init), and with it off TCG never calls the
+            // splitwx allocator at all -- it goes straight to an RWX mmap, which
+            // iOS refuses with EPERM and which no amount of JIT setup can fix.
+            // Forcing it on (rather than "auto") also disables the RWX fallback,
+            // so a genuine failure surfaces as itself instead of as a confusing
+            // "Operation not permitted".
+            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
             "-kernel", "\(bundle)/vmlinuz-virt",
             "-initrd", "\(bundle)/initramfs-virt",

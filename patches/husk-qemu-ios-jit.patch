@@ -1,9 +1,10 @@
 --- /tmp/region.c.orig	2026-09-11 22:56:49
-+++ third_party/build/qemu-10.0.12-utm/tcg/region.c	2026-09-11 22:56:49
-@@ -35,7 +35,14 @@
++++ third_party/build/qemu-10.0.12-utm/tcg/region.c	2026-09-11 23:35:36
+@@ -34,6 +34,13 @@
+ #include "exec/translation-block.h"
  #include "tcg-internal.h"
  #include "host/cpuinfo.h"
- 
++
 +#ifdef __APPLE__
 +#include <TargetConditionals.h>
 +#endif
@@ -11,10 +12,8 @@
 +#include "husk-ios-jit.h"
 +#endif
  
-+
+ 
  /*
-  * Local source-level compatibility with Unix.
-  * Used by tcg_region_init below.
 @@ -728,10 +735,46 @@
  #endif /* CONFIG_DARWIN */
  #endif /* CONFIG_TCG_INTERPRETER */
@@ -63,3 +62,24 @@
      return alloc_code_gen_buffer_splitwx_vmremap(size, errp);
  # endif
  # ifdef CONFIG_POSIX
+@@ -747,6 +790,20 @@
+     ERRP_GUARD();
+     int prot, flags;
+ 
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++    /*
++     * splitwx defaults to 0 unless CONFIG_DEBUG_TCG is set (see
++     * tcg_accel_instance_init), and with it off TCG goes straight to an RWX
++     * mmap, which iOS refuses with EPERM. On iOS the splitwx path is the only
++     * one that can ever work, so say plainly which way we are about to go.
++     */
++    fprintf(stderr, "[husk-jit] alloc_code_gen_buffer: size=%zu splitwx=%d (%s)\n",
++            size, splitwx,
++            splitwx > 0 ? "forced on" :
++            splitwx < 0 ? "auto" : "OFF -- will try RWX mmap and fail on iOS");
++    fflush(stderr);
++#endif
++
+     if (splitwx) {
+         prot = alloc_code_gen_buffer_splitwx(size, errp);
+         if (prot >= 0) {

@@ -12,6 +12,18 @@ cp "$HUSK_ROOT/src/ios-jit/husk-ios-jit.c" \
    "$HUSK_ROOT/src/ios-jit/husk-ios-jit.h" \
    "$HUSK_ROOT/src/ios-jit/husk-brk.S" "$Q/tcg/"
 
+# region.c is patched in place rather than copied, so a re-extracted QEMU tree
+# would silently lose it -- and the symptom (QEMU falling back to an RWX mmap and
+# failing with EPERM) does not obviously point back here. Apply it idempotently.
+if grep -q "alloc_code_gen_buffer_splitwx_husk_ios" "$Q/tcg/region.c"; then
+    echo "[skip] tcg/region.c already patched"
+else
+    echo "[patch] tcg/region.c <- husk-qemu-ios-jit.patch"
+    patch -p0 -d / --silent < "$HUSK_ROOT/patches/husk-qemu-ios-jit.patch" 2>/dev/null \
+      || patch -p1 -d "$Q" --silent < "$HUSK_ROOT/patches/husk-qemu-ios-jit.patch" 2>/dev/null \
+      || { echo "  FAILED to apply region.c patch" >&2; exit 1; }
+fi
+
 echo "[cp  ] display bridge -> ui/"
 cp "$HUSK_ROOT/src/ios-jit/husk-display.c" \
    "$HUSK_ROOT/src/ios-jit/husk-display.h" "$Q/ui/"
