@@ -293,6 +293,19 @@ final class QemuRunner: ObservableObject {
                 Thread.sleep(forTimeInterval: 5)
                 tick += 1
                 HuskLog.logFootprint("t+\(tick * 5)s")
+
+                // No [guest] lines appeared at all in one session, which is either
+                // the guest writing nothing or the tailer failing to read it. The
+                // file's size separates the two, and guessing wrong would send the
+                // next fix in entirely the wrong direction.
+                if tick % 6 == 0 {
+                    let attrs = try? FileManager.default
+                        .attributesOfItem(atPath: QemuRunner.shared.guestSerialLogPath)
+                    let size = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+                    HuskLog.log("qemu", "guest serial log is \(size) bytes "
+                                      + "(if this grows but no [guest] lines appear, "
+                                      + "the tailer is at fault, not the guest)")
+                }
             }
         }
         t.name = "husk.memwatch"

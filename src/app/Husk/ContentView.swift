@@ -15,6 +15,9 @@ struct ContentView: View {
     @State private var started = false
     @State private var runningApp: HuskBridgeFS.AndroidApp?
     @State private var showLogs = false
+    /// True while the guest's own screen is being shown instead of the library.
+    /// Starts true because first boot always needs the Android wizard.
+    @State private var showGuestScreen = true
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -24,8 +27,16 @@ struct ContentView: View {
                     HuskLog.log("ui", "returning to library from \(app.package)")
                     runningApp = nil
                 }
-            } else if started && androidReady {
+            } else if started && androidReady && !showGuestScreen {
                 LibraryView(running: $runningApp)
+            } else if started && runner.isRunning {
+                // Android's own first-run wizard has to be completed by hand, and
+                // LineageOS will not finish booting until it is. Hiding the guest
+                // behind a spinner makes that look like a hang: it is drawing
+                // continuously, just waiting for a human who cannot see or touch it.
+                GuestScreenView(showLogs: $showLogs,
+                                canReturnToLibrary: androidReady,
+                                onLibrary: { showGuestScreen = false })
             } else {
                 SetupView(showLogs: $showLogs, onStart: start)
             }
@@ -66,6 +77,46 @@ struct ContentView: View {
         started = true
         QemuRunner.shared.start()
         bridge.startWatching()
+    }
+}
+
+/// The guest's screen, with touch, plus a small status pill.
+///
+/// This is what the user needs during Android's first-run setup, and it doubles as
+/// the honest answer to "is it stuck or is it working?" -- if the guest is drawing,
+/// you can see it.
+struct GuestScreenView: View {
+    @ObservedObject private var runner = QemuRunner.shared
+    @Binding var showLogs: Bool
+    let canReturnToLibrary: Bool
+    let onLibrary: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.black.ignoresSafeArea()
+            HuskDisplay().ignoresSafeArea()
+
+            HStack(spacing: 10) {
+                if canReturnToLibrary {
+                    Button(action: onLibrary) {
+                        Label("Library", systemImage: "square.grid.2x2")
+                            .font(.caption.weight(.medium))
+                    }
+                } else {
+                    ProgressView().controlSize(.small)
+                    Text(runner.setupMessage ?? "Android is starting — complete its setup on screen")
+                        .font(.caption2)
+                        .lineLimit(2)
+                }
+                Button { showLogs = true } label: {
+                    Image(systemName: "doc.text.magnifyingglass").font(.caption)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(.top, 6)
+        }
+        .statusBarHidden(true)
     }
 }
 
