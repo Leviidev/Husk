@@ -187,7 +187,14 @@ final class QemuRunner: ObservableObject {
     }
 
     /// Bumped whenever the memory layout changes, to retire old snapshots.
-    static let memoryStrategy = "file-backed-6g-nosve-v2"
+    static var memoryStrategy: String {
+        // The GPU device is part of the machine's shape, so a snapshot taken
+        // with virtio-gpu-pci cannot be restored into a virtio-gpu-gl-pci
+        // machine. Folding the display choice into the strategy means the first
+        // launch after GL starts working boots cold once, then re-snapshots,
+        // rather than failing to restore.
+        "file-backed-6g-nosve-v2-" + (QemuRunner.glProven ? "gl" : "sw")
+    }
 
     /// Whether guest RAM can be backed by a file on this device, this run.
     ///

@@ -1,5 +1,5 @@
 diff --git a/src/dispatch_common.c b/src/dispatch_common.c
-index 6fb7f02..88a1c25 100644
+index 6fb7f02..72fa1df 100644
 --- a/src/dispatch_common.c
 +++ b/src/dispatch_common.c
 @@ -182,11 +182,17 @@
@@ -53,3 +53,26 @@ index 6fb7f02..88a1c25 100644
      if (!result)
          error = dlerror();
  #endif
+@@ -768,10 +796,20 @@ epoxy_get_core_proc_address(const char *name, int core_version)
+ {
+ #ifdef _WIN32
+     int core_symbol_support = 11;
+-#elif defined(__ANDROID__)
++#elif defined(__ANDROID__) || defined(__APPLE__)
+     /**
+      * All symbols must be resolved through eglGetProcAddress
+-     * on Android
++     * on Android -- and on iOS, for the same reason.
++     *
++     * There the GL implementation is ANGLE, linked into the app rather than
++     * installed as a system library, and WebKit builds it with its entry points
++     * renamed (GL_GetString, not glGetString). dlsym for a core name therefore
++     * either fails or -- worse -- succeeds against some unrelated image that
++     * happens to export the name, which is exactly what happened: glGetString
++     * resolved to an address nowhere near where ANGLE was loaded and returned
++     * NULL forever, while ANGLE itself was working perfectly the whole time.
++     *
++     * eglGetProcAddress asks ANGLE about itself and always answers correctly.
+      */
+     int core_symbol_support = 0;
+ #else
