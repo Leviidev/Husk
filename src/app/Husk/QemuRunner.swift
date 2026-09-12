@@ -116,10 +116,42 @@ final class QemuRunner: ObservableObject {
         ]
     }
 
+    /// How much RAM to give the guest, in MiB.
+    ///
+    /// Sized from what iOS says this process may still allocate rather than from a
+    /// fixed number. A jetsam kill is a SIGKILL: no signal handler runs, the log
+    /// just stops mid-line, and it looks exactly like a crash. Guessing 4096 here
+    /// is what produced one.
+    ///
+    /// The budget has to cover the JIT region and QEMU's own allocations as well as
+    /// guest RAM, and leave genuine headroom -- Android dirties most of what it is
+    /// given, and dirty pages count against the footprint.
+    private func guestMemoryMiB() -> Int {
+        let availableMiB = Int(husk_ios_available_memory() / (1024 * 1024))
+        let jitMiB = 512          // tb-size
+        let qemuOverheadMiB = 400 // device models, translation state, block cache
+
+        guard availableMiB > 0 else {
+            HuskLog.log("qemu", "available memory unknown; falling back to 2048 MiB guest")
+            return 2048
+        }
+
+        // Spend at most 70% of what remains after our own fixed costs. The rest is
+        // margin: the figure moves as the rest of the system comes under pressure.
+        let spendable = availableMiB - jitMiB - qemuOverheadMiB
+        let target = max(1536, min(6144, Int(Double(spendable) * 0.70)))
+
+        HuskLog.log("qemu", "memory budget: iOS reports \(availableMiB) MiB available; "
+                          + "reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) MiB overhead; "
+                          + "guest gets \(target) MiB")
+        return target
+    }
+
     /// Phase 1 guest: Debian arm64 running Waydroid, booted from the downloaded
     /// disk image via UEFI.
     private func phase1Arguments() -> [String] {
         let guest = GuestImage.shared
+        let memMiB = guestMemoryMiB()
 
         return [
             "qemu-system-aarch64",
@@ -129,10 +161,7 @@ final class QemuRunner: ObservableObject {
             "-cpu", "cortex-a72",
             "-smp", "4",
 
-            // Android wants real memory. The device has 11.7 GB and Husk's own
-            // footprint before the guest starts measured 13.9 MiB, so 4 GiB here
-            // is comfortable rather than brave.
-            "-m", "4096",
+            "-m", "\(memMiB)",
 
             // 256 MiB took 749 ms to prepare on device (~46 us per 16 KiB page),
             // so doubling it costs about a second and a half of one-time setup.
@@ -240,6 +269,8 @@ final class QemuRunner: ObservableObject {
         HuskLog.log("qemu", "calling husk_display_init()")
         husk_display_init()
 
+        startMemoryWatch()
+
         HuskLog.log("qemu", "entering qemu_main_loop() -- this does not return until shutdown")
         qemu_main_loop()
 
@@ -248,6 +279,25 @@ final class QemuRunner: ObservableObject {
         qemu_cleanup()
         HuskLog.log("qemu", "qemu_cleanup() done")
         isRunning = false
+    }
+
+    /// Sample memory every few seconds for the whole session.
+    ///
+    /// Without this a jetsam kill leaves no evidence at all: the log's last entry
+    /// is whatever happened to be printed, and the cause is indistinguishable from
+    /// a crash. With it, available-before-jetsam visibly falls towards zero.
+    private func startMemoryWatch() {
+        let t = Thread {
+            var tick = 0
+            while true {
+                Thread.sleep(forTimeInterval: 5)
+                tick += 1
+                HuskLog.logFootprint("t+\(tick * 5)s")
+            }
+        }
+        t.name = "husk.memwatch"
+        t.qualityOfService = .utility
+        t.start()
     }
 
     /// Fold the guest's kernel console into the unified log as it appears.

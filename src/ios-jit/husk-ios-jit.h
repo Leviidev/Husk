@@ -94,6 +94,12 @@ HUSK_EXPORT bool husk_ios_jit_is_available(void);
  */
 HUSK_EXPORT void husk_ios_jit_log_footprint(const char *tag);
 
+/*
+ * Bytes this process may still allocate before jetsam kills it. Used to size the
+ * guest's RAM to the device rather than to a guess.
+ */
+HUSK_EXPORT size_t husk_ios_available_memory(void);
+
 #ifdef __cplusplus
 }
 #endif

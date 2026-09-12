@@ -43,5 +43,6 @@ void husk_ios_jit_install_trap_handler(void);
 bool husk_ios_jit_is_available(void);
 void husk_ios_jit_detach(void);
 void husk_ios_jit_log_footprint(const char *tag);
+size_t husk_ios_available_memory(void);
 
 #endif /* HUSK_BRIDGE_H */

@@ -18,6 +18,7 @@
 #include <mach/mach.h>
 #include <mach/vm_map.h>        /* vm_remap/vm_protect: mach_vm.h is absent from the iOS SDK */
 #include <os/log.h>
+#include <os/proc.h>
 #include <signal.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -152,11 +153,27 @@ void husk_ios_jit_log_footprint(const char *tag)
         HUSK_LOG("footprint[%s]: task_info failed", tag ? tag : "");
         return;
     }
-    HUSK_LOG("footprint[%s]: phys=%.1f MiB  virtual=%.1f MiB  resident=%.1f MiB",
+    /*
+     * os_proc_available_memory() is the number that actually matters: how much
+     * more this process may allocate before jetsam kills it. phys_footprint alone
+     * says how much we have used but not how close to the edge that is, and the
+     * limit varies by device and by whether the increased-memory-limit entitlement
+     * is honoured. A jetsam kill is a SIGKILL -- no handler runs and the log simply
+     * stops -- so the only way to see it coming is to watch this fall.
+     */
+    size_t avail = os_proc_available_memory();
+
+    HUSK_LOG("footprint[%s]: phys=%.1f MiB  resident=%.1f MiB  "
+             "available-before-jetsam=%.1f MiB",
              tag ? tag : "",
              info.phys_footprint / (1024.0 * 1024.0),
-             info.virtual_size   / (1024.0 * 1024.0),
-             info.resident_size  / (1024.0 * 1024.0));
+             info.resident_size  / (1024.0 * 1024.0),
+             avail / (1024.0 * 1024.0));
+}
+
+size_t husk_ios_available_memory(void)
+{
+    return os_proc_available_memory();
 }
 
 /* ---------------------------------------------------------------- self-test */
@@ -378,5 +395,6 @@ void husk_ios_jit_release(HuskDualMapping *m) { (void)m; }
 void husk_ios_jit_detach(void) {}
 bool husk_ios_jit_is_available(void) { return false; }
 void husk_ios_jit_log_footprint(const char *tag) { (void)tag; }
+size_t husk_ios_available_memory(void) { return 0; }
 
 #endif

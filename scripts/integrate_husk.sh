@@ -80,6 +80,7 @@ wanted = [
     "husk_ios_jit_is_available",
     "husk_ios_jit_detach",
     "husk_ios_jit_log_footprint",
+    "husk_ios_available_memory",
 ]
 missing = [w for w in wanted if f"  {w};" not in s]
 if missing:
