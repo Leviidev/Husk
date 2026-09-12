@@ -147,7 +147,34 @@ final class GuestImage: ObservableObject {
     /// The firmware itself ships raw in the app bundle. It is 64 MiB, but almost
     /// entirely zeros, so the IPA's own zip compresses it to about a megabyte --
     /// cheaper than carrying a decompressor for it.
+    /// Remove what the previous guest architecture left in Documents.
+    ///
+    /// The Waydroid disk grew to over 4 GB once Android had been written into it
+    /// and is now dead weight on the user's phone. Its diagnostics file is worse
+    /// than dead: the bridge still folds it into the log every poll, replaying
+    /// Debian and Waydroid text long after either existed, which reads exactly
+    /// like a live guest saying the wrong thing.
+    private func cleanUpPreviousGuest() {
+        let fm = FileManager.default
+        let stale = ["husk-guest.qcow2", "husk-guest.version",
+                     "edk2-vars.fd", "edk2-vars.fd.layout",
+                     "share/diagnostics.txt"]
+        var freed: Int64 = 0
+        for name in stale {
+            let path = documents.appendingPathComponent(name).path
+            guard fm.fileExists(atPath: path) else { continue }
+            let size = ((try? fm.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.int64Value ?? 0
+            try? fm.removeItem(atPath: path)
+            freed += size
+        }
+        if freed > 0 {
+            HuskLog.log("guest", "removed \(freed / (1024 * 1024)) MiB left by the previous "
+                               + "guest (Debian/Waydroid)")
+        }
+    }
+
     func prepareFirmware() throws {
+        cleanUpPreviousGuest()
         let fm = FileManager.default
         if !fm.fileExists(atPath: firmwarePath) {
             guard let src = Bundle.main.path(forResource: "edk2-aarch64-code", ofType: "fd") else {

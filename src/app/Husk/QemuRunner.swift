@@ -188,13 +188,19 @@ final class QemuRunner: ObservableObject {
             // Android build assumes; pauth-impdef picks a cheap implementation
             // -defined pointer-auth algorithm instead of QARMA, which TCG
             // emulates at ruinous cost.
-            // pauth and sve OFF, not merely cheap. Pointer-auth instructions sit
-            // in the HINT space precisely so they degrade to no-ops on a CPU
-            // without the feature, so turning it off is safe for binaries built
-            // with it -- and strictly cheaper than emulating even the impdef
-            // algorithm on every function entry and return. Android gates SVE
-            // use on HWCAP, so without it the plain NEON paths run instead.
-            "-cpu", "max,pauth=off,sve=off",
+            // pauth-impdef=on, and do NOT turn pauth off.
+            //
+            // Turning it off panicked the kernel at 9.3s inside
+            // __pi_scs_handle_fde_frame <- module_finalize <- load_module, with
+            // 0xd503233f and 0xd50323bf in the registers -- the encodings of
+            // PACIASP and AUTIASP. That is the dynamic shadow call stack
+            // patcher, which rewrites pointer-auth instructions into
+            // shadow-call-stack ones and which the kernel runs ONLY when the CPU
+            // lacks PAC. So "pauth degrades to no-ops" holds for userspace and
+            // not for this kernel: removing the feature switches a whole code
+            // path ON rather than switching one off. impdef keeps PAC present
+            // while picking a cheap algorithm instead of QARMA.
+            "-cpu", "max,pauth-impdef=on",
             "-smp", "4",
             "-m", "\(memMiB)",
             "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
