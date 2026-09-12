@@ -228,26 +228,65 @@ final class QemuRunner: ObservableObject {
         return true
     }()
 
-    /// Largest of `candidates` this process can still map, or nil if none can.
+    /// Size we are about to attempt, and the largest size known to have survived.
     ///
-    /// Reserved PROT_NONE and released immediately: the point is to find out
-    /// whether the address space exists, not to use it. No pages are committed,
-    /// so a success here costs nothing and a failure costs nothing either --
-    /// unlike letting QEMU discover the same thing and abort.
+    /// A PROT_NONE reservation is not proof: 6144 MiB reserved cleanly and QEMU
+    /// still died initialising it. So the size is written down before the
+    /// attempt and only confirmed once qemu_init() returns. If a launch finds an
+    /// attempt that was never confirmed, that size killed us last time and this
+    /// run picks a smaller one -- which means a bad size costs one launch rather
+    /// than every launch.
+    nonisolated var ramAttemptPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-ram-attempt").path
+    }
+    nonisolated var ramProvenPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-ram-proven").path
+    }
+
+    private func readInt(_ path: String) -> Int? {
+        guard let t = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        return Int(t.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Largest of `candidates` that can actually be mapped the way QEMU maps it.
     ///
-    /// Deliberately called after the JIT region is claimed, so what it measures
-    /// is the space actually left over rather than the space at launch.
+    /// Not a PROT_NONE reservation. QEMU creates the file, extends it to the
+    /// full size, maps it MAP_SHARED read/write and then writes to it, so this
+    /// does exactly that and touches both the first and last page. A reservation
+    /// that succeeds where the real mapping fails is worse than no check at all,
+    /// because it produces confidence and then a crash.
     private func largestMappableMiB(_ candidates: [Int]) -> Int? {
         for mib in candidates {
-            let bytes = size_t(mib) * 1024 * 1024
-            let p = mmap(nil, bytes, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0)
-            if p != MAP_FAILED {
-                munmap(p, bytes)
-                HuskLog.log("qemu", "address space check: \(mib) MiB is mappable")
-                return mib
+            let bytes = off_t(mib) * 1024 * 1024
+            let fd = open(guestRamPath, O_RDWR | O_CREAT, 0o600)
+            if fd < 0 {
+                HuskLog.log("qemu", "RAM file check: cannot open (errno \(errno))")
+                return nil
             }
-            HuskLog.log("qemu", "address space check: \(mib) MiB is NOT mappable "
-                              + "(errno \(errno)); trying smaller")
+            defer { close(fd) }
+
+            guard ftruncate(fd, bytes) == 0 else {
+                HuskLog.log("qemu", "RAM file check: \(mib) MiB cannot be allocated "
+                                  + "on disk (errno \(errno)); trying smaller")
+                continue
+            }
+            guard let p = mmap(nil, size_t(bytes), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0),
+                  p != MAP_FAILED else {
+                HuskLog.log("qemu", "RAM file check: \(mib) MiB maps no better than "
+                                  + "QEMU would (errno \(errno)); trying smaller")
+                continue
+            }
+
+            // Touch both ends: a mapping can be handed back and still fail on
+            // first write if the backing store cannot honour it.
+            let bytesPtr = p.assumingMemoryBound(to: UInt8.self)
+            bytesPtr[0] = 0
+            bytesPtr[Int(bytes) - 1] = 0
+            munmap(p, size_t(bytes))
+            HuskLog.log("qemu", "RAM file check: \(mib) MiB maps and writes cleanly")
+            return mib
         }
         return nil
     }
@@ -337,12 +376,17 @@ final class QemuRunner: ObservableObject {
         // exactly when the real mapping would, so stepping down through these
         // sizes and keeping the first that succeeds turns a crash into a
         // slightly smaller guest.
-        let fileBackedTarget = ramFileReady
-            ? largestMappableMiB([6144, 5120, 4096, 3584, 3072, 2560])
-            : nil
+        var candidates = [6144, 5120, 4096, 3584, 3072, 2560, 2048]
+        if let attempted = readInt(ramAttemptPath), readInt(ramProvenPath) != attempted {
+            HuskLog.log("qemu", "last launch attempted \(attempted) MiB and never got "
+                              + "past qemu_init; staying below that this time")
+            candidates = candidates.filter { $0 < attempted }
+        }
+        let fileBackedTarget = ramFileReady ? largestMappableMiB(candidates) : nil
         let target = fileBackedTarget.map { max(anonymousTarget, $0) } ?? anonymousTarget
 
         QemuRunner.shared.lastGuestMiB = target
+        try? String(target).write(toFile: ramAttemptPath, atomically: true, encoding: .utf8)
         HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical but "
                           + "\(availableMiB) MiB before jetsam -- that is the real "
                           + "ceiling; reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) "
@@ -615,6 +659,9 @@ final class QemuRunner: ObservableObject {
             qemu_init(Int32(args.count), buf.baseAddress)
         }
         HuskLog.log("qemu", "qemu_init() returned")
+        // Survived initialisation, so this size is safe to try again next launch.
+        try? String(QemuRunner.shared.lastGuestMiB)
+            .write(toFile: ramProvenPath, atomically: true, encoding: .utf8)
 
         // Before the main loop: restore the machine if we saved one. This is
         // the difference between ten minutes of Android booting and a few
