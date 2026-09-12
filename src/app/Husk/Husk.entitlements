@@ -13,5 +13,11 @@
 	     Proven to work on sideloaded builds in AetherPS4-iOS. -->
 	<key>com.apple.developer.kernel.increased-memory-limit</key>
 	<true/>
+	<!-- Mappings past ~4 GB need this. The guest RAM block plus the JIT's dual
+	     RW/RX mapping exceed that, and without it the large mapping is simply
+	     refused. Husk does not depend on it being honoured: the address space is
+	     probed at startup and the guest is sized to whatever actually maps. -->
+	<key>com.apple.developer.kernel.extended-virtual-addressing</key>
+	<true/>
 </dict>
 </plist>

@@ -228,6 +228,30 @@ final class QemuRunner: ObservableObject {
         return true
     }()
 
+    /// Largest of `candidates` this process can still map, or nil if none can.
+    ///
+    /// Reserved PROT_NONE and released immediately: the point is to find out
+    /// whether the address space exists, not to use it. No pages are committed,
+    /// so a success here costs nothing and a failure costs nothing either --
+    /// unlike letting QEMU discover the same thing and abort.
+    ///
+    /// Deliberately called after the JIT region is claimed, so what it measures
+    /// is the space actually left over rather than the space at launch.
+    private func largestMappableMiB(_ candidates: [Int]) -> Int? {
+        for mib in candidates {
+            let bytes = size_t(mib) * 1024 * 1024
+            let p = mmap(nil, bytes, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0)
+            if p != MAP_FAILED {
+                munmap(p, bytes)
+                HuskLog.log("qemu", "address space check: \(mib) MiB is mappable")
+                return mib
+            }
+            HuskLog.log("qemu", "address space check: \(mib) MiB is NOT mappable "
+                              + "(errno \(errno)); trying smaller")
+        }
+        return nil
+    }
+
     private func guestMemoryMiB() -> Int {
         // A snapshot pins the size. Restoring into a differently sized machine
         // does not work, and the adaptive budget below is derived from
@@ -300,9 +324,23 @@ final class QemuRunner: ObservableObject {
         // evidence: if resident stays flat while the guest grows, the next
         // build can raise this. Jumping straight to 4096 would instead risk
         // regressing a configuration that currently boots.
-        let fileBackedTarget = 6144
-        let target = ramFileReady ? max(anonymousTarget, fileBackedTarget)
-                                  : anonymousTarget
+        // Ask for as much as this process can actually map, largest first.
+        //
+        // 6144 MiB was not merely optimistic, it was fatal: QEMU died inside
+        // qemu_init() before printing anything, because the mapping could not
+        // be made. 2560 MiB had been fine. The JIT already holds about a
+        // gigabyte of address space -- 512 MiB mapped twice, RW and RX -- so a
+        // 6 GiB RAM block puts the total past what the process is allowed.
+        //
+        // Rather than hard-code whatever happens to work on one phone, find out.
+        // A PROT_NONE anonymous reservation costs no physical memory and fails
+        // exactly when the real mapping would, so stepping down through these
+        // sizes and keeping the first that succeeds turns a crash into a
+        // slightly smaller guest.
+        let fileBackedTarget = ramFileReady
+            ? largestMappableMiB([6144, 5120, 4096, 3584, 3072, 2560])
+            : nil
+        let target = fileBackedTarget.map { max(anonymousTarget, $0) } ?? anonymousTarget
 
         QemuRunner.shared.lastGuestMiB = target
         HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical but "
@@ -310,7 +348,7 @@ final class QemuRunner: ObservableObject {
                           + "ceiling; reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) "
                           + "MiB overhead + \(safetyMarginMiB) MiB margin; "
                           + "GUEST GETS \(target) MiB "
-                          + (ramFileReady
+                          + (fileBackedTarget != nil
                              ? "from a file-backed block (anonymous memory could only "
                              + "have given it \(anonymousTarget) MiB)"
                              : "as anonymous memory"))
