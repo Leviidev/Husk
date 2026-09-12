@@ -63,7 +63,25 @@ extern void    *husk_brk_get_jit_mapping(void *addr, size_t len);
 extern void     husk_brk_jit_detach(void);
 extern uint64_t husk_brk_probe(void);
 
-#define HUSK_PROBE_MAGIC 0xE0000069ull
+/*
+ * StikDebug answers brk #0x69 by writing a constant into x0. Two encodings are
+ * seen in the wild:
+ *
+ *   0xE0000069  -- the value as written in the script
+ *   0x690000E0  -- that value byte-reversed, which is what universal.js actually
+ *                  produces: it sends the gdb-remote packet `P0=E0000069`, but P
+ *                  takes the register in TARGET byte order, and ARM64 is little
+ *                  endian. It also supplies only 4 bytes for an 8-byte register,
+ *                  so the upper half keeps whatever poison was there (0xcccccccc
+ *                  observed on iPhone18,1 / iOS 27).
+ *
+ * Matching on an exact value is therefore the wrong test. What actually
+ * distinguishes "serviced" from "not serviced" is far simpler: when StikDebug is
+ * absent, our own SIGTRAP handler steps over the brk and sets x0 to exactly 0.
+ * So any non-zero answer means something serviced the trap.
+ */
+#define HUSK_PROBE_MAGIC    0xE0000069ull
+#define HUSK_PROBE_MAGIC_LE 0x690000E0ull
 
 static atomic_bool           g_jit_available;
 static atomic_uint_least64_t g_alloc_counter;
@@ -210,15 +228,27 @@ HuskDualMapping husk_ios_jit_allocate(size_t bytes)
     g_expecting_jit_trap = true;
     uint64_t probe = husk_brk_probe();
     g_expecting_jit_trap = false;
-    if (probe != HUSK_PROBE_MAGIC) {
-        HUSK_LOG("#%llu: StikDebug not attached (probe returned 0x%llx, expected 0x%llx); "
-                 "cannot allocate %zu bytes",
-                 (unsigned long long)n, (unsigned long long)probe,
-                 (unsigned long long)HUSK_PROBE_MAGIC, bytes);
+    if (probe == 0) {
+        HUSK_LOG("#%llu: StikDebug is NOT servicing traps -- probe returned 0, which "
+                 "is our own SIGTRAP handler stepping over an unanswered brk. "
+                 "Cannot allocate %zu bytes.",
+                 (unsigned long long)n, bytes);
         return region;
     }
-    HUSK_LOG("#%llu: StikDebug attach probe OK (0x%llx)",
-             (unsigned long long)n, (unsigned long long)probe);
+
+    uint32_t probe_lo = (uint32_t)probe;
+    if (probe_lo == (uint32_t)HUSK_PROBE_MAGIC ||
+        probe_lo == (uint32_t)HUSK_PROBE_MAGIC_LE) {
+        HUSK_LOG("#%llu: StikDebug attach probe OK (0x%llx)",
+                 (unsigned long long)n, (unsigned long long)probe);
+    } else {
+        /* Serviced, but by something that answers differently. Proceed -- the
+         * allocation itself is the real test -- and record the value so an
+         * unfamiliar StikDebug build is identifiable from the log alone. */
+        HUSK_LOG("#%llu: trap was serviced but the answer is unrecognised (0x%llx). "
+                 "Continuing anyway; the allocation below is the real test.",
+                 (unsigned long long)n, (unsigned long long)probe);
+    }
 
     /*
      * Ask for a FRESH region (x0 == 0) so StikDebug allocates it with
