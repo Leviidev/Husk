@@ -39,10 +39,10 @@ final class QemuRunner: ObservableObject {
     /// does not, the problem is above the JIT/display layer.
     enum Profile: String, CaseIterable {
         case phase0Alpine   = "Alpine (substrate check)"
-        case phase1Waydroid = "Android (Waydroid)"
+        case phase1Android = "Android (LineageOS guest)"
     }
 
-    var profile: Profile = .phase1Waydroid
+    var profile: Profile = .phase1Android
 
     private var documentsDir: String {
         NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
@@ -167,66 +167,70 @@ final class QemuRunner: ObservableObject {
         return target
     }
 
-    /// Phase 1 guest: Debian arm64 running Waydroid, booted from the downloaded
-    /// disk image via UEFI.
+    /// Phase 1 guest: LineageOS booting directly under QEMU via UEFI.
     private func phase1Arguments() -> [String] {
         let guest = GuestImage.shared
         let memMiB = guestMemoryMiB()
 
+        // Modelled on android-lineage-qemu's own documented qemu-system line for
+        // the arm64only build, because that is the configuration the image is
+        // actually tested in -- including on iOS under UTM, which like us has no
+        // hypervisor and runs TCG. Deviating from it is how the last three days
+        // went, so the deviations here are only the ones Husk structurally needs:
+        // our own display bridge, our own serial capture, and a memory budget
+        // that fits iOS's jetsam ceiling rather than their flat 2048.
         return [
             "qemu-system-aarch64",
-            // highmem=on gives the guest a 64-bit PCI window, which it needs once
-            // there is real RAM behind it.
             "-M", "virt,highmem=on",
-            "-cpu", "cortex-a72",
+
+            // Their emulation line, not cortex-a72. "max" is what the image is
+            // tested against and avoids guessing which ARMv8 extensions this
+            // Android build assumes; pauth-impdef picks a cheap implementation
+            // -defined pointer-auth algorithm instead of QARMA, which TCG
+            // emulates at ruinous cost.
+            "-cpu", "max,pauth-impdef=on",
             "-smp", "4",
-
             "-m", "\(memMiB)",
-
-            // 256 MiB took 749 ms to prepare on device (~46 us per 16 KiB page),
-            // so doubling it costs about a second and a half of one-time setup.
-            // Android translates far more code than Alpine ever will, and the
-            // region cannot be grown later -- StikDebug is gone by then.
             "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
-            // Debian's cloud image boots through GRUB under UEFI, so the firmware
-            // pair is required: read-only code volume plus a writable variable
-            // store.
-            "-drive", "if=pflash,format=raw,readonly=on,file=\(guest.firmwarePath)",
-            "-drive", "if=pflash,format=raw,file=\(guest.varsPath)",
-            "-drive", "if=virtio,format=qcow2,file=\(guest.diskPath)",
+            // UEFI: our bundled code volume, and the variable store that shipped
+            // with the image.
+            "-drive", "if=pflash,unit=0,format=raw,readonly=on,file=\(guest.firmwarePath)",
+            "-drive", "if=pflash,unit=1,format=qcow2,file=\(guest.varsPath)",
 
-            // Unlike Phase 0, the network is not optional: `waydroid init` fetches
-            // LineageOS over it during first-run setup.
-            "-nic", "user,model=virtio-net-pci",
+            // vda is the system disk, vdb is userdata. bootindex matters: the
+            // firmware must try the system disk first.
+            "-device", "virtio-blk-pci,drive=vda,bootindex=0",
+            "-device", "virtio-blk-pci,drive=vdb,bootindex=1",
+            "-drive", "file=\(guest.diskPath),if=none,id=vda,format=qcow2,discard=unmap,detect-zeroes=unmap",
+            "-drive", "file=\(guest.userdataPath),if=none,id=vdb,format=qcow2,discard=unmap,detect-zeroes=unmap",
+
+            // ADB is the control plane now: pm install and am start replace the
+            // 9p share and the guest agent. The forward is bound to loopback --
+            // only this app should be able to reach the guest's adbd.
+            "-device", "virtio-net-pci,netdev=net0",
+            "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:5555-:5555",
             "-L", "\(Bundle.main.bundlePath)/pc-bios",
 
-            // A phone-shaped display, not a 1280x800 laptop one. This is both
-            // the right shape for the product and cheaper to draw: with no GPU
-            // behind virtio-gpu every pixel is rasterised by SwiftShader on an
-            // emulated CPU, so fill cost is paid twice over and scales directly
-            // with the pixel count.
-            "-device", "virtio-gpu-pci,xres=720,yres=1280",
-            "-device", "virtio-tablet-pci",
-            "-device", "virtio-keyboard-pci",
+            "-device", "virtio-gpu-pci",
 
-            // The host/guest bridge. APKs and commands cross as files in a shared
-            // directory rather than over a socket protocol, so every message is
-            // inspectable from both sides afterwards.
-            //
-            // security_model=none: the app and the guest are the only participants
-            // and the app's sandbox makes the xattr-based models awkward. Files the
-            // guest creates land owned by the app's uid, which is what we want.
-            "-fsdev", "local,id=huskfs,path=\(HuskBridgeFS.shared.shareRoot.path),security_model=none",
-            "-device", "virtio-9p-pci,fsdev=huskfs,mount_tag=husk",
+            // USB HID rather than virtio-input, which is what their config uses.
+            // Every Android kernel has usbhid; virtio-input is not guaranteed,
+            // and losing input would look exactly like a hung guest.
+            "-device", "qemu-xhci,id=usb-bus",
+            "-device", "usb-tablet,bus=usb-bus.0",
+            "-device", "usb-kbd,bus=usb-bus.0",
+
+            // Entropy. Without it the guest stalls waiting for crng init, which
+            // on a previous guest cost several seconds of boot.
+            "-device", "virtio-rng-pci",
 
             "-chardev", "file,id=ser0,path=\(guestSerialLogPath)",
             "-serial", "chardev:ser0",
-
             "-display", "none",
             "-monitor", "none",
             "-no-reboot",
-            "-d", verbosity.rawValue,
+            "-d", "guest_errors,unimp",
         ]
     }
 
@@ -273,6 +277,7 @@ final class QemuRunner: ObservableObject {
             ? ["\(Bundle.main.bundlePath)/vmlinuz-virt",
                "\(Bundle.main.bundlePath)/initramfs-virt"]
             : [GuestImage.shared.diskPath,
+               GuestImage.shared.userdataPath,
                GuestImage.shared.firmwarePath,
                GuestImage.shared.varsPath]
         for path in required {

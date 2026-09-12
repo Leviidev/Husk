@@ -1,12 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
 
-/// Manages the Linux+Waydroid guest disk that lives in Documents.
+/// Manages the Android guest that lives in Documents.
 ///
-/// The guest is downloaded at first run rather than bundled. A provisioned
-/// Debian+Waydroid image is ~1.2 GB, which is not something to put in an IPA --
-/// and Android itself is not in it at all: `waydroid init` fetches LineageOS on
-/// the device, through Waydroid's own setup path, so Husk never redistributes it.
+/// The guest is LineageOS built to boot directly under QEMU
+/// (github.com/jqssun/android-lineage-qemu), not Android inside a container
+/// inside another Linux. That removes Debian, LXC, Waydroid, cage, dbus and
+/// pipewire from underneath it -- along with every failure that only existed
+/// because of them -- and the arm64only build is the one that project
+/// recommends for iOS, where there is no hypervisor and QEMU is emulating.
+///
+/// Three files make up the guest. Only the system disk is downloaded; the other
+/// two are a few hundred kilobytes each and ride in the IPA:
+///
+///   vda  system, 5 GiB virtual  -- downloaded, compressed clusters
+///   vdb  userdata, 16 GiB virtual, empty -- seeded from the bundle
+///   efi_vars  UEFI variable store (qcow2, 64 MiB virtual) -- seeded
 @MainActor
 final class GuestImage: ObservableObject {
     static let shared = GuestImage()
@@ -32,11 +41,11 @@ final class GuestImage: ObservableObject {
     /// whatever it downloaded first: the disk exists, so nothing re-fetches it, and
     /// a guest missing a newly-added component fails in ways that look like app
     /// bugs rather than a stale image.
-    static let imageVersion = "guest-v13"
+    static let imageVersion = "lineage-v1"
 
     static var imageURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"
-                  + "\(imageVersion)/husk-guest.qcow2")!
+                  + "\(imageVersion)/vda.qcow2")!
     }
 
     nonisolated private var versionStampPath: String {
@@ -48,8 +57,9 @@ final class GuestImage: ObservableObject {
     nonisolated private var documents: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
-    nonisolated var diskPath: String { documents.appendingPathComponent("husk-guest.qcow2").path }
-    nonisolated var varsPath: String { documents.appendingPathComponent("edk2-vars.fd").path }
+    nonisolated var diskPath: String { documents.appendingPathComponent("lineage-vda.qcow2").path }
+    nonisolated var userdataPath: String { documents.appendingPathComponent("lineage-vdb.qcow2").path }
+    nonisolated var varsPath: String { documents.appendingPathComponent("lineage-efi-vars.fd").path }
     nonisolated var firmwarePath: String { documents.appendingPathComponent("edk2-aarch64-code.fd").path }
 
     private var task: URLSessionDownloadTask?
@@ -57,7 +67,7 @@ final class GuestImage: ObservableObject {
     /// Bump whenever the set or order of virtio devices in the Phase 1 command
     /// line changes. Any change renumbers the PCI bus and invalidates recorded
     /// UEFI boot entries.
-    nonisolated static let deviceLayoutSignature = "v2-gpu-tablet-kbd-net-9p"
+    nonisolated static let deviceLayoutSignature = "v3-lineage-gpu-xhci-2blk-net-serial-rng"
 
     /// qcow2 magic: "QFI\xfb". Checked because a download that "succeeded" is not
     /// the same as a download that produced an image -- a 404 body lands on disk
@@ -165,11 +175,35 @@ final class GuestImage: ObservableObject {
                 HuskLog.log("guest", "device layout changed (\(previous ?? "?") -> \(current)); "
                                    + "resetting the UEFI variable store so it re-discovers the disk")
             } else {
-                HuskLog.log("guest", "creating UEFI variable store")
+                HuskLog.log("guest", "staging UEFI variable store")
             }
-            let vars = Data(count: 64 * 1024 * 1024)
-            try vars.write(to: URL(fileURLWithPath: varsPath))
+            // Seeded from the image's own variable store rather than created
+            // blank. It already holds the boot entry for this Android build,
+            // which saves the firmware a discovery pass -- and if our PCI layout
+            // does not match the one it was recorded under, the entry simply
+            // fails to resolve and the firmware falls back to scanning for
+            // \EFI\BOOT\BOOTAA64.EFI, which is where it would have ended up
+            // starting from empty anyway.
+            guard let seed = Bundle.main.path(forResource: "lineage-efi-vars-seed", ofType: "fd") else {
+                throw NSError(domain: "husk", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "lineage-efi-vars-seed.fd missing from the app bundle"])
+            }
+            try? fm.removeItem(atPath: varsPath)
+            try fm.copyItem(atPath: seed, toPath: varsPath)
             try? current.write(to: stamp, atomically: true, encoding: .utf8)
+        }
+
+        // Userdata. Empty on arrival -- 16 GiB virtual, 192 KB on disk -- and
+        // written by Android from its first boot onward, so it is copied out of
+        // the read-only bundle once and then left alone. Deliberately NOT tied
+        // to the layout signature: resetting it would factory-reset the guest.
+        if !fm.fileExists(atPath: userdataPath) {
+            guard let seed = Bundle.main.path(forResource: "lineage-vdb-seed", ofType: "qcow2") else {
+                throw NSError(domain: "husk", code: 3, userInfo: [
+                    NSLocalizedDescriptionKey: "lineage-vdb-seed.qcow2 missing from the app bundle"])
+            }
+            try fm.copyItem(atPath: seed, toPath: userdataPath)
+            HuskLog.log("guest", "userdata disk staged to Documents")
         }
     }
 

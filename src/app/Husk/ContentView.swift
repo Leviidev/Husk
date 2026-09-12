@@ -157,7 +157,7 @@ struct SetupView: View {
     @Binding var showLogs: Bool
     let onStart: () -> Void
 
-    @State private var profile: QemuRunner.Profile = .phase1Waydroid
+    @State private var profile: QemuRunner.Profile = .phase1Android
 
     var body: some View {
         ZStack {
