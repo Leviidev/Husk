@@ -171,7 +171,8 @@ stage_qemu() {
             --with-coroutine=libucontext \
             --enable-slirp \
             --disable-cocoa --disable-sdl --disable-gtk --disable-coreaudio \
-            --disable-vnc --disable-spice --disable-opengl --disable-virglrenderer \
+            --disable-vnc --disable-spice \
+            --enable-opengl --enable-virglrenderer \
             --disable-curses --disable-curl --disable-libusb --disable-usb-redir \
             --disable-tpm --disable-docs --disable-guest-agent --disable-tools \
             --disable-hvf --disable-vde --disable-brlapi --disable-libssh \
