@@ -234,7 +234,10 @@ final class QemuRunner: ObservableObject {
             // factors. It is also a measurement: if the frame rate does not move
             // roughly in proportion then fill is not the bottleneck and this
             // model is wrong, which is worth knowing before tuning anything else.
-            "-device", "virtio-gpu-pci,xres=360,yres=640",
+            // virtio-gpu-GL: the guest's GL commands go to virglrenderer and are
+            // executed on the phone's GPU, instead of Android rasterising every
+            // pixel in software on a CPU that is itself emulated.
+            "-device", "virtio-gpu-gl-pci,xres=360,yres=640",
 
             // USB HID rather than virtio-input, which is what their config uses.
             // Every Android kernel has usbhid; virtio-input is not guaranteed,
@@ -331,8 +334,36 @@ final class QemuRunner: ObservableObject {
 
         // Must happen after qemu_init (the console does not exist before it) and
         // before qemu_main_loop (which does not return).
-        HuskLog.log("qemu", "calling husk_display_init()")
-        husk_display_init()
+        // The GL path needs a CAMetalLayer, which only exists once SwiftUI has
+        // laid the view out -- and this is the QEMU thread, which cannot reach
+        // UIKit. Wait briefly for the view to publish it, then fall back to the
+        // software path rather than showing nothing at all.
+        HuskGLView.surfaceReady.lock()
+        var deadline = Date().addingTimeInterval(10)
+        while HuskGLView.layerForGL == nil, Date() < deadline {
+            HuskGLView.surfaceReady.wait(until: deadline)
+        }
+        let layer = HuskGLView.layerForGL
+        let size = HuskGLView.pixelSize
+        HuskGLView.surfaceReady.unlock()
+        _ = deadline
+
+        var glUp = false
+        if let layer {
+            HuskLog.log("qemu", "calling husk_display_gl_init() on a "
+                              + "\(Int(size.width))x\(Int(size.height)) layer")
+            glUp = husk_display_gl_init(Unmanaged.passUnretained(layer).toOpaque(),
+                                        Int32(size.width), Int32(size.height))
+            HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
+                                     : "GL display FAILED to initialise")
+        } else {
+            HuskLog.log("qemu", "no CAMetalLayer after 10s; falling back to the software display")
+        }
+
+        if !glUp {
+            HuskLog.log("qemu", "calling husk_display_init() (software path)")
+            husk_display_init()
+        }
 
         startMemoryWatch()
 
@@ -365,7 +396,8 @@ final class QemuRunner: ObservableObject {
                 // second is. The sequence counter increments once per surface
                 // update the guest pushed, so this is what the guest actually
                 // produced, not what we managed to draw.
-                let frames = husk_display_sequence()
+                let glFrames = husk_display_gl_frames()
+                let frames = glFrames > 0 ? glFrames : husk_display_sequence()
                 let delta = frames >= lastFrames ? frames - lastFrames : 0
                 lastFrames = frames
                 HuskLog.log("perf", "guest produced \(delta) frames in 5s "

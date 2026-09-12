@@ -46,6 +46,13 @@ void husk_ios_jit_detach(void);
 void husk_ios_jit_log_footprint(const char *tag);
 size_t husk_ios_available_memory(void);
 
+/* --- Husk's GL display path --- */
+/* Bring the GL display up against a CAMetalLayer. Returns false if EGL, the
+   surface, or the console could not be set up, in which case the caller should
+   fall back to husk_display_init(). */
+bool     husk_display_gl_init(void *native_layer, int32_t width, int32_t height);
+uint64_t husk_display_gl_frames(void);
+
 /* --- Husk's guest memory balloon --- */
 /* Ask the guest to shrink to, or grow back to, this much usable RAM. Safe from
    any thread; the request is asynchronous, so treat it as steering rather than

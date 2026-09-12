@@ -95,7 +95,13 @@ struct GuestScreenView: View {
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
-            HuskDisplay().ignoresSafeArea()
+            // The GL surface, not HuskDisplay. ANGLE renders into this layer
+            // directly; HuskDisplay uploaded a CPU framebuffer itself, which is
+            // the work the GPU path exists to remove. QemuRunner falls back to
+            // the software display if GL cannot start, and that path draws
+            // nothing here -- a black screen with "GL display FAILED" in the log
+            // is the signal, rather than a silent wrong-looking picture.
+            HuskGLScreen().ignoresSafeArea()
 
             // Zero-sized: it exists only to hold first-responder status, which is
             // what both the on-screen keyboard and hardware key events depend on.
