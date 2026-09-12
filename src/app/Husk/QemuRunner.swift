@@ -193,8 +193,13 @@ final class QemuRunner: ObservableObject {
             return 1536
         }
 
+        // The JIT is only subtracted if it has not been taken yet. Prewarming
+        // claims it before this runs, so os_proc_available_memory() has already
+        // fallen by that much -- subtracting again charged for it twice and cut
+        // the guest from 1906 MiB to 1650.
+        let jitStillToCome = JITBootstrap.prewarmed ? 0 : jitMiB
         let target = max(1024, min(6144,
-            availableMiB - safetyMarginMiB - jitMiB - qemuOverheadMiB))
+            availableMiB - safetyMarginMiB - jitStillToCome - qemuOverheadMiB))
 
         QemuRunner.shared.lastGuestMiB = target
         HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical but "
@@ -272,10 +277,15 @@ final class QemuRunner: ObservableObject {
             // factors. It is also a measurement: if the frame rate does not move
             // roughly in proportion then fill is not the bottleneck and this
             // model is wrong, which is worth knowing before tuning anything else.
-            // virtio-gpu-GL: the guest's GL commands go to virglrenderer and are
-            // executed on the phone's GPU, instead of Android rasterising every
-            // pixel in software on a CPU that is itself emulated.
-            "-device", "virtio-gpu-gl-pci,xres=360,yres=640",
+            // GL only if it has been proven to work on this device, because the
+            // choice is not reversible: a console created for virtio-gpu-gl
+            // demands a GL listener, so when GL then fails to initialise the
+            // software display cannot register and QEMU aborts with "The
+            // console requires a GL context". Falling back has to mean not
+            // asking for the GL device in the first place.
+            "-device", QemuRunner.glProven
+                ? "virtio-gpu-gl-pci,xres=360,yres=640"
+                : "virtio-gpu-pci,xres=360,yres=640",
 
             // USB HID rather than virtio-input, which is what their config uses.
             // Every Android kernel has usbhid; virtio-input is not guaranteed,
@@ -330,7 +340,48 @@ final class QemuRunner: ObservableObject {
         startSerialTailer()
     }
 
+    /// Set once the GL stack has been shown to work on this device. Persisted,
+    /// because the device choice happens before anything can be tested and a
+    /// wrong guess costs the whole session.
+    nonisolated(unsafe) static var glProven = UserDefaults.standard.bool(forKey: "husk.glProven")
+
+    /// Try the GL stack without committing to it. Runs before the QEMU command
+    /// line is built, so its answer can pick the virtio-gpu device.
+    private func probeGL() {
+        guard !QemuRunner.glProven else { return }
+
+        HuskGLView.surfaceReady.lock()
+        let deadline = Date().addingTimeInterval(5)
+        while HuskGLView.layerForGL == nil, Date() < deadline {
+            HuskGLView.surfaceReady.wait(until: deadline)
+        }
+        let layer = HuskGLView.layerForGL
+        let size = HuskGLView.pixelSize
+        HuskGLView.surfaceReady.unlock()
+
+        guard let layer, size.width > 0 else {
+            HuskLog.log("gl", "no layer to probe with; staying on the software display")
+            return
+        }
+
+        var created = false
+        DispatchQueue.main.sync {
+            created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
+                                             Int32(size.width), Int32(size.height))
+        }
+        let works = created && husk_display_gl_probe()
+        HuskLog.log("gl", "probe: create=\(created) usable=\(works)")
+        if works {
+            QemuRunner.glProven = true
+            UserDefaults.standard.set(true, forKey: "husk.glProven")
+            HuskLog.log("gl", "GL works; this and future runs use the GPU")
+        } else {
+            HuskLog.log("gl", "GL not usable on this device; software display it is")
+        }
+    }
+
     private func run() {
+        probeGL()
         let args = (profile == .phase0Alpine) ? phase0Arguments() : phase1Arguments()
         HuskLog.log("qemu", "profile: \(profile.rawValue)")
 
@@ -356,14 +407,12 @@ final class QemuRunner: ObservableObject {
                               + (size >= 0 ? "\(size) bytes" : "MISSING"))
         }
 
-        // Before qemu_init(), not after: virtio-gpu-gl is realized inside it and
-        // refuses unless display_opengl is already set. Only EGL and the flag
-        // are needed this early; the surface comes later, once UIKit has a
-        // layer to give us.
-        let glEarly = husk_display_gl_early()
-        HuskLog.log("qemu", glEarly
-            ? "EGL up before device creation; virtio-gpu-gl can realize"
-            : "EGL early init FAILED -- virtio-gpu-gl will refuse to start")
+        if QemuRunner.glProven {
+            // Only claimed once GL has actually been shown to work, since the
+            // flag is what lets virtio-gpu-gl realize.
+            _ = husk_display_gl_early()
+            HuskLog.log("qemu", "GL proven previously; asking for virtio-gpu-gl")
+        }
 
         HuskLog.logFootprint("before-qemu-init")
 
@@ -390,53 +439,17 @@ final class QemuRunner: ObservableObject {
 
         // Must happen after qemu_init (the console does not exist before it) and
         // before qemu_main_loop (which does not return).
-        // The GL path needs a CAMetalLayer, which only exists once SwiftUI has
-        // laid the view out -- and this is the QEMU thread, which cannot reach
-        // UIKit. Wait briefly for the view to publish it, then fall back to the
-        // software path rather than showing nothing at all.
-        HuskGLView.surfaceReady.lock()
-        var deadline = Date().addingTimeInterval(10)
-        while HuskGLView.layerForGL == nil, Date() < deadline {
-            HuskGLView.surfaceReady.wait(until: deadline)
-        }
-        let layer = HuskGLView.layerForGL
-        let size = HuskGLView.pixelSize
-        HuskGLView.surfaceReady.unlock()
-        _ = deadline
-
+        // The surface was already created and proven during probeGL(); all that
+        // is left is to register the listener, which needs console 0 and so has
+        // to wait until qemu_init() has run.
         var glUp = false
-        if let layer {
-            HuskLog.log("qemu", "setting up GL on a "
-                              + "\(Int(size.width))x\(Int(size.height)) layer")
-            // Created on the main thread: ANGLE is building a surface against a
-            // CAMetalLayer, and CALayer is not thread-safe. Bound here, because
-            // a context belongs to whichever thread made it current and the
-            // guest renders from this one.
-            // Logged through HuskLog at each stage, not left to the C side's
-            // fprintf. Raw stderr reaches the log through a pipe and arrives
-            // out of order against the timestamped lines, which made it
-            // impossible to tell which half had failed.
-            var created = false
-            DispatchQueue.main.sync {
-                created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
-                                                 Int32(size.width), Int32(size.height))
-            }
-            HuskLog.log("qemu", "husk_display_gl_create (main thread) -> \(created)")
-
-            var bound = false
-            if created {
-                bound = husk_display_gl_bind()
-                HuskLog.log("qemu", "husk_display_gl_bind (qemu thread) -> \(bound)")
-            }
-            glUp = created && bound
+        if QemuRunner.glProven {
+            glUp = husk_display_gl_bind()
             HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
-                                     : "GL display unavailable; using the software display")
-        } else {
-            HuskLog.log("qemu", "no CAMetalLayer after 10s; falling back to the software display")
+                                     : "GL bind failed after a successful probe")
         }
-
         if !glUp {
-            HuskLog.log("qemu", "calling husk_display_init() (software path)")
+            HuskLog.log("qemu", "using the software display")
             husk_display_init()
         }
         DispatchQueue.main.async { QemuRunner.shared.glDisplayActive = glUp }

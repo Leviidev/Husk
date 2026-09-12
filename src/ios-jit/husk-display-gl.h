@@ -21,6 +21,8 @@ bool husk_display_gl_early(void);
 bool husk_display_gl_create(void *native_layer, int width, int height);
 
 /* Make the context current and register the listener. QEMU thread. */
+/* Is GL usable here? Registers nothing. */
+bool husk_display_gl_probe(void);
 bool husk_display_gl_bind(void);
 
 /* Frames presented, for the perf counter. */

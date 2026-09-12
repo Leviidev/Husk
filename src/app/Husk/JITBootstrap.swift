@@ -44,6 +44,11 @@ enum JITBootstrap {
     /// StikDebug may be long gone.
     static let jitBytes = 256 * 1024 * 1024
 
+    /// True once the region is held. The memory budget needs this: after a
+    /// prewarm the JIT is already counted in the footprint, so subtracting it
+    /// again charges for it twice and cost the guest 256 MiB.
+    nonisolated(unsafe) static var prewarmed = false
+
     /// Take the JIT region now, while StikDebug is definitely still attached.
     ///
     /// StikDebug lets go after a while, and a first run spends a minute
@@ -61,6 +66,7 @@ enum JITBootstrap {
         HuskLog.log("jit", "claiming \(jitBytes / (1024 * 1024)) MiB of JIT memory now, "
                          + "before the guest download -- StikDebug does not stay attached")
         let ok = husk_ios_jit_prewarm(jitBytes)
+        if ok { prewarmed = true }
         HuskLog.log("jit", ok ? "JIT region secured; it will be handed to QEMU later"
                               : "JIT prewarm FAILED -- StikDebug is not servicing traps")
         return ok

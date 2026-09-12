@@ -202,6 +202,63 @@ bool husk_display_gl_create(void *native_layer, int width, int height)
     return true;
 }
 
+/*
+ * Answer one question -- is GL usable on this thread? -- without registering
+ * anything or changing QEMU's state.
+ *
+ * Kept separate from bind() because the answer decides which virtio-gpu device
+ * the guest gets, and that has to be decided before qemu_init() creates it.
+ * Probing through bind() would mean registering a listener for a console that
+ * may not exist yet.
+ */
+bool husk_display_gl_probe(void)
+{
+    const GLubyte *vendor;
+    void *direct;
+    const GLubyte *(*gl_get_string)(GLenum);
+
+    if (husk_surface == EGL_NO_SURFACE || husk_context == EGL_NO_CONTEXT) {
+        fprintf(stderr, "[husk-gl] probe: nothing was created\n");
+        return false;
+    }
+    if (eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface,
+                       husk_context) != EGL_TRUE) {
+        fprintf(stderr, "[husk-gl] probe: eglMakeCurrent failed: 0x%x\n", eglGetError());
+        return false;
+    }
+
+    /*
+     * Three answers, because eglMakeCurrent succeeding while glGetString
+     * returns NULL is contradictory and has now survived several guesses.
+     * eglGetCurrentContext says whether EGL agrees a context is current;
+     * eglQueryString needs no GL context at all; and calling ANGLE's own
+     * GL_GetString by dlsym takes epoxy's dispatch out of the path entirely.
+     * If the direct call works and epoxy's does not, epoxy is at fault.
+     */
+    fprintf(stderr, "[husk-gl] probe: eglGetCurrentContext=%p (created %p)\n",
+            eglGetCurrentContext(), husk_context);
+    fprintf(stderr, "[husk-gl] probe: egl vendor=%s version=%s\n",
+            eglQueryString(qemu_egl_display, EGL_VENDOR),
+            eglQueryString(qemu_egl_display, EGL_VERSION));
+    fprintf(stderr, "[husk-gl] probe: eglGetProcAddress(glGetString)=%p\n",
+            (void *)eglGetProcAddress("glGetString"));
+
+    direct = dlsym(RTLD_DEFAULT, "GL_GetString");
+    gl_get_string = direct;
+    fprintf(stderr, "[husk-gl] probe: dlsym(GL_GetString)=%p\n", direct);
+    if (gl_get_string) {
+        const GLubyte *v = gl_get_string(GL_VENDOR);
+        fprintf(stderr, "[husk-gl] probe: ANGLE direct vendor=%s\n",
+                v ? (const char *)v : "(null)");
+    }
+
+    vendor = glGetString(GL_VENDOR);
+    fprintf(stderr, "[husk-gl] probe: epoxy vendor=%s renderer=%s\n",
+            vendor ? (const char *)vendor : "(null)",
+            (const char *)glGetString(GL_RENDERER));
+    return vendor != NULL;
+}
+
 bool husk_display_gl_bind(void)
 {
     QemuConsole *con;

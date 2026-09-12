@@ -132,6 +132,7 @@ wanted = [
     "husk_display_send_key",
     "husk_display_gl_create",
     "husk_display_gl_bind",
+    "husk_display_gl_probe",
     "husk_display_gl_early",
     "husk_display_gl_frames",
     "husk_snapshot_save",

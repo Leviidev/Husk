@@ -59,6 +59,8 @@ bool     husk_display_gl_early(void);
 /* MAIN THREAD: ANGLE sets up a CAMetalLayer here, and CALayer is not thread-safe. */
 bool     husk_display_gl_create(void *native_layer, int32_t width, int32_t height);
 /* QEMU thread: make the context current and register the listener. */
+/* Is GL usable here? Registers nothing. */
+bool     husk_display_gl_probe(void);
 bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
 
