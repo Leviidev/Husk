@@ -251,7 +251,13 @@ final class QemuRunner: ObservableObject {
             "-serial", "chardev:ser0",
             "-display", "none",
             "-monitor", "none",
-            "-no-reboot",
+            // NOT -no-reboot. Android reboots itself on purpose, and the most
+            // important case is repair: when /data is inconsistent it reboots
+            // into recovery, fixes it, and reboots again. With -no-reboot that
+            // self-repair became a dead VM -- init announced
+            // "Rebooting into recovery, reason: init_user0_failed" and QEMU
+            // simply stopped. A guest that loops will show up in the log; a
+            // guest that cannot reboot cannot recover.
             "-d", "guest_errors,unimp",
         ]
     }

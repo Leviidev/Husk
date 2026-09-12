@@ -223,13 +223,29 @@ final class GuestImage: ObservableObject {
         // Userdata. Empty on arrival -- 16 GiB virtual, 192 KB on disk -- and
         // written by Android from its first boot onward, so it is copied out of
         // the read-only bundle once and then left alone. Deliberately NOT tied
-        // to the layout signature: resetting it would factory-reset the guest.
+        // to the device layout signature: that changes for reasons that have
+        // nothing to do with /data, and resetting it factory-resets the guest.
+        //
+        // It has its own version instead, bumped only when userdata is known to
+        // be unusable. It is at v2 because a kernel panic killed the guest
+        // partway through building /data, and what it left behind made Android
+        // reboot into recovery on every subsequent start
+        // ("init_user0_failed"). Nothing short of a clean partition fixes that.
+        let seedStamp = URL(fileURLWithPath: userdataPath + ".seed")
+        let seedVersion = "v2"
+        let seededWith = try? String(contentsOf: seedStamp, encoding: .utf8)
+        if fm.fileExists(atPath: userdataPath), seededWith != seedVersion {
+            HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "
+                               + "starting from a clean partition")
+            try? fm.removeItem(atPath: userdataPath)
+        }
         if !fm.fileExists(atPath: userdataPath) {
             guard let seed = Bundle.main.path(forResource: "lineage-vdb-seed", ofType: "qcow2") else {
                 throw NSError(domain: "husk", code: 3, userInfo: [
                     NSLocalizedDescriptionKey: "lineage-vdb-seed.qcow2 missing from the app bundle"])
             }
             try fm.copyItem(atPath: seed, toPath: userdataPath)
+            try? seedVersion.write(to: seedStamp, atomically: true, encoding: .utf8)
             HuskLog.log("guest", "userdata disk staged to Documents")
         }
     }
