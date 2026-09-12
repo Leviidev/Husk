@@ -12,10 +12,16 @@
  * the system image and is effectively read-only; putting snapshots there would
  * grow the file we distribute.
  *
- * Both calls must run under the BQL on the main loop, and the caller is a plain
- * thread, so they hop through a bottom half exactly as the balloon does. Saving
- * also has to stop the CPUs first: a snapshot taken while vCPUs are running
- * captures a machine mid-instruction and restores into nonsense.
+ * Both calls must run under the BQL on the main loop. Saving is asked for from
+ * a plain thread, so it hops through a bottom half exactly as the balloon does;
+ * the bottom half then already holds the BQL and must not take it again.
+ * Loading is different: it runs straight after qemu_init(), which returns with
+ * the BQL held by this very thread, so it needs no bottom half at all.
+ *
+ * Neither call stops the CPUs by hand. save_snapshot() and the load sequence
+ * below do it at the points where it is correct to do it, and a stop issued
+ * outside those points is not merely redundant -- it is recorded in the state
+ * that gets written out, and the machine comes back paused.
  */
 #include "qemu/osdep.h"
 #include "qemu/main-loop.h"
@@ -52,25 +58,22 @@ static void husk_report(bool ok, const char *what, Error *err)
 static void husk_save_bh(void *opaque)
 {
     Error *err = NULL;
-    bool was_running;
     bool ok;
 
-    bql_lock();
     /*
-     * Stop first. save_snapshot() on a running machine captures vCPUs
-     * mid-instruction, and what comes back is not a machine that can resume.
+     * No bql_lock() here. A bottom half on the main AIO context already runs
+     * with the BQL held, and taking it a second time aborts the process:
+     *
+     *   ERROR: cpus.c:556:bql_lock_impl: assertion failed: (!bql_locked())
+     *
+     * No vm_stop()/vm_start() either, tempting as it looks. save_snapshot()
+     * records the run state it found on entry, calls global_state_store() and
+     * vm_stop(RUN_STATE_SAVE_VM) itself, and restores that state on the way
+     * out. Stopping the machine first means the state it records -- and writes
+     * into the snapshot -- is "stopped", so the restored machine comes back
+     * paused and the screen never moves again.
      */
-    was_running = runstate_is_running();
-    if (was_running) {
-        vm_stop(RUN_STATE_SAVE_VM);
-    }
-
     ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, NULL, false, NULL, &err);
-
-    if (was_running) {
-        vm_start();
-    }
-    bql_unlock();
 
     husk_report(ok, "save", err);
     error_free(err);
@@ -85,25 +88,43 @@ void husk_snapshot_save(husk_snapshot_cb cb)
 bool husk_snapshot_load_at_startup(void)
 {
     Error *err = NULL;
+    RunState saved;
     bool ok;
 
     /*
-     * Called straight after qemu_init() and before the main loop runs, so the
-     * BQL is already held by this thread and the machine is stopped -- which is
-     * exactly the state load_snapshot wants. No bottom half here.
+     * Called straight after qemu_init(), which returns with the BQL held by
+     * this thread -- upstream's main() unlocks it on the next line -- so there
+     * is no bottom half here and no lock to take.
+     *
+     * The machine is however already *running* by this point: qemu_init() ends
+     * in qmp_x_exit_preconfig(), which calls qmp_cont() unless -S was passed,
+     * and vCPU threads are executing guest code. Loading a snapshot underneath
+     * running vCPUs is not something load_snapshot() defends against, so stop
+     * them first and resume afterwards -- the same order -loadvm uses.
      */
+    saved = runstate_get();
+    vm_stop(RUN_STATE_RESTORE_VM);
+
     ok = load_snapshot(HUSK_SNAPSHOT_NAME, NULL, false, NULL, &err);
     if (!ok) {
         /*
          * Not an error worth shouting about: the common case is simply that no
-         * snapshot exists yet, on the very first run.
+         * snapshot exists yet, on the very first run. Put the machine back the
+         * way it was and let it boot.
          */
         fprintf(stderr, "[husk-snap] no snapshot restored (%s); booting normally\n",
                 err ? error_get_pretty(err) : "none found");
         error_free(err);
+        vm_resume(saved);
         return false;
     }
+
     fprintf(stderr, "[husk-snap] restored '%s' -- Android is already booted\n",
             HUSK_SNAPSHOT_NAME);
+    /*
+     * Resume running whatever the machine was doing before, rather than
+     * whatever state the snapshot happened to be taken in.
+     */
+    load_snapshot_resume(RUN_STATE_RUNNING);
     return true;
 }

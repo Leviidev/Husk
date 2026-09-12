@@ -31,9 +31,9 @@ static void husk_balloon_apply(void *opaque)
     int64_t target = (int64_t)(intptr_t)opaque;
     Error *err = NULL;
 
-    bql_lock();
+    /* Already under the BQL: a main-context bottom half runs with it held, and
+     * taking it again aborts on assertion failed: (!bql_locked()). */
     qmp_balloon(target, &err);
-    bql_unlock();
 
     if (err) {
         fprintf(stderr, "[husk-balloon] qmp_balloon(%lld) failed: %s\n",

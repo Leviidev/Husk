@@ -15,6 +15,18 @@ HUSK_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DD="${DD:-/tmp/husk_ipa}"
 OUT="${1:-$HOME/Desktop/Husk.ipa}"
 
+# The .app is not the only thing that can be stale. The Xcode target links the
+# dylib staged in build/ios-arm64/lib, which is filled in by build_ios.sh's qemu
+# stage -- so rebuilding QEMU with plain ninja produces a new dylib that never
+# reaches the app, and the IPA ships the previous one with no warning at all.
+# That happened once and looked exactly like a fix that did not work.
+BUILT="$HUSK_ROOT/third_party/build/qemu-10.0.12-utm/_husk_build/libqemu-aarch64-softmmu.dylib"
+STAGED="$HUSK_ROOT/build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"
+if [ -f "$BUILT" ] && [ "$BUILT" -nt "$STAGED" ]; then
+    echo "==> staged dylib is older than the built one; restaging"
+    cp "$BUILT" "$STAGED"
+fi
+
 echo "==> building"
 xcodebuild -project "$HUSK_ROOT/src/app/Husk.xcodeproj" -scheme Husk \
     -sdk iphoneos -configuration Release -derivedDataPath "$DD" \

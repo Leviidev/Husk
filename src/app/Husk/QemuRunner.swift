@@ -55,6 +55,11 @@ final class QemuRunner: ObservableObject {
     @Published var restoredFromSnapshot = false
     /// Set once a save has been requested, so it is only ever done once.
     nonisolated(unsafe) static var snapshotRequested = false
+    /// When Android announced `sys.boot_completed=1` on the serial console.
+    ///
+    /// Android says this itself, on a line init prints; it does not have to be
+    /// inferred, and inferring it was the bug. Nil until the guest says so.
+    nonisolated(unsafe) static var bootCompletedAt: Date?
     nonisolated(unsafe) static var pendingSnapshotMiB = 0
     /// Guest size actually handed to QEMU, recorded alongside any snapshot.
     nonisolated(unsafe) var lastGuestMiB = 0
@@ -495,15 +500,20 @@ final class QemuRunner: ObservableObject {
 
                 // Save the machine once Android is genuinely up, and only once.
                 //
-                // "Up" is inferred from the display rather than asked of the
-                // guest, because asking needs ADB and this does not: six
-                // consecutive five-second windows with frames in them means the
-                // UI is running and settled, not that the boot animation
-                // flickered. Snapshotting mid-boot would save a machine that
-                // still has all its work ahead of it, which is worse than
-                // useless -- every later launch would resume into it.
+                // The previous rule here -- six consecutive five-second windows
+                // with frames in them -- fired at 31 seconds, while the boot
+                // animation was still playing and the system had another five
+                // minutes of work in front of it. The comment even said that
+                // snapshotting mid-boot would be worse than useless, which was
+                // right; the heuristic just did not implement it. Wait for the
+                // guest's own boot_completed, then let it settle: the launcher
+                // still has to start and draw, and a snapshot taken during that
+                // saves a machine that resumes into a half-drawn screen.
                 if delta > 0 { steadyFrames += 1 } else { steadyFrames = 0 }
-                if steadyFrames >= 6,
+                let settled = QemuRunner.bootCompletedAt.map {
+                    Date().timeIntervalSince($0) >= 30
+                } ?? false
+                if settled, steadyFrames >= 3,
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasSnapshot {
                     QemuRunner.snapshotRequested = true
@@ -511,7 +521,7 @@ final class QemuRunner: ObservableObject {
                     // callback crosses into C, and a C function pointer cannot
                     // carry context.
                     QemuRunner.pendingSnapshotMiB = QemuRunner.shared.lastGuestMiB
-                    HuskLog.log("snap", "Android has been drawing for 30s; saving the machine "
+                    HuskLog.log("snap", "Android is booted and settled; saving the machine "
                                       + "(guest \(QemuRunner.pendingSnapshotMiB) MiB). The picture "
                                       + "will freeze while RAM is written to disk.")
                     husk_snapshot_save { ok, what in
@@ -603,6 +613,19 @@ final class QemuRunner: ObservableObject {
                     if line.isEmpty { continue }
 
                     HuskLog.log("guest", line)
+
+                    // Android announces the end of its own boot. init prints
+                    // "processing action (sys.boot_completed=1)" when the
+                    // property is set, which is the one unambiguous statement
+                    // in the whole log that the system is up -- everything else
+                    // (frames appearing, bootanim running) is true long before.
+                    if QemuRunner.bootCompletedAt == nil,
+                       line.contains("sys.boot_completed=1") {
+                        QemuRunner.bootCompletedAt = Date()
+                        HuskLog.log("snap", "Android reports boot_completed; "
+                                          + "will save the machine once it settles")
+                    }
+
                     if let r = line.range(of: "HUSK-SETUP: ") ?? line.range(of: "HUSK-UI: ") {
                         let msg = String(line[r.upperBound...])
                         Task { @MainActor in QemuRunner.shared.setupMessage = msg }
