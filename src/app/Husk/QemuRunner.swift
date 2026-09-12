@@ -128,34 +128,41 @@ final class QemuRunner: ObservableObject {
     /// given, and dirty pages count against the footprint.
     private func guestMemoryMiB() -> Int {
         let physMiB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024))
-        let reportedMiB = Int(husk_ios_available_memory() / (1024 * 1024))
+        let availableMiB = Int(husk_ios_available_memory() / (1024 * 1024))
 
-        // os_proc_available_memory() is a floor, not a ceiling. It reports
-        // headroom against the DEFAULT per-app jetsam limit and does not account
-        // for com.apple.developer.kernel.increased-memory-limit, which this app
-        // holds: on a 12 GB iPhone it says ~3.3 GB while AetherPS4-iOS runs at
-        // about 5 GB on the same device with the same entitlement. Sizing the
-        // guest from it left Android with 1.5 GB, which starved both its heap
-        // and the TCG translation cache.
-        let jitMiB = 512          // tb-size
+        // os_proc_available_memory() is the real ceiling, not a floor. Budgeting
+        // 40% of physical RAM instead -- a 3426 MiB guest -- got the app
+        // jetsammed 85 seconds in, the footprint falling cleanly from 2082 MiB
+        // of headroom to 178 MiB before the log simply stopped. Death came just
+        // past 3400 MiB, against the 3376 MiB this call reported at launch.
+        //
+        // It is accurate because a guest's RAM is dirty anonymous memory, which
+        // is exactly what it measures. QEMU's resident size is a high-water mark
+        // of guest page touches: once the guest dirties a page it stays resident
+        // even after the guest frees it, so the peak is what kills us and it
+        // cannot be walked back. Another app reaching a larger number does not
+        // transfer -- clean file-backed pages are evictable and charged
+        // differently.
+        let jitMiB = 256          // tb-size
         let qemuOverheadMiB = 750 // measured, not guessed
+        // Real margin, in megabytes rather than a fraction. A fraction of what
+        // was left quietly cost ~375 MiB the guest could have had; the run that
+        // booted Android peaked with ~500 MiB spare, so this is the same shape
+        // of safety without the waste.
+        let safetyMarginMiB = 450
 
-        guard physMiB > 0 else {
-            HuskLog.log("qemu", "physical memory unknown; falling back to 2048 MiB guest")
-            return 2048
+        guard availableMiB > 0 else {
+            HuskLog.log("qemu", "available memory unknown; falling back to 1536 MiB guest")
+            return 1536
         }
 
-        // 40% of physical RAM, capped at 5 GB of total footprint. The cap is
-        // what matters: the rest of the system still has to live here, and a
-        // jetsam kill costs the whole session.
-        let budgetMiB = min(physMiB * 2 / 5, 5120)
-        let target = max(1280, min(6144, budgetMiB - jitMiB - qemuOverheadMiB))
+        let target = max(1024, min(6144,
+            availableMiB - safetyMarginMiB - jitMiB - qemuOverheadMiB))
 
-        HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical, "
-                          + "os_proc_available_memory() says \(reportedMiB) MiB "
-                          + "(a floor -- the increased-memory-limit entitlement is not "
-                          + "reflected there); budgeting \(budgetMiB) MiB total, "
-                          + "reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) MiB overhead; "
+        HuskLog.log("qemu", "memory budget: \(physMiB) MiB physical but "
+                          + "\(availableMiB) MiB before jetsam -- that is the real "
+                          + "ceiling; reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) "
+                          + "MiB overhead + \(safetyMarginMiB) MiB margin; "
                           + "guest gets \(target) MiB")
         return target
     }
@@ -180,7 +187,7 @@ final class QemuRunner: ObservableObject {
             // so doubling it costs about a second and a half of one-time setup.
             // Android translates far more code than Alpine ever will, and the
             // region cannot be grown later -- StikDebug is gone by then.
-            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
+            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
             // Debian's cloud image boots through GRUB under UEFI, so the firmware
             // pair is required: read-only code volume plus a writable variable
