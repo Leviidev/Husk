@@ -1,5 +1,5 @@
 diff --git a/src/dispatch_common.c b/src/dispatch_common.c
-index 6fb7f02..ba7fd14 100644
+index 6fb7f02..7095419 100644
 --- a/src/dispatch_common.c
 +++ b/src/dispatch_common.c
 @@ -182,11 +182,17 @@
@@ -53,15 +53,33 @@ index 6fb7f02..ba7fd14 100644
      if (!result)
          error = dlerror();
  #endif
-@@ -713,23 +741,37 @@ epoxy_gl_dlsym(const char *name)
+@@ -713,23 +741,73 @@ epoxy_gl_dlsym(const char *name)
  void *
  epoxy_gles1_dlsym(const char *name)
  {
 +#ifdef __APPLE__
-+    /* Always ask EGL. See epoxy_get_core_proc_address() for why dlsym cannot
-+     * be trusted here: ANGLE is linked into the app with renamed entry points,
-+     * and dlsym for a core name finds an unrelated image that exports it. */
-+    return epoxy_get_proc_address(name);
++    /* Always ask EGL first. See epoxy_get_core_proc_address() for why dlsym
++     * cannot be trusted here: ANGLE is linked into the app with renamed entry
++     * points, and dlsym for a core name finds an unrelated image that exports
++     * it.
++     *
++     * eglGetProcAddress does return NULL for names it does not know, though,
++     * and the generated dispatch calls whatever it is given -- so an unresolved
++     * symbol arrives as SIGSEGV with nothing in the log to say which one. Fall
++     * back to dlsym, and if that fails too, say the name out loud. A named
++     * missing entry point is a bug report; a bare segfault is a mystery. */
++    {
++        void *f = epoxy_get_proc_address(name);
++        if (!f) {
++            get_dlopen_handle(&api.gles2_handle, GLES2_LIB, false, true);
++            if (api.gles2_handle)
++                f = do_dlsym(&api.gles2_handle, name, false);
++        }
++        if (!f)
++            fprintf(stderr, "[epoxy] NO ENTRY POINT for %s "
++                            "(eglGetProcAddress and dlsym both failed)\n", name);
++        return f;
++    }
 +#else
      if (epoxy_current_context_is_glx()) {
          return epoxy_get_proc_address(name);
@@ -76,10 +94,28 @@ index 6fb7f02..ba7fd14 100644
  epoxy_gles2_dlsym(const char *name)
  {
 +#ifdef __APPLE__
-+    /* Always ask EGL. See epoxy_get_core_proc_address() for why dlsym cannot
-+     * be trusted here: ANGLE is linked into the app with renamed entry points,
-+     * and dlsym for a core name finds an unrelated image that exports it. */
-+    return epoxy_get_proc_address(name);
++    /* Always ask EGL first. See epoxy_get_core_proc_address() for why dlsym
++     * cannot be trusted here: ANGLE is linked into the app with renamed entry
++     * points, and dlsym for a core name finds an unrelated image that exports
++     * it.
++     *
++     * eglGetProcAddress does return NULL for names it does not know, though,
++     * and the generated dispatch calls whatever it is given -- so an unresolved
++     * symbol arrives as SIGSEGV with nothing in the log to say which one. Fall
++     * back to dlsym, and if that fails too, say the name out loud. A named
++     * missing entry point is a bug report; a bare segfault is a mystery. */
++    {
++        void *f = epoxy_get_proc_address(name);
++        if (!f) {
++            get_dlopen_handle(&api.gles2_handle, GLES2_LIB, false, true);
++            if (api.gles2_handle)
++                f = do_dlsym(&api.gles2_handle, name, false);
++        }
++        if (!f)
++            fprintf(stderr, "[epoxy] NO ENTRY POINT for %s "
++                            "(eglGetProcAddress and dlsym both failed)\n", name);
++        return f;
++    }
 +#else
      if (epoxy_current_context_is_glx()) {
          return epoxy_get_proc_address(name);
@@ -91,17 +127,27 @@ index 6fb7f02..ba7fd14 100644
  }
  
  /**
-@@ -745,6 +787,9 @@ epoxy_gles2_dlsym(const char *name)
+@@ -745,6 +823,19 @@ epoxy_gles2_dlsym(const char *name)
  void *
  epoxy_gles3_dlsym(const char *name)
  {
 +#ifdef __APPLE__
-+    return epoxy_get_proc_address(name);
++    {
++        void *f = epoxy_get_proc_address(name);
++        if (!f) {
++            get_dlopen_handle(&api.gles2_handle, GLES2_LIB, false, true);
++            if (api.gles2_handle)
++                f = do_dlsym(&api.gles2_handle, name, false);
++        }
++        if (!f)
++            fprintf(stderr, "[epoxy] NO ENTRY POINT for %s (gles3)\n", name);
++        return f;
++    }
 +#endif
      if (epoxy_current_context_is_glx()) {
          return epoxy_get_proc_address(name);
      } else {
-@@ -768,10 +813,20 @@ epoxy_get_core_proc_address(const char *name, int core_version)
+@@ -768,10 +859,20 @@ epoxy_get_core_proc_address(const char *name, int core_version)
  {
  #ifdef _WIN32
      int core_symbol_support = 11;

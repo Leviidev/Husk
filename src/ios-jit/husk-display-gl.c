@@ -307,6 +307,45 @@ bool husk_display_gl_bind(void)
         return false;
     }
 
+    /*
+     * Preflight the entry points the shader path needs.
+     *
+     * qemu_gl_init_shader() compiles and links, and every GL call it makes goes
+     * through epoxy's dispatch. An entry point epoxy cannot resolve arrives
+     * there as a NULL function pointer and is called anyway -- which is a
+     * SIGSEGV with nothing in the log but the line before it. Checking first
+     * turns that into a named symbol and a fallback to the software display,
+     * which is slow but alive.
+     */
+    {
+        static const char *const needed[] = {
+            "glCreateShader", "glShaderSource", "glCompileShader",
+            "glGetShaderiv", "glGetShaderInfoLog", "glCreateProgram",
+            "glAttachShader", "glLinkProgram", "glGetProgramiv",
+            "glGetProgramInfoLog", "glDeleteShader", "glUseProgram",
+            "glGenVertexArrays", "glBindVertexArray", "glGenBuffers",
+            "glBindBuffer", "glBufferData", "glVertexAttribPointer",
+            "glEnableVertexAttribArray", "glGetAttribLocation",
+            "glGetUniformLocation", "glUniform1i", "glActiveTexture",
+            "glBindTexture", "glDrawArrays", "glViewport", "glClear",
+            "glClearColor",
+        };
+        bool missing = false;
+        for (size_t i = 0; i < ARRAY_SIZE(needed); i++) {
+            if (!eglGetProcAddress(needed[i])) {
+                fprintf(stderr, "[husk-gl] missing entry point: %s\n", needed[i]);
+                missing = true;
+            }
+        }
+        if (missing) {
+            fprintf(stderr, "[husk-gl] GL is incomplete; using the software "
+                            "display rather than crashing in the shader\n");
+            return false;
+        }
+        fprintf(stderr, "[husk-gl] all %zu shader entry points resolve\n",
+                ARRAY_SIZE(needed));
+    }
+
     husk_gls = qemu_gl_init_shader();
     if (!husk_gls) {
         fprintf(stderr, "[husk-gl] shader init failed\n");
