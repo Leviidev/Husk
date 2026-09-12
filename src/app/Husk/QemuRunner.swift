@@ -331,7 +331,7 @@ final class QemuRunner: ObservableObject {
         // cannot be walked back. Another app reaching a larger number does not
         // transfer -- clean file-backed pages are evictable and charged
         // differently.
-        let jitMiB = 512          // tb-size
+        let jitMiB = 256          // tb-size
         let qemuOverheadMiB = 750 // measured, not guessed
         // Real margin, in megabytes rather than a fraction. A fraction of what
         // was left quietly cost ~375 MiB the guest could have had; the run that
@@ -450,7 +450,7 @@ final class QemuRunner: ObservableObject {
             "-cpu", "max,pauth-impdef=on,sve=off,sme=off",
             "-smp", "4",
             "-m", "\(memMiB)",
-            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
+            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
             // The balloon was written earlier and never put on the machine, so
             // nothing could ever reclaim guest memory. With it present the guest

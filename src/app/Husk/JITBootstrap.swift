@@ -42,7 +42,13 @@ enum JITBootstrap {
     /// Size QEMU will ask for. Must match tb-size in the phase 1 command line:
     /// a smaller region here means QEMU allocates a second one, at a point where
     /// StikDebug may be long gone.
-    static let jitBytes = 512 * 1024 * 1024
+    // Back to 256 MiB. Raising this to 512 was one of three changes made at
+    // once in v15, and v15 was the first build to die inside qemu_init(). The
+    // guest RAM -- the other suspect -- has since been shown to map and write
+    // cleanly at 6144 MiB, which leaves this. The region itself allocates and
+    // passes its selftest at 512; whatever objects is further in, where TCG
+    // carves the buffer into per-vCPU regions.
+    static let jitBytes = 256 * 1024 * 1024
 
     /// True once the region is held. The memory budget needs this: after a
     /// prewarm the JIT is already counted in the footprint, so subtracting it
