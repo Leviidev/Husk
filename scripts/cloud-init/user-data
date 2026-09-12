@@ -55,7 +55,8 @@ write_files:
       ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1 || true
 
       mkdir -p /mnt/husk
-      systemctl enable mnt-husk.mount husk-agent.service
+      systemctl enable seatd || true
+      systemctl enable mnt-husk.mount husk-agent.service husk-ui.service
       systemctl enable husk-firstboot.service
       systemctl enable waydroid-container || true
 
@@ -308,6 +309,78 @@ write_files:
       RestartSec=3
       [Install]
       WantedBy=multi-user.target
+
+
+  # Brings Android up on the framebuffer with no login and no commands.
+  #
+  # Waydroid renders as a Wayland client, so something has to be running a
+  # compositor for it to appear in. cage is the right one here: it shows a single
+  # client fullscreen with no decorations, which is exactly the illusion Husk
+  # wants, rather than a desktop with a window in it.
+  - path: /usr/local/bin/husk-ui.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      exec > >(tee -a /var/log/husk-ui.log > /dev/ttyAMA0) 2>&1
+      echo "HUSK-UI: starting"
+
+      # There is no GPU behind virtio-gpu here, so wlroots must render in
+      # software. Without this cage fails to start a renderer and exits, which
+      # looks identical to Waydroid not working.
+      export WLR_RENDERER=pixman
+      export WLR_BACKENDS=drm
+      export WLR_DRM_NO_ATOMIC=1
+      export XDG_RUNTIME_DIR=/run/husk-ui
+      export XDG_SESSION_TYPE=wayland
+      export HOME=/root
+      mkdir -p "$XDG_RUNTIME_DIR"
+      chmod 700 "$XDG_RUNTIME_DIR"
+
+      # waydroid init runs on first boot and downloads ~800 MB; there is nothing
+      # to show until it has finished.
+      while [ ! -f /var/lib/waydroid/waydroid.cfg ]; do
+          echo "HUSK-UI: waiting for waydroid init to finish"
+          sleep 5
+      done
+
+      for d in /dev/dri/card*; do
+          echo "HUSK-UI: drm node $d"
+      done
+
+      echo "HUSK-UI: launching cage + waydroid full UI"
+      exec cage -- /usr/bin/waydroid show-full-ui
+
+  - path: /etc/systemd/system/husk-ui.service
+    content: |
+      [Unit]
+      Description=Husk Android UI (cage + waydroid)
+      After=waydroid-container.service seatd.service husk-firstboot.service
+      Wants=waydroid-container.service seatd.service
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/husk-ui.sh
+      Restart=always
+      RestartSec=5
+      # cage needs a seat to take DRM master. seatd provides one without logind
+      # having to own a real login session.
+      SupplementaryGroups=video render input
+      [Install]
+      WantedBy=multi-user.target
+
+  # A shell without a password prompt. Not the normal route in -- husk-ui.service
+  # is -- but when something fails there needs to be somewhere to look that does
+  # not require typing credentials into a framebuffer console.
+  - path: /etc/systemd/system/serial-getty@ttyAMA0.service.d/autologin.conf
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin husk --noclear %I $TERM
+
+  - path: /etc/systemd/system/getty@tty1.service.d/autologin.conf
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin husk --noclear %I $TERM
 
   - path: /etc/systemd/system/husk-firstboot.service
     content: |
