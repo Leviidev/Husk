@@ -32,7 +32,7 @@ final class GuestImage: ObservableObject {
     /// whatever it downloaded first: the disk exists, so nothing re-fetches it, and
     /// a guest missing a newly-added component fails in ways that look like app
     /// bugs rather than a stale image.
-    static let imageVersion = "guest-v3"
+    static let imageVersion = "guest-v4"
 
     static var imageURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"

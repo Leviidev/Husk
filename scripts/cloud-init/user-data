@@ -132,6 +132,32 @@ write_files:
               log(f"  rc={p.returncode} err={p.stderr.strip()[:300]}")
           return p
 
+      def publish_diagnostics():
+          """Dump the state of everything Husk depends on into the share.
+
+          The user should never have to run systemctl or journalctl by hand to
+          tell us what happened, so the guest reports on itself and Husk logs it.
+          """
+          parts = []
+          for cmd in ("systemctl is-active husk-ui husk-agent waydroid-container seatd",
+                      "systemctl status husk-ui --no-pager -n 30",
+                      "waydroid status",
+                      "ls -la /var/lib/waydroid /var/lib/waydroid/images",
+                      "ls -la /dev/dri",
+                      "tail -n 40 /var/log/husk-ui.log",
+                      "tail -n 40 /var/log/husk-firstboot.log",
+                      "journalctl -u husk-ui --no-pager -n 40"):
+              p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+              parts.append(f"$ {cmd}\n{p.stdout}{p.stderr}\n")
+          try:
+              tmp = f"{SHARE}/diagnostics.txt.tmp"
+              with open(tmp, "w") as f:
+                  f.write("\n".join(parts))
+              os.replace(tmp, f"{SHARE}/diagnostics.txt")
+              log("diagnostics published")
+          except Exception as e:
+              log(f"could not publish diagnostics: {e}")
+
       def ensure_dirs():
           for d in (INBOX, CMDS, RESULTS, CATALOG, ICONS, STATE):
               os.makedirs(d, exist_ok=True)
@@ -227,6 +253,9 @@ write_files:
               elif action == "refresh":
                   refresh_catalog()
                   write_result(cid, True)
+              elif action == "diagnostics":
+                  publish_diagnostics()
+                  write_result(cid, True)
               else:
                   write_result(cid, False, f"unknown action {action}")
           except Exception:
@@ -255,6 +284,7 @@ write_files:
               log(f"waiting for {SHARE} to be mounted")
               time.sleep(2)
           ensure_dirs()
+          publish_diagnostics()
           log("share is mounted; waiting for the Waydroid session")
 
           warned = False
@@ -264,6 +294,7 @@ write_files:
                   if not session_up():
                       if not warned:
                           log("waydroid session is not RUNNING yet")
+                          publish_diagnostics()
                           warned = True
                       time.sleep(3)
                       continue
@@ -321,7 +352,10 @@ write_files:
     permissions: '0755'
     content: |
       #!/bin/bash
-      exec > >(tee -a /var/log/husk-ui.log > /dev/ttyAMA0) 2>&1
+      # Write to the framebuffer console as well as the serial line. The serial
+      # line feeds Husk's log, but the console is the screen the user is actually
+      # looking at -- and a silent wait there is indistinguishable from a hang.
+      exec > >(tee -a /var/log/husk-ui.log | tee /dev/console > /dev/ttyAMA0) 2>&1
       echo "HUSK-UI: starting"
 
       # There is no GPU behind virtio-gpu here, so wlroots must render in
@@ -329,7 +363,6 @@ write_files:
       # looks identical to Waydroid not working.
       export WLR_RENDERER=pixman
       export WLR_BACKENDS=drm
-      export WLR_DRM_NO_ATOMIC=1
       export XDG_RUNTIME_DIR=/run/husk-ui
       export XDG_SESSION_TYPE=wayland
       export HOME=/root
@@ -338,17 +371,29 @@ write_files:
 
       # waydroid init runs on first boot and downloads ~800 MB; there is nothing
       # to show until it has finished.
+      waited=0
       while [ ! -f /var/lib/waydroid/waydroid.cfg ]; do
-          echo "HUSK-UI: waiting for waydroid init to finish"
-          sleep 5
+          sz=$(du -sm /var/lib/waydroid/images 2>/dev/null | cut -f1)
+          echo "HUSK-UI: Android is still downloading (${sz:-0} MB so far, ${waited}s elapsed)"
+          sleep 10
+          waited=$((waited + 10))
       done
+      echo "HUSK-UI: waydroid is initialised"
 
       for d in /dev/dri/card*; do
           echo "HUSK-UI: drm node $d"
       done
 
+      echo "HUSK-UI: seatd: $(systemctl is-active seatd 2>&1)"
+      echo "HUSK-UI: waydroid: $(waydroid status 2>&1 | tr '\n' ' ')"
       echo "HUSK-UI: launching cage + waydroid full UI"
-      exec cage -- /usr/bin/waydroid show-full-ui
+
+      # Not exec'd: when cage exits we want to say why. Restart=always would
+      # otherwise loop it forever with no explanation on screen.
+      cage -- /usr/bin/waydroid show-full-ui
+      rc=$?
+      echo "HUSK-UI: cage exited rc=$rc -- retrying in 5s"
+      exit $rc
 
   - path: /etc/systemd/system/husk-ui.service
     content: |

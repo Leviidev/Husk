@@ -59,10 +59,35 @@ final class HuskBridgeFS: ObservableObject {
         timer = nil
     }
 
+    private var lastDiagnosticsStamp: Date?
+
     private func poll() {
         loadCatalog()
         drainResults()
+        loadDiagnostics()
     }
+
+    /// The guest writes a full state dump into the share whenever something looks
+    /// wrong. Folding it into Husk's log means the user never has to open a shell
+    /// and run systemctl to tell us what happened.
+    private func loadDiagnostics() {
+        let file = shareRoot.appendingPathComponent("diagnostics.txt")
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: file.path),
+              let modified = attrs[.modificationDate] as? Date else { return }
+        if let last = lastDiagnosticsStamp, last >= modified { return }
+        lastDiagnosticsStamp = modified
+
+        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return }
+        HuskLog.log("diag", "---- guest diagnostics ----")
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if !t.isEmpty { HuskLog.log("diag", String(t.prefix(300))) }
+        }
+        HuskLog.log("diag", "---- end diagnostics ----")
+    }
+
+    /// Ask the guest to re-dump its state.
+    func requestDiagnostics() { send(["action": "diagnostics"]) }
 
     private func loadCatalog() {
         let file = catalog.appendingPathComponent("apps.json")

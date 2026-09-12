@@ -133,6 +133,12 @@ struct GuestScreenView: View {
                 Button { showLogs = true } label: {
                     Image(systemName: "doc.text.magnifyingglass").font(.caption)
                 }
+                Button {
+                    HuskBridgeFS.shared.requestDiagnostics()
+                    HuskLog.log("ui", "asked the guest for diagnostics")
+                } label: {
+                    Image(systemName: "stethoscope").font(.caption)
+                }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
