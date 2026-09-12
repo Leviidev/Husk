@@ -44,6 +44,13 @@ final class QemuRunner: ObservableObject {
 
     var profile: Profile = .phase1Android
 
+    /// True once the GL display is live. The UI needs this: HuskGLView must
+    /// exist before QEMU starts, because it is what publishes the layer, but if
+    /// GL then fails to initialise nothing ever draws into that layer. Without
+    /// this flag the fallback to the software display is invisible -- the log
+    /// says it fell back and the screen stays black.
+    @Published var glDisplayActive = false
+
     private var documentsDir: String {
         NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
     }
@@ -364,6 +371,7 @@ final class QemuRunner: ObservableObject {
             HuskLog.log("qemu", "calling husk_display_init() (software path)")
             husk_display_init()
         }
+        DispatchQueue.main.async { QemuRunner.shared.glDisplayActive = glUp }
 
         startMemoryWatch()
 

@@ -101,7 +101,15 @@ struct GuestScreenView: View {
             // the software display if GL cannot start, and that path draws
             // nothing here -- a black screen with "GL display FAILED" in the log
             // is the signal, rather than a silent wrong-looking picture.
+            // HuskGLView always exists, because it is what publishes the
+            // CAMetalLayer that QEMU needs before it can bring GL up. If GL
+            // then fails, nothing ever draws into that layer -- so the software
+            // display goes on top and takes over. Without this the fallback is
+            // invisible: the log says it fell back and the screen stays black.
             HuskGLScreen().ignoresSafeArea()
+            if !runner.glDisplayActive {
+                HuskDisplay().ignoresSafeArea()
+            }
 
             // Zero-sized: it exists only to hold first-responder status, which is
             // what both the on-screen keyboard and hardware key events depend on.
