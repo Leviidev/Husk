@@ -71,7 +71,7 @@ final class GuestImage: ObservableObject {
     /// Bump whenever the set or order of virtio devices in the Phase 1 command
     /// line changes. Any change renumbers the PCI bus and invalidates recorded
     /// UEFI boot entries.
-    nonisolated static let deviceLayoutSignature = "v3-lineage-gpu-xhci-2blk-net-serial-rng"
+    nonisolated static let deviceLayoutSignature = "v4-lineage-gpu-xhci-2blk-net-serial-rng-balloon-vmstatenode"
 
     /// qcow2 magic: "QFI\xfb". Checked because a download that "succeeded" is not
     /// the same as a download that produced an image -- a 404 body lands on disk

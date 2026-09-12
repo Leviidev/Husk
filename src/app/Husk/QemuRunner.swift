@@ -309,9 +309,11 @@ final class QemuRunner: ObservableObject {
                           + "\(availableMiB) MiB before jetsam -- that is the real "
                           + "ceiling; reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) "
                           + "MiB overhead + \(safetyMarginMiB) MiB margin; "
-                          + "anonymous RAM would allow \(anonymousTarget) MiB; "
-                          + "guest gets \(target) MiB "
-                          + (ramFileReady ? "from a file-backed block" : "as anonymous memory"))
+                          + "GUEST GETS \(target) MiB "
+                          + (ramFileReady
+                             ? "from a file-backed block (anonymous memory could only "
+                             + "have given it \(anonymousTarget) MiB)"
+                             : "as anonymous memory"))
         return target
     }
 
@@ -383,7 +385,13 @@ final class QemuRunner: ObservableObject {
             "-device", "virtio-blk-pci,drive=vda,bootindex=0",
             "-device", "virtio-blk-pci,drive=vdb,bootindex=1",
             "-drive", "file=\(guest.diskPath),if=none,id=vda,format=qcow2,discard=unmap,detect-zeroes=unmap",
-            "-drive", "file=\(guest.userdataPath),if=none,id=vdb,format=qcow2,discard=unmap,detect-zeroes=unmap",
+            // node-name matters: save_snapshot picks where to put the VM state
+            // by node name, and with nothing named it takes the FIRST
+            // snapshot-capable drive in graph order -- which is the pflash
+            // variable store. That is how a 64 MiB UEFI vars image grew to
+            // 2.6 GB of guest RAM blobs.
+            "-drive", "file=\(guest.userdataPath),if=none,id=vdb,node-name=huskvmstate,"
+                    + "format=qcow2,discard=unmap,detect-zeroes=unmap",
 
             // ADB is the control plane now: pm install and am start replace the
             // 9p share and the guest agent. The forward is bound to loopback --
@@ -527,7 +535,12 @@ final class QemuRunner: ObservableObject {
         for (i, a) in args.enumerated() {
             HuskLog.log("qemu", String(format: "  argv[%2d] = %@", i, a))
         }
-        HuskLog.log("qemu", "---- verbosity: \(verbosity) (-d \(verbosity.rawValue)) ----")
+        // Only phase 0 takes its -d from this setting; phase 1 hardcodes a quiet
+        // one. Printing the setting regardless made it look as though Android
+        // was running with page and mmu logging on, which would be ruinous.
+        HuskLog.log("qemu", profile == .phase0Alpine
+            ? "---- verbosity: \(verbosity) (-d \(verbosity.rawValue)) ----"
+            : "---- verbosity: fixed for Android (-d guest_errors,unimp) ----")
 
         // Confirm the guest images are actually in the bundle before QEMU tries to
         // open them; "could not load kernel" is a far less obvious error message.

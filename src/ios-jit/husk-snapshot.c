@@ -34,6 +34,10 @@
 #include "husk-snapshot.h"
 
 #define HUSK_SNAPSHOT_NAME "husk-booted"
+/* Node name of the userdata qcow2. Without naming a target QEMU writes the
+ * VM state to whichever snapshot-capable drive comes first, which is the
+ * UEFI variable store -- a 64 MiB file that grew past 2.6 GB. */
+#define HUSK_VMSTATE_NODE "huskvmstate"
 
 /*
  * No explicit device list.
@@ -73,7 +77,7 @@ static void husk_save_bh(void *opaque)
      * into the snapshot -- is "stopped", so the restored machine comes back
      * paused and the screen never moves again.
      */
-    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, NULL, false, NULL, &err);
+    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, HUSK_VMSTATE_NODE, false, NULL, &err);
 
     husk_report(ok, "save", err);
     error_free(err);
@@ -105,7 +109,7 @@ bool husk_snapshot_load_at_startup(void)
     saved = runstate_get();
     vm_stop(RUN_STATE_RESTORE_VM);
 
-    ok = load_snapshot(HUSK_SNAPSHOT_NAME, NULL, false, NULL, &err);
+    ok = load_snapshot(HUSK_SNAPSHOT_NAME, HUSK_VMSTATE_NODE, false, NULL, &err);
     if (!ok) {
         /*
          * Not an error worth shouting about: the common case is simply that no
