@@ -68,6 +68,15 @@ targets:
           mkdir -p "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
           cp "$GUEST/vmlinuz-virt" "$GUEST/initramfs-virt" \
              "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
+
+          # QEMU loads option ROMs by name from its data directory (-L). The full
+          # pc-bios tree is 24 MB and almost entirely firmware for architectures
+          # we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only
+          # the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.
+          BIOS="$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios"
+          DEST="$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios"
+          mkdir -p "$DEST"
+          cp "$BIOS"/efi-*.rom "$BIOS"/pxe-*.rom "$DEST/" 2>/dev/null || true
         outputFiles:
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/vmlinuz-virt"
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/initramfs-virt"

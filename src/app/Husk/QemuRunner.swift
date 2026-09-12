@@ -62,6 +62,15 @@ final class QemuRunner {
             "-initrd", "\(bundle)/initramfs-virt",
             "-append", "console=tty0 console=ttyAMA0 loglevel=8",
 
+            // -M virt adds a default virtio-net-pci unless told otherwise, and that
+            // device wants its PXE option ROM at startup -- which is why the first
+            // device run died on 'failed to find romfile "efi-virtio.rom"'. Phase 0
+            // needs no network at all, so the device simply should not exist. The
+            // ROMs are bundled anyway, because Android will need networking and the
+            // next occurrence of this would be just as opaque.
+            "-nic", "none",
+            "-L", "\(bundle)/pc-bios",
+
             "-device", "virtio-gpu-pci",
             "-device", "virtio-tablet-pci",
             "-device", "virtio-keyboard-pci",
