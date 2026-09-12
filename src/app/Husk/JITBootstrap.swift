@@ -42,7 +42,7 @@ enum JITBootstrap {
     /// Size QEMU will ask for. Must match tb-size in the phase 1 command line:
     /// a smaller region here means QEMU allocates a second one, at a point where
     /// StikDebug may be long gone.
-    static let jitBytes = 256 * 1024 * 1024
+    static let jitBytes = 512 * 1024 * 1024
 
     /// True once the region is held. The memory budget needs this: after a
     /// prewarm the JIT is already counted in the footprint, so subtracting it

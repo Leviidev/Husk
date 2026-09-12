@@ -187,7 +187,7 @@ final class QemuRunner: ObservableObject {
     }
 
     /// Bumped whenever the memory layout changes, to retire old snapshots.
-    static let memoryStrategy = "file-backed-v1"
+    static let memoryStrategy = "file-backed-6g-nosve-v2"
 
     /// Whether guest RAM can be backed by a file on this device, this run.
     ///
@@ -197,7 +197,7 @@ final class QemuRunner: ObservableObject {
     /// user the app. Evaluated once and cached, because the answer is used both
     /// to size the guest and to build the command line, and they must agree.
     private lazy var ramFileReady: Bool = {
-        let needBytes = Int64(2560 + 768) * 1024 * 1024
+        let needBytes = Int64(6144 + 768) * 1024 * 1024
         let dir = (guestRamPath as NSString).deletingLastPathComponent
 
         if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: dir),
@@ -268,7 +268,7 @@ final class QemuRunner: ObservableObject {
         // cannot be walked back. Another app reaching a larger number does not
         // transfer -- clean file-backed pages are evictable and charged
         // differently.
-        let jitMiB = 256          // tb-size
+        let jitMiB = 512          // tb-size
         let qemuOverheadMiB = 750 // measured, not guessed
         // Real margin, in megabytes rather than a fraction. A fraction of what
         // was left quietly cost ~375 MiB the guest could have had; the run that
@@ -300,7 +300,7 @@ final class QemuRunner: ObservableObject {
         // evidence: if resident stays flat while the guest grows, the next
         // build can raise this. Jumping straight to 4096 would instead risk
         // regressing a configuration that currently boots.
-        let fileBackedTarget = 2560
+        let fileBackedTarget = 6144
         let target = ramFileReady ? max(anonymousTarget, fileBackedTarget)
                                   : anonymousTarget
 
@@ -349,10 +349,24 @@ final class QemuRunner: ObservableObject {
             // not for this kernel: removing the feature switches a whole code
             // path ON rather than switching one off. impdef keeps PAC present
             // while picking a cheap algorithm instead of QARMA.
-            "-cpu", "max,pauth-impdef=on",
+            // sve=off and sme=off are performance changes, not correctness ones.
+            //
+            // "max" advertises FEAT_SVE (with PMULL128, BitPerm, SHA3, SM4) and
+            // FEAT_SME. TCG has no host SVE to map those onto, so every SVE
+            // instruction becomes a helper call -- while bionic selects its
+            // SVE memcpy/memset/strlen/strcmp through ifunc the moment HWCAP_SVE
+            // is set. The result is that every string and memory operation in
+            // the whole of Android takes the slow path. With SVE absent bionic
+            // falls back to its ASIMD routines, which TCG translates onto the
+            // host's own NEON.
+            //
+            // MTE needs no such treatment: the virt machine provides no tag
+            // memory, so QEMU already downgrades ID_AA64PFR1.MTE to 1 and no
+            // tag checking happens.
+            "-cpu", "max,pauth-impdef=on,sve=off,sme=off",
             "-smp", "4",
             "-m", "\(memMiB)",
-            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
+            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
 
             // The balloon was written earlier and never put on the machine, so
             // nothing could ever reclaim guest memory. With it present the guest
