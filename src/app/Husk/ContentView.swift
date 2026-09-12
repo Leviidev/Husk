@@ -74,6 +74,9 @@ struct ContentView: View {
         guard !started else { return }
         guard JITBootstrap.isDebuggerAttached else { return }
         HuskLog.log("ui", "CS_DEBUGGED set; starting QEMU")
+        // Take the JIT region at the last moment before QEMU, as well as before
+        // the download. Whichever comes first wins; the second call is a no-op.
+        JITBootstrap.prewarm()
         started = true
         QemuRunner.shared.start()
         bridge.startWatching()

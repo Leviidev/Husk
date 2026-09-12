@@ -412,12 +412,23 @@ final class QemuRunner: ObservableObject {
             // CAMetalLayer, and CALayer is not thread-safe. Bound here, because
             // a context belongs to whichever thread made it current and the
             // guest renders from this one.
+            // Logged through HuskLog at each stage, not left to the C side's
+            // fprintf. Raw stderr reaches the log through a pipe and arrives
+            // out of order against the timestamped lines, which made it
+            // impossible to tell which half had failed.
             var created = false
             DispatchQueue.main.sync {
                 created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
                                                  Int32(size.width), Int32(size.height))
             }
-            glUp = created && husk_display_gl_bind()
+            HuskLog.log("qemu", "husk_display_gl_create (main thread) -> \(created)")
+
+            var bound = false
+            if created {
+                bound = husk_display_gl_bind()
+                HuskLog.log("qemu", "husk_display_gl_bind (qemu thread) -> \(bound)")
+            }
+            glUp = created && bound
             HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
                                      : "GL display unavailable; using the software display")
         } else {

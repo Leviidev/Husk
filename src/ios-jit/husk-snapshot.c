@@ -28,7 +28,15 @@
 #include "husk-snapshot.h"
 
 #define HUSK_SNAPSHOT_NAME "husk-booted"
-#define HUSK_SNAPSHOT_DEV  "vdb"
+
+/*
+ * No explicit device list.
+ *
+ * The first attempt named "vdb" and QEMU answered "No block device node 'vdb'":
+ * that is the -drive id, while the devices argument wants block *node* names,
+ * which are auto-generated here. Letting QEMU choose picks every snapshot-capable
+ * disk by itself, which is what plain savevm does anyway.
+ */
 
 static husk_snapshot_cb husk_cb;
 
@@ -45,7 +53,6 @@ static void husk_save_bh(void *opaque)
 {
     Error *err = NULL;
     bool was_running;
-    strList devices = { .value = (char *)HUSK_SNAPSHOT_DEV, .next = NULL };
     bool ok;
 
     bql_lock();
@@ -58,7 +65,7 @@ static void husk_save_bh(void *opaque)
         vm_stop(RUN_STATE_SAVE_VM);
     }
 
-    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, NULL, true, &devices, &err);
+    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, NULL, false, NULL, &err);
 
     if (was_running) {
         vm_start();
@@ -78,7 +85,6 @@ void husk_snapshot_save(husk_snapshot_cb cb)
 bool husk_snapshot_load_at_startup(void)
 {
     Error *err = NULL;
-    strList devices = { .value = (char *)HUSK_SNAPSHOT_DEV, .next = NULL };
     bool ok;
 
     /*
@@ -86,7 +92,7 @@ bool husk_snapshot_load_at_startup(void)
      * BQL is already held by this thread and the machine is stopped -- which is
      * exactly the state load_snapshot wants. No bottom half here.
      */
-    ok = load_snapshot(HUSK_SNAPSHOT_NAME, NULL, true, &devices, &err);
+    ok = load_snapshot(HUSK_SNAPSHOT_NAME, NULL, false, NULL, &err);
     if (!ok) {
         /*
          * Not an error worth shouting about: the common case is simply that no
