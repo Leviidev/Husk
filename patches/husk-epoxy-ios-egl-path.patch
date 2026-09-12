@@ -1,19 +1,55 @@
 diff --git a/src/dispatch_common.c b/src/dispatch_common.c
-index 6fb7f02..a2feef9 100644
+index 6fb7f02..88a1c25 100644
 --- a/src/dispatch_common.c
 +++ b/src/dispatch_common.c
-@@ -183,7 +183,13 @@
+@@ -182,11 +182,17 @@
+ #define GLES1_LIB "GLESv1_CM.framework/Versions/Current/GLESv1_CM"
  #define GLES2_LIB "GLESv2.framework/Versions/Current/GLESv2"
  #elif TARGET_OS_IPHONE
++/*
++ * Husk: iOS has no EGL or GLES of its own, and no ANGLE framework either --
++ * ANGLE ships as a plain dylib embedded in the app, providing EGL *and* GLES
++ * from the same image. dlopen resolves @rpath against the loading image's
++ * LC_RPATH, which for an iOS app is its own Frameworks directory.
++ */
  #define GLX_LIB "/opt/X11/lib/libGL.1.dylib"
 -#define EGL_LIB "EGL.framework/EGL"
-+/*
-+ * Husk: ANGLE ships as a plain dylib embedded in the app, not as an
-+ * EGL.framework. dlopen resolves @rpath against the loading image's LC_RPATH,
-+ * which for an iOS app is its own Frameworks directory -- the same way the
-+ * QEMU dylib beside it is found.
-+ */
+-#define OPENGL_LIB "/System/Library/Frameworks/OpenGL.framework/Versions/Current/OpenGL"
+-#define GLES1_LIB "GLESv1_CM.framework/GLESv1_CM"
+-#define GLES2_LIB "GLESv2.framework/GLESv2"
 +#define EGL_LIB "@rpath/libANGLE-shared.dylib"
- #define OPENGL_LIB "/System/Library/Frameworks/OpenGL.framework/Versions/Current/OpenGL"
- #define GLES1_LIB "GLESv1_CM.framework/GLESv1_CM"
- #define GLES2_LIB "GLESv2.framework/GLESv2"
++#define OPENGL_LIB "@rpath/libANGLE-shared.dylib"
++#define GLES1_LIB "@rpath/libANGLE-shared.dylib"
++#define GLES2_LIB "@rpath/libANGLE-shared.dylib"
+ #else
+ #error "This Apple platform is not supported."
+ #endif
+@@ -347,6 +353,28 @@ do_dlsym(void **handle, const char *name, bool exit_on_fail)
+     result = GetProcAddress(*handle, name);
+ #else
+     result = dlsym(*handle, name);
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++    /*
++     * Husk: WebKit builds ANGLE with its entry points renamed -- glDrawArrays
++     * is exported as GL_DrawArrays, eglChooseConfig as EGL_ChooseConfig --
++     * because WebCore reaches them through ANGLE's own loader rather than by
++     * linking them. The EGL half is aliased back at link time, but the same
++     * trick fails for GL: ld reports 828 duplicate symbols, because ANGLE
++     * already carries internal gl* symbols of its own that the aliases collide
++     * with. Translating the name here costs one failed dlsym and avoids
++     * fighting the linker over a thousand symbols.
++     */
++    if (!result && name[0] == 'g' && name[1] == 'l') {
++        char renamed[256];
++        snprintf(renamed, sizeof(renamed), "GL_%s", name + 2);
++        result = dlsym(*handle, renamed);
++    }
++    if (!result && strncmp(name, "egl", 3) == 0) {
++        char renamed[256];
++        snprintf(renamed, sizeof(renamed), "EGL_%s", name + 3);
++        result = dlsym(*handle, renamed);
++    }
++#endif
+     if (!result)
+         error = dlerror();
+ #endif
