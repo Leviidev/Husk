@@ -50,6 +50,9 @@ size_t husk_ios_available_memory(void);
 /* Bring the GL display up against a CAMetalLayer. Returns false if EGL, the
    surface, or the console could not be set up, in which case the caller should
    fall back to husk_display_init(). */
+/* Must be called BEFORE qemu_init(): sets display_opengl so virtio-gpu-gl can
+   realize, since devices are created inside qemu_init(). */
+bool     husk_display_gl_early(void);
 bool     husk_display_gl_init(void *native_layer, int32_t width, int32_t height);
 uint64_t husk_display_gl_frames(void);
 

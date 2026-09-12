@@ -111,6 +111,7 @@ wanted = [
     "husk_display_request_update",
     "husk_display_send_key",
     "husk_display_gl_init",
+    "husk_display_gl_early",
     "husk_display_gl_frames",
     "husk_balloon_set_bytes",
     "husk_ios_jit_install_trap_handler",

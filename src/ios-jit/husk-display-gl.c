@@ -22,6 +22,7 @@
 #include "ui/egl-helpers.h"
 #include "ui/egl-context.h"
 #include "ui/shader.h"
+#include "system/system.h"
 
 #include "husk-display-gl.h"
 
@@ -107,13 +108,27 @@ uint64_t husk_display_gl_frames(void)
     return husk_gl_frames;
 }
 
-bool husk_display_gl_init(void *native_layer, int width, int height)
+/*
+ * Split in two because of when QEMU needs the answer.
+ *
+ * virtio-gpu-gl refuses to realize unless display_opengl is already set:
+ *
+ *   "-device virtio-gpu-gl-pci: The display backend does not have OpenGL
+ *    support enabled"
+ *
+ * and devices are created inside qemu_init(), long before a
+ * DisplayChangeListener can be registered. QEMU's own answer is a display
+ * backend with an early_init hook, but every one of those is gated on X11,
+ * Win32 or GBM -- egl_init() has no Darwin branch at all, so -display
+ * egl-headless cannot help here.
+ *
+ * What actually has to exist that early is only the EGL display and the flag.
+ * The surface needs a CAMetalLayer, and that cannot exist yet because the
+ * layer comes from UIKit after layout. So this runs before qemu_init(), and
+ * husk_display_gl_init() finishes the job afterwards.
+ */
+bool husk_display_gl_early(void)
 {
-    QemuConsole *con;
-
-    husk_win_w = width;
-    husk_win_h = height;
-
     /*
      * DISPLAY_GL_MODE_ES, not core. ANGLE speaks GLES, and so does everything
      * the guest will send through virglrenderer.
@@ -126,6 +141,24 @@ bool husk_display_gl_init(void *native_layer, int width, int height)
     husk_context = qemu_egl_init_ctx();
     if (husk_context == EGL_NO_CONTEXT) {
         error_report("[husk-gl] could not create the EGL context");
+        return false;
+    }
+
+    /* This is what virtio-gpu-gl checks. Without it the device will not realize. */
+    display_opengl = 1;
+    info_report("[husk-gl] EGL is up before device creation; display_opengl = 1");
+    return true;
+}
+
+bool husk_display_gl_init(void *native_layer, int width, int height)
+{
+    QemuConsole *con;
+
+    husk_win_w = width;
+    husk_win_h = height;
+
+    if (husk_context == EGL_NO_CONTEXT) {
+        error_report("[husk-gl] husk_display_gl_early() did not run or failed");
         return false;
     }
 

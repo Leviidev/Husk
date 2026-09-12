@@ -325,6 +325,15 @@ final class QemuRunner: ObservableObject {
                               + (size >= 0 ? "\(size) bytes" : "MISSING"))
         }
 
+        // Before qemu_init(), not after: virtio-gpu-gl is realized inside it and
+        // refuses unless display_opengl is already set. Only EGL and the flag
+        // are needed this early; the surface comes later, once UIKit has a
+        // layer to give us.
+        let glEarly = husk_display_gl_early()
+        HuskLog.log("qemu", glEarly
+            ? "EGL up before device creation; virtio-gpu-gl can realize"
+            : "EGL early init FAILED -- virtio-gpu-gl will refuse to start")
+
         HuskLog.logFootprint("before-qemu-init")
 
         // qemu_init takes ownership of argv for the life of the process, so these
