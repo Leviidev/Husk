@@ -77,6 +77,15 @@ targets:
           DEST="$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios"
           mkdir -p "$DEST"
           cp "$BIOS"/efi-*.rom "$BIOS"/pxe-*.rom "$DEST/" 2>/dev/null || true
+
+          # UEFI firmware for the Phase 1 guest: Debian's cloud image boots through
+          # GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,
+          # so the IPA's own zip squeezes it to about a megabyte -- cheaper than
+          # carrying a decompressor to unpack it at runtime.
+          FW="$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd"
+          if [ ! -f "$FW" ]; then
+            bunzip2 -c "$BIOS/edk2-aarch64-code.fd.bz2" > "$FW"
+          fi
         outputFiles:
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/vmlinuz-virt"
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/initramfs-virt"

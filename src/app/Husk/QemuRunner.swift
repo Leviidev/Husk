@@ -9,10 +9,16 @@ import os
 /// `-Dshared_lib=true`, exposing `qemu_init` / `qemu_main_loop` / `qemu_cleanup`,
 /// and we drive them from a pthread. QEMU never returns from `qemu_main_loop`
 /// until the guest shuts down, so this thread belongs to QEMU for the session.
-final class QemuRunner {
+final class QemuRunner: ObservableObject {
     static let shared = QemuRunner()
     private var thread: Thread?
     private(set) var isRunning = false
+
+    /// Last line the guest printed about its own setup. The first-boot service in
+    /// the guest writes HUSK-SETUP markers to the serial console, which is already
+    /// being tailed -- so Android's one-time download reports progress to the UI
+    /// without needing any channel of its own.
+    @Published var setupMessage: String?
 
     /// How much QEMU tells us. `in_asm`/`exec` produce gigabytes in seconds, so
     /// they are never on by default — but they are here because when a guest dies
@@ -24,6 +30,19 @@ final class QemuRunner {
     }
 
     var verbosity: Verbosity = .detailed
+
+    /// Which guest to boot.
+    ///
+    /// Phase 0's Alpine guest is kept because it is the fastest way to tell a
+    /// broken substrate from a broken Android setup: it boots in seconds from the
+    /// app bundle with no download, no UEFI and no disk, so if it draws and Phase 1
+    /// does not, the problem is above the JIT/display layer.
+    enum Profile: String, CaseIterable {
+        case phase0Alpine   = "Alpine (substrate check)"
+        case phase1Waydroid = "Android (Waydroid)"
+    }
+
+    var profile: Profile = .phase1Waydroid
 
     private var documentsDir: String {
         NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
@@ -97,6 +116,56 @@ final class QemuRunner {
         ]
     }
 
+    /// Phase 1 guest: Debian arm64 running Waydroid, booted from the downloaded
+    /// disk image via UEFI.
+    private func phase1Arguments() -> [String] {
+        let guest = GuestImage.shared
+
+        return [
+            "qemu-system-aarch64",
+            // highmem=on gives the guest a 64-bit PCI window, which it needs once
+            // there is real RAM behind it.
+            "-M", "virt,highmem=on",
+            "-cpu", "cortex-a72",
+            "-smp", "4",
+
+            // Android wants real memory. The device has 11.7 GB and Husk's own
+            // footprint before the guest starts measured 13.9 MiB, so 4 GiB here
+            // is comfortable rather than brave.
+            "-m", "4096",
+
+            // 256 MiB took 749 ms to prepare on device (~46 us per 16 KiB page),
+            // so doubling it costs about a second and a half of one-time setup.
+            // Android translates far more code than Alpine ever will, and the
+            // region cannot be grown later -- StikDebug is gone by then.
+            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
+
+            // Debian's cloud image boots through GRUB under UEFI, so the firmware
+            // pair is required: read-only code volume plus a writable variable
+            // store.
+            "-drive", "if=pflash,format=raw,readonly=on,file=\(guest.firmwarePath)",
+            "-drive", "if=pflash,format=raw,file=\(guest.varsPath)",
+            "-drive", "if=virtio,format=qcow2,file=\(guest.diskPath)",
+
+            // Unlike Phase 0, the network is not optional: `waydroid init` fetches
+            // LineageOS over it during first-run setup.
+            "-nic", "user,model=virtio-net-pci",
+            "-L", "\(Bundle.main.bundlePath)/pc-bios",
+
+            "-device", "virtio-gpu-pci",
+            "-device", "virtio-tablet-pci",
+            "-device", "virtio-keyboard-pci",
+
+            "-chardev", "file,id=ser0,path=\(guestSerialLogPath)",
+            "-serial", "chardev:ser0",
+
+            "-display", "none",
+            "-monitor", "none",
+            "-no-reboot",
+            "-d", verbosity.rawValue,
+        ]
+    }
+
     func start() {
         guard !isRunning else {
             HuskLog.log("qemu", "start() ignored -- already running")
@@ -116,7 +185,8 @@ final class QemuRunner {
     }
 
     private func run() {
-        let args = phase0Arguments()
+        let args = (profile == .phase0Alpine) ? phase0Arguments() : phase1Arguments()
+        HuskLog.log("qemu", "profile: \(profile.rawValue)")
 
         HuskLog.log("qemu", "---- QEMU command line (\(args.count) args) ----")
         for (i, a) in args.enumerated() {
@@ -126,11 +196,17 @@ final class QemuRunner {
 
         // Confirm the guest images are actually in the bundle before QEMU tries to
         // open them; "could not load kernel" is a far less obvious error message.
-        for name in ["vmlinuz-virt", "initramfs-virt"] {
-            let path = "\(Bundle.main.bundlePath)/\(name)"
+        let required: [String] = (profile == .phase0Alpine)
+            ? ["\(Bundle.main.bundlePath)/vmlinuz-virt",
+               "\(Bundle.main.bundlePath)/initramfs-virt"]
+            : [GuestImage.shared.diskPath,
+               GuestImage.shared.firmwarePath,
+               GuestImage.shared.varsPath]
+        for path in required {
             let attrs = try? FileManager.default.attributesOfItem(atPath: path)
             let size = (attrs?[.size] as? NSNumber)?.intValue ?? -1
-            HuskLog.log("qemu", "guest image \(name): \(size >= 0 ? "\(size) bytes" : "MISSING")")
+            HuskLog.log("qemu", "needs \((path as NSString).lastPathComponent): "
+                              + (size >= 0 ? "\(size) bytes" : "MISSING"))
         }
 
         HuskLog.logFootprint("before-qemu-init")
@@ -185,7 +261,14 @@ final class QemuRunner {
                         while let nl = pending.firstIndex(of: "\n") {
                             let line = String(pending[pending.startIndex..<nl])
                             pending = String(pending[pending.index(after: nl)...])
-                            if !line.isEmpty { HuskLog.log("guest", line) }
+                            if line.isEmpty { continue }
+                            HuskLog.log("guest", line)
+                            if let r = line.range(of: "HUSK-SETUP: ") {
+                                let msg = String(line[r.upperBound...])
+                                Task { @MainActor in
+                                    QemuRunner.shared.setupMessage = msg
+                                }
+                            }
                         }
                     }
                 }

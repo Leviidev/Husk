@@ -1,0 +1,105 @@
+#cloud-config
+# Unattended provisioning for Husk's Phase 1 guest -- the SHIPPING (thin) image.
+#
+# Runs once on the Mac under HVF to turn a stock Debian arm64 cloud image into a
+# Waydroid host. Deliberately stops short of installing Android: `waydroid init`
+# runs on the phone at first-run setup instead.
+#
+# That split is what keeps the artifact shippable. Baking LineageOS in produced a
+# 6.05 GiB image; leaving it out keeps this around 1.2 GiB. It is also the only
+# version that is correct -- a bake-time `waydroid init` fetches the
+# waydroid_arm64_only images (728 MB system, 77 MB vendor), which is a different
+# variant from the arm64 one, and hardcoding either is worse than letting
+# Waydroid's own resolver choose. And we never redistribute LineageOS: it comes
+# from Waydroid's servers, through Waydroid's own setup path.
+
+hostname: husk-guest
+disable_root: false
+ssh_pwauth: true
+
+users:
+  - name: husk
+    plain_text_passwd: husk
+    lock_passwd: false
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [sudo, video, render, input]
+
+write_files:
+  - path: /usr/local/bin/husk-provision.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -x
+      exec > >(tee -a /var/log/husk-provision.log) 2>&1
+      echo "HUSK-PROVISION: begin"
+
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends \
+          ca-certificates curl wget gnupg lxc python3 python3-gbinder \
+          cage seatd libgbm1 mesa-utils dbus-user-session unzip
+
+      curl -fsSL https://repo.waydro.id | bash
+      apt-get update
+      apt-get install -y waydroid
+
+      # Waydroid needs binder. Mainline has had it for years, but Debian builds it
+      # as a module rather than baking it in, so it must be requested explicitly
+      # and made permanent. Confirmed working: /dev/binder, /dev/hwbinder and
+      # /dev/vndbinder all appear.
+      modprobe binder_linux devices="binder,hwbinder,vndbinder" || true
+      echo "binder_linux" > /etc/modules-load.d/waydroid.conf
+      echo "options binder_linux devices=binder,hwbinder,vndbinder" \
+          > /etc/modprobe.d/waydroid.conf
+      ls -la /dev/binder /dev/hwbinder /dev/vndbinder 2>&1 || true
+
+      systemctl enable husk-firstboot.service
+      systemctl enable waydroid-container || true
+
+      echo "HUSK-PROVISION: done"
+      touch /var/lib/husk-provisioned
+
+  # Runs on the phone, not here. Everything it prints goes to the serial console,
+  # which Husk already tails into its own log -- so setup progress shows up in the
+  # app without any extra channel.
+  - path: /usr/local/bin/husk-firstboot.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      exec > >(tee -a /var/log/husk-firstboot.log > /dev/ttyAMA0) 2>&1
+      if [ -f /var/lib/waydroid/waydroid.cfg ]; then
+          echo "HUSK-SETUP: already initialised"
+          exit 0
+      fi
+      echo "HUSK-SETUP: downloading Android images (this is the one-time setup)"
+      # Let Waydroid pick the image variant; it resolves arm64_only on this host.
+      if waydroid init -f; then
+          echo "HUSK-SETUP: waydroid init OK"
+      else
+          echo "HUSK-SETUP: waydroid init FAILED rc=$?"
+          exit 1
+      fi
+      echo "HUSK-SETUP: complete"
+
+  - path: /etc/systemd/system/husk-firstboot.service
+    content: |
+      [Unit]
+      Description=Husk first-boot Android setup
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/husk-firstboot.sh
+      RemainAfterExit=yes
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [ /usr/local/bin/husk-provision.sh ]
+  - [ sh, -c, "echo '#### HUSK-PROVISION-COMPLETE ####' > /dev/ttyAMA0" ]
+
+power_state:
+  mode: poweroff
+  timeout: 60
+  condition: true

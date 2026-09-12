@@ -14,6 +14,7 @@
 		507309F42DC8965C816DC580 /* JITBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5664FE015975D16E7500F3C7 /* JITBootstrap.swift */; };
 		581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */; };
 		5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E91A601F16886103BC482AB /* QemuRunner.swift */; };
+		79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771B4FD56CABC214FEED6DFE /* GuestImage.swift */; };
 		E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */ = {isa = PBXBuildFile; fileRef = B74F9AA42414905593B347BA /* husk-jit.js */; };
 		EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */; };
@@ -41,6 +42,7 @@
 		619394B1069242D8750E7F33 /* Husk.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Husk.entitlements; sourceTree = "<group>"; };
 		690B2DA647B7B75C11DDDA9F /* HuskBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HuskBridge.h; sourceTree = "<group>"; };
 		6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		771B4FD56CABC214FEED6DFE /* GuestImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestImage.swift; sourceTree = "<group>"; };
 		85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskApp.swift; sourceTree = "<group>"; };
 		A523DB1FEA5BC026771035C7 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		B74F9AA42414905593B347BA /* husk-jit.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "husk-jit.js"; sourceTree = "<group>"; };
@@ -65,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */,
+				771B4FD56CABC214FEED6DFE /* GuestImage.swift */,
 				619394B1069242D8750E7F33 /* Husk.entitlements */,
 				85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */,
 				690B2DA647B7B75C11DDDA9F /* HuskBridge.h */,
@@ -199,7 +202,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n";
+			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n\n# UEFI firmware for the Phase 1 guest: Debian's cloud image boots through\n# GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,\n# so the IPA's own zip squeezes it to about a megabyte -- cheaper than\n# carrying a decompressor to unpack it at runtime.\nFW=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd\"\nif [ ! -f \"$FW\" ]; then\n  bunzip2 -c \"$BIOS/edk2-aarch64-code.fd.bz2\" > \"$FW\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -209,6 +212,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */,
+				79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */,
 				581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */,
 				090A2A3F43CE69EA3C079EB0 /* HuskLog.swift in Sources */,
 				F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */,
