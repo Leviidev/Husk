@@ -582,9 +582,19 @@ final class QemuRunner: ObservableObject {
 
     /// Try the GL stack without committing to it. Runs before the QEMU command
     /// line is built, so its answer can pick the virtio-gpu device.
+    /// Create the GL context and surface, and on the first run decide whether
+    /// GL is usable at all.
+    ///
+    /// The early-return that used to sit here -- `guard !glProven` -- meant the
+    /// context and surface were only ever built on the run that proved GL
+    /// worked. Every launch after that skipped straight past creation, and
+    /// husk_display_gl_bind() was then asked to make current a context that had
+    /// never been made, failed, and fell back to the software display. So GL
+    /// worked exactly once, on the run that discovered it, and never again.
+    ///
+    /// Creation is unconditional now. Only the *probe* is skipped once the
+    /// answer is known, because that is the part that is merely a question.
     private func probeGL() {
-        guard !QemuRunner.glProven else { return }
-
         HuskGLView.surfaceReady.lock()
         let deadline = Date().addingTimeInterval(5)
         while HuskGLView.layerForGL == nil, Date() < deadline {
@@ -604,6 +614,12 @@ final class QemuRunner: ObservableObject {
             created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
                                              Int32(size.width), Int32(size.height))
         }
+        if QemuRunner.glProven {
+            HuskLog.log("gl", "GL already proven on this device; context created "
+                            + "(create=\(created)), skipping the probe")
+            return
+        }
+
         let works = created && husk_display_gl_probe()
         HuskLog.log("gl", "probe: create=\(created) usable=\(works)")
         if works {
@@ -673,7 +689,15 @@ final class QemuRunner: ObservableObject {
         // Before the main loop: restore the machine if we saved one. This is
         // the difference between ten minutes of Android booting and a few
         // seconds of reading RAM back from disk.
-        let restored = husk_snapshot_load_at_startup()
+        let recordedMiB = try? String(contentsOfFile: snapshotSizePath, encoding: .utf8)
+        let snapshotFits = recordedMiB
+            .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            .map { $0 == QemuRunner.shared.lastGuestMiB } ?? false
+        if !snapshotFits {
+            HuskLog.log("qemu", "no snapshot matching a \(QemuRunner.shared.lastGuestMiB) MiB "
+                              + "guest; booting cold rather than failing a restore")
+        }
+        let restored = snapshotFits && husk_snapshot_load_at_startup()
         HuskLog.log("qemu", restored
             ? "restored a saved machine -- Android is already booted"
             : "no saved machine; booting Android from cold")
