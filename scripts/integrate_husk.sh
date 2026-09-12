@@ -36,6 +36,10 @@ echo "[cp  ] balloon control -> system/"
 cp "$HUSK_ROOT/src/ios-jit/husk-balloon.c" \
    "$HUSK_ROOT/src/ios-jit/husk-balloon.h" "$Q/system/"
 
+echo "[cp  ] snapshot control -> system/"
+cp "$HUSK_ROOT/src/ios-jit/husk-snapshot.c" \
+   "$HUSK_ROOT/src/ios-jit/husk-snapshot.h" "$Q/system/"
+
 python3 - "$Q" <<'PY'
 import pathlib, sys
 q = pathlib.Path(sys.argv[1])
@@ -91,6 +95,16 @@ if "husk-balloon.c" not in s:
     print("  system/meson.build: added husk-balloon.c")
 else:
     print("  system/meson.build: already wired")
+
+s = p.read_text()
+if "husk-snapshot.c" not in s:
+    old_s = "system_ss.add(files(\n"
+    assert old_s in s
+    s = s.replace(old_s, old_s + "  'husk-snapshot.c',\n", 1)
+    p.write_text(s)
+    print("  system/meson.build: added husk-snapshot.c")
+else:
+    print("  system/meson.build: snapshot already wired")
 PY
 
 python3 - "$Q" <<'PY2'
@@ -113,6 +127,8 @@ wanted = [
     "husk_display_gl_init",
     "husk_display_gl_early",
     "husk_display_gl_frames",
+    "husk_snapshot_save",
+    "husk_snapshot_load_at_startup",
     "husk_balloon_set_bytes",
     "husk_ios_jit_install_trap_handler",
     "husk_ios_jit_is_available",

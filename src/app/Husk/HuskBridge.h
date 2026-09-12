@@ -56,6 +56,14 @@ bool     husk_display_gl_early(void);
 bool     husk_display_gl_init(void *native_layer, int32_t width, int32_t height);
 uint64_t husk_display_gl_frames(void);
 
+/* --- Husk's machine snapshots --- */
+/* Restore the saved machine, if one exists. Call straight after qemu_init() and
+   before qemu_main_loop(). False means nothing to restore, which is the normal
+   first-run case rather than a failure. */
+bool husk_snapshot_load_at_startup(void);
+/* Save the running machine. Asynchronous; the vCPUs stop for the duration. */
+void husk_snapshot_save(void (*cb)(bool ok, const char *what));
+
 /* --- Husk's guest memory balloon --- */
 /* Ask the guest to shrink to, or grow back to, this much usable RAM. Safe from
    any thread; the request is asynchronous, so treat it as steering rather than
