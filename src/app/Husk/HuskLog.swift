@@ -24,6 +24,7 @@ enum HuskLog {
 
     private static var fileHandle: FileHandle?
     private static var started = false
+    private static var pendingWrites = 0
     private static let startTime = Date()
 
     /// Recent lines, for the in-app viewer. Bounded so a long session cannot grow
@@ -56,7 +57,43 @@ enum HuskLog {
         fileHandle = try? FileHandle(forWritingTo: url)
 
         redirectStdio()
+        installCrashHandlers()
         logBanner()
+    }
+
+    /// Turn "the app vanished with no crash log" into a labelled last line.
+    ///
+    /// Deliberately does NOT touch SIGTRAP or SIGBUS: those belong to the JIT trap
+    /// guard in husk-ios-jit.c, which needs to step over an unserviced brk rather
+    /// than treat it as fatal. Stealing them here would break JIT detection.
+    private static func installCrashHandlers() {
+        let fatal: [Int32] = [SIGSEGV, SIGABRT, SIGILL, SIGFPE, SIGSYS]
+        for sig in fatal {
+            signal(sig) { received in
+                // Async-signal-safety: write(2) straight to the log fd, no
+                // allocation, no Swift runtime.
+                let msg = "\n*** FATAL SIGNAL \(received) -- process is dying ***\n"
+                msg.withCString { p in _ = write(STDERR_FILENO, p, strlen(p)) }
+                HuskLog.flushNow()
+                signal(received, SIG_DFL)
+                raise(received)
+            }
+        }
+        NSSetUncaughtExceptionHandler { ex in
+            HuskLog.log("crash", "uncaught exception: \(ex.name.rawValue) -- \(ex.reason ?? "")")
+            HuskLog.log("crash", (ex.callStackSymbols.prefix(20)).joined(separator: " | "))
+            HuskLog.flushNow()
+        }
+        log("boot", "crash handlers installed (SEGV/ABRT/ILL/FPE/SYS; TRAP+BUS left to the JIT guard)")
+    }
+
+    /// Force everything buffered out to disk. Safe to call from a signal handler
+    /// path -- worst case the sync barrier times out and we lose nothing we had.
+    static func flushNow() {
+        queue.sync {
+            pendingWrites = 0
+            try? fileHandle?.synchronize()
+        }
     }
 
     /// Point stdout and stderr at a pipe we drain ourselves.
@@ -113,9 +150,20 @@ enum HuskLog {
             osLog.log("\(line, privacy: .public)")
         }
 
+        // Durability matters more here than throughput. The lines worth having are
+        // the last ones before a crash, so flush to disk on anything that looks
+        // like a failure, and periodically otherwise. Without this the async write
+        // can still be queued when the process dies and the log simply stops short
+        // of the interesting part.
+        let critical = line.contains("FAIL") || line.contains("FATAL")
+                    || line.contains("error") || line.contains("WARNING")
         queue.async {
-            if let data = (line + "\n").data(using: .utf8) {
-                fileHandle?.write(data)
+            guard let data = (line + "\n").data(using: .utf8) else { return }
+            fileHandle?.write(data)
+            pendingWrites += 1
+            if critical || pendingWrites >= 32 {
+                pendingWrites = 0
+                try? fileHandle?.synchronize()
             }
         }
     }
