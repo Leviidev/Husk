@@ -81,7 +81,7 @@ write_files:
       #!/bin/bash
       # Status goes to the framebuffer console as well as the serial line: the
       # serial line feeds Husk's log, the console is the screen being looked at.
-      exec > >(tee -a /var/log/husk-firstboot.log | tee /dev/console > /dev/ttyAMA0) 2>&1
+      exec > >(tee -a /var/log/husk-firstboot.log > /dev/console) 2>&1
 
       IMAGES=/var/lib/waydroid/images
       if [ -f "$IMAGES/system.img" ]; then
@@ -123,9 +123,17 @@ write_files:
 
       if fetch "$SYS_URL" system.zip "Android system (728 MB)" && \
          fetch "$VEN_URL" vendor.zip "Android vendor (77 MB)"; then
-          echo "HUSK-SETUP: extracting"
-          unzip -o -q system.zip -d "$IMAGES"
-          unzip -o -q vendor.zip -d "$IMAGES"
+          # Extraction is slow under emulation and unzip creates the target file
+          # immediately, so report progress rather than going silent for minutes.
+          echo "HUSK-SETUP: extracting Android images"
+          ( unzip -o -q system.zip -d "$IMAGES" && unzip -o -q vendor.zip -d "$IMAGES" ) &
+          upid=$!
+          while kill -0 $upid 2>/dev/null; do
+              mb=$(du -sm "$IMAGES" 2>/dev/null | cut -f1)
+              echo "HUSK-SETUP: extracting (${mb:-0} MB written)"
+              sleep 10
+          done
+          wait $upid || { echo "HUSK-SETUP: extraction FAILED"; exit 1; }
           rm -f system.zip vendor.zip
           ls -la "$IMAGES"
       else
@@ -134,7 +142,13 @@ write_files:
       fi
 
       # No -f: with the images already present this only writes the config.
+      echo "HUSK-SETUP: initialising waydroid"
       waydroid init || echo "HUSK-SETUP: waydroid init returned $?"
+      echo "HUSK-SETUP: waydroid status: $(waydroid status 2>&1 | tr '\n' ' ')"
+
+      # The completion marker. Everything downstream waits on THIS, not on the
+      # presence of a file that unzip creates the instant it starts writing.
+      touch /var/lib/husk-setup-complete
       echo "HUSK-SETUP: complete"
 
   - path: /usr/local/bin/husk-agent.py
@@ -390,7 +404,9 @@ write_files:
       # Write to the framebuffer console as well as the serial line. The serial
       # line feeds Husk's log, but the console is the screen the user is actually
       # looking at -- and a silent wait there is indistinguishable from a hang.
-      exec > >(tee -a /var/log/husk-ui.log | tee /dev/console > /dev/ttyAMA0) 2>&1
+      # /dev/console is ttyAMA0 on this machine (ACPI SPCR selects it), so writing
+      # to both duplicated every line. One is enough and still reaches the serial log.
+      exec > >(tee -a /var/log/husk-ui.log > /dev/console) 2>&1
       echo "HUSK-UI: starting"
 
       # There is no GPU behind virtio-gpu here, so wlroots must render in
@@ -407,15 +423,27 @@ write_files:
       # waydroid init runs on first boot and downloads ~800 MB; there is nothing
       # to show until it has finished.
       waited=0
-      # Gate on the system image, not waydroid.cfg: init writes the config
-      # BEFORE downloading, so the config existing proves nothing.
-      while [ ! -f /var/lib/waydroid/images/system.img ]; do
+      # Wait for the marker first-boot writes when it is genuinely finished.
+      #
+      # Neither of the obvious files works as a gate: waydroid.cfg is written by
+      # init BEFORE it downloads anything, and images/system.img is created by
+      # unzip the instant extraction starts. Gating on either launches cage while
+      # Waydroid is still uninitialised, which exits immediately and leaves
+      # systemd restarting it every 5 seconds forever.
+      while [ ! -f /var/lib/husk-setup-complete ]; do
           sz=$(du -sm /var/cache/husk /var/lib/waydroid/images 2>/dev/null | awk '{t+=$1} END{print t}')
-          echo "HUSK-UI: waiting for Android images (${sz:-0} MB fetched, ${waited}s elapsed)"
+          echo "HUSK-UI: Android setup in progress (${sz:-0} MB, ${waited}s elapsed)"
           sleep 10
           waited=$((waited + 10))
       done
-      echo "HUSK-UI: Android images are present"
+      echo "HUSK-UI: setup is complete"
+
+      # Belt and braces: ask Waydroid itself, so a marker left by a partial run
+      # cannot start the loop again.
+      until ! waydroid status 2>&1 | grep -q "not initialized"; do
+          echo "HUSK-UI: waydroid still reports uninitialised; waiting"
+          sleep 10
+      done
 
       for d in /dev/dri/card*; do
           echo "HUSK-UI: drm node $d"
