@@ -48,6 +48,19 @@ cd "$WK/Source/ThirdParty/ANGLE"
 ALIASES="$GPU/angle-aliases.txt"
 
 angle_build () {
+    # The alias flag has to reach xcodebuild as ONE argument. Written inline as
+    # an unquoted ${1:+...} it word-splits at the space, xcodebuild sees a bare
+    # "-Wl,-alias_list,..." and dies with "invalid option" -- which the error
+    # filter below then hides, because it drops lines mentioning xcodebuild.
+    # Build it in an array instead, and expand that array quoted.
+    #
+    # $(inherited) is for xcodebuild to expand, not the shell, so it stays
+    # backslash-escaped here.
+    local ldflags=()
+    if [ -n "${1:-}" ]; then
+        ldflags=("OTHER_LDFLAGS=\$(inherited) -Wl,-alias_list,$1")
+    fi
+
     env -i PATH="$PATH" HOME="$HOME" xcodebuild archive \
         -archivePath "ANGLE" -scheme "ANGLE" \
         -sdk iphoneos -arch arm64 -configuration Release \
@@ -55,10 +68,10 @@ angle_build () {
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
         WK_AVAILABILITY_OVERLAY_FLAGS="" WK_AVAILABILITY_OVERLAY_SWIFT_FLAGS="" \
         IPHONEOS_DEPLOYMENT_TARGET="16.4" \
-        ${1:+OTHER_LDFLAGS=$(printf '$(inherited) -Wl,-alias_list,%s' "$1")} \
+        ${ldflags[@]+"${ldflags[@]}"} \
         > "$LOG" 2>&1 \
       || { echo "ANGLE build failed; last errors:" >&2
-           grep -a "error:\|^ld: " "$LOG" | grep -v xcodebuild | head -10 >&2; exit 1; }
+           grep -a "error:\|^ld: " "$LOG" | head -10 >&2; exit 1; }
 }
 
 # Two passes, because of a name mismatch.
