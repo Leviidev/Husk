@@ -228,34 +228,52 @@ bool husk_display_gl_probe(void)
     }
 
     /*
-     * Three answers, because eglMakeCurrent succeeding while glGetString
-     * returns NULL is contradictory and has now survived several guesses.
-     * eglGetCurrentContext says whether EGL agrees a context is current;
-     * eglQueryString needs no GL context at all; and calling ANGLE's own
-     * GL_GetString by dlsym takes epoxy's dispatch out of the path entirely.
-     * If the direct call works and epoxy's does not, epoxy is at fault.
+     * Four answers now, and the fourth is the one that was missing.
+     *
+     * The previous probe resolved glGetString through eglGetProcAddress,
+     * printed the pointer, and then never called it -- it tested dlsym and
+     * epoxy instead. Both of those resolved to 0x2be73be5c, an address nowhere
+     * near where ANGLE is loaded, so what they called was some other image's
+     * symbol of the same name, and of course it returned NULL. The one pointer
+     * known to be ANGLE's own was the one never exercised.
      */
+    bool via_proc = false;
+
     fprintf(stderr, "[husk-gl] probe: eglGetCurrentContext=%p (created %p)\n",
             eglGetCurrentContext(), husk_context);
-    fprintf(stderr, "[husk-gl] probe: egl vendor=%s version=%s\n",
+    fprintf(stderr, "[husk-gl] probe: egl vendor=%s version=%s apis=%s\n",
             eglQueryString(qemu_egl_display, EGL_VENDOR),
-            eglQueryString(qemu_egl_display, EGL_VERSION));
-    fprintf(stderr, "[husk-gl] probe: eglGetProcAddress(glGetString)=%p\n",
-            (void *)eglGetProcAddress("glGetString"));
+            eglQueryString(qemu_egl_display, EGL_VERSION),
+            eglQueryString(qemu_egl_display, EGL_CLIENT_APIS));
 
-    direct = dlsym(RTLD_DEFAULT, "GL_GetString");
-    gl_get_string = direct;
-    fprintf(stderr, "[husk-gl] probe: dlsym(GL_GetString)=%p\n", direct);
+    /* 1. Through EGL's own resolver: this is ANGLE answering about itself. */
+    gl_get_string = (const GLubyte *(*)(GLenum))eglGetProcAddress("glGetString");
+    fprintf(stderr, "[husk-gl] probe: eglGetProcAddress(glGetString)=%p\n",
+            (void *)gl_get_string);
     if (gl_get_string) {
         const GLubyte *v = gl_get_string(GL_VENDOR);
-        fprintf(stderr, "[husk-gl] probe: ANGLE direct vendor=%s\n",
-                v ? (const char *)v : "(null)");
+        const GLubyte *r = gl_get_string(GL_RENDERER);
+        via_proc = (v != NULL);
+        fprintf(stderr, "[husk-gl] probe: VIA eglGetProcAddress vendor=%s renderer=%s\n",
+                v ? (const char *)v : "(null)",
+                r ? (const char *)r : "(null)");
     }
 
+    /* 2. By name, which is what epoxy ends up doing, and which finds the
+     *    wrong image. Kept so the two can be compared in one log. */
+    direct = dlsym(RTLD_DEFAULT, "GL_GetString");
+    fprintf(stderr, "[husk-gl] probe: dlsym(GL_GetString)=%p%s\n", direct,
+            direct ? "" : " (not found)");
+
+    /* 3. Epoxy's dispatch, which is what virglrenderer will actually use. */
     vendor = glGetString(GL_VENDOR);
     fprintf(stderr, "[husk-gl] probe: epoxy vendor=%s renderer=%s\n",
             vendor ? (const char *)vendor : "(null)",
             (const char *)glGetString(GL_RENDERER));
+
+    fprintf(stderr, "[husk-gl] probe: VERDICT angle=%s epoxy=%s\n",
+            via_proc ? "WORKS" : "no", vendor ? "WORKS" : "no");
+
     return vendor != NULL;
 }
 
