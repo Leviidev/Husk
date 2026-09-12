@@ -128,7 +128,14 @@ final class QemuRunner: ObservableObject {
     /// given, and dirty pages count against the footprint.
     private func guestMemoryMiB() -> Int {
         let availableMiB = Int(husk_ios_available_memory() / (1024 * 1024))
-        let jitMiB = 512          // tb-size
+        // 256, not 512. A run that got Android as far as SurfaceFlinger settled at
+        // 2878 MiB of footprint with 498 MiB left before jetsam -- and those two
+        // add up to everything iOS offered, so there was no slack at all while the
+        // guest still had pages left to dirty. Halving the code cache hands back
+        // 256 MiB outright. TCG does not need it: a full buffer is flushed and
+        // retranslated, never grown, so this costs throughput at worst and cannot
+        // fail. It is still one allocation up front, never a second request.
+        let jitMiB = 256          // tb-size
         // Measured, not guessed. A run with a 1708 MiB guest and 512 MiB of JIT
         // settled at 2966 MiB of footprint, so QEMU's own use is ~750 MiB -- nearly
         // double the 400 MiB originally assumed. That run survived with only
@@ -142,8 +149,12 @@ final class QemuRunner: ObservableObject {
 
         // Spend at most 70% of what remains after our own fixed costs. The rest is
         // margin: the figure moves as the rest of the system comes under pressure.
+        // 0.65, down from 0.75: the reclaimed JIT budget is headroom, not more guest
+        // RAM. Spending it on the guest would put the footprint straight back where
+        // it was. At 3362 MiB available this gives a ~1530 MiB guest -- about what
+        // Android was already booting in -- and roughly 800 MiB of margin.
         let spendable = availableMiB - jitMiB - qemuOverheadMiB
-        let target = max(1280, min(6144, Int(Double(spendable) * 0.75)))
+        let target = max(1280, min(6144, Int(Double(spendable) * 0.65)))
 
         HuskLog.log("qemu", "memory budget: iOS reports \(availableMiB) MiB available; "
                           + "reserving \(jitMiB) MiB JIT + \(qemuOverheadMiB) MiB overhead; "
@@ -171,7 +182,7 @@ final class QemuRunner: ObservableObject {
             // so doubling it costs about a second and a half of one-time setup.
             // Android translates far more code than Alpine ever will, and the
             // region cannot be grown later -- StikDebug is gone by then.
-            "-accel", "tcg,tb-size=512,thread=multi,split-wx=on",
+            "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
             // Debian's cloud image boots through GRUB under UEFI, so the firmware
             // pair is required: read-only code volume plus a writable variable

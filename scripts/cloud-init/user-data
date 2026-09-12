@@ -66,6 +66,25 @@ write_files:
           >> /usr/lib/waydroid/data/configs/config_base
       tail -n 5 /usr/lib/waydroid/data/configs/config_base
 
+      # Waydroid chooses its graphics stack by looking for a DRM render node:
+      #
+      #     if dri:  gralloc = "gbm";     egl = "mesa"
+      #     else:    gralloc = "default"; egl = "swiftshader"
+      #
+      # virtio-gpu publishes /dev/dri/renderD128 whether or not it can render.
+      # Ours cannot -- the kernel reports "[drm] features: -virgl", so there is
+      # no 3D at all -- and pointing gralloc.gbm at it makes hwcomposer take
+      # SIGSEGV and SurfaceFlinger abort behind it. The "no GPU" configuration
+      # is the correct one here; Waydroid simply never picks it while the node
+      # exists. Its probe skips drivers named in this list, so naming virtio_gpu
+      # selects the software path through Waydroid's own logic rather than by
+      # overriding the properties it derives afterwards.
+      sed -i 's/^unsupported = \["nvidia"\]/unsupported = ["nvidia", "virtio_gpu", "virtio-gpu"]/' \
+          /usr/lib/waydroid/tools/helpers/gpu.py
+      grep -n '^unsupported' /usr/lib/waydroid/tools/helpers/gpu.py
+
+      echo "guest-v11" > /etc/husk-image-version
+
       mkdir -p /mnt/husk
       systemctl enable seatd || true
       systemctl enable mnt-husk.mount husk-agent.service husk-ui.service
@@ -199,6 +218,8 @@ write_files:
           parts = []
           for cmd in ("systemctl is-active husk-ui husk-agent waydroid-container seatd",
                       "waydroid status",
+                      "cat /etc/husk-image-version",
+                      "grep -hE 'gralloc|egl|vulkan' /var/lib/waydroid/waydroid_base.prop",
                       "ls -la /dev/binder /dev/hwbinder /dev/vndbinder",
                       "ls -la /dev/dri",
                       "free -m",
@@ -206,6 +227,9 @@ write_files:
                       "grep -aE 'ERROR|WARN' /var/log/waydroid-lxc.log | tail -n 30",
                       "lxc-info -P /var/lib/waydroid/lxc -n waydroid",
                       "dmesg | tail -n 15",
+                      "timeout 20 waydroid logcat -d 2>&1 | tail -n 200",
+                      "ls -la /root/.local/share/waydroid/data/tombstones/",
+                      "tail -n 80 /dev/null $(ls -t /root/.local/share/waydroid/data/tombstones/* 2>/dev/null | head -1)",
                       "tail -n 40 /var/log/husk-ui.log",
                       "tail -n 40 /var/log/husk-firstboot.log",
                       "journalctl -u husk-ui --no-pager -n 30"):
@@ -340,6 +364,17 @@ write_files:
           if ok:
               refresh_catalog()
 
+      boot_reports = 0
+      last_boot_report = 0.0
+
+      def android_ready():
+          try:
+              p = subprocess.run("timeout 15 waydroid shell getprop sys.boot_completed",
+                                 shell=True, capture_output=True, text=True)
+              return p.stdout.strip() == "1"
+          except Exception:
+              return False
+
       def main():
           log("starting")
           while not os.path.ismount(SHARE):
@@ -363,6 +398,23 @@ write_files:
                   if warned:
                       log("waydroid session is up")
                       warned = False
+
+                  # The session being up no longer means Android is. It now
+                  # starts and then crash-loops inside the container, where
+                  # husk-ui.sh's dump cannot see it because cage never exits.
+                  # Keep publishing until sys.boot_completed, then stop -- a
+                  # bounded number of times, so a permanent failure does not
+                  # scroll the log forever.
+                  global boot_reports, last_boot_report
+                  if boot_reports < 8 and time.time() - last_boot_report > 45:
+                      if not android_ready():
+                          log(f"android has not finished booting (report {boot_reports + 1}/8)")
+                          publish_diagnostics()
+                          boot_reports += 1
+                      else:
+                          log("android reports boot_completed")
+                          boot_reports = 8
+                      last_boot_report = time.time()
 
                   for c in sorted(glob.glob(f"{CMDS}/*.json")):
                       handle_command(c)
@@ -421,6 +473,9 @@ write_files:
       # to both duplicated every line. One is enough and still reaches the serial log.
       exec > >(tee -a /var/log/husk-ui.log > /dev/console) 2>&1
       echo "HUSK-UI: starting"
+      # Which image is this? Inferring it from the shape of the diagnostics is
+      # how a stale build went unnoticed for a whole round trip.
+      echo "HUSK-UI: image $(cat /etc/husk-image-version 2>/dev/null || echo unknown)"
 
       # There is no GPU behind virtio-gpu here, so wlroots must render in
       # software. Without this cage fails to start a renderer and exits, which
@@ -463,6 +518,11 @@ write_files:
       done
 
       echo "HUSK-UI: seatd: $(systemctl is-active seatd 2>&1)"
+      # gralloc=default + egl=swiftshader means the software path was taken;
+      # gralloc=gbm + egl=mesa means Waydroid still found the render node and
+      # Android will crash in hwcomposer again.
+      echo "HUSK-UI: graphics: $(grep -hE '^(ro\.hardware\.(gralloc|egl|vulkan)|gralloc\.gbm\.device)=' \
+          /var/lib/waydroid/waydroid_base.prop 2>/dev/null | tr '\n' ' ')"
       echo "HUSK-UI: waydroid: $(waydroid status 2>&1 | tr '\n' ' ')"
       echo "HUSK-UI: launching cage + waydroid full UI"
 
