@@ -28,6 +28,10 @@ echo "[cp  ] display bridge -> ui/"
 cp "$HUSK_ROOT/src/ios-jit/husk-display.c" \
    "$HUSK_ROOT/src/ios-jit/husk-display.h" "$Q/ui/"
 
+echo "[cp  ] balloon control -> system/"
+cp "$HUSK_ROOT/src/ios-jit/husk-balloon.c" \
+   "$HUSK_ROOT/src/ios-jit/husk-balloon.h" "$Q/system/"
+
 python3 - "$Q" <<'PY'
 import pathlib, sys
 q = pathlib.Path(sys.argv[1])
@@ -58,6 +62,19 @@ if "husk-display.c" not in s:
     print("  ui/meson.build: added husk-display.c")
 else:
     print("  ui/meson.build: already wired")
+
+# system/meson.build: balloon control. It lives here rather than in ui/ because
+# it calls qmp_balloon(), which system/balloon.c defines.
+p = q / "system/meson.build"
+s = p.read_text()
+if "husk-balloon.c" not in s:
+    old = "system_ss.add(files(\n"
+    assert old in s, "system/meson.build shape changed"
+    s = s.replace(old, old + "  'husk-balloon.c',\n", 1)
+    p.write_text(s)
+    print("  system/meson.build: added husk-balloon.c")
+else:
+    print("  system/meson.build: already wired")
 PY
 
 python3 - "$Q" <<'PY2'
@@ -77,6 +94,7 @@ wanted = [
     "husk_display_send_pointer",
     "husk_display_request_update",
     "husk_display_send_key",
+    "husk_balloon_set_bytes",
     "husk_ios_jit_install_trap_handler",
     "husk_ios_jit_is_available",
     "husk_ios_jit_detach",

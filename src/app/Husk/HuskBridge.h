@@ -46,4 +46,10 @@ void husk_ios_jit_detach(void);
 void husk_ios_jit_log_footprint(const char *tag);
 size_t husk_ios_available_memory(void);
 
+/* --- Husk's guest memory balloon --- */
+/* Ask the guest to shrink to, or grow back to, this much usable RAM. Safe from
+   any thread; the request is asynchronous, so treat it as steering rather than
+   as an allocation that has already happened. */
+void husk_balloon_set_bytes(int64_t target_bytes);
+
 #endif /* HUSK_BRIDGE_H */
