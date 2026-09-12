@@ -83,32 +83,64 @@ write_files:
       # serial line feeds Husk's log, the console is the screen being looked at.
       exec > >(tee -a /var/log/husk-firstboot.log > /dev/console) 2>&1
 
-      IMAGES=/var/lib/waydroid/images
+      # Waydroid looks for ready-made images in preinstalled_images_paths before
+      # it downloads anything. From tools/actions/initializer.py:
+      #
+      #     if has_preinstalled_images:
+      #         cfg["waydroid"]["system_ota"] = "None"
+      #         return True        <- returns before any download
+      #
+      # So dropping system.img and vendor.img in /etc/waydroid-extra/images makes
+      # init skip its fetch entirely. Putting them in /var/lib/waydroid/images --
+      # the RUNTIME path -- does not; that was why a previous version downloaded
+      # everything twice.
+      PRE=/etc/waydroid-extra/images
       if [ -f /var/lib/husk-setup-complete ]; then
           echo "HUSK-SETUP: already initialised"
           exit 0
       fi
+      mkdir -p "$PRE" /var/cache/husk
+      cd /var/cache/husk
 
-      # Let waydroid init fetch its own images.
-      #
-      # A previous version downloaded waydroid_arm64_only first to save bandwidth,
-      # but init re-downloaded its own choice on top anyway -- 805 MB followed by
-      # another ~1 GB, for one usable copy. Its own fetch is ~1 GB total and runs
-      # at ~28 MB/s inside the guest, so there is nothing to gain by second-guessing
-      # it.
-      mkdir -p "$IMAGES"
-      echo "HUSK-SETUP: downloading Android (about 1 GB, one time)"
-      waydroid init &
-      wpid=$!
-      waited=0
-      while kill -0 $wpid 2>/dev/null; do
-          mb=$(du -sm "$IMAGES" /var/lib/waydroid/cache_http 2>/dev/null | awk '{t+=$1} END{print t}')
-          echo "HUSK-SETUP: Android ${mb:-0} MB (${waited}s)"
-          sleep 10
-          waited=$((waited + 10))
-      done
-      wait $wpid || echo "HUSK-SETUP: waydroid init returned $?"
-      ls -la "$IMAGES"
+      # Mirrored on our own release rather than fetched from SourceForge, which
+      # serves these at ~0.28 MB/s against GitHub's ~26 MB/s -- the difference
+      # between about an hour and under a minute for the same bytes.
+      BASE="https://github.com/Leviidev/Husk/releases/download/android-v1"
+
+      fetch() {
+          local url="$1" out="$2" label="$3"
+          [ -f "$out" ] && { echo "HUSK-SETUP: $label already fetched"; return 0; }
+          echo "HUSK-SETUP: downloading $label"
+          wget -q -c -O "$out.part" "$url" &
+          local pid=$!
+          while kill -0 $pid 2>/dev/null; do
+              local mb=$(du -m "$out.part" 2>/dev/null | cut -f1)
+              echo "HUSK-SETUP: $label ${mb:-0} MB"
+              sleep 5
+          done
+          wait $pid || return 1
+          mv "$out.part" "$out"
+      }
+
+      if fetch "$BASE/system.zip" system.zip "Android system" && \
+         fetch "$BASE/vendor.zip" vendor.zip "Android vendor"; then
+          echo "HUSK-SETUP: extracting"
+          ( unzip -o -q system.zip -d "$PRE" && unzip -o -q vendor.zip -d "$PRE" ) &
+          upid=$!
+          while kill -0 $upid 2>/dev/null; do
+              mb=$(du -sm "$PRE" 2>/dev/null | cut -f1)
+              echo "HUSK-SETUP: extracting (${mb:-0} MB)"
+              sleep 10
+          done
+          wait $upid || { echo "HUSK-SETUP: extraction FAILED"; exit 1; }
+          rm -f system.zip vendor.zip
+          ls -la "$PRE"
+      else
+          echo "HUSK-SETUP: mirror download FAILED; falling back to waydroid's own"
+      fi
+
+      echo "HUSK-SETUP: initialising waydroid"
+      waydroid init || echo "HUSK-SETUP: waydroid init returned $?"
       echo "HUSK-SETUP: waydroid status: $(waydroid status 2>&1 | tr '\n' ' ')"
 
       # The completion marker. Everything downstream waits on THIS, not on the
@@ -396,7 +428,7 @@ write_files:
       # Waydroid is still uninitialised, which exits immediately and leaves
       # systemd restarting it every 5 seconds forever.
       while [ ! -f /var/lib/husk-setup-complete ]; do
-          sz=$(du -sm /var/lib/waydroid/images /var/lib/waydroid/cache_http 2>/dev/null | awk '{t+=$1} END{print t}')
+          sz=$(du -sm /var/cache/husk /etc/waydroid-extra/images 2>/dev/null | awk '{t+=$1} END{print t}')
           echo "HUSK-UI: Android setup in progress (${sz:-0} MB, ${waited}s elapsed)"
           sleep 10
           waited=$((waited + 10))
