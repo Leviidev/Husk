@@ -156,47 +156,75 @@ bool husk_display_gl_early(void)
 bool husk_display_gl_init(void *native_layer, int width, int height)
 {
     QemuConsole *con;
+    EGLBoolean ok;
+
+    /*
+     * Step-by-step, to stderr, because this sequence has crashed three times in
+     * places that were only distinguishable after the fact. fprintf rather than
+     * info_report so a crash mid-step still leaves the last line on the log.
+     */
+#define HUSK_GL_STEP(msg) fprintf(stderr, "[husk-gl] step: " msg "\n")
 
     husk_win_w = width;
     husk_win_h = height;
 
-    /*
-     * DISPLAY_GL_MODE_ES, not core. ANGLE speaks GLES, and so does everything
-     * the guest sends through virglrenderer.
-     */
+    HUSK_GL_STEP("qemu_egl_init_dpy_cocoa");
     if (qemu_egl_init_dpy_cocoa(DISPLAY_GL_MODE_ES) < 0) {
-        error_report("[husk-gl] qemu_egl_init_dpy_cocoa failed");
+        fprintf(stderr, "[husk-gl] qemu_egl_init_dpy_cocoa failed\n");
         return false;
     }
 
+    HUSK_GL_STEP("qemu_egl_init_ctx");
     husk_context = qemu_egl_init_ctx();
     if (husk_context == EGL_NO_CONTEXT) {
-        error_report("[husk-gl] could not create the EGL context");
+        fprintf(stderr, "[husk-gl] eglCreateContext failed: 0x%x\n", eglGetError());
         return false;
     }
 
+    HUSK_GL_STEP("qemu_egl_init_surface (CAMetalLayer)");
     husk_surface = qemu_egl_init_surface(husk_context,
                                          (EGLNativeWindowType)native_layer);
     if (husk_surface == EGL_NO_SURFACE) {
-        error_report("[husk-gl] could not create a surface for the layer");
+        fprintf(stderr, "[husk-gl] eglCreateWindowSurface failed: 0x%x\n", eglGetError());
         return false;
     }
 
-    eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface, husk_context);
+    /*
+     * Checked, unlike before. If this fails, everything after it runs with no
+     * current context -- and the first GL call then dereferences null inside
+     * ANGLE, which is a segfault with no explanation attached.
+     */
+    HUSK_GL_STEP("eglMakeCurrent");
+    ok = eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface, husk_context);
+    if (ok != EGL_TRUE) {
+        fprintf(stderr, "[husk-gl] eglMakeCurrent failed: 0x%x\n", eglGetError());
+        return false;
+    }
+
+    fprintf(stderr, "[husk-gl] GL_VENDOR=%s GL_RENDERER=%s GL_VERSION=%s\n",
+            (const char *)glGetString(GL_VENDOR),
+            (const char *)glGetString(GL_RENDERER),
+            (const char *)glGetString(GL_VERSION));
+
+    HUSK_GL_STEP("qemu_gl_init_shader");
     husk_gls = qemu_gl_init_shader();
+    if (!husk_gls) {
+        fprintf(stderr, "[husk-gl] shader init failed\n");
+        return false;
+    }
 
+    HUSK_GL_STEP("register listener");
     husk_gl_ctx.ops = &husk_gl_ctx_ops;
-
     con = qemu_console_lookup_by_index(0);
     if (!con) {
-        error_report("[husk-gl] no console 0");
+        fprintf(stderr, "[husk-gl] no console 0\n");
         return false;
     }
     husk_gl_dcl.con = con;
     qemu_console_set_display_gl_ctx(con, &husk_gl_ctx);
     register_displaychangelistener(&husk_gl_dcl);
 
-    info_report("[husk-gl] GL display up: %dx%d, renderer=%s",
-                width, height, (const char *)glGetString(GL_RENDERER));
+    fprintf(stderr, "[husk-gl] GL display up: %dx%d\n", width, height);
     return true;
+#undef HUSK_GL_STEP
 }
