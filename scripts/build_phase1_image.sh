@@ -77,3 +77,37 @@ else
     exit 1
 fi
 qemu-img info "$DISK" | head -5
+
+# ------------------------------------------------------------------ release
+# Compressed for distribution. qcow2 compresses its own clusters and QEMU reads
+# them transparently, so the app needs no decompressor -- which matters because
+# iOS offers LZFSE/LZ4/LZMA/zlib and neither zstd nor bzip2.
+RELEASE="$G/husk-guest-release.qcow2"
+echo "==> compressing for release"
+rm -f "$RELEASE"
+qemu-img convert -c -O qcow2 "$DISK" "$RELEASE"
+qemu-img info "$RELEASE" | grep "disk size"
+
+# Verify it boots -- with -snapshot, ALWAYS.
+#
+# Without it QEMU opens the image read-write, the guest's first-boot service runs
+# `waydroid init`, and ~800 MB of Android is written into the artifact being
+# verified. That is not hypothetical: it turned a 755 MiB release image into
+# 3.18 GiB once already. -snapshot sends all writes to a throwaway overlay.
+echo "==> verifying the release image boots (read-only via -snapshot)"
+cp "$VARS" "$WORK/verify-vars.fd"
+( qemu-system-aarch64 -M virt,highmem=on -cpu host -accel hvf -smp 4 -m 4096 -snapshot \
+    -drive if=pflash,format=raw,readonly=on,file="$FW" \
+    -drive if=pflash,format=raw,file="$WORK/verify-vars.fd" \
+    -drive if=virtio,format=qcow2,file="$RELEASE" \
+    -nic user,model=virtio-net-pci -display none \
+    -serial file:"$WORK/verify.log" -no-reboot >/dev/null 2>&1 & \
+  VP=$!; sleep 70; kill $VP 2>/dev/null ) || true
+
+if grep -aq "husk-guest login:" "$WORK/verify.log"; then
+    echo "==> release image boots OK"
+else
+    echo "==> release image did NOT reach a login prompt; see $WORK/verify.log" >&2
+    exit 1
+fi
+qemu-img info "$RELEASE" | grep "disk size"
