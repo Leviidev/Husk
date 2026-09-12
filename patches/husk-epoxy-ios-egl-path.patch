@@ -1,5 +1,5 @@
 diff --git a/src/dispatch_common.c b/src/dispatch_common.c
-index 6fb7f02..72fa1df 100644
+index 6fb7f02..ba7fd14 100644
 --- a/src/dispatch_common.c
 +++ b/src/dispatch_common.c
 @@ -182,11 +182,17 @@
@@ -53,7 +53,55 @@ index 6fb7f02..72fa1df 100644
      if (!result)
          error = dlerror();
  #endif
-@@ -768,10 +796,20 @@ epoxy_get_core_proc_address(const char *name, int core_version)
+@@ -713,23 +741,37 @@ epoxy_gl_dlsym(const char *name)
+ void *
+ epoxy_gles1_dlsym(const char *name)
+ {
++#ifdef __APPLE__
++    /* Always ask EGL. See epoxy_get_core_proc_address() for why dlsym cannot
++     * be trusted here: ANGLE is linked into the app with renamed entry points,
++     * and dlsym for a core name finds an unrelated image that exports it. */
++    return epoxy_get_proc_address(name);
++#else
+     if (epoxy_current_context_is_glx()) {
+         return epoxy_get_proc_address(name);
+     } else {
+         get_dlopen_handle(&api.gles1_handle, GLES1_LIB, true, true);
+         return do_dlsym(&api.gles1_handle, name, true);
+     }
++#endif
+ }
+ 
+ void *
+ epoxy_gles2_dlsym(const char *name)
+ {
++#ifdef __APPLE__
++    /* Always ask EGL. See epoxy_get_core_proc_address() for why dlsym cannot
++     * be trusted here: ANGLE is linked into the app with renamed entry points,
++     * and dlsym for a core name finds an unrelated image that exports it. */
++    return epoxy_get_proc_address(name);
++#else
+     if (epoxy_current_context_is_glx()) {
+         return epoxy_get_proc_address(name);
+     } else {
+         get_dlopen_handle(&api.gles2_handle, GLES2_LIB, true, true);
+         return do_dlsym(&api.gles2_handle, name, true);
+     }
++#endif
+ }
+ 
+ /**
+@@ -745,6 +787,9 @@ epoxy_gles2_dlsym(const char *name)
+ void *
+ epoxy_gles3_dlsym(const char *name)
+ {
++#ifdef __APPLE__
++    return epoxy_get_proc_address(name);
++#endif
+     if (epoxy_current_context_is_glx()) {
+         return epoxy_get_proc_address(name);
+     } else {
+@@ -768,10 +813,20 @@ epoxy_get_core_proc_address(const char *name, int core_version)
  {
  #ifdef _WIN32
      int core_symbol_support = 11;
