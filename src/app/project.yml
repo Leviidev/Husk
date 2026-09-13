@@ -39,6 +39,9 @@ targets:
         # Set your team here rather than in Xcode's UI: this file is the source of
         # truth, and `xcodegen generate` overwrites Husk.xcodeproj.
         # DEVELOPMENT_TEAM: XXXXXXXXXX
+        # The icon lives in Assets.xcassets/AppIcon.appiconset. Without this
+        # the catalog is compiled and the icon is never referenced.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Husk/Info.plist
         CODE_SIGN_ENTITLEMENTS: Husk/Husk.entitlements

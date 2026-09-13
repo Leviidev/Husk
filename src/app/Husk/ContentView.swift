@@ -286,6 +286,14 @@ struct SetupView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 22) {
+                // Bundled flat by the Resources copy phase, so it is found by
+                // name rather than by path.
+                if let logo = UIImage(named: "HuskLogo") {
+                    Image(uiImage: logo)
+                        .resizable().scaledToFit()
+                        .frame(width: 96, height: 96)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
                 Text("Husk")
                     .font(.system(size: 44, weight: .semibold, design: .rounded))
                 Text("Android app launcher")
