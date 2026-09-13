@@ -1354,7 +1354,16 @@ final class QemuRunner: ObservableObject {
                 let settled = QemuRunner.bootCompletedAt.map {
                     Date().timeIntervalSince($0) >= 30
                 } ?? false
-                if settled, quietWindows >= 3,
+                // Waiting for quiet is right for a phone sitting on its home
+                // screen and wrong for one being used: playing a game keeps the
+                // frame rate up, quietWindows never reaches three, and the first
+                // snapshot after a cold boot is never taken at all. After three
+                // minutes booted, save regardless -- a snapshot of a machine
+                // mid-use is worth incomparably more than no snapshot.
+                let overdue = QemuRunner.bootCompletedAt.map {
+                    Date().timeIntervalSince($0) >= 180
+                } ?? false
+                if settled, quietWindows >= 3 || overdue,
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasUsableSnapshot {
                     QemuRunner.snapshotRequested = true

@@ -195,6 +195,18 @@ final class HuskGLView: UIView {
     /// where the picture ends up.
     private func guestPoint(from p: CGPoint) -> (Int32, Int32)? {
         guard bounds.width > 0, bounds.height > 0 else { return nil }
+
+        // In landscape the picture is turned a quarter turn by the shader, and a
+        // touch has to be turned the same way or it lands somewhere else
+        // entirely. The shader samples at (uv.y, 1 - uv.x); this is that, undone
+        // against the guest's own dimensions. Without it landscape looks right
+        // and does not respond, which is what "touch doesn't work" was.
+        if Self.lastLandscape == true {
+            let gx = (p.y / bounds.height) * guestWidth
+            let gy = (1 - p.x / bounds.width) * guestHeight
+            guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
+            return (Int32(gx), Int32(gy))
+        }
         let scale = min(bounds.width / guestWidth, bounds.height / guestHeight)
         let drawW = guestWidth * scale
         let drawH = guestHeight * scale
