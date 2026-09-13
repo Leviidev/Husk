@@ -41,7 +41,7 @@ final class GuestImage: ObservableObject {
     /// whatever it downloaded first: the disk exists, so nothing re-fetches it, and
     /// a guest missing a newly-added component fails in ways that look like app
     /// bugs rather than a stale image.
-    static let imageVersion = "lineage-v1"
+    static let imageVersion = "lineage-v2"
 
     static var imageURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"
@@ -236,7 +236,9 @@ final class GuestImage: ObservableObject {
         // reboot into recovery on every subsequent start
         // ("init_user0_failed"). Nothing short of a clean partition fixes that.
         let seedStamp = URL(fileURLWithPath: userdataPath + ".seed")
-        let seedVersion = "v2"
+        // v3: the guest image changed, so userdata built against the old /system --
+        // including a multi-gigabyte snapshot of it -- has to go.
+        let seedVersion = "v3"
         let seededWith = try? String(contentsOf: seedStamp, encoding: .utf8)
         if fm.fileExists(atPath: userdataPath), seededWith != seedVersion {
             HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "

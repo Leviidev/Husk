@@ -215,7 +215,7 @@ final class QemuRunner: ObservableObject {
         // machine. Folding the display choice into the strategy means the first
         // launch after GL starts working boots cold once, then re-snapshots,
         // rather than failing to restore.
-        "file-backed-6g-nosve-v2-" + (QemuRunner.glProven ? "gl" : "sw")
+        "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
     }
 
     /// Whether guest RAM can be backed by a file on this device, this run.
