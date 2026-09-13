@@ -230,6 +230,29 @@ final class QemuRunner: ObservableObject {
         FileManager.default.fileExists(atPath: snapshotSizePath)
     }
 
+    /// Forget the saved machine, so the next launch boots Android from cold.
+    ///
+    /// Only the stamps are removed. The snapshot itself lives inside the qcow2
+    /// and is overwritten by the next save; deleting it here would mean rewriting
+    /// a multi-gigabyte image to reclaim space the next save reclaims anyway.
+    /// What decides whether a restore is attempted is these files, so clearing
+    /// them is exactly "forget it".
+    ///
+    /// `mode` is "gl" or "sw". A machine is only forgotten if it was saved in the
+    /// mode asked for -- there is one saved machine, not two, and deleting the
+    /// software one should not silently throw away a GPU one.
+    @discardableResult
+    nonisolated func forgetSnapshot(mode: String) -> Bool {
+        guard hasSnapshot else { return false }
+        let have = snapshotDisplay ?? "sw"
+        guard have == mode else { return false }
+        for path in [snapshotSizePath, snapshotDisplayPath, memoryStrategyPath] {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+        HuskLog.log("snap", "forgot the \(mode) machine; the next launch boots from cold")
+        return true
+    }
+
     /// Whether a saved machine exists that this session could actually restore.
     ///
     /// Existence alone is the wrong question, and asking it is why turning GPU

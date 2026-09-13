@@ -485,6 +485,14 @@ private struct ModeCard: View {
 /// These are the choices that have to be made before Android boots, because
 /// booting is expensive and each of them changes what that boot costs.
 struct SettingsView: View {
+    private func forget(_ mode: String, _ name: String) {
+        if QemuRunner.shared.forgetSnapshot(mode: mode) {
+            deleteResult = "Deleted the \(name) machine. The next launch boots from cold."
+        } else {
+            deleteResult = "No \(name) machine is saved, so nothing was deleted."
+        }
+    }
+
     @Environment(\.presentationMode) private var presentation
     @Binding var profile: QemuRunner.Profile
     @Binding var showLogs: Bool
@@ -494,10 +502,45 @@ struct SettingsView: View {
         UserDefaults.standard.bool(forKey: "husk.gpuMode")
     @State private var useSnapshot =
         UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
+    @State private var askWhichToDelete = false
+    @State private var deleteResult: String?
 
     var body: some View {
         NavigationView {
             Form {
+                Section {
+                    Button(role: .destructive) { askWhichToDelete = true } label: {
+                        Label("Delete saved machine", systemImage: "trash")
+                    }
+                    .disabled(!QemuRunner.shared.hasSnapshot)
+                    if let deleteResult {
+                        Text(deleteResult).font(.caption2).foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Saved machine")
+                } footer: {
+                    Text(QemuRunner.shared.hasSnapshot
+                         ? "Husk restores this instead of booting, which takes seconds "
+                         + "rather than minutes. Deleting it forces one cold boot, after "
+                         + "which a fresh one is saved. Currently saved: "
+                         + ((QemuRunner.shared.snapshotDisplay ?? "sw") == "gl"
+                            ? "GPU." : "software.")
+                         : "Nothing is saved, so Android boots from cold.")
+                        .font(.caption2)
+                }
+                .confirmationDialog("Which saved machine?",
+                                    isPresented: $askWhichToDelete,
+                                    titleVisibility: .visible) {
+                    // Both offered, because which one is on disk is not something
+                    // anyone should have to remember -- and deleting the mode you
+                    // are not in should never quietly throw away the one you are.
+                    Button("GPU machine", role: .destructive) { forget("gl", "GPU") }
+                    Button("Software machine", role: .destructive) { forget("sw", "software") }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Android will boot from cold once, then save a new one.")
+                }
+
                 Section {
                     Toggle(isOn: $useSnapshot) {
                         VStack(alignment: .leading, spacing: 2) {
