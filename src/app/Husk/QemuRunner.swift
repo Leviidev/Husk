@@ -461,6 +461,29 @@ final class QemuRunner: ObservableObject {
             // the scanout. Apps may still hold 3D resources, and virtio_gpu_save
             // now skips those safely rather than dereferencing them, which is the
             // patch that made this choice available.
+            // Close the apps first, without touching the framework.
+            //
+            // Keeping zygote alive fixed networking, and cost something I did
+            // not account for: every running app keeps its own 3D resources, and
+            // virtio_gpu_save skips those because they cannot be serialised. The
+            // restored guest then believes in resource ids the host has never
+            // heard of, and says so:
+            //
+            //   [drm:virtio_gpu_dequeue_ctrl_func] *ERROR* response 0x1203
+            //
+            // -- INVALID_RESOURCE_ID, against SET_SCANOUT and RESOURCE_UNREF.
+            // That is a guest whose display stack is wedged, which is what the
+            // instability after 0.2.0 actually is.
+            //
+            // `am kill-all` closes background apps and leaves system_server and
+            // netd untouched, so the GPU state goes away without the framework
+            // restart that broke the network. Both halves, rather than trading
+            // one for the other.
+            if let r = try? GuestBridge.shared.run("am kill-all", timeout: 60) {
+                HuskLog.log("snap", "closed background apps before saving "
+                                  + "(exit \(r.status))")
+            }
+
             for svc in ["surfaceflinger"] {
                 let r = try? GuestBridge.shared.run("setprop ctl.stop \(svc)", timeout: 60)
                 if (r?.status ?? -1) != 0 {
