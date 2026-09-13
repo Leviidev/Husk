@@ -85,36 +85,32 @@ final class HuskGLView: UIView {
                                          height: bounds.height * scale)
         HuskMetalPresenter.shared.attach(layer: metalLayer)
 
-        // Keep the guest's rotation in step with the screen's.
+        // Give the guest a display the shape of the screen.
         //
-        // Android here is a fixed 360x800 panel and does not turn itself: a game
-        // that asks for landscape gets its picture rotated inside that portrait
-        // panel, which is why Geometry Dash came out small and sideways rather
-        // than filling the screen. Telling Android to rotate makes it compose
-        // for landscape; turning the result back in the shader makes it land
-        // upright. Neither half works alone.
+        // The previous approach rotated Android inside a fixed portrait panel
+        // and turned the picture back in the shader. Android honoured the
+        // rotation and then letterboxed the app into a sub-rectangle: small,
+        // and unresponsive, because the window accepting input was that
+        // rectangle rather than where a finger mapped to. Correctly placed
+        // touches landed in no window at all.
+        //
+        // A modeset is the real answer. The guest's virtio-gpu driver changes
+        // resolution, the scanout becomes genuinely landscape, and nothing needs
+        // rotating -- not the shader, not the touch map, both of which are back
+        // to their portrait forms because there is no longer anything to undo.
         let landscape = bounds.width > bounds.height
         if landscape != Self.lastLandscape {
             Self.lastLandscape = landscape
-            HuskMetalPresenter.shared.setRotated(landscape)
+            let base = QemuRunner.lastGuestRes
+            let short = min(base.w, base.h), long = max(base.w, base.h)
+            let w = landscape ? long : short
+            let h = landscape ? short : long
             HuskLog.log("ui", "screen is \(landscape ? "landscape" : "portrait"); "
-                            + "asking Android to match")
-            DispatchQueue.global(qos: .userInitiated).async {
-                _ = try? GuestBridge.shared.shell(
-                    "settings put system accelerometer_rotation 0", timeout: 20)
-                // Report whether it took. "Android tried to rotate but came out
-                // small" has two explanations -- a wrong turn here, or the
-                // setting never applying -- and only one of them is visible from
-                // a log unless the status is recorded.
-                let r = try? GuestBridge.shared.run(
-                    "settings put system user_rotation \(landscape ? 1 : 0)", timeout: 20)
-                let now = try? GuestBridge.shared.shell(
-                    "settings get system user_rotation", timeout: 20)
-                HuskLog.log("ui", "user_rotation set exit \(r?.status ?? -1); "
-                                + "android now reports "
-                                + (now?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "?"))
-            }
+                            + "asking the guest for \(w)x\(h)")
+            husk_display_set_ui_size(Int32(w), Int32(h))
+            QemuRunner.lastGuestRes = (w: w, h: h)
         }
+
         Self.surfaceReady.lock()
         let first = Self.layerForGL == nil
         Self.layerForGL = metalLayer
@@ -205,21 +201,6 @@ final class HuskGLView: UIView {
     private func guestPoint(from p: CGPoint) -> (Int32, Int32)? {
         guard bounds.width > 0, bounds.height > 0 else { return nil }
 
-        // In landscape the picture is turned a quarter turn by the shader, and a
-        // touch has to be turned the same way or it lands somewhere else
-        // entirely. The shader samples at (uv.y, 1 - uv.x); this is that, undone
-        // against the guest's own dimensions. Without it landscape looks right
-        // and does not respond, which is what "touch doesn't work" was.
-        if Self.lastLandscape == true {
-            // Matches the shader exactly: it samples at (1 - uv.y, uv.x), so a
-            // touch maps the same way. The first version turned the picture the
-            // wrong way -- landscape came out upside down -- and these two must
-            // agree or the image is right and nothing responds where it looks.
-            let gx = (1 - p.y / bounds.height) * guestWidth
-            let gy = (p.x / bounds.width) * guestHeight
-            guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
-            return (Int32(gx), Int32(gy))
-        }
         let scale = min(bounds.width / guestWidth, bounds.height / guestHeight)
         let drawW = guestWidth * scale
         let drawH = guestHeight * scale

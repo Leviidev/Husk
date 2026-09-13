@@ -357,6 +357,7 @@ wanted = [
     "husk_display_lock_frame",
     "husk_display_unlock_frame",
     "husk_display_sequence",
+    "husk_display_set_ui_size",
     "husk_display_send_pointer",
     "husk_display_request_update",
     "husk_display_send_key",

@@ -241,6 +241,42 @@ static void husk_input_size(QemuConsole *con, int *w, int *h)
     qemu_mutex_unlock(&husk.lock);
 }
 
+/*
+ * Ask the guest to make its display this size.
+ *
+ * Rotating Android inside a fixed portrait panel was the wrong shape of fix:
+ * Android honoured the rotation and then letterboxed the app into a
+ * sub-rectangle, so the picture was small and -- because the window accepting
+ * input was that rectangle and not where the finger mapped to -- correctly
+ * placed touches went nowhere.
+ *
+ * This is what QEMU provides for the case: dpy_set_ui_info() hands the guest a
+ * preferred geometry, its virtio-gpu driver does a modeset, and the scanout
+ * genuinely becomes that size. Android then has a real landscape display rather
+ * than a portrait one it has to fit a landscape app into, and nothing needs
+ * rotating anywhere -- not the shader, not the touch map.
+ */
+void husk_display_set_ui_size(int32_t width, int32_t height)
+{
+    QemuConsole *con;
+    QemuUIInfo info;
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    bql_lock();
+    con = husk_input_console();
+    if (con) {
+        info = *dpy_get_ui_info(con);
+        info.width = width;
+        info.height = height;
+        dpy_set_ui_info(con, &info, false);
+    }
+    bql_unlock();
+    HUSK_DLOG("asked the guest for a %dx%d display (console %p)",
+              width, height, (void *)con);
+}
+
 void husk_display_send_pointer(int32_t x, int32_t y, bool button_down)
 {
     QemuConsole *con;

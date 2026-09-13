@@ -63,6 +63,7 @@ bool     husk_display_gl_create(void *native_layer, int32_t width, int32_t heigh
 bool     husk_display_gl_probe(void);
 bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
+void     husk_display_set_ui_size(int32_t width, int32_t height);
 
 /* Present the guest's scanout from its own MTLTexture, bypassing GL. See the
  * comment in husk-display-gl.h: on this stack the GL texture id that comes with
