@@ -25,6 +25,11 @@ enum HuskLog {
     fileprivate static var rawLogFD: Int32 { logFD }
     private static var logFD: Int32 = -1
     fileprivate static var pipeReadFD: Int32 = -1
+
+    /// Scratch space for the crash handler, taken before it is needed.
+    /// Nothing inside a signal handler may allocate.
+    fileprivate static let crashBuf =
+        UnsafeMutableRawPointer.allocate(byteCount: 8192, alignment: 16)
     private static var pipeWriteFD: Int32 = -1
     private static var started = false
     private static let writeLock = NSLock()
@@ -158,16 +163,17 @@ enum HuskLog {
                 if HuskLog.pipeReadFD >= 0 {
                     let flags = fcntl(HuskLog.pipeReadFD, F_GETFL, 0)
                     _ = fcntl(HuskLog.pipeReadFD, F_SETFL, flags | O_NONBLOCK)
-                    var buf = [UInt8](repeating: 0, count: 4096)
+                    // A buffer allocated up front, because this one did not
+                    // work: creating an array here allocates, and abort() can
+                    // be raised while the allocator's lock is held -- so the
+                    // drain deadlocked inside malloc and took the fsync with
+                    // it. The marker was written and nothing after it, which
+                    // looked exactly like "QEMU printed nothing".
                     while true {
-                        let n = buf.withUnsafeMutableBytes {
-                            read(HuskLog.pipeReadFD, $0.baseAddress, $0.count)
-                        }
+                        let n = read(HuskLog.pipeReadFD, HuskLog.crashBuf, 8192)
                         if n <= 0 { break }
                         if HuskLog.rawLogFD >= 0 {
-                            _ = buf.withUnsafeBytes {
-                                write(HuskLog.rawLogFD, $0.baseAddress, n)
-                            }
+                            _ = write(HuskLog.rawLogFD, HuskLog.crashBuf, n)
                         }
                     }
                 }
