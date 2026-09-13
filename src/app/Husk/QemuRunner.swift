@@ -270,6 +270,61 @@ final class QemuRunner: ObservableObject {
         }
     }
 
+    /// Bring Android's UI back after a snapshot stopped it.
+    ///
+    /// Stopping surfaceflinger and zygote is what makes a GL machine saveable,
+    /// so every GL save and every GL restore leaves a guest whose entire
+    /// framework is down: no system_server, no launcher, nothing drawing.
+    /// Starting them again is not a courtesy, it is the other half of the
+    /// operation, and until it finishes the screen is black no matter how well
+    /// the GPU path works.
+    ///
+    /// This used to be two fire-and-forget setprops. The first blocked for its
+    /// entire 60-second timeout -- the guest had only just been resumed and the
+    /// bridge was not answering yet -- and the second was swallowed by `try?`
+    /// and never reached the guest at all. The log then announced "compositor
+    /// and app processes restarted" over a guest where init had processed
+    /// exactly one ctl.start, for surfaceflinger, while zygote stayed dead.
+    /// Android was a black screen from that moment on and nothing said so.
+    ///
+    /// So it retries, and it confirms against init's own view of each service
+    /// rather than against whether a setprop happened to return.
+    @discardableResult
+    nonisolated func startAndroidUI(why: String) -> Bool {
+        var allUp = true
+        for svc in ["surfaceflinger", "zygote"] {
+            var up = false
+            for attempt in 1...4 {
+                _ = try? GuestBridge.shared.run("setprop ctl.start \(svc)", timeout: 20)
+                // init.svc.<name> is init's own answer, and the only thing that
+                // tells "the command was delivered" apart from "it worked".
+                for _ in 1...15 {
+                    if let state = try? GuestBridge.shared.shell(
+                            "getprop init.svc.\(svc)", timeout: 20),
+                       state.contains("running") {
+                        up = true
+                        break
+                    }
+                    Thread.sleep(forTimeInterval: 1)
+                }
+                if up {
+                    HuskLog.log("snap", "\(svc) is running again"
+                                      + (attempt > 1 ? " (attempt \(attempt))" : ""))
+                    break
+                }
+                HuskLog.log("snap", "\(svc) did not come up on attempt \(attempt)")
+            }
+            if !up {
+                HuskLog.log("snap", "\(svc) could NOT be restarted; "
+                                  + "the screen will stay black until the app is relaunched")
+                allUp = false
+            }
+        }
+        HuskLog.log("snap", allUp ? "Android's UI is running again (\(why))"
+                                  : "Android's UI did not fully come back (\(why))")
+        return allUp
+    }
+
     private func performSave() {
         let completion = QemuRunner.saveCompletion
 
@@ -362,10 +417,7 @@ final class QemuRunner: ObservableObject {
                 // Whether or not the save worked. A guest left with its
                 // compositor stopped is a black screen, and a failed save is
                 // not a reason to hand someone one of those.
-                for svc in ["surfaceflinger", "zygote"] {
-                    _ = try? GuestBridge.shared.shell("setprop ctl.start \(svc)", timeout: 60)
-                }
-                HuskLog.log("snap", "compositor and app processes restarted")
+                QemuRunner.shared.startAndroidUI(why: "after saving")
             }
             let done = QemuRunner.saveCompletion
             QemuRunner.saveCompletion = nil
@@ -1102,9 +1154,7 @@ final class QemuRunner: ObservableObject {
             // the renderer this process just created.
             Thread.detachNewThread {
                 HuskLog.log("qemu", "restored a GL machine; starting the compositor")
-                for svc in ["surfaceflinger", "zygote"] {
-                    _ = try? GuestBridge.shared.shell("setprop ctl.start \(svc)", timeout: 180)
-                }
+                QemuRunner.shared.startAndroidUI(why: "after restoring")
             }
         }
         HuskLog.logFootprint("after-qemu-init")
