@@ -81,14 +81,18 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
                                     ScanoutTextureNative native)
 {
     /*
-     * backing_y_0_top says the guest's origin is top-left while GL's is
-     * bottom-left, so it decides whether the blit flips. Getting it wrong
-     * renders the whole of Android upside down, which is a confusing way to
-     * discover a one-line mistake.
+     * Passed through, not negated.
+     *
+     * The reasoning that produced "!backing_y_0_top" was sound and the answer
+     * was still wrong: QEMU has two blit paths and they take opposite senses of
+     * this flag. gtk-egl.c calls egl_texture_blit() with y0_top directly and
+     * egl_fb_blit() with !y0_top. We use the texture path, so it is the
+     * un-negated one -- and getting it backwards renders Android upside down,
+     * which is exactly what it did.
      */
     fprintf(stderr, "[husk-gl] scanout_texture: id=%u %ux%u y0top=%d\n",
             backing_id, backing_width, backing_height, backing_y_0_top ? 1 : 0);
-    husk_flip = !backing_y_0_top;
+    husk_flip = backing_y_0_top;
     egl_fb_setup_for_tex(&husk_guest_fb, backing_width, backing_height,
                          backing_id, false);
     husk_have_scanout = true;
