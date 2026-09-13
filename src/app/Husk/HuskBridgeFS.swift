@@ -318,9 +318,9 @@ final class Adb {
         while true {
             let r = try recv()
             if trace {
-                let name = ["4e584e43": "CNXN", "4e45504f": "OPEN", "59414b4f": "OKAY",
-                            "45534c43": "CLSE", "45545257": "WRTE", "48545541": "AUTH"]
-                    [String(r.cmd, radix: 16)] ?? "0x\(String(r.cmd, radix: 16))"
+                let names = ["4e584e43": "CNXN", "4e45504f": "OPEN", "59414b4f": "OKAY",
+                             "45534c43": "CLSE", "45545257": "WRTE", "48545541": "AUTH"]
+                let name = names[String(r.cmd, radix: 16)] ?? "0x\(String(r.cmd, radix: 16))"
                 HuskLog.log("adb", "  <- \(name) arg0=\(r.arg0) arg1=\(r.arg1) "
                                  + "len=\(r.data.count) \(String(decoding: r.data.prefix(80), as: UTF8.self).debugDescription)")
             }
