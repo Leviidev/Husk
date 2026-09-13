@@ -12,6 +12,9 @@ struct ContentView: View {
     @StateObject private var runner = QemuRunner.shared
     @StateObject private var bridge = HuskBridgeFS.shared
 
+    /// How Android was started, which decides what the app shows while it runs.
+    enum StartMode { case fullScreen, library }
+    @State private var mode: StartMode = .fullScreen
     @State private var started = false
     @State private var runningApp: HuskBridgeFS.AndroidApp?
     @State private var showLogs = false
@@ -27,8 +30,9 @@ struct ContentView: View {
                     HuskLog.log("ui", "returning to library from \(app.package)")
                     runningApp = nil
                 }
-            } else if started && androidReady && !showGuestScreen {
-                LibraryView(running: $runningApp)
+            } else if started && mode == .library && !showGuestScreen {
+                AdbLibraryView(onOpened: { showGuestScreen = true },
+                               showLogs: $showLogs)
             } else if started && runner.isRunning {
                 // Android's own first-run wizard has to be completed by hand, and
                 // LineageOS will not finish booting until it is. Hiding the guest
@@ -38,7 +42,14 @@ struct ContentView: View {
                                 canReturnToLibrary: androidReady,
                                 onLibrary: { showGuestScreen = false })
             } else {
-                SetupView(showLogs: $showLogs, onStart: start)
+                SetupView(showLogs: $showLogs) { chosen in
+                    mode = chosen
+                    // Full screen shows the guest immediately; the library keeps
+                    // it hidden and talks to it over ADB instead.
+                    showGuestScreen = (chosen == .fullScreen)
+                    start()
+                    if chosen == .library { AndroidHost.shared.waitForReady() }
+                }
             }
         }
         .sheet(isPresented: $showLogs) { LogView() }
@@ -178,7 +189,7 @@ struct SetupView: View {
     @ObservedObject private var runner = QemuRunner.shared
     @ObservedObject private var bridge = HuskBridgeFS.shared
     @Binding var showLogs: Bool
-    let onStart: () -> Void
+    let onStart: (ContentView.StartMode) -> Void
 
     @State private var profile: QemuRunner.Profile = .phase1Android
     @State private var showSettings = false
@@ -269,7 +280,24 @@ struct SetupView: View {
             case .ready:
                 VStack(spacing: 12) {
                     if JITBootstrap.isDebuggerAttached {
-                        Button("Start Android", action: onStart).buttonStyle(.borderedProminent)
+                        VStack(spacing: 10) {
+                            Button { onStart(.fullScreen) } label: {
+                                Label("Start Android full screen", systemImage: "rectangle.inset.filled")
+                                    .frame(maxWidth: 260)
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button { onStart(.library) } label: {
+                                Label("Run in background, use app library",
+                                      systemImage: "square.grid.2x2")
+                                    .frame(maxWidth: 260)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Text("The library installs APKs over ADB and opens them straight into the app, without the Android desktop.")
+                                .font(.caption2).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center).padding(.horizontal, 40)
+                        }
                     } else {
                         Text("Husk needs executable memory, which on iOS only an attached debugger can grant.")
                             .font(.callout).foregroundStyle(.secondary)
@@ -400,6 +428,106 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { presentation.wrappedValue.dismiss() }
                 }
+            }
+        }
+    }
+}
+
+/// The app library: Android running out of sight, reached over ADB.
+///
+/// This is the point of the project. The Android desktop is a means; what a
+/// person wants is their APK, installed and opened, with none of the system UI
+/// around it. Nothing here is visible until the guest answers on ADB, because
+/// until then there is nothing to install into and saying otherwise would be a
+/// lie the user pays for in confusion.
+struct AdbLibraryView: View {
+    @ObservedObject private var host = AndroidHost.shared
+    @ObservedObject private var runner = QemuRunner.shared
+    let onOpened: () -> Void
+    @Binding var showLogs: Bool
+
+    @State private var importing = false
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if host.isReady { ready } else { waiting }
+            }
+            .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { showLogs = true } label: {
+                        Image(systemName: "doc.text.magnifyingglass")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { importing = true } label: { Image(systemName: "plus") }
+                        .disabled(!host.isReady || host.busy != nil)
+                }
+            }
+            .fileImporter(isPresented: $importing,
+                          allowedContentTypes: [.item],
+                          allowsMultipleSelection: false) { result in
+                if case .success(let urls) = result, let apk = urls.first {
+                    HuskLog.log("ui", "importing \(apk.lastPathComponent)")
+                    host.install(apk)
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+    }
+
+    private var waiting: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+            Text(host.status).font(.callout)
+            Text(runner.setupMessage ?? "Android is running in the background.")
+                .font(.caption2).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal, 40)
+            Button("Show Android") { onOpened() }
+                .font(.footnote).padding(.top, 6)
+        }
+    }
+
+    private var ready: some View {
+        List {
+            if let busy = host.busy {
+                Section { HStack { ProgressView(); Text(busy).font(.footnote) } }
+            }
+            if host.packages.isEmpty {
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("No apps yet").font(.headline)
+                        Text("Add an APK with + and Husk installs it into Android over ADB.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 6)
+                }
+            } else {
+                Section("Installed") {
+                    ForEach(host.packages) { pkg in
+                        Button {
+                            // Open the app first, then show the screen -- so what
+                            // appears is the app, not the launcher behind it.
+                            host.launch(pkg.name) { onOpened() }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "app.dashed")
+                                    .font(.title3).foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(pkg.label)
+                                    Text(pkg.name).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .disabled(host.busy != nil)
+                    }
+                }
+            }
+            Section {
+                Button("Show the Android desktop") { onOpened() }
+                    .font(.footnote)
             }
         }
     }
