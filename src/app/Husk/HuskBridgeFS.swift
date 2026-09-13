@@ -348,6 +348,31 @@ final class GuestBridge {
         }
     }
 
+    /// Run a command and read everything it writes, as bytes.
+    ///
+    /// `exec` again, for the same reason the push path uses it: the shell never
+    /// closes the connection by itself, so "read until EOF" would hang forever.
+    /// Replacing the shell with the program means the socket closes the moment
+    /// that program exits, which is exactly the end-of-data signal needed for
+    /// binary output that has no marker to look for.
+    func pull(_ command: String, timeout: TimeInterval = 60,
+              limit: Int = 8 << 20) throws -> Data {
+        let fd = try openSocket(timeout: timeout)
+        defer { close(fd) }
+        try writeAll(fd, Data("exec \(command)\n".utf8))
+
+        var out = Data()
+        var buf = [UInt8](repeating: 0, count: 64 * 1024)
+        while out.count < limit {
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n < 0 && errno == EINTR { continue }
+            if n <= 0 { break }
+            out.append(contentsOf: buf[0..<n])
+        }
+        isConnected = true
+        return out
+    }
+
     /// Copy a local file into the guest.
     ///
     /// The data goes down its own connection rather than being quoted into a
@@ -417,6 +442,17 @@ final class AndroidHost: ObservableObject {
         var id: String { name }
         let name: String
         var label: String
+        /// Local file the icon was written to, once it has been fetched.
+        var iconPath: String?
+    }
+
+    /// Where pulled icons live. Caches, not Documents: they are derived from
+    /// APKs that are still in the guest and can always be fetched again.
+    private static var iconDirectory: URL {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-icons")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 
     @Published private(set) var isReady = false
@@ -482,11 +518,72 @@ final class AndroidHost: ObservableObject {
                 .map { String($0.dropFirst("package:".count)) }
                 .filter { !$0.isEmpty }
             await MainActor.run {
-                self.packages = names.map { Package(name: $0, label: Self.pretty($0)) }
+                self.packages = names.map { name in
+                    let cached = Self.iconDirectory.appendingPathComponent("\(name).png")
+                    return Package(name: name, label: Self.pretty(name),
+                                   iconPath: FileManager.default.fileExists(atPath: cached.path)
+                                             ? cached.path : nil)
+                }
             }
             HuskLog.log("bridge", "\(names.count) user package(s) installed")
+            for name in names { await fetchIcon(for: name) }
         } catch {
             HuskLog.log("bridge", "could not list packages: \(error.localizedDescription)")
+        }
+    }
+
+    /// Pull an app's launcher icon out of its APK.
+    ///
+    /// An APK is a zip, so the icon can be read straight out of it without
+    /// resolving Android resources -- which would mean parsing the binary
+    /// resource table, and is far more than a picture in a list is worth. The
+    /// entry is chosen by name and then by size: an app ships the same icon at
+    /// several densities, and the largest is the one that still looks right on
+    /// a phone screen.
+    ///
+    /// Apps whose icon is only an adaptive XML drawable have no single PNG to
+    /// find; those keep the generic placeholder, which is the honest result.
+    private func fetchIcon(for package: String) async {
+        let dest = Self.iconDirectory.appendingPathComponent("\(package).png")
+        if FileManager.default.fileExists(atPath: dest.path) { return }
+
+        do {
+            let paths = try GuestBridge.shared.shell("pm path \(package)", timeout: 30)
+            guard let apk = paths.split(separator: "\n")
+                    .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+                    .first(where: { $0.hasPrefix("package:") })
+                    .map({ String($0.dropFirst("package:".count)) }), !apk.isEmpty else {
+                return
+            }
+
+            // Sorted by the size column, largest first.
+            let listing = try GuestBridge.shared.shell(
+                "unzip -l \(apk) | grep -iE 'res/.*(launcher|icon).*\\.png$' "
+              + "| sort -k1 -rn | head -1", timeout: 60)
+            guard let entry = listing.split(separator: "\n").first?
+                    .split(separator: " ").last.map(String.init),
+                  entry.hasSuffix(".png") else {
+                HuskLog.log("bridge", "no icon png in \(package)")
+                return
+            }
+
+            let data = try GuestBridge.shared.pull("unzip -p \(apk) \(entry)", timeout: 90)
+            // A zip entry that does not exist gives an error on stdout rather
+            // than a file, so check it really is a PNG before keeping it.
+            guard data.count > 8, data.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47]) else {
+                HuskLog.log("bridge", "\(package): \(entry) was not a PNG (\(data.count) bytes)")
+                return
+            }
+            try data.write(to: dest)
+            HuskLog.log("bridge", "icon for \(package): \(entry), \(data.count) bytes")
+
+            await MainActor.run {
+                if let i = self.packages.firstIndex(where: { $0.name == package }) {
+                    self.packages[i].iconPath = dest.path
+                }
+            }
+        } catch {
+            HuskLog.log("bridge", "icon for \(package) failed: \(error.localizedDescription)")
         }
     }
 
@@ -607,7 +704,33 @@ final class AndroidHost: ObservableObject {
                           + out.trimmingCharacters(in: .whitespacesAndNewlines)
                                .replacingOccurrences(of: "\n", with: " | "))
             }
+            await self.dumpCrashes()
         }
+    }
+
+    /// Everything Android has recorded about its own crashes.
+    ///
+    /// The GPU-mode guest kills and restarts system_server repeatedly, and
+    /// nothing visible from outside says why: the serial console shows init
+    /// reaping zombies and the watchdog firing, which is the consequence rather
+    /// than the cause. Android already knows -- it writes the fault address and
+    /// the backtrace into logcat's crash buffer -- and this is simply reading
+    /// what it wrote, so the next change can be a decision instead of a guess.
+    ///
+    /// Line by line rather than one blob: the log is read by grepping for
+    /// markers, and a single entry holding a hundred newlines defeats that.
+    func dumpCrashes() async {
+        let out = (try? GuestBridge.shared.shell("logcat -d -b crash -t 200 2>/dev/null",
+                                                 timeout: 120)) ?? ""
+        let lines = out.split(separator: "\n").map(String.init)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !lines.isEmpty else {
+            HuskLog.log("crash", "crash buffer is empty -- nothing has died yet")
+            return
+        }
+        HuskLog.log("crash", "---- \(lines.count) lines from Android's crash buffer ----")
+        for line in lines.suffix(200) { HuskLog.log("crash", line) }
+        HuskLog.log("crash", "---- end of crash buffer ----")
     }
 
     /// Make Android draw fewer pixels.

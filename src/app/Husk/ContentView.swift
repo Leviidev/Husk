@@ -346,6 +346,34 @@ struct SetupView: View {
     }
 }
 
+/// An app's icon, or the placeholder while it is being fetched.
+///
+/// Loaded from the file rather than held in memory: icons arrive one at a time
+/// over the guest bridge, and a list that redraws when each lands should not
+/// also be carrying every decoded bitmap around with it.
+private struct AppIcon: View {
+    let path: String?
+
+    var body: some View {
+        Group {
+            if let path, let image = UIImage(contentsOfFile: path) {
+                Image(uiImage: image)
+                    .resizable()
+                    .interpolation(.medium)
+                    .aspectRatio(contentMode: .fit)
+                    // Rounded like a launcher would draw it. Android icons are
+                    // square PNGs; nothing else gives them an app-like shape.
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            } else {
+                Image(systemName: "app.dashed")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 40, height: 40)
+    }
+}
+
 /// One of the two ways to start Android.
 ///
 /// A card rather than a button because the choice needs a sentence to explain
@@ -605,8 +633,7 @@ struct AdbLibraryView: View {
                             host.launch(pkg.name) { onOpened() }
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "app.dashed")
-                                    .font(.title3).foregroundStyle(.secondary)
+                                AppIcon(path: pkg.iconPath)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(pkg.label)
                                     Text(pkg.name).font(.caption2).foregroundStyle(.secondary)
