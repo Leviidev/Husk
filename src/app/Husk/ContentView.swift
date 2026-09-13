@@ -37,6 +37,7 @@ struct ContentView: View {
             if started && runner.isRunning {
                 GuestScreenView(showLogs: $showLogs, onBack: {
                     mode = .library
+                    HuskLog.log("ui", "hiding the guest screen; back to the library")
                     showGuestScreen = false
                     AndroidHost.shared.waitForReady()
                 })
@@ -48,7 +49,10 @@ struct ContentView: View {
                     runningApp = nil
                 }
             } else if started && mode == .library && !showGuestScreen {
-                AdbLibraryView(onOpened: { showGuestScreen = true },
+                AdbLibraryView(onOpened: {
+                                HuskLog.log("ui", "revealing the guest screen")
+                                showGuestScreen = true
+                               },
                                showLogs: $showLogs)
                     // Opaque, because the guest is still drawing underneath.
                     .background(Color.black.ignoresSafeArea())

@@ -185,6 +185,85 @@ elif "refusing to save with commands still queued" in s:
     print("  virtio-gpu.c: already patched")
 else:
     raise SystemExit("virtio-gpu.c: save shape changed")
+
+# Re-read: the edit above went straight to disk, so `s` no longer matches the
+# file and writing it back at the end would undo it.
+s = p.read_text()
+
+# --- 1. save: never dereference a virgl resource's absent pixman image -------
+old = """    QTAILQ_FOREACH(res, &g->reslist, next) {
+        if (res->blob_size) {
+            continue;
+        }
+        qemu_put_be32(f, res->resource_id);"""
+new = """    QTAILQ_FOREACH(res, &g->reslist, next) {
+        if (res->blob_size) {
+            continue;
+        }
+        if (!res->image) {
+            /*
+             * Husk: a virgl-backed resource, so skip it.
+             *
+             * virtio_gpu_save() was written for the 2d device, where every
+             * non-blob resource owns a pixman image holding its pixels. Under
+             * virgl the pixels live in the host renderer instead and ->image
+             * stays NULL -- including for plain CREATE_RESOURCE_2D, which
+             * virtio-gpu-virgl.c still routes to virgl_renderer_resource_create.
+             * The two pixman calls at the end of this loop then dereference
+             * NULL and take the whole process down.
+             *
+             * There is nothing to write: the contents are host GPU state, which
+             * is the same reason virgl carries a migration blocker upstream.
+             * Skipping keeps the stream well formed, and the resource simply
+             * does not exist in the restored machine. virtio_gpu_post_load()
+             * below clears any scanout left pointing at one.
+             */
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "virtio-gpu: resource %u (%ux%u fmt %u) not saved; "
+                          "its pixels live in the host renderer\\n",
+                          res->resource_id, res->width, res->height,
+                          res->format);
+            continue;
+        }
+        qemu_put_be32(f, res->resource_id);"""
+if old in s:
+    s = s.replace(old, new, 1)
+    print("  virtio-gpu.c: save skips virgl-backed resources")
+elif "its pixels live in the host renderer" in s:
+    print("  virtio-gpu.c: save already skips virgl-backed resources")
+else:
+    raise SystemExit("virtio-gpu.c: save loop shape changed")
+
+# --- 2. post_load: a skipped resource must not fail the whole restore -------
+old = """        res = virtio_gpu_find_resource(g, scanout->resource_id);
+        if (!res) {
+            return -EINVAL;
+        }"""
+new = """        res = virtio_gpu_find_resource(g, scanout->resource_id);
+        if (!res) {
+            /*
+             * Husk: the scanout pointed at a resource the save skipped above.
+             * Refusing the restore over it would strand the machine; blanking
+             * the scanout costs one frame, because the guest issues SET_SCANOUT
+             * again as soon as its compositor starts.
+             */
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "virtio-gpu: scanout %d had resource %u, which was "
+                          "not saved; starting it blank\\n",
+                          i, scanout->resource_id);
+            scanout->resource_id = 0;
+            scanout->cursor.resource_id = 0;
+            continue;
+        }"""
+if old in s:
+    s = s.replace(old, new, 1)
+    print("  virtio-gpu.c: post_load survives a skipped scanout resource")
+elif "starting it blank" in s:
+    print("  virtio-gpu.c: post_load already survives a skipped scanout resource")
+else:
+    raise SystemExit("virtio-gpu.c: post_load shape changed")
+
+p.write_text(s)
 PY_VIRGL
 
 python3 - "$Q" <<'PY2'

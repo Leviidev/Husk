@@ -56,6 +56,13 @@ final class HuskGLView: UIView {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    /// The size published on the run that QEMU actually bound its EGL surface
+    /// to. Logged on every change afterwards, because a later resize does NOT
+    /// reach that surface -- ANGLE keeps drawing at the size it was created
+    /// with, and the mismatch shows up as a picture in the wrong corner or no
+    /// picture at all, with a frame counter that looks perfectly healthy.
+    private var lastLoggedSize: CGSize = .zero
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let scale = window?.screen.scale ?? UIScreen.main.scale
@@ -63,10 +70,27 @@ final class HuskGLView: UIView {
         metalLayer.drawableSize = CGSize(width: bounds.width * scale,
                                          height: bounds.height * scale)
         Self.surfaceReady.lock()
+        let first = Self.layerForGL == nil
         Self.layerForGL = metalLayer
         Self.pixelSize = metalLayer.drawableSize
         Self.surfaceReady.broadcast()
         Self.surfaceReady.unlock()
+
+        let size = metalLayer.drawableSize
+        if size != lastLoggedSize {
+            lastLoggedSize = size
+            HuskLog.log("gl", "\(first ? "published" : "re-laid out") the GL layer: "
+                            + "bounds \(Int(bounds.width))x\(Int(bounds.height)) "
+                            + "@\(scale)x -> drawable \(Int(size.width))x\(Int(size.height)), "
+                            + "window=\(window != nil)")
+        }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        HuskLog.log("gl", window == nil
+            ? "the GL view left the window (its layer keeps the EGL surface)"
+            : "the GL view is in a window")
     }
 
     // MARK: touches

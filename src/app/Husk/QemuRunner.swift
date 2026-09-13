@@ -955,6 +955,11 @@ final class QemuRunner: ObservableObject {
             return
         }
 
+        // The surface is built once and never rebuilt, so this size is the one
+        // the GPU draws at for the rest of the process. If it disagrees with
+        // what is on screen later, that is the bug -- not the renderer.
+        HuskLog.log("gl", "binding the EGL surface to the layer published at "
+                        + "\(Int(size.width))x\(Int(size.height)) px")
         var created = false
         DispatchQueue.main.sync {
             created = husk_display_gl_create(Unmanaged.passUnretained(layer).toOpaque(),
@@ -985,13 +990,14 @@ final class QemuRunner: ObservableObject {
                           + (QemuRunner.glProven ? "GPU (virtio-gpu-gl)"
                                                  : "software (CPU framebuffer)"))
         if QemuRunner.glProven {
-            // QEMU refuses to snapshot a machine with virgl active -- it says
-            // so plainly: "virgl is not yet migratable". So the GPU and fast
-            // relaunch are mutually exclusive, and a cold boot here is twelve
-            // minutes. Worth saying out loud rather than discovering at the
-            // moment the save fails.
-            HuskLog.log("qemu", "NOTE: with the GPU display QEMU cannot snapshot "
-                              + "(virgl is not migratable), so EVERY launch cold-boots")
+            // This used to say the GPU and fast relaunch were mutually
+            // exclusive, because QEMU refuses to snapshot a virgl machine:
+            // "virgl is not yet migratable". Husk now lifts that blocker and
+            // saves with the Android framework stopped, so the only host GPU
+            // state left is state nothing will miss. See the virtio-gpu patches
+            // in scripts/integrate_husk.sh for why that is sound.
+            HuskLog.log("qemu", "GPU display with snapshots: saving stops the "
+                              + "compositor first, and restoring starts it again")
         }
 
         HuskLog.log("qemu", "---- QEMU command line (\(args.count) args) ----")
