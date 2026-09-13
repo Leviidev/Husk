@@ -303,8 +303,22 @@ final class QemuRunner: ObservableObject {
     @discardableResult
     nonisolated func startAndroidUI(why: String) -> Bool {
         var allUp = true
-        // Matches what the save stops: surfaceflinger alone.
-        for svc in ["surfaceflinger"] {
+        // The snapshot already on disk was saved the old way, with zygote
+        // stopped -- so it restores into a machine with no Android framework.
+        // Starting only the compositor would leave it that way: a black screen
+        // with nothing behind it, which is worse than the bug this fixes.
+        //
+        // Asking init whether zygote is running costs one round trip and makes
+        // both shapes of snapshot work. New ones answer "running" and nothing
+        // happens; old ones get their framework back.
+        var services = ["surfaceflinger"]
+        if let state = try? GuestBridge.shared.shell("getprop init.svc.zygote", timeout: 20),
+           !state.contains("running") {
+            HuskLog.log("snap", "this snapshot was saved with the framework stopped; "
+                              + "starting zygote as well")
+            services.append("zygote")
+        }
+        for svc in services {
             var up = false
             for attempt in 1...4 {
                 _ = try? GuestBridge.shared.run("setprop ctl.start \(svc)", timeout: 20)
