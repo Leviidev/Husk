@@ -227,6 +227,10 @@ struct GuestScreenView: View {
                 .padding(.horizontal, 18).padding(.vertical, 14)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
                 .frame(maxWidth: 300)
+                // Below the Back/keyboard/console pill rather than centred over
+                // the guest: the ZStack is top-aligned, so without this the card
+                // lands on top of the chrome and hides the way out.
+                .padding(.top, 58)
                 .transition(.opacity)
             }
 
