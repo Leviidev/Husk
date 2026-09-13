@@ -215,7 +215,9 @@ final class QemuRunner: ObservableObject {
         // machine. Folding the display choice into the strategy means the first
         // launch after GL starts working boots cold once, then re-snapshots,
         // rather than failing to restore.
-        "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
+        GuestImage.shared.hasShippedSnapshot
+            ? "shipped-snapshot-v1"
+            : "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
     }
 
     /// Whether guest RAM can be backed by a file on this device, this run.
@@ -344,6 +346,11 @@ final class QemuRunner: ObservableObject {
     /// Rounded to a multiple of 8: graphics stacks are happier with aligned
     /// strides, and the error is under half a percent of the height.
     private var guestResolution: (w: Int, h: Int) {
+        // A shipped snapshot fixes the resolution: it was saved against one,
+        // and a machine whose display differs is a different machine.
+        if GuestImage.shared.hasShippedSnapshot {
+            return (GuestImage.snapshotXres, GuestImage.snapshotYres)
+        }
         let size = HuskGLView.pixelSize
         guard size.width > 0, size.height > 0 else { return (360, 640) }
         let w = 360
@@ -353,6 +360,16 @@ final class QemuRunner: ObservableObject {
     }
 
     private func guestMemoryMiB() -> Int {
+        // Same reasoning as the resolution: the shipped snapshot was saved with
+        // exactly this much RAM, and QEMU rejects a restore that differs by a
+        // byte. No probing, no stepping down -- this number or nothing.
+        if GuestImage.shared.hasShippedSnapshot {
+            let mib = GuestImage.snapshotGuestMiB
+            QemuRunner.shared.lastGuestMiB = mib
+            HuskLog.log("qemu", "using the shipped snapshot: guest pinned to \(mib) MiB")
+            return mib
+        }
+
         // A snapshot pins the size. Restoring into a differently sized machine
         // does not work, and the adaptive budget below is derived from
         // os_proc_available_memory(), which moves with whatever else the phone
@@ -783,7 +800,9 @@ final class QemuRunner: ObservableObject {
         // Before the main loop: restore the machine if we saved one. This is
         // the difference between ten minutes of Android booting and a few
         // seconds of reading RAM back from disk.
-        let recordedMiB = try? String(contentsOfFile: snapshotSizePath, encoding: .utf8)
+        let recordedMiB = (try? String(contentsOfFile: GuestImage.shared.snapshotStampPath,
+                                       encoding: .utf8))
+            ?? (try? String(contentsOfFile: snapshotSizePath, encoding: .utf8))
         let snapshotFits = recordedMiB
             .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
             .map { $0 == QemuRunner.shared.lastGuestMiB } ?? false

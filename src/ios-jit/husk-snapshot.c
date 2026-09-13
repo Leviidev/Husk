@@ -33,11 +33,31 @@
 
 #include "husk-snapshot.h"
 
-#define HUSK_SNAPSHOT_NAME "husk-booted"
+#define HUSK_SNAPSHOT_NAME "husk-ready"
 /* Node name of the userdata qcow2. Without naming a target QEMU writes the
  * VM state to whichever snapshot-capable drive comes first, which is the
  * UEFI variable store -- a 64 MiB file that grew past 2.6 GB. */
 #define HUSK_VMSTATE_NODE "huskvmstate"
+
+/*
+ * Only userdata takes part in the snapshot.
+ *
+ * With no device list QEMU snapshots every snapshot-capable drive -- userdata,
+ * the system image and the UEFI variable store -- and load_snapshot then
+ * demands the snapshot be present on all of them. That makes a shipped
+ * snapshot impossible: the system image arrives from a release and the
+ * variable store from the app bundle, neither carrying one, so the restore
+ * would always fail.
+ *
+ * Restricting it to userdata is also correct rather than merely convenient.
+ * /system is mounted read-only, so the system image at restore time is
+ * byte-identical to the one the snapshot was taken against, and the firmware
+ * variable store is not needed once the machine is past firmware.
+ */
+static strList husk_snapshot_devices = {
+    .value = (char *)HUSK_VMSTATE_NODE,
+    .next  = NULL,
+};
 
 /*
  * No explicit device list.
@@ -77,7 +97,8 @@ static void husk_save_bh(void *opaque)
      * into the snapshot -- is "stopped", so the restored machine comes back
      * paused and the screen never moves again.
      */
-    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, HUSK_VMSTATE_NODE, false, NULL, &err);
+    ok = save_snapshot(HUSK_SNAPSHOT_NAME, true, HUSK_VMSTATE_NODE,
+                       true, &husk_snapshot_devices, &err);
 
     husk_report(ok, "save", err);
     error_free(err);
@@ -109,7 +130,8 @@ bool husk_snapshot_load_at_startup(void)
     saved = runstate_get();
     vm_stop(RUN_STATE_RESTORE_VM);
 
-    ok = load_snapshot(HUSK_SNAPSHOT_NAME, HUSK_VMSTATE_NODE, false, NULL, &err);
+    ok = load_snapshot(HUSK_SNAPSHOT_NAME, HUSK_VMSTATE_NODE,
+                       true, &husk_snapshot_devices, &err);
     if (!ok) {
         /*
          * Not an error worth shouting about: the common case is simply that no

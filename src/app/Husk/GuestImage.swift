@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
+import Compression
 
 /// Manages the Android guest that lives in Documents.
 ///
@@ -43,6 +44,32 @@ final class GuestImage: ObservableObject {
     /// bugs rather than a stale image.
     static let imageVersion = "lineage-v2"
 
+    /// Whether to fetch the pre-booted snapshot rather than boot from cold.
+    static var wantsSnapshot: Bool {
+        UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
+    }
+
+    /// A machine that has already finished booting, gzipped.
+    ///
+    /// Booting Android here takes five to twelve minutes and has to survive
+    /// Android's own watchdog killing system_server partway through. The same
+    /// boot was done once on a Mac and saved; restoring it took 8.8 seconds.
+    /// Two gigabytes of download buys that.
+    static var snapshotURL: URL {
+        URL(string: "https://github.com/Leviidev/Husk/releases/download/"
+                  + "\(imageVersion)/vdb-snapshot.qcow2.gz")!
+    }
+
+    /// RAM and resolution the shipped snapshot was taken with.
+    ///
+    /// Not adjustable. QEMU refuses a restore whose RAM size differs by a byte
+    /// -- "Size mismatch: huskram" -- so a device that probed its way to 5120
+    /// could not load a snapshot saved at 4096. These are the numbers the
+    /// snapshot on the release was built against.
+    static let snapshotGuestMiB = 4096
+    static let snapshotXres = 360
+    static let snapshotYres = 800
+
     static var imageURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"
                   + "\(imageVersion)/vda.qcow2")!
@@ -62,6 +89,16 @@ final class GuestImage: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
     nonisolated var diskPath: String { documents.appendingPathComponent("lineage-vda.qcow2").path }
+    /// Present when userdata came from the shipped pre-booted snapshot.
+    nonisolated var snapshotStampPath: String {
+        documents.appendingPathComponent("husk-shipped-snapshot").path
+    }
+    /// Whether this install is running on the shipped snapshot, which pins the
+    /// machine's RAM size and resolution to what the snapshot was saved with.
+    nonisolated var hasShippedSnapshot: Bool {
+        FileManager.default.fileExists(atPath: snapshotStampPath)
+    }
+
     nonisolated var userdataPath: String { documents.appendingPathComponent("lineage-vdb.qcow2").path }
     nonisolated var varsPath: String { documents.appendingPathComponent("lineage-efi-vars.fd").path }
     nonisolated var firmwarePath: String { documents.appendingPathComponent("edk2-aarch64-code.fd").path }
@@ -267,6 +304,112 @@ final class GuestImage: ObservableObject {
         task?.resume()
     }
 
+    /// Fetch the pre-booted machine and unpack it over userdata.
+    ///
+    /// Runs after the system image is in place, because the snapshot is only
+    /// meaningful alongside the image it was booted from.
+    func downloadSnapshot(completion: @escaping (Bool) -> Void) {
+        HuskLog.log("guest", "downloading pre-booted snapshot (about 2 GB) from "
+                           + Self.snapshotURL.absoluteString)
+        let t = URLSession.shared.downloadTask(with: Self.snapshotURL) { tmp, resp, err in
+            guard let tmp, err == nil,
+                  (resp as? HTTPURLResponse)?.statusCode == 200 else {
+                HuskLog.log("guest", "snapshot download failed: "
+                                   + (err?.localizedDescription ?? "no file"))
+                completion(false); return
+            }
+            let dest = URL(fileURLWithPath: self.userdataPath)
+            do {
+                try? FileManager.default.removeItem(at: dest)
+                try Self.gunzip(from: tmp, to: dest)
+                try? FileManager.default.removeItem(at: tmp)
+                let size = (try? FileManager.default
+                    .attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
+                HuskLog.log("guest", "snapshot unpacked (\(size ?? 0) bytes)")
+                completion(true)
+            } catch {
+                HuskLog.log("guest", "snapshot unpack failed: \(error)")
+                try? FileManager.default.removeItem(at: dest)
+                completion(false)
+            }
+        }
+        t.resume()
+    }
+
+    /// Streaming gunzip.
+    ///
+    /// Apple's Compression framework speaks raw DEFLATE, not the gzip
+    /// container, so the header is parsed and skipped by hand. Streamed in
+    /// chunks because the output is nearly four gigabytes and will not be held
+    /// in memory on a phone.
+    static func gunzip(from src: URL, to dst: URL) throws {
+        let input = try FileHandle(forReadingFrom: src)
+        defer { try? input.close() }
+        FileManager.default.createFile(atPath: dst.path, contents: nil)
+        let output = try FileHandle(forWritingTo: dst)
+        defer { try? output.close() }
+
+        // Gzip header: magic, method, flags, mtime, xfl, os -- then optional
+        // extra field, name, comment and header CRC, in that order.
+        var head = try input.read(upToCount: 10) ?? Data()
+        guard head.count == 10, head[0] == 0x1f, head[1] == 0x8b, head[2] == 8 else {
+            throw NSError(domain: "husk", code: 1, userInfo:
+                [NSLocalizedDescriptionKey: "not a gzip file"])
+        }
+        let flg = head[3]
+        if flg & 0x04 != 0 {                                  // FEXTRA
+            let n = try input.read(upToCount: 2) ?? Data()
+            let len = Int(n[0]) | (Int(n[1]) << 8)
+            _ = try input.read(upToCount: len)
+        }
+        for mask in [UInt8(0x08), UInt8(0x10)] where flg & mask != 0 {   // FNAME, FCOMMENT
+            while let b = try input.read(upToCount: 1), b.count == 1, b[0] != 0 {}
+        }
+        if flg & 0x02 != 0 { _ = try input.read(upToCount: 2) }          // FHCRC
+        head = Data()
+
+        var stream = compression_stream(dst_ptr: UnsafeMutablePointer<UInt8>(bitPattern: 1)!,
+                                        dst_size: 0,
+                                        src_ptr: UnsafePointer<UInt8>(bitPattern: 1)!,
+                                        src_size: 0, state: nil)
+        guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE,
+                                      COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
+            throw NSError(domain: "husk", code: 2, userInfo:
+                [NSLocalizedDescriptionKey: "inflate init failed"])
+        }
+        defer { compression_stream_destroy(&stream) }
+
+        let chunk = 1 << 20
+        let outBuf = UnsafeMutablePointer<UInt8>.allocate(capacity: chunk)
+        defer { outBuf.deallocate() }
+        var finished = false
+
+        while !finished {
+            let data = try input.read(upToCount: chunk) ?? Data()
+            let last = data.isEmpty
+            try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                stream.src_ptr = raw.bindMemory(to: UInt8.self).baseAddress
+                    ?? UnsafePointer<UInt8>(bitPattern: 1)!
+                stream.src_size = data.count
+                repeat {
+                    stream.dst_ptr = outBuf
+                    stream.dst_size = chunk
+                    let st = compression_stream_process(&stream, last ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+                    let produced = chunk - stream.dst_size
+                    if produced > 0 {
+                        output.write(Data(bytes: outBuf, count: produced))
+                    }
+                    if st == COMPRESSION_STATUS_END { finished = true; break }
+                    if st == COMPRESSION_STATUS_ERROR {
+                        throw NSError(domain: "husk", code: 3, userInfo:
+                            [NSLocalizedDescriptionKey: "inflate failed"])
+                    }
+                } while stream.src_size > 0 || (last && !finished)
+            }
+            if last { finished = true }
+        }
+    }
+
     func cancel() {
         task?.cancel()
         task = nil
@@ -296,7 +439,26 @@ final class GuestImage: ObservableObject {
                 try? Self.imageVersion.write(toFile: versionStampPath,
                                              atomically: true, encoding: .utf8)
                 HuskLog.log("guest", "guest image ready (\(size) bytes, \(Self.imageVersion))")
-                state = .ready
+                // The snapshot only makes sense next to the image it was booted
+                // from, so it is fetched after, not alongside.
+                if Self.wantsSnapshot, !FileManager.default.fileExists(atPath: snapshotStampPath) {
+                    state = .installing
+                    downloadSnapshot { ok in
+                        DispatchQueue.main.async {
+                            if ok {
+                                try? "\(Self.snapshotGuestMiB)".write(toFile: self.snapshotStampPath,
+                                                                    atomically: true, encoding: .utf8)
+                                HuskLog.log("guest", "pre-booted snapshot installed; "
+                                                   + "first launch will restore instead of booting")
+                            } else {
+                                HuskLog.log("guest", "no snapshot; Android will boot from cold")
+                            }
+                            self.state = .ready
+                        }
+                    }
+                } else {
+                    state = .ready
+                }
         } catch {
             HuskLog.log("guest", "FAIL: \(error.localizedDescription)")
             state = .failed(error.localizedDescription)
