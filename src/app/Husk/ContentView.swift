@@ -180,6 +180,7 @@ struct GuestScreenView: View {
     var chromeHidden = false
     let onBack: () -> Void
     @State private var keyboard = false
+    @State private var installing = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -240,6 +241,12 @@ struct GuestScreenView: View {
                     Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
                         .font(.caption)
                 }
+                // Installing without going back to the library, which is the
+                // whole point of full screen: you are in Android, and leaving it
+                // to add an app is the long way round.
+                Button { installing = true } label: {
+                    Image(systemName: "square.and.arrow.down").font(.caption)
+                }
                 Button { showLogs = true } label: {
                     Image(systemName: "terminal").font(.caption)
                 }
@@ -247,6 +254,17 @@ struct GuestScreenView: View {
             .padding(.horizontal, 14).padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
             .padding(.top, 6)
+            }
+        }
+        // On the screen rather than the button: the chrome can hide while the
+        // document picker is up, and an importer attached to a view that goes
+        // away goes away with it.
+        .fileImporter(isPresented: $installing,
+                      allowedContentTypes: [.item],
+                      allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result, let apk = urls.first {
+                HuskLog.log("ui", "installing \(apk.lastPathComponent) from full screen")
+                AndroidHost.shared.install(apk)
             }
         }
         .statusBarHidden(true)
