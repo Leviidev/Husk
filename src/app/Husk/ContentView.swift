@@ -35,7 +35,7 @@ struct ContentView: View {
             // effort is trying to leave. Keeping it mounted and covering it is
             // what lets the library run on a GPU-backed guest.
             if started && runner.isRunning {
-                GuestScreenView(showLogs: $showLogs, onBack: {
+                GuestScreenView(showLogs: $showLogs, chromeHidden: runningApp != nil, onBack: {
                     mode = .library
                     HuskLog.log("ui", "hiding the guest screen; back to the library")
                     showGuestScreen = false
@@ -152,6 +152,10 @@ struct ContentView: View {
 struct GuestScreenView: View {
     @ObservedObject private var runner = QemuRunner.shared
     @Binding var showLogs: Bool
+    /// True while RunningAppView is layered over this one. That view is now
+    /// transparent, so this screen's own controls would otherwise show through
+    /// it -- two sets of chrome over a game that is meant to look native.
+    var chromeHidden = false
     let onBack: () -> Void
     @State private var keyboard = false
 
@@ -196,6 +200,7 @@ struct GuestScreenView: View {
             // the one control that leaves this screen was hidden behind a
             // condition that is now permanently false, and opening an app was a
             // one-way trip.
+            if !chromeHidden {
             HStack(spacing: 14) {
                 Button(action: onBack) {
                     Label("Back", systemImage: "chevron.left")
@@ -215,6 +220,7 @@ struct GuestScreenView: View {
             .padding(.horizontal, 14).padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
             .padding(.top, 6)
+            }
         }
         .statusBarHidden(true)
     }

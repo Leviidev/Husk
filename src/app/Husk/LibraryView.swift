@@ -141,13 +141,29 @@ struct LibraryView: View {
 struct RunningAppView: View {
     let app: HuskBridgeFS.AndroidApp
     let onExit: () -> Void
+    @ObservedObject private var runner = QemuRunner.shared
     @State private var showChrome = false
     @State private var keyboard = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Color.black.ignoresSafeArea()
-            HuskDisplay().ignoresSafeArea()
+            // Nothing of the guest is drawn here in GPU mode, deliberately.
+            //
+            // This used to open with an opaque black rectangle and HuskDisplay,
+            // the software display. Both are wrong once GL is up: HuskDisplay
+            // draws nothing at all, because the GL listener owns the console and
+            // QEMU never calls dpy_gfx_update -- and the black rectangle then
+            // covered the shared GL layer that GuestScreenView keeps mounted
+            // underneath for the whole session. So launching a game produced a
+            // guaranteed black screen, for a completely different reason than
+            // the transparent-layer bug on the full-screen path.
+            //
+            // With GL active the guest is already on screen below this view.
+            // What is left here is chrome, and chrome must not cover it.
+            if !runner.glDisplayActive {
+                Color.black.ignoresSafeArea()
+                HuskDisplay().ignoresSafeArea()
+            }
             KeyCapture(active: $keyboard).frame(width: 0, height: 0)
 
             if keyboard {
@@ -179,9 +195,21 @@ struct RunningAppView: View {
                 .padding(.leading, 16).padding(.top, 8)
                 .transition(.opacity)
             }
-        }
-        .onTapGesture(count: 2) {
-            withAnimation(.easeInOut(duration: 0.15)) { showChrome.toggle() }
+
+            // A hot corner, not the whole screen.
+            //
+            // The gesture was attached to the entire ZStack, which contradicted
+            // the comment above it and is unusable now: every touch this view
+            // swallows is a touch the guest never sees, and a game that cannot
+            // be tapped is not running in any sense that matters. A corner is
+            // what a full-screen video player does, and it is what the design
+            // always said this was.
+            Color.clear
+                .frame(width: 110, height: 110)
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) {
+                    withAnimation(.easeInOut(duration: 0.15)) { showChrome.toggle() }
+                }
         }
         .statusBarHidden(true)
     }
