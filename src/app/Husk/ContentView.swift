@@ -548,9 +548,19 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Download pre-booted snapshot")
                             Text(useSnapshot
-                                 ? "Adds about 2 GB to the download, and skips a first boot that takes five to twelve minutes."
-                                 : "Smaller download. Android boots from cold the first time, which takes five to twelve minutes.")
+                                 ? "Adds about 2 GB to the download, and skips the first boot."
+                                 : "Smaller download. Android boots from cold the first time.")
                                 .font(.caption2).foregroundColor(.secondary)
+                            // The shipped snapshot was captured on the software
+                            // renderer, and a machine saved under one renderer
+                            // cannot restore into the other -- the device model
+                            // differs, so QEMU refuses the restore. On GPU it is
+                            // two gigabytes that will never be loaded.
+                            Label("This snapshot is for CPU only and will not be "
+                                + "used on GPU, which cold-boots once and then "
+                                + "saves its own.", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
                         }
                     }
                     .onChange(of: useSnapshot) { v in
