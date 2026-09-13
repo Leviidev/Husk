@@ -484,6 +484,17 @@ final class AndroidHost: ObservableObject {
                         self?.busy = "Copying \(name) — \(Int(p * 100))%"
                     }
                 }
+                // Confirm the whole file landed before asking pm to parse it.
+                // A short copy fails much later and much less clearly, as
+                // "Failed to parse /data/local/tmp/husk-install.apk".
+                let expected = (try FileManager.default
+                    .attributesOfItem(atPath: apk.path)[.size] as? NSNumber)?.intValue ?? 0
+                let landed = Int(try GuestBridge.shared.shell("wc -c < \(remote)")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)) ?? -1
+                guard landed == expected else {
+                    throw BridgeError.io("copied \(landed) of \(expected) bytes")
+                }
+
                 await MainActor.run { self?.busy = "Installing \(name)…" }
                 // Installing is dex2oat's work and it is emulated, so minutes
                 // rather than seconds for anything large. -t allows test-signed
