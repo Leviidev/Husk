@@ -504,6 +504,8 @@ struct SettingsView: View {
         UserDefaults.standard.object(forKey: "husk.gpuMode") as? Bool ?? true
     @State private var useSnapshot =
         UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
+    @State private var keepNetwork =
+        UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -591,6 +593,32 @@ struct SettingsView: View {
                     Text(guest.hasShippedSnapshot
                          ? "Android is already booted. Starting it restores that machine in seconds."
                          : "A snapshot is a machine that has already finished booting. Restoring one takes seconds; booting takes minutes.")
+                }
+
+                Section {
+                    Toggle(isOn: $keepNetwork) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Keep the network across saves")
+                            Text(keepNetwork
+                                 ? "Saving closes apps but leaves Android's framework "
+                                 + "running, so the network still works after a restore."
+                                 : "Saving stops Android's framework too. Clears every "
+                                 + "GPU resource, which is steadier — but the network "
+                                 + "may not come back until a cold boot.")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    .onChange(of: keepNetwork) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.keepNetwork")
+                        HuskLog.log("ui", v ? "saves will keep the framework running"
+                                            : "saves will stop the framework")
+                    }
+                } header: {
+                    Text("Network")
+                } footer: {
+                    Text("Takes effect on the next save. An existing saved machine "
+                       + "keeps whichever behaviour it was saved with.")
+                        .font(.caption2)
                 }
 
                 Section {

@@ -114,6 +114,14 @@ final class QemuRunner: ObservableObject {
     /// from what was actually asked for.
     nonisolated(unsafe) static var lastGuestRes = (w: 360, h: 800)
     /// True once qemu_init() has returned and QEMU's locks exist.
+    /// Whether a save leaves Android's framework running.
+    ///
+    /// On: apps are closed and system_server stays up, so the network survives
+    /// the restore. Off: zygote is stopped too, which clears every last GPU
+    /// resource at the cost of a framework restart the network may not survive.
+    nonisolated static var keepNetworkAcrossSaves: Bool {
+        UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
+    }
     nonisolated(unsafe) static var qemuReady = false
     /// A display size asked for before QEMU was up, applied once it is.
     nonisolated(unsafe) static var pendingUISize: (w: Int, h: Int)?
@@ -479,12 +487,29 @@ final class QemuRunner: ObservableObject {
             // netd untouched, so the GPU state goes away without the framework
             // restart that broke the network. Both halves, rather than trading
             // one for the other.
-            if let r = try? GuestBridge.shared.run("am kill-all", timeout: 60) {
-                HuskLog.log("snap", "closed background apps before saving "
-                                  + "(exit \(r.status))")
+            // Two ways to clear the GPU before a save, and they trade against
+            // each other. Closing apps leaves system_server and netd running,
+            // so the network survives the restore -- but anything the framework
+            // itself still holds is skipped by virtio_gpu_save and comes back
+            // as INVALID_RESOURCE_ID. Stopping zygote takes the framework down
+            // with it, which clears everything and costs the network, because
+            // system_server then restarts against a netd that did not.
+            //
+            // Which is better depends on what is breaking today, so it is a
+            // setting rather than a decision baked in here.
+            var toStop = ["surfaceflinger"]
+            if QemuRunner.keepNetworkAcrossSaves {
+                if let r = try? GuestBridge.shared.run("am kill-all", timeout: 60) {
+                    HuskLog.log("snap", "closed background apps before saving "
+                                      + "(exit \(r.status)); the framework stays up")
+                }
+            } else {
+                HuskLog.log("snap", "stopping the framework as well; the network "
+                                  + "will need to re-register after the restore")
+                toStop = ["zygote", "surfaceflinger"]
             }
 
-            for svc in ["surfaceflinger"] {
+            for svc in toStop {
                 let r = try? GuestBridge.shared.run("setprop ctl.stop \(svc)", timeout: 60)
                 if (r?.status ?? -1) != 0 {
                     HuskLog.log("snap", "could not stop \(svc): "
