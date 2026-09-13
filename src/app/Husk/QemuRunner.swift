@@ -519,14 +519,18 @@ final class QemuRunner: ObservableObject {
             // firmware must try the system disk first.
             "-device", "virtio-blk-pci,drive=vda,bootindex=0",
             "-device", "virtio-blk-pci,drive=vdb,bootindex=1",
-            "-drive", "file=\(guest.diskPath),if=none,id=vda,format=qcow2,discard=unmap,detect-zeroes=unmap",
+            // detect-zeroes made QEMU scan the contents of every guest write
+            // looking for runs of zeroes to punch out. That is host CPU spent
+            // to save disk space on a device with 53 GB free, and host CPU is
+            // the one resource this whole system is short of.
+            "-drive", "file=\(guest.diskPath),if=none,id=vda,format=qcow2,discard=unmap",
             // node-name matters: save_snapshot picks where to put the VM state
             // by node name, and with nothing named it takes the FIRST
             // snapshot-capable drive in graph order -- which is the pflash
             // variable store. That is how a 64 MiB UEFI vars image grew to
             // 2.6 GB of guest RAM blobs.
             "-drive", "file=\(guest.userdataPath),if=none,id=vdb,node-name=huskvmstate,"
-                    + "format=qcow2,discard=unmap,detect-zeroes=unmap",
+                    + "format=qcow2,discard=unmap",
 
             // ADB is the control plane now: pm install and am start replace the
             // 9p share and the guest agent. The forward is bound to loopback --
@@ -624,7 +628,19 @@ final class QemuRunner: ObservableObject {
     /// Set once the GL stack has been shown to work on this device. Persisted,
     /// because the device choice happens before anything can be tested and a
     /// wrong guess costs the whole session.
+    /// Software display unless the user asks otherwise.
+    ///
+    /// Not a retreat from the GL work -- that stack is finished and correct --
+    /// but a reading of the evidence. Runs on the software display reached
+    /// sys.boot_completed twice, at 281s and 321s. No run on the GPU has
+    /// reached it at all, and the run that got closest spent longer after the
+    /// boot animation than the software runs took in total. virtio-gpu-gl makes
+    /// the guest drive Mesa's virgl driver and SurfaceFlinger's full render
+    /// engine, and all of that is emulated code; what it buys back is
+    /// rasterisation of a 360x640 screen, which was never the expensive part.
+    /// Get a booted machine snapshotted first, then re-open the question.
     nonisolated(unsafe) static var glProven = UserDefaults.standard.bool(forKey: "husk.glProven")
+        && !(UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true)
 
     /// Try the GL stack without committing to it. Runs before the QEMU command
     /// line is built, so its answer can pick the virtio-gpu device.
@@ -681,6 +697,9 @@ final class QemuRunner: ObservableObject {
         probeGL()
         let args = (profile == .phase0Alpine) ? phase0Arguments() : phase1Arguments()
         HuskLog.log("qemu", "profile: \(profile.rawValue)")
+        HuskLog.log("qemu", "DISPLAY MODE: "
+                          + (QemuRunner.glProven ? "GPU (virtio-gpu-gl)"
+                                                 : "software (CPU framebuffer)"))
 
         HuskLog.log("qemu", "---- QEMU command line (\(args.count) args) ----")
         for (i, a) in args.enumerated() {

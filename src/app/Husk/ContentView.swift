@@ -178,6 +178,8 @@ struct SetupView: View {
     let onStart: () -> Void
 
     @State private var profile: QemuRunner.Profile = .phase1Android
+    @State private var forceSoftware =
+        UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true
 
     var body: some View {
         ZStack {
@@ -196,6 +198,24 @@ struct SetupView: View {
                 .onChange(of: profile) { p in
                     QemuRunner.shared.profile = p
                     HuskLog.log("ui", "guest profile set to \(p.rawValue)")
+                }
+
+                // A/B switch, because which display is faster is an open
+                // question rather than a settled one. The GPU makes the boot
+                // animation quick, but it also makes the guest run Mesa's virgl
+                // driver and SurfaceFlinger's full render engine -- far more
+                // emulated code than writing pixels into a framebuffer. Two runs
+                // of the same build settle it; arguing about it does not.
+                Toggle(isOn: $forceSoftware) {
+                    Text(forceSoftware ? "Display: software (CPU)"
+                                       : "Display: GPU (virtio-gpu-gl)")
+                        .font(.footnote)
+                }
+                .padding(.horizontal, 30)
+                .onChange(of: forceSoftware) { v in
+                    UserDefaults.standard.set(v, forKey: "husk.forceSoftwareDisplay")
+                    HuskLog.log("ui", v ? "forcing the software display"
+                                        : "allowing the GPU display")
                 }
 
                 Button { showLogs = true } label: {
