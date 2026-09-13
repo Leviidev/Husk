@@ -100,33 +100,72 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
 }
 
 /*
- * Sample the framebuffer we are about to present.
+ * Print a framebuffer as a small picture.
  *
- * There is one failure mode that looks identical to success from every other
- * vantage point: the scanout arrives, the blit runs, the frame counter climbs,
- * and the screen stays black. Whether the pixels exist is the question that
- * separates "the GPU drew nothing" from "the GPU drew and nothing showed it",
- * and only a read-back can answer it. Three points, so a uniformly black frame
- * is distinguishable from one with content in it.
+ * Three sampled pixels were not enough. They established that SOME pixel was
+ * non-black and nothing else -- not whether Android was drawing a screen or a
+ * void, and not whether the blit was landing. A coarse luminance map answers
+ * both at a glance, and it costs one read-back per row rather than per cell.
+ *
+ * GL's origin is bottom-left, so rows are read from the bottom up and printed
+ * top-down; what appears in the log is the right way up.
+ */
+#define HUSK_TW 40
+#define HUSK_TH 18
+
+static void husk_gl_thumbnail(const char *what, GLuint fb, int w, int h)
+{
+    static const char ramp[] = " .:-=+*#%@";
+    uint8_t *row;
+    GLint prev = 0;
+
+    if (w <= 0 || h <= 0) {
+        fprintf(stderr, "[husk-gl] %s: %dx%d, nothing to read\n", what, w, h);
+        return;
+    }
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb);
+    row = g_malloc0(4 * (size_t)w);
+
+    fprintf(stderr, "[husk-gl] %s (%dx%d) at frame %llu:\n",
+            what, w, h, (unsigned long long)husk_gl_frames);
+    for (int gy = 0; gy < HUSK_TH; gy++) {
+        char line[HUSK_TW + 1];
+        int y = (int)(((double)gy + 0.5) * h / HUSK_TH);
+        unsigned long long sum = 0;
+
+        glReadPixels(0, h - 1 - y, w, 1, GL_RGBA, GL_UNSIGNED_BYTE, row);
+        for (int gx = 0; gx < HUSK_TW; gx++) {
+            int x = (int)(((double)gx + 0.5) * w / HUSK_TW);
+            const uint8_t *px = row + 4 * x;
+            int lum = (px[0] * 30 + px[1] * 59 + px[2] * 11) / 100;
+            sum += lum;
+            line[gx] = ramp[lum * 9 / 255];
+        }
+        line[HUSK_TW] = 0;
+        fprintf(stderr, "[husk-gl]   |%s| avg=%02llx\n",
+                line, sum / HUSK_TW);
+    }
+
+    g_free(row);
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev);
+}
+
+/*
+ * Both ends of the blit, so the two can be told apart.
+ *
+ * If the guest picture is blank, Android is not drawing and no amount of iOS
+ * compositing work will help. If the guest picture has content and the window
+ * does not, the blit is at fault. If both have content and the screen is still
+ * black, the pixels are reaching the layer and the layer is not reaching the
+ * screen -- three distinct bugs that until now all looked the same from here.
  */
 static void husk_gl_sample(void)
 {
-    struct { int x, y; const char *what; } pts[3] = {
-        { husk_win_w / 2, husk_win_h / 2, "centre" },
-        { husk_win_w / 4, husk_win_h / 4, "upper-left" },
-        { husk_win_w / 2, husk_win_h / 6, "top-middle" },
-    };
-    char buf[192];
-    int n = 0;
-
-    for (int i = 0; i < 3; i++) {
-        uint8_t px[4] = { 0, 0, 0, 0 };
-        glReadPixels(pts[i].x, pts[i].y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
-        n += snprintf(buf + n, sizeof(buf) - n, "%s%s=%02x%02x%02x%02x",
-                      i ? " " : "", pts[i].what, px[0], px[1], px[2], px[3]);
-    }
-    fprintf(stderr, "[husk-gl] frame %llu pixels: %s\n",
-            (unsigned long long)husk_gl_frames, buf);
+    husk_gl_thumbnail("what the guest drew", husk_guest_fb.framebuffer,
+                      husk_guest_fb.width, husk_guest_fb.height);
+    husk_gl_thumbnail("what we present", 0, husk_win_w, husk_win_h);
 }
 
 static void husk_gl_update(DisplayChangeListener *dcl,
@@ -145,7 +184,7 @@ static void husk_gl_update(DisplayChangeListener *dcl,
     /* The first few frames, then rarely: this is a synchronous read-back and
      * it stalls the pipeline, so it must not be something the frame rate pays
      * for. Rare is enough -- it answers a yes/no question. */
-    sample = husk_gl_frames < 3 || (husk_gl_frames % 1800) == 0;
+    sample = husk_gl_frames == 1 || (husk_gl_frames % 1200) == 0;
     if (sample) {
         husk_gl_sample();
     }
@@ -298,6 +337,14 @@ bool husk_display_gl_create(void *native_layer, int width, int height)
         return false;
     }
 
+    {
+        EGLint sw = -1, sh = -1;
+        eglQuerySurface(qemu_egl_display, husk_surface, EGL_WIDTH, &sw);
+        eglQuerySurface(qemu_egl_display, husk_surface, EGL_HEIGHT, &sh);
+        fprintf(stderr, "[husk-gl] create: ANGLE reports the surface is %dx%d "
+                        "(we asked for %dx%d)\n", sw, sh, width, height);
+    }
+
     /* qemu_egl_init_ctx() left the context current here. Release it so the
      * QEMU thread can take it. */
     eglMakeCurrent(qemu_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -438,7 +485,7 @@ bool husk_display_gl_bind(void)
             "glDeleteFramebuffers", "glDeleteTextures", "glGenTextures",
             "glTexParameteri", "glTexImage2D", "glBlitFramebuffer",
             "glCheckFramebufferStatus", "glDisable", "glGetError",
-            "glReadPixels", "glColorMask",
+            "glReadPixels", "glColorMask", "glGetIntegerv",
         };
         bool missing = false;
         for (size_t i = 0; i < ARRAY_SIZE(needed); i++) {

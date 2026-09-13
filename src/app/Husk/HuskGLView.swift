@@ -60,6 +60,15 @@ final class HuskGLView: UIView {
         // with the frame counter reporting 60 fps.
         isOpaque = true
         metalLayer.isOpaque = true
+        // Magenta, on purpose, and only visible if something is wrong.
+        //
+        // Three outcomes can produce "I saw nothing", and from a log they are
+        // indistinguishable: the layer is not on screen, the layer is on screen
+        // but ANGLE never presents into it, or ANGLE presents a black picture.
+        // A background nobody would mistake for content separates them in one
+        // glance -- magenta means the view is composited and the frames are not
+        // arriving; black means the view itself is not reaching the screen.
+        backgroundColor = UIColor(red: 0.8, green: 0, blue: 0.8, alpha: 1)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -99,6 +108,53 @@ final class HuskGLView: UIView {
         HuskLog.log("gl", window == nil
             ? "the GL view left the window (its layer keeps the EGL surface)"
             : "the GL view is in a window")
+        if window != nil {
+            // Once, a few seconds in, when the hierarchy has settled: walk up
+            // from this view to the window and say what each ancestor is doing
+            // to it. A view that is hidden, transparent, zero-sized or covered
+            // looks exactly like a view that is drawing black, and only one of
+            // those is a GPU problem.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.describePlacement() }
+        }
+    }
+
+    private func describePlacement() {
+        guard window != nil else {
+            HuskLog.log("gl", "placement: the view is no longer in a window")
+            return
+        }
+        var v: UIView? = self
+        var depth = 0
+        while let cur = v {
+            let f = cur.frame
+            HuskLog.log("gl", String(
+                format: "placement[%d] %@ frame=%.0f,%.0f %.0fx%.0f alpha=%.2f "
+                      + "hidden=%@ opaque=%@ clips=%@ layerOpacity=%.2f",
+                depth, String(describing: type(of: cur)),
+                f.origin.x, f.origin.y, f.width, f.height, cur.alpha,
+                cur.isHidden ? "yes" : "no", cur.isOpaque ? "yes" : "no",
+                cur.clipsToBounds ? "yes" : "no", Double(cur.layer.opacity)))
+            // Anything drawn after this view, inside the same parent, is
+            // painted over it -- which is how an opaque black rectangle hid the
+            // guest once already.
+            if let parent = cur.superview,
+               let idx = parent.subviews.firstIndex(of: cur) {
+                let above = parent.subviews[(idx + 1)...]
+                    .filter { !$0.isHidden && $0.alpha > 0.01 && $0.frame.contains(cur.frame) }
+                if !above.isEmpty {
+                    HuskLog.log("gl", "placement[\(depth)] COVERED by "
+                              + above.map { String(describing: type(of: $0)) }
+                                     .joined(separator: ", "))
+                }
+            }
+            v = cur.superview
+            depth += 1
+        }
+        HuskLog.log("gl", "placement: drawable \(Int(metalLayer.drawableSize.width))"
+                        + "x\(Int(metalLayer.drawableSize.height)) "
+                        + "opaque=\(metalLayer.isOpaque) "
+                        + "presentsWithTransaction=\(metalLayer.presentsWithTransaction) "
+                        + "device=\(metalLayer.device?.name ?? "none")")
     }
 
     // MARK: touches
