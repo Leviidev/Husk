@@ -52,7 +52,7 @@ final class GuestImage: ObservableObject {
     /// v5 adds an init script that marks the device provisioned. Without it
     /// Android shows no launcher and adbd refuses every shell, because an
     /// unprovisioned device runs ADB in trade-in mode.
-    static let imageVersion = "v5"
+    static let imageVersion = "v6"
 
     /// Whether to fetch the pre-booted snapshot rather than boot from cold.
     static var wantsSnapshot: Bool {
@@ -295,7 +295,7 @@ final class GuestImage: ObservableObject {
         let seedStamp = URL(fileURLWithPath: userdataPath + ".seed")
         // v3: the guest image changed, so userdata built against the old /system --
         // including a multi-gigabyte snapshot of it -- has to go.
-        let seedVersion = "v5"
+        let seedVersion = "v6"
         let seededWith = try? String(contentsOf: seedStamp, encoding: .utf8)
         if fm.fileExists(atPath: userdataPath), seededWith != seedVersion {
             HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "
