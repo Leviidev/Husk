@@ -935,6 +935,11 @@ struct LogView: View {
                 ShareSheet(items: [
                     HuskLog.logFileURL,
                     URL(fileURLWithPath: QemuRunner.shared.guestSerialLogPath),
+                    // QEMU's own output. Missing from this list until now, which
+                    // is precisely why a crash could not be diagnosed from a
+                    // shared log.
+                    HuskLog.nativeLogURL,
+                    HuskLog.previousNativeLogURL,
                 ])
             }
         }

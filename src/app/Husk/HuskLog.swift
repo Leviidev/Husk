@@ -72,6 +72,38 @@ enum HuskLog {
         redirectStdio()
         installCrashHandlers()
         logBanner()
+        replayPreviousNativeLog()
+    }
+
+    /// Put the last run's native output into this run's log.
+    ///
+    /// When QEMU aborts, its reason lands in husk-native.log and the process is
+    /// gone before anything mirrors it -- and that file was not in the share
+    /// sheet either, so the one artefact explaining a crash was the one nobody
+    /// could retrieve. Replaying it here puts it in husk.log, which is the file
+    /// people already know how to send.
+    private static func replayPreviousNativeLog() {
+        guard let data = try? Data(contentsOf: previousNativeLogURL),
+              !data.isEmpty,
+              let text = String(data: data.suffix(8 * 1024), encoding: .utf8)
+        else { return }
+
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: true).suffix(40)
+        guard !lines.isEmpty else { return }
+        log("prev", "---- last \(lines.count) lines from the previous run "
+                  + "(the one that may have crashed) ----")
+        for line in lines { log("prev", String(line)) }
+        log("prev", "---- end of the previous run ----")
+    }
+
+    /// QEMU's own stderr, this run and the one before it.
+    static var nativeLogURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-native.log")
+    }
+    static var previousNativeLogURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("husk-native-prev.log")
     }
 
     /// Force everything out to disk.
@@ -86,16 +118,33 @@ enum HuskLog {
     /// so a locally-scoped Pipe tears down the read end the moment this function
     /// returns -- after which every write to stderr hits a reader-less pipe. These
     /// descriptors belong to no object and are never closed.
+    /// A file, not a pipe.
+    ///
+    /// A pipe loses everything in it when the process dies: QEMU writes an
+    /// assertion message, aborts before the reader thread is scheduled, and the
+    /// log shows a fatal signal with nothing before it. A file cannot lose
+    /// anything -- stderr is unbuffered, so every byte is on disk as it is
+    /// written, whatever happens next.
+    ///
+    /// The previous run's copy is kept rather than overwritten, because the run
+    /// that crashed is exactly the one worth reading, and it is replayed into
+    /// the next run's husk.log by replayPreviousNativeLog().
     private static func redirectStdio() {
-        var fds: [Int32] = [-1, -1]
-        guard pipe(&fds) == 0 else {
-            // Nothing to redirect into; keep going, the file and os_log still work
-            // for anything logged through HuskLog.log().
-            log("boot", "WARNING: pipe() failed (errno \(errno)); C-side stderr will not be captured")
+        let dir = FileManager.default.urls(for: .documentDirectory,
+                                           in: .userDomainMask)[0]
+        let cURL = dir.appendingPathComponent("husk-native.log")
+        let prevURL = dir.appendingPathComponent("husk-native-prev.log")
+        try? FileManager.default.removeItem(at: prevURL)
+        try? FileManager.default.moveItem(at: cURL, to: prevURL)
+
+        pipeWriteFD = open(cURL.path, O_CREAT | O_WRONLY | O_TRUNC, 0o644)
+        pipeReadFD = open(cURL.path, O_RDONLY)
+        guard pipeWriteFD >= 0, pipeReadFD >= 0 else {
+            log("boot", "WARNING: could not open husk-native.log (errno \(errno)); "
+                      + "C-side stderr will not be captured")
             return
         }
-        pipeReadFD = fds[0]
-        pipeWriteFD = fds[1]
+        log("boot", "native stderr -> husk-native.log (mirrored here)")
 
         setvbuf(stdout, nil, _IOLBF, 0)
         setvbuf(stderr, nil, _IONBF, 0)
@@ -111,7 +160,13 @@ enum HuskLog {
                     if errno == EINTR { continue }
                     break
                 }
-                if n == 0 { break }
+                // End of file, not end of stream: the writer is still open and
+                // more will arrive. A pipe blocked here; a file returns 0, so
+                // this is where the tail waits.
+                if n == 0 {
+                    usleep(40_000)
+                    continue
+                }
                 pending.append(contentsOf: buf[0..<n])
 
                 // Emit complete lines only, so a partial write never splits a
