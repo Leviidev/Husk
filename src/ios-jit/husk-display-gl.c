@@ -115,12 +115,21 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
      * these logs show a METAL handle, the GL texture we have been blitting from
      * may be an empty sibling of the texture virgl actually renders into.
      */
+    /* Only when the shape or the handle kind changes. Android re-sets the
+     * scanout constantly -- 655 times in one session -- and each of these is a
+     * formatted write to stderr while the BQL is held. */
+    static uint32_t last_w, last_h; static int last_native = -1;
+    if (backing_width != last_w || backing_height != last_h
+        || (int)native.type != last_native) {
+        last_w = backing_width; last_h = backing_height;
+        last_native = (int)native.type;
     fprintf(stderr, "[husk-gl] scanout_texture: id=%u %ux%u y0top=%d "
                     "native=%s handle=%p\n",
             backing_id, backing_width, backing_height, backing_y_0_top ? 1 : 0,
             native.type == SCANOUT_TEXTURE_NATIVE_TYPE_METAL ? "METAL" :
             native.type == SCANOUT_TEXTURE_NATIVE_TYPE_D3D   ? "D3D"   : "none",
             native.handle);
+    }
     husk_flip = backing_y_0_top;
     husk_metal_tex = native.type == SCANOUT_TEXTURE_NATIVE_TYPE_METAL
                    ? native.handle : NULL;
@@ -153,8 +162,9 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
         glBindFramebuffer(GL_FRAMEBUFFER, husk_guest_fb.framebuffer);
         st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev);
-        fprintf(stderr, "[husk-gl] scanout_texture: fb ready, status=0x%x%s\n",
-                st, st == GL_FRAMEBUFFER_COMPLETE ? " (complete)" : " (NOT COMPLETE)");
+        if (st != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "[husk-gl] scanout fb NOT COMPLETE: 0x%x\n", st);
+        }
     }
 }
 

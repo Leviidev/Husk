@@ -1052,7 +1052,13 @@ final class QemuRunner: ObservableObject {
             // "Rebooting into recovery, reason: init_user0_failed" and QEMU
             // simply stopped. A guest that loops will show up in the log; a
             // guest that cannot reboot cannot recover.
-            "-d", "guest_errors,unimp",
+            // -d dropped. Android generates a continuous stream of SELinux
+            // denials and unimplemented-device accesses, and each one was
+            // formatted by QEMU, written to a pipe, read back by HuskLog, split
+            // into lines and logged. That is real work on the thread that also
+            // runs the machine. It was worth it while the GPU path was being
+            // debugged and costs frames now that it works.
+
         ] + (ramFileReady ? [
             // Guest RAM as a MAP_SHARED file rather than anonymous memory, so
             // the kernel can write it back and evict it instead of counting all
