@@ -263,6 +263,75 @@ final class GuestBridge {
         return fd
     }
 
+    // MARK: the held connection
+
+    /// One connection, opened early and kept.
+    ///
+    /// Every command used to open its own, which is clean but turned out to be
+    /// the thing that breaks. The health watch caught the failure exactly:
+    ///
+    ///   [111112ms] health: the shell STOPPED answering -- 5599 (husk_agent):
+    ///             connected, then silence until timeout
+    ///
+    /// A completed TCP handshake followed by silence has two causes and they are
+    /// indistinguishable from outside. Either a firewall rule appeared and is
+    /// dropping new connections, or `husk_agent` serves one client at a time and
+    /// is wedged, leaving new connections to complete the handshake into a
+    /// backlog nothing will ever accept. init reports the service alive
+    /// throughout ("already running, flags: 4, pid: 620"), which fits the second
+    /// reading; netd installing netfilter rules around the same time fits the
+    /// first.
+    ///
+    /// Holding one connection answers both without having to know which. An
+    /// established connection survives a firewall rule appearing -- those match
+    /// on new ones -- and if the listener only ever serves one client, being
+    /// that client means never competing for accept() again.
+    private var control: Int32 = -1
+    private let controlLock = NSLock()
+
+    /// The held connection, opening it if this is the first use or the last one
+    /// broke. Caller must hold controlLock.
+    private func controlFD(timeout: TimeInterval) throws -> Int32 {
+        if control >= 0 {
+            var tv = timeval(tv_sec: Int(timeout), tv_usec: 0)
+            setsockopt(control, SOL_SOCKET, SO_RCVTIMEO, &tv,
+                       socklen_t(MemoryLayout<timeval>.size))
+            setsockopt(control, SOL_SOCKET, SO_SNDTIMEO, &tv,
+                       socklen_t(MemoryLayout<timeval>.size))
+            return control
+        }
+        let fd = try openSocket(timeout: timeout)
+        // Keepalives, so a connection that has been idle for minutes is known to
+        // be dead before a two-hundred-megabyte transfer is started on it.
+        var on: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, socklen_t(MemoryLayout<Int32>.size))
+        control = fd
+        HuskLog.log("bridge", "opened the held connection to the Android shell")
+        return fd
+    }
+
+    /// Drop the held connection, so the next command opens a fresh one.
+    private func dropControl(_ why: String) {
+        if control >= 0 {
+            close(control)
+            control = -1
+            isConnected = false
+            HuskLog.log("bridge", "the held connection broke: \(why)")
+        }
+    }
+
+    /// Open the connection now, while connections still work.
+    ///
+    /// The window closes: connections succeeded for the first hundred seconds of
+    /// the last session and not afterwards. Whatever the mechanism, being inside
+    /// the window when the connection is made is what matters, so this is called
+    /// as soon as the guest answers rather than when something first needs it.
+    func holdConnection() {
+        controlLock.lock()
+        defer { controlLock.unlock() }
+        _ = try? controlFD(timeout: 15)
+    }
+
     private func writeAll(_ fd: Int32, _ data: Data) throws {
         try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             var off = 0
@@ -286,9 +355,17 @@ final class GuestBridge {
     /// kernel log -- including the error messages that explain a failure.
     @discardableResult
     func shell(_ command: String, timeout: TimeInterval = 30) throws -> String {
-        let fd = try openSocket(timeout: timeout)
-        defer { close(fd) }
+        try run(command, timeout: timeout).out
+    }
 
+    /// Write a command to the held connection and read back to its marker.
+    ///
+    /// Serialised, because one connection means one shell: two commands
+    /// interleaved on it would each read the other's output. Caller must hold
+    /// controlLock.
+    private func exchange(_ command: String, timeout: TimeInterval)
+            throws -> (out: String, status: Int) {
+        let fd = try controlFD(timeout: timeout)
         try writeAll(fd, Data("\(command) 2>&1; echo \(Self.marker)$?\n".utf8))
 
         var out = ""
@@ -298,8 +375,9 @@ final class GuestBridge {
             let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0 && errno == EINTR { continue }
             if n <= 0 {
-                isConnected = false
-                throw BridgeError.io("guest closed the connection (errno \(errno))")
+                let why = n == 0 ? "the guest closed it" : "read failed (errno \(errno))"
+                dropControl(why)
+                throw BridgeError.io("guest closed the connection -- \(why)")
             }
             out += String(decoding: buf[0..<n], as: UTF8.self)
             if let r = out.range(of: Self.marker) {
@@ -310,9 +388,13 @@ final class GuestBridge {
                 if status != 0 {
                     HuskLog.log("bridge", "`\(command.prefix(60))` exit \(status)")
                 }
-                return body
+                return (body, status)
             }
             if Date() > deadline {
+                // A timed-out command leaves unread output on the connection,
+                // and the next command would read that instead of its own. The
+                // connection cannot be trusted again, so it goes.
+                dropControl("timed out waiting for `\(command.prefix(40))`")
                 throw BridgeError.timeout("waiting for `\(command.prefix(60))`")
             }
         }
@@ -323,28 +405,17 @@ final class GuestBridge {
     /// `shell` discards the status, which is fine for reads and fatal for
     /// anything whose failure has to stop what follows.
     func run(_ command: String, timeout: TimeInterval = 30) throws -> (out: String, status: Int) {
-        let fd = try openSocket(timeout: timeout)
-        defer { close(fd) }
-        try writeAll(fd, Data("\(command) 2>&1; echo \(Self.marker)$?\n".utf8))
-
-        var out = ""
-        var buf = [UInt8](repeating: 0, count: 16 * 1024)
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
-            if n < 0 && errno == EINTR { continue }
-            if n <= 0 {
-                isConnected = false
-                throw BridgeError.io("guest closed the connection (errno \(errno))")
-            }
-            out += String(decoding: buf[0..<n], as: UTF8.self)
-            if let r = out.range(of: Self.marker) {
-                isConnected = true
-                let status = Int(out[r.upperBound...]
-                    .trimmingCharacters(in: .whitespacesAndNewlines)) ?? -1
-                return (String(out[out.startIndex..<r.lowerBound]), status)
-            }
-            if Date() > deadline { throw BridgeError.timeout("waiting for `\(command.prefix(60))`") }
+        controlLock.lock()
+        defer { controlLock.unlock() }
+        do {
+            return try exchange(command, timeout: timeout)
+        } catch {
+            // One retry, and only because the held connection may simply have
+            // aged out while nothing was using it. dropControl() already cleared
+            // it, so this attempt opens a fresh one -- which is exactly the
+            // thing that stops working later in a session, hence one try and
+            // not a loop.
+            return try exchange(command, timeout: timeout)
         }
     }
 
@@ -393,32 +464,30 @@ final class GuestBridge {
         let handle = try FileHandle(forReadingFrom: local)
         defer { try? handle.close() }
 
-        // Generous: a hundred-megabyte APK over an emulated NIC is not quick.
-        let fd = try openSocket(timeout: 120)
-        defer { close(fd) }
+        // On the held connection, like everything else.
+        //
+        // This used to open its own, and that is precisely the operation that
+        // stops working part-way through a session -- so the one thing in Husk
+        // that most needs a working channel was the one asking for a new one.
+        controlLock.lock()
+        defer { controlLock.unlock() }
+        let fd = try controlFD(timeout: 120)
 
-        let ready = "__HUSK_RDY__"
-        try writeAll(fd, Data("echo \(ready); exec head -c \(size) > \(remote)\n".utf8))
-
-        var seen = ""
-        var buf = [UInt8](repeating: 0, count: 1024)
-        while !seen.contains(ready) {
-            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
-            if n < 0 && errno == EINTR { continue }
-            if n <= 0 {
-                // "guest did not accept the file" said nothing anyone could act
-                // on: not whether the connection was closed or errored, not how
-                // far the handshake got, not what the shell managed to say
-                // first. A failure that reports nothing costs a whole test run.
-                let why = n == 0 ? "the guest closed the connection"
-                                 : "read failed (errno \(errno))"
-                let got = seen.trimmingCharacters(in: .whitespacesAndNewlines)
-                throw BridgeError.io("\(why) while waiting for the shell to take "
-                                   + "the file" + (got.isEmpty ? " (it said nothing)"
-                                                              : "; it said: \(got.prefix(120))"))
-            }
-            seen += String(decoding: buf[0..<n], as: UTF8.self)
-        }
+        // `head -c N > file`, without `exec`.
+        //
+        // exec replaced the shell so that nothing could read ahead past the
+        // command line and swallow the first bytes of the APK. It also ended the
+        // connection, which is no longer acceptable. Dropping it is safe because
+        // POSIX requires a shell reading commands from a non-seekable stream to
+        // leave that stream positioned exactly after the command it ran -- mksh,
+        // which is /system/bin/sh here, reads a byte at a time to honour that.
+        // head then inherits the socket and takes exactly the next N bytes, and
+        // the shell resumes reading commands after them.
+        //
+        // If that ever proves wrong the transfer does not silently corrupt: the
+        // caller compares `wc -c` against the file's real size before pm sees it.
+        let command = "head -c \(size) > \(remote) 2>&1; echo \(Self.marker)$?\n"
+        try writeAll(fd, Data(command.utf8))
 
         var sent = 0
         while sent < size {
@@ -427,11 +496,32 @@ final class GuestBridge {
             sent += chunk.count
             progress(Double(sent) / Double(size))
         }
-        // head exits on its own after `size` bytes; the shutdown is what frees it
-        // if the file was shorter than its own metadata claimed.
-        shutdown(fd, SHUT_WR)
+        if sent != size {
+            dropControl("sent \(sent) of \(size) bytes; the stream is out of step")
+            throw BridgeError.io("sent \(sent) of \(size) bytes")
+        }
+
+        // head has its N bytes and exits; the marker is the shell telling us it
+        // is back to reading commands, which is also how we know the connection
+        // is still usable for the pm install that follows.
+        var out = ""
+        var buf = [UInt8](repeating: 0, count: 4096)
+        let deadline = Date().addingTimeInterval(120)
+        while !out.contains(Self.marker) {
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n < 0 && errno == EINTR { continue }
+            if n <= 0 {
+                let why = n == 0 ? "the guest closed it" : "read failed (errno \(errno))"
+                dropControl(why)
+                throw BridgeError.io("\(why) after sending \(sent) bytes")
+            }
+            out += String(decoding: buf[0..<n], as: UTF8.self)
+            if Date() > deadline {
+                dropControl("no acknowledgement after the transfer")
+                throw BridgeError.timeout("waiting for the guest to finish writing \(remote)")
+            }
+        }
         HuskLog.log("bridge", "pushed \(sent) bytes to \(remote)")
-        if sent != size { throw BridgeError.io("sent \(sent) of \(size) bytes") }
     }
 
     /// Is a shell answering right now?
@@ -612,6 +702,11 @@ final class AndroidHost: ObservableObject {
                             self?.polling = false
                         }
                         HuskLog.log("bridge", "guest is ready after \(attempt) attempts")
+                        // Take the connection now and never let go. New
+                        // connections worked for the first hundred seconds of
+                        // the last session and not afterwards, so the moment the
+                        // guest first answers is the moment to claim one.
+                        GuestBridge.shared.holdConnection()
                         await self?.quietAbsentHardware()
                         await self?.refreshPackages()
                         await MainActor.run { self?.dumpDiagnostics() }
