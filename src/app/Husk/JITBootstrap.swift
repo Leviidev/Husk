@@ -72,11 +72,27 @@ enum JITBootstrap {
         HuskLog.log("jit", "claiming \(jitBytes / (1024 * 1024)) MiB of JIT memory now, "
                          + "before the guest download -- StikDebug does not stay attached")
         let ok = husk_ios_jit_prewarm(jitBytes)
-        if ok { prewarmed = true }
+        if ok { prewarmed = true; lastFailure = nil }
+        else {
+            lastFailure = "The debugger is attached but is not answering trap "
+                        + "requests, so no executable memory could be claimed. "
+                        + "This is what happens when Husk runs inside another "
+                        + "container app rather than sideloaded on its own."
+        }
         HuskLog.log("jit", ok ? "JIT region secured; it will be handed to QEMU later"
                               : "JIT prewarm FAILED -- StikDebug is not servicing traps")
         return ok
     }
+
+    /// Why the last prewarm failed, for the UI to show.
+    ///
+    /// CS_DEBUGGED being set is not the same as the debugger servicing traps.
+    /// A build running inside LiveContainer reports itself debugged, answers no
+    /// brk, and gets no executable memory -- and Husk started QEMU anyway,
+    /// which segfaulted inside qemu_init() with a perfectly healthy 4 GB of
+    /// headroom. The crash looked like memory pressure and was nothing of the
+    /// kind.
+    nonisolated(unsafe) static var lastFailure: String?
 
     /// True only after a JIT region has been allocated AND passed the execute
     /// self-test — which happens inside `qemu_init`. It is therefore always false

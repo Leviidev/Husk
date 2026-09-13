@@ -137,7 +137,16 @@ struct ContentView: View {
         HuskLog.log("ui", "CS_DEBUGGED set; starting QEMU")
         // Take the JIT region at the last moment before QEMU, as well as before
         // the download. Whichever comes first wins; the second call is a no-op.
-        JITBootstrap.prewarm()
+        //
+        // And refuse to continue without it. qemu_init() allocates its
+        // translation buffer inside itself and has nowhere to get executable
+        // memory from if this failed, so starting anyway is not optimism, it is
+        // a guaranteed SIGSEGV a few milliseconds later -- with the log showing
+        // gigabytes free, which sends everyone looking at memory.
+        guard JITBootstrap.prewarm() || JITBootstrap.isLive else {
+            HuskLog.log("jit", "refusing to start QEMU without executable memory")
+            return
+        }
         started = true
         QemuRunner.shared.start()
         bridge.startWatching()
@@ -355,6 +364,15 @@ struct SetupView: View {
                             _ = JITBootstrap.requestAttach()
                         }
                         .buttonStyle(.borderedProminent)
+                    }
+                    // Attached and still unable to claim memory is a different
+                    // problem from not being attached, and it used to present as
+                    // a crash rather than as anything readable.
+                    if let why = JITBootstrap.lastFailure {
+                        Text(why)
+                            .font(.caption).foregroundStyle(.orange)
+                            .multilineTextAlignment(.center).padding(.horizontal, 30)
+                            .padding(.top, 6)
                     }
                 }
             }
