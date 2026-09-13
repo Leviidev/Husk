@@ -64,6 +64,15 @@ bool     husk_display_gl_probe(void);
 bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
 
+/* Present the guest's scanout from its own MTLTexture, bypassing GL. See the
+ * comment in husk-display-gl.h: on this stack the GL texture id that comes with
+ * each scanout is not readable from our context, and the pixels are in the
+ * native Metal handle instead. `texture` is an id<MTLTexture> and is valid only
+ * for the duration of the call. */
+typedef void (*husk_metal_present_fn)(void *texture, int32_t flip,
+                                      int32_t width, int32_t height);
+void     husk_display_gl_set_metal_presenter(husk_metal_present_fn fn);
+
 /* --- Husk's machine snapshots --- */
 /* Restore the saved machine, if one exists. Call straight after qemu_init() and
    before qemu_main_loop(). False means nothing to restore, which is the normal

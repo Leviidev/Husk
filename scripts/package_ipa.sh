@@ -27,6 +27,20 @@ if [ -f "$BUILT" ] && [ "$BUILT" -nt "$STAGED" ]; then
     cp "$BUILT" "$STAGED"
 fi
 
+# Regenerate the project first.
+#
+# project.yml globs src/app/Husk, so adding a source file there is meant to be
+# all it takes -- but the checked-in .pbxproj is a build artefact of that glob,
+# and nothing was regenerating it. A new file was therefore silently absent from
+# the target, and the only symptom was "cannot find X in scope" for a type that
+# is plainly right there on disk.
+if command -v xcodegen >/dev/null 2>&1; then
+    echo "==> regenerating the project from project.yml"
+    (cd "$HUSK_ROOT/src/app" && xcodegen generate --quiet)
+else
+    echo "==> xcodegen not installed; using the checked-in project as-is" >&2
+fi
+
 echo "==> building"
 xcodebuild -project "$HUSK_ROOT/src/app/Husk.xcodeproj" -scheme Husk \
     -sdk iphoneos -configuration Release -derivedDataPath "$DD" \

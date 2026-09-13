@@ -9,20 +9,20 @@
 /* Begin PBXBuildFile section */
 		090A2A3F43CE69EA3C079EB0 /* HuskLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6541CC4432CA2CE74901320 /* HuskLog.swift */; };
 		1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = A523DB1FEA5BC026771035C7 /* Shaders.metal */; };
+		29B4497EDC1E890D82BDF969 /* GuestManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0490485F9BA884A0554EAD /* GuestManifest.swift */; };
 		340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */; };
 		38E7D6B6947ED3CF1A82BB7D /* libqemu-aarch64-softmmu.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; };
 		4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */; };
 		507309F42DC8965C816DC580 /* JITBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5664FE015975D16E7500F3C7 /* JITBootstrap.swift */; };
 		581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */; };
+		59514CBA483F71A738A3B444 /* HuskMetalPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B259C39CD9CC4D2A8A3D8E8 /* HuskMetalPresenter.swift */; };
 		5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E91A601F16886103BC482AB /* QemuRunner.swift */; };
-		B2B2B2B2B2B2B2B2B2B2B201 /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B2B2B2B2B2B2B2B2B2B202 /* HuskGLView.swift */; };
 		79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771B4FD56CABC214FEED6DFE /* GuestImage.swift */; };
-		A1B2C3D40001E5F600000001 /* GuestManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40002E5F600000002 /* GuestManifest.swift */; };
 		81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392BE39CE162757FDA225452 /* HuskKeyboard.swift */; };
+		8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */; };
 		CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */; };
 		E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */ = {isa = PBXBuildFile; fileRef = B74F9AA42414905593B347BA /* husk-jit.js */; };
 		EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		A1A1A1A1A1A1A1A1A1A1A103 /* libANGLE-shared.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A1A1A1A1A1A1A1A1A1A1A101 /* libANGLE-shared.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */; };
 /* End PBXBuildFile section */
 
@@ -34,7 +34,6 @@
 			dstSubfolderSpec = 10;
 			files = (
 				EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */,
-				A1A1A1A1A1A1A1A1A1A1A103 /* libANGLE-shared.dylib in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -44,10 +43,10 @@
 /* Begin PBXFileReference section */
 		0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskBridgeFS.swift; sourceTree = "<group>"; };
 		1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = "<group>"; };
-		A1A1A1A1A1A1A1A1A1A1A101 /* libANGLE-shared.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libANGLE-shared.dylib"; path = "../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib"; sourceTree = "<group>"; };
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
-		B2B2B2B2B2B2B2B2B2B2B202 /* HuskGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskGLView.swift; sourceTree = "<group>"; };
 		392BE39CE162757FDA225452 /* HuskKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskKeyboard.swift; sourceTree = "<group>"; };
+		4A0490485F9BA884A0554EAD /* GuestManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestManifest.swift; sourceTree = "<group>"; };
+		4B259C39CD9CC4D2A8A3D8E8 /* HuskMetalPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskMetalPresenter.swift; sourceTree = "<group>"; };
 		4D3B9FB2A68373C457706DA9 /* Husk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Husk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5664FE015975D16E7500F3C7 /* JITBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITBootstrap.swift; sourceTree = "<group>"; };
 		56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -55,12 +54,12 @@
 		690B2DA647B7B75C11DDDA9F /* HuskBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HuskBridge.h; sourceTree = "<group>"; };
 		6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		771B4FD56CABC214FEED6DFE /* GuestImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestImage.swift; sourceTree = "<group>"; };
-		A1B2C3D40002E5F600000002 /* GuestManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestManifest.swift; sourceTree = "<group>"; };
 		85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskApp.swift; sourceTree = "<group>"; };
 		A523DB1FEA5BC026771035C7 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		B74F9AA42414905593B347BA /* husk-jit.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "husk-jit.js"; sourceTree = "<group>"; };
 		C6541CC4432CA2CE74901320 /* HuskLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskLog.swift; sourceTree = "<group>"; };
 		D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskMetalView.swift; sourceTree = "<group>"; };
+		F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskGLView.swift; sourceTree = "<group>"; };
 		FD559A37CF59C3290F29FA43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -81,19 +80,20 @@
 			children = (
 				6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */,
 				771B4FD56CABC214FEED6DFE /* GuestImage.swift */,
-				A1B2C3D40002E5F600000002 /* GuestManifest.swift */,
+				4A0490485F9BA884A0554EAD /* GuestManifest.swift */,
 				619394B1069242D8750E7F33 /* Husk.entitlements */,
 				85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */,
 				690B2DA647B7B75C11DDDA9F /* HuskBridge.h */,
 				0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */,
+				F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */,
 				392BE39CE162757FDA225452 /* HuskKeyboard.swift */,
 				C6541CC4432CA2CE74901320 /* HuskLog.swift */,
+				4B259C39CD9CC4D2A8A3D8E8 /* HuskMetalPresenter.swift */,
 				D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */,
 				FD559A37CF59C3290F29FA43 /* Info.plist */,
 				5664FE015975D16E7500F3C7 /* JITBootstrap.swift */,
 				56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */,
 				2E91A601F16886103BC482AB /* QemuRunner.swift */,
-				B2B2B2B2B2B2B2B2B2B2B202 /* HuskGLView.swift */,
 				A523DB1FEA5BC026771035C7 /* Shaders.metal */,
 				FA84FD81F71FF2ACDEB879A5 /* Resources */,
 			);
@@ -220,7 +220,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n\n# UEFI firmware for the Phase 1 guest: Debian's cloud image boots through\n# GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,\n# so the IPA's own zip squeezes it to about a megabyte -- cheaper than\n# carrying a decompressor to unpack it at runtime.\nFW=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd\"\nif [ ! -f \"$FW\" ]; then\n  bunzip2 -c \"$BIOS/edk2-aarch64-code.fd.bz2\" > \"$FW\"\nfi\n\n# Seed files for the Android guest. Both are tiny -- an empty 16 GiB userdata\n# qcow2 (192 KB) and the prebuilt UEFI variable store (327 KB, itself a qcow2\n# with a 64 MiB virtual size) -- so they ride in the IPA rather than costing a\n# second and third download. They are copied out to Documents at first run\n# because the guest writes to both.\nANDROID=\"$SRCROOT/../../guests/android\"\nif [ -f \"$ANDROID/vdb.qcow2\" ]; then\n  cp \"$ANDROID/vdb.qcow2\" \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-vdb-seed.qcow2\"\n  cp \"$ANDROID/efi_vars.fd\" \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-efi-vars-seed.fd\"\nelse\n  echo \"error: guests/android seeds missing\" >&2\n  exit 1\nfi\n";
+			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n\n# UEFI firmware for the Phase 1 guest: Debian's cloud image boots through\n# GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,\n# so the IPA's own zip squeezes it to about a megabyte -- cheaper than\n# carrying a decompressor to unpack it at runtime.\nFW=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd\"\nif [ ! -f \"$FW\" ]; then\n  bunzip2 -c \"$BIOS/edk2-aarch64-code.fd.bz2\" > \"$FW\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -231,16 +231,17 @@
 			files = (
 				4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */,
 				79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */,
-				A1B2C3D40001E5F600000001 /* GuestManifest.swift in Sources */,
+				29B4497EDC1E890D82BDF969 /* GuestManifest.swift in Sources */,
 				581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */,
 				340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */,
+				8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */,
 				81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */,
 				090A2A3F43CE69EA3C079EB0 /* HuskLog.swift in Sources */,
+				59514CBA483F71A738A3B444 /* HuskMetalPresenter.swift in Sources */,
 				F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */,
 				507309F42DC8965C816DC580 /* JITBootstrap.swift in Sources */,
 				CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */,
 				5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */,
-				B2B2B2B2B2B2B2B2B2B2B201 /* HuskGLView.swift in Sources */,
 				1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

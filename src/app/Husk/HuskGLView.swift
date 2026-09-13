@@ -82,6 +82,7 @@ final class HuskGLView: UIView {
         metalLayer.contentsScale = scale
         metalLayer.drawableSize = CGSize(width: bounds.width * scale,
                                          height: bounds.height * scale)
+        HuskMetalPresenter.shared.attach(layer: metalLayer)
         Self.surfaceReady.lock()
         let first = Self.layerForGL == nil
         Self.layerForGL = metalLayer

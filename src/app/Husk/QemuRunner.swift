@@ -1177,6 +1177,10 @@ final class QemuRunner: ObservableObject {
         // to wait until qemu_init() has run.
         var glUp = false
         if QemuRunner.glProven {
+            // Before bind, because registering the listener can deliver a
+            // scanout immediately and a frame presented through the GL path is
+            // a frame thrown away.
+            huskInstallMetalPresenter()
             glUp = husk_display_gl_bind()
             HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
                                      : "GL bind failed after a successful probe")

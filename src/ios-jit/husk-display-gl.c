@@ -41,6 +41,19 @@ static bool husk_have_scanout;
 static bool husk_flip;
 static uint64_t husk_gl_frames;
 
+/* The current scanout's Metal texture, when virgl offers one, and the app-side
+ * hook that can draw it. See husk_display_gl_set_metal_presenter(). */
+static void *husk_metal_tex;
+static int   husk_metal_w, husk_metal_h;
+static husk_metal_present_fn husk_metal_present;
+
+void husk_display_gl_set_metal_presenter(husk_metal_present_fn fn)
+{
+    husk_metal_present = fn;
+    fprintf(stderr, "[husk-gl] metal presenter %s\n",
+            fn ? "registered" : "cleared");
+}
+
 /*
  * Defined below, once husk_gl_dcl_ops exists to compare against.
  *
@@ -68,6 +81,7 @@ static const DisplayGLCtxOps husk_gl_ctx_ops = {
 static void husk_gl_scanout_disable(DisplayChangeListener *dcl)
 {
     husk_have_scanout = false;
+    husk_metal_tex = NULL;
     egl_fb_destroy(&husk_guest_fb);
 }
 
@@ -108,6 +122,10 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
             native.type == SCANOUT_TEXTURE_NATIVE_TYPE_D3D   ? "D3D"   : "none",
             native.handle);
     husk_flip = backing_y_0_top;
+    husk_metal_tex = native.type == SCANOUT_TEXTURE_NATIVE_TYPE_METAL
+                   ? native.handle : NULL;
+    husk_metal_w = backing_width;
+    husk_metal_h = backing_height;
     egl_fb_setup_for_tex(&husk_guest_fb, backing_width, backing_height,
                          backing_id, false);
 
@@ -215,6 +233,22 @@ static void husk_gl_update(DisplayChangeListener *dcl,
     bool sample;
 
     if (!husk_have_scanout || husk_surface == EGL_NO_SURFACE) {
+        return;
+    }
+
+    /*
+     * Metal first, when virgl gave us a texture.
+     *
+     * Everything below this point goes through the GL texture id, and on this
+     * stack that id is not ours to read -- the blit fails with
+     * GL_INVALID_FRAMEBUFFER_OPERATION every single frame and writes nothing.
+     * The GL path stays for scanouts that arrive with no native handle, which
+     * is what the firmware console is, and which did render correctly.
+     */
+    if (husk_metal_tex && husk_metal_present) {
+        husk_metal_present(husk_metal_tex, husk_flip ? 1 : 0,
+                           husk_metal_w, husk_metal_h);
+        husk_gl_frames++;
         return;
     }
 

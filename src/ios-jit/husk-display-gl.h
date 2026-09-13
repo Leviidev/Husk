@@ -28,4 +28,24 @@ bool husk_display_gl_bind(void);
 /* Frames presented, for the perf counter. */
 uint64_t husk_display_gl_frames(void);
 
+/*
+ * Present the guest's scanout directly from its Metal texture.
+ *
+ * virglrenderer runs on ANGLE-over-Metal here, and the GL texture id it reports
+ * alongside each scanout is not readable from our context: blitting from it
+ * raises GL_INVALID_FRAMEBUFFER_OPERATION on every frame and produces a blank
+ * picture, while Android is demonstrably drawing at forty frames a second. The
+ * pixels live in the MTLTexture that this fork of QEMU passes as the scanout's
+ * native handle -- which is why UTM's own display uses that handle and treats
+ * the GL id as a fallback.
+ *
+ * `texture` is an id<MTLTexture>, valid for the duration of the call. `flip` is
+ * the guest's y_0_top. The implementation lives in the app, because the
+ * CAMetalLayer does, so the C side calls out through this hook rather than
+ * reaching for UIKit from inside QEMU.
+ */
+typedef void (*husk_metal_present_fn)(void *texture, int flip,
+                                      int width, int height);
+void husk_display_gl_set_metal_presenter(husk_metal_present_fn fn);
+
 #endif

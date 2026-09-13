@@ -301,6 +301,7 @@ wanted = [
     "husk_display_gl_probe",
     "husk_display_gl_early",
     "husk_display_gl_frames",
+    "husk_display_gl_set_metal_presenter",
     "husk_snapshot_save",
     "husk_snapshot_load_at_startup",
     "husk_balloon_set_bytes",
