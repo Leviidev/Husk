@@ -161,8 +161,9 @@ enum HuskLog {
                 // read(2) and write(2) are async-signal-safe; the non-blocking
                 // flag is what stops this hanging when the pipe is empty.
                 if HuskLog.pipeReadFD >= 0 {
-                    let flags = fcntl(HuskLog.pipeReadFD, F_GETFL, 0)
-                    _ = fcntl(HuskLog.pipeReadFD, F_SETFL, flags | O_NONBLOCK)
+                    // Reading a file now, so this cannot block and cannot
+                    // miss anything: whatever the tailer has not reached is
+                    // still on disk at this descriptor's offset.
                     // A buffer allocated up front, because this one did not
                     // work: creating an array here allocates, and abort() can
                     // be raised while the allocator's lock is held -- so the
