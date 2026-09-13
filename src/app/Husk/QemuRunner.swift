@@ -122,6 +122,9 @@ final class QemuRunner: ObservableObject {
     nonisolated static var keepNetworkAcrossSaves: Bool {
         UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
     }
+    /// The resolution the machine was actually created with, so a resize that
+    /// changes nothing can be skipped.
+    nonisolated(unsafe) static var bootGuestRes = (w: 360, h: 800)
     nonisolated(unsafe) static var qemuReady = false
     /// A display size asked for before QEMU was up, applied once it is.
     nonisolated(unsafe) static var pendingUISize: (w: Int, h: Int)?
@@ -1207,6 +1210,7 @@ final class QemuRunner: ObservableObject {
                               + "compositor first, and restoring starts it again")
         }
 
+        QemuRunner.bootGuestRes = QemuRunner.lastGuestRes
         HuskLog.log("qemu", "---- QEMU command line (\(args.count) args) ----")
         for (i, a) in args.enumerated() {
             HuskLog.log("qemu", String(format: "  argv[%2d] = %@", i, a))
@@ -1267,9 +1271,28 @@ final class QemuRunner: ObservableObject {
         QemuRunner.qemuReady = true
         if let pending = QemuRunner.pendingUISize {
             QemuRunner.pendingUISize = nil
-            HuskLog.log("qemu", "applying the display size asked for before startup: "
-                              + "\(pending.w)x\(pending.h)")
-            husk_display_set_ui_size(Int32(pending.w), Int32(pending.h))
+            // Only if it differs from what the machine was built with.
+            //
+            // The first layout always records a size, so every launch was
+            // sending a modeset request the moment qemu_init() returned --
+            // usually for the size the guest already had. On a RESTORED machine
+            // that arrives while the guest's display stack is still coming back,
+            // and asking virtio-gpu to remake a display it is mid-way through
+            // restoring is a good way to get exactly what the last log showed:
+            //
+            //   [drm:virtio_gpu_dequeue_ctrl_func] *ERROR* response 0x1203
+            //
+            // A no-op modeset has nothing to gain and this to lose, so it is
+            // now sent only when the shape genuinely changed.
+            if pending.w != QemuRunner.bootGuestRes.w
+                || pending.h != QemuRunner.bootGuestRes.h {
+                HuskLog.log("qemu", "display shape differs from boot; asking for "
+                                  + "\(pending.w)x\(pending.h)")
+                husk_display_set_ui_size(Int32(pending.w), Int32(pending.h))
+            } else {
+                HuskLog.log("qemu", "display is already \(pending.w)x\(pending.h); "
+                                  + "not disturbing the guest")
+            }
         }
         // Survived initialisation, so this size is safe to try again next launch.
         try? String(QemuRunner.shared.lastGuestMiB)
