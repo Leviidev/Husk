@@ -64,13 +64,16 @@ struct ContentView: View {
         guest.refresh()
         HuskBridgeFS.shared.prepare()
 
-        guard !started else { return }
-        guard runner.profile == .phase0Alpine || guest.state == .ready else { return }
-        guard JITBootstrap.isDebuggerAttached else {
+        // Deliberately does NOT start the guest.
+        //
+        // It used to: once the image was present and a debugger was attached,
+        // Husk went straight into Android with no way to reach any setting
+        // first. Booting takes minutes and its cost depends on choices made
+        // before it starts -- which display, whether to fetch a pre-booted
+        // snapshot -- so it is a decision, not a side effect of launching.
+        if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
-            return
         }
-        start()
     }
 
     private func start() {
@@ -178,8 +181,7 @@ struct SetupView: View {
     let onStart: () -> Void
 
     @State private var profile: QemuRunner.Profile = .phase1Android
-    @State private var forceSoftware =
-        UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -187,50 +189,30 @@ struct SetupView: View {
             VStack(spacing: 22) {
                 Text("Husk")
                     .font(.system(size: 44, weight: .semibold, design: .rounded))
+                Text("Android app launcher")
+                    .font(.footnote).foregroundStyle(.secondary)
 
                 content
-
-                Picker("Guest", selection: $profile) {
-                    ForEach(QemuRunner.Profile.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 30)
-                .onChange(of: profile) { p in
-                    QemuRunner.shared.profile = p
-                    HuskLog.log("ui", "guest profile set to \(p.rawValue)")
-                }
-
-                // A/B switch, because which display is faster is an open
-                // question rather than a settled one. The GPU makes the boot
-                // animation quick, but it also makes the guest run Mesa's virgl
-                // driver and SurfaceFlinger's full render engine -- far more
-                // emulated code than writing pixels into a framebuffer. Two runs
-                // of the same build settle it; arguing about it does not.
-                Toggle(isOn: $forceSoftware) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(forceSoftware ? "Display: software (CPU)"
-                                           : "Display: GPU (virtio-gpu-gl)")
-                        Text(forceSoftware
-                             ? "Slower drawing, but the machine can be snapshotted"
-                             : "QEMU cannot snapshot with the GPU — every launch cold-boots")
-                            .font(.caption2)
-                            .foregroundColor(forceSoftware ? .secondary : .orange)
-                    }
-                    .font(.footnote)
-                }
-                .padding(.horizontal, 30)
-                .onChange(of: forceSoftware) { v in
-                    UserDefaults.standard.set(v, forKey: "husk.forceSoftwareDisplay")
-                    HuskLog.log("ui", v ? "forcing the software display"
-                                        : "allowing the GPU display")
-                }
-
-                Button { showLogs = true } label: {
-                    Label("View logs", systemImage: "doc.text.magnifyingglass")
-                }
-                .font(.footnote)
             }
             .foregroundStyle(.white)
+
+            // Settings, top right, out of the way of the one thing most people
+            // open this screen to press.
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2)
+                            .foregroundStyle(.white.opacity(0.75))
+                            .padding(14)
+                    }
+                }
+                Spacer()
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(profile: $profile, showLogs: $showLogs)
         }
     }
 
@@ -307,6 +289,100 @@ struct SetupView: View {
 
 /// Live log tail with a share button. The share sheet is the practical way to get
 /// husk.log and the guest's serial console off the device.
+/// Settings, reached from the gear on the start screen.
+///
+/// These are the choices that have to be made before Android boots, because
+/// booting is expensive and each of them changes what that boot costs.
+struct SettingsView: View {
+    @Environment(\.presentationMode) private var presentation
+    @Binding var profile: QemuRunner.Profile
+    @Binding var showLogs: Bool
+
+    @State private var forceSoftware =
+        UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true
+    @State private var useSnapshot =
+        UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    Toggle(isOn: $useSnapshot) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Download pre-booted snapshot")
+                            Text(useSnapshot
+                                 ? "Adds about 2 GB to the download, and skips a first boot that takes five to twelve minutes."
+                                 : "Smaller download. Android boots from cold the first time, which takes five to twelve minutes.")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    .onChange(of: useSnapshot) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.downloadSnapshot")
+                        HuskLog.log("ui", v ? "will fetch the pre-booted snapshot"
+                                            : "will boot Android from cold")
+                    }
+                } header: {
+                    Text("First launch")
+                } footer: {
+                    Text("A snapshot is a machine that has already finished booting. Restoring one takes seconds; booting takes minutes.")
+                }
+
+                Section {
+                    Toggle(isOn: $forceSoftware) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(forceSoftware ? "Software (CPU)" : "GPU (virtio-gpu-gl)")
+                            Text(forceSoftware
+                                 ? "Drawing is slower, but the machine can be snapshotted."
+                                 : "QEMU cannot snapshot a machine using the GPU, so every launch boots from cold.")
+                                .font(.caption2)
+                                .foregroundColor(forceSoftware ? .secondary : .orange)
+                        }
+                    }
+                    .onChange(of: forceSoftware) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.forceSoftwareDisplay")
+                        HuskLog.log("ui", v ? "forcing the software display"
+                                            : "allowing the GPU display")
+                    }
+                } header: {
+                    Text("Display")
+                }
+
+                Section {
+                    Picker("Guest", selection: $profile) {
+                        ForEach(QemuRunner.Profile.allCases, id: \.self) {
+                            Text($0.rawValue).tag($0)
+                        }
+                    }
+                    .onChange(of: profile) { p in
+                        QemuRunner.shared.profile = p
+                        HuskLog.log("ui", "guest profile set to \(p.rawValue)")
+                    }
+                } header: {
+                    Text("Guest")
+                }
+
+                Section {
+                    Button {
+                        presentation.wrappedValue.dismiss()
+                        showLogs = true
+                    } label: {
+                        Label("View logs", systemImage: "doc.text.magnifyingglass")
+                    }
+                } header: {
+                    Text("Diagnostics")
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { presentation.wrappedValue.dismiss() }
+                }
+            }
+        }
+    }
+}
+
 struct LogView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var lines: [String] = []
