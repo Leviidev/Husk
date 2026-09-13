@@ -112,6 +112,14 @@ final class QemuRunner: ObservableObject {
     ///
     /// Android says this itself, on a line init prints; it does not have to be
     /// inferred, and inferring it was the bug. Nil until the guest says so.
+    /// True when this session restored rather than booted.
+    ///
+    /// Checked before advancing the progress bar: restoring does not replay a
+    /// boot, but it does restart surfaceflinger and zygote, and those match
+    /// milestones worth 50% and 58%. A bar that appears on a fifteen-second
+    /// restore and stops at 58% is worse than no bar.
+    nonisolated(unsafe) static var didRestore = false
+
     nonisolated(unsafe) static var bootCompletedAt: Date?
     nonisolated(unsafe) static var pendingSnapshotMiB = 0
     /// Current balloon target, once the guest has been shrunk. Nil while it
@@ -1380,6 +1388,7 @@ final class QemuRunner: ObservableObject {
         HuskLog.log("qemu", restored
             ? "restored a saved machine -- Android is already booted"
             : "no saved machine; booting Android from cold")
+        QemuRunner.didRestore = restored
         DispatchQueue.main.async { QemuRunner.shared.restoredFromSnapshot = restored }
         if restored && QemuRunner.glProven {
             // A GL snapshot was necessarily taken with the compositor stopped,
@@ -1660,7 +1669,8 @@ final class QemuRunner: ObservableObject {
                     // and gets force-quit a minute short of finishing. It only
                     // has to succeed once, because the snapshot is taken after
                     // it, but it does have to succeed once.
-                    for (needle, milestone, percent) in QemuRunner.bootMilestones {
+                    for (needle, milestone, percent) in
+                            (QemuRunner.didRestore ? [] : QemuRunner.bootMilestones) {
                         if line.contains(needle) {
                             let secs = Int(Date().timeIntervalSince(QemuRunner.bootStarted))
                             let mins = secs / 60, rem = secs % 60

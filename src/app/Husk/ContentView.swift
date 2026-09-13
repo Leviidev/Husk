@@ -207,6 +207,29 @@ struct GuestScreenView: View {
                 HuskDisplay().ignoresSafeArea()
             }
 
+            // Boot progress, over the guest's own screen.
+            //
+            // Full screen shows the guest and nothing else, so a cold boot here
+            // was several minutes of a mostly black screen with no indication
+            // anything was happening -- the two other waiting screens had a bar
+            // and this one, the one people actually watch a boot on, did not.
+            //
+            // Gone the moment the guest is up, and never shown on a restore.
+            if runner.bootProgress > 0 && runner.bootProgress < 100 {
+                VStack(spacing: 10) {
+                    ProgressView(value: Double(runner.bootProgress), total: 100)
+                        .progressViewStyle(.linear)
+                        .frame(width: 200)
+                    Text(runner.setupMessage ?? "Starting Android…")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 18).padding(.vertical, 14)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .frame(maxWidth: 300)
+                .transition(.opacity)
+            }
+
             // Zero-sized: it exists only to hold first-responder status, which is
             // what both the on-screen keyboard and hardware key events depend on.
             KeyCapture(active: $keyboard).frame(width: 0, height: 0)
