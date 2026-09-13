@@ -377,6 +377,26 @@ final class QemuRunner: ObservableObject {
             // still holding 3D resources, which is precisely the case the
             // migration blocker exists to prevent.
             var quiesced = true
+            // Check the bridge before committing to any of this.
+            //
+            // The quiesce is three round trips at sixty seconds each, and with a
+            // silent guest that is three minutes of a frozen "Saving…" with no
+            // end. The last session did exactly that: the shell had stopped
+            // answering at about ninety seconds, the save was asked for at a
+            // hundred and forty, and it never printed another line.
+            guard GuestBridge.shared.isAlive(attempts: 2) else {
+                HuskLog.log("snap", "not saving: the Android shell is not answering, "
+                                  + "so the compositor cannot be stopped first and a "
+                                  + "GPU machine cannot be written safely")
+                let done = QemuRunner.saveCompletion
+                QemuRunner.saveCompletion = nil
+                Task { @MainActor in
+                    QemuRunner.shared.isSavingState = false
+                    done?(false)
+                }
+                return
+            }
+
             for svc in ["zygote_secondary", "zygote", "surfaceflinger"] {
                 let r = try? GuestBridge.shared.run("setprop ctl.stop \(svc)", timeout: 60)
                 // zygote_secondary does not exist on a 64-bit-only guest, so

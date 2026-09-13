@@ -660,7 +660,13 @@ final class GuestBridge {
                     }
                     wasAlive = alive
                 }
-                Thread.sleep(forTimeInterval: 30)
+                // Five seconds, not thirty.
+                //
+                // This is a keepalive as much as a probe. One candidate for the
+                // shell going silent is an idle rule on the guest's side, and
+                // regular traffic is both the cheapest test of that theory and
+                // its cure. It is one `echo` on a connection we already hold.
+                Thread.sleep(forTimeInterval: 5)
             }
         }
     }
