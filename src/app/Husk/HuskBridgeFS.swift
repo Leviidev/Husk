@@ -300,13 +300,30 @@ final class Adb {
     // MARK: services
 
     /// Run a shell command and return everything it printed.
+    /// Log every frame of one shell exchange.
+    ///
+    /// Set for the first command of a session. An empty result is ambiguous --
+    /// adbd refusing the service and closing the stream looks identical to this
+    /// code losing the output -- and the frames tell the two apart.
+    var traceNextShell = false
+
     func shell(_ command: String) throws -> String {
         let local = nextLocalId; nextLocalId &+= 1
+        let trace = traceNextShell
+        traceNextShell = false
+        if trace { HuskLog.log("adb", "OPEN shell:\(command) (local=\(local))") }
         try send(.open, local, 0, ("shell:" + command + "\0").data(using: .utf8)!)
         var remote: UInt32 = 0
         var out = Data()
         while true {
             let r = try recv()
+            if trace {
+                let name = ["4e584e43": "CNXN", "4e45504f": "OPEN", "59414b4f": "OKAY",
+                            "45534c43": "CLSE", "45545257": "WRTE", "48545541": "AUTH"]
+                    [String(r.cmd, radix: 16)] ?? "0x\(String(r.cmd, radix: 16))"
+                HuskLog.log("adb", "  <- \(name) arg0=\(r.arg0) arg1=\(r.arg1) "
+                                 + "len=\(r.data.count) \(String(decoding: r.data.prefix(80), as: UTF8.self).debugDescription)")
+            }
             switch r.cmd {
             case Cmd.okay.rawValue:
                 remote = r.arg0
@@ -432,6 +449,7 @@ final class AndroidHost: ObservableObject {
                     // property is set. Ask it three things and print the answers
                     // verbatim.
                     if attempt == 1 || attempt % 10 == 0 {
+                        Adb.shared.traceNextShell = true
                         for probe in ["echo husk-ok", "id", "getprop sys.boot_completed"] {
                             do {
                                 let r = try Adb.shared.shell(probe)
