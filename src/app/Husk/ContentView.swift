@@ -38,9 +38,14 @@ struct ContentView: View {
                 // LineageOS will not finish booting until it is. Hiding the guest
                 // behind a spinner makes that look like a hang: it is drawing
                 // continuously, just waiting for a human who cannot see or touch it.
-                GuestScreenView(showLogs: $showLogs,
-                                canReturnToLibrary: androidReady,
-                                onLibrary: { showGuestScreen = false })
+                GuestScreenView(showLogs: $showLogs, onBack: {
+                    // Back always lands on the library, whichever way Android
+                    // was started. Full screen is a way of looking at the guest,
+                    // not a mode you can be trapped in.
+                    mode = .library
+                    showGuestScreen = false
+                    AndroidHost.shared.waitForReady()
+                })
             } else {
                 SetupView(showLogs: $showLogs) { chosen in
                     mode = chosen
@@ -72,12 +77,6 @@ struct ContentView: View {
             // foreground is the moment worth re-checking, not first launch.
             if phase == .active { evaluate() }
         }
-    }
-
-    /// The catalogue only appears once the guest agent is running AND Waydroid
-    /// reports a live session, so its presence is a good proxy for "Android is up".
-    private var androidReady: Bool {
-        !bridge.apps.isEmpty || bridge.lastAgentMessage != nil
     }
 
     private func evaluate() {
@@ -123,8 +122,7 @@ struct ContentView: View {
 struct GuestScreenView: View {
     @ObservedObject private var runner = QemuRunner.shared
     @Binding var showLogs: Bool
-    let canReturnToLibrary: Bool
-    let onLibrary: () -> Void
+    let onBack: () -> Void
     @State private var keyboard = false
 
     var body: some View {
@@ -160,17 +158,18 @@ struct GuestScreenView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                if canReturnToLibrary {
-                    Button(action: onLibrary) {
-                        Label("Library", systemImage: "square.grid.2x2")
-                            .font(.caption.weight(.medium))
-                    }
-                } else {
-                    ProgressView().controlSize(.small)
-                    Text(runner.setupMessage ?? "Android is starting — complete its setup on screen")
-                        .font(.caption2)
-                        .lineLimit(2)
+            // Always available, and deliberately only three things.
+            //
+            // This used to show a spinner and "Android is starting -- complete
+            // its setup on screen" until the guest reported ready, and it never
+            // did: readiness came from the 9p agent, which no longer exists. So
+            // the one control that leaves this screen was hidden behind a
+            // condition that is now permanently false, and opening an app was a
+            // one-way trip.
+            HStack(spacing: 14) {
+                Button(action: onBack) {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.caption.weight(.medium))
                 }
                 Button {
                     keyboard.toggle()
@@ -180,13 +179,7 @@ struct GuestScreenView: View {
                         .font(.caption)
                 }
                 Button { showLogs = true } label: {
-                    Image(systemName: "doc.text.magnifyingglass").font(.caption)
-                }
-                Button {
-                    HuskBridgeFS.shared.requestDiagnostics()
-                    HuskLog.log("ui", "asked the guest for diagnostics")
-                } label: {
-                    Image(systemName: "stethoscope").font(.caption)
+                    Image(systemName: "terminal").font(.caption)
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -202,7 +195,6 @@ struct GuestScreenView: View {
 struct SetupView: View {
     @ObservedObject private var guest = GuestImage.shared
     @ObservedObject private var runner = QemuRunner.shared
-    @ObservedObject private var bridge = HuskBridgeFS.shared
     @Binding var showLogs: Bool
     let onStart: (ContentView.StartMode) -> Void
 
@@ -295,24 +287,24 @@ struct SetupView: View {
             case .ready:
                 VStack(spacing: 12) {
                     if JITBootstrap.isDebuggerAttached {
+                        // The library first: it is the thing Husk is for. Full
+                        // screen is the escape hatch for everything the library
+                        // cannot express -- settings, the launcher, a wizard.
                         VStack(spacing: 10) {
-                            Button { onStart(.fullScreen) } label: {
-                                Label("Start Android full screen", systemImage: "rectangle.inset.filled")
-                                    .frame(maxWidth: 260)
-                            }
-                            .buttonStyle(.borderedProminent)
+                            ModeCard(icon: "square.grid.2x2.fill",
+                                     title: "App library",
+                                     subtitle: "Install APKs and open them straight, "
+                                             + "without the Android desktop.",
+                                     tint: .blue) { onStart(.library) }
 
-                            Button { onStart(.library) } label: {
-                                Label("Run in background, use app library",
-                                      systemImage: "square.grid.2x2")
-                                    .frame(maxWidth: 260)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Text("The library installs APKs over ADB and opens them straight into the app, without the Android desktop.")
-                                .font(.caption2).foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center).padding(.horizontal, 40)
+                            ModeCard(icon: "rectangle.inset.filled",
+                                     title: "Full screen Android",
+                                     subtitle: "The whole desktop, as if it were a "
+                                             + "second phone.",
+                                     tint: .orange) { onStart(.fullScreen) }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
                     } else {
                         Text("Husk needs executable memory, which on iOS only an attached debugger can grant.")
                             .font(.callout).foregroundStyle(.secondary)
@@ -329,6 +321,60 @@ struct SetupView: View {
 
     private func fmt(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+}
+
+/// One of the two ways to start Android.
+///
+/// A card rather than a button because the choice needs a sentence to explain
+/// it, and a sentence crammed into a bordered button is what the previous
+/// version looked like.
+private struct ModeCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 44, height: 44)
+                    .background(tint.opacity(0.16),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .multilineTextAlignment(.leading)
+                        // Without this the subtitle is truncated to one line
+                        // inside an HStack rather than wrapping.
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.28))
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.07),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
