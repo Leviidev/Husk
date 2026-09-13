@@ -264,7 +264,20 @@ void husk_display_set_ui_size(int32_t width, int32_t height)
     if (width <= 0 || height <= 0) {
         return;
     }
-    bql_lock();
+    /*
+     * Take the lock only if it is not already held.
+     *
+     * This runs from two places with opposite expectations. From the UI thread
+     * the BQL is free and must be taken. Immediately after qemu_init() returns
+     * it is already held -- QEMU keeps it from init until the main loop starts
+     * -- and taking it again trips "assertion failed: (!bql_locked())". The
+     * first version asserted before qemu_init because the mutex did not exist
+     * yet; the second asserted after it because the mutex was already ours.
+     */
+    bool held = bql_locked();
+    if (!held) {
+        bql_lock();
+    }
     con = husk_input_console();
     if (con) {
         info = *dpy_get_ui_info(con);
@@ -272,7 +285,9 @@ void husk_display_set_ui_size(int32_t width, int32_t height)
         info.height = height;
         dpy_set_ui_info(con, &info, false);
     }
-    bql_unlock();
+    if (!held) {
+        bql_unlock();
+    }
     HUSK_DLOG("asked the guest for a %dx%d display (console %p)",
               width, height, (void *)con);
 }
