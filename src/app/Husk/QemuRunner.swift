@@ -676,8 +676,24 @@ final class QemuRunner: ObservableObject {
     /// engine, and all of that is emulated code; what it buys back is
     /// rasterisation of a 360x640 screen, which was never the expensive part.
     /// Get a booted machine snapshotted first, then re-open the question.
-    nonisolated(unsafe) static var glProven = UserDefaults.standard.bool(forKey: "husk.glProven")
-        && !(UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true)
+    nonisolated(unsafe) static var glProven: Bool {
+        // The display device is part of the machine's shape, exactly like its
+        // RAM size -- and the shipped snapshot was saved against virtio-gpu-pci.
+        //
+        // Restoring it into virtio-gpu-gl-pci produces a machine whose guest
+        // holds virgl resource IDs that the freshly created virgl context has
+        // never heard of, and every scanout then fails:
+        //
+        //   virgl_cmd_set_scanout: illegal resource specified 57
+        //   virtio_gpu_virgl_process_cmd: ctrl 0x103, error 0x1203
+        //
+        // Android is alive behind that -- services start, adbd runs -- but
+        // nothing can ever be drawn. RAM and resolution were pinned for this
+        // reason; the display was missed.
+        if GuestImage.shared.hasShippedSnapshot { return false }
+        return UserDefaults.standard.bool(forKey: "husk.glProven")
+            && !(UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true)
+    }
 
     /// Try the GL stack without committing to it. Runs before the QEMU command
     /// line is built, so its answer can pick the virtio-gpu device.
@@ -722,7 +738,7 @@ final class QemuRunner: ObservableObject {
         let works = created && husk_display_gl_probe()
         HuskLog.log("gl", "probe: create=\(created) usable=\(works)")
         if works {
-            QemuRunner.glProven = true
+            // glProven is computed now, so only the stored fact is written here.
             UserDefaults.standard.set(true, forKey: "husk.glProven")
             HuskLog.log("gl", "GL works; this and future runs use the GPU")
         } else {
