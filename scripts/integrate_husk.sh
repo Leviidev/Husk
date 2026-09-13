@@ -107,6 +107,70 @@ else:
     print("  system/meson.build: snapshot already wired")
 PY
 
+# tcg/region.c: a second way to get executable memory.
+#
+# Patched here rather than in husk-qemu-ios-jit.patch because that patch is
+# applied with `patch` and skipped once it has been, so an addition to it would
+# never reach a tree that was already patched.
+python3 - "$Q" <<'PY_JITFALLBACK'
+import pathlib, sys
+q = pathlib.Path(sys.argv[1])
+p = q / "tcg/region.c"
+s = p.read_text()
+
+old = """        /*
+         * If splitwx force-on (1), fail;
+         * if splitwx default-on (-1), fall through to splitwx off.
+         */
+        if (splitwx > 0) {
+            return -1;
+        }
+        error_free_or_abort(errp);"""
+new = """        /*
+         * If splitwx force-on (1), fail;
+         * if splitwx default-on (-1), fall through to splitwx off.
+         *
+         * Husk: on iOS, fall through either way.
+         *
+         * The dual RW/RX mapping above needs StikDebug attached and actively
+         * servicing brk traps. That is required on a device with TXM, and it is
+         * merely one of two options everywhere else: with CS_DEBUGGED set, iOS
+         * still honours a plain MAP_JIT mapping toggled with
+         * pthread_jit_write_protect_np, which is the path below and the one UTM
+         * and every other iOS emulator uses.
+         *
+         * Husk forces splitwx on because without it TCG goes straight to an RWX
+         * mmap that iOS refuses -- but forcing it also threw away the MAP_JIT
+         * route entirely. A build running inside a container app gets
+         * CS_DEBUGGED without a trap servicer, so the first route fails and the
+         * second, which would have worked, was never tried.
+         */
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+        fprintf(stderr, "[husk-jit] dual mapping unavailable; trying MAP_JIT "
+                        "instead (works without a trap servicer, but not "
+                        "on a device with TXM)\\n");
+        fflush(stderr);
+        error_free_or_abort(errp);
+        splitwx = 0;
+#else
+        if (splitwx > 0) {
+            return -1;
+        }
+        error_free_or_abort(errp);
+#endif"""
+if old in s:
+    s = s.replace(old, new, 1)
+    # The MAP_JIT flag is gated on the ORIGINAL splitwx argument, so clearing the
+    # local is only half of it if that test reads the parameter -- it does not,
+    # it reads the same local, so this is complete.
+    p.write_text(s)
+    print("  tcg/region.c: iOS falls back to MAP_JIT when the dual mapping fails")
+elif "trying MAP_JIT" in s:
+    print("  tcg/region.c: MAP_JIT fallback already present")
+else:
+    raise SystemExit("tcg/region.c: splitwx fallback shape changed")
+PY_JITFALLBACK
+
 # virtio-gpu: let a virgl-enabled machine be snapshotted, opt-in.
 #
 # Patched in place rather than shipped as a .patch because a re-extracted QEMU

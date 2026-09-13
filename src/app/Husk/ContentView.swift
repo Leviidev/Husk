@@ -143,9 +143,21 @@ struct ContentView: View {
         // memory from if this failed, so starting anyway is not optimism, it is
         // a guaranteed SIGSEGV a few milliseconds later -- with the log showing
         // gigabytes free, which sends everyone looking at memory.
-        guard JITBootstrap.prewarm() || JITBootstrap.isLive else {
-            HuskLog.log("jit", "refusing to start QEMU without executable memory")
-            return
+        // Refuse only when there is genuinely nothing left to try.
+        //
+        // On a device with TXM the trap-servicing route is the only one, so a
+        // failed prewarm means qemu_init() has nowhere to get executable memory
+        // and starting it is a guaranteed crash. Without TXM, CS_DEBUGGED alone
+        // still buys a MAP_JIT mapping, and QEMU now falls back to it -- so
+        // stopping here would refuse to start a guest that would have run.
+        if !JITBootstrap.prewarm(), !JITBootstrap.isLive {
+            if JITBootstrap.needsTrapServicer {
+                HuskLog.log("jit", "refusing to start QEMU: this device needs a "
+                                 + "trap servicer and none is answering")
+                return
+            }
+            HuskLog.log("jit", "no dual mapping, but this device has no TXM -- "
+                             + "letting QEMU try MAP_JIT instead")
         }
         started = true
         QemuRunner.shared.start()

@@ -94,6 +94,17 @@ enum JITBootstrap {
     /// kind.
     nonisolated(unsafe) static var lastFailure: String?
 
+    /// Whether this device needs the trap-servicing route specifically.
+    ///
+    /// With TXM there is no alternative: only a debugger servicing brk can hand
+    /// back executable memory, so a failed prewarm is the end of it. Without
+    /// TXM, CS_DEBUGGED alone is enough for a MAP_JIT mapping, which QEMU will
+    /// now reach for when the dual mapping is unavailable -- so a failed prewarm
+    /// there is a reason to continue, not to stop.
+    static var needsTrapServicer: Bool {
+        HuskLog.expectsTXM(model: HuskLog.deviceModel)
+    }
+
     /// True only after a JIT region has been allocated AND passed the execute
     /// self-test — which happens inside `qemu_init`. It is therefore always false
     /// before the guest starts, and must NOT be used to decide whether to start it.

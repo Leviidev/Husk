@@ -199,12 +199,18 @@ enum HuskLog {
 
     // MARK: - Context
 
-    private static func logBanner() {
-        let d = UIDevice.current
+    /// The hardware identifier, e.g. "iPhone18,1". Which JIT routes exist on
+    /// this device is decided from it and the iOS version.
+    static var deviceModel: String {
         var sysinfo = utsname(); uname(&sysinfo)
-        let model = withUnsafePointer(to: &sysinfo.machine) {
+        return withUnsafePointer(to: &sysinfo.machine) {
             $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
         }
+    }
+
+    private static func logBanner() {
+        let d = UIDevice.current
+        let model = deviceModel
         let mem = ProcessInfo.processInfo.physicalMemory / (1024 * 1024)
 
         log("boot", "================ Husk starting ================")
@@ -234,7 +240,7 @@ enum HuskLog {
         log("boot", "===============================================")
     }
 
-    private static func expectsTXM(model: String) -> Bool {
+    static func expectsTXM(model: String) -> Bool {
         if #available(iOS 27.0, *) {
             return model != "iPad8,11" && model != "iPad8,12"
         }
