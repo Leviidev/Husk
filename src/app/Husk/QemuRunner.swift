@@ -94,6 +94,14 @@ final class QemuRunner: ObservableObject {
     nonisolated(unsafe) static var balloonTargetMiB: Int?
     /// Guest size actually handed to QEMU, recorded alongside any snapshot.
     nonisolated(unsafe) var lastGuestMiB = 0
+    /// Resolution actually handed to virtio-gpu.
+    ///
+    /// The touch mapping needs this and had been carrying its own copy, which
+    /// said 360x640 while QEMU was being told 360x800. Every touch was then
+    /// mapped into a box a fifth too short: squashed vertically, with the
+    /// bottom of the guest screen unreachable. One number, in one place, taken
+    /// from what was actually asked for.
+    nonisolated(unsafe) static var lastGuestRes = (w: 360, h: 800)
 
     private var documentsDir: String {
         NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
@@ -501,6 +509,12 @@ final class QemuRunner: ObservableObject {
     /// Rounded to a multiple of 8: graphics stacks are happier with aligned
     /// strides, and the error is under half a percent of the height.
     private var guestResolution: (w: Int, h: Int) {
+        let r = computedGuestResolution
+        QemuRunner.lastGuestRes = r
+        return r
+    }
+
+    private var computedGuestResolution: (w: Int, h: Int) {
         // A shipped snapshot fixes the resolution: it was saved against one,
         // and a machine whose display differs is a different machine.
         if GuestImage.shared.hasShippedSnapshot {

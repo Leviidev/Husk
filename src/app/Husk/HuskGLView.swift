@@ -17,10 +17,27 @@ final class HuskGLView: UIView {
     nonisolated(unsafe) static var layerForGL: CAMetalLayer?
     nonisolated(unsafe) static var pixelSize: CGSize = .zero
 
-    /// Guest resolution, for mapping touches back. Matches the mode requested
-    /// of virtio-gpu in QemuRunner.
-    private let guestWidth: CGFloat = 360
-    private let guestHeight: CGFloat = 640
+    /// The one view for the process.
+    ///
+    /// QEMU builds its EGL window surface against whichever CAMetalLayer is
+    /// published when GL comes up, and never rebuilds it. A second HuskGLView
+    /// therefore does not take over the display -- it orphans it: the old layer
+    /// keeps receiving every frame while the new one, the one actually on
+    /// screen, receives none. The symptom is a frame counter climbing happily
+    /// against a black screen, which is precisely what happened once the guest
+    /// screen became a conditional sibling in a ZStack and SwiftUI started
+    /// tearing it down whenever the library appeared over it.
+    ///
+    /// Handing out a single instance makes that impossible. UIKit moves a view
+    /// between parents without recreating it, so the layer QEMU holds stays the
+    /// layer being composited.
+    @MainActor static let shared = HuskGLView(frame: .zero)
+
+    /// Guest resolution, for mapping touches back -- read from what QEMU was
+    /// actually told rather than kept as a second copy here, which is how this
+    /// came to claim 640 while the command line said 800.
+    private var guestWidth: CGFloat { CGFloat(QemuRunner.lastGuestRes.w) }
+    private var guestHeight: CGFloat { CGFloat(QemuRunner.lastGuestRes.h) }
 
     override class var layerClass: AnyClass { CAMetalLayer.self }
 
@@ -88,6 +105,7 @@ final class HuskGLView: UIView {
 }
 
 struct HuskGLScreen: UIViewRepresentable {
-    func makeUIView(context: Context) -> HuskGLView { HuskGLView(frame: .zero) }
+    // The shared instance, never a fresh one -- see HuskGLView.shared.
+    func makeUIView(context: Context) -> HuskGLView { HuskGLView.shared }
     func updateUIView(_ view: HuskGLView, context: Context) {}
 }

@@ -71,6 +71,10 @@ struct ContentView: View {
             } else if !started {
                 SetupView(showLogs: $showLogs) { chosen in
                     mode = chosen
+                    // Which screen a session was on is not otherwise
+                    // recoverable from the log, and "I see nothing" means very
+                    // different things in the two modes.
+                    HuskLog.log("ui", "start mode: \(chosen == .fullScreen ? "full screen" : "library")")
                     // Full screen shows the guest immediately; the library keeps
                     // it hidden and talks to it over ADB instead.
                     showGuestScreen = (chosen == .fullScreen)
