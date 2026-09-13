@@ -55,6 +55,28 @@ final class QemuRunner: ObservableObject {
     @Published var restoredFromSnapshot = false
     /// Set once a save has been requested, so it is only ever done once.
     nonisolated(unsafe) static var snapshotRequested = false
+    /// When the guest was started, for the progress readout.
+    nonisolated(unsafe) static var bootStarted = Date()
+
+    /// Recognisable points in an Android boot, in the order they occur.
+    ///
+    /// Matched against serial console lines. These are milestones a person can
+    /// read, not every service -- the point is to show movement, not detail.
+    nonisolated(unsafe) static let bootMilestones: [(String, String)] = [
+        ("Linux version",                 "Starting the Linux kernel"),
+        ("init: init first stage started","Android init, first stage"),
+        ("init: init second stage started","Android init, second stage"),
+        ("SELinux: policy loaded",        "Loading the security policy"),
+        ("apexd: activating",             "Activating system packages"),
+        ("servicemanager: Waiting",       "Starting system services"),
+        ("starting service 'vold'",       "Preparing storage"),
+        ("starting service 'surfaceflinger'", "Starting the display server"),
+        ("starting service 'zygote'",     "Starting the Android runtime"),
+        ("starting service 'bootanim'",   "Boot animation running"),
+        ("Service 'bootanim' (pid",       "Compiling apps (this is the slow part)"),
+        ("sys.boot_completed=1",          "Android is up"),
+    ]
+
     /// When Android announced `sys.boot_completed=1` on the serial console.
     ///
     /// Android says this itself, on a line init prints; it does not have to be
@@ -924,6 +946,30 @@ final class QemuRunner: ObservableObject {
                     if line.isEmpty { continue }
 
                     HuskLog.log("guest", line)
+
+                    // Say what the guest is doing, so a long first boot does
+                    // not look like a hang.
+                    //
+                    // Android's first boot here runs five to seven minutes:
+                    // dex2oat compiles the system, and the framework watchdog
+                    // kills and restarts system_server at least once along the
+                    // way. All of that is invisible -- the screen holds the last
+                    // frame the boot animation drew -- so it reads as a freeze
+                    // and gets force-quit a minute short of finishing. It only
+                    // has to succeed once, because the snapshot is taken after
+                    // it, but it does have to succeed once.
+                    for (needle, milestone) in QemuRunner.bootMilestones {
+                        if line.contains(needle) {
+                            let secs = Int(Date().timeIntervalSince(QemuRunner.bootStarted))
+                            let mins = secs / 60, rem = secs % 60
+                            let stamp = String(format: "%d:%02d", mins, rem)
+                            Task { @MainActor in
+                                QemuRunner.shared.setupMessage =
+                                    "\(milestone)  ·  \(stamp) elapsed"
+                            }
+                            break
+                        }
+                    }
 
                     // Android announces the end of its own boot. init prints
                     // "processing action (sys.boot_completed=1)" when the
