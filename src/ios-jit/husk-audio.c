@@ -39,6 +39,21 @@ typedef struct HuskVoiceOut {
     HWVoiceOut hw;
 } HuskVoiceOut;
 
+/*
+ * A capture voice that captures nothing.
+ *
+ * Husk has no microphone path and does not want one, but declaring
+ * max_voices_in = 0 is not the way to say so: virtio-snd registers capture
+ * streams as well as playback, and a device that asks for an input voice from a
+ * driver offering none does not get a polite refusal. Answering with timed
+ * silence -- exactly what noaudio does -- costs nothing and keeps the device
+ * model on a path that is actually tested upstream.
+ */
+typedef struct HuskVoiceIn {
+    HWVoiceIn hw;
+    RateCtl rate;
+} HuskVoiceIn;
+
 static struct {
     int16_t  ring[HUSK_RING_FRAMES * HUSK_AUDIO_CHANNELS];
     uint32_t write_pos;   /* frames written by QEMU, free-running */
@@ -138,6 +153,37 @@ static size_t husk_buffer_get_free(HWVoiceOut *hw)
          * sizeof(int16_t) * HUSK_AUDIO_CHANNELS;
 }
 
+/* ------------------------------------------------------------------- input */
+
+static int husk_init_in(HWVoiceIn *hw, struct audsettings *as, void *opaque)
+{
+    HuskVoiceIn *in = (HuskVoiceIn *)hw;
+
+    audio_pcm_init_info(&hw->info, as);
+    hw->samples = 1024;
+    audio_rate_start(&in->rate);
+    return 0;
+}
+
+static void husk_fini_in(HWVoiceIn *hw) { (void)hw; }
+
+static size_t husk_read(HWVoiceIn *hw, void *buf, size_t size)
+{
+    HuskVoiceIn *in = (HuskVoiceIn *)hw;
+    size_t bytes = audio_rate_get_bytes(&in->rate, &hw->info, size);
+
+    audio_pcm_info_clear_buf(&hw->info, buf, bytes / hw->info.bytes_per_frame);
+    return bytes;
+}
+
+static void husk_enable_in(HWVoiceIn *hw, bool enable)
+{
+    HuskVoiceIn *in = (HuskVoiceIn *)hw;
+    if (enable) {
+        audio_rate_start(&in->rate);
+    }
+}
+
 /* ------------------------------------------------------------- app-facing */
 
 int husk_audio_pull(int16_t *dst, int frames)
@@ -197,6 +243,11 @@ static struct audio_pcm_ops husk_pcm_ops = {
     .write            = husk_write,
     .buffer_get_free  = husk_buffer_get_free,
     .enable_out       = husk_enable_out,
+
+    .init_in          = husk_init_in,
+    .fini_in          = husk_fini_in,
+    .read             = husk_read,
+    .enable_in        = husk_enable_in,
 };
 
 static struct audio_driver husk_audio_driver = {
@@ -206,9 +257,9 @@ static struct audio_driver husk_audio_driver = {
     .fini           = husk_audio_fini,
     .pcm_ops        = &husk_pcm_ops,
     .max_voices_out = 1,
-    .max_voices_in  = 0,
+    .max_voices_in  = 1,
     .voice_size_out = sizeof(HuskVoiceOut),
-    .voice_size_in  = 0,
+    .voice_size_in  = sizeof(HuskVoiceIn),
 };
 
 static void register_audio_husk(void)

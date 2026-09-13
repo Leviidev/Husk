@@ -24,7 +24,7 @@ enum HuskLog {
     /// Exposed because a C signal handler closure cannot capture context.
     fileprivate static var rawLogFD: Int32 { logFD }
     private static var logFD: Int32 = -1
-    private static var pipeReadFD: Int32 = -1
+    fileprivate static var pipeReadFD: Int32 = -1
     private static var pipeWriteFD: Int32 = -1
     private static var started = false
     private static let writeLock = NSLock()
@@ -141,6 +141,35 @@ enum HuskLog {
                 msg.withCString { p in
                     let n = strlen(p)
                     if HuskLog.rawLogFD >= 0 { _ = write(HuskLog.rawLogFD, p, n) }
+                }
+                // Drain whatever C wrote but the reader thread never got to.
+                //
+                // QEMU's own abort messages -- assertion text, error_report --
+                // go to stderr, which is a pipe read by a thread. When the
+                // process aborts, that thread has usually not been scheduled
+                // since the write, so the message dies in the pipe buffer and
+                // the log shows the fatal signal with nothing before it. That
+                // happened on the first virtio-sound boot and cost the whole
+                // diagnosis: a correct command line, a device that exists, and
+                // no reason given.
+                //
+                // read(2) and write(2) are async-signal-safe; the non-blocking
+                // flag is what stops this hanging when the pipe is empty.
+                if HuskLog.pipeReadFD >= 0 {
+                    let flags = fcntl(HuskLog.pipeReadFD, F_GETFL, 0)
+                    _ = fcntl(HuskLog.pipeReadFD, F_SETFL, flags | O_NONBLOCK)
+                    var buf = [UInt8](repeating: 0, count: 4096)
+                    while true {
+                        let n = buf.withUnsafeMutableBytes {
+                            read(HuskLog.pipeReadFD, $0.baseAddress, $0.count)
+                        }
+                        if n <= 0 { break }
+                        if HuskLog.rawLogFD >= 0 {
+                            _ = buf.withUnsafeBytes {
+                                write(HuskLog.rawLogFD, $0.baseAddress, n)
+                            }
+                        }
+                    }
                 }
                 if HuskLog.rawLogFD >= 0 { fsync(HuskLog.rawLogFD) }
                 signal(received, SIG_DFL)
