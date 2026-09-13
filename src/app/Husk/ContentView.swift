@@ -589,6 +589,19 @@ struct AdbLibraryView: View {
             Section {
                 Button("Show the Android desktop") { onOpened() }
                     .font(.footnote)
+                Button {
+                    QemuRunner.shared.saveState(reason: "asked from the library")
+                } label: {
+                    Label(runner.isSavingState ? "Saving…" : "Save Android state",
+                          systemImage: "externaldrive.badge.checkmark")
+                        .font(.footnote)
+                }
+                .disabled(runner.isSavingState || host.busy != nil)
+            } footer: {
+                Text("Husk restores a saved machine instead of booting it, so anything "
+                   + "changed since the last save is dropped. Installing an app saves "
+                   + "automatically; sign-ins and Android settings need this button.")
+                    .font(.caption2)
             }
         }
     }

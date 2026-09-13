@@ -121,12 +121,13 @@ enum GuestUpdate: Equatable {
         switch self {
         case .image:
             return "Downloading it replaces the Android system and its pre-booted "
-                 + "snapshot (\(size)). Apps you installed are kept on the "
-                 + "userdata disk, but a snapshot only restores against the image "
-                 + "it was saved on, so both are replaced together."
+                 + "snapshot (\(size)), and with them everything inside Android — "
+                 + "installed apps included. A snapshot only restores against the "
+                 + "image it was saved on, so the two cannot be updated separately."
         case .snapshot:
             return "Without it Android boots from cold, which takes several "
-                 + "minutes. The download is \(size)."
+                 + "minutes. The download is \(size), and it replaces what is "
+                 + "inside Android now, including installed apps."
         case .none:
             return ""
         }

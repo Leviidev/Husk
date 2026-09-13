@@ -53,6 +53,12 @@ final class QemuRunner: ObservableObject {
 
     /// True when this session started from a saved machine rather than booting.
     @Published var restoredFromSnapshot = false
+
+    /// True while the machine is being written to disk.
+    @Published var isSavingState = false
+    /// Completion for an explicit save. A static because the C callback is a
+    /// bare function pointer and cannot carry context.
+    nonisolated(unsafe) static var saveCompletion: ((Bool) -> Void)?
     /// Set once a save has been requested, so it is only ever done once.
     nonisolated(unsafe) static var snapshotRequested = false
     /// When the guest was started, for the progress readout.
@@ -181,6 +187,51 @@ final class QemuRunner: ObservableObject {
 
     nonisolated var hasSnapshot: Bool {
         FileManager.default.fileExists(atPath: snapshotSizePath)
+    }
+
+    /// Write the running machine to disk so the next launch restores *this*.
+    ///
+    /// Not an optimisation -- it is what makes anything persist at all.
+    /// Restoring rewinds the userdata disk to the moment the snapshot was taken,
+    /// and it has to: the restored RAM describes that exact disk, down to the
+    /// page cache and the ext4 journal, and resuming a kernel against a
+    /// filesystem that moved on underneath it corrupts both. So everything done
+    /// since the snapshot -- an app installed, an account signed into, a setting
+    /// changed -- is discarded on the next launch unless the machine is saved
+    /// over the top.
+    ///
+    /// Saving writes the whole of guest RAM, so the picture freezes for as long
+    /// as that takes. Callers are expected to say so.
+    func saveState(reason: String, completion: ((Bool) -> Void)? = nil) {
+        guard isRunning else { completion?(false); return }
+        guard !isSavingState else {
+            HuskLog.log("snap", "save already in progress; ignoring \(reason)")
+            completion?(false); return
+        }
+        isSavingState = true
+        QemuRunner.pendingSnapshotMiB = lastGuestMiB
+        QemuRunner.saveCompletion = completion
+        HuskLog.log("snap", "saving the machine (\(reason), guest "
+                          + "\(QemuRunner.pendingSnapshotMiB) MiB); the picture freezes "
+                          + "while RAM is written to disk")
+        husk_snapshot_save { ok, what in
+            let label = what.map { String(cString: $0) } ?? "save"
+            HuskLog.log("snap", "\(label) \(ok ? "succeeded" : "FAILED")")
+            if ok {
+                try? String(QemuRunner.pendingSnapshotMiB)
+                    .write(toFile: QemuRunner.shared.snapshotSizePath,
+                           atomically: true, encoding: .utf8)
+                try? QemuRunner.memoryStrategy
+                    .write(toFile: QemuRunner.shared.memoryStrategyPath,
+                           atomically: true, encoding: .utf8)
+            }
+            let done = QemuRunner.saveCompletion
+            QemuRunner.saveCompletion = nil
+            Task { @MainActor in
+                QemuRunner.shared.isSavingState = false
+                done?(ok)
+            }
+        }
     }
 
     /// Backing file for guest RAM.

@@ -506,9 +506,30 @@ final class AndroidHost: ObservableObject {
                 HuskLog.log("bridge", "install \(name): "
                           + out.trimmingCharacters(in: .whitespacesAndNewlines))
                 await self?.refreshPackages()
-                await MainActor.run {
-                    self?.busy = ok ? nil : "Install failed: \(out.prefix(120))"
-                    if !ok {
+
+                // Persist it, or it is gone on the next launch.
+                //
+                // Husk restores a saved machine instead of booting, and
+                // restoring rewinds the userdata disk to the state the snapshot
+                // was taken in. An app installed after that point lives only in
+                // this session: the library lists it now and will not list it
+                // tomorrow. Saving over the snapshot is what makes the install
+                // real, so it is part of installing rather than a thing to
+                // remember to do afterwards.
+                if ok {
+                    await MainActor.run {
+                        self?.busy = "Saving Android — the screen will freeze briefly"
+                        QemuRunner.shared.saveState(reason: "installed \(name)") { saved in
+                            self?.busy = nil
+                            if !saved {
+                                HuskLog.log("bridge", "\(name) is installed but the machine "
+                                          + "was not saved; it will be gone next launch")
+                            }
+                        }
+                    }
+                } else {
+                    await MainActor.run {
+                        self?.busy = "Install failed: \(out.prefix(120))"
                         Task { try? await Task.sleep(nanoseconds: 4_000_000_000)
                                await MainActor.run { self?.busy = nil } }
                     }
