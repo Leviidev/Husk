@@ -303,7 +303,8 @@ final class QemuRunner: ObservableObject {
     @discardableResult
     nonisolated func startAndroidUI(why: String) -> Bool {
         var allUp = true
-        for svc in ["surfaceflinger", "zygote"] {
+        // Matches what the save stops: surfaceflinger alone.
+        for svc in ["surfaceflinger"] {
             var up = false
             for attempt in 1...4 {
                 _ = try? GuestBridge.shared.run("setprop ctl.start \(svc)", timeout: 20)
@@ -397,11 +398,29 @@ final class QemuRunner: ObservableObject {
                 return
             }
 
-            for svc in ["zygote_secondary", "zygote", "surfaceflinger"] {
+            // surfaceflinger only. Zygote stays.
+            //
+            // Stopping zygote kills system_server with it, so a GPU snapshot was
+            // being taken of a machine with no Android framework -- and on
+            // restore we started zygote again, system_server came up fresh, and
+            // re-initialised ConnectivityService against a netd that had been
+            // running the whole time and remembered a different world. The two
+            // disagree, the network never registers, and netd's per-uid routing
+            // then has no default network to point at. uid 2000's writes go
+            // nowhere while the socket stays open: commands arrive, answers do
+            // not, and the bridge dies about a minute after every restore.
+            //
+            // That is why this only ever happened in GPU mode. Software snapshots
+            // never stopped anything, so they froze and thawed a whole, running,
+            // self-consistent framework -- which is exactly what worked.
+            //
+            // The compositor alone is what has to be quiet for the save: it owns
+            // the scanout. Apps may still hold 3D resources, and virtio_gpu_save
+            // now skips those safely rather than dereferencing them, which is the
+            // patch that made this choice available.
+            for svc in ["surfaceflinger"] {
                 let r = try? GuestBridge.shared.run("setprop ctl.stop \(svc)", timeout: 60)
-                // zygote_secondary does not exist on a 64-bit-only guest, so
-                // its absence is not a failure; a permission refusal is.
-                if svc != "zygote_secondary", (r?.status ?? -1) != 0 {
+                if (r?.status ?? -1) != 0 {
                     HuskLog.log("snap", "could not stop \(svc): "
                               + (r?.out.trimmingCharacters(in: .whitespacesAndNewlines)
                                  ?? "no answer"))
