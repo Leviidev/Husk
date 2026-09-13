@@ -131,9 +131,15 @@ final class GuestImage: ObservableObject {
     /// that could not happen and cold-booted, which looks exactly like the
     /// snapshot feature silently not existing.
     nonisolated var hasShippedSnapshot: Bool {
-        guard let stamped = try? String(contentsOfFile: snapshotStampPath, encoding: .utf8)
-        else { return false }
-        return stamped.trimmingCharacters(in: .whitespacesAndNewlines) == Self.imageVersion
+        // A recorded digest is the modern answer. Comparing the stamp to
+        // imageVersion, as this used to, quietly tied "do I have a snapshot" to
+        // "is the app's generation string current" -- so publishing a new image
+        // made every install believe its perfectly good snapshot had vanished,
+        // and with it the pinned RAM and resolution a restore depends on.
+        if installedSnapshotDigest != nil { return true }
+        // Installs from before digests existed recorded a generation name here
+        // instead. Their snapshot is still on disk and still restorable.
+        return (try? String(contentsOfFile: snapshotStampPath, encoding: .utf8)) != nil
     }
 
     // MARK: digests
@@ -728,9 +734,19 @@ final class GuestImage: ObservableObject {
                 if let digest {
                     try? digest.write(toFile: imageDigestPath, atomically: true, encoding: .utf8)
                 }
-                // A new system image invalidates the snapshot that was taken
-                // against the old one, so stop claiming to have one.
-                try? FileManager.default.removeItem(atPath: snapshotDigestPath)
+                // A new system image usually invalidates the snapshot taken
+                // against the old one -- but not always, and the manifest is
+                // what knows. v11 differs from v10 only in a GRUB toggle read
+                // before Android exists, which a restored machine never reads;
+                // the same snapshot restores onto it perfectly well. Dropping
+                // the stamp unconditionally would have charged everyone two
+                // gigabytes for a two-byte change.
+                if let published = manifest?.snapshot.sha256,
+                   installedSnapshotDigest == published {
+                    HuskLog.log("guest", "snapshot is unchanged in the manifest; keeping it")
+                } else {
+                    try? FileManager.default.removeItem(atPath: snapshotDigestPath)
+                }
                 HuskLog.log("guest", "guest image ready (\(size) bytes, \(Self.imageVersion))")
                 // The snapshot only makes sense next to the image it was booted
                 // from, so it is fetched after, not alongside.

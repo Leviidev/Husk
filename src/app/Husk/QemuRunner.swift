@@ -219,6 +219,19 @@ final class QemuRunner: ObservableObject {
         FileManager.default.fileExists(atPath: snapshotSizePath)
     }
 
+    /// Whether a saved machine exists that this session could actually restore.
+    ///
+    /// Existence alone is the wrong question, and asking it is why turning GPU
+    /// mode on never produced a GPU snapshot however many times it cold-booted:
+    /// a software snapshot from an earlier run left its stamp on disk, the
+    /// auto-save saw "a snapshot exists" and skipped, and the one machine worth
+    /// saving -- the one running on the GPU -- was never written. A snapshot
+    /// taken in the other display mode is not a snapshot this session can use.
+    nonisolated var hasUsableSnapshot: Bool {
+        guard hasSnapshot else { return false }
+        return (snapshotDisplay ?? "sw") == (QemuRunner.glProven ? "gl" : "sw")
+    }
+
     /// Write the running machine to disk so the next launch restores *this*.
     ///
     /// Not an optimisation -- it is what makes anything persist at all.
@@ -1146,7 +1159,7 @@ final class QemuRunner: ObservableObject {
                 } ?? false
                 if settled, steadyFrames >= 3,
                    !QemuRunner.snapshotRequested,
-                   !QemuRunner.shared.hasSnapshot {
+                   !QemuRunner.shared.hasUsableSnapshot {
                     QemuRunner.snapshotRequested = true
                     // The size goes in a static rather than being captured: the
                     // callback crosses into C, and a C function pointer cannot
