@@ -79,20 +79,34 @@ final class QemuRunner: ObservableObject {
     ///
     /// Matched against serial console lines. These are milestones a person can
     /// read, not every service -- the point is to show movement, not detail.
-    nonisolated(unsafe) static let bootMilestones: [(String, String)] = [
-        ("Linux version",                 "Starting the Linux kernel"),
-        ("init: init first stage started","Android init, first stage"),
-        ("init: init second stage started","Android init, second stage"),
-        ("SELinux: policy loaded",        "Loading the security policy"),
-        ("apexd: activating",             "Activating system packages"),
-        ("servicemanager: Waiting",       "Starting system services"),
-        ("starting service 'vold'",       "Preparing storage"),
-        ("starting service 'surfaceflinger'", "Starting the display server"),
-        ("starting service 'zygote'",     "Starting the Android runtime"),
-        ("starting service 'bootanim'",   "Boot animation running"),
-        ("Service 'bootanim' (pid",       "Compiling apps (this is the slow part)"),
-        ("sys.boot_completed=1",          "Android is up"),
+    /// The third field is how far through a boot that milestone is.
+    ///
+    /// Measured from real cold boots rather than spaced evenly: the kernel and
+    /// init are over in seconds, and the long tail is app compilation after
+    /// bootanim exits. Evenly spaced numbers would race to 90% and then sit
+    /// there, which is the specific thing progress bars are distrusted for.
+    nonisolated(unsafe) static let bootMilestones: [(String, String, Int)] = [
+        ("Linux version",                 "Starting the Linux kernel",           5),
+        ("init: init first stage started","Android init, first stage",           10),
+        ("init: init second stage started","Android init, second stage",         15),
+        ("SELinux: policy loaded",        "Loading the security policy",         20),
+        ("apexd: activating",             "Activating system packages",          28),
+        ("servicemanager: Waiting",       "Starting system services",            35),
+        ("starting service 'vold'",       "Preparing storage",                   42),
+        ("starting service 'surfaceflinger'", "Starting the display server",     50),
+        ("starting service 'zygote'",     "Starting the Android runtime",        58),
+        ("starting service 'bootanim'",   "Boot animation running",              65),
+        ("Service 'bootanim' (pid",       "Compiling apps (this is the slow part)", 80),
+        ("sys.boot_completed=1",          "Android is up",                       100),
     ]
+
+    /// How far through the boot the guest is, 0 to 100.
+    ///
+    /// Only ever moves forward. Android restarts parts of itself during a boot
+    /// -- system_server more than once on a slow device -- so the same milestone
+    /// can arrive twice, and a bar that jumped backwards would read as a failure
+    /// when it is normal.
+    @Published var bootProgress: Int = 0
 
     /// When Android announced `sys.boot_completed=1` on the serial console.
     ///
@@ -1426,6 +1440,8 @@ final class QemuRunner: ObservableObject {
             var tick = 0
             var lastFrames: UInt64 = 0
             var quietWindows = 0
+            var lastAudioFrames: UInt64 = 0
+            var lastAudioSilent: UInt64 = 0
             while true {
                 Thread.sleep(forTimeInterval: 5)
                 tick += 1
@@ -1440,8 +1456,21 @@ final class QemuRunner: ObservableObject {
                 let frames = glFrames > 0 ? glFrames : husk_display_sequence()
                 let delta = frames >= lastFrames ? frames - lastFrames : 0
                 lastFrames = frames
+                // Audio alongside the frame rate, because "no sound" has two
+                // causes that sound identical from the speaker: the guest never
+                // produced any samples, or it produced them and we failed to
+                // play them. These two counters separate those without anyone
+                // having to guess.
+                let aFrames = husk_audio_frames_in()
+                let aSilent = husk_audio_underruns()
+                let audio = aFrames == 0 && aSilent == 0
+                    ? "" : "  ·  audio \(aFrames - lastAudioFrames) frames in, "
+                          + "\(aSilent - lastAudioSilent) silent"
+                lastAudioFrames = aFrames
+                lastAudioSilent = aSilent
                 HuskLog.log("perf", "guest produced \(delta) frames in 5s "
-                                  + "(\(String(format: "%.1f", Double(delta) / 5.0)) fps)")
+                                  + "(\(String(format: "%.1f", Double(delta) / 5.0)) fps)"
+                                  + audio)
 
                 // Save the machine once Android is genuinely up, and only once.
                 //
@@ -1631,14 +1660,16 @@ final class QemuRunner: ObservableObject {
                     // and gets force-quit a minute short of finishing. It only
                     // has to succeed once, because the snapshot is taken after
                     // it, but it does have to succeed once.
-                    for (needle, milestone) in QemuRunner.bootMilestones {
+                    for (needle, milestone, percent) in QemuRunner.bootMilestones {
                         if line.contains(needle) {
                             let secs = Int(Date().timeIntervalSince(QemuRunner.bootStarted))
                             let mins = secs / 60, rem = secs % 60
                             let stamp = String(format: "%d:%02d", mins, rem)
                             Task { @MainActor in
-                                QemuRunner.shared.setupMessage =
-                                    "\(milestone)  ·  \(stamp) elapsed"
+                                let r = QemuRunner.shared
+                                if percent > r.bootProgress { r.bootProgress = percent }
+                                r.setupMessage =
+                                    "\(r.bootProgress)%  ·  \(milestone)  ·  \(stamp) elapsed"
                             }
                             break
                         }

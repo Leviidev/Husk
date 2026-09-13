@@ -331,7 +331,16 @@ struct SetupView: View {
             // slower still, so say what is happening rather than showing a black
             // screen for minutes.
             VStack(spacing: 12) {
-                ProgressView()
+                // A determinate bar once the guest has said anything at all.
+                // Before that there is nothing to be determinate about, and a
+                // bar sitting at zero reads as stuck rather than starting.
+                if runner.bootProgress > 0 {
+                    ProgressView(value: Double(runner.bootProgress), total: 100)
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 240)
+                } else {
+                    ProgressView()
+                }
                 Text(runner.setupMessage.map { "Android: \($0)" } ?? "Starting Android…")
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal, 36)
@@ -785,7 +794,13 @@ struct AdbLibraryView: View {
 
     private var waiting: some View {
         VStack(spacing: 14) {
-            ProgressView()
+            if QemuRunner.shared.bootProgress > 0 {
+                ProgressView(value: Double(QemuRunner.shared.bootProgress), total: 100)
+                    .progressViewStyle(.linear)
+                    .frame(maxWidth: 240)
+            } else {
+                ProgressView()
+            }
             Text(host.status).font(.callout)
             Text(runner.setupMessage ?? "Android is running in the background.")
                 .font(.caption2).foregroundStyle(.secondary)
