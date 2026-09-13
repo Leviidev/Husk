@@ -912,6 +912,67 @@ final class AndroidHost: ObservableObject {
         return .ready
     }
 
+    /// Copy files into the guest's Download folder, without installing them.
+    ///
+    /// The importer already pushed APKs; everything else a person might want to
+    /// get into Android -- a save file, a ROM, a texture pack, a photo -- had no
+    /// route in at all. Same transfer as an install, minus pm.
+    func sendFiles(_ files: [URL]) {
+        guard !files.isEmpty else { return }
+        busy = "Sending \(files.count == 1 ? files[0].lastPathComponent : "\(files.count) files")…"
+        Task.detached { [weak self] in
+            var sent = 0
+            for file in files {
+                let name = file.lastPathComponent
+                do {
+                    switch AndroidHost.guestState() {
+                    case .locked:
+                        throw BridgeError.io("Android is locked. Unlock it and try again.")
+                    case .unreachable(let why):
+                        throw BridgeError.io(why)
+                    case .asleep:
+                        _ = try? GuestBridge.shared.shell("input keyevent KEYCODE_WAKEUP")
+                    case .ready:
+                        break
+                    }
+                    let scoped = file.startAccessingSecurityScopedResource()
+                    defer { if scoped { file.stopAccessingSecurityScopedResource() } }
+
+                    // Quoted and stripped of any path: a filename is chosen by
+                    // whoever made the file, and it reaches a shell verbatim.
+                    let safe = name.replacingOccurrences(of: "'", with: "")
+                    let remote = "/sdcard/Download/\(safe)"
+                    _ = try? GuestBridge.shared.shell("mkdir -p /sdcard/Download")
+                    try GuestBridge.shared.push(file, to: "'\(remote)'") { p in
+                        Task { @MainActor in
+                            self?.busy = "Sending \(name) — \(Int(p * 100))%"
+                        }
+                    }
+                    // Without this the file exists and no app can see it: the
+                    // media database is what Android's file pickers read.
+                    _ = try? GuestBridge.shared.shell(
+                        "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE "
+                      + "-d file://\(remote)", timeout: 60)
+                    HuskLog.log("bridge", "sent \(name) to Download")
+                    sent += 1
+                } catch {
+                    await MainActor.run {
+                        self?.busy = "Could not send \(name): \(error.localizedDescription)"
+                    }
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    await MainActor.run { self?.busy = nil }
+                    return
+                }
+            }
+            let n = sent
+            await MainActor.run {
+                self?.busy = "Sent \(n) to Android's Download folder"
+            }
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await MainActor.run { self?.busy = nil }
+        }
+    }
+
     /// Copy an APK into the guest and install it.
     func install(_ apk: URL) {
         let name = apk.lastPathComponent

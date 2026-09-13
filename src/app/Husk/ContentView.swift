@@ -655,6 +655,7 @@ struct AdbLibraryView: View {
     @Binding var showLogs: Bool
 
     @State private var importing = false
+    @State private var sendingFiles = false
     /// Not persisted on purpose: it lives in the guest, and the guest is
     /// restored from a snapshot that may or may not have had it applied.
 
@@ -672,7 +673,14 @@ struct AdbLibraryView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { importing = true } label: { Image(systemName: "plus") }
+                    Menu {
+                        Button { importing = true } label: {
+                            Label("Install an APK", systemImage: "square.and.arrow.down")
+                        }
+                        Button { sendingFiles = true } label: {
+                            Label("Send files to Android", systemImage: "doc.badge.plus")
+                        }
+                    } label: { Image(systemName: "plus") }
                         .disabled(!host.isReady || host.busy != nil)
                 }
             }
@@ -682,6 +690,14 @@ struct AdbLibraryView: View {
                 if case .success(let urls) = result, let apk = urls.first {
                     HuskLog.log("ui", "importing \(apk.lastPathComponent)")
                     host.install(apk)
+                }
+            }
+            .fileImporter(isPresented: $sendingFiles,
+                          allowedContentTypes: [.item],
+                          allowsMultipleSelection: true) { result in
+                if case .success(let urls) = result {
+                    HuskLog.log("ui", "sending \(urls.count) file(s) to Android")
+                    host.sendFiles(urls)
                 }
             }
         }
