@@ -102,8 +102,17 @@ final class HuskGLView: UIView {
             DispatchQueue.global(qos: .userInitiated).async {
                 _ = try? GuestBridge.shared.shell(
                     "settings put system accelerometer_rotation 0", timeout: 20)
-                _ = try? GuestBridge.shared.shell(
+                // Report whether it took. "Android tried to rotate but came out
+                // small" has two explanations -- a wrong turn here, or the
+                // setting never applying -- and only one of them is visible from
+                // a log unless the status is recorded.
+                let r = try? GuestBridge.shared.run(
                     "settings put system user_rotation \(landscape ? 1 : 0)", timeout: 20)
+                let now = try? GuestBridge.shared.shell(
+                    "settings get system user_rotation", timeout: 20)
+                HuskLog.log("ui", "user_rotation set exit \(r?.status ?? -1); "
+                                + "android now reports "
+                                + (now?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "?"))
             }
         }
         Self.surfaceReady.lock()
@@ -202,8 +211,12 @@ final class HuskGLView: UIView {
         // against the guest's own dimensions. Without it landscape looks right
         // and does not respond, which is what "touch doesn't work" was.
         if Self.lastLandscape == true {
-            let gx = (p.y / bounds.height) * guestWidth
-            let gy = (1 - p.x / bounds.width) * guestHeight
+            // Matches the shader exactly: it samples at (1 - uv.y, uv.x), so a
+            // touch maps the same way. The first version turned the picture the
+            // wrong way -- landscape came out upside down -- and these two must
+            // agree or the image is right and nothing responds where it looks.
+            let gx = (1 - p.y / bounds.height) * guestWidth
+            let gy = (p.x / bounds.width) * guestHeight
             guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
             return (Int32(gx), Int32(gy))
         }

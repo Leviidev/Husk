@@ -95,7 +95,7 @@ final class HuskMetalPresenter {
             // picture. Turning it back here is what makes it land upright on a
             // landscape screen -- and doing it in the sampler costs nothing,
             // because the GPU is reading the texture either way.
-            o.uv = p.rotate > 0.5 ? float2(uv.y, 1.0 - uv.x) : uv;
+            o.uv = p.rotate > 0.5 ? float2(1.0 - uv.y, uv.x) : uv;
             return o;
         }
 
