@@ -258,6 +258,21 @@ final class QemuRunner: ObservableObject {
                           + "\(QemuRunner.pendingSnapshotMiB) MiB); the picture freezes "
                           + "while RAM is written to disk")
 
+        // Off the main thread from here.
+        //
+        // Quiescing is three round trips to the guest plus five seconds of
+        // waiting for processes to actually die, and callers reach this from
+        // the UI. Doing that inline would freeze the interface for fifteen
+        // seconds and invite the watchdog to kill the app -- which would look
+        // exactly like the crash this whole path exists to avoid.
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.performSave()
+        }
+    }
+
+    private func performSave() {
+        let completion = QemuRunner.saveCompletion
+
         // With a GPU, saving is only safe once the guest owns no 3D resources.
         //
         // virglrenderer holds those on the host and none of them are written to
@@ -310,11 +325,13 @@ final class QemuRunner: ObservableObject {
 
             if !quiesced {
                 HuskLog.log("snap", "REFUSING to save: the GPU could not be quiesced, and "
-                                  + "saving with live 3D resources produces a machine that "
-                                  + "restores into a black screen. The guest is untouched.")
-                isSavingState = false
+                                  + "saving with live 3D resources crashes the process "
+                                  + "outright. The guest is untouched.")
                 QemuRunner.saveCompletion = nil
-                completion?(false)
+                DispatchQueue.main.async {
+                    QemuRunner.shared.isSavingState = false
+                    completion?(false)
+                }
                 return
             }
 
@@ -1161,25 +1178,17 @@ final class QemuRunner: ObservableObject {
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasUsableSnapshot {
                     QemuRunner.snapshotRequested = true
-                    // The size goes in a static rather than being captured: the
-                    // callback crosses into C, and a C function pointer cannot
-                    // carry context.
-                    QemuRunner.pendingSnapshotMiB = QemuRunner.shared.lastGuestMiB
-                    HuskLog.log("snap", "Android is booted and settled; saving the machine "
-                                      + "(guest \(QemuRunner.pendingSnapshotMiB) MiB). The picture "
-                                      + "will freeze while RAM is written to disk.")
-                    husk_snapshot_save { ok, what in
-                        let label = what.map { String(cString: $0) } ?? "save"
-                        HuskLog.log("snap", "\(label) \(ok ? "succeeded" : "FAILED")")
-                        if ok {
-                            try? String(QemuRunner.pendingSnapshotMiB)
-                                .write(toFile: QemuRunner.shared.snapshotSizePath,
-                                       atomically: true, encoding: .utf8)
-                            try? QemuRunner.memoryStrategy
-                                .write(toFile: QemuRunner.shared.memoryStrategyPath,
-                                       atomically: true, encoding: .utf8)
-                            HuskLog.log("snap", "next launch will restore instead of booting")
-                        }
+                    // Through saveState, never husk_snapshot_save directly.
+                    //
+                    // This called the C function straight, which meant it also
+                    // skipped everything saveState does around it -- above all
+                    // stopping the compositor first. On the GPU that is not an
+                    // omission but a fault: the save walked into live 3D
+                    // resources and took the process down with SIGSEGV. The
+                    // discipline has to live on the one path every save takes,
+                    // not beside it.
+                    DispatchQueue.main.async {
+                        QemuRunner.shared.saveState(reason: "Android is booted and settled")
                     }
                 }
 
