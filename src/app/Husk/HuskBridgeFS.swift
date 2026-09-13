@@ -422,6 +422,25 @@ final class AndroidHost: ObservableObject {
                 attempt += 1
                 do {
                     try Adb.shared.connect()
+                    // Report what the shell can actually do, once.
+                    //
+                    // The connection succeeds and then readiness never arrives,
+                    // which means a command is failing rather than the transport.
+                    // The guest log shows adbd running as u:r:adbd_tradeinmode:s0
+                    // -- Android's restricted trade-in ADB domain -- so the
+                    // question is whether shell works at all, not whether the
+                    // property is set. Ask it three things and print the answers
+                    // verbatim.
+                    if attempt == 1 || attempt % 10 == 0 {
+                        for probe in ["echo husk-ok", "id", "getprop sys.boot_completed"] {
+                            do {
+                                let r = try Adb.shared.shell(probe)
+                                HuskLog.log("adb", "[\(probe)] -> \(r.debugDescription.prefix(200))")
+                            } catch {
+                                HuskLog.log("adb", "[\(probe)] FAILED: \(error.localizedDescription)")
+                            }
+                        }
+                    }
                     let booted = try Adb.shared.shell("getprop sys.boot_completed")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                     if booted == "1" {
