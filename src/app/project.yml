@@ -35,14 +35,13 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.husk.app
-        # Set your team here rather than in Xcode's UI: this file is the source of
-        # truth, and `xcodegen generate` overwrites Husk.xcodeproj.
-        # DEVELOPMENT_TEAM: XXXXXXXXXX
+        PRODUCT_BUNDLE_IDENTIFIER: com.bhabha.husk
+        DEVELOPMENT_TEAM: 8PQR26VG3C
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Husk/Info.plist
         CODE_SIGN_ENTITLEMENTS: Husk/Husk.entitlements
         SWIFT_OBJC_BRIDGING_HEADER: Husk/HuskBridge.h
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # libqemu-aarch64-softmmu.dylib has install_name @rpath/...
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"

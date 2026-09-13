@@ -12,6 +12,7 @@
 		1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = A523DB1FEA5BC026771035C7 /* Shaders.metal */; };
 		29B4497EDC1E890D82BDF969 /* GuestManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0490485F9BA884A0554EAD /* GuestManifest.swift */; };
 		340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */; };
+		38A9F59D462DE5A28D3F579D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 28D3E1CEE343707BE986FA6E /* Assets.xcassets */; };
 		38E7D6B6947ED3CF1A82BB7D /* libqemu-aarch64-softmmu.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; };
 		4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */; };
 		507309F42DC8965C816DC580 /* JITBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5664FE015975D16E7500F3C7 /* JITBootstrap.swift */; };
@@ -45,6 +46,7 @@
 /* Begin PBXFileReference section */
 		0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskBridgeFS.swift; sourceTree = "<group>"; };
 		1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = "<group>"; };
+		28D3E1CEE343707BE986FA6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
 		392BE39CE162757FDA225452 /* HuskKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskKeyboard.swift; sourceTree = "<group>"; };
 		3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libANGLE-shared.dylib"; path = "../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib"; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 		0F8D2787A26076A289B9B8EA /* Husk */ = {
 			isa = PBXGroup;
 			children = (
+				28D3E1CEE343707BE986FA6E /* Assets.xcassets */,
 				6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */,
 				771B4FD56CABC214FEED6DFE /* GuestImage.swift */,
 				4A0490485F9BA884A0554EAD /* GuestManifest.swift */,
@@ -171,6 +174,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					725A795AE76B023A1B291246 = {
+						DevelopmentTeam = 8PQR26VG3C;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -199,6 +203,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38A9F59D462DE5A28D3F579D /* Assets.xcassets in Resources */,
 				E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,6 +265,7 @@
 				CODE_SIGN_ENTITLEMENTS = Husk/Husk.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8PQR26VG3C;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"../../build/ios-arm64/lib\"",
@@ -274,7 +280,7 @@
 					"$(inherited)",
 					"$(SRCROOT)/../../build/ios-arm64/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.husk.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bhabha.husk;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = Husk/HuskBridge.h;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -288,6 +294,7 @@
 				CODE_SIGN_ENTITLEMENTS = Husk/Husk.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8PQR26VG3C;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"../../build/ios-arm64/lib\"",
@@ -302,7 +309,7 @@
 					"$(inherited)",
 					"$(SRCROOT)/../../build/ios-arm64/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.husk.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bhabha.husk;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = Husk/HuskBridge.h;
 				TARGETED_DEVICE_FAMILY = 1;
