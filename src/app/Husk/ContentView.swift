@@ -499,7 +499,9 @@ struct SettingsView: View {
 
     @ObservedObject private var guest = GuestImage.shared
     @State private var gpuMode =
-        UserDefaults.standard.bool(forKey: "husk.gpuMode")
+        // Absent means GPU: bool(forKey:) answers false for a key nobody
+        // has set, which quietly made the slow renderer the default.
+        UserDefaults.standard.object(forKey: "husk.gpuMode") as? Bool ?? true
     @State private var useSnapshot =
         UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
     @State private var askWhichToDelete = false
@@ -582,43 +584,29 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle(isOn: $gpuMode) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(gpuMode ? "GPU (virtio-gpu-gl)" : "Software (CPU)")
-                            Text(gpuMode
-                                 ? "Android draws on the real GPU through Metal — four to "
-                                 + "five times the frame rate. It cannot be snapshotted "
-                                 + "yet, so EVERY launch boots from cold (about ten "
-                                 + "minutes) and nothing inside Android is kept."
-                                 : "Every pixel is drawn by the emulated CPU — around twelve "
-                                 + "frames a second — but the machine can be saved, so "
-                                 + "launches take seconds and apps stay installed.")
-                                .font(.caption2)
-                                .foregroundColor(gpuMode ? .orange : .secondary)
-                        }
+                    Picker("Renderer", selection: $gpuMode) {
+                        Text("GPU").tag(true)
+                        Text("CPU").tag(false)
                     }
+                    .pickerStyle(.segmented)
                     .onChange(of: gpuMode) { v in
                         UserDefaults.standard.set(v, forKey: "husk.gpuMode")
-                        HuskLog.log("ui", v ? "GPU mode on; next launch cold-boots and "
-                                            + "saves a GL machine"
-                                            : "GPU mode off; back to the software display")
+                        HuskLog.log("ui", v ? "GPU renderer selected"
+                                            : "CPU renderer selected")
                     }
                 } header: {
                     Text("Display")
-                }
-
-                Section {
-                    Picker("Guest", selection: $profile) {
-                        ForEach(QemuRunner.Profile.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
-                        }
-                    }
-                    .onChange(of: profile) { p in
-                        QemuRunner.shared.profile = p
-                        HuskLog.log("ui", "guest profile set to \(p.rawValue)")
-                    }
-                } header: {
-                    Text("Guest")
+                } footer: {
+                    // The old text warned that GPU mode could not be snapshotted
+                    // and cold-booted every launch. Both stopped being true once
+                    // the virgl save worked, and a warning that has gone stale is
+                    // worse than none -- it argues for the slower option.
+                    Text(gpuMode
+                         ? "Android draws on the real GPU through Metal, about four "
+                         + "times the frame rate. This is the default."
+                         : "Every pixel is drawn by the emulated CPU. Much slower, "
+                         + "and only worth choosing if the GPU misbehaves.")
+                        .font(.caption2)
                 }
 
                 Section {
@@ -659,7 +647,6 @@ struct AdbLibraryView: View {
     @State private var importing = false
     /// Not persisted on purpose: it lives in the guest, and the guest is
     /// restored from a snapshot that may or may not have had it applied.
-    @State private var renderScale = 1.0
 
     var body: some View {
         NavigationView {
@@ -737,26 +724,6 @@ struct AdbLibraryView: View {
                     }
                 }
             }
-            Section {
-                Picker("Render at", selection: $renderScale) {
-                    Text("Full").tag(1.0)
-                    Text("75%").tag(0.75)
-                    Text("60%").tag(0.6)
-                }
-                .pickerStyle(.segmented)
-                .disabled(host.busy != nil)
-                .onChange(of: renderScale) { scale in
-                    HuskLog.log("ui", "render scale -> \(Int(scale * 100))%")
-                    host.setRenderScale(scale)
-                }
-            } footer: {
-                Text("Android has no GPU here, so every pixel is drawn by an "
-                   + "emulated CPU and the cost is the pixel count. Rendering "
-                   + "smaller and letting Android scale it up trades sharpness "
-                   + "for frame rate. 60% is under half the pixels.")
-                    .font(.caption2)
-            }
-
             Section {
                 Button("Show the Android desktop") { onOpened() }
                     .font(.footnote)

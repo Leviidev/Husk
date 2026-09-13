@@ -209,7 +209,9 @@ final class QemuRunner: ObservableObject {
     /// Opt-in, because turning it on invalidates any snapshot saved without one
     /// and therefore costs a single cold boot before it pays for itself.
     nonisolated static var gpuModeEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "husk.gpuMode")
+        // Absent means GPU: bool(forKey:) answers false for a key nobody
+        // has set, which quietly made the slow renderer the default.
+        UserDefaults.standard.object(forKey: "husk.gpuMode") as? Bool ?? true
     }
 
     /// Which display device the saved machine was built around.
