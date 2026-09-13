@@ -816,12 +816,17 @@ final class QemuRunner: ObservableObject {
         // Before the main loop: restore the machine if we saved one. This is
         // the difference between ten minutes of Android booting and a few
         // seconds of reading RAM back from disk.
-        let recordedMiB = (try? String(contentsOfFile: GuestImage.shared.snapshotStampPath,
-                                       encoding: .utf8))
-            ?? (try? String(contentsOfFile: snapshotSizePath, encoding: .utf8))
-        let snapshotFits = recordedMiB
-            .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
-            .map { $0 == QemuRunner.shared.lastGuestMiB } ?? false
+        // Two kinds of snapshot can be present, and they are recorded
+        // differently: the shipped one stamps the generation it belongs to,
+        // while a locally saved one records the guest size it was taken at.
+        let snapshotFits: Bool
+        if GuestImage.shared.hasShippedSnapshot {
+            snapshotFits = (QemuRunner.shared.lastGuestMiB == GuestImage.snapshotGuestMiB)
+        } else {
+            snapshotFits = (try? String(contentsOfFile: snapshotSizePath, encoding: .utf8))
+                .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                .map { $0 == QemuRunner.shared.lastGuestMiB } ?? false
+        }
         if !snapshotFits {
             HuskLog.log("qemu", "no snapshot matching a \(QemuRunner.shared.lastGuestMiB) MiB "
                               + "guest; booting cold rather than failing a restore")

@@ -105,8 +105,18 @@ final class GuestImage: ObservableObject {
     }
     /// Whether this install is running on the shipped snapshot, which pins the
     /// machine's RAM size and resolution to what the snapshot was saved with.
+    /// True only when the installed snapshot belongs to the CURRENT generation.
+    ///
+    /// Existence alone was not enough. The stamp survived an image version bump,
+    /// so an install that already had the v1 snapshot skipped downloading the v5
+    /// one -- while the userdata that snapshot lived in had just been re-seeded
+    /// empty by the same bump. The app then pinned the machine for a restore
+    /// that could not happen and cold-booted, which looks exactly like the
+    /// snapshot feature silently not existing.
     nonisolated var hasShippedSnapshot: Bool {
-        FileManager.default.fileExists(atPath: snapshotStampPath)
+        guard let stamped = try? String(contentsOfFile: snapshotStampPath, encoding: .utf8)
+        else { return false }
+        return stamped.trimmingCharacters(in: .whitespacesAndNewlines) == Self.imageVersion
     }
 
     nonisolated var userdataPath: String { documents.appendingPathComponent("lineage-vdb.qcow2").path }
@@ -349,8 +359,8 @@ final class GuestImage: ObservableObject {
                 try? FileManager.default.removeItem(at: dest)
                 try Self.gunzip(from: tempURL, to: dest)
                 try? FileManager.default.removeItem(at: tempURL)
-                try "\(Self.snapshotGuestMiB)".write(toFile: self.snapshotStampPath,
-                                                    atomically: true, encoding: .utf8)
+                try Self.imageVersion.write(toFile: self.snapshotStampPath,
+                                            atomically: true, encoding: .utf8)
                 let size = (try? FileManager.default
                     .attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
                 HuskLog.log("guest", "snapshot ready (\(size ?? 0) bytes); "
@@ -504,13 +514,13 @@ final class GuestImage: ObservableObject {
                 HuskLog.log("guest", "guest image ready (\(size) bytes, \(Self.imageVersion))")
                 // The snapshot only makes sense next to the image it was booted
                 // from, so it is fetched after, not alongside.
-                if Self.wantsSnapshot, !FileManager.default.fileExists(atPath: snapshotStampPath) {
+                if Self.wantsSnapshot, !hasShippedSnapshot {
                     state = .installing
                     downloadSnapshot { ok in
                         DispatchQueue.main.async {
                             if ok {
-                                try? "\(Self.snapshotGuestMiB)".write(toFile: self.snapshotStampPath,
-                                                                    atomically: true, encoding: .utf8)
+                                try? Self.imageVersion.write(toFile: self.snapshotStampPath,
+                                                            atomically: true, encoding: .utf8)
                                 HuskLog.log("guest", "pre-booted snapshot installed; "
                                                    + "first launch will restore instead of booting")
                             } else {
