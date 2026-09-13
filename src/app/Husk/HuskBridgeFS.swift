@@ -227,6 +227,19 @@ final class GuestBridge {
     /// worth knowing.
     private static let marker = "__HUSK_EOF__"
 
+    /// Bumped per command, so each one's marker is unique.
+    ///
+    /// With a single fixed marker, a command that timed out left its answer in
+    /// the socket and the next command read that instead of its own -- so the
+    /// only safe response to a timeout was to throw the connection away. Which
+    /// meant opening a new one, which is the exact operation that stops working
+    /// part-way through a session. The bridge was destroying the thing that was
+    /// keeping it alive, every time a command ran long.
+    ///
+    /// A sequence number in the marker makes a late answer harmless: it is
+    /// preamble to the next command's marker and is discarded on the way past.
+    private var sequence: UInt64 = 0
+
     /// True once any command has succeeded. Used by the UI to decide whether the
     /// library is usable, and cleared whenever a connection fails.
     private(set) var isConnected = false
@@ -366,7 +379,9 @@ final class GuestBridge {
     private func exchange(_ command: String, timeout: TimeInterval)
             throws -> (out: String, status: Int) {
         let fd = try controlFD(timeout: timeout)
-        try writeAll(fd, Data("\(command) 2>&1; echo \(Self.marker)$?\n".utf8))
+        sequence += 1
+        let token = "\(Self.marker)\(sequence):"
+        try writeAll(fd, Data("\(command) 2>&1; echo \(token)$?\n".utf8))
 
         var out = ""
         var buf = [UInt8](repeating: 0, count: 16 * 1024)
@@ -374,13 +389,22 @@ final class GuestBridge {
         while true {
             let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0 && errno == EINTR { continue }
+            // EAGAIN is SO_RCVTIMEO expiring: the guest has not answered YET.
+            // Treating it as a dead socket is what tore down a working
+            // connection every fifteen seconds.
+            if n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if Date() > deadline {
+                    throw BridgeError.timeout("waiting for `\(command.prefix(60))`")
+                }
+                continue
+            }
             if n <= 0 {
                 let why = n == 0 ? "the guest closed it" : "read failed (errno \(errno))"
                 dropControl(why)
                 throw BridgeError.io("guest closed the connection -- \(why)")
             }
             out += String(decoding: buf[0..<n], as: UTF8.self)
-            if let r = out.range(of: Self.marker) {
+            if let r = out.range(of: token) {
                 let status = Int(out[r.upperBound...]
                     .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
                 isConnected = true
@@ -391,10 +415,9 @@ final class GuestBridge {
                 return (body, status)
             }
             if Date() > deadline {
-                // A timed-out command leaves unread output on the connection,
-                // and the next command would read that instead of its own. The
-                // connection cannot be trusted again, so it goes.
-                dropControl("timed out waiting for `\(command.prefix(40))`")
+                // The connection is KEPT. Whatever this command eventually
+                // prints is preamble to the next command's marker, which no
+                // longer matches this one.
                 throw BridgeError.timeout("waiting for `\(command.prefix(60))`")
             }
         }
@@ -486,7 +509,9 @@ final class GuestBridge {
         //
         // If that ever proves wrong the transfer does not silently corrupt: the
         // caller compares `wc -c` against the file's real size before pm sees it.
-        let command = "head -c \(size) > \(remote) 2>&1; echo \(Self.marker)$?\n"
+        sequence += 1
+        let token = "\(Self.marker)\(sequence):"
+        let command = "head -c \(size) > \(remote) 2>&1; echo \(token)$?\n"
         try writeAll(fd, Data(command.utf8))
 
         var sent = 0
@@ -507,9 +532,16 @@ final class GuestBridge {
         var out = ""
         var buf = [UInt8](repeating: 0, count: 4096)
         let deadline = Date().addingTimeInterval(120)
-        while !out.contains(Self.marker) {
+        while !out.contains(token) {
             let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0 && errno == EINTR { continue }
+            if n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if Date() > deadline {
+                    dropControl("no acknowledgement after the transfer")
+                    throw BridgeError.timeout("waiting for the guest to write \(remote)")
+                }
+                continue
+            }
             if n <= 0 {
                 let why = n == 0 ? "the guest closed it" : "read failed (errno \(errno))"
                 dropControl(why)
@@ -615,7 +647,7 @@ final class GuestBridge {
             Thread.current.name = "com.husk.bridge.health"
             var wasAlive: Bool?
             while let self {
-                let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 10))?
+                let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 30))?
                     .contains("__HUSK_ALIVE__") ?? false
                 if alive != wasAlive {
                     if wasAlive == nil {
@@ -628,7 +660,7 @@ final class GuestBridge {
                     }
                     wasAlive = alive
                 }
-                Thread.sleep(forTimeInterval: 15)
+                Thread.sleep(forTimeInterval: 30)
             }
         }
     }
