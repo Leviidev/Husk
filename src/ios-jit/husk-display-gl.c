@@ -90,8 +90,23 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
      * un-negated one -- and getting it backwards renders Android upside down,
      * which is exactly what it did.
      */
-    fprintf(stderr, "[husk-gl] scanout_texture: id=%u %ux%u y0top=%d\n",
-            backing_id, backing_width, backing_height, backing_y_0_top ? 1 : 0);
+    /*
+     * Say which handle QEMU is offering, not just the GL one.
+     *
+     * This fork of QEMU carries a ScanoutTextureNative alongside the GL texture
+     * id, and when virglrenderer is running on Metal it can hand over the
+     * underlying MTLTexture. UTM's own cocoa display prefers that handle and
+     * treats the GL id as the fallback -- which is a strong hint that on this
+     * stack the GL id is not always the thing holding the guest's pixels. If
+     * these logs show a METAL handle, the GL texture we have been blitting from
+     * may be an empty sibling of the texture virgl actually renders into.
+     */
+    fprintf(stderr, "[husk-gl] scanout_texture: id=%u %ux%u y0top=%d "
+                    "native=%s handle=%p\n",
+            backing_id, backing_width, backing_height, backing_y_0_top ? 1 : 0,
+            native.type == SCANOUT_TEXTURE_NATIVE_TYPE_METAL ? "METAL" :
+            native.type == SCANOUT_TEXTURE_NATIVE_TYPE_D3D   ? "D3D"   : "none",
+            native.handle);
     husk_flip = backing_y_0_top;
     egl_fb_setup_for_tex(&husk_guest_fb, backing_width, backing_height,
                          backing_id, false);
