@@ -42,7 +42,17 @@ final class GuestImage: ObservableObject {
     /// whatever it downloaded first: the disk exists, so nothing re-fetches it, and
     /// a guest missing a newly-added component fails in ways that look like app
     /// bugs rather than a stale image.
-    static let imageVersion = "lineage-v2"
+    /// The single "Dependencies" release that holds every downloadable asset.
+    ///
+    /// Fixed, so bumping a generation does not need a new GitHub release --
+    /// the version lives in the asset name instead.
+    static let dependenciesTag = "lineage-v2"
+    /// Asset generation. Bumping this re-downloads the guest and its snapshot.
+    ///
+    /// v5 adds an init script that marks the device provisioned. Without it
+    /// Android shows no launcher and adbd refuses every shell, because an
+    /// unprovisioned device runs ADB in trade-in mode.
+    static let imageVersion = "v5"
 
     /// Whether to fetch the pre-booted snapshot rather than boot from cold.
     static var wantsSnapshot: Bool {
@@ -57,7 +67,7 @@ final class GuestImage: ObservableObject {
     /// Two gigabytes of download buys that.
     static var snapshotURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"
-                  + "\(imageVersion)/vdb-snapshot.qcow2.gz")!
+                  + "\(dependenciesTag)/vdb-snapshot-\(imageVersion).qcow2.gz")!
     }
 
     /// RAM and resolution the shipped snapshot was taken with.
@@ -72,7 +82,7 @@ final class GuestImage: ObservableObject {
 
     static var imageURL: URL {
         URL(string: "https://github.com/Leviidev/Husk/releases/download/"
-                  + "\(imageVersion)/vda.qcow2")!
+                  + "\(dependenciesTag)/vda-\(imageVersion).qcow2")!
     }
 
     nonisolated private var versionStampPath: String {
@@ -275,7 +285,7 @@ final class GuestImage: ObservableObject {
         let seedStamp = URL(fileURLWithPath: userdataPath + ".seed")
         // v3: the guest image changed, so userdata built against the old /system --
         // including a multi-gigabyte snapshot of it -- has to go.
-        let seedVersion = "v3"
+        let seedVersion = "v5"
         let seededWith = try? String(contentsOf: seedStamp, encoding: .utf8)
         if fm.fileExists(atPath: userdataPath), seededWith != seedVersion {
             HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "

@@ -216,7 +216,7 @@ final class QemuRunner: ObservableObject {
         // launch after GL starts working boots cold once, then re-snapshots,
         // rather than failing to restore.
         GuestImage.shared.hasShippedSnapshot
-            ? "shipped-snapshot-v1"
+            ? "shipped-snapshot-v5"
             : "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
     }
 
