@@ -461,9 +461,14 @@ final class GuestBridge {
     ///                          which is what a firewall rule looks like
     ///   connect() itself failed  slirp is not forwarding at all
     ///
-    /// Port 5555 is probed alongside it, because adbd binds that one and starts
-    /// at boot_completed. If 5555 accepts and 5599 does not, the guest's network
-    /// is fine and the fault is husk_agent alone; if neither answers, it is not.
+    /// Deliberately does NOT probe 5555.
+    ///
+    /// adbd binds that port and it is forwarded, which makes it an inviting
+    /// control for "is the guest's network up at all". Husk does not use adb --
+    /// LineageOS keeps adbd in adbd_tradeinmode until setup completes and
+    /// refuses every shell in that domain, which is the whole reason husk_agent
+    /// exists. Even a connect-only probe would imply a dependency this project
+    /// removed on purpose, so the three cases below carry the diagnosis alone.
     func diagnose() -> String {
         func probe(_ port: UInt16, expectBytes: Bool) -> String {
             let fd = socket(AF_INET, SOCK_STREAM, 0)
@@ -503,8 +508,7 @@ final class GuestBridge {
             return "connected, then read failed (errno \(errno))"
         }
 
-        return "5599 (husk_agent): \(probe(Self.port, expectBytes: true)); "
-             + "5555 (adbd): \(probe(5555, expectBytes: false))"
+        return "5599 (husk_agent): \(probe(Self.port, expectBytes: true))"
     }
 
     /// Notice the moment the bridge dies, rather than at the next install.
