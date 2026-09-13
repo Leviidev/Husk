@@ -107,6 +107,86 @@ else:
     print("  system/meson.build: snapshot already wired")
 PY
 
+# virtio-gpu: let a virgl-enabled machine be snapshotted, opt-in.
+#
+# Patched in place rather than shipped as a .patch because a re-extracted QEMU
+# tree would silently lose it, and the symptom -- "Migration is disabled when
+# virgl is enabled" from save_snapshot -- points at migration rather than here.
+python3 - "$Q" <<'PY_VIRGL'
+import pathlib, sys
+q = pathlib.Path(sys.argv[1])
+
+p = q / "hw/display/virtio-gpu-base.c"
+s = p.read_text()
+old = """    if (virtio_gpu_virgl_enabled(g->conf)) {
+        error_setg(&g->migration_blocker, "virgl is not yet migratable");
+        if (migrate_add_blocker(&g->migration_blocker, errp) < 0) {
+            return false;
+        }
+    }"""
+new = """    /*
+     * Husk: the blocker is opt-out, via HUSK_VIRGL_SNAPSHOT.
+     *
+     * Upstream refuses to migrate a virgl-enabled GPU because virglrenderer
+     * holds the 3D state -- contexts, shaders, textures -- and none of it is
+     * serialisable. virtio_gpu_save() only ever walks g->reslist and writes out
+     * 2D resources, so a machine saved while the guest holds 3D resources comes
+     * back with the guest believing in resource ids the fresh virglrenderer has
+     * never heard of. That is not a theoretical hazard; it is exactly the
+     * "virgl_cmd_set_scanout: illegal resource specified" failure Husk hit.
+     *
+     * The blocker is therefore correct in general and unnecessary in the one
+     * case Husk cares about: a guest holding NO 3D resources. Husk snapshots
+     * with the Android framework stopped, which closes every DRM file and frees
+     * every 3D context with it, leaving only the kernel's own 2D framebuffer --
+     * precisely what virtio_gpu_save() already handles. Restoring then starts
+     * the framework again and it builds its context against a fresh renderer.
+     *
+     * Whoever sets this variable is promising that invariant holds. Nothing
+     * here can check it, so it stays opt-in rather than becoming the default.
+     */
+    if (virtio_gpu_virgl_enabled(g->conf) && !getenv("HUSK_VIRGL_SNAPSHOT")) {
+        error_setg(&g->migration_blocker, "virgl is not yet migratable");
+        if (migrate_add_blocker(&g->migration_blocker, errp) < 0) {
+            return false;
+        }
+    }"""
+if old in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  virtio-gpu-base.c: virgl migration blocker is now opt-out")
+elif "HUSK_VIRGL_SNAPSHOT" in s:
+    print("  virtio-gpu-base.c: already patched")
+else:
+    raise SystemExit("virtio-gpu-base.c: blocker shape changed")
+
+# A save must never abort the process. Husk's one hard rule is no crashes, and
+# assert() in a save path turns "this snapshot cannot be taken" into a dead app.
+p = q / "hw/display/virtio-gpu.c"
+s = p.read_text()
+old = """    /* in 2d mode we should never find unprocessed commands here */
+    assert(QTAILQ_EMPTY(&g->cmdq));"""
+new = """    /*
+     * Husk: refuse the save rather than abort the process.
+     *
+     * Upstream asserts because in 2d mode a pending command is impossible. With
+     * virgl enabled it is merely unlikely, and an assertion that fires here
+     * kills the app outright -- the one failure mode Husk will not ship. Failing
+     * the save leaves the previous snapshot intact and says so in the log.
+     */
+    if (!QTAILQ_EMPTY(&g->cmdq)) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "virtio-gpu: refusing to save with commands still queued\\n");
+        return -EBUSY;
+    }"""
+if old in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  virtio-gpu.c: save refuses instead of asserting")
+elif "refusing to save with commands still queued" in s:
+    print("  virtio-gpu.c: already patched")
+else:
+    raise SystemExit("virtio-gpu.c: save shape changed")
+PY_VIRGL
+
 python3 - "$Q" <<'PY2'
 import pathlib, sys
 q = pathlib.Path(sys.argv[1])

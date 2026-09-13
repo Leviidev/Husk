@@ -24,7 +24,24 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        Group {
+        ZStack {
+            // Mounted for the whole session once the guest is running, even
+            // when the library is covering it.
+            //
+            // It owns the CAMetalLayer, and the GL probe needs that layer to
+            // exist before QEMU builds its command line -- so a session started
+            // in library mode used to report "no layer to probe with" and fall
+            // back to the software display, which is the slow path this whole
+            // effort is trying to leave. Keeping it mounted and covering it is
+            // what lets the library run on a GPU-backed guest.
+            if started && runner.isRunning {
+                GuestScreenView(showLogs: $showLogs, onBack: {
+                    mode = .library
+                    showGuestScreen = false
+                    AndroidHost.shared.waitForReady()
+                })
+            }
+
             if let app = runningApp {
                 RunningAppView(app: app) {
                     HuskLog.log("ui", "returning to library from \(app.package)")
@@ -33,7 +50,12 @@ struct ContentView: View {
             } else if started && mode == .library && !showGuestScreen {
                 AdbLibraryView(onOpened: { showGuestScreen = true },
                                showLogs: $showLogs)
+                    // Opaque, because the guest is still drawing underneath.
+                    .background(Color.black.ignoresSafeArea())
             } else if started && runner.isRunning {
+                // Nothing: the guest screen above is already showing.
+                EmptyView()
+            } else if false {
                 // Android's own first-run wizard has to be completed by hand, and
                 // LineageOS will not finish booting until it is. Hiding the guest
                 // behind a spinner makes that look like a hang: it is drawing
@@ -46,7 +68,7 @@ struct ContentView: View {
                     showGuestScreen = false
                     AndroidHost.shared.waitForReady()
                 })
-            } else {
+            } else if !started {
                 SetupView(showLogs: $showLogs) { chosen in
                     mode = chosen
                     // Full screen shows the guest immediately; the library keeps
@@ -390,8 +412,8 @@ struct SettingsView: View {
     @Binding var showLogs: Bool
 
     @ObservedObject private var guest = GuestImage.shared
-    @State private var forceSoftware =
-        UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true
+    @State private var gpuMode =
+        UserDefaults.standard.bool(forKey: "husk.gpuMode")
     @State private var useSnapshot =
         UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
 
@@ -439,20 +461,25 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle(isOn: $forceSoftware) {
+                    Toggle(isOn: $gpuMode) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(forceSoftware ? "Software (CPU)" : "GPU (virtio-gpu-gl)")
-                            Text(forceSoftware
-                                 ? "Drawing is slower, but the machine can be snapshotted."
-                                 : "QEMU cannot snapshot a machine using the GPU, so every launch boots from cold.")
+                            Text(gpuMode ? "GPU (virtio-gpu-gl)" : "Software (CPU)")
+                            Text(gpuMode
+                                 ? "Android draws on the real GPU through Metal. The next "
+                                 + "launch boots from cold once, then saves a GPU machine "
+                                 + "and restores that from then on."
+                                 : "Every pixel is drawn by the emulated CPU. Reliable, and "
+                                 + "the reason a simple game runs at around twelve frames "
+                                 + "a second.")
                                 .font(.caption2)
-                                .foregroundColor(forceSoftware ? .secondary : .orange)
+                                .foregroundColor(gpuMode ? .orange : .secondary)
                         }
                     }
-                    .onChange(of: forceSoftware) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.forceSoftwareDisplay")
-                        HuskLog.log("ui", v ? "forcing the software display"
-                                            : "allowing the GPU display")
+                    .onChange(of: gpuMode) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.gpuMode")
+                        HuskLog.log("ui", v ? "GPU mode on; next launch cold-boots and "
+                                            + "saves a GL machine"
+                                            : "GPU mode off; back to the software display")
                     }
                 } header: {
                     Text("Display")
