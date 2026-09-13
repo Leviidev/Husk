@@ -349,7 +349,11 @@ final class QemuRunner: ObservableObject {
         // A shipped snapshot fixes the resolution: it was saved against one,
         // and a machine whose display differs is a different machine.
         if GuestImage.shared.hasShippedSnapshot {
-            return (GuestImage.snapshotXres, GuestImage.snapshotYres)
+            // From the manifest the snapshot was published with, not a constant
+            // compiled into this build -- an app older than a snapshot cannot
+            // know the machine it was saved on.
+            let pins = GuestImage.shared.snapshotPins
+            return (pins.xres, pins.yres)
         }
         let size = HuskGLView.pixelSize
         guard size.width > 0, size.height > 0 else { return (360, 640) }
@@ -364,7 +368,7 @@ final class QemuRunner: ObservableObject {
         // exactly this much RAM, and QEMU rejects a restore that differs by a
         // byte. No probing, no stepping down -- this number or nothing.
         if GuestImage.shared.hasShippedSnapshot {
-            let mib = GuestImage.snapshotGuestMiB
+            let mib = GuestImage.shared.snapshotPins.mib
             QemuRunner.shared.lastGuestMiB = mib
             HuskLog.log("qemu", "using the shipped snapshot: guest pinned to \(mib) MiB")
             return mib
@@ -830,7 +834,7 @@ final class QemuRunner: ObservableObject {
         // while a locally saved one records the guest size it was taken at.
         let snapshotFits: Bool
         if GuestImage.shared.hasShippedSnapshot {
-            snapshotFits = (QemuRunner.shared.lastGuestMiB == GuestImage.snapshotGuestMiB)
+            snapshotFits = (QemuRunner.shared.lastGuestMiB == GuestImage.shared.snapshotPins.mib)
         } else {
             snapshotFits = (try? String(contentsOfFile: snapshotSizePath, encoding: .utf8))
                 .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }

@@ -57,4 +57,54 @@ for part in "$ARCHIVE".*; do
         "https://uploads.github.com/repos/$REPO/releases/$RELEASE/assets?name=$name"
 done
 
-echo "==> published; set GuestImage.imageVersion to \"$VER\""
+# The manifest is what the app actually compares against, so it is written from
+# the same bytes that were just uploaded rather than by hand. Getting these out
+# of step is exactly the failure this mechanism exists to catch: an asset was
+# once published under a new name carrying the previous generation's bytes, and
+# nothing noticed until the guest misbehaved for unrelated-looking reasons.
+echo "==> building manifest"
+IMG="${IMG:-$WORK/vda.qcow2}"
+MANIFEST="$WORK/manifest.json"
+python3 - "$IMG" "$ARCHIVE" "$VER" "$MANIFEST" <<'MANIFEST_PY'
+import hashlib, json, os, sys
+img, archive, ver, out = sys.argv[1:5]
+
+def sha256(paths):
+    h, n = hashlib.sha256(), 0
+    for p in paths:
+        with open(p, 'rb') as f:
+            for chunk in iter(lambda: f.read(1 << 22), b''):
+                h.update(chunk); n += len(chunk)
+    return h.hexdigest(), n
+
+parts = sorted(p for p in (archive + '.00', archive + '.01') if os.path.exists(p))
+img_sha, img_size = sha256([img])
+snap_sha, snap_size = sha256(parts)
+json.dump({
+    "generation": ver,
+    "image": {"file": "vda-%s.qcow2" % ver, "sha256": img_sha, "size": img_size},
+    "snapshot": {
+        "parts": [os.path.basename(p) for p in parts],
+        "sha256": snap_sha, "size": snap_size,
+        "guestMiB": 4096, "xres": 360, "yres": 800,
+    },
+}, open(out, 'w'), indent=2)
+print("    image    %s...  %d" % (img_sha[:12], img_size))
+print("    snapshot %s...  %d" % (snap_sha[:12], snap_size))
+MANIFEST_PY
+
+# Replaced, not added: the name is fixed so the app can find it without knowing
+# a version, and the API refuses a second asset with the same name.
+OLD_ID=$(curl -fsS -H "Authorization: token $TOKEN" \
+    "https://api.github.com/repos/$REPO/releases/$RELEASE/assets" \
+    | python3 -c "import json,sys; print(next((a['id'] for a in json.load(sys.stdin) if a['name']=='manifest.json'), ''))")
+if [ -n "$OLD_ID" ]; then
+    curl -fsS -o /dev/null -X DELETE -H "Authorization: token $TOKEN" \
+        "https://api.github.com/repos/$REPO/releases/assets/$OLD_ID"
+fi
+curl -fsS -X POST -T "$MANIFEST" \
+    -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+    -w '    manifest http %{http_code}\n' -o /dev/null \
+    "https://uploads.github.com/repos/$REPO/releases/$RELEASE/assets?name=manifest.json"
+
+echo "==> published $VER"

@@ -53,6 +53,16 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showLogs) { LogView() }
+        // Asking rather than downloading. Two gigabytes over someone's cellular
+        // connection is not a decision to make on their behalf.
+        .alert(guest.update.title, isPresented: Binding(
+                get: { guest.update.isSomething },
+                set: { if !$0 { guest.dismissUpdate() } })) {
+            Button("Download") { guest.applyUpdate() }
+            Button("Not now", role: .cancel) { guest.dismissUpdate() }
+        } message: {
+            Text(guest.update.detail)
+        }
         .onAppear { evaluate() }
         // The two-parameter onChange is iOS 17; this single-parameter form is
         // deprecated there but still works, and is the only one that compiles
@@ -74,6 +84,11 @@ struct ContentView: View {
         try? guest.prepareFirmware()
         guest.refresh()
         HuskBridgeFS.shared.prepare()
+
+        // What is installed is compared against the release by digest, not by
+        // version name -- see GuestManifest. Deliberately not awaited: it is a
+        // network round trip, and nothing on this screen should wait for it.
+        Task { await guest.checkForUpdates() }
 
         // Deliberately does NOT start the guest.
         //

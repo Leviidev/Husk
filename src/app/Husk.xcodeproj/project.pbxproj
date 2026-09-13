@@ -17,6 +17,7 @@
 		5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E91A601F16886103BC482AB /* QemuRunner.swift */; };
 		B2B2B2B2B2B2B2B2B2B2B201 /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B2B2B2B2B2B2B2B2B2B202 /* HuskGLView.swift */; };
 		79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771B4FD56CABC214FEED6DFE /* GuestImage.swift */; };
+		A1B2C3D40001E5F600000001 /* GuestManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40002E5F600000002 /* GuestManifest.swift */; };
 		81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392BE39CE162757FDA225452 /* HuskKeyboard.swift */; };
 		CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */; };
 		E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */ = {isa = PBXBuildFile; fileRef = B74F9AA42414905593B347BA /* husk-jit.js */; };
@@ -54,6 +55,7 @@
 		690B2DA647B7B75C11DDDA9F /* HuskBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HuskBridge.h; sourceTree = "<group>"; };
 		6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		771B4FD56CABC214FEED6DFE /* GuestImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestImage.swift; sourceTree = "<group>"; };
+		A1B2C3D40002E5F600000002 /* GuestManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestManifest.swift; sourceTree = "<group>"; };
 		85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskApp.swift; sourceTree = "<group>"; };
 		A523DB1FEA5BC026771035C7 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		B74F9AA42414905593B347BA /* husk-jit.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "husk-jit.js"; sourceTree = "<group>"; };
@@ -79,6 +81,7 @@
 			children = (
 				6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */,
 				771B4FD56CABC214FEED6DFE /* GuestImage.swift */,
+				A1B2C3D40002E5F600000002 /* GuestManifest.swift */,
 				619394B1069242D8750E7F33 /* Husk.entitlements */,
 				85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */,
 				690B2DA647B7B75C11DDDA9F /* HuskBridge.h */,
@@ -228,6 +231,7 @@
 			files = (
 				4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */,
 				79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */,
+				A1B2C3D40001E5F600000001 /* GuestManifest.swift in Sources */,
 				581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */,
 				340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */,
 				81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */,
