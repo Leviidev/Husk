@@ -57,7 +57,11 @@ final class GuestImage: ObservableObject {
     /// on port 5599 whose child is a shell in `u:r:shell:s0`. That is what the
     /// library talks to, so an install carrying an older guest has no library at
     /// all and must re-fetch.
-    static let imageVersion = "v10"
+    /// v12 declares android.hardware.ethernet in /system/etc/permissions, so
+    /// EthernetService starts and claims eth0. Without a registered network,
+    /// netd's per-uid routing has no default to point at and the command bridge
+    /// goes silent about a minute after every boot.
+    static let imageVersion = "v12"
 
     /// Whether to fetch the pre-booted snapshot rather than boot from cold.
     static var wantsSnapshot: Bool {
