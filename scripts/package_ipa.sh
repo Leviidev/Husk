@@ -96,14 +96,22 @@ elif [ -n "$EXE" ]; then
     printf "  ok       %-28s %s\n" "executable present" "$EXE"
 fi
 
-# The QEMU dylib must be embedded, or the app dies at launch with a dyld error.
-if [ ! -f "$APP/Frameworks/libqemu-aarch64-softmmu.dylib" ]; then
-    echo "  MISSING  Frameworks/libqemu-aarch64-softmmu.dylib" >&2
-    rc=1
-else
-    printf "  ok       %-28s %s\n" "qemu dylib embedded" \
-        "$(du -h "$APP/Frameworks/libqemu-aarch64-softmmu.dylib" | cut -f1)"
-fi
+# Both dylibs must be embedded, or the app dies at launch with a dyld error.
+#
+# ANGLE is checked here because it was not, and an IPA shipped without it: the
+# app reached qemu_egl_init_dpy_cocoa and aborted with "Couldn't open
+# @rpath/libANGLE-shared.dylib". Everything else in this validation passed. A
+# check that covers one of two required libraries is a check that reports
+# success on a bundle that cannot launch.
+for lib in libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib; do
+    if [ ! -f "$APP/Frameworks/$lib" ]; then
+        echo "  MISSING  Frameworks/$lib" >&2
+        rc=1
+    else
+        printf "  ok       %-28s %s\n" "${lib%%-*} dylib embedded" \
+            "$(du -h "$APP/Frameworks/$lib" | cut -f1)"
+    fi
+done
 
 # Guest images, or QEMU fails with "could not load kernel".
 for f in vmlinuz-virt initramfs-virt husk-jit.js; do

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		090A2A3F43CE69EA3C079EB0 /* HuskLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6541CC4432CA2CE74901320 /* HuskLog.swift */; };
+		0B197878C829D66E77FD7E3F /* libANGLE-shared.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = A523DB1FEA5BC026771035C7 /* Shaders.metal */; };
 		29B4497EDC1E890D82BDF969 /* GuestManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0490485F9BA884A0554EAD /* GuestManifest.swift */; };
 		340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */; };
@@ -34,6 +35,7 @@
 			dstSubfolderSpec = 10;
 			files = (
 				EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */,
+				0B197878C829D66E77FD7E3F /* libANGLE-shared.dylib in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -45,6 +47,7 @@
 		1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = "<group>"; };
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
 		392BE39CE162757FDA225452 /* HuskKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskKeyboard.swift; sourceTree = "<group>"; };
+		3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libANGLE-shared.dylib"; path = "../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib"; sourceTree = "<group>"; };
 		4A0490485F9BA884A0554EAD /* GuestManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestManifest.swift; sourceTree = "<group>"; };
 		4B259C39CD9CC4D2A8A3D8E8 /* HuskMetalPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskMetalPresenter.swift; sourceTree = "<group>"; };
 		4D3B9FB2A68373C457706DA9 /* Husk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Husk.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -112,6 +115,7 @@
 		6C404F9516669F7DB5047FBE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */,
 				1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */,
 			);
 			name = Frameworks;
@@ -259,6 +263,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"../../build/ios-arm64/lib\"",
+					"\"../../build/ios-arm64/sysroot/lib\"",
 				);
 				INFOPLIST_FILE = Husk/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -286,6 +291,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"../../build/ios-arm64/lib\"",
+					"\"../../build/ios-arm64/sysroot/lib\"",
 				);
 				INFOPLIST_FILE = Husk/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -59,6 +59,18 @@ targets:
       - framework: ../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib
         embed: true
         codeSign: true
+      # ANGLE, which the QEMU dylib dlopens by @rpath at GL start-up. Embedded
+      # but NOT linked: nothing in the app references its symbols directly, and
+      # the only thing that would notice its absence is the dynamic loader.
+      #
+      # This was in the checked-in .pbxproj and missing here, which nobody could
+      # see while the project was never regenerated. The first regeneration
+      # dropped it, and the app died at qemu_egl_init_dpy_cocoa with
+      # "Couldn't open @rpath/libANGLE-shared.dylib".
+      - framework: ../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib
+        embed: true
+        codeSign: true
+        link: false
     preBuildScripts:
       - name: Stage guest image
         # The Phase 0 guest is far too large for git, so it is fetched rather than
