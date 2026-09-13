@@ -304,6 +304,59 @@ final class GuestImage: ObservableObject {
         task?.resume()
     }
 
+    /// Fetch the pre-booted machine on demand, reporting progress like any other
+    /// download.
+    ///
+    /// This exists because the automatic fetch only ran as the tail of a fresh
+    /// guest-image download. Anyone who already had the image -- which is most
+    /// people, and was the case that reported this -- turned the setting on and
+    /// watched nothing happen, because there was no download for it to follow.
+    /// True while the current download is the snapshot rather than the image.
+    @Published private(set) var isFetchingSnapshot = false
+
+    func downloadSnapshotNow() {
+        if case .downloading = state { return }
+        guard !hasShippedSnapshot else {
+            HuskLog.log("guest", "snapshot already installed")
+            return
+        }
+        isFetchingSnapshot = true
+        state = .downloading(progress: 0, received: 0, total: 0)
+        HuskLog.log("guest", "downloading pre-booted snapshot (about 2 GB)")
+        let delegate = DownloadDelegate(owner: self, isSnapshot: true)
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        task = session.downloadTask(with: Self.snapshotURL)
+        task?.resume()
+    }
+
+    /// Unpack a downloaded snapshot over userdata.
+    fileprivate func finishedSnapshot(tempURL: URL) {
+        state = .installing
+        HuskLog.log("guest", "unpacking snapshot (about 4 GB once expanded)")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let dest = URL(fileURLWithPath: self.userdataPath)
+            do {
+                try? FileManager.default.removeItem(at: dest)
+                try Self.gunzip(from: tempURL, to: dest)
+                try? FileManager.default.removeItem(at: tempURL)
+                try "\(Self.snapshotGuestMiB)".write(toFile: self.snapshotStampPath,
+                                                    atomically: true, encoding: .utf8)
+                let size = (try? FileManager.default
+                    .attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
+                HuskLog.log("guest", "snapshot ready (\(size ?? 0) bytes); "
+                                   + "Android will be restored, not booted")
+                DispatchQueue.main.async { self.isFetchingSnapshot = false; self.state = .ready }
+            } catch {
+                HuskLog.log("guest", "snapshot unpack failed: \(error)")
+                try? FileManager.default.removeItem(at: dest)
+                try? FileManager.default.removeItem(atPath: self.snapshotStampPath)
+                DispatchQueue.main.async {
+                    self.state = .failed("Could not unpack the snapshot: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     /// Fetch the pre-booted machine and unpack it over userdata.
     ///
     /// Runs after the system image is in place, because the snapshot is only
@@ -478,7 +531,13 @@ final class GuestImage: ObservableObject {
 
 private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     weak var owner: GuestImage?
-    init(owner: GuestImage) { self.owner = owner }
+    /// Which file this delegate is carrying. Both report progress the same way;
+    /// only what happens at the end differs.
+    let isSnapshot: Bool
+    init(owner: GuestImage, isSnapshot: Bool = false) {
+        self.owner = owner
+        self.isSnapshot = isSnapshot
+    }
 
     func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
@@ -501,7 +560,8 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         // The temp file is deleted when this returns, so move it somewhere stable
         // before handing it over.
         let stable = FileManager.default.temporaryDirectory
-            .appendingPathComponent("husk-guest-download.qcow2")
+            .appendingPathComponent(isSnapshot ? "husk-snapshot-download.gz"
+                                              : "husk-guest-download.qcow2")
         try? FileManager.default.removeItem(at: stable)
         do {
             try FileManager.default.moveItem(at: location, to: stable)
@@ -511,7 +571,10 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             }
             return
         }
-        Task { @MainActor in self.owner?.finished(tempURL: stable) }
+        Task { @MainActor in
+            if self.isSnapshot { self.owner?.finishedSnapshot(tempURL: stable) }
+            else               { self.owner?.finished(tempURL: stable) }
+        }
     }
 
     func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,

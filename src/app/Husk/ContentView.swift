@@ -235,7 +235,9 @@ struct SetupView: View {
             switch guest.state {
             case .downloading(let p, let received, let total):
                 VStack(spacing: 10) {
-                    Text("Downloading Android runtime").font(.headline)
+                    Text(guest.hasShippedSnapshot || GuestImage.shared.isFetchingSnapshot
+                         ? "Downloading pre-booted Android"
+                         : "Downloading Android runtime").font(.headline)
                     ProgressView(value: p).padding(.horizontal, 50)
                     Text("\(fmt(received)) of \(total > 0 ? fmt(total) : "…")")
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -298,6 +300,7 @@ struct SettingsView: View {
     @Binding var profile: QemuRunner.Profile
     @Binding var showLogs: Bool
 
+    @ObservedObject private var guest = GuestImage.shared
     @State private var forceSoftware =
         UserDefaults.standard.object(forKey: "husk.forceSoftwareDisplay") as? Bool ?? true
     @State private var useSnapshot =
@@ -321,10 +324,29 @@ struct SettingsView: View {
                         HuskLog.log("ui", v ? "will fetch the pre-booted snapshot"
                                             : "will boot Android from cold")
                     }
+                    if guest.hasShippedSnapshot {
+                        Label("Snapshot installed", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.footnote)
+                    } else if useSnapshot {
+                        Button {
+                            // Close settings first: the download reports its
+                            // progress on the main screen, where the guest
+                            // image download already does.
+                            presentation.wrappedValue.dismiss()
+                            GuestImage.shared.downloadSnapshotNow()
+                        } label: {
+                            Label("Download snapshot now (2 GB)",
+                                  systemImage: "arrow.down.circle")
+                        }
+                        .disabled(guest.state != .ready)
+                    }
                 } header: {
                     Text("First launch")
                 } footer: {
-                    Text("A snapshot is a machine that has already finished booting. Restoring one takes seconds; booting takes minutes.")
+                    Text(guest.hasShippedSnapshot
+                         ? "Android is already booted. Starting it restores that machine in seconds."
+                         : "A snapshot is a machine that has already finished booting. Restoring one takes seconds; booting takes minutes.")
                 }
 
                 Section {
