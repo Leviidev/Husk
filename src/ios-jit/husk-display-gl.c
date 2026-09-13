@@ -68,10 +68,13 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
      * renders the whole of Android upside down, which is a confusing way to
      * discover a one-line mistake.
      */
+    fprintf(stderr, "[husk-gl] scanout_texture: id=%u %ux%u y0top=%d\n",
+            backing_id, backing_width, backing_height, backing_y_0_top ? 1 : 0);
     husk_flip = !backing_y_0_top;
     egl_fb_setup_for_tex(&husk_guest_fb, backing_width, backing_height,
                          backing_id, false);
     husk_have_scanout = true;
+    fprintf(stderr, "[husk-gl] scanout_texture: fb ready\n");
 }
 
 static void husk_gl_update(DisplayChangeListener *dcl,
@@ -329,6 +332,12 @@ bool husk_display_gl_bind(void)
             "glGetUniformLocation", "glUniform1i", "glActiveTexture",
             "glBindTexture", "glDrawArrays", "glViewport", "glClear",
             "glClearColor",
+            /* egl_fb_setup_for_tex() and egl_texture_blit() reach for these,
+             * and the first list forgot all of them. */
+            "glGenFramebuffers", "glBindFramebuffer", "glFramebufferTexture2D",
+            "glDeleteFramebuffers", "glDeleteTextures", "glGenTextures",
+            "glTexParameteri", "glTexImage2D", "glBlitFramebuffer",
+            "glCheckFramebufferStatus", "glDisable", "glGetError",
         };
         bool missing = false;
         for (size_t i = 0; i < ARRAY_SIZE(needed); i++) {
