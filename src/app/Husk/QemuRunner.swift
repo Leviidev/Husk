@@ -216,7 +216,7 @@ final class QemuRunner: ObservableObject {
         // launch after GL starts working boots cold once, then re-snapshots,
         // rather than failing to restore.
         GuestImage.shared.hasShippedSnapshot
-            ? "shipped-snapshot-v6"
+            ? "shipped-snapshot-v10"
             : "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
     }
 
@@ -569,11 +569,20 @@ final class QemuRunner: ObservableObject {
             "-drive", "file=\(guest.userdataPath),if=none,id=vdb,node-name=huskvmstate,"
                     + "format=qcow2,discard=unmap",
 
-            // ADB is the control plane now: pm install and am start replace the
-            // 9p share and the guest agent. The forward is bound to loopback --
-            // only this app should be able to reach the guest's adbd.
+            // Two forwards, both on loopback so nothing outside this app can
+            // reach the guest.
+            //
+            //   5555  adbd, when it is willing to talk. It usually is not: an
+            //         unprovisioned LineageOS runs adbd in trade-in mode, where
+            //         every shell is refused, and provisioning it from outside
+            //         is the problem this bridge exists to solve.
+            //   5599  Husk's own bridge -- a plain nc listener started by init
+            //         as u:r:shell:s0, which hands whatever is written to it to
+            //         /system/bin/sh. That is the same authority adb shell has,
+            //         obtained without adbd's cooperation.
             "-device", "virtio-net-pci,netdev=net0",
-            "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:5555-:5555",
+            "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:5555-:5555,"
+                     + "hostfwd=tcp:127.0.0.1:5599-:5599",
             "-L", "\(Bundle.main.bundlePath)/pc-bios",
 
             // 360x640 rather than 1280x800: a quarter of the pixels.

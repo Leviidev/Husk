@@ -52,7 +52,12 @@ final class GuestImage: ObservableObject {
     /// v5 adds an init script that marks the device provisioned. Without it
     /// Android shows no launcher and adbd refuses every shell, because an
     /// unprovisioned device runs ADB in trade-in mode.
-    static let imageVersion = "v6"
+    ///
+    /// v10 adds the command bridge -- an init service running a netcat listener
+    /// on port 5599 whose child is a shell in `u:r:shell:s0`. That is what the
+    /// library talks to, so an install carrying an older guest has no library at
+    /// all and must re-fetch.
+    static let imageVersion = "v10"
 
     /// Whether to fetch the pre-booted snapshot rather than boot from cold.
     static var wantsSnapshot: Bool {
@@ -65,9 +70,21 @@ final class GuestImage: ObservableObject {
     /// Android's own watchdog killing system_server partway through. The same
     /// boot was done once on a Mac and saved; restoring it took 8.8 seconds.
     /// Two gigabytes of download buys that.
-    static var snapshotURL: URL {
-        URL(string: "https://github.com/Leviidev/Husk/releases/download/"
-                  + "\(dependenciesTag)/vdb-snapshot-\(imageVersion).qcow2.gz")!
+    /// The snapshot arrives in pieces.
+    ///
+    /// GitHub refuses a release asset of 2 GiB or more -- "size must be less
+    /// than 2147483648" -- and the pre-booted machine is 3 GiB of guest RAM
+    /// that still compresses to just over the limit at maximum effort. So it is
+    /// published split. The split is on plain byte offsets and not a container
+    /// of any kind, so concatenating the pieces in order reproduces the gzip
+    /// stream byte for byte and nothing downstream needs to know it happened.
+    static let snapshotPartCount = 2
+    static var snapshotPartURLs: [URL] {
+        (0..<snapshotPartCount).map { i in
+            URL(string: "https://github.com/Leviidev/Husk/releases/download/"
+                      + "\(dependenciesTag)/vdb-snapshot-\(imageVersion).qcow2.gz."
+                      + String(format: "%02d", i))!
+        }
     }
 
     /// RAM and resolution the shipped snapshot was taken with.
@@ -295,7 +312,7 @@ final class GuestImage: ObservableObject {
         let seedStamp = URL(fileURLWithPath: userdataPath + ".seed")
         // v3: the guest image changed, so userdata built against the old /system --
         // including a multi-gigabyte snapshot of it -- has to go.
-        let seedVersion = "v6"
+        let seedVersion = "v10"
         let seededWith = try? String(contentsOf: seedStamp, encoding: .utf8)
         if fm.fileExists(atPath: userdataPath), seededWith != seedVersion {
             HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "
@@ -343,11 +360,28 @@ final class GuestImage: ObservableObject {
         isFetchingSnapshot = true
         state = .downloading(progress: 0, received: 0, total: 0)
         HuskLog.log("guest", "downloading pre-booted snapshot (about 2 GB)")
-        let delegate = DownloadDelegate(owner: self, isSnapshot: true)
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-        task = session.downloadTask(with: Self.snapshotURL)
-        task?.resume()
+        fetcher = SnapshotFetcher(
+            urls: Self.snapshotPartURLs,
+            progress: { [weak self] got, total in
+                Task { @MainActor in self?.progressed(received: got, total: total) }
+            },
+            completion: { [weak self] result in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.fetcher = nil
+                    switch result {
+                    case .success(let joined): self.finishedSnapshot(tempURL: joined)
+                    case .failure(let why):
+                        self.isFetchingSnapshot = false
+                        self.failed(why.localizedDescription)
+                    }
+                }
+            })
+        fetcher?.start()
     }
+
+    /// Held so the fetcher -- and the URLSession it owns -- outlives this call.
+    private var fetcher: SnapshotFetcher?
 
     /// Unpack a downloaded snapshot over userdata.
     fileprivate func finishedSnapshot(tempURL: URL) {
@@ -382,31 +416,39 @@ final class GuestImage: ObservableObject {
     /// Runs after the system image is in place, because the snapshot is only
     /// meaningful alongside the image it was booted from.
     func downloadSnapshot(completion: @escaping (Bool) -> Void) {
-        HuskLog.log("guest", "downloading pre-booted snapshot (about 2 GB) from "
-                           + Self.snapshotURL.absoluteString)
-        let t = URLSession.shared.downloadTask(with: Self.snapshotURL) { tmp, resp, err in
-            guard let tmp, err == nil,
-                  (resp as? HTTPURLResponse)?.statusCode == 200 else {
-                HuskLog.log("guest", "snapshot download failed: "
-                                   + (err?.localizedDescription ?? "no file"))
-                completion(false); return
-            }
-            let dest = URL(fileURLWithPath: self.userdataPath)
-            do {
-                try? FileManager.default.removeItem(at: dest)
-                try Self.gunzip(from: tmp, to: dest)
-                try? FileManager.default.removeItem(at: tmp)
-                let size = (try? FileManager.default
-                    .attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
-                HuskLog.log("guest", "snapshot unpacked (\(size ?? 0) bytes)")
-                completion(true)
-            } catch {
-                HuskLog.log("guest", "snapshot unpack failed: \(error)")
-                try? FileManager.default.removeItem(at: dest)
-                completion(false)
-            }
-        }
-        t.resume()
+        HuskLog.log("guest", "downloading pre-booted snapshot (about 2 GB, "
+                           + "\(Self.snapshotPartCount) parts)")
+        fetcher = SnapshotFetcher(
+            urls: Self.snapshotPartURLs,
+            progress: { [weak self] got, total in
+                Task { @MainActor in self?.progressed(received: got, total: total) }
+            },
+            completion: { [weak self] result in
+                guard let self else { completion(false); return }
+                Task { @MainActor in self.fetcher = nil }
+                guard case .success(let joined) = result else {
+                    if case .failure(let why) = result {
+                        HuskLog.log("guest", "snapshot download failed: "
+                                           + why.localizedDescription)
+                    }
+                    completion(false); return
+                }
+                let dest = URL(fileURLWithPath: self.userdataPath)
+                do {
+                    try? FileManager.default.removeItem(at: dest)
+                    try Self.gunzip(from: joined, to: dest)
+                    try? FileManager.default.removeItem(at: joined)
+                    let size = (try? FileManager.default
+                        .attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
+                    HuskLog.log("guest", "snapshot unpacked (\(size ?? 0) bytes)")
+                    completion(true)
+                } catch {
+                    HuskLog.log("guest", "snapshot unpack failed: \(error)")
+                    try? FileManager.default.removeItem(at: dest)
+                    completion(false)
+                }
+            })
+        fetcher?.start()
     }
 
     /// Streaming gunzip.
@@ -551,13 +593,7 @@ final class GuestImage: ObservableObject {
 
 private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     weak var owner: GuestImage?
-    /// Which file this delegate is carrying. Both report progress the same way;
-    /// only what happens at the end differs.
-    let isSnapshot: Bool
-    init(owner: GuestImage, isSnapshot: Bool = false) {
-        self.owner = owner
-        self.isSnapshot = isSnapshot
-    }
+    init(owner: GuestImage) { self.owner = owner }
 
     func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
@@ -580,8 +616,7 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         // The temp file is deleted when this returns, so move it somewhere stable
         // before handing it over.
         let stable = FileManager.default.temporaryDirectory
-            .appendingPathComponent(isSnapshot ? "husk-snapshot-download.gz"
-                                              : "husk-guest-download.qcow2")
+            .appendingPathComponent("husk-guest-download.qcow2")
         try? FileManager.default.removeItem(at: stable)
         do {
             try FileManager.default.moveItem(at: location, to: stable)
@@ -591,10 +626,7 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             }
             return
         }
-        Task { @MainActor in
-            if self.isSnapshot { self.owner?.finishedSnapshot(tempURL: stable) }
-            else               { self.owner?.finished(tempURL: stable) }
-        }
+        Task { @MainActor in self.owner?.finished(tempURL: stable) }
     }
 
     func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
@@ -609,6 +641,111 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     func urlSession(_ s: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if let error {
             Task { @MainActor in self.owner?.failed(error.localizedDescription) }
+        }
+    }
+}
+
+/// Downloads the snapshot's parts in order and joins them into one file.
+///
+/// One part at a time, deliberately. Two gigabytes arriving in parallel would
+/// need both in flight at once, and this runs on a phone that is about to be
+/// asked for another four gigabytes to unpack into.
+private final class SnapshotFetcher: NSObject, URLSessionDownloadDelegate {
+    private let urls: [URL]
+    private let onProgress: (Int64, Int64) -> Void
+    private let onDone: (Result<URL, Error>) -> Void
+
+    /// Where the joined archive is built up.
+    private let staged = FileManager.default.temporaryDirectory
+        .appendingPathComponent("husk-snapshot-download.gz")
+
+    private var index = 0
+    /// Bytes belonging to parts already appended, so progress does not restart
+    /// at zero every time a part finishes.
+    private var bytesDone: Int64 = 0
+    private var session: URLSession!
+
+    init(urls: [URL],
+         progress: @escaping (Int64, Int64) -> Void,
+         completion: @escaping (Result<URL, Error>) -> Void) {
+        self.urls = urls
+        self.onProgress = progress
+        self.onDone = completion
+        super.init()
+        session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    }
+
+    func start() {
+        try? FileManager.default.removeItem(at: staged)
+        FileManager.default.createFile(atPath: staged.path, contents: nil)
+        next()
+    }
+
+    private func next() {
+        guard index < urls.count else {
+            let size = (try? FileManager.default
+                .attributesOfItem(atPath: staged.path)[.size] as? Int) ?? 0
+            HuskLog.log("guest", "snapshot download complete (\(size ?? 0) bytes)")
+            onDone(.success(staged))
+            session.finishTasksAndInvalidate()
+            return
+        }
+        HuskLog.log("guest", "fetching snapshot part \(index + 1) of \(urls.count)")
+        session.downloadTask(with: urls[index]).resume()
+    }
+
+    private func fail(_ message: String) {
+        try? FileManager.default.removeItem(at: staged)
+        session.invalidateAndCancel()
+        onDone(.failure(NSError(domain: "husk", code: 10,
+                                userInfo: [NSLocalizedDescriptionKey: message])))
+    }
+
+    func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {
+        // A completed exchange is not a successful one: a 404 body lands on disk
+        // looking exactly like the file that was asked for.
+        if let http = downloadTask.response as? HTTPURLResponse,
+           !(200...299).contains(http.statusCode) {
+            fail("HTTP \(http.statusCode) fetching "
+               + (downloadTask.originalRequest?.url?.lastPathComponent ?? "a snapshot part"))
+            return
+        }
+        do {
+            let input = try FileHandle(forReadingFrom: location)
+            defer { try? input.close() }
+            let output = try FileHandle(forWritingTo: staged)
+            defer { try? output.close() }
+            try output.seekToEnd()
+            while let chunk = try input.read(upToCount: 4 << 20), !chunk.isEmpty {
+                output.write(chunk)
+                bytesDone += Int64(chunk.count)
+            }
+        } catch {
+            fail("could not join snapshot part \(index + 1): \(error.localizedDescription)")
+            return
+        }
+        try? FileManager.default.removeItem(at: location)
+        index += 1
+        next()
+    }
+
+    func urlSession(_ s: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        // The parts are near enough the same size that one of them stands in for
+        // the rest; the alternative is a HEAD request per part before starting,
+        // which buys a smoother bar and nothing else.
+        let remaining = Int64(urls.count - index - 1)
+        let estimate = totalBytesExpectedToWrite > 0
+            ? bytesDone + totalBytesExpectedToWrite * (remaining + 1)
+            : 0
+        onProgress(bytesDone + totalBytesWritten, estimate)
+    }
+
+    func urlSession(_ s: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error, (error as NSError).code != NSURLErrorCancelled {
+            fail(error.localizedDescription)
         }
     }
 }

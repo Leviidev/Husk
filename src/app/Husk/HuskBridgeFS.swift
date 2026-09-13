@@ -178,239 +178,207 @@ final class HuskBridgeFS: ObservableObject {
     }
 }
 
-// MARK: - ADB
+// MARK: - Guest bridge
 
-/// A minimal ADB client, speaking the protocol directly over the forwarded port.
+/// A shell inside the guest, reached without adbd's cooperation.
 ///
-/// The QEMU command line maps 127.0.0.1:5555 into the guest, and the guest image
-/// now sets `service.adb.tcp.port=5555` with `ro.adb.secure=0`, so adbd listens
-/// there and asks for no key. That is the whole reason for the custom guest
-/// image: this channel is how APKs get in and how apps get launched.
+/// ADB was the obvious control plane and it does not work here. LineageOS runs
+/// adbd in the `adbd_tradeinmode` SELinux domain until the device has been
+/// through setup, and in that domain every shell request is refused -- so the
+/// channel needed to provision the device is the one provisioning would unlock.
+/// Marking the device provisioned from init did not help either: adbd decides
+/// once, at start, and by then the property is not yet set.
 ///
-/// Only the parts Husk needs are implemented -- connect, run a shell command,
-/// push a file. Not a general ADB implementation.
-final class Adb {
-    static let shared = Adb()
+/// So Husk stopped asking adbd. The guest image carries an init service that,
+/// on `sys.boot_completed`, runs a plain netcat listener on port 5599 whose
+/// child is `/system/bin/sh`, declared `seclabel u:r:shell:s0` -- the same
+/// domain and the same authority `adb shell` would have given us:
+///
+///     uid=2000(shell) ... context=u:r:shell:s0
+///
+/// QEMU's user networking forwards 127.0.0.1:5599 into it. What arrives here is
+/// a shell, so there is no protocol to implement: write a command, read what it
+/// prints. Every call opens its own connection, because the listener spawns a
+/// fresh shell per connection and one command can therefore never inherit
+/// another's environment, working directory or half-read stdin.
+enum BridgeError: LocalizedError {
+    case io(String)
+    case timeout(String)
 
-    private let queue = DispatchQueue(label: "husk.adb")
-    private var fd: Int32 = -1
-    private var nextLocalId: UInt32 = 1
+    var errorDescription: String? {
+        switch self {
+        case .io(let m):      return m
+        case .timeout(let m): return "timed out \(m)"
+        }
+    }
+}
 
-    private enum Cmd: UInt32 {
-        case cnxn = 0x4e584e43, open = 0x4e45504f, okay = 0x59414b4f
-        case clse = 0x45534c43, wrte = 0x45545257, auth = 0x48545541
+final class GuestBridge {
+    static let shared = GuestBridge()
+
+    /// Matches the hostfwd in QemuRunner's -netdev.
+    private static let port: UInt16 = 5599
+
+    /// Printed after a command so we know where its output ends.
+    ///
+    /// The shell never closes the connection between commands by itself -- it
+    /// waits for more input -- so "read until EOF" would hang forever. The
+    /// marker carries the exit status with it, which is the only other thing
+    /// worth knowing.
+    private static let marker = "__HUSK_EOF__"
+
+    /// True once any command has succeeded. Used by the UI to decide whether the
+    /// library is usable, and cleared whenever a connection fails.
+    private(set) var isConnected = false
+
+    // MARK: sockets
+
+    private func openSocket(timeout: TimeInterval = 10) throws -> Int32 {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw BridgeError.io("socket() failed (errno \(errno))") }
+
+        var on: Int32 = 1
+        setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, socklen_t(MemoryLayout<Int32>.size))
+        var tv = timeval(tv_sec: Int(timeout), tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+
+        var addr = sockaddr_in()
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = Self.port.bigEndian
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+
+        let rc = withUnsafePointer(to: &addr) { raw in
+            raw.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        if rc != 0 {
+            let e = errno
+            close(fd)
+            isConnected = false
+            throw BridgeError.io("connect failed (errno \(e))")
+        }
+        return fd
     }
 
-    var isConnected: Bool { fd >= 0 }
-
-    // MARK: framing
-
-    private func send(_ cmd: Cmd, _ arg0: UInt32, _ arg1: UInt32, _ payload: Data = Data()) throws {
-        var header = Data()
-        func put(_ v: UInt32) { withUnsafeBytes(of: v.littleEndian) { header.append(contentsOf: $0) } }
-        put(cmd.rawValue); put(arg0); put(arg1); put(UInt32(payload.count))
-        // The checksum is a plain byte sum, not a CRC, despite the field name.
-        put(payload.reduce(UInt32(0)) { $0 &+ UInt32($1) })
-        put(cmd.rawValue ^ 0xffff_ffff)
-        try writeAll(header)
-        if !payload.isEmpty { try writeAll(payload) }
-    }
-
-    private func writeAll(_ data: Data) throws {
+    private func writeAll(_ fd: Int32, _ data: Data) throws {
         try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             var off = 0
             while off < raw.count {
                 let n = write(fd, raw.baseAddress!.advanced(by: off), raw.count - off)
-                if n <= 0 { throw AdbError.io("write failed (errno \(errno))") }
+                if n <= 0 {
+                    if n < 0 && errno == EINTR { continue }
+                    throw BridgeError.io("write failed (errno \(errno))")
+                }
                 off += n
             }
         }
     }
 
-    private func readAll(_ count: Int) throws -> Data {
-        var out = Data(); out.reserveCapacity(count)
-        var buf = [UInt8](repeating: 0, count: 64 * 1024)
-        while out.count < count {
-            let want = min(count - out.count, buf.count)
-            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, want) }
-            if n <= 0 { throw AdbError.io("read failed (errno \(errno))") }
-            out.append(contentsOf: buf[0..<n])
-        }
-        return out
-    }
+    // MARK: commands
 
-    private func recv() throws -> (cmd: UInt32, arg0: UInt32, arg1: UInt32, data: Data) {
-        let h = try readAll(24)
-        func u32(_ i: Int) -> UInt32 {
-            h.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: i * 4, as: UInt32.self).littleEndian }
-        }
-        let len = Int(u32(3))
-        let body = len > 0 ? try readAll(len) : Data()
-        return (u32(0), u32(1), u32(2), body)
-    }
-
-    enum AdbError: Error, LocalizedError {
-        case io(String), refused(String)
-        var errorDescription: String? {
-            switch self { case .io(let m), .refused(let m): return m }
-        }
-    }
-
-    // MARK: connection
-
-    func connect(timeoutSeconds: Int = 3) throws {
-        disconnect()
-        let s = socket(AF_INET, SOCK_STREAM, 0)
-        guard s >= 0 else { throw AdbError.io("socket() failed") }
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = UInt16(5555).bigEndian
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1")
-        var tv = timeval(tv_sec: timeoutSeconds, tv_usec: 0)
-        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
-        setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
-        let ok = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                Darwin.connect(s, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        guard ok == 0 else { close(s); throw AdbError.refused("nothing listening on 5555") }
-        fd = s
-
-        // Handshake. The device answers CNXN when adbd is not demanding a key,
-        // which is what ro.adb.secure=0 in the guest image buys us.
-        let banner = "host::features=cmd,shell_v2\0".data(using: .utf8)!
-        try send(.cnxn, 0x0100_0000, 256 * 1024, banner)
-        let r = try recv()
-        if r.cmd == Cmd.auth.rawValue {
-            disconnect()
-            throw AdbError.refused("adbd wants key authentication")
-        }
-        guard r.cmd == Cmd.cnxn.rawValue else {
-            disconnect()
-            throw AdbError.refused("unexpected reply 0x\(String(r.cmd, radix: 16))")
-        }
-        HuskLog.log("adb", "connected: \(String(decoding: r.data, as: UTF8.self).prefix(120))")
-    }
-
-    func disconnect() {
-        if fd >= 0 { close(fd); fd = -1 }
-    }
-
-    // MARK: services
-
-    /// Run a shell command and return everything it printed.
-    /// Log every frame of one shell exchange.
+    /// Run one command and return everything it wrote.
     ///
-    /// Set for the first command of a session. An empty result is ambiguous --
-    /// adbd refusing the service and closing the stream looks identical to this
-    /// code losing the output -- and the frames tell the two apart.
-    var traceNextShell = false
+    /// stderr is folded into stdout: the listener wires only stdin and stdout to
+    /// the socket, so anything on stderr would otherwise vanish into the guest's
+    /// kernel log -- including the error messages that explain a failure.
+    @discardableResult
+    func shell(_ command: String, timeout: TimeInterval = 30) throws -> String {
+        let fd = try openSocket(timeout: timeout)
+        defer { close(fd) }
 
-    func shell(_ command: String) throws -> String {
-        let local = nextLocalId; nextLocalId &+= 1
-        let trace = traceNextShell
-        traceNextShell = false
-        if trace { HuskLog.log("adb", "OPEN shell:\(command) (local=\(local))") }
-        try send(.open, local, 0, ("shell:" + command + "\0").data(using: .utf8)!)
-        var remote: UInt32 = 0
-        var out = Data()
+        try writeAll(fd, Data("\(command) 2>&1; echo \(Self.marker)$?\n".utf8))
+
+        var out = ""
+        var buf = [UInt8](repeating: 0, count: 16 * 1024)
+        let deadline = Date().addingTimeInterval(timeout)
         while true {
-            let r = try recv()
-            if trace {
-                let names = ["4e584e43": "CNXN", "4e45504f": "OPEN", "59414b4f": "OKAY",
-                             "45534c43": "CLSE", "45545257": "WRTE", "48545541": "AUTH"]
-                let name = names[String(r.cmd, radix: 16)] ?? "0x\(String(r.cmd, radix: 16))"
-                HuskLog.log("adb", "  <- \(name) arg0=\(r.arg0) arg1=\(r.arg1) "
-                                 + "len=\(r.data.count) \(String(decoding: r.data.prefix(80), as: UTF8.self).debugDescription)")
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n < 0 && errno == EINTR { continue }
+            if n <= 0 {
+                isConnected = false
+                throw BridgeError.io("guest closed the connection (errno \(errno))")
             }
-            switch r.cmd {
-            case Cmd.okay.rawValue:
-                remote = r.arg0
-            case Cmd.wrte.rawValue:
-                out.append(r.data)
-                try send(.okay, local, remote)
-            case Cmd.clse.rawValue:
-                try? send(.clse, local, remote)
-                return String(decoding: out, as: UTF8.self)
-            default:
-                throw AdbError.io("unexpected 0x\(String(r.cmd, radix: 16)) during shell")
+            out += String(decoding: buf[0..<n], as: UTF8.self)
+            if let r = out.range(of: Self.marker) {
+                let status = Int(out[r.upperBound...]
+                    .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+                isConnected = true
+                let body = String(out[out.startIndex..<r.lowerBound])
+                if status != 0 {
+                    HuskLog.log("bridge", "`\(command.prefix(60))` exit \(status)")
+                }
+                return body
+            }
+            if Date() > deadline {
+                throw BridgeError.timeout("waiting for `\(command.prefix(60))`")
             }
         }
     }
 
-    /// Push a local file into the guest via the sync service.
-    func push(_ local: URL, to remotePath: String, mode: Int = 0o644,
-              progress: ((Double) -> Void)? = nil) throws {
-        let total = (try? FileManager.default
-            .attributesOfItem(atPath: local.path)[.size] as? Int) ?? 0
+    /// Copy a local file into the guest.
+    ///
+    /// The data goes down its own connection rather than being quoted into a
+    /// command, because APKs are binary and megabytes long. The shell is told to
+    /// `exec` the receiving program, so once it acknowledges, nothing but the
+    /// file's own bytes are on the wire and no shell parsing is involved.
+    ///
+    /// The acknowledgement matters. A shell reading commands from a socket may
+    /// buffer ahead, and anything it swallows that way never reaches the
+    /// program that replaces it -- so the file is sent only after the guest has
+    /// answered, when there is provably nothing left for the shell to read.
+    func push(_ local: URL, to remote: String,
+              progress: @escaping (Double) -> Void) throws {
+        let size = (try FileManager.default.attributesOfItem(atPath: local.path)[.size]
+                    as? NSNumber)?.intValue ?? 0
+        guard size > 0 else { throw BridgeError.io("\(local.lastPathComponent) is empty") }
+
         let handle = try FileHandle(forReadingFrom: local)
         defer { try? handle.close() }
 
-        let localId = nextLocalId; nextLocalId &+= 1
-        try send(.open, localId, 0, "sync:\0".data(using: .utf8)!)
-        var remoteId: UInt32 = 0
-        while remoteId == 0 {
-            let r = try recv()
-            if r.cmd == Cmd.okay.rawValue { remoteId = r.arg0 }
-            else if r.cmd == Cmd.clse.rawValue { throw AdbError.io("sync refused") }
-        }
+        // Generous: a hundred-megabyte APK over an emulated NIC is not quick.
+        let fd = try openSocket(timeout: 120)
+        defer { close(fd) }
 
-        func syncPacket(_ id: String, _ payload: Data) -> Data {
-            var d = id.data(using: .ascii)!
-            withUnsafeBytes(of: UInt32(payload.count).littleEndian) { d.append(contentsOf: $0) }
-            d.append(payload)
-            return d
-        }
-        func sendSync(_ d: Data) throws {
-            try send(.wrte, localId, remoteId, d)
-            while true {                                  // wait for flow control
-                let r = try recv()
-                if r.cmd == Cmd.okay.rawValue { return }
-                if r.cmd == Cmd.wrte.rawValue { try send(.okay, localId, remoteId) }
-                if r.cmd == Cmd.clse.rawValue { throw AdbError.io("sync closed early") }
-            }
-        }
+        let ready = "__HUSK_RDY__"
+        try writeAll(fd, Data("echo \(ready); exec head -c \(size) > \(remote)\n".utf8))
 
-        let target = "\(remotePath),\(mode)"
-        try sendSync(syncPacket("SEND", target.data(using: .utf8)!))
+        var seen = ""
+        var buf = [UInt8](repeating: 0, count: 1024)
+        while !seen.contains(ready) {
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n < 0 && errno == EINTR { continue }
+            if n <= 0 { throw BridgeError.io("guest did not accept the file") }
+            seen += String(decoding: buf[0..<n], as: UTF8.self)
+        }
 
         var sent = 0
-        while true {
-            let chunk = try handle.read(upToCount: 64 * 1024) ?? Data()
-            if chunk.isEmpty { break }
-            try sendSync(syncPacket("DATA", chunk))
+        while sent < size {
+            guard let chunk = try handle.read(upToCount: 256 * 1024), !chunk.isEmpty else { break }
+            try writeAll(fd, chunk)
             sent += chunk.count
-            if total > 0 { progress?(Double(sent) / Double(total)) }
+            progress(Double(sent) / Double(size))
         }
-        var done = "DONE".data(using: .ascii)!
-        withUnsafeBytes(of: UInt32(Date().timeIntervalSince1970).littleEndian) {
-            done.append(contentsOf: $0)
-        }
-        try sendSync(done)
-
-        // The reply is OKAY or FAIL; either arrives as WRTE payload.
-        var reply = Data()
-        while reply.count < 8 {
-            let r = try recv()
-            if r.cmd == Cmd.wrte.rawValue {
-                reply.append(r.data); try send(.okay, localId, remoteId)
-            } else if r.cmd == Cmd.clse.rawValue { break }
-        }
-        try? send(.clse, localId, remoteId)
-        let tag = String(decoding: reply.prefix(4), as: UTF8.self)
-        if tag == "FAIL" { throw AdbError.io("push rejected: \(String(decoding: reply.dropFirst(8), as: UTF8.self))") }
-        HuskLog.log("adb", "pushed \(sent) bytes to \(remotePath)")
+        // head exits on its own after `size` bytes; the shutdown is what frees it
+        // if the file was shorter than its own metadata claimed.
+        shutdown(fd, SHUT_WR)
+        HuskLog.log("bridge", "pushed \(sent) bytes to \(remote)")
+        if sent != size { throw BridgeError.io("sent \(sent) of \(size) bytes") }
     }
+
+    func disconnect() { isConnected = false }
 }
 
 // MARK: - Android host
 
 /// The running guest, seen as something apps can be installed into and started.
 ///
-/// Everything here goes over ADB, which only works once the guest has finished
-/// coming up -- so readiness is polled rather than assumed, and the UI shows
-/// that waiting honestly instead of pretending the library is usable.
+/// Readiness is polled rather than assumed: the bridge only exists once init
+/// has seen `sys.boot_completed`, and on a restored snapshot that is immediate
+/// while on a cold boot it is minutes away. The UI shows that waiting honestly
+/// instead of pretending the library is usable.
 @MainActor
 final class AndroidHost: ObservableObject {
     static let shared = AndroidHost()
@@ -428,7 +396,7 @@ final class AndroidHost: ObservableObject {
 
     private var polling = false
 
-    /// Poll until adbd answers and Android reports it has finished booting.
+    /// Poll until the guest's shell answers and Android reports it has booted.
     func waitForReady() {
         guard !polling, !isReady else { return }
         polling = true
@@ -438,28 +406,17 @@ final class AndroidHost: ObservableObject {
             while true {
                 attempt += 1
                 do {
-                    try Adb.shared.connect()
-                    // Report what the shell can actually do, once.
-                    //
-                    // The connection succeeds and then readiness never arrives,
-                    // which means a command is failing rather than the transport.
-                    // The guest log shows adbd running as u:r:adbd_tradeinmode:s0
-                    // -- Android's restricted trade-in ADB domain -- so the
-                    // question is whether shell works at all, not whether the
-                    // property is set. Ask it three things and print the answers
-                    // verbatim.
+                    // One round trip proves the whole path: the forward, the
+                    // listener, and that the shell it spawned can execute
+                    // something. Logged the first time and then occasionally,
+                    // because when this never succeeds the answer is always in
+                    // what the guest said rather than in the fact that it failed.
                     if attempt == 1 || attempt % 10 == 0 {
-                        Adb.shared.traceNextShell = true
-                        for probe in ["echo husk-ok", "id", "getprop sys.boot_completed"] {
-                            do {
-                                let r = try Adb.shared.shell(probe)
-                                HuskLog.log("adb", "[\(probe)] -> \(r.debugDescription.prefix(200))")
-                            } catch {
-                                HuskLog.log("adb", "[\(probe)] FAILED: \(error.localizedDescription)")
-                            }
-                        }
+                        let who = (try? GuestBridge.shared.shell("id")) ?? "(no answer)"
+                        HuskLog.log("bridge", "guest shell: "
+                                  + who.trimmingCharacters(in: .whitespacesAndNewlines))
                     }
-                    let booted = try Adb.shared.shell("getprop sys.boot_completed")
+                    let booted = try GuestBridge.shared.shell("getprop sys.boot_completed")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                     if booted == "1" {
                         await MainActor.run {
@@ -467,13 +424,13 @@ final class AndroidHost: ObservableObject {
                             self?.status = "Android is ready"
                             self?.polling = false
                         }
-                        HuskLog.log("adb", "guest is ready after \(attempt) attempts")
+                        HuskLog.log("bridge", "guest is ready after \(attempt) attempts")
                         await self?.refreshPackages()
                         return
                     }
                     await MainActor.run { self?.status = "Android is booting…" }
                 } catch {
-                    Adb.shared.disconnect()
+                    GuestBridge.shared.disconnect()
                     await MainActor.run {
                         self?.status = attempt < 4 ? "Starting Android…"
                                                    : "Waiting for Android (\(attempt * 3)s)…"
@@ -486,9 +443,8 @@ final class AndroidHost: ObservableObject {
 
     /// Installed third-party packages -- the things a person actually put there.
     func refreshPackages() async {
-        guard Adb.shared.isConnected else { return }
         do {
-            let raw = try Adb.shared.shell("pm list packages -3")
+            let raw = try GuestBridge.shared.shell("pm list packages -3", timeout: 60)
             let names = raw.split(separator: "\n")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { $0.hasPrefix("package:") }
@@ -497,9 +453,9 @@ final class AndroidHost: ObservableObject {
             await MainActor.run {
                 self.packages = names.map { Package(name: $0, label: Self.pretty($0)) }
             }
-            HuskLog.log("adb", "\(names.count) user package(s) installed")
+            HuskLog.log("bridge", "\(names.count) user package(s) installed")
         } catch {
-            HuskLog.log("adb", "could not list packages: \(error.localizedDescription)")
+            HuskLog.log("bridge", "could not list packages: \(error.localizedDescription)")
         }
     }
 
@@ -509,26 +465,35 @@ final class AndroidHost: ObservableObject {
         (pkg.split(separator: ".").last.map(String.init) ?? pkg).capitalized
     }
 
-    /// Push an APK into the guest and install it.
+    /// Copy an APK into the guest and install it.
     func install(_ apk: URL) {
-        guard Adb.shared.isConnected else { return }
         let name = apk.lastPathComponent
         busy = "Installing \(name)…"
         Task.detached { [weak self] in
+            // /data/local/tmp is the one directory the shell user owns outright,
+            // and the one pm will read an APK from.
             let remote = "/data/local/tmp/husk-install.apk"
             do {
+                // A file handed over by the document picker lives outside the
+                // sandbox and is unreadable until this is claimed.
                 let scoped = apk.startAccessingSecurityScopedResource()
                 defer { if scoped { apk.stopAccessingSecurityScopedResource() } }
-                try Adb.shared.push(apk, to: remote) { p in
+
+                try GuestBridge.shared.push(apk, to: remote) { p in
                     Task { @MainActor in
                         self?.busy = "Copying \(name) — \(Int(p * 100))%"
                     }
                 }
                 await MainActor.run { self?.busy = "Installing \(name)…" }
-                let out = try Adb.shared.shell("pm install -r -t \(remote)")
-                _ = try? Adb.shared.shell("rm -f \(remote)")
+                // Installing is dex2oat's work and it is emulated, so minutes
+                // rather than seconds for anything large. -t allows test-signed
+                // APKs, which most sideloaded builds are.
+                let out = try GuestBridge.shared.shell("pm install -r -t \(remote)",
+                                                      timeout: 600)
+                _ = try? GuestBridge.shared.shell("rm -f \(remote)")
                 let ok = out.contains("Success")
-                HuskLog.log("adb", "install \(name): \(out.trimmingCharacters(in: .whitespacesAndNewlines))")
+                HuskLog.log("bridge", "install \(name): "
+                          + out.trimmingCharacters(in: .whitespacesAndNewlines))
                 await self?.refreshPackages()
                 await MainActor.run {
                     self?.busy = ok ? nil : "Install failed: \(out.prefix(120))"
@@ -538,8 +503,10 @@ final class AndroidHost: ObservableObject {
                     }
                 }
             } catch {
-                HuskLog.log("adb", "install failed: \(error.localizedDescription)")
+                HuskLog.log("bridge", "install failed: \(error.localizedDescription)")
                 await MainActor.run { self?.busy = "Install failed: \(error.localizedDescription)" }
+                Task { try? await Task.sleep(nanoseconds: 5_000_000_000)
+                       await MainActor.run { self?.busy = nil } }
             }
         }
     }
@@ -549,12 +516,11 @@ final class AndroidHost: ObservableObject {
     /// monkey rather than `am start`, because it finds the launcher activity on
     /// its own -- we do not know the activity name and would have to resolve it.
     func launch(_ pkg: String, then: @escaping () -> Void) {
-        guard Adb.shared.isConnected else { return }
         busy = "Opening…"
         Task.detached { [weak self] in
-            let out = (try? Adb.shared.shell(
-                "monkey -p \(pkg) -c android.intent.category.LAUNCHER 1")) ?? ""
-            HuskLog.log("adb", "launch \(pkg): \(out.split(separator: "\n").last ?? "")")
+            let out = (try? GuestBridge.shared.shell(
+                "monkey -p \(pkg) -c android.intent.category.LAUNCHER 1", timeout: 60)) ?? ""
+            HuskLog.log("bridge", "launch \(pkg): \(out.split(separator: "\n").last ?? "")")
             await MainActor.run { self?.busy = nil; then() }
         }
     }
