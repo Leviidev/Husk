@@ -88,10 +88,24 @@ static void husk_dpy_gfx_switch(DisplayChangeListener *dcl,
     int bpp = new_surface ? surface_bits_per_pixel(new_surface) : 0;
     const void *data = new_surface ? surface_data(new_surface) : NULL;
     qemu_mutex_unlock(&husk.lock);
-    qatomic_inc(&husk.sequence);
 
-    HUSK_DLOG("gfx_switch gen=%llu surface=%p %dx%d stride=%d bpp=%d data=%p",
-              (unsigned long long)gen, (void *)new_surface, w, h, stride, bpp, data);
+    /*
+     * Not counted as a frame.
+     *
+     * It used to be, and that made every frame-rate number twice what it
+     * should have been: virtio-gpu issues exactly one gfx_update per flip, so
+     * counting both meant counting each frame in two places. The log showed it
+     * plainly -- "gfx_update #1800" and "gfx_switch gen=900" on the same
+     * millisecond. A frame is a draw, and gfx_update is the draw.
+     *
+     * Logged sparsely for the same reason the update path is. This runs on the
+     * main loop with the BQL held, so every line written here is time no vCPU
+     * can run, and a busy guest flips thirty times a second.
+     */
+    if (gen <= 5 || (gen % 600) == 0) {
+        HUSK_DLOG("gfx_switch gen=%llu surface=%p %dx%d stride=%d bpp=%d data=%p",
+                  (unsigned long long)gen, (void *)new_surface, w, h, stride, bpp, data);
+    }
 }
 
 static bool husk_dpy_gfx_check_format(DisplayChangeListener *dcl,

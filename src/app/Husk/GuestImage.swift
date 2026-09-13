@@ -168,13 +168,22 @@ final class GuestImage: ObservableObject {
 
     /// RAM and resolution the installed snapshot needs, falling back to the
     /// values this app was built against when nothing was recorded.
-    nonisolated var snapshotPins: (mib: Int, xres: Int, yres: Int) {
+    nonisolated var snapshotPins: (mib: Int, xres: Int, yres: Int, smp: Int, cpu: String) {
+        let fallback = (Self.snapshotGuestMiB, Self.snapshotXres, Self.snapshotYres,
+                        Self.defaultSmp, Self.defaultCpu)
         guard let data = FileManager.default.contents(atPath: snapshotPinsPath),
-              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Int],
-              let mib = j["guestMiB"], let x = j["xres"], let y = j["yres"]
-        else { return (Self.snapshotGuestMiB, Self.snapshotXres, Self.snapshotYres) }
-        return (mib, x, y)
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let mib = j["guestMiB"] as? Int,
+              let x = j["xres"] as? Int, let y = j["yres"] as? Int
+        else { return fallback }
+        return (mib, x, y,
+                j["smp"] as? Int ?? Self.defaultSmp,
+                j["cpu"] as? String ?? Self.defaultCpu)
     }
+
+    /// What this build uses when a snapshot does not say otherwise.
+    static let defaultSmp = 4
+    static let defaultCpu = "max,pauth-impdef=on,sve=off,sme=off"
 
     /// What the release is offering that this install does not have.
     @Published private(set) var update: GuestUpdate = .none
@@ -588,8 +597,10 @@ final class GuestImage: ObservableObject {
     /// whatever this build of the app happens to prefer.
     nonisolated fileprivate func recordSnapshotPins() {
         guard let snap = snapshotPinsToRecord else { return }
-        let json: [String: Int] = ["guestMiB": snap.guestMiB,
+        var json: [String: Any] = ["guestMiB": snap.guestMiB,
                                    "xres": snap.xres, "yres": snap.yres]
+        if let smp = snap.smp { json["smp"] = smp }
+        if let cpu = snap.cpu { json["cpu"] = cpu }
         if let data = try? JSONSerialization.data(withJSONObject: json) {
             try? data.write(to: URL(fileURLWithPath: snapshotPinsPath))
             HuskLog.log("guest", "snapshot needs \(snap.guestMiB) MiB at "

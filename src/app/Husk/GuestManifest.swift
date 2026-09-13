@@ -38,6 +38,17 @@ struct GuestManifest: Codable, Equatable {
         let guestMiB: Int
         let xres: Int
         let yres: Int
+        /// vCPU count and CPU model, when the snapshot was built with something
+        /// other than the defaults this app was written against.
+        ///
+        /// Optional so an older manifest still decodes. These are pinned for
+        /// exactly the same reason RAM is -- QEMU will not restore a machine
+        /// into a different shape -- which means every one of them is a
+        /// performance lever that can only be pulled by regenerating the
+        /// snapshot. Carrying them here is what lets that happen without
+        /// shipping a new app.
+        let smp: Int?
+        let cpu: String?
     }
 
     /// Only for logs and the update prompt. Nothing is decided from it.

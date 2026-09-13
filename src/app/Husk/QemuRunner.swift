@@ -414,6 +414,15 @@ final class QemuRunner: ObservableObject {
         return (w, h)
     }
 
+    private var machineCpu: String {
+        GuestImage.shared.hasShippedSnapshot ? GuestImage.shared.snapshotPins.cpu
+                                            : GuestImage.defaultCpu
+    }
+    private var machineSmp: Int {
+        GuestImage.shared.hasShippedSnapshot ? GuestImage.shared.snapshotPins.smp
+                                            : GuestImage.defaultSmp
+    }
+
     private func guestMemoryMiB() -> Int {
         // Same reasoning as the resolution: the shipped snapshot was saved with
         // exactly this much RAM, and QEMU rejects a restore that differs by a
@@ -592,8 +601,11 @@ final class QemuRunner: ObservableObject {
             // MTE needs no such treatment: the virt machine provides no tag
             // memory, so QEMU already downgrades ID_AA64PFR1.MTE to 1 and no
             // tag checking happens.
-            "-cpu", "max,pauth-impdef=on,sve=off,sme=off",
-            "-smp", "4",
+            // From the snapshot when there is one, because the CPU model and
+            // vCPU count are as much a part of the machine as its RAM size and
+            // QEMU refuses a restore into a different shape.
+            "-cpu", machineCpu,
+            "-smp", "\(machineSmp)",
             "-m", "\(memMiB)",
             "-accel", "tcg,tb-size=256,thread=multi,split-wx=on",
 
