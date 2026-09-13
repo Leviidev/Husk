@@ -504,7 +504,21 @@ final class QemuRunner: ObservableObject {
                 // Whether or not the save worked. A guest left with its
                 // compositor stopped is a black screen, and a failed save is
                 // not a reason to hand someone one of those.
-                QemuRunner.shared.startAndroidUI(why: "after saving")
+                //
+                // Off this thread, and that is not a nicety.
+                //
+                // husk_snapshot_save() calls back on QEMU's own thread -- the
+                // thread that runs the machine. startAndroidUI() then makes
+                // blocking round trips to a guest that cannot answer, because
+                // answering needs the very thread that is waiting. It ends only
+                // when every timeout inside expires, and the retries added to
+                // make the restart reliable turned that from one minute into
+                // several. What that looks like from outside is a frozen picture
+                // and a save that never finishes, minutes after the log already
+                // said "save succeeded".
+                DispatchQueue.global(qos: .userInitiated).async {
+                    QemuRunner.shared.startAndroidUI(why: "after saving")
+                }
             }
             let done = QemuRunner.saveCompletion
             QemuRunner.saveCompletion = nil
