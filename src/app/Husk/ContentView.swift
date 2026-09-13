@@ -508,6 +508,9 @@ struct AdbLibraryView: View {
     @Binding var showLogs: Bool
 
     @State private var importing = false
+    /// Not persisted on purpose: it lives in the guest, and the guest is
+    /// restored from a snapshot that may or may not have had it applied.
+    @State private var renderScale = 1.0
 
     var body: some View {
         NavigationView {
@@ -586,6 +589,26 @@ struct AdbLibraryView: View {
                     }
                 }
             }
+            Section {
+                Picker("Render at", selection: $renderScale) {
+                    Text("Full").tag(1.0)
+                    Text("75%").tag(0.75)
+                    Text("60%").tag(0.6)
+                }
+                .pickerStyle(.segmented)
+                .disabled(host.busy != nil)
+                .onChange(of: renderScale) { scale in
+                    HuskLog.log("ui", "render scale -> \(Int(scale * 100))%")
+                    host.setRenderScale(scale)
+                }
+            } footer: {
+                Text("Android has no GPU here, so every pixel is drawn by an "
+                   + "emulated CPU and the cost is the pixel count. Rendering "
+                   + "smaller and letting Android scale it up trades sharpness "
+                   + "for frame rate. 60% is under half the pixels.")
+                    .font(.caption2)
+            }
+
             Section {
                 Button("Show the Android desktop") { onOpened() }
                     .font(.footnote)

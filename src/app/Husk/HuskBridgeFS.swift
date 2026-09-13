@@ -426,6 +426,7 @@ final class AndroidHost: ObservableObject {
                         }
                         HuskLog.log("bridge", "guest is ready after \(attempt) attempts")
                         await self?.refreshPackages()
+                        await MainActor.run { self?.dumpDiagnostics() }
                         return
                     }
                     await MainActor.run { self?.status = "Android is booting…" }
@@ -539,6 +540,90 @@ final class AndroidHost: ObservableObject {
                 await MainActor.run { self?.busy = "Install failed: \(error.localizedDescription)" }
                 Task { try? await Task.sleep(nanoseconds: 5_000_000_000)
                        await MainActor.run { self?.busy = nil } }
+            }
+        }
+    }
+
+    /// Ask the guest what it is actually doing, once, and put the answers in
+    /// the log.
+    ///
+    /// Every machine-shape lever -- CPU model, vCPU count, RAM, the display
+    /// device -- is frozen by the snapshot, so changing any of them costs a
+    /// rebuilt snapshot and a three-gigabyte download for everyone. That is far
+    /// too expensive to spend on a guess about where the frames are going.
+    /// These answers are what makes the next change a decision instead.
+    func dumpDiagnostics() {
+        Task.detached {
+            let probes: [(String, String)] = [
+                ("egl driver",   "getprop ro.hardware.egl"),
+                ("gralloc",      "getprop ro.hardware.gralloc"),
+                ("hwui",         "getprop debug.hwui.renderer"),
+                ("memtag",       "getprop ro.arm64.memtag.bootctl"),
+                ("cpu features", "grep -m1 Features /proc/cpuinfo"),
+                ("display size", "wm size"),
+                ("density",      "wm density"),
+                // The renderer is the whole question: a hardware GL string
+                // means the guest found a GPU, and anything mentioning
+                // SwiftShader or llvmpipe means every pixel is being drawn by
+                // an emulated CPU.
+                ("renderer",     "dumpsys SurfaceFlinger | grep -i -m3 'GLES\\|renderer'"),
+            ]
+            for (label, cmd) in probes {
+                let out = (try? GuestBridge.shared.shell(cmd, timeout: 45)) ?? "(failed)"
+                HuskLog.log("probe", "\(label): "
+                          + out.trimmingCharacters(in: .whitespacesAndNewlines)
+                               .replacingOccurrences(of: "\n", with: " | "))
+            }
+        }
+    }
+
+    /// Make Android draw fewer pixels.
+    ///
+    /// The scanout stays 360x800 because the snapshot pinned it, but `wm size`
+    /// changes the *logical* display, so apps and the compositor render at the
+    /// smaller size and SurfaceFlinger scales the result up. Software
+    /// rasterisation costs what the pixel count costs, and none of this needs a
+    /// new snapshot -- which is the whole reason it is worth trying first.
+    ///
+    /// Density moves with it, or every app lays out for a screen that is no
+    /// longer there and the UI ends up cropped.
+    func setRenderScale(_ scale: Double, then: @escaping () -> Void = {}) {
+        busy = scale >= 1 ? "Restoring full resolution…" : "Reducing render size…"
+        Task.detached { [weak self] in
+            let base = GuestImage.shared.snapshotPins
+            defer { Task { @MainActor in self?.busy = nil; then() } }
+
+            // Physical density, so the override keeps the same physical scale.
+            let densityOut = (try? GuestBridge.shared.shell("wm density")) ?? ""
+            let physical = densityOut
+                .split(separator: "\n")
+                .compactMap { line -> Int? in
+                    guard line.contains("Physical density") else { return nil }
+                    return Int(line.split(separator: ":").last?
+                        .trimmingCharacters(in: .whitespaces) ?? "")
+                }.first ?? 240
+
+            if scale >= 1 {
+                _ = try? GuestBridge.shared.shell("wm size reset; wm density reset", timeout: 60)
+                HuskLog.log("perf", "render size reset to \(base.xres)x\(base.yres)")
+            } else {
+                // Rounded to even numbers: odd widths give SurfaceFlinger a
+                // half-pixel scale factor and a blurrier result than the size
+                // reduction is worth.
+                let w = max(240, Int((Double(base.xres) * scale / 2).rounded()) * 2)
+                let h = max(480, Int((Double(base.yres) * scale / 2).rounded()) * 2)
+                let d = max(120, Int((Double(physical) * scale).rounded()))
+                _ = try? GuestBridge.shared.shell("wm size \(w)x\(h); wm density \(d)",
+                                                  timeout: 60)
+                HuskLog.log("perf", "render size \(w)x\(h) density \(d) "
+                          + "(\(Int(scale * 100))% of \(base.xres)x\(base.yres)); "
+                          + "\(Int((1 - scale * scale) * 100))% fewer pixels to rasterise")
+            }
+
+            // Animations are pure compositor work and buy nothing at 12 fps.
+            for key in ["window_animation_scale", "transition_animation_scale",
+                        "animator_duration_scale"] {
+                _ = try? GuestBridge.shared.shell("settings put global \(key) 0")
             }
         }
     }
