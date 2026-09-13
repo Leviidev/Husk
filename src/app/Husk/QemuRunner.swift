@@ -1456,6 +1456,19 @@ final class QemuRunner: ObservableObject {
                 let overdue = QemuRunner.bootCompletedAt.map {
                     Date().timeIntervalSince($0) >= 180
                 } ?? false
+                // Say why, once a window, when the conditions are close but
+                // not met. Four separate things gate this save and the log
+                // recorded none of them, so "it just won't snapshot" had no
+                // evidence attached -- by the rule it should have fired at 165s
+                // in the last session and there is nothing to say what stopped
+                // it.
+                if settled, !QemuRunner.snapshotRequested,
+                   QemuRunner.shared.hasUsableSnapshot || !(quietWindows >= 3 || overdue) {
+                    HuskLog.log("snap", "not saving yet: quiet=\(quietWindows) "
+                              + "overdue=\(overdue) "
+                              + "alreadyHaveOne=\(QemuRunner.shared.hasUsableSnapshot) "
+                              + "(display \(QemuRunner.shared.snapshotDisplay ?? "none"))")
+                }
                 if settled, quietWindows >= 3 || overdue,
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasUsableSnapshot {
