@@ -405,7 +405,18 @@ final class GuestBridge {
         while !seen.contains(ready) {
             let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0 && errno == EINTR { continue }
-            if n <= 0 { throw BridgeError.io("guest did not accept the file") }
+            if n <= 0 {
+                // "guest did not accept the file" said nothing anyone could act
+                // on: not whether the connection was closed or errored, not how
+                // far the handshake got, not what the shell managed to say
+                // first. A failure that reports nothing costs a whole test run.
+                let why = n == 0 ? "the guest closed the connection"
+                                 : "read failed (errno \(errno))"
+                let got = seen.trimmingCharacters(in: .whitespacesAndNewlines)
+                throw BridgeError.io("\(why) while waiting for the shell to take "
+                                   + "the file" + (got.isEmpty ? " (it said nothing)"
+                                                              : "; it said: \(got.prefix(120))"))
+            }
             seen += String(decoding: buf[0..<n], as: UTF8.self)
         }
 
@@ -421,6 +432,17 @@ final class GuestBridge {
         shutdown(fd, SHUT_WR)
         HuskLog.log("bridge", "pushed \(sent) bytes to \(remote)")
         if sent != size { throw BridgeError.io("sent \(sent) of \(size) bytes") }
+    }
+
+    /// Is a shell answering right now?
+    ///
+    /// Worth asking before a transfer that takes minutes, because the listener
+    /// spawns a fresh shell per connection and a connection that opens and then
+    /// closes is indistinguishable, from inside push(), from a guest that is
+    /// simply gone.
+    func isAlive() -> Bool {
+        guard let out = try? shell("echo __HUSK_ALIVE__", timeout: 15) else { return false }
+        return out.contains("__HUSK_ALIVE__")
     }
 
     func disconnect() { isConnected = false }
@@ -594,6 +616,41 @@ final class AndroidHost: ObservableObject {
         (pkg.split(separator: ".").last.map(String.init) ?? pkg).capitalized
     }
 
+    /// Whether the guest is awake and unlocked, which installing needs it to be.
+    ///
+    /// A restored snapshot comes back exactly as it was frozen, so the guest can
+    /// be asleep or sitting on its lock screen while Husk's library looks
+    /// perfectly normal. `pm` then fails somewhere deep with a message about
+    /// packages, and nothing points at the actual cause.
+    enum GuestState {
+        case ready
+        case asleep
+        case locked
+        case unreachable(String)
+    }
+
+    nonisolated static func guestState() -> GuestState {
+        guard GuestBridge.shared.isAlive() else {
+            return .unreachable("the Android shell is not answering")
+        }
+        // mWakefulness is Awake / Asleep / Dozing / Dreaming.
+        if let power = try? GuestBridge.shared.shell(
+                "dumpsys power 2>/dev/null | grep -m1 mWakefulness=", timeout: 20),
+           power.contains("Asleep") || power.contains("Dozing") {
+            return .asleep
+        }
+        // Both spellings, because which one exists depends on the Android
+        // release and neither is worth depending on alone.
+        if let win = try? GuestBridge.shared.shell(
+                "dumpsys window 2>/dev/null | "
+              + "grep -m1 -oE '(mDreamingLockscreen|mShowingLockscreen)=[a-z]+'",
+                timeout: 30),
+           win.contains("=true") {
+            return .locked
+        }
+        return .ready
+    }
+
     /// Copy an APK into the guest and install it.
     func install(_ apk: URL) {
         let name = apk.lastPathComponent
@@ -607,6 +664,31 @@ final class AndroidHost: ObservableObject {
                 // sandbox and is unreadable until this is claimed.
                 let scoped = apk.startAccessingSecurityScopedResource()
                 defer { if scoped { apk.stopAccessingSecurityScopedResource() } }
+
+                // Check before the transfer, not after. Copying an APK into the
+                // guest takes minutes on an emulated disk, and discovering at
+                // the end of it that Android was asleep the whole time is the
+                // worst possible moment to find out.
+                switch AndroidHost.guestState() {
+                case .asleep:
+                    // Waking it is something Husk can do itself, so do it
+                    // rather than asking. Unlocking is not.
+                    HuskLog.log("bridge", "Android was asleep; waking it to install")
+                    _ = try? GuestBridge.shared.shell("input keyevent KEYCODE_WAKEUP")
+                    Thread.sleep(forTimeInterval: 1.5)
+                    if case .locked = AndroidHost.guestState() {
+                        throw BridgeError.io("Android is locked. Open the Android "
+                                           + "screen, unlock it, and try again.")
+                    }
+                case .locked:
+                    throw BridgeError.io("Android is locked. Open the Android "
+                                       + "screen, unlock it, and try again.")
+                case .unreachable(let why):
+                    throw BridgeError.io("\(why). Open the Android screen and "
+                                       + "check it is running, then try again.")
+                case .ready:
+                    break
+                }
 
                 try GuestBridge.shared.push(apk, to: remote) { p in
                     Task { @MainActor in
@@ -647,10 +729,13 @@ final class AndroidHost: ObservableObject {
                 // remember to do afterwards.
                 if ok {
                     await MainActor.run {
-                        self?.busy = QemuRunner.glProven
-                            ? "Installed. GPU mode cannot save yet, so this app is gone "
-                            + "when you relaunch."
-                            : "Saving Android — the screen will freeze briefly"
+                        // GPU mode can save now: the virgl blocker is lifted, the
+                        // compositor is stopped around the write, and the log
+                        // says "save succeeded". This used to tell people their
+                        // install was already lost, which is worse than saying
+                        // nothing -- it is a true-sounding statement that is no
+                        // longer true.
+                        self?.busy = "Saving Android — the screen will freeze briefly"
                         QemuRunner.shared.saveState(reason: "installed \(name)") { saved in
                             self?.busy = nil
                             if !saved {

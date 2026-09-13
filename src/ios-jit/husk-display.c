@@ -200,13 +200,51 @@ uint64_t husk_display_sequence(void)
     return husk.inited ? qatomic_read(&husk.sequence) : 0;
 }
 
-void husk_display_send_pointer(int32_t x, int32_t y, bool button_down)
+/*
+ * Input belongs to the machine, not to whichever display is drawing it.
+ *
+ * Every function below used to open with `if (!husk.inited) return;` and send
+ * to husk.dcl.con -- the software listener's console. husk_display_init() only
+ * runs when GL fails, so on a GPU-backed guest the entire input path was a
+ * silent early return: a touch was mapped, scaled, clamped, and then dropped
+ * before it reached even a log line. Touch had never worked in GPU mode.
+ *
+ * Console 0 is the guest's display in both modes, so ask for it directly and
+ * fall back to the software listener's console only because it is already
+ * resolved when that path is the live one.
+ */
+static QemuConsole *husk_input_console(void)
 {
-    int w, h;
+    if (husk.dcl.con) {
+        return husk.dcl.con;
+    }
+    return qemu_console_lookup_by_index(0);
+}
 
-    if (!husk.inited) {
+/*
+ * The guest's resolution, from the console rather than from a DisplaySurface.
+ *
+ * In GL mode there is no surface to measure -- the picture is a texture that
+ * never passes through QEMU. The console knows the size either way, because
+ * virtio-gpu calls qemu_console_resize() as part of setting a scanout.
+ */
+static void husk_input_size(QemuConsole *con, int *w, int *h)
+{
+    *w = con ? qemu_console_get_width(con, 0) : 0;
+    *h = con ? qemu_console_get_height(con, 0) : 0;
+    if (*w > 0 && *h > 0) {
         return;
     }
+    qemu_mutex_lock(&husk.lock);
+    *w = husk.surface ? surface_width(husk.surface) : 0;
+    *h = husk.surface ? surface_height(husk.surface) : 0;
+    qemu_mutex_unlock(&husk.lock);
+}
+
+void husk_display_send_pointer(int32_t x, int32_t y, bool button_down)
+{
+    QemuConsole *con;
+    int w, h;
 
     /*
      * qemu_input_* must run under the BQL. Taking it here rather than marshalling
@@ -214,34 +252,35 @@ void husk_display_send_pointer(int32_t x, int32_t y, bool button_down)
      * microseconds and the UI thread blocking that long is not perceptible.
      */
     bql_lock();
-    qemu_mutex_lock(&husk.lock);
-    w = husk.surface ? surface_width(husk.surface) : 0;
-    h = husk.surface ? surface_height(husk.surface) : 0;
-    qemu_mutex_unlock(&husk.lock);
+    con = husk_input_console();
+    husk_input_size(con, &w, &h);
 
     static uint64_t pointer_events = 0;
     uint64_t ev = ++pointer_events;
 
-    if (w > 0 && h > 0) {
+    if (con && w > 0 && h > 0) {
         if (x < 0) { x = 0; } else if (x >= w) { x = w - 1; }
         if (y < 0) { y = 0; } else if (y >= h) { y = h - 1; }
-        qemu_input_queue_abs(husk.dcl.con, INPUT_AXIS_X, x, 0, w);
-        qemu_input_queue_abs(husk.dcl.con, INPUT_AXIS_Y, y, 0, h);
-        qemu_input_queue_btn(husk.dcl.con, INPUT_BUTTON_LEFT, button_down);
+        qemu_input_queue_abs(con, INPUT_AXIS_X, x, 0, w);
+        qemu_input_queue_abs(con, INPUT_AXIS_Y, y, 0, h);
+        qemu_input_queue_btn(con, INPUT_BUTTON_LEFT, button_down);
         qemu_input_event_sync();
         if (ev <= 20 || (ev % 200) == 0) {
             HUSK_DLOG("pointer #%llu -> guest (%d,%d) down=%d [surface %dx%d]",
                       (unsigned long long)ev, x, y, button_down ? 1 : 0, w, h);
         }
     } else {
-        HUSK_DLOG("pointer #%llu DROPPED -- no surface yet", (unsigned long long)ev);
+        HUSK_DLOG("pointer #%llu DROPPED -- console=%p size=%dx%d",
+                  (unsigned long long)ev, (void *)con, w, h);
     }
     bql_unlock();
 }
 
 bool husk_display_send_key(const char *qcode_name, bool down)
 {
-    if (!husk.inited || qcode_name == NULL) {
+    QemuConsole *con;
+
+    if (qcode_name == NULL) {
         return false;
     }
 
@@ -261,8 +300,15 @@ bool husk_display_send_key(const char *qcode_name, bool down)
     uint64_t n = ++keys;
 
     bql_lock();
-    qemu_input_event_send_key_qcode(husk.dcl.con, (QKeyCode)qcode, down);
+    con = husk_input_console();
+    if (con) {
+        qemu_input_event_send_key_qcode(con, (QKeyCode)qcode, down);
+    }
     bql_unlock();
+    if (!con) {
+        HUSK_DLOG("key '%s' dropped -- no console", qcode_name);
+        return false;
+    }
 
     if (n <= 20 || (n % 100) == 0) {
         HUSK_DLOG("key #%llu '%s' (qcode %d) down=%d",
