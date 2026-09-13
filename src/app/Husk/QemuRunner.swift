@@ -1453,8 +1453,16 @@ final class QemuRunner: ObservableObject {
                 // snapshot after a cold boot is never taken at all. After three
                 // minutes booted, save regardless -- a snapshot of a machine
                 // mid-use is worth incomparably more than no snapshot.
+                // Sixty seconds, not a hundred and eighty.
+                //
+                // The quiet path never fires in practice: the log shows quiet=0
+                // on every single window after boot, because Android is never
+                // still while anyone is using it. So the timeout is not a
+                // fallback, it IS the path -- and at three minutes past
+                // boot_completed most sessions ended before reaching it. That is
+                // the whole of "the automatic snapshot doesn't work".
                 let overdue = QemuRunner.bootCompletedAt.map {
-                    Date().timeIntervalSince($0) >= 180
+                    Date().timeIntervalSince($0) >= 60
                 } ?? false
                 // Say why, once a window, when the conditions are close but
                 // not met. Four separate things gate this save and the log
