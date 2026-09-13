@@ -95,8 +95,34 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
     husk_flip = backing_y_0_top;
     egl_fb_setup_for_tex(&husk_guest_fb, backing_width, backing_height,
                          backing_id, false);
+
+    /*
+     * Give the texture a filter it can actually be sampled with.
+     *
+     * The blit above no longer samples it, so this is not what makes the
+     * picture appear -- but a render target arriving with the default
+     * GL_NEAREST_MIPMAP_LINEAR and no mip chain is incomplete, and anything
+     * that ever does sample it gets black for its trouble. Costs nothing, and
+     * removes the trap rather than stepping around it.
+     */
+    glBindTexture(GL_TEXTURE_2D, backing_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     husk_have_scanout = true;
-    fprintf(stderr, "[husk-gl] scanout_texture: fb ready\n");
+    {
+        GLenum st;
+        GLint prev = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev);
+        glBindFramebuffer(GL_FRAMEBUFFER, husk_guest_fb.framebuffer);
+        st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev);
+        fprintf(stderr, "[husk-gl] scanout_texture: fb ready, status=0x%x%s\n",
+                st, st == GL_FRAMEBUFFER_COMPLETE ? " (complete)" : " (NOT COMPLETE)");
+    }
 }
 
 /*
@@ -179,7 +205,34 @@ static void husk_gl_update(DisplayChangeListener *dcl,
 
     eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface, husk_context);
     egl_fb_setup_default(&husk_window_fb, husk_win_w, husk_win_h);
-    egl_texture_blit(husk_gls, &husk_window_fb, &husk_guest_fb, husk_flip);
+
+    /*
+     * egl_fb_blit, not egl_texture_blit -- which is what QEMU itself uses.
+     *
+     * The two look interchangeable and are not. egl_texture_blit() samples the
+     * scanout as a GL_TEXTURE_2D through a shader, and sampling requires the
+     * texture to be COMPLETE. egl_fb_setup_for_tex() only attaches it to a
+     * framebuffer; it never sets GL_TEXTURE_MIN_FILTER, so the texture keeps
+     * the default GL_NEAREST_MIPMAP_LINEAR with no mipmap levels behind it. In
+     * GLES that is an incomplete texture, and sampling one is defined to return
+     * opaque black. Not an error, not a warning -- black.
+     *
+     * That is why the boot console appeared and Android did not. UEFI's
+     * scanouts are 2D resources virglrenderer creates and filters itself;
+     * Android's are 3D render targets from the guest's own Mesa driver, which
+     * sets sampler state per draw and leaves the texture object at its default.
+     * One was complete by accident, the other never could be.
+     *
+     * glBlitFramebuffer reads through the framebuffer attachment instead, where
+     * completeness does not apply -- only level 0 has to exist, which it does.
+     * gd_egl_scanout_flush() reaches for egl_texture_blit() only when it has a
+     * cursor to blend on top, and that path is desktop-GL anyway: the function
+     * opens with glEnable(GL_TEXTURE_2D), which GLES 3.0 does not have.
+     *
+     * The flip argument inverts with the function, exactly as it does upstream.
+     */
+    egl_fb_blit(&husk_window_fb, &husk_guest_fb, !husk_flip);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     /* The first few frames, then rarely: this is a synchronous read-back and
      * it stalls the pipeline, so it must not be something the frame rate pays
@@ -486,6 +539,7 @@ bool husk_display_gl_bind(void)
             "glTexParameteri", "glTexImage2D", "glBlitFramebuffer",
             "glCheckFramebufferStatus", "glDisable", "glGetError",
             "glReadPixels", "glColorMask", "glGetIntegerv",
+            "glBlitFramebuffer", "glTexParameteri", "glBindTexture",
         };
         bool missing = false;
         for (size_t i = 0; i < ARRAY_SIZE(needed); i++) {

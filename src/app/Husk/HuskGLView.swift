@@ -60,15 +60,11 @@ final class HuskGLView: UIView {
         // with the frame counter reporting 60 fps.
         isOpaque = true
         metalLayer.isOpaque = true
-        // Magenta, on purpose, and only visible if something is wrong.
-        //
-        // Three outcomes can produce "I saw nothing", and from a log they are
-        // indistinguishable: the layer is not on screen, the layer is on screen
-        // but ANGLE never presents into it, or ANGLE presents a black picture.
-        // A background nobody would mistake for content separates them in one
-        // glance -- magenta means the view is composited and the frames are not
-        // arriving; black means the view itself is not reaching the screen.
-        backgroundColor = UIColor(red: 0.8, green: 0, blue: 0.8, alpha: 1)
+        // Black again. The magenta tell-tale that briefly lived here existed to
+        // decide whether this layer reached the screen at all, and the boot
+        // console settled that: it was visible, so the layer composites and
+        // ANGLE presents into it. What was black was the picture itself.
+        backgroundColor = .black
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
