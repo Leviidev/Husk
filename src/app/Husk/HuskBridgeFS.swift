@@ -436,14 +436,109 @@ final class GuestBridge {
 
     /// Is a shell answering right now?
     ///
-    /// Worth asking before a transfer that takes minutes, because the listener
-    /// spawns a fresh shell per connection and a connection that opens and then
-    /// closes is indistinguishable, from inside push(), from a guest that is
-    /// simply gone.
-    func isAlive() -> Bool {
-        guard let out = try? shell("echo __HUSK_ALIVE__", timeout: 15) else { return false }
-        return out.contains("__HUSK_ALIVE__")
+    /// Retried, because init restarts `husk_agent` when it dies and a single
+    /// failed probe cannot tell a dead listener from one being restarted.
+    func isAlive(attempts: Int = 4) -> Bool {
+        for i in 1...attempts {
+            if let out = try? shell("echo __HUSK_ALIVE__", timeout: 15),
+               out.contains("__HUSK_ALIVE__") {
+                return true
+            }
+            if i < attempts { Thread.sleep(forTimeInterval: 2) }
+        }
+        return false
     }
+
+    /// Why the bridge is not answering, in terms that name a cause.
+    ///
+    /// "the Android shell is not answering" was true and useless. With QEMU's
+    /// user networking, connect() to the forwarded port succeeds locally almost
+    /// always -- slirp accepts on the host and only then tries the guest -- so
+    /// what happens NEXT is the whole diagnosis:
+    ///
+    ///   closed immediately  the guest refused the port: husk_agent is gone
+    ///   nothing, then timeout  the packets are being dropped, not refused,
+    ///                          which is what a firewall rule looks like
+    ///   connect() itself failed  slirp is not forwarding at all
+    ///
+    /// Port 5555 is probed alongside it, because adbd binds that one and starts
+    /// at boot_completed. If 5555 accepts and 5599 does not, the guest's network
+    /// is fine and the fault is husk_agent alone; if neither answers, it is not.
+    func diagnose() -> String {
+        func probe(_ port: UInt16, expectBytes: Bool) -> String {
+            let fd = socket(AF_INET, SOCK_STREAM, 0)
+            guard fd >= 0 else { return "socket() failed (errno \(errno))" }
+            defer { close(fd) }
+            var tv = timeval(tv_sec: 6, tv_usec: 0)
+            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+
+            var addr = sockaddr_in()
+            addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            addr.sin_family = sa_family_t(AF_INET)
+            addr.sin_port = port.bigEndian
+            addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+            let rc = withUnsafePointer(to: &addr) { raw in
+                raw.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+            if rc != 0 { return "connect failed (errno \(errno))" }
+            guard expectBytes else { return "connected" }
+
+            _ = try? writeAll(fd, Data("echo __HUSK_ALIVE__\n".utf8))
+            var buf = [UInt8](repeating: 0, count: 512)
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n > 0 {
+                let got = String(decoding: buf[0..<n], as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return "answered: \(got.prefix(60))"
+            }
+            if n == 0 { return "connected, then the guest closed it at once "
+                             + "(the port is refused inside the guest)" }
+            if errno == EAGAIN || errno == EWOULDBLOCK {
+                return "connected, then silence until timeout "
+                     + "(packets dropped rather than refused)"
+            }
+            return "connected, then read failed (errno \(errno))"
+        }
+
+        return "5599 (husk_agent): \(probe(Self.port, expectBytes: true)); "
+             + "5555 (adbd): \(probe(5555, expectBytes: false))"
+    }
+
+    /// Notice the moment the bridge dies, rather than at the next install.
+    ///
+    /// The last log had the shell answering at 28 seconds and dead at 226, with
+    /// nothing in between -- a two-hundred-second window in which the cause was
+    /// somewhere, unobserved. One cheap probe every fifteen seconds, logged only
+    /// when the answer CHANGES, turns that window into a timestamp that can be
+    /// lined up against what init and netd were doing.
+    func startHealthWatch() {
+        guard !watching else { return }
+        watching = true
+        Thread.detachNewThread { [weak self] in
+            Thread.current.name = "com.husk.bridge.health"
+            var wasAlive: Bool?
+            while let self {
+                let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 10))?
+                    .contains("__HUSK_ALIVE__") ?? false
+                if alive != wasAlive {
+                    if wasAlive == nil {
+                        HuskLog.log("bridge", "health: the shell is "
+                                  + (alive ? "answering" : "NOT answering"))
+                    } else {
+                        HuskLog.log("bridge", alive
+                            ? "health: the shell started answering again"
+                            : "health: the shell STOPPED answering -- \(self.diagnose())")
+                    }
+                    wasAlive = alive
+                }
+                Thread.sleep(forTimeInterval: 15)
+            }
+        }
+    }
+    private var watching = false
 
     func disconnect() { isConnected = false }
 }
@@ -631,6 +726,8 @@ final class AndroidHost: ObservableObject {
 
     nonisolated static func guestState() -> GuestState {
         guard GuestBridge.shared.isAlive() else {
+            let why = GuestBridge.shared.diagnose()
+            HuskLog.log("bridge", "the shell is not answering -- \(why)")
             return .unreachable("the Android shell is not answering")
         }
         // mWakefulness is Awake / Asleep / Dozing / Dreaming.

@@ -141,6 +141,7 @@ struct ContentView: View {
         started = true
         QemuRunner.shared.start()
         bridge.startWatching()
+        GuestBridge.shared.startHealthWatch()
     }
 }
 
