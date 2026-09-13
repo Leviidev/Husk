@@ -1147,7 +1147,7 @@ final class QemuRunner: ObservableObject {
         let t = Thread {
             var tick = 0
             var lastFrames: UInt64 = 0
-            var steadyFrames = 0
+            var quietWindows = 0
             while true {
                 Thread.sleep(forTimeInterval: 5)
                 tick += 1
@@ -1176,11 +1176,25 @@ final class QemuRunner: ObservableObject {
                 // guest's own boot_completed, then let it settle: the launcher
                 // still has to start and draw, and a snapshot taken during that
                 // saves a machine that resumes into a half-drawn screen.
-                if delta > 0 { steadyFrames += 1 } else { steadyFrames = 0 }
+                // Quiet windows, not busy ones.
+                //
+                // This waited for three consecutive five-second windows WITH
+                // frames in them, which is the opposite of settled. Android
+                // draws while the launcher comes up and then stops entirely: a
+                // phone sitting on its home screen produces no frames at all.
+                // So on a guest that had finished booting -- exactly the guest
+                // worth saving -- the counter reset every five seconds and the
+                // save never fired. One run sat booted and idle for nine
+                // minutes without ever taking a snapshot.
+                //
+                // Under fifteen frames in five seconds means nothing is moving
+                // but a caret; three such windows means Android has stopped
+                // working, which is the moment to freeze it.
+                if delta < 15 { quietWindows += 1 } else { quietWindows = 0 }
                 let settled = QemuRunner.bootCompletedAt.map {
                     Date().timeIntervalSince($0) >= 30
                 } ?? false
-                if settled, steadyFrames >= 3,
+                if settled, quietWindows >= 3,
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasUsableSnapshot {
                     QemuRunner.snapshotRequested = true

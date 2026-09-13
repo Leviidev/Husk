@@ -178,9 +178,16 @@ new = """    /*
                       "virtio-gpu: refusing to save with commands still queued\\n");
         return -EBUSY;
     }"""
+# Every occurrence, not the first.
+#
+# virtio_gpu_save() and virtio_gpu_blob_save() open with the same assert, so
+# replacing once patched a different function on each run -- the tree depended
+# on how many times this script had been run, which is the one thing an
+# idempotent script must not do. Both are save paths and neither may abort.
 if old in s:
-    p.write_text(s.replace(old, new, 1))
-    print("  virtio-gpu.c: save refuses instead of asserting")
+    n = s.count(old)
+    p.write_text(s.replace(old, new))
+    print(f"  virtio-gpu.c: {n} save path(s) refuse instead of asserting")
 elif "refusing to save with commands still queued" in s:
     print("  virtio-gpu.c: already patched")
 else:

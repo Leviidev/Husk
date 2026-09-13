@@ -52,6 +52,14 @@ final class HuskGLView: UIView {
         // ANGLE presents through this layer, so it must not be framebufferOnly:
         // the surface is rendered into rather than merely displayed.
         metalLayer.framebufferOnly = false
+        // Opaque, or Core Animation blends the frame against what is behind it
+        // using an alpha channel nobody in this pipeline maintains. Android's
+        // scanout is commonly B8G8R8X8 -- the fourth byte is ignored by
+        // definition, and zero in practice -- so a frame drawn perfectly is a
+        // frame composited to nothing. The symptom is an entirely black screen
+        // with the frame counter reporting 60 fps.
+        isOpaque = true
+        metalLayer.isOpaque = true
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }

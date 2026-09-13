@@ -99,9 +99,41 @@ static void husk_gl_scanout_texture(DisplayChangeListener *dcl,
     fprintf(stderr, "[husk-gl] scanout_texture: fb ready\n");
 }
 
+/*
+ * Sample the framebuffer we are about to present.
+ *
+ * There is one failure mode that looks identical to success from every other
+ * vantage point: the scanout arrives, the blit runs, the frame counter climbs,
+ * and the screen stays black. Whether the pixels exist is the question that
+ * separates "the GPU drew nothing" from "the GPU drew and nothing showed it",
+ * and only a read-back can answer it. Three points, so a uniformly black frame
+ * is distinguishable from one with content in it.
+ */
+static void husk_gl_sample(void)
+{
+    struct { int x, y; const char *what; } pts[3] = {
+        { husk_win_w / 2, husk_win_h / 2, "centre" },
+        { husk_win_w / 4, husk_win_h / 4, "upper-left" },
+        { husk_win_w / 2, husk_win_h / 6, "top-middle" },
+    };
+    char buf[192];
+    int n = 0;
+
+    for (int i = 0; i < 3; i++) {
+        uint8_t px[4] = { 0, 0, 0, 0 };
+        glReadPixels(pts[i].x, pts[i].y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        n += snprintf(buf + n, sizeof(buf) - n, "%s%s=%02x%02x%02x%02x",
+                      i ? " " : "", pts[i].what, px[0], px[1], px[2], px[3]);
+    }
+    fprintf(stderr, "[husk-gl] frame %llu pixels: %s\n",
+            (unsigned long long)husk_gl_frames, buf);
+}
+
 static void husk_gl_update(DisplayChangeListener *dcl,
                            uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
+    bool sample;
+
     if (!husk_have_scanout || husk_surface == EGL_NO_SURFACE) {
         return;
     }
@@ -109,7 +141,46 @@ static void husk_gl_update(DisplayChangeListener *dcl,
     eglMakeCurrent(qemu_egl_display, husk_surface, husk_surface, husk_context);
     egl_fb_setup_default(&husk_window_fb, husk_win_w, husk_win_h);
     egl_texture_blit(husk_gls, &husk_window_fb, &husk_guest_fb, husk_flip);
-    eglSwapBuffers(qemu_egl_display, husk_surface);
+
+    /* The first few frames, then rarely: this is a synchronous read-back and
+     * it stalls the pipeline, so it must not be something the frame rate pays
+     * for. Rare is enough -- it answers a yes/no question. */
+    sample = husk_gl_frames < 3 || (husk_gl_frames % 1800) == 0;
+    if (sample) {
+        husk_gl_sample();
+    }
+
+    /*
+     * Force the alpha channel opaque, leaving colour untouched.
+     *
+     * egl_texture_blit() clears to (0.1, 0.1, 0.1, 0.0) and then draws the
+     * guest's texture with whatever alpha that texture carries. On a desktop
+     * that is harmless, because the window is opaque and the compositor never
+     * looks at alpha. Core Animation does: a CAMetalLayer is blended against
+     * what is behind it, so a frame whose alpha is zero is a frame nobody can
+     * see -- perfect pixels, correct size, invisible. Android's scanout is
+     * routinely B8G8R8X8, where the fourth byte is defined to be ignored and
+     * in practice is zero.
+     *
+     * The layer is also marked opaque on the UIKit side, which should make
+     * this redundant. Both, because the two live in different files and the
+     * symptom they prevent is a black screen with a healthy frame counter --
+     * the single hardest thing in this project to diagnose from a log.
+     */
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    if (eglSwapBuffers(qemu_egl_display, husk_surface) != EGL_TRUE) {
+        static uint64_t complained;
+        if (complained++ % 600 == 0) {
+            fprintf(stderr, "[husk-gl] eglSwapBuffers failed: 0x%x "
+                            "(%llu frames drawn, none presented)\n",
+                    eglGetError(), (unsigned long long)husk_gl_frames);
+        }
+        return;
+    }
     husk_gl_frames++;
 }
 
@@ -367,6 +438,7 @@ bool husk_display_gl_bind(void)
             "glDeleteFramebuffers", "glDeleteTextures", "glGenTextures",
             "glTexParameteri", "glTexImage2D", "glBlitFramebuffer",
             "glCheckFramebufferStatus", "glDisable", "glGetError",
+            "glReadPixels", "glColorMask",
         };
         bool missing = false;
         for (size_t i = 0; i < ARRAY_SIZE(needed); i++) {
