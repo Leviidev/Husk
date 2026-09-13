@@ -492,9 +492,16 @@ final class GuestBridge {
         // This used to open its own, and that is precisely the operation that
         // stops working part-way through a session -- so the one thing in Husk
         // that most needs a working channel was the one asking for a new one.
+        // Budget by size, not by a flat two minutes.
+        //
+        // 120 seconds is generous for a five-megabyte APK and nowhere near
+        // enough for a three-hundred-megabyte one going through a shell on an
+        // emulated NIC. The floor covers small files; the rate assumes a
+        // pessimistic 300 KB/s so a slow transfer is slow rather than failed.
+        let budget = max(180.0, Double(size) / 300_000.0)
         controlLock.lock()
         defer { controlLock.unlock() }
-        let fd = try controlFD(timeout: 120)
+        let fd = try controlFD(timeout: budget)
 
         // `head -c N > file`, without `exec`.
         //
@@ -531,7 +538,7 @@ final class GuestBridge {
         // is still usable for the pm install that follows.
         var out = ""
         var buf = [UInt8](repeating: 0, count: 4096)
-        let deadline = Date().addingTimeInterval(120)
+        let deadline = Date().addingTimeInterval(budget)
         while !out.contains(token) {
             let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
             if n < 0 && errno == EINTR { continue }
@@ -964,8 +971,12 @@ final class AndroidHost: ObservableObject {
                 // Installing is dex2oat's work and it is emulated, so minutes
                 // rather than seconds for anything large. -t allows test-signed
                 // APKs, which most sideloaded builds are.
+                // dex2oat compiles the whole APK on an emulated CPU, and it
+                // scales with the code in it. Ten minutes fits a small game and
+                // not a large one.
+                let installBudget: TimeInterval = expected > 50 << 20 ? 2400 : 600
                 let out = try GuestBridge.shared.shell("pm install -r -t \(remote)",
-                                                      timeout: 600)
+                                                      timeout: installBudget)
                 _ = try? GuestBridge.shared.shell("rm -f \(remote)")
                 let ok = out.contains("Success")
                 HuskLog.log("bridge", "install \(name): "
