@@ -16,13 +16,16 @@ set -euo pipefail
 
 SRC="${1:?usage: publish_snapshot.sh <vdb.qcow2> <version>}"
 VER="${2:?usage: publish_snapshot.sh <vdb.qcow2> <version>}"
-TAG="lineage-v2"           # the single "Dependencies" release
 REPO="Leviidev/Husk"
+RELEASE=387759263          # the single "Dependencies" release, tag lineage-v2
 PART_MB=1042               # keeps each piece comfortably under the limit
-GH="$(command -v gh || echo /opt/homebrew/bin/gh)"
 
-"$GH" auth status >/dev/null 2>&1 || {
-    echo "not signed in to GitHub -- run: gh auth login" >&2; exit 1; }
+# The token git already has. The remote is plain HTTPS with credential.helper =
+# osxkeychain, so pushes authenticate without setup and so does this -- no CLI
+# to install and nothing extra to log into. It is never echoed.
+TOKEN="$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill \
+         | sed -n 's/^password=//p')"
+[ -n "$TOKEN" ] || { echo "no GitHub credential in the keychain" >&2; exit 1; }
 
 WORK="$(dirname "$SRC")"
 ARCHIVE="$WORK/vdb-snapshot-$VER.qcow2.gz"
@@ -41,10 +44,17 @@ if [ ! -f "$ARCHIVE.00" ]; then
 fi
 
 for part in "$ARCHIVE".*; do
+    name="$(basename "$part")"
     size=$(stat -f %z "$part")
-    [ "$size" -lt 2147483648 ] || { echo "$part is $size bytes, over the limit" >&2; exit 1; }
-    echo "==> uploading $(basename "$part")  ($size bytes)"
-    "$GH" release upload "$TAG" "$part" --repo "$REPO" --clobber
+    [ "$size" -lt 2147483648 ] || { echo "$name is $size bytes, over the limit" >&2; exit 1; }
+    echo "==> uploading $name  ($size bytes)"
+    # -T, not --data-binary: the latter reads the whole file into memory first
+    # and simply dies on a gigabyte ("option --data-binary: out of memory").
+    curl -fsS -X POST -T "$part" \
+        -H "Authorization: token $TOKEN" \
+        -H "Content-Type: application/octet-stream" \
+        -w '    http %{http_code}, %{size_upload} bytes in %{time_total}s\n' -o /dev/null \
+        "https://uploads.github.com/repos/$REPO/releases/$RELEASE/assets?name=$name"
 done
 
 echo "==> published; set GuestImage.imageVersion to \"$VER\""
