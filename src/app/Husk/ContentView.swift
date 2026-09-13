@@ -465,12 +465,13 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(gpuMode ? "GPU (virtio-gpu-gl)" : "Software (CPU)")
                             Text(gpuMode
-                                 ? "Android draws on the real GPU through Metal. The next "
-                                 + "launch boots from cold once, then saves a GPU machine "
-                                 + "and restores that from then on."
-                                 : "Every pixel is drawn by the emulated CPU. Reliable, and "
-                                 + "the reason a simple game runs at around twelve frames "
-                                 + "a second.")
+                                 ? "Android draws on the real GPU through Metal — four to "
+                                 + "five times the frame rate. It cannot be snapshotted "
+                                 + "yet, so EVERY launch boots from cold (about ten "
+                                 + "minutes) and nothing inside Android is kept."
+                                 : "Every pixel is drawn by the emulated CPU — around twelve "
+                                 + "frames a second — but the machine can be saved, so "
+                                 + "launches take seconds and apps stay installed.")
                                 .font(.caption2)
                                 .foregroundColor(gpuMode ? .orange : .secondary)
                         }

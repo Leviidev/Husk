@@ -318,6 +318,36 @@ final class GuestBridge {
         }
     }
 
+    /// Run one command and return both its output and its exit status.
+    ///
+    /// `shell` discards the status, which is fine for reads and fatal for
+    /// anything whose failure has to stop what follows.
+    func run(_ command: String, timeout: TimeInterval = 30) throws -> (out: String, status: Int) {
+        let fd = try openSocket(timeout: timeout)
+        defer { close(fd) }
+        try writeAll(fd, Data("\(command) 2>&1; echo \(Self.marker)$?\n".utf8))
+
+        var out = ""
+        var buf = [UInt8](repeating: 0, count: 16 * 1024)
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            let n = buf.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+            if n < 0 && errno == EINTR { continue }
+            if n <= 0 {
+                isConnected = false
+                throw BridgeError.io("guest closed the connection (errno \(errno))")
+            }
+            out += String(decoding: buf[0..<n], as: UTF8.self)
+            if let r = out.range(of: Self.marker) {
+                isConnected = true
+                let status = Int(out[r.upperBound...]
+                    .trimmingCharacters(in: .whitespacesAndNewlines)) ?? -1
+                return (String(out[out.startIndex..<r.lowerBound]), status)
+            }
+            if Date() > deadline { throw BridgeError.timeout("waiting for `\(command.prefix(60))`") }
+        }
+    }
+
     /// Copy a local file into the guest.
     ///
     /// The data goes down its own connection rather than being quoted into a
@@ -519,7 +549,10 @@ final class AndroidHost: ObservableObject {
                 // remember to do afterwards.
                 if ok {
                     await MainActor.run {
-                        self?.busy = "Saving Android — the screen will freeze briefly"
+                        self?.busy = QemuRunner.glProven
+                            ? "Installed. GPU mode cannot save yet, so this app is gone "
+                            + "when you relaunch."
+                            : "Saving Android — the screen will freeze briefly"
                         QemuRunner.shared.saveState(reason: "installed \(name)") { saved in
                             self?.busy = nil
                             if !saved {

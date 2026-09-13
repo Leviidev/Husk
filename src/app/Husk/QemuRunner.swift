@@ -263,16 +263,44 @@ final class QemuRunner: ObservableObject {
             // Zygote first: it owns the app processes, and each of those holds
             // its own EGL contexts. SurfaceFlinger last, because it is what the
             // apps are talking to.
+            // Every stop must actually succeed. Asking whether the bridge is
+            // still alive proves nothing: SELinux refuses ctl.stop from
+            // u:r:shell:s0 --
+            //
+            //   avc: denied { set } for property=ctl.stop$zygote
+            //        scontext=u:r:shell:s0 tcontext=u:object_r:ctl_stop_prop:s0
+            //
+            // -- so all three calls can fail while the shell keeps answering
+            // happily. That is how a save once went ahead with SurfaceFlinger
+            // still holding 3D resources, which is precisely the case the
+            // migration blocker exists to prevent.
+            var quiesced = true
             for svc in ["zygote_secondary", "zygote", "surfaceflinger"] {
-                _ = try? GuestBridge.shared.shell("setprop ctl.stop \(svc)", timeout: 60)
+                let r = try? GuestBridge.shared.run("setprop ctl.stop \(svc)", timeout: 60)
+                // zygote_secondary does not exist on a 64-bit-only guest, so
+                // its absence is not a failure; a permission refusal is.
+                if svc != "zygote_secondary", (r?.status ?? -1) != 0 {
+                    HuskLog.log("snap", "could not stop \(svc): "
+                              + (r?.out.trimmingCharacters(in: .whitespacesAndNewlines)
+                                 ?? "no answer"))
+                    quiesced = false
+                }
             }
+
+            if !quiesced {
+                HuskLog.log("snap", "REFUSING to save: the GPU could not be quiesced, and "
+                                  + "saving with live 3D resources produces a machine that "
+                                  + "restores into a black screen. The guest is untouched.")
+                isSavingState = false
+                QemuRunner.saveCompletion = nil
+                completion?(false)
+                return
+            }
+
             // ctl.stop returns as soon as init has been told, not once the
             // process has died and its buffers have been released.
             Thread.sleep(forTimeInterval: 5)
-            let alive = (try? GuestBridge.shared.shell("echo bridge-ok")) ?? ""
-            HuskLog.log("snap", alive.contains("bridge-ok")
-                ? "compositor stopped; bridge still answering"
-                : "compositor stopped but the bridge went quiet -- restart may need a relaunch")
+            HuskLog.log("snap", "compositor and app processes stopped")
         }
 
         husk_snapshot_save { ok, what in
