@@ -646,9 +646,29 @@ final class GuestBridge {
         Thread.detachNewThread { [weak self] in
             Thread.current.name = "com.husk.bridge.health"
             var wasAlive: Bool?
+            var ticks = 0
             while let self {
                 let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 30))?
                     .contains("__HUSK_ALIVE__") ?? false
+                // Sample the guest's own routing while we still can.
+                //
+                // The shell goes silent about a minute in, and the leading
+                // theory is that netd installs per-uid routing rules pointing at
+                // a default network that was never registered -- which would
+                // leave uid 2000's writes with nowhere to go while the socket
+                // stays open. That is exactly what these two commands show, and
+                // both run fine as shell. The last sample before the silence is
+                // the one that matters.
+                if alive, ticks % 3 == 0, ticks < 30 {
+                    for cmd in ["ip addr show", "ip rule show", "ip route show table all"] {
+                        if let out = try? self.shell(cmd, timeout: 20) {
+                            HuskLog.log("net", "[t+\(ticks * 5)s] \(cmd):\n"
+                                      + out.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+                    }
+                }
+                ticks += 1
+
                 if alive != wasAlive {
                     if wasAlive == nil {
                         HuskLog.log("bridge", "health: the shell is "
