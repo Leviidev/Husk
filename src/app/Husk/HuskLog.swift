@@ -214,6 +214,18 @@ enum HuskLog {
         log("boot", "processors  : \(ProcessInfo.processInfo.processorCount) "
                   + "(active \(ProcessInfo.processInfo.activeProcessorCount))")
         log("boot", "bundle      : \(Bundle.main.bundleIdentifier ?? "?")")
+        // Which build this is, in the log itself.
+        //
+        // Without this a log cannot be told apart from one produced by an older
+        // install, and a stale app on the phone reads exactly like a fix that
+        // did not work -- which has now cost a debugging round trip. The commit
+        // and date are stamped into Info.plist by package_ipa.sh.
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build   = info["CFBundleVersion"] as? String ?? "?"
+        let commit  = info["HuskBuildCommit"] as? String ?? "unstamped"
+        let built   = info["HuskBuildDate"] as? String ?? "?"
+        log("boot", "build       : \(version) (\(build)) \(commit) built \(built)")
         log("boot", "pid         : \(getpid())")
         log("boot", "log file    : \(logFileURL.path)")
         // Every iOS 27 device except iPad8,11/8,12 enforces TXM, which is what makes

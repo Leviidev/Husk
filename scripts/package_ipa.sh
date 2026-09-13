@@ -46,6 +46,18 @@ fi
 APP="$DD/Build/Products/Release-iphoneos/Husk.app"
 [ -d "$APP" ] || { echo "no app bundle at $APP" >&2; exit 1; }
 
+# Stamp the build's identity into the bundle so its logs can name themselves.
+# A log from a stale install is otherwise indistinguishable from a log proving a
+# fix did not work.
+APP_PLIST="$DD/Build/Products/Release-iphoneos/Husk.app/Info.plist"
+if [ -f "$APP_PLIST" ]; then
+    COMMIT="$(git -C "$HUSK_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    git -C "$HUSK_ROOT" diff --quiet 2>/dev/null || COMMIT="$COMMIT-dirty"
+    plutil -replace HuskBuildCommit -string "$COMMIT" "$APP_PLIST"
+    plutil -replace HuskBuildDate -string "$(date -u '+%Y-%m-%d %H:%M UTC')" "$APP_PLIST"
+    echo "==> stamped build $COMMIT"
+fi
+
 echo "==> validating bundle"
 PLIST="$APP/Info.plist"
 rc=0
