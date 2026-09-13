@@ -491,6 +491,7 @@ final class AndroidHost: ObservableObject {
                             self?.polling = false
                         }
                         HuskLog.log("bridge", "guest is ready after \(attempt) attempts")
+                        await self?.quietAbsentHardware()
                         await self?.refreshPackages()
                         await MainActor.run { self?.dumpDiagnostics() }
                         return
@@ -705,6 +706,37 @@ final class AndroidHost: ObservableObject {
                                .replacingOccurrences(of: "\n", with: " | "))
             }
             await self.dumpCrashes()
+        }
+    }
+
+    /// Stop Android chasing hardware this machine does not have.
+    ///
+    /// The QEMU command line has no Bluetooth controller, and the Bluetooth HAL
+    /// does not take the hint: `BpBluetoothHci::initialize` aborts inside a
+    /// binder ioctl, com.android.bluetooth dies with it, and the framework
+    /// restarts the whole stack a few seconds later. One log caught that happen
+    /// **88 times**, alongside four deaths of system_server -- which is the real
+    /// damage, because a system_server restart takes every app with it and
+    /// stalls the guest for tens of seconds.
+    ///
+    /// Turning the radio off in settings is what stops the loop: it is the
+    /// switch BluetoothManagerService actually reads, and it costs nothing on a
+    /// machine that has no radio to switch off.
+    ///
+    /// Done from the bridge rather than the guest image because the bridge is
+    /// already a shell and `settings` is a shell command -- the same call from
+    /// init fails, which is why husk-provision.rc has never worked.
+    func quietAbsentHardware() async {
+        let off = [
+            ("bluetooth", "settings put global bluetooth_on 0"),
+            ("ble scan",  "settings put global ble_scan_always_enabled 0"),
+        ]
+        for (what, cmd) in off {
+            let r = try? GuestBridge.shared.run(cmd, timeout: 60)
+            HuskLog.log("bridge", (r?.status == 0)
+                ? "\(what) disabled -- this machine has no radio for it"
+                : "could not disable \(what): "
+                  + (r?.out.trimmingCharacters(in: .whitespacesAndNewlines) ?? "no answer"))
         }
     }
 
