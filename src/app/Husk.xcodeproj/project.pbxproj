@@ -23,6 +23,7 @@
 		81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392BE39CE162757FDA225452 /* HuskKeyboard.swift */; };
 		871F6F64010B1731FB223791 /* HuskLogo.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B22149DE66B9BF4A74430C0 /* HuskLogo.png */; };
 		8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */; };
+		BBA9636793435EF7679E62F1 /* HuskAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */; };
 		CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */; };
 		E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */ = {isa = PBXBuildFile; fileRef = B74F9AA42414905593B347BA /* husk-jit.js */; };
 		EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -46,6 +47,7 @@
 
 /* Begin PBXFileReference section */
 		0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskBridgeFS.swift; sourceTree = "<group>"; };
+		14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskAudio.swift; sourceTree = "<group>"; };
 		1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = "<group>"; };
 		28D3E1CEE343707BE986FA6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 				4A0490485F9BA884A0554EAD /* GuestManifest.swift */,
 				619394B1069242D8750E7F33 /* Husk.entitlements */,
 				85AAFB3E92FE2AE4A2FA4DD8 /* HuskApp.swift */,
+				14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */,
 				690B2DA647B7B75C11DDDA9F /* HuskBridge.h */,
 				0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */,
 				F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */,
@@ -245,6 +248,7 @@
 				79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */,
 				29B4497EDC1E890D82BDF969 /* GuestManifest.swift in Sources */,
 				581DC803F723FFB10DDA759F /* HuskApp.swift in Sources */,
+				BBA9636793435EF7679E62F1 /* HuskAudio.swift in Sources */,
 				340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */,
 				8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */,
 				81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */,

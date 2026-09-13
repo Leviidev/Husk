@@ -32,6 +32,10 @@ echo "[cp  ] GL display bridge -> ui/"
 cp "$HUSK_ROOT/src/ios-jit/husk-display-gl.c" \
    "$HUSK_ROOT/src/ios-jit/husk-display-gl.h" "$Q/ui/"
 
+echo "[cp  ] audio backend -> audio/"
+cp "$HUSK_ROOT/src/ios-jit/husk-audio.c" \
+   "$HUSK_ROOT/src/ios-jit/husk-audio.h" "$Q/audio/"
+
 echo "[cp  ] balloon control -> system/"
 cp "$HUSK_ROOT/src/ios-jit/husk-balloon.c" \
    "$HUSK_ROOT/src/ios-jit/husk-balloon.h" "$Q/system/"
@@ -170,6 +174,60 @@ elif "trying MAP_JIT" in s:
 else:
     raise SystemExit("tcg/region.c: splitwx fallback shape changed")
 PY_JITFALLBACK
+
+# Audio: a host backend for iOS, and the QAPI name that lets -audiodev pick it.
+#
+# QEMU's audio subsystem is already compiled in -- mixer, voices, devices. The
+# only thing missing was a backend: the tree ships coreaudio for macOS and its
+# AudioUnit subtype does not exist on iOS. Registering a driver is not enough on
+# its own, because -audiodev is parsed through a QAPI union whose discriminator
+# is a closed enum, so an unknown name is rejected before any driver is
+# consulted.
+python3 - "$Q" <<'PY_AUDIO'
+import pathlib, sys
+q = pathlib.Path(sys.argv[1])
+
+p = q / "audio/meson.build"
+s = p.read_text()
+old = """  'noaudio.c',"""
+new = """  'husk-audio.c',
+  'noaudio.c',"""
+if old in s and "husk-audio.c" not in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  audio/meson.build: added husk-audio.c")
+elif "husk-audio.c" in s:
+    print("  audio/meson.build: audio backend already wired")
+else:
+    raise SystemExit("audio/meson.build: shape changed")
+
+p = q / "qapi/audio.json"
+s = p.read_text()
+if "'husk'" not in s:
+    old = """            'spice': { 'type': 'AudiodevGenericOptions',
+                   'if': 'CONFIG_SPICE' },"""
+    # enum first
+    e_old = """{ 'enum': 'AudiodevDriver',
+  'data': [ 'none',"""
+    e_new = """{ 'enum': 'AudiodevDriver',
+  'data': [ 'none',
+            'husk',"""
+    if e_old not in s:
+        raise SystemExit("qapi/audio.json: enum shape changed")
+    s = s.replace(e_old, e_new, 1)
+
+    u_old = """  'data': {
+    'none':      'AudiodevGenericOptions',"""
+    u_new = """  'data': {
+    'none':      'AudiodevGenericOptions',
+    'husk':      'AudiodevGenericOptions',"""
+    if u_old not in s:
+        raise SystemExit("qapi/audio.json: union shape changed")
+    s = s.replace(u_old, u_new, 1)
+    p.write_text(s)
+    print("  qapi/audio.json: -audiodev husk is now a valid driver")
+else:
+    print("  qapi/audio.json: husk driver already declared")
+PY_AUDIO
 
 # virtio-gpu: let a virgl-enabled machine be snapshotted, opt-in.
 #
@@ -358,6 +416,10 @@ wanted = [
     "husk_display_unlock_frame",
     "husk_display_sequence",
     "husk_display_set_ui_size",
+    "husk_audio_pull",
+    "husk_audio_active",
+    "husk_audio_frames_in",
+    "husk_audio_underruns",
     "husk_display_send_pointer",
     "husk_display_request_update",
     "husk_display_send_key",

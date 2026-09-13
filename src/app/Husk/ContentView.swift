@@ -163,6 +163,7 @@ struct ContentView: View {
         QemuRunner.shared.start()
         bridge.startWatching()
         GuestBridge.shared.startHealthWatch()
+        if QemuRunner.soundEnabled { HuskAudio.shared.start() }
     }
 }
 
@@ -532,6 +533,8 @@ struct SettingsView: View {
         UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
     @State private var keepNetwork =
         UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
+    @State private var sound =
+        UserDefaults.standard.bool(forKey: "husk.sound")
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -645,6 +648,28 @@ struct SettingsView: View {
                     Text("Takes effect on the next save. An existing saved machine "
                        + "keeps whichever behaviour it was saved with.")
                         .font(.caption2)
+                }
+
+                Section {
+                    Toggle(isOn: $sound) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sound (experimental)")
+                            Text("Adds a sound device to the machine. Turning this "
+                               + "on or off changes the hardware, so the saved "
+                               + "machine no longer matches and Android boots from "
+                               + "cold once.")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    .onChange(of: sound) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.sound")
+                        HuskLog.log("ui", v ? "sound on; the machine gains a device "
+                                            + "and will cold-boot once"
+                                            : "sound off; the machine loses a device "
+                                            + "and will cold-boot once")
+                    }
+                } header: {
+                    Text("Sound")
                 }
 
                 Section {

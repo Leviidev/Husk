@@ -125,6 +125,24 @@ final class QemuRunner: ObservableObject {
     /// The resolution the machine was actually created with, so a resize that
     /// changes nothing can be skipped.
     nonisolated(unsafe) static var bootGuestRes = (w: 360, h: 800)
+    /// Whether the machine has a sound device.
+    ///
+    /// Off by default, and deliberately: adding a device changes the machine
+    /// definition, and QEMU refuses to restore a snapshot into hardware that
+    /// does not match. Turning this on costs one cold boot, and turning it off
+    /// costs another -- which is why the saved machine is stamped with it
+    /// rather than left to fail the restore.
+    nonisolated static var soundEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "husk.sound")
+    }
+
+    /// What the saved machine's hardware looks like, for deciding whether a
+    /// restore is even possible. Was just the display; sound joins it because
+    /// it changes the same thing.
+    nonisolated static var machineStamp: String {
+        (glProven ? "gl" : "sw") + (soundEnabled ? "+snd" : "")
+    }
+
     nonisolated(unsafe) static var qemuReady = false
     /// A display size asked for before QEMU was up, applied once it is.
     nonisolated(unsafe) static var pendingUISize: (w: Int, h: Int)?
@@ -280,7 +298,7 @@ final class QemuRunner: ObservableObject {
     /// taken in the other display mode is not a snapshot this session can use.
     nonisolated var hasUsableSnapshot: Bool {
         guard hasSnapshot else { return false }
-        return (snapshotDisplay ?? "sw") == (QemuRunner.glProven ? "gl" : "sw")
+        return (snapshotDisplay ?? "sw") == QemuRunner.machineStamp
     }
 
     /// Write the running machine to disk so the next launch restores *this*.
@@ -553,7 +571,7 @@ final class QemuRunner: ObservableObject {
                 // Stamp the display this machine belongs to, so a later launch
                 // in the other mode cold-boots instead of restoring into a
                 // device the guest does not expect.
-                try? (QemuRunner.glProven ? "gl" : "sw")
+                try? QemuRunner.machineStamp
                     .write(toFile: QemuRunner.shared.snapshotDisplayPath,
                            atomically: true, encoding: .utf8)
             }
@@ -620,7 +638,7 @@ final class QemuRunner: ObservableObject {
         // rather than failing to restore.
         GuestImage.shared.hasShippedSnapshot
             ? "shipped-snapshot-v10"
-            : "file-backed-lineage-v2-" + (QemuRunner.glProven ? "gl" : "sw")
+            : "file-backed-lineage-v2-" + QemuRunner.machineStamp
     }
 
     /// Whether guest RAM can be backed by a file on this device, this run.
@@ -1040,7 +1058,14 @@ final class QemuRunner: ObservableObject {
             // Entropy. Without it the guest stalls waiting for crng init, which
             // on a previous guest cost several seconds of boot.
             "-device", "virtio-rng-pci",
-
+        ] + (QemuRunner.soundEnabled ? [
+            // virtio-snd rather than intel-hda: a paravirtual device with no
+            // codec to emulate, so the cost is a queue rather than a chip.
+            // Conditional, because adding it changes the machine definition and
+            // no snapshot taken without it can be restored into it.
+            "-audiodev", "husk,id=huskaudio",
+            "-device", "virtio-sound-pci,audiodev=huskaudio",
+        ] : []) + [
             "-chardev", "file,id=ser0,path=\(guestSerialLogPath)",
             "-serial", "chardev:ser0",
             "-display", "none",
@@ -1330,7 +1355,7 @@ final class QemuRunner: ObservableObject {
         // across a mismatch is the failure that put GL behind a flag in the
         // first place: Android comes back alive and holding resource ids that
         // the new renderer never created, and nothing is ever drawn again.
-        let wantDisplay = QemuRunner.glProven ? "gl" : "sw"
+        let wantDisplay = QemuRunner.machineStamp
         let haveDisplay = QemuRunner.shared.snapshotDisplay ?? "sw"
         let displayFits = (wantDisplay == haveDisplay)
         if !displayFits {

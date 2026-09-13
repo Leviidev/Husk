@@ -65,6 +65,15 @@ bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
 void     husk_display_set_ui_size(int32_t width, int32_t height);
 
+/* Audio, from husk-audio.c. The format is fixed there and mirrored here so the
+ * render callback never has to negotiate one. */
+#define HUSK_AUDIO_RATE     48000
+#define HUSK_AUDIO_CHANNELS 2
+int32_t  husk_audio_pull(int16_t *dst, int32_t frames);
+bool     husk_audio_active(void);
+uint64_t husk_audio_frames_in(void);
+uint64_t husk_audio_underruns(void);
+
 /* Present the guest's scanout from its own MTLTexture, bypassing GL. See the
  * comment in husk-display-gl.h: on this stack the GL texture id that comes with
  * each scanout is not readable from our context, and the pixels are in the
