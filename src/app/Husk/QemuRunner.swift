@@ -332,6 +332,26 @@ final class QemuRunner: ObservableObject {
         return nil
     }
 
+    /// Guest resolution, shaped like the screen it will be stretched onto.
+    ///
+    /// The blit scales the guest texture across the whole window with no regard
+    /// for aspect ratio, so a 360x640 guest (0.5625) drawn onto a 1206x2622
+    /// phone (0.460) comes out visibly squashed. Keeping the width at 360 --
+    /// the emulated cost is per pixel, and this is already the cheapest useful
+    /// size -- and deriving the height from the real screen makes the two
+    /// shapes agree, so nothing has to be letterboxed or distorted.
+    ///
+    /// Rounded to a multiple of 8: graphics stacks are happier with aligned
+    /// strides, and the error is under half a percent of the height.
+    private var guestResolution: (w: Int, h: Int) {
+        let size = HuskGLView.pixelSize
+        guard size.width > 0, size.height > 0 else { return (360, 640) }
+        let w = 360
+        let exact = Double(w) * Double(size.height) / Double(size.width)
+        let h = max(480, Int((exact / 8).rounded()) * 8)
+        return (w, h)
+    }
+
     private func guestMemoryMiB() -> Int {
         // A snapshot pins the size. Restoring into a differently sized machine
         // does not work, and the adaptive budget below is derived from
@@ -556,8 +576,8 @@ final class QemuRunner: ObservableObject {
             // console requires a GL context". Falling back has to mean not
             // asking for the GL device in the first place.
             "-device", QemuRunner.glProven
-                ? "virtio-gpu-gl-pci,xres=360,yres=640"
-                : "virtio-gpu-pci,xres=360,yres=640",
+                ? "virtio-gpu-gl-pci,xres=\(guestResolution.w),yres=\(guestResolution.h)"
+                : "virtio-gpu-pci,xres=\(guestResolution.w),yres=\(guestResolution.h)",
 
             // USB HID rather than virtio-input, which is what their config uses.
             // Every Android kernel has usbhid; virtio-input is not guaranteed,
@@ -700,6 +720,15 @@ final class QemuRunner: ObservableObject {
         HuskLog.log("qemu", "DISPLAY MODE: "
                           + (QemuRunner.glProven ? "GPU (virtio-gpu-gl)"
                                                  : "software (CPU framebuffer)"))
+        if QemuRunner.glProven {
+            // QEMU refuses to snapshot a machine with virgl active -- it says
+            // so plainly: "virgl is not yet migratable". So the GPU and fast
+            // relaunch are mutually exclusive, and a cold boot here is twelve
+            // minutes. Worth saying out loud rather than discovering at the
+            // moment the save fails.
+            HuskLog.log("qemu", "NOTE: with the GPU display QEMU cannot snapshot "
+                              + "(virgl is not migratable), so EVERY launch cold-boots")
+        }
 
         HuskLog.log("qemu", "---- QEMU command line (\(args.count) args) ----")
         for (i, a) in args.enumerated() {

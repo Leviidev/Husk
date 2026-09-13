@@ -207,9 +207,16 @@ struct SetupView: View {
                 // emulated code than writing pixels into a framebuffer. Two runs
                 // of the same build settle it; arguing about it does not.
                 Toggle(isOn: $forceSoftware) {
-                    Text(forceSoftware ? "Display: software (CPU)"
-                                       : "Display: GPU (virtio-gpu-gl)")
-                        .font(.footnote)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(forceSoftware ? "Display: software (CPU)"
+                                           : "Display: GPU (virtio-gpu-gl)")
+                        Text(forceSoftware
+                             ? "Slower drawing, but the machine can be snapshotted"
+                             : "QEMU cannot snapshot with the GPU — every launch cold-boots")
+                            .font(.caption2)
+                            .foregroundColor(forceSoftware ? .secondary : .orange)
+                    }
+                    .font(.footnote)
                 }
                 .padding(.horizontal, 30)
                 .onChange(of: forceSoftware) { v in
