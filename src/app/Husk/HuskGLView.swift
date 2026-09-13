@@ -107,7 +107,13 @@ final class HuskGLView: UIView {
             let h = landscape ? short : long
             HuskLog.log("ui", "screen is \(landscape ? "landscape" : "portrait"); "
                             + "asking the guest for \(w)x\(h)")
-            husk_display_set_ui_size(Int32(w), Int32(h))
+            if QemuRunner.qemuReady {
+                husk_display_set_ui_size(Int32(w), Int32(h))
+            } else {
+                // The first layout happens before QEMU starts. Remember it and
+                // let the runner apply it once the machine exists.
+                QemuRunner.pendingUISize = (w: w, h: h)
+            }
             QemuRunner.lastGuestRes = (w: w, h: h)
         }
 

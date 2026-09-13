@@ -113,6 +113,10 @@ final class QemuRunner: ObservableObject {
     /// bottom of the guest screen unreachable. One number, in one place, taken
     /// from what was actually asked for.
     nonisolated(unsafe) static var lastGuestRes = (w: 360, h: 800)
+    /// True once qemu_init() has returned and QEMU's locks exist.
+    nonisolated(unsafe) static var qemuReady = false
+    /// A display size asked for before QEMU was up, applied once it is.
+    nonisolated(unsafe) static var pendingUISize: (w: Int, h: Int)?
 
     private var documentsDir: String {
         NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
@@ -1207,6 +1211,18 @@ final class QemuRunner: ObservableObject {
             qemu_init(Int32(args.count), buf.baseAddress)
         }
         HuskLog.log("qemu", "qemu_init() returned")
+        // Nothing in QEMU may be called before this point -- its locks do not
+        // exist yet, and bql_lock() on an uninitialised mutex aborts the
+        // process. husk_display_gl_early() says so in its own comment and I
+        // called the display-resize path from layoutSubviews anyway, which runs
+        // during the first layout, long before this line.
+        QemuRunner.qemuReady = true
+        if let pending = QemuRunner.pendingUISize {
+            QemuRunner.pendingUISize = nil
+            HuskLog.log("qemu", "applying the display size asked for before startup: "
+                              + "\(pending.w)x\(pending.h)")
+            husk_display_set_ui_size(Int32(pending.w), Int32(pending.h))
+        }
         // Survived initialisation, so this size is safe to try again next launch.
         try? String(QemuRunner.shared.lastGuestMiB)
             .write(toFile: ramProvenPath, atomically: true, encoding: .utf8)
