@@ -49,7 +49,18 @@ final class QemuRunner: ObservableObject {
     /// GL then fails to initialise nothing ever draws into that layer. Without
     /// this flag the fallback to the software display is invisible -- the log
     /// says it fell back and the screen stays black.
-    @Published var glDisplayActive = false
+    /// Which display is drawing -- with a state for "not yet decided".
+    ///
+    /// This was a Bool, and false therefore meant both "GL failed" and "GL has
+    /// not been tried yet". The UI reads it to decide whether to put the
+    /// software display on screen, so during startup it put an opaque software
+    /// view directly over the GL layer. On a cold boot that lasted a second and
+    /// nobody noticed; on a restore the snapshot takes eleven seconds to load
+    /// before the listener can bind, and the placement dump caught it red
+    /// handed: "HuskGLView COVERED by HuskDisplay".
+    enum DisplayKind { case undecided, gl, software }
+    @Published var displayKind: DisplayKind = .undecided
+    var glDisplayActive: Bool { displayKind == .gl }
 
     /// True when this session started from a saved machine rather than booting.
     @Published var restoredFromSnapshot = false
@@ -1174,7 +1185,10 @@ final class QemuRunner: ObservableObject {
             HuskLog.log("qemu", "using the software display")
             husk_display_init()
         }
-        DispatchQueue.main.async { QemuRunner.shared.glDisplayActive = glUp }
+        DispatchQueue.main.async {
+            QemuRunner.shared.displayKind = glUp ? .gl : .software
+            HuskGLView.shared.describePlacement(why: "the display is decided")
+        }
 
         startMemoryWatch()
 

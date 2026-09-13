@@ -105,20 +105,31 @@ final class HuskGLView: UIView {
             ? "the GL view left the window (its layer keeps the EGL surface)"
             : "the GL view is in a window")
         if window != nil {
-            // Once, a few seconds in, when the hierarchy has settled: walk up
-            // from this view to the window and say what each ancestor is doing
-            // to it. A view that is hidden, transparent, zero-sized or covered
-            // looks exactly like a view that is drawing black, and only one of
-            // those is a GPU problem.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.describePlacement() }
+            // Walk up from this view to the window and say what each ancestor
+            // is doing to it. A view that is hidden, transparent, zero-sized or
+            // covered looks exactly like a view that is drawing black, and only
+            // one of those is a GPU problem.
+            //
+            // More than once, because the hierarchy changes: the first dump ran
+            // four seconds in and reported the GL view COVERED by the software
+            // display, which was true at that instant and no longer true eight
+            // seconds later when the snapshot finished loading and GL bound. A
+            // single early sample described a transient as if it were the
+            // steady state.
+            for t in [4.0, 30.0, 90.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + t) {
+                    self.describePlacement(why: "\(Int(t))s after reaching a window")
+                }
+            }
         }
     }
 
-    private func describePlacement() {
+    func describePlacement(why: String) {
         guard window != nil else {
-            HuskLog.log("gl", "placement: the view is no longer in a window")
+            HuskLog.log("gl", "placement (\(why)): the view is not in a window")
             return
         }
+        HuskLog.log("gl", "placement (\(why)):")
         var v: UIView? = self
         var depth = 0
         while let cur = v {

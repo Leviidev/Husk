@@ -232,12 +232,32 @@ static void husk_gl_update(DisplayChangeListener *dcl,
      * The flip argument inverts with the function, exactly as it does upstream.
      */
     egl_fb_blit(&husk_window_fb, &husk_guest_fb, !husk_flip);
+    {
+        static GLenum last_err = GL_NO_ERROR;
+        GLenum err = glGetError();
+        if (err != last_err) {
+            last_err = err;
+            fprintf(stderr, "[husk-gl] blit error state changed to 0x%x "
+                            "at frame %llu (guest %dx%d fb=%u -> window %dx%d)\n",
+                    err, (unsigned long long)husk_gl_frames,
+                    husk_guest_fb.width, husk_guest_fb.height,
+                    husk_guest_fb.framebuffer, husk_win_w, husk_win_h);
+        }
+    }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     /* The first few frames, then rarely: this is a synchronous read-back and
      * it stalls the pipeline, so it must not be something the frame rate pays
      * for. Rare is enough -- it answers a yes/no question. */
-    sample = husk_gl_frames == 1 || (husk_gl_frames % 1200) == 0;
+    /*
+     * Every 1200 frames never fired. Android restored from a snapshot draws
+     * about five hundred frames while the launcher comes up and then stops
+     * completely, so the only thumbnails in the log were the two from before
+     * anything had been drawn. Early and often, then rarely.
+     */
+    sample = husk_gl_frames == 1 || husk_gl_frames == 30
+          || husk_gl_frames == 120 || husk_gl_frames == 300
+          || (husk_gl_frames % 600) == 0;
     if (sample) {
         husk_gl_sample();
     }

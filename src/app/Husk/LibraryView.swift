@@ -160,7 +160,7 @@ struct RunningAppView: View {
             //
             // With GL active the guest is already on screen below this view.
             // What is left here is chrome, and chrome must not cover it.
-            if !runner.glDisplayActive {
+            if runner.displayKind == .software {
                 Color.black.ignoresSafeArea()
                 HuskDisplay().ignoresSafeArea()
             }

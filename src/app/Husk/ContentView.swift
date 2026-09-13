@@ -174,7 +174,12 @@ struct GuestScreenView: View {
             // display goes on top and takes over. Without this the fallback is
             // invisible: the log says it fell back and the screen stays black.
             HuskGLScreen().ignoresSafeArea()
-            if !runner.glDisplayActive {
+            // Only once GL is known to have FAILED. While the answer is
+            // still undecided this must draw nothing: HuskDisplay is opaque,
+            // and putting it over the GL layer on the chance that GL might not
+            // work is how the guest ends up hidden behind a view that has
+            // nothing to show.
+            if runner.displayKind == .software {
                 HuskDisplay().ignoresSafeArea()
             }
 
