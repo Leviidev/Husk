@@ -41,7 +41,25 @@ static bool husk_have_scanout;
 static bool husk_flip;
 static uint64_t husk_gl_frames;
 
+/*
+ * Defined below, once husk_gl_dcl_ops exists to compare against.
+ *
+ * This one is not optional, whatever the struct's shape suggests.
+ * console_compatible_with() calls it the moment a console has a GL context:
+ *
+ *   if (console_has_gl(con) &&
+ *       !con->gl->ops->dpy_gl_ctx_is_compatible_dcl(con->gl, dcl))
+ *
+ * -- with no NULL check on the member. Attaching a context whose ops table
+ * leaves it unset therefore does not fail a compatibility test, it jumps to
+ * address zero inside register_displaychangelistener(). Every other op in this
+ * table is guarded at its call site; this one is not.
+ */
+static bool husk_gl_ctx_is_compatible_dcl(DisplayGLCtx *dgc,
+                                          DisplayChangeListener *dcl);
+
 static const DisplayGLCtxOps husk_gl_ctx_ops = {
+    .dpy_gl_ctx_is_compatible_dcl = husk_gl_ctx_is_compatible_dcl,
     .dpy_gl_ctx_create        = qemu_egl_create_context,
     .dpy_gl_ctx_destroy       = qemu_egl_destroy_context,
     .dpy_gl_ctx_make_current  = qemu_egl_make_context_current,
@@ -107,6 +125,13 @@ static const DisplayChangeListenerOps husk_gl_dcl_ops = {
 static DisplayChangeListener husk_gl_dcl = {
     .ops = &husk_gl_dcl_ops,
 };
+
+/* Our context belongs to our listener and to no other. */
+static bool husk_gl_ctx_is_compatible_dcl(DisplayGLCtx *dgc,
+                                          DisplayChangeListener *dcl)
+{
+    return dcl->ops == &husk_gl_dcl_ops;
+}
 
 uint64_t husk_display_gl_frames(void)
 {
