@@ -35,6 +35,17 @@ final class HuskMetalPresenter {
     private var complained = false
     private var presented: UInt64 = 0
 
+    /// Whether the guest's picture needs a quarter turn to match the screen.
+    /// Set by HuskGLView when the device orientation changes, and read on
+    /// QEMU's thread, so it goes through the same lock as everything else.
+    private var rotated = false
+
+    func setRotated(_ on: Bool) {
+        lock.lock()
+        rotated = on
+        lock.unlock()
+    }
+
     func attach(layer: CAMetalLayer) {
         lock.lock()
         self.layer = layer
@@ -61,18 +72,30 @@ final class HuskMetalPresenter {
 
         struct VOut { float4 pos [[position]]; float2 uv; };
 
+        struct Params { float flip; float rotate; };
+
         vertex VOut husk_vertex(uint vid [[vertex_id]],
-                                constant float &flip [[buffer(0)]]) {
+                                constant Params &p [[buffer(0)]]) {
+            float flip = p.flip;
             // A full-screen triangle strip, in clip space.
-            const float2 p[4] = { float2(-1, -1), float2(1, -1),
-                                  float2(-1,  1), float2(1,  1) };
+            const float2 corners[4] = { float2(-1, -1), float2(1, -1),
+                                        float2(-1,  1), float2(1,  1) };
             VOut o;
-            o.pos = float4(p[vid], 0, 1);
-            float2 uv = p[vid] * 0.5 + 0.5;
+            o.pos = float4(corners[vid], 0, 1);
+            float2 uv = corners[vid] * 0.5 + 0.5;
             // Metal samples textures from the top-left; clip space counts y
             // upward. That inversion is unconditional. The guest's own
             // y_0_top then flips it back when the scanout is already top-down.
-            o.uv = float2(uv.x, flip > 0.5 ? uv.y : 1.0 - uv.y);
+            uv = float2(uv.x, flip > 0.5 ? uv.y : 1.0 - uv.y);
+            // A quarter turn, when the guest panel and the screen disagree.
+            //
+            // Android is a fixed 360x800 panel. Asked for landscape it rotates
+            // its own composition inside that panel rather than changing shape,
+            // so what arrives here is a portrait texture holding a sideways
+            // picture. Turning it back here is what makes it land upright on a
+            // landscape screen -- and doing it in the sampler costs nothing,
+            // because the GPU is reading the texture either way.
+            o.uv = p.rotate > 0.5 ? float2(uv.y, 1.0 - uv.x) : uv;
             return o;
         }
 
@@ -134,9 +157,9 @@ final class HuskMetalPresenter {
         guard let buffer = queue.makeCommandBuffer(),
               let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
 
-        var flipValue: Float = flip ? 1 : 0
+        var params = (flip: Float(flip ? 1 : 0), rotate: Float(rotated ? 1 : 0))
         encoder.setRenderPipelineState(pipeline)
-        encoder.setVertexBytes(&flipValue, length: MemoryLayout<Float>.size, index: 0)
+        encoder.setVertexBytes(&params, length: MemoryLayout<Float>.size * 2, index: 0)
         encoder.setFragmentTexture(texture, index: 0)
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)

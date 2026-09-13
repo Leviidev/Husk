@@ -16,6 +16,7 @@ final class HuskGLView: UIView {
     static let surfaceReady = NSCondition()
     nonisolated(unsafe) static var layerForGL: CAMetalLayer?
     nonisolated(unsafe) static var pixelSize: CGSize = .zero
+    nonisolated(unsafe) static var lastLandscape: Bool?
 
     /// The one view for the process.
     ///
@@ -83,6 +84,28 @@ final class HuskGLView: UIView {
         metalLayer.drawableSize = CGSize(width: bounds.width * scale,
                                          height: bounds.height * scale)
         HuskMetalPresenter.shared.attach(layer: metalLayer)
+
+        // Keep the guest's rotation in step with the screen's.
+        //
+        // Android here is a fixed 360x800 panel and does not turn itself: a game
+        // that asks for landscape gets its picture rotated inside that portrait
+        // panel, which is why Geometry Dash came out small and sideways rather
+        // than filling the screen. Telling Android to rotate makes it compose
+        // for landscape; turning the result back in the shader makes it land
+        // upright. Neither half works alone.
+        let landscape = bounds.width > bounds.height
+        if landscape != Self.lastLandscape {
+            Self.lastLandscape = landscape
+            HuskMetalPresenter.shared.setRotated(landscape)
+            HuskLog.log("ui", "screen is \(landscape ? "landscape" : "portrait"); "
+                            + "asking Android to match")
+            DispatchQueue.global(qos: .userInitiated).async {
+                _ = try? GuestBridge.shared.shell(
+                    "settings put system accelerometer_rotation 0", timeout: 20)
+                _ = try? GuestBridge.shared.shell(
+                    "settings put system user_rotation \(landscape ? 1 : 0)", timeout: 20)
+            }
+        }
         Self.surfaceReady.lock()
         let first = Self.layerForGL == nil
         Self.layerForGL = metalLayer
