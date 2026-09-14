@@ -16,77 +16,74 @@ struct ContentView: View {
     enum StartMode { case fullScreen, library }
     @State private var mode: StartMode = .fullScreen
     @State private var started = false
-    @State private var runningApp: HuskBridgeFS.AndroidApp?
     @State private var showLogs = false
     /// True while the guest's own screen is being shown instead of the library.
     /// Starts true because first boot always needs the Android wizard.
     @State private var showGuestScreen = true
+    @State private var tab: HuskTab = .android
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        // A VStack, so the bar takes its own space rather than floating over the
+        // guest. Overlapping would cost the bottom strip of Android's screen to
+        // touches -- fine for a settings list, not for a game that expects taps
+        // anywhere.
+        VStack(spacing: 0) {
         ZStack {
-            // Mounted for the whole session once the guest is running, even
-            // when the library is covering it.
+            // The guest, mounted for the whole session once it is running --
+            // never torn down when another tab is on top.
             //
-            // It owns the CAMetalLayer, and the GL probe needs that layer to
-            // exist before QEMU builds its command line -- so a session started
-            // in library mode used to report "no layer to probe with" and fall
-            // back to the software display, which is the slow path this whole
-            // effort is trying to leave. Keeping it mounted and covering it is
-            // what lets the library run on a GPU-backed guest.
+            // This is why the tabs are a ZStack and a bar of buttons rather than
+            // a TabView. HuskGLView owns the CAMetalLayer that QEMU built its
+            // EGL surface and Metal presenter against, and SwiftUI unloads the
+            // views of an unselected tab. Losing that layer once already cost a
+            // day: the frame counter climbed happily against a black screen
+            // because QEMU was drawing into a layer nothing was compositing.
             if started && runner.isRunning {
-                GuestScreenView(showLogs: $showLogs, chromeHidden: runningApp != nil, onBack: {
-                    mode = .library
-                    HuskLog.log("ui", "hiding the guest screen; back to the library")
-                    showGuestScreen = false
-                    AndroidHost.shared.waitForReady()
-                })
+                GuestScreenView(showLogs: $showLogs,
+                                chromeHidden: tab != .android,
+                                onBack: { tab = .library })
             }
 
-            if let app = runningApp {
-                RunningAppView(app: app) {
-                    HuskLog.log("ui", "returning to library from \(app.package)")
-                    runningApp = nil
+            switch tab {
+            case .android:
+                if !started {
+                    SetupView(showLogs: $showLogs) { chosen in
+                        mode = chosen
+                        HuskLog.log("ui", "start mode: "
+                                  + (chosen == .fullScreen ? "full screen" : "library"))
+                        showGuestScreen = (chosen == .fullScreen)
+                        if chosen == .library { tab = .library }
+                        start()
+                        if chosen == .library { AndroidHost.shared.waitForReady() }
+                    }
                 }
-            } else if started && mode == .library && !showGuestScreen {
-                AdbLibraryView(onOpened: {
-                                HuskLog.log("ui", "revealing the guest screen")
-                                showGuestScreen = true
-                               },
-                               showLogs: $showLogs)
-                    // Opaque, because the guest is still drawing underneath.
+            case .library:
+                // Opaque, because the guest is still drawing underneath.
+                Group {
+                    if started {
+                        AdbLibraryView(onOpened: { tab = .android },
+                                       showLogs: $showLogs)
+                    } else {
+                        notStartedYet("The library talks to Android over the "
+                                    + "bridge, so it needs Android running.")
+                    }
+                }
+                .background(Color.black.ignoresSafeArea())
+            case .console:
+                LogView(isSheet: false)
                     .background(Color.black.ignoresSafeArea())
-            } else if started && runner.isRunning {
-                // Nothing: the guest screen above is already showing.
-                EmptyView()
-            } else if false {
-                // Android's own first-run wizard has to be completed by hand, and
-                // LineageOS will not finish booting until it is. Hiding the guest
-                // behind a spinner makes that look like a hang: it is drawing
-                // continuously, just waiting for a human who cannot see or touch it.
-                GuestScreenView(showLogs: $showLogs, onBack: {
-                    // Back always lands on the library, whichever way Android
-                    // was started. Full screen is a way of looking at the guest,
-                    // not a mode you can be trapped in.
-                    mode = .library
-                    showGuestScreen = false
-                    AndroidHost.shared.waitForReady()
-                })
-            } else if !started {
-                SetupView(showLogs: $showLogs) { chosen in
-                    mode = chosen
-                    // Which screen a session was on is not otherwise
-                    // recoverable from the log, and "I see nothing" means very
-                    // different things in the two modes.
-                    HuskLog.log("ui", "start mode: \(chosen == .fullScreen ? "full screen" : "library")")
-                    // Full screen shows the guest immediately; the library keeps
-                    // it hidden and talks to it over ADB instead.
-                    showGuestScreen = (chosen == .fullScreen)
-                    start()
-                    if chosen == .library { AndroidHost.shared.waitForReady() }
-                }
+            case .settings:
+                SettingsView(isSheet: false, showLogs: $showLogs)
+                    .background(Color.black.ignoresSafeArea())
             }
+
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        HuskTabBar(tab: $tab, guestRunning: started && runner.isRunning)
+        }
+        .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showLogs) { LogView() }
         // Asking rather than downloading. Two gigabytes over someone's cellular
         // connection is not a decision to make on their behalf.
@@ -129,6 +126,20 @@ struct ContentView: View {
         if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
         }
+    }
+
+    /// Shown by a tab that cannot do anything useful until Android is up.
+    private func notStartedYet(_ why: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "power").font(.largeTitle).foregroundStyle(.secondary)
+            Text("Android is not running").font(.headline)
+            Text(why)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal, 40)
+            Button("Go to Android") { tab = .android }
+                .buttonStyle(.borderedProminent).padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func start() {
@@ -175,13 +186,11 @@ struct ContentView: View {
 struct GuestScreenView: View {
     @ObservedObject private var runner = QemuRunner.shared
     @Binding var showLogs: Bool
-    /// True while RunningAppView is layered over this one. That view is now
-    /// transparent, so this screen's own controls would otherwise show through
-    /// it -- two sets of chrome over a game that is meant to look native.
+    /// True while another tab is covering this one, so the guest's own controls
+    /// are not drawn on top of a settings list.
     var chromeHidden = false
     let onBack: () -> Void
     @State private var keyboard = false
-    @State private var installing = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -258,22 +267,12 @@ struct GuestScreenView: View {
             // one-way trip.
             if !chromeHidden {
             HStack(spacing: 14) {
-                Button(action: onBack) {
-                    Label("Back", systemImage: "chevron.left")
-                        .font(.caption.weight(.medium))
-                }
                 Button {
                     keyboard.toggle()
                     HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
                 } label: {
                     Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
                         .font(.caption)
-                }
-                // Installing without going back to the library, which is the
-                // whole point of full screen: you are in Android, and leaving it
-                // to add an app is the long way round.
-                Button { installing = true } label: {
-                    Image(systemName: "square.and.arrow.down").font(.caption)
                 }
                 // Android's own Home key, over the bridge.
                 //
@@ -310,9 +309,6 @@ struct GuestScreenView: View {
                     }
                 }
                 .disabled(runner.isSavingState)
-                Button { showLogs = true } label: {
-                    Image(systemName: "terminal").font(.caption)
-                }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
@@ -322,14 +318,6 @@ struct GuestScreenView: View {
         // On the screen rather than the button: the chrome can hide while the
         // document picker is up, and an importer attached to a view that goes
         // away goes away with it.
-        .fileImporter(isPresented: $installing,
-                      allowedContentTypes: [.item],
-                      allowsMultipleSelection: false) { result in
-            if case .success(let urls) = result, let apk = urls.first {
-                HuskLog.log("ui", "installing \(apk.lastPathComponent) from full screen")
-                AndroidHost.shared.install(apk)
-            }
-        }
         .statusBarHidden(true)
     }
 }
@@ -382,7 +370,7 @@ struct SetupView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(profile: $profile, showLogs: $showLogs)
+            SettingsView(showLogs: $showLogs)
         }
     }
 
@@ -591,8 +579,10 @@ struct SettingsView: View {
         }
     }
 
+    /// False when this is a tab rather than a sheet: there is nothing to
+    /// dismiss, and a Done button that does nothing is worse than no button.
+    var isSheet = true
     @Environment(\.presentationMode) private var presentation
-    @Binding var profile: QemuRunner.Profile
     @Binding var showLogs: Bool
 
     @ObservedObject private var guest = GuestImage.shared
@@ -866,7 +856,9 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { presentation.wrappedValue.dismiss() }
+                    if isSheet {
+                        Button("Done") { presentation.wrappedValue.dismiss() }
+                    }
                 }
             }
         }
@@ -1010,6 +1002,7 @@ struct AdbLibraryView: View {
 }
 
 struct LogView: View {
+    var isSheet = true
     @Environment(\.dismiss) private var dismiss
     @State private var lines: [String] = []
     @State private var showShare = false
@@ -1042,7 +1035,9 @@ struct LogView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    if isSheet {
+                        Button("Done") { dismiss() }
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showShare = true } label: { Image(systemName: "square.and.arrow.up") }
