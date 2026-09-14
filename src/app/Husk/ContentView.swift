@@ -610,6 +610,7 @@ struct SettingsView: View {
         UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
     @State private var autoSave =
         UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
+    @State private var appIcon = HuskAppIcon.current
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -738,6 +739,50 @@ struct SettingsView: View {
                 } footer: {
                     Text("Takes effect on the next save. An existing saved machine "
                        + "keeps whichever behaviour it was saved with.")
+                        .font(.caption2)
+                }
+
+                Section {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(HuskAppIcon.allCases) { icon in
+                                Button {
+                                    appIcon = icon
+                                    HuskAppIcon.apply(icon)
+                                } label: {
+                                    VStack(spacing: 6) {
+                                        if let art = icon.preview {
+                                            Image(uiImage: art)
+                                                .resizable().scaledToFit()
+                                                .frame(width: 58, height: 58)
+                                                .clipShape(RoundedRectangle(cornerRadius: 13,
+                                                                            style: .continuous))
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                                .fill(.quaternary)
+                                                .frame(width: 58, height: 58)
+                                        }
+                                        Text(icon.title).font(.caption2)
+                                    }
+                                    .overlay(alignment: .topTrailing) {
+                                        if appIcon == icon {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.tint)
+                                                .offset(x: 4, y: -4)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("App icon")
+                } footer: {
+                    Text("iOS shows its own confirmation after the icon changes; "
+                       + "that alert is the system's and cannot be turned off.")
                         .font(.caption2)
                 }
 

@@ -42,6 +42,11 @@ targets:
         # The icon lives in Assets.xcassets/AppIcon.appiconset. Without this
         # the catalog is compiled and the icon is never referenced.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Alternates, so the icon can be chosen in Settings. iOS can only switch
+        # between NAMED icons, which is why each appearance variant is its own
+        # appiconset rather than appearances inside one.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconTintedDark
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Husk/Info.plist
         CODE_SIGN_ENTITLEMENTS: Husk/Husk.entitlements
