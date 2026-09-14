@@ -654,6 +654,7 @@ final class GuestBridge {
             Thread.current.name = "com.husk.bridge.health"
             var wasAlive: Bool?
             var ticks = 0
+            var lastCrashLine: String?
             while let self {
                 let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 30))?
                     .contains("__HUSK_ALIVE__") ?? false
@@ -671,6 +672,36 @@ final class GuestBridge {
                         if let out = try? self.shell(cmd, timeout: 20) {
                             HuskLog.log("net", "[t+\(ticks * 5)s] \(cmd):\n"
                                       + out.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+                    }
+                }
+                // Android's crash buffer, which is the only place an app crash
+                // is written.
+                //
+                // The kernel serial console carries native tombstones and
+                // nothing else, so a Java-side crash -- the Files app dying, a
+                // media exception -- left no trace anywhere Husk could see. The
+                // log said the guest was healthy while an app was crashing on
+                // every launch.
+                //
+                // `-b crash` is a small dedicated ring, so this is cheap: a few
+                // lines every half minute, and only the ones not seen before.
+                if alive, ticks % 6 == 3 {
+                    if let out = try? self.shell("logcat -b crash -d -t 200", timeout: 30) {
+                        let lines = out.split(separator: "\n").map(String.init)
+                            .filter { !$0.isEmpty && !$0.hasPrefix("---------") }
+                        var fresh: [String] = []
+                        if let last = lastCrashLine,
+                           let idx = lines.lastIndex(of: last) {
+                            fresh = Array(lines[(idx + 1)...])
+                        } else {
+                            fresh = lines
+                        }
+                        if !fresh.isEmpty {
+                            lastCrashLine = lines.last
+                            HuskLog.log("crash", "---- \(fresh.count) new line(s) from "
+                                              + "Android's crash log ----")
+                            for line in fresh.suffix(80) { HuskLog.log("crash", line) }
                         }
                     }
                 }
