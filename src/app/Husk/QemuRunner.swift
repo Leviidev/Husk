@@ -176,6 +176,17 @@ final class QemuRunner: ObservableObject {
         (glProven ? "gl" : "sw") + (soundEnabled ? "+snd" : "")
     }
 
+    /// Whether Husk saves the machine on its own once Android settles.
+    ///
+    /// On by default, because a machine that is never saved cold-boots every
+    /// launch. Off is for when the save itself is the problem -- it fires while
+    /// you are using the guest, freezes the picture for fifteen seconds, and
+    /// until today could take the whole app down with it. The manual button in
+    /// the library is unaffected either way.
+    nonisolated static var autoSaveEnabled: Bool {
+        UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
+    }
+
     nonisolated(unsafe) static var qemuReady = false
     /// A display size asked for before QEMU was up, applied once it is.
     nonisolated(unsafe) static var pendingUISize: (w: Int, h: Int)?
@@ -1545,7 +1556,7 @@ final class QemuRunner: ObservableObject {
                 // evidence attached -- by the rule it should have fired at 165s
                 // in the last session and there is nothing to say what stopped
                 // it.
-                if settled, !QemuRunner.snapshotRequested,
+                if settled, QemuRunner.autoSaveEnabled, !QemuRunner.snapshotRequested,
                    QemuRunner.shared.hasUsableSnapshot || !(quietWindows >= 3 || overdue) {
                     HuskLog.log("snap", "not saving yet: quiet=\(quietWindows) "
                               + "overdue=\(overdue) "
@@ -1553,6 +1564,7 @@ final class QemuRunner: ObservableObject {
                               + "(display \(QemuRunner.shared.snapshotDisplay ?? "none"))")
                 }
                 if settled, quietWindows >= 3 || overdue,
+                   QemuRunner.autoSaveEnabled,
                    !QemuRunner.snapshotRequested,
                    !QemuRunner.shared.hasUsableSnapshot {
                     QemuRunner.snapshotRequested = true

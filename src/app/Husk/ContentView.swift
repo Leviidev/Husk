@@ -573,6 +573,8 @@ struct SettingsView: View {
         UserDefaults.standard.bool(forKey: "husk.sound")
     @State private var soundDevice =
         UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
+    @State private var autoSave =
+        UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -586,6 +588,22 @@ struct SettingsView: View {
                     .disabled(!QemuRunner.shared.hasSnapshot)
                     if let deleteResult {
                         Text(deleteResult).font(.caption2).foregroundColor(.secondary)
+                    }
+                    Toggle(isOn: $autoSave) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Save automatically")
+                            Text(autoSave
+                                 ? "Husk saves once Android settles, so later launches "
+                                 + "restore in seconds. The picture freezes while it writes."
+                                 : "Nothing is saved on its own. Every launch boots from "
+                                 + "cold; the Save button in the library still works.")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    .onChange(of: autoSave) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.autoSave")
+                        HuskLog.log("ui", v ? "automatic saving on"
+                                            : "automatic saving off")
                     }
                 } header: {
                     Text("Saved machine")
