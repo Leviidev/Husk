@@ -200,6 +200,46 @@ elif "husk-audio.c" in s:
 else:
     raise SystemExit("audio/meson.build: shape changed")
 
+# Adding a driver to the enum is not enough: two switches in the audio core
+# enumerate every driver by hand, and neither has a default. audio_get_pdo_in()
+# and audio_get_pdo_out() fall off the end of theirs into a bare abort() -- no
+# message, no assertion text, nothing on stderr. That is what a new backend gets
+# for existing in the enum and nowhere else, and it cost six builds to find
+# because there was no error to read.
+p = q / "audio/audio_template.h"
+s = p.read_text()
+old = """    case AUDIODEV_DRIVER_WAV:
+        return dev->u.wav.TYPE;"""
+new = """    case AUDIODEV_DRIVER_HUSK:
+        return dev->u.husk.TYPE;
+
+    case AUDIODEV_DRIVER_WAV:
+        return dev->u.wav.TYPE;"""
+if old in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  audio/audio_template.h: audio_get_pdo_* knows the husk driver")
+elif "AUDIODEV_DRIVER_HUSK" in s:
+    print("  audio/audio_template.h: already knows the husk driver")
+else:
+    raise SystemExit("audio/audio_template.h: switch shape changed")
+
+# The other switch allocates the per-direction options. Without a case here the
+# in/out pointers stay NULL, and the abort above is reached before anything
+# dereferences them -- but fixing only one of the two would move the crash
+# rather than remove it.
+p = q / "audio/audio.c"
+s = p.read_text()
+old = """        CASE(NONE, none, );"""
+new = """        CASE(NONE, none, );
+        CASE(HUSK, husk, );"""
+if old in s and "CASE(HUSK" not in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  audio/audio.c: husk gets per-direction options allocated")
+elif "CASE(HUSK" in s:
+    print("  audio/audio.c: husk options already allocated")
+else:
+    raise SystemExit("audio/audio.c: driver switch shape changed")
+
 p = q / "qapi/audio.json"
 s = p.read_text()
 if "'husk'" not in s:

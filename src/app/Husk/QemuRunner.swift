@@ -166,7 +166,7 @@ final class QemuRunner: ObservableObject {
     /// is to run them apart. Off by default: a backend with no device is silent
     /// but harmless, and it is the half that exonerates or convicts our own code.
     nonisolated static var soundDeviceEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "husk.soundDevice")
+        UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
     }
 
     /// What the saved machine's hardware looks like, for deciding whether a

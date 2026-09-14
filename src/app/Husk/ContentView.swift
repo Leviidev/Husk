@@ -572,7 +572,7 @@ struct SettingsView: View {
     @State private var sound =
         UserDefaults.standard.bool(forKey: "husk.sound")
     @State private var soundDevice =
-        UserDefaults.standard.bool(forKey: "husk.soundDevice")
+        UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -710,9 +710,9 @@ struct SettingsView: View {
                         Toggle(isOn: $soundDevice) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Attach the sound device")
-                                Text("Off means the audio backend runs with no "
-                                   + "hardware behind it — silent, but it isolates "
-                                   + "which half of the audio path is crashing.")
+                                Text("On is normal. Off runs the audio backend "
+                                   + "with no hardware behind it — silent, and "
+                                   + "only useful for isolating a fault.")
                                     .font(.caption2).foregroundColor(.secondary)
                             }
                         }
