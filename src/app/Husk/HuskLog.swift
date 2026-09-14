@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
+import Darwin
 import UIKit
 import os
 
@@ -30,6 +31,10 @@ enum HuskLog {
     /// Nothing inside a signal handler may allocate.
     fileprivate static let crashBuf =
         UnsafeMutableRawPointer.allocate(byteCount: 8192, alignment: 16)
+
+    /// Frame pointers for the crash backtrace, taken before they are needed.
+    fileprivate static let crashFrames =
+        UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 64)
     private static var pipeWriteFD: Int32 = -1
     private static var started = false
     private static let writeLock = NSLock()
@@ -232,6 +237,23 @@ enum HuskLog {
                             _ = write(HuskLog.rawLogFD, HuskLog.crashBuf, n)
                         }
                     }
+                }
+                // Where it died.
+                //
+                // Six months of "FATAL SIGNAL 11" with no frames is six months
+                // of guessing which of QEMU, ANGLE, the audio ring or our own
+                // Swift was at fault. backtrace_symbols_fd is documented
+                // async-signal-safe and writes straight to a descriptor, which
+                // is the only reason it can be used here -- and the frame
+                // buffer is taken at startup because nothing in a signal
+                // handler may allocate.
+                if HuskLog.rawLogFD >= 0 {
+                    let header = "\n--- backtrace ---\n"
+                    header.withCString { p in
+                        _ = write(HuskLog.rawLogFD, p, strlen(p))
+                    }
+                    let n = backtrace(HuskLog.crashFrames, 64)
+                    backtrace_symbols_fd(HuskLog.crashFrames, n, HuskLog.rawLogFD)
                 }
                 if HuskLog.rawLogFD >= 0 { fsync(HuskLog.rawLogFD) }
                 signal(received, SIG_DFL)
