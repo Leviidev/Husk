@@ -693,9 +693,14 @@ final class GuestBridge {
                     // queueing three buffers in three minutes -- whatever made
                     // it give up is written here and nowhere else.
                     if let out = try? self.shell(
-                            "logcat -d -t 120 *:S AudioFlinger:W AudioTrack:W "
-                          + "audio_hw_generic:W AudioPolicyService:W "
-                          + "AudioSystem:W audioserver:W", timeout: 30),
+                            // Info level, and the HAL tags too. Warnings alone
+                            // produced one repeated line about a flag mismatch
+                            // and nothing about why the stream stops feeding.
+                            "logcat -d -t 200 *:S AudioFlinger:I AudioTrack:I "
+                          + "audio_hw_generic:I AudioPolicyService:I "
+                          + "AudioSystem:I audioserver:I APM_AudioPolicyManager:I "
+                          + "AudioHardwareGeneric:I FastMixer:I AudioMixer:I "
+                          + "SoundPool:I OpenSLES:I", timeout: 30),
                        !out.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         let lines = out.split(separator: "\n").map(String.init)
                             .filter { !$0.isEmpty && !$0.hasPrefix("---------") }

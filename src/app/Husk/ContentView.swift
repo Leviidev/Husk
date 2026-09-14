@@ -275,6 +275,23 @@ struct GuestScreenView: View {
                 Button { installing = true } label: {
                     Image(systemName: "square.and.arrow.down").font(.caption)
                 }
+                // Android's own Home key, over the bridge.
+                //
+                // Three-button navigation is not being drawn, so there is no way
+                // out of an app from inside the guest -- and Husk's Back button
+                // leaves the guest entirely rather than navigating within it.
+                // `input keyevent` is the reliable route: the USB keyboard has
+                // no keycode that maps to Android's HOME.
+                Button {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        _ = try? GuestBridge.shared.shell(
+                            "input keyevent KEYCODE_HOME", timeout: 20)
+                        HuskLog.log("ui", "sent HOME to Android")
+                    }
+                } label: {
+                    Image(systemName: "house").font(.caption)
+                }
+
                 // Saving from here, not only from the library.
                 //
                 // Full screen is where a session actually happens, and the
