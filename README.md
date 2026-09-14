@@ -1,5 +1,7 @@
 # Husk
 
+[![Husk Downloads](https://img.shields.io/github/downloads/leviidev/husk/total?style=for-the-badge&color=5865F2&labelColor=111111)](https://github.com/leviidev/husk/releases)
+
 Android app launcher for iOS.
 
 Drop in an APK, tap it, and the Android app opens full-screen.
