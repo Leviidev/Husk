@@ -296,6 +296,83 @@ else:
     print("  qapi/audio.json: husk driver already declared")
 PY_AUDIO
 
+# Trace the virtio-sound TX path.
+#
+# The guest opens a stream, QEMU enables the voice, and not one byte of PCM
+# reaches the backend -- "audio 0 frames in" in every window. The gap is between
+# the guest queueing data and the audio core asking for it, and neither log
+# could say which side is silent. These counters can.
+python3 - "$Q" <<'PY_SNDTRACE'
+import pathlib, sys
+q = pathlib.Path(sys.argv[1])
+p = q / "hw/audio/virtio-snd.c"
+s = p.read_text()
+
+# Where the guest hands us PCM, and where we hand it to the audio core. Between
+# those two the data either arrives or it does not, and nothing in the log has
+# been able to say which.
+old = """static void virtio_snd_pcm_out_cb(void *data, int available)
+{
+    VirtIOSoundPCMStream *stream = data;
+    VirtIOSoundPCMBuffer *buffer;
+    size_t size;
+"""
+new = """static void virtio_snd_pcm_out_cb(void *data, int available)
+{
+    VirtIOSoundPCMStream *stream = data;
+    VirtIOSoundPCMBuffer *buffer;
+    size_t size;
+    static uint64_t cb_calls, cb_written, cb_empty;
+
+    cb_calls++;
+    if (QSIMPLEQ_EMPTY(&stream->queue)) {
+        cb_empty++;
+    }
+    if (cb_calls <= 3 || (cb_calls % 500) == 0) {
+        fprintf(stderr, "[husk-snd] out_cb #%llu available=%d queue=%s "
+                        "active=%d (empty %llu times, %llu bytes written)\\n",
+                (unsigned long long)cb_calls, available,
+                QSIMPLEQ_EMPTY(&stream->queue) ? "EMPTY" : "has buffers",
+                stream->active ? 1 : 0,
+                (unsigned long long)cb_empty,
+                (unsigned long long)cb_written);
+        fflush(stderr);
+    }
+"""
+if old in s and "[husk-snd] out_cb" not in s:
+    s = s.replace(old, new, 1)
+elif "[husk-snd] out_cb" in s:
+    print("  hw/audio/virtio-snd.c: already traced")
+    raise SystemExit
+else:
+    raise SystemExit("hw/audio/virtio-snd.c: out_cb shape changed")
+
+old = """                buffer->size -= size;
+                buffer->offset += size;"""
+new = """                cb_written += size;
+                buffer->size -= size;
+                buffer->offset += size;"""
+assert old in s
+s = s.replace(old, new, 1)
+
+old = """static void virtio_snd_handle_tx_xfer(VirtIODevice *vdev, VirtQueue *vq)
+{"""
+new = """static void virtio_snd_handle_tx_xfer(VirtIODevice *vdev, VirtQueue *vq)
+{
+    {
+        static uint64_t tx_calls;
+        if (++tx_calls <= 3 || (tx_calls % 500) == 0) {
+            fprintf(stderr, "[husk-snd] tx_xfer #%llu (the guest is queueing "
+                            "PCM)\\n", (unsigned long long)tx_calls);
+            fflush(stderr);
+        }
+    }
+"""
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print("  hw/audio/virtio-snd.c: TX and out_cb traced")
+PY_SNDTRACE
+
 # virtio-gpu: let a virgl-enabled machine be snapshotted, opt-in.
 #
 # Patched in place rather than shipped as a .patch because a re-extracted QEMU
