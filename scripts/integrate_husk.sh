@@ -215,11 +215,11 @@ new = """    case AUDIODEV_DRIVER_HUSK:
 
     case AUDIODEV_DRIVER_WAV:
         return dev->u.wav.TYPE;"""
-if old in s:
+if "AUDIODEV_DRIVER_HUSK" in s:
+    print("  audio/audio_template.h: already knows the husk driver")
+elif old in s:
     p.write_text(s.replace(old, new, 1))
     print("  audio/audio_template.h: audio_get_pdo_* knows the husk driver")
-elif "AUDIODEV_DRIVER_HUSK" in s:
-    print("  audio/audio_template.h: already knows the husk driver")
 else:
     raise SystemExit("audio/audio_template.h: switch shape changed")
 
