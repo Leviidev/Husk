@@ -337,6 +337,7 @@ struct GuestScreenView: View {
 struct SetupView: View {
     @ObservedObject private var guest = GuestImage.shared
     @ObservedObject private var runner = QemuRunner.shared
+    @Environment(\.colorScheme) private var scheme
     @Binding var showLogs: Bool
     let onStart: (ContentView.StartMode) -> Void
 
@@ -347,9 +348,11 @@ struct SetupView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 22) {
-                // Bundled flat by the Resources copy phase, so it is found by
-                // name rather than by path.
-                if let logo = UIImage(named: "HuskLogo") {
+                // The icon the user is actually using, following the system
+                // appearance when that choice is Automatic. This used to be a
+                // fixed copy of the default artwork, which quietly disagreed
+                // with the home screen.
+                if let logo = HuskAppIcon.current.preview(dark: scheme == .dark) {
                     Image(uiImage: logo)
                         .resizable().scaledToFit()
                         .frame(width: 96, height: 96)
@@ -611,6 +614,7 @@ struct SettingsView: View {
     @State private var autoSave =
         UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
     @State private var appIcon = HuskAppIcon.current
+    @Environment(\.colorScheme) private var scheme
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -751,7 +755,7 @@ struct SettingsView: View {
                                     HuskAppIcon.apply(icon)
                                 } label: {
                                     VStack(spacing: 6) {
-                                        if let art = icon.preview {
+                                        if let art = icon.preview(dark: scheme == .dark) {
                                             Image(uiImage: art)
                                                 .resizable().scaledToFit()
                                                 .frame(width: 58, height: 58)

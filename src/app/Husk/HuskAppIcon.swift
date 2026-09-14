@@ -42,12 +42,25 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
     /// What UIKit wants: nil for the primary, the asset name otherwise.
     var alternateName: String? { self == .automatic ? nil : rawValue }
 
-    /// The artwork, for drawing a preview in Settings.
+    /// The artwork, for drawing this icon inside the app.
     ///
-    /// Loaded by asset name, which works because the catalog is compiled with
-    /// INCLUDE_ALL_APPICON_ASSETS — without that only the icon actually in use
-    /// is addressable and every preview but one would be blank.
-    var preview: UIImage? { UIImage(named: rawValue) }
+    /// From a plain bundled PNG, not the asset catalog. Appicon assets are not
+    /// addressable through UIImage(named:) even with INCLUDE_ALL_APPICON_ASSETS
+    /// — the previews in Settings came out blank, and the start screen showed a
+    /// stale copy of the default artwork whichever icon was actually in use.
+    /// Shipping the images as ordinary resources is what makes them loadable.
+    ///
+    /// `dark` matters only for Automatic, which has no fixed look of its own:
+    /// it is whatever the system is currently showing.
+    func preview(dark: Bool = false) -> UIImage? {
+        switch self {
+        case .automatic:   return UIImage(named: dark ? "icon-dark" : "icon-default")
+        case .clearLight:  return UIImage(named: "icon-clearlight")
+        case .clearDark:   return UIImage(named: "icon-cleardark")
+        case .tintedLight: return UIImage(named: "icon-tintedlight")
+        case .tintedDark:  return UIImage(named: "icon-tinteddark")
+        }
+    }
 
     static var current: HuskAppIcon {
         guard let name = UIApplication.shared.alternateIconName else { return .automatic }
