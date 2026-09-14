@@ -692,10 +692,11 @@ struct SettingsView: View {
                     Toggle(isOn: $sound) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Sound (experimental)")
-                            Text("Adds a sound device to the machine. Turning this "
-                               + "on or off changes the hardware, so the saved "
-                               + "machine no longer matches and Android boots from "
-                               + "cold once.")
+                            Text("Adds a sound device to the machine. While this is "
+                               + "on, Android cannot be saved — QEMU refuses to "
+                               + "snapshot a machine with a sound device, so every "
+                               + "launch boots from cold. Turning it on or off also "
+                               + "changes the hardware, costing one cold boot.")
                                 .font(.caption2).foregroundColor(.secondary)
                         }
                     }

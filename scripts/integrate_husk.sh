@@ -257,13 +257,29 @@ old = """static const VMStateDescription vmstate_virtio_snd = {
     .unmigratable = 1,"""
 new = """static const VMStateDescription vmstate_virtio_snd = {
     .name = TYPE_VIRTIO_SND,
-    /* Husk: not unmigratable. See scripts/integrate_husk.sh for why. */
-    .unmigratable = 0,"""
+    /*
+     * Husk: left ALONE. This was set to 0 to stop the device blocking
+     * snapshots, and the result was a SIGSEGV inside virtio_save() on the
+     * first save:
+     *
+     *   virtio_save + 480
+     *   vmstate_save_state_v / vmstate_save
+     *   qemu_savevm_state_complete_precopy_non_iterable
+     *   save_snapshot / husk_save_bh
+     *
+     * The blocker is not bureaucracy. virtio-snd holds in-flight buffers that
+     * reference guest elements, and its vmstate has no fields describing them,
+     * so serialising it walks into memory nothing has written. Refusing the
+     * save is the correct behaviour; crashing is what removing the refusal
+     * bought. Sound and snapshots stay mutually exclusive until someone does
+     * the work upstream.
+     */
+    .unmigratable = 1,"""
 if old in s:
     p.write_text(s.replace(old, new, 1))
-    print("  hw/audio/virtio-snd.c: the device no longer blocks snapshots")
-elif "not unmigratable" in s:
-    print("  hw/audio/virtio-snd.c: already unblocked")
+    print("  hw/audio/virtio-snd.c: blocker left in place, with the reason recorded")
+elif "left ALONE" in s:
+    print("  hw/audio/virtio-snd.c: already annotated")
 else:
     raise SystemExit("hw/audio/virtio-snd.c: vmstate shape changed")
 
