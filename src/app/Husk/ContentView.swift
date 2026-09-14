@@ -275,6 +275,24 @@ struct GuestScreenView: View {
                 Button { installing = true } label: {
                     Image(systemName: "square.and.arrow.down").font(.caption)
                 }
+                // Saving from here, not only from the library.
+                //
+                // Full screen is where a session actually happens, and the
+                // machine worth keeping is the one you have just been using --
+                // having to leave it to press Save is the wrong way round. The
+                // spinner matters too: the save freezes the picture for about
+                // fifteen seconds, and without it that reads as a hang.
+                Button {
+                    QemuRunner.shared.saveState(reason: "asked from full screen")
+                } label: {
+                    if runner.isSavingState {
+                        ProgressView().scaleEffect(0.6).frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "externaldrive.badge.checkmark")
+                            .font(.caption)
+                    }
+                }
+                .disabled(runner.isSavingState)
                 Button { showLogs = true } label: {
                     Image(systemName: "terminal").font(.caption)
                 }
