@@ -101,7 +101,12 @@ final class HuskGLView: UIView {
         let landscape = bounds.width > bounds.height
         if landscape != Self.lastLandscape {
             Self.lastLandscape = landscape
-            let base = QemuRunner.lastGuestRes
+            // The panel Android was given on the command line, not whatever
+            // the console happens to be. Early in a cold boot the console is the
+            // firmware's framebuffer -- 640x480, then 800x600, then 1024x768 --
+            // and reading that as "the guest's size" is how a landscape request
+            // came out as 800x600.
+            let base = QemuRunner.bootGuestRes
             let short = min(base.w, base.h), long = max(base.w, base.h)
             let w = landscape ? long : short
             let h = landscape ? short : long
@@ -221,6 +226,19 @@ final class HuskGLView: UIView {
         var gw: Int32 = 0, gh: Int32 = 0
         husk_display_guest_size(&gw, &gh)
         guard gw > 0, gh > 0 else { return }
+
+        // Only Android's own panel counts. During a cold boot the console is
+        // the firmware's framebuffer, and 800x600 read as "the guest is
+        // landscape" -- so the picture was turned a quarter turn while the
+        // screen was still portrait, before Android had drawn anything.
+        let base = QemuRunner.bootGuestRes
+        let expected = Set([base.w * 100000 + base.h, base.h * 100000 + base.w])
+        guard expected.contains(Int(gw) * 100000 + Int(gh)) else {
+            HuskLog.log("ui", "guest is \(gw)x\(gh), which is not Android's panel "
+                            + "(\(base.w)x\(base.h)) -- still booting, leaving "
+                            + "rotation alone")
+            return
+        }
 
         let guestLandscape = gw > gh
         let needsTurning = wantLandscape != guestLandscape
