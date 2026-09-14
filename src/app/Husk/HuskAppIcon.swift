@@ -8,10 +8,14 @@ import UIKit
 /// can only *switch* between icons that are separately named, so each variant is
 /// its own appiconset and the choice goes through `setAlternateIconName`.
 enum HuskAppIcon: String, CaseIterable, Identifiable {
-    /// nil name = the primary icon. UIKit uses nil rather than a name for it,
-    /// and passing the primary's own name is an error.
-    case defaultIcon  = "AppIcon"
-    case dark         = "AppIconDark"
+    /// The primary icon, which carries its own appearances.
+    ///
+    /// nil name = primary. UIKit uses nil rather than a name for it, and passing
+    /// the primary's own name is an error. Because that appiconset declares
+    /// dark and tinted variants, leaving it selected is what lets iOS switch the
+    /// artwork with the system setting -- no picker involved, and nothing this
+    /// code has to observe.
+    case automatic    = "AppIcon"
     case clearLight   = "AppIconClearLight"
     case clearDark    = "AppIconClearDark"
     case tintedLight  = "AppIconTintedLight"
@@ -21,8 +25,7 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .defaultIcon: return "Default"
-        case .dark:        return "Dark"
+        case .automatic:   return "Automatic"
         case .clearLight:  return "Clear Light"
         case .clearDark:   return "Clear Dark"
         case .tintedLight: return "Tinted Light"
@@ -30,8 +33,14 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
         }
     }
 
+    var detail: String {
+        self == .automatic
+            ? "Follows the system: light, dark and tinted."
+            : "Always this look."
+    }
+
     /// What UIKit wants: nil for the primary, the asset name otherwise.
-    var alternateName: String? { self == .defaultIcon ? nil : rawValue }
+    var alternateName: String? { self == .automatic ? nil : rawValue }
 
     /// The artwork, for drawing a preview in Settings.
     ///
@@ -41,8 +50,8 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
     var preview: UIImage? { UIImage(named: rawValue) }
 
     static var current: HuskAppIcon {
-        guard let name = UIApplication.shared.alternateIconName else { return .defaultIcon }
-        return HuskAppIcon(rawValue: name) ?? .defaultIcon
+        guard let name = UIApplication.shared.alternateIconName else { return .automatic }
+        return HuskAppIcon(rawValue: name) ?? .automatic
     }
 
     /// Apply this icon.
@@ -63,6 +72,38 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
             } else {
                 HuskLog.log("ui", "app icon set to \(icon.title)")
             }
+        }
+    }
+}
+
+
+/// The four places Husk can be.
+///
+/// Kept as a type rather than inlined into the TabView so the titles and icons
+/// have one definition, and so `tag`/`selection` share a value the log can name.
+enum HuskTab: String, CaseIterable, Identifiable {
+    case android
+    case library
+    case console
+    case settings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .android:  return "Android"
+        case .library:  return "Library"
+        case .console:  return "Console"
+        case .settings: return "Settings"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .android:  return "rectangle.inset.filled"
+        case .library:  return "square.grid.2x2.fill"
+        case .console:  return "terminal"
+        case .settings: return "gearshape"
         }
     }
 }

@@ -45,7 +45,7 @@ targets:
         # Alternates, so the icon can be chosen in Settings. iOS can only switch
         # between NAMED icons, which is why each appearance variant is its own
         # appiconset rather than appearances inside one.
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconTintedDark
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconClearLight AppIconClearDark AppIconTintedLight AppIconTintedDark
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Husk/Info.plist

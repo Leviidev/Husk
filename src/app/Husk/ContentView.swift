@@ -24,65 +24,41 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        // A VStack, so the bar takes its own space rather than floating over the
-        // guest. Overlapping would cost the bottom strip of Android's screen to
-        // touches -- fine for a settings list, not for a game that expects taps
-        // anywhere.
-        VStack(spacing: 0) {
-        ZStack {
-            // The guest, mounted for the whole session once it is running --
-            // never torn down when another tab is on top.
-            //
-            // This is why the tabs are a ZStack and a bar of buttons rather than
-            // a TabView. HuskGLView owns the CAMetalLayer that QEMU built its
-            // EGL surface and Metal presenter against, and SwiftUI unloads the
-            // views of an unselected tab. Losing that layer once already cost a
-            // day: the frame counter climbed happily against a black screen
-            // because QEMU was drawing into a layer nothing was compositing.
-            if started && runner.isRunning {
-                GuestScreenView(showLogs: $showLogs,
-                                chromeHidden: tab != .android,
-                                onBack: { tab = .library })
-            }
+        // SwiftUI's own TabView.
+        //
+        // The earlier hand-rolled bar existed because HuskGLView owns the
+        // CAMetalLayer QEMU renders into, and a torn-down layer is a black guest
+        // with a frame counter that keeps climbing -- a day was lost to that
+        // once. It is safe here for a specific reason: HuskGLScreen hands back
+        // HuskGLView.shared, a single instance for the process. UIKit moves a
+        // view between parents without recreating it, so whatever SwiftUI does
+        // with the tab, the layer QEMU holds stays the layer being composited.
+        //
+        // Android is first and the default, which also matters: probeGL needs
+        // the layer published before QEMU builds its command line, and the first
+        // tab is the one that gets laid out at launch.
+        TabView(selection: $tab) {
+            androidTab
+                .tabItem { Label(HuskTab.android.title,
+                                 systemImage: HuskTab.android.icon) }
+                .tag(HuskTab.android)
 
-            switch tab {
-            case .android:
-                if !started {
-                    SetupView(showLogs: $showLogs) { chosen in
-                        mode = chosen
-                        HuskLog.log("ui", "start mode: "
-                                  + (chosen == .fullScreen ? "full screen" : "library"))
-                        showGuestScreen = (chosen == .fullScreen)
-                        if chosen == .library { tab = .library }
-                        start()
-                        if chosen == .library { AndroidHost.shared.waitForReady() }
-                    }
-                }
-            case .library:
-                // Opaque, because the guest is still drawing underneath.
-                Group {
-                    if started {
-                        AdbLibraryView(onOpened: { tab = .android },
-                                       showLogs: $showLogs)
-                    } else {
-                        notStartedYet("The library talks to Android over the "
-                                    + "bridge, so it needs Android running.")
-                    }
-                }
-                .background(Color.black.ignoresSafeArea())
-            case .console:
-                LogView(isSheet: false)
-                    .background(Color.black.ignoresSafeArea())
-            case .settings:
-                SettingsView(isSheet: false, showLogs: $showLogs)
-                    .background(Color.black.ignoresSafeArea())
-            }
+            libraryTab
+                .tabItem { Label(HuskTab.library.title,
+                                 systemImage: HuskTab.library.icon) }
+                .tag(HuskTab.library)
 
+            LogView(isSheet: false)
+                .tabItem { Label(HuskTab.console.title,
+                                 systemImage: HuskTab.console.icon) }
+                .tag(HuskTab.console)
+
+            SettingsView(isSheet: false, showLogs: $showLogs)
+                .tabItem { Label(HuskTab.settings.title,
+                                 systemImage: HuskTab.settings.icon) }
+                .tag(HuskTab.settings)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-        HuskTabBar(tab: $tab, guestRunning: started && runner.isRunning)
-        }
+        .onChange(of: tab) { HuskLog.log("ui", "tab: \($0.rawValue)") }
         .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showLogs) { LogView() }
         // Asking rather than downloading. Two gigabytes over someone's cellular
@@ -125,6 +101,40 @@ struct ContentView: View {
         // snapshot -- so it is a decision, not a side effect of launching.
         if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
+        }
+    }
+
+    /// The guest, or the start screen before it is running.
+    ///
+    /// Deliberately one tab rather than two: before Android exists there is
+    /// nothing to show, and a separate "main" tab would be an empty room for the
+    /// rest of the session.
+    @ViewBuilder private var androidTab: some View {
+        if started && runner.isRunning {
+            GuestScreenView(showLogs: $showLogs,
+                            chromeHidden: false,
+                            onBack: { tab = .library })
+        } else {
+            SetupView(showLogs: $showLogs) { chosen in
+                mode = chosen
+                HuskLog.log("ui", "start mode: "
+                          + (chosen == .fullScreen ? "full screen" : "library"))
+                showGuestScreen = (chosen == .fullScreen)
+                start()
+                if chosen == .library {
+                    tab = .library
+                    AndroidHost.shared.waitForReady()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var libraryTab: some View {
+        if started {
+            AdbLibraryView(onOpened: { tab = .android }, showLogs: $showLogs)
+        } else {
+            notStartedYet("The library talks to Android over the bridge, "
+                        + "so it needs Android running.")
         }
     }
 
@@ -753,6 +763,7 @@ struct SettingsView: View {
                                                 .frame(width: 58, height: 58)
                                         }
                                         Text(icon.title).font(.caption2)
+                                            .lineLimit(1)
                                     }
                                     .overlay(alignment: .topTrailing) {
                                         if appIcon == icon {
@@ -771,8 +782,10 @@ struct SettingsView: View {
                 } header: {
                     Text("App icon")
                 } footer: {
-                    Text("iOS shows its own confirmation after the icon changes; "
-                       + "that alert is the system's and cannot be turned off.")
+                    Text("Automatic follows the system appearance — light, dark "
+                       + "and tinted — and is the only option that changes with it. "
+                       + "The others pin one look. iOS shows its own confirmation "
+                       + "after a change; that alert cannot be turned off.")
                         .font(.caption2)
                 }
 
