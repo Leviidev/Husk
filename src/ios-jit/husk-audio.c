@@ -264,6 +264,10 @@ static struct audio_driver husk_audio_driver = {
 
 static void register_audio_husk(void)
 {
+    fprintf(stderr, "[husk-audio] registering the driver\n");
+    fflush(stderr);
     audio_driver_register(&husk_audio_driver);
+    fprintf(stderr, "[husk-audio] driver registered\n");
+    fflush(stderr);
 }
 type_init(register_audio_husk);

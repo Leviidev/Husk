@@ -158,6 +158,17 @@ final class QemuRunner: ObservableObject {
         UserDefaults.standard.bool(forKey: "husk.sound")
     }
 
+    /// Whether to attach the sound DEVICE, separately from the backend.
+    ///
+    /// Split in two to bisect an abort. QEMU dies inside qemu_init() with the
+    /// audio arguments present and prints nothing at all -- no assertion, no
+    /// error_report -- so the only way left to find out which half is at fault
+    /// is to run them apart. Off by default: a backend with no device is silent
+    /// but harmless, and it is the half that exonerates or convicts our own code.
+    nonisolated static var soundDeviceEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "husk.soundDevice")
+    }
+
     /// What the saved machine's hardware looks like, for deciding whether a
     /// restore is even possible. Was just the display; sound joins it because
     /// it changes the same thing.
@@ -1086,6 +1097,7 @@ final class QemuRunner: ObservableObject {
             // Conditional, because adding it changes the machine definition and
             // no snapshot taken without it can be restored into it.
             "-audiodev", "husk,id=huskaudio",
+        ] : []) + (QemuRunner.soundEnabled && QemuRunner.soundDeviceEnabled ? [
             "-device", "virtio-sound-pci,audiodev=huskaudio",
         ] : []) + [
             "-chardev", "file,id=ser0,path=\(guestSerialLogPath)",

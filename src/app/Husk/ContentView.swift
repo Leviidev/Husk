@@ -571,6 +571,8 @@ struct SettingsView: View {
         UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
     @State private var sound =
         UserDefaults.standard.bool(forKey: "husk.sound")
+    @State private var soundDevice =
+        UserDefaults.standard.bool(forKey: "husk.soundDevice")
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
 
@@ -703,6 +705,22 @@ struct SettingsView: View {
                                             + "and will cold-boot once"
                                             : "sound off; the machine loses a device "
                                             + "and will cold-boot once")
+                    }
+                    if sound {
+                        Toggle(isOn: $soundDevice) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Attach the sound device")
+                                Text("Off means the audio backend runs with no "
+                                   + "hardware behind it — silent, but it isolates "
+                                   + "which half of the audio path is crashing.")
+                                    .font(.caption2).foregroundColor(.secondary)
+                            }
+                        }
+                        .onChange(of: soundDevice) { v in
+                            UserDefaults.standard.set(v, forKey: "husk.soundDevice")
+                            HuskLog.log("ui", v ? "sound device attached"
+                                                : "sound backend only, no device")
+                        }
                     }
                 } header: {
                     Text("Sound")
