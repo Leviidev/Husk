@@ -655,6 +655,7 @@ final class GuestBridge {
             var wasAlive: Bool?
             var ticks = 0
             var lastCrashLine: String?
+            var lastAudioLog: [String] = []
             while let self {
                 let alive = (try? self.shell("echo __HUSK_ALIVE__", timeout: 30))?
                     .contains("__HUSK_ALIVE__") ?? false
@@ -686,6 +687,25 @@ final class GuestBridge {
                 //
                 // `-b crash` is a small dedicated ring, so this is cheap: a few
                 // lines every half minute, and only the ones not seen before.
+                if alive, ticks % 6 == 0, ticks > 0 {
+                    // Android's audio stack, at warning level and above. One
+                    // sound effect played and then silence, with the guest
+                    // queueing three buffers in three minutes -- whatever made
+                    // it give up is written here and nowhere else.
+                    if let out = try? self.shell(
+                            "logcat -d -t 120 *:S AudioFlinger:W AudioTrack:W "
+                          + "audio_hw_generic:W AudioPolicyService:W "
+                          + "AudioSystem:W audioserver:W", timeout: 30),
+                       !out.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        let lines = out.split(separator: "\n").map(String.init)
+                            .filter { !$0.isEmpty && !$0.hasPrefix("---------") }
+                        if lines != lastAudioLog, !lines.isEmpty {
+                            lastAudioLog = lines
+                            HuskLog.log("gaudio", "---- Android's audio log ----")
+                            for line in lines.suffix(40) { HuskLog.log("gaudio", line) }
+                        }
+                    }
+                }
                 if alive, ticks % 6 == 3 {
                     if let out = try? self.shell("logcat -b crash -d -t 200", timeout: 30) {
                         let lines = out.split(separator: "\n").map(String.init)

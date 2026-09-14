@@ -371,6 +371,26 @@ new = """                cb_written += size;
 assert old in s
 s = s.replace(old, new, 1)
 
+old = """static inline void return_tx_buffer(VirtIOSoundPCMStream *stream,
+                                    VirtIOSoundPCMBuffer *buffer)
+{"""
+new = """static inline void return_tx_buffer(VirtIOSoundPCMStream *stream,
+                                    VirtIOSoundPCMBuffer *buffer)
+{
+    {
+        static uint64_t returns;
+        if (++returns <= 3 || (returns % 200) == 0) {
+            fprintf(stderr, "[husk-snd] returned %llu tx buffer(s) to the "
+                            "guest\\n", (unsigned long long)returns);
+            fflush(stderr);
+        }
+    }
+"""
+if old in s:
+    s = s.replace(old, new, 1)
+else:
+    raise SystemExit("hw/audio/virtio-snd.c: return_tx_buffer shape changed")
+
 old = """static void virtio_snd_handle_tx_xfer(VirtIODevice *vdev, VirtQueue *vq)
 {"""
 new = """static void virtio_snd_handle_tx_xfer(VirtIODevice *vdev, VirtQueue *vq)

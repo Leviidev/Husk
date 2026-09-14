@@ -88,8 +88,15 @@ static int husk_init_out(HWVoiceOut *hw, struct audsettings *as, void *opaque)
 
     qatomic_set(&husk_audio.write_pos, 0);
     qatomic_set(&husk_audio.read_pos, 0);
-    husk_audio.frames_in = 0;
-    husk_audio.underruns = 0;
+    /*
+     * The totals are NOT reset here.
+     *
+     * They were, and the voice is re-initialised every time the guest opens a
+     * stream -- which on a game is constantly. So frames_in was back at zero by
+     * the time the next perf line sampled it, and the log reported "audio 0
+     * frames in" through a session in which a sound effect was audibly played.
+     * The ring positions have to reset; the diagnostics must not.
+     */
 
     fprintf(stderr, "[husk-audio] output voice: guest asked for %d Hz x%d, "
                     "taking it at %d Hz x%d s16\n",
