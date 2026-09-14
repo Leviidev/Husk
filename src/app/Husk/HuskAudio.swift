@@ -34,12 +34,19 @@ final class HuskAudio {
 
         let session = AVAudioSession.sharedInstance()
         do {
-            // .ambient, not .playback: Husk is not a media app, and a guest
-            // that happens to make noise should not silence the user's music or
-            // keep the screen awake. It also means a call or the ringer wins,
-            // which is the correct outcome when the alternative is Android
-            // talking over a phone call.
-            try session.setCategory(.ambient, mode: .default, options: [])
+            // .playback with .mixWithOthers.
+            //
+            // .ambient was the polite choice and it is silent: that category is
+            // governed by the Ring/Silent switch, so on any phone with the
+            // switch flipped -- which is most of them -- the guest could open a
+            // stream, produce samples, and be muted by the OS before a speaker
+            // ever saw them. Every log line said audio was working.
+            //
+            // .playback plays through the silent switch, which is what a game
+            // running inside Husk expects. .mixWithOthers keeps the original
+            // intent: it will not stop the user's music or take over a call.
+            try session.setCategory(.playback, mode: .default,
+                                    options: [.mixWithOthers])
             try session.setPreferredSampleRate(Double(HUSK_AUDIO_RATE))
             try session.setActive(true)
         } catch {

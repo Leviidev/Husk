@@ -240,6 +240,33 @@ elif "CASE(HUSK" in s:
 else:
     raise SystemExit("audio/audio.c: driver switch shape changed")
 
+# virtio-sound declares itself unmigratable, which makes every snapshot fail:
+#
+#   save FAILED: State blocked by non-migratable device 'virtio-sound-device'
+#
+# Nothing about the device is unsaveable in Husk's sense. It has no host-side
+# state that a restore cannot rebuild -- unlike virgl, where textures live in
+# the GPU. What it has is streams the guest opened, and on a restore Android
+# reopens them the same way it does after any suspend. The blocker is there
+# because upstream has not done the work to serialise stream position, not
+# because the result is unsound for a machine that is frozen and thawed whole.
+p = q / "hw/audio/virtio-snd.c"
+s = p.read_text()
+old = """static const VMStateDescription vmstate_virtio_snd = {
+    .name = TYPE_VIRTIO_SND,
+    .unmigratable = 1,"""
+new = """static const VMStateDescription vmstate_virtio_snd = {
+    .name = TYPE_VIRTIO_SND,
+    /* Husk: not unmigratable. See scripts/integrate_husk.sh for why. */
+    .unmigratable = 0,"""
+if old in s:
+    p.write_text(s.replace(old, new, 1))
+    print("  hw/audio/virtio-snd.c: the device no longer blocks snapshots")
+elif "not unmigratable" in s:
+    print("  hw/audio/virtio-snd.c: already unblocked")
+else:
+    raise SystemExit("hw/audio/virtio-snd.c: vmstate shape changed")
+
 p = q / "qapi/audio.json"
 s = p.read_text()
 if "'husk'" not in s:
