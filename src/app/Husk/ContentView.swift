@@ -121,10 +121,7 @@ struct ContentView: View {
                           + (chosen == .fullScreen ? "full screen" : "library"))
                 showGuestScreen = (chosen == .fullScreen)
                 start()
-                if chosen == .library {
-                    tab = .library
-                    AndroidHost.shared.waitForReady()
-                }
+                if chosen == .library { tab = .library }
             }
         }
     }
@@ -132,6 +129,7 @@ struct ContentView: View {
     @ViewBuilder private var libraryTab: some View {
         if started {
             AdbLibraryView(onOpened: { tab = .android }, showLogs: $showLogs)
+                .onAppear { AndroidHost.shared.waitForReady() }
         } else {
             notStartedYet("The library talks to Android over the bridge, "
                         + "so it needs Android running.")
@@ -182,6 +180,12 @@ struct ContentView: View {
         }
         started = true
         QemuRunner.shared.start()
+        // Start probing the bridge now, not when the library happens to be
+        // opened. isReady is only ever set here, and under the old screen-based
+        // navigation this was called when someone chose library mode -- so with
+        // tabs, opening Library after starting in full screen left it waiting
+        // forever on a guest that was plainly up. It is idempotent and cheap.
+        AndroidHost.shared.waitForReady()
         bridge.startWatching()
         GuestBridge.shared.startHealthWatch()
         if QemuRunner.soundEnabled { HuskAudio.shared.start() }
