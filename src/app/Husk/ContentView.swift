@@ -920,7 +920,7 @@ struct AdbLibraryView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button { importing = true } label: {
-                            Label("Install an APK", systemImage: "square.and.arrow.down")
+                            Label("Install APK(s)", systemImage: "square.and.arrow.down")
                         }
                         Button { sendingFiles = true } label: {
                             Label("Send files to Android", systemImage: "doc.badge.plus")
@@ -929,12 +929,16 @@ struct AdbLibraryView: View {
                         .disabled(!host.isReady || host.busy != nil)
                 }
             }
+            // Multiple selection, for split APK sets. The base APK of a modern
+            // game carries no native code; picking it alone fails with "Failed
+            // to extract native libraries", which reads like a bad download.
             .fileImporter(isPresented: $importing,
                           allowedContentTypes: [.item],
-                          allowsMultipleSelection: false) { result in
-                if case .success(let urls) = result, let apk = urls.first {
-                    HuskLog.log("ui", "importing \(apk.lastPathComponent)")
-                    host.install(apk)
+                          allowsMultipleSelection: true) { result in
+                if case .success(let urls) = result, !urls.isEmpty {
+                    HuskLog.log("ui", "importing \(urls.count) file(s): "
+                              + urls.map(\.lastPathComponent).joined(separator: ", "))
+                    host.install(urls)
                 }
             }
             .fileImporter(isPresented: $sendingFiles,

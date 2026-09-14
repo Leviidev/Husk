@@ -1030,18 +1030,33 @@ final class AndroidHost: ObservableObject {
     }
 
     /// Copy an APK into the guest and install it.
-    func install(_ apk: URL) {
-        let name = apk.lastPathComponent
+    func install(_ apk: URL) { install([apk]) }
+
+    /// Install one APK, or a split set as a single app.
+    ///
+    /// Split APKs are why this takes a list. A modern game ships as a base APK
+    /// plus per-ABI and per-density config APKs, and the native libraries live
+    /// in the config piece -- so installing the base alone fails with
+    /// "Failed to extract native libraries", which reads like a corrupt download
+    /// and is actually a missing sibling. `pm install-multiple` is the only way
+    /// to hand them over as one app; installing them one at a time does not
+    /// work, because each is incomplete by itself.
+    func install(_ apks: [URL]) {
+        guard let first = apks.first else { return }
+        let name = apks.count == 1 ? first.lastPathComponent
+                                   : "\(apks.count) APKs (\(first.lastPathComponent))"
         busy = "Installing \(name)…"
         Task.detached { [weak self] in
             // /data/local/tmp is the one directory the shell user owns outright,
             // and the one pm will read an APK from.
-            let remote = "/data/local/tmp/husk-install.apk"
+            let remotes = (0..<apks.count).map { "/data/local/tmp/husk-install-\($0).apk" }
+            let remote = remotes[0]
             do {
                 // A file handed over by the document picker lives outside the
                 // sandbox and is unreadable until this is claimed.
-                let scoped = apk.startAccessingSecurityScopedResource()
-                defer { if scoped { apk.stopAccessingSecurityScopedResource() } }
+                let scoped = first.startAccessingSecurityScopedResource()
+                defer { if scoped { first.stopAccessingSecurityScopedResource() } }
+                let apk = first
 
                 // Check before the transfer, not after. Copying an APK into the
                 // guest takes minutes on an emulated disk, and discovering at
@@ -1068,20 +1083,29 @@ final class AndroidHost: ObservableObject {
                     break
                 }
 
-                try GuestBridge.shared.push(apk, to: remote) { p in
-                    Task { @MainActor in
-                        self?.busy = "Copying \(name) — \(Int(p * 100))%"
+                var expected = 0
+                for (i, url) in apks.enumerated() {
+                    let scopedOne = i == 0 ? false : url.startAccessingSecurityScopedResource()
+                    defer { if scopedOne { url.stopAccessingSecurityScopedResource() } }
+                    let label = apks.count == 1 ? name
+                        : "\(url.lastPathComponent) (\(i + 1)/\(apks.count))"
+                    try GuestBridge.shared.push(url, to: remotes[i]) { p in
+                        Task { @MainActor in
+                            self?.busy = "Copying \(label) — \(Int(p * 100))%"
+                        }
                     }
-                }
-                // Confirm the whole file landed before asking pm to parse it.
-                // A short copy fails much later and much less clearly, as
-                // "Failed to parse /data/local/tmp/husk-install.apk".
-                let expected = (try FileManager.default
-                    .attributesOfItem(atPath: apk.path)[.size] as? NSNumber)?.intValue ?? 0
-                let landed = Int(try GuestBridge.shared.shell("wc -c < \(remote)")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)) ?? -1
-                guard landed == expected else {
-                    throw BridgeError.io("copied \(landed) of \(expected) bytes")
+                    // Confirm the whole file landed before asking pm to parse it.
+                    // A short copy fails much later and much less clearly, as
+                    // "Failed to parse /data/local/tmp/husk-install.apk".
+                    let size = (try FileManager.default
+                        .attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
+                    let landed = Int(try GuestBridge.shared.shell("wc -c < \(remotes[i])")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)) ?? -1
+                    guard landed == size else {
+                        throw BridgeError.io("copied \(landed) of \(size) bytes "
+                                           + "of \(url.lastPathComponent)")
+                    }
+                    expected += size
                 }
 
                 await MainActor.run { self?.busy = "Installing \(name)…" }
@@ -1092,12 +1116,22 @@ final class AndroidHost: ObservableObject {
                 // scales with the code in it. Ten minutes fits a small game and
                 // not a large one.
                 let installBudget: TimeInterval = expected > 50 << 20 ? 2400 : 600
-                let out = try GuestBridge.shared.shell("pm install -r -t \(remote)",
-                                                      timeout: installBudget)
-                _ = try? GuestBridge.shared.shell("rm -f \(remote)")
+                // install-multiple for a split set, which has to be handed over
+                // as one transaction: the base APK alone carries no native code.
+                let command = apks.count == 1
+                    ? "pm install -r -t \(remote)"
+                    : "pm install-multiple -r -t \(remotes.joined(separator: " "))"
+                let out = try GuestBridge.shared.shell(command, timeout: installBudget)
+                for r in remotes { _ = try? GuestBridge.shared.shell("rm -f \(r)") }
                 let ok = out.contains("Success")
                 HuskLog.log("bridge", "install \(name): "
                           + out.trimmingCharacters(in: .whitespacesAndNewlines))
+                if !ok, out.contains("native libraries") {
+                    HuskLog.log("bridge", "that error means pm found no native code it "
+                              + "can run: either this is one piece of a split APK set "
+                              + "(select every .apk together) or the build has no "
+                              + "arm64-v8a library and this guest is 64-bit only")
+                }
                 await self?.refreshPackages()
 
                 // Persist it, or it is gone on the next launch.
