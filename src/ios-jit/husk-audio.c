@@ -145,13 +145,29 @@ static size_t husk_write(HWVoiceOut *hw, void *buf, size_t len)
     return n * frame_bytes;
 }
 
-static size_t husk_buffer_get_free(HWVoiceOut *hw)
-{
-    uint32_t w = qatomic_read(&husk_audio.write_pos);
-    uint32_t r = qatomic_read(&husk_audio.read_pos);
-    return (HUSK_RING_FRAMES - (size_t)(w - r))
-         * sizeof(int16_t) * HUSK_AUDIO_CHANNELS;
-}
+/*
+ * No custom buffer_get_free, and run_buffer_out is not optional.
+ *
+ * QEMU never called write() at all: the perf line read "audio 0 frames in,
+ * 243712 silent" -- the render thread pulling 48 kHz of nothing while the guest
+ * had a stream open and running.
+ *
+ * The reason is the shape of the ops table. QEMU fills in get_buffer_out and
+ * put_buffer_out automatically when a driver omits them, and those accumulate
+ * into hw->buf_emul. What flushes buf_emul into write() is run_buffer_out --
+ * and that one is NOT filled in automatically. Leaving it unset means data
+ * piles up in an intermediate buffer and is never handed over.
+ *
+ * wavaudio.c is the only other backend in the tree built the same way, and it
+ * sets both audio_generic_buffer_get_free and audio_generic_run_buffer_out.
+ * Matching it exactly is the point: the free-space accounting has to describe
+ * buf_emul, which is what the generic path fills, not our own ring, which is
+ * what my version reported.
+ *
+ * This very likely also explains the crash when opening Files or the music app.
+ * A TX queue whose buffers are never completed blocks the guest's audio HAL,
+ * and a blocked HAL is what takes the media framework down with it.
+ */
 
 /* ------------------------------------------------------------------- input */
 
@@ -241,7 +257,8 @@ static struct audio_pcm_ops husk_pcm_ops = {
     .init_out         = husk_init_out,
     .fini_out         = husk_fini_out,
     .write            = husk_write,
-    .buffer_get_free  = husk_buffer_get_free,
+    .buffer_get_free  = audio_generic_buffer_get_free,
+    .run_buffer_out   = audio_generic_run_buffer_out,
     .enable_out       = husk_enable_out,
 
     .init_in          = husk_init_in,
