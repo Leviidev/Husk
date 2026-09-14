@@ -256,6 +256,32 @@ static void husk_input_size(QemuConsole *con, int *w, int *h)
  * than a portrait one it has to fit a landscape app into, and nothing needs
  * rotating anywhere -- not the shader, not the touch map.
  */
+/*
+ * What the guest's display actually is, right now.
+ *
+ * Distinct from what we asked for. A modeset request is a suggestion: the guest
+ * driver may act on it, and Android's compositor may or may not reflow behind
+ * that. Reading the console back is the only way to know which happened, and
+ * landscape has to behave whichever way it goes.
+ */
+void husk_display_guest_size(int32_t *width, int32_t *height)
+{
+    QemuConsole *con;
+    int w = 0, h = 0;
+    bool held = bql_locked();
+
+    if (!held) {
+        bql_lock();
+    }
+    con = husk_input_console();
+    husk_input_size(con, &w, &h);
+    if (!held) {
+        bql_unlock();
+    }
+    if (width)  { *width  = w; }
+    if (height) { *height = h; }
+}
+
 void husk_display_set_ui_size(int32_t width, int32_t height)
 {
     QemuConsole *con;

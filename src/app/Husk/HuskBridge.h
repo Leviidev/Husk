@@ -64,6 +64,7 @@ bool     husk_display_gl_probe(void);
 bool     husk_display_gl_bind(void);
 uint64_t husk_display_gl_frames(void);
 void     husk_display_set_ui_size(int32_t width, int32_t height);
+void     husk_display_guest_size(int32_t *width, int32_t *height);
 
 /* Audio, from husk-audio.c. The format is fixed there and mirrored here so the
  * render callback never has to negotiate one. */

@@ -157,8 +157,9 @@ final class HuskMetalPresenter {
         guard let buffer = queue.makeCommandBuffer(),
               let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
 
-        // rotate stays 0: the guest changes shape now instead.
-        var params = (flip: Float(flip ? 1 : 0), rotate: Float(0))
+        // rotate is live again: preferred route is the guest reshaping itself,
+        // and this is the fallback for a guest that will not.
+        var params = (flip: Float(flip ? 1 : 0), rotate: Float(rotated ? 1 : 0))
         encoder.setRenderPipelineState(pipeline)
         encoder.setVertexBytes(&params, length: MemoryLayout<Float>.size * 2, index: 0)
         encoder.setFragmentTexture(texture, index: 0)

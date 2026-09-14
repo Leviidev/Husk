@@ -59,6 +59,9 @@ HUSK_EXPORT uint64_t husk_display_sequence(void);
 /* Ask the guest to modeset to this size. See the comment in the .c. */
 HUSK_EXPORT void husk_display_set_ui_size(int32_t width, int32_t height);
 
+/* The guest's real resolution, which may not be what we asked for. */
+HUSK_EXPORT void husk_display_guest_size(int32_t *width, int32_t *height);
+
 /*
  * Absolute pointer input, in guest pixels. Takes the BQL internally, so it is
  * safe to call from the UI thread.

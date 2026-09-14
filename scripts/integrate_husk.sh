@@ -596,6 +596,7 @@ wanted = [
     "husk_display_unlock_frame",
     "husk_display_sequence",
     "husk_display_set_ui_size",
+    "husk_display_guest_size",
     "husk_audio_pull",
     "husk_audio_active",
     "husk_audio_frames_in",

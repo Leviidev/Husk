@@ -115,6 +115,19 @@ final class HuskGLView: UIView {
                 QemuRunner.pendingUISize = (w: w, h: h)
             }
             QemuRunner.lastGuestRes = (w: w, h: h)
+
+            // Check whether the guest actually took it.
+            //
+            // dpy_set_ui_info is a suggestion: the guest's DRM driver may act on
+            // it and Android's compositor may or may not reflow behind that.
+            // Asking and assuming is how landscape has failed twice -- once
+            // sideways, once letterboxed. So read the console back, and if the
+            // guest is still the shape it was, turn the picture in the shader
+            // instead. Neither route is right in every case; having both means
+            // landscape works whichever way this guest behaves.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                Self.settleRotation(wantLandscape: landscape)
+            }
         }
 
         Self.surfaceReady.lock()
@@ -199,6 +212,31 @@ final class HuskGLView: UIView {
                         + "device=\(metalLayer.device?.name ?? "none")")
     }
 
+    /// Decide, three seconds later, whether the guest reshaped itself.
+    ///
+    /// Runs on the main thread. `husk_display_guest_size` takes the BQL only
+    /// when it is free, so this cannot deadlock against QEMU's own thread.
+    private static func settleRotation(wantLandscape: Bool) {
+        guard QemuRunner.qemuReady, Self.lastLandscape == wantLandscape else { return }
+        var gw: Int32 = 0, gh: Int32 = 0
+        husk_display_guest_size(&gw, &gh)
+        guard gw > 0, gh > 0 else { return }
+
+        let guestLandscape = gw > gh
+        let needsTurning = wantLandscape != guestLandscape
+        QemuRunner.lastGuestRes = (w: Int(gw), h: Int(gh))
+        rotatedInShader = needsTurning
+        HuskMetalPresenter.shared.setRotated(needsTurning)
+        HuskLog.log("ui", "guest is \(gw)x\(gh) after the request; "
+                        + (needsTurning
+                           ? "it did not reshape, so the picture is turned here"
+                           : "it reshaped, no turning needed"))
+    }
+
+    /// True when the guest kept its shape and the shader is compensating, so
+    /// touches have to be turned the same way the pixels are.
+    nonisolated(unsafe) static var rotatedInShader = false
+
     // MARK: touches
 
     /// The guest is letterboxed inside the view, exactly as in the software
@@ -206,6 +244,17 @@ final class HuskGLView: UIView {
     /// where the picture ends up.
     private func guestPoint(from p: CGPoint) -> (Int32, Int32)? {
         guard bounds.width > 0, bounds.height > 0 else { return nil }
+
+        // When the shader turns the picture, a touch has to turn with it or it
+        // lands somewhere else entirely -- the image looks right and nothing
+        // responds where you tap. This is the exact inverse of the sampler's
+        // (1 - uv.y, uv.x), undone against the guest's own dimensions.
+        if Self.rotatedInShader {
+            let gx = (1 - p.y / bounds.height) * guestWidth
+            let gy = (p.x / bounds.width) * guestHeight
+            guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
+            return (Int32(gx), Int32(gy))
+        }
 
         let scale = min(bounds.width / guestWidth, bounds.height / guestHeight)
         let drawW = guestWidth * scale
