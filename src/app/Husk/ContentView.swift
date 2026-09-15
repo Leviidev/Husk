@@ -205,6 +205,7 @@ struct GuestScreenView: View {
     var chromeHidden = false
     let onBack: () -> Void
     @State private var keyboard = false
+    @State private var rotated = HuskGLView.rotated
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -288,6 +289,23 @@ struct GuestScreenView: View {
                     Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
                         .font(.caption)
                 }
+                // Turn the picture, on purpose.
+                //
+                // Android will not reshape its panel, so when an app asks for
+                // landscape it turns its own composition inside a portrait
+                // frame. This turns it back. It is a button rather than
+                // something inferred from the accelerometer because every
+                // attempt to infer it raced the boot sequence or the device
+                // being moved -- press it, then turn the phone.
+                Button {
+                    HuskGLView.rotated.toggle()
+                    rotated = HuskGLView.rotated
+                } label: {
+                    Image(systemName: rotated
+                          ? "rotate.left.fill" : "rotate.right")
+                        .font(.caption)
+                }
+
                 // Android's own Home key, over the bridge.
                 //
                 // Three-button navigation is not being drawn, so there is no way

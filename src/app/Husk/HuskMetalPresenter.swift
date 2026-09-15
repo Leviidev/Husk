@@ -72,16 +72,18 @@ final class HuskMetalPresenter {
 
         struct VOut { float4 pos [[position]]; float2 uv; };
 
-        struct Params { float flip; float rotate; };
+        struct Params { float flip; float rotate; float2 scale; };
 
         vertex VOut husk_vertex(uint vid [[vertex_id]],
                                 constant Params &p [[buffer(0)]]) {
             float flip = p.flip;
-            // A full-screen triangle strip, in clip space.
+            // A full-screen triangle strip, in clip space, scaled to keep the
+            // guest's aspect. Drawing edge to edge is what made a 360x800 panel
+            // look stretched the moment the screen was not that shape.
             const float2 corners[4] = { float2(-1, -1), float2(1, -1),
                                         float2(-1,  1), float2(1,  1) };
             VOut o;
-            o.pos = float4(corners[vid], 0, 1);
+            o.pos = float4(corners[vid] * p.scale, 0, 1);
             float2 uv = corners[vid] * 0.5 + 0.5;
             // Metal samples textures from the top-left; clip space counts y
             // upward. That inversion is unconditional. The guest's own
@@ -157,11 +159,25 @@ final class HuskMetalPresenter {
         guard let buffer = queue.makeCommandBuffer(),
               let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
 
-        // rotate is live again: preferred route is the guest reshaping itself,
-        // and this is the fallback for a guest that will not.
-        var params = (flip: Float(flip ? 1 : 0), rotate: Float(rotated ? 1 : 0))
+        // Letterbox rather than stretch. The guest occupies effW x effH on
+        // screen once any turn is applied; whichever axis runs out first sets
+        // the scale, and the other is inset.
+        let effW = Float(rotated ? texture.height : texture.width)
+        let effH = Float(rotated ? texture.width  : texture.height)
+        let layerW = Float(layer.drawableSize.width)
+        let layerH = Float(layer.drawableSize.height)
+        var sx: Float = 1, sy: Float = 1
+        if effW > 0, effH > 0, layerW > 0, layerH > 0 {
+            let guestAspect = effW / effH
+            let layerAspect = layerW / layerH
+            if guestAspect > layerAspect { sy = layerAspect / guestAspect }
+            else                         { sx = guestAspect / layerAspect }
+        }
+
+        var params = (flip: Float(flip ? 1 : 0), rotate: Float(rotated ? 1 : 0),
+                      sx: sx, sy: sy)
         encoder.setRenderPipelineState(pipeline)
-        encoder.setVertexBytes(&params, length: MemoryLayout<Float>.size * 2, index: 0)
+        encoder.setVertexBytes(&params, length: MemoryLayout<Float>.size * 4, index: 0)
         encoder.setFragmentTexture(texture, index: 0)
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)

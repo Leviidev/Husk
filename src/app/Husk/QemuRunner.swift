@@ -1437,6 +1437,9 @@ final class QemuRunner: ObservableObject {
             // scanout immediately and a frame presented through the GL path is
             // a frame thrown away.
             huskInstallMetalPresenter()
+            // The stored rotation is read before the presenter exists, so it
+            // has to be handed over once it does.
+            DispatchQueue.main.async { HuskGLView.applyStoredRotation() }
             glUp = husk_display_gl_bind()
             HuskLog.log("qemu", glUp ? "GL display is up -- the GPU is drawing now"
                                      : "GL bind failed after a successful probe")

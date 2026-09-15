@@ -85,56 +85,15 @@ final class HuskGLView: UIView {
                                          height: bounds.height * scale)
         HuskMetalPresenter.shared.attach(layer: metalLayer)
 
-        // Give the guest a display the shape of the screen.
+        // Nothing here reacts to the device orientation any more.
         //
-        // The previous approach rotated Android inside a fixed portrait panel
-        // and turned the picture back in the shader. Android honoured the
-        // rotation and then letterboxed the app into a sub-rectangle: small,
-        // and unresponsive, because the window accepting input was that
-        // rectangle rather than where a finger mapped to. Correctly placed
-        // touches landed in no window at all.
-        //
-        // A modeset is the real answer. The guest's virtio-gpu driver changes
-        // resolution, the scanout becomes genuinely landscape, and nothing needs
-        // rotating -- not the shader, not the touch map, both of which are back
-        // to their portrait forms because there is no longer anything to undo.
-        let landscape = bounds.width > bounds.height
-        if landscape != Self.lastLandscape {
-            Self.lastLandscape = landscape
-            // The panel Android was given on the command line, not whatever
-            // the console happens to be. Early in a cold boot the console is the
-            // firmware's framebuffer -- 640x480, then 800x600, then 1024x768 --
-            // and reading that as "the guest's size" is how a landscape request
-            // came out as 800x600.
-            let base = QemuRunner.bootGuestRes
-            let short = min(base.w, base.h), long = max(base.w, base.h)
-            let w = landscape ? long : short
-            let h = landscape ? short : long
-            HuskLog.log("ui", "screen is \(landscape ? "landscape" : "portrait"); "
-                            + "asking the guest for \(w)x\(h)")
-            if QemuRunner.qemuReady {
-                husk_display_set_ui_size(Int32(w), Int32(h))
-            } else {
-                // The first layout happens before QEMU starts. Remember it and
-                // let the runner apply it once the machine exists.
-                QemuRunner.pendingUISize = (w: w, h: h)
-            }
-            QemuRunner.lastGuestRes = (w: w, h: h)
-
-            // Check whether the guest actually took it.
-            //
-            // dpy_set_ui_info is a suggestion: the guest's DRM driver may act on
-            // it and Android's compositor may or may not reflow behind that.
-            // Asking and assuming is how landscape has failed twice -- once
-            // sideways, once letterboxed. So read the console back, and if the
-            // guest is still the shape it was, turn the picture in the shader
-            // instead. Neither route is right in every case; having both means
-            // landscape works whichever way this guest behaves.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                Self.settleRotation(wantLandscape: landscape)
-            }
-        }
-
+        // Reading the screen's shape and deciding what the guest should do with
+        // it produced a string of bugs: a turn applied during a portrait boot
+        // because the console was still the firmware's 800x600 framebuffer, a
+        // landscape request sent as 800x600 because that reading was cached,
+        // and a three-second settle that raced whichever way the phone was
+        // moved. Rotation is now an explicit choice -- see HuskGLView.rotated --
+        // which is both predictable and something a person can undo.
         Self.surfaceReady.lock()
         let first = Self.layerForGL == nil
         Self.layerForGL = metalLayer
@@ -217,68 +176,56 @@ final class HuskGLView: UIView {
                         + "device=\(metalLayer.device?.name ?? "none")")
     }
 
-    /// Decide, three seconds later, whether the guest reshaped itself.
+    /// Whether the guest's picture is turned a quarter turn.
     ///
-    /// Runs on the main thread. `husk_display_guest_size` takes the BQL only
-    /// when it is free, so this cannot deadlock against QEMU's own thread.
-    private static func settleRotation(wantLandscape: Bool) {
-        guard QemuRunner.qemuReady, Self.lastLandscape == wantLandscape else { return }
-        var gw: Int32 = 0, gh: Int32 = 0
-        husk_display_guest_size(&gw, &gh)
-        guard gw > 0, gh > 0 else { return }
-
-        // Only Android's own panel counts. During a cold boot the console is
-        // the firmware's framebuffer, and 800x600 read as "the guest is
-        // landscape" -- so the picture was turned a quarter turn while the
-        // screen was still portrait, before Android had drawn anything.
-        let base = QemuRunner.bootGuestRes
-        let expected = Set([base.w * 100000 + base.h, base.h * 100000 + base.w])
-        guard expected.contains(Int(gw) * 100000 + Int(gh)) else {
-            HuskLog.log("ui", "guest is \(gw)x\(gh), which is not Android's panel "
-                            + "(\(base.w)x\(base.h)) -- still booting, leaving "
-                            + "rotation alone")
-            return
+    /// Set from the rotate button, not from the accelerometer. Android is a
+    /// fixed portrait panel and will not reshape itself -- proven: every
+    /// dpy_set_ui_info request came back with the console still 360x800 -- so
+    /// when an app asks Android for landscape, Android turns its own
+    /// composition inside that portrait panel. Turning it back here is what
+    /// makes it upright, and doing that on purpose beats inferring it.
+    nonisolated(unsafe) static var rotated: Bool =
+        UserDefaults.standard.bool(forKey: "husk.rotated") {
+        didSet {
+            UserDefaults.standard.set(rotated, forKey: "husk.rotated")
+            HuskMetalPresenter.shared.setRotated(rotated)
+            HuskLog.log("ui", "guest picture is \(rotated ? "turned" : "upright")")
         }
-
-        let guestLandscape = gw > gh
-        let needsTurning = wantLandscape != guestLandscape
-        QemuRunner.lastGuestRes = (w: Int(gw), h: Int(gh))
-        rotatedInShader = needsTurning
-        HuskMetalPresenter.shared.setRotated(needsTurning)
-        HuskLog.log("ui", "guest is \(gw)x\(gh) after the request; "
-                        + (needsTurning
-                           ? "it did not reshape, so the picture is turned here"
-                           : "it reshaped, no turning needed"))
     }
 
-    /// True when the guest kept its shape and the shader is compensating, so
-    /// touches have to be turned the same way the pixels are.
-    nonisolated(unsafe) static var rotatedInShader = false
+    /// Re-apply after the presenter exists, since the stored value is read
+    /// before it does.
+    static func applyStoredRotation() {
+        HuskMetalPresenter.shared.setRotated(rotated)
+    }
 
     // MARK: touches
 
-    /// The guest is letterboxed inside the view, exactly as in the software
-    /// path, so the same mapping applies -- the GL path changes who draws, not
-    /// where the picture ends up.
+    /// Where on Android's screen a touch landed.
+    ///
+    /// Two transforms, in order: undo the letterbox, then undo the quarter turn
+    /// if the shader applied one. They have to be kept in step with
+    /// HuskMetalPresenter's vertex shader -- when they disagreed, the picture
+    /// looked right and nothing responded where you tapped, which is a far more
+    /// confusing failure than a picture that is visibly wrong.
     private func guestPoint(from p: CGPoint) -> (Int32, Int32)? {
-        guard bounds.width > 0, bounds.height > 0 else { return nil }
+        guard bounds.width > 0, bounds.height > 0,
+              guestWidth > 0, guestHeight > 0 else { return nil }
 
-        // When the shader turns the picture, a touch has to turn with it or it
-        // lands somewhere else entirely -- the image looks right and nothing
-        // responds where you tap. This is the exact inverse of the sampler's
-        // (1 - uv.y, uv.x), undone against the guest's own dimensions.
-        if Self.rotatedInShader {
-            let gx = (1 - p.y / bounds.height) * guestWidth
-            let gy = (p.x / bounds.width) * guestHeight
-            guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
-            return (Int32(gx), Int32(gy))
-        }
+        // What the guest occupies on screen, after any turn.
+        let effW = Self.rotated ? guestHeight : guestWidth
+        let effH = Self.rotated ? guestWidth  : guestHeight
 
-        let scale = min(bounds.width / guestWidth, bounds.height / guestHeight)
-        let drawW = guestWidth * scale
-        let drawH = guestHeight * scale
-        let gx = (p.x - (bounds.width - drawW) / 2) / scale
-        let gy = (p.y - (bounds.height - drawH) / 2) / scale
+        let scale = min(bounds.width / effW, bounds.height / effH)
+        let drawW = effW * scale, drawH = effH * scale
+        let lx = (p.x - (bounds.width  - drawW) / 2) / scale
+        let ly = (p.y - (bounds.height - drawH) / 2) / scale
+        guard lx >= 0, ly >= 0, lx < effW, ly < effH else { return nil }
+
+        // The sampler reads at (1 - uv.y, uv.x) when turned; this is that,
+        // against the guest's own dimensions.
+        let gx = Self.rotated ? (1 - ly / effH) * guestWidth  : lx
+        let gy = Self.rotated ? (lx / effW) * guestHeight     : ly
         guard gx >= 0, gy >= 0, gx < guestWidth, gy < guestHeight else { return nil }
         return (Int32(gx), Int32(gy))
     }
