@@ -6,55 +6,76 @@ import UIKit
 ///
 /// The screens grew one at a time and each invented its own spacing, its own
 /// idea of a container and its own way of showing a value — which is why the app
-/// reads as a pile of forms rather than one thing. Everything here exists to be
+/// read as a pile of forms rather than one thing. Everything here exists to be
 /// reused rather than restated.
+///
+/// The one rule worth stating: the page itself is quiet. An earlier version
+/// washed every screen in a purple gradient, which is the kind of thing that
+/// looks designed in a mockup and cheap on a phone — the colour ends up behind
+/// text, nothing sits on a definite surface, and the whole app reads as a theme
+/// rather than as software. Colour is spent on the few things that are actually
+/// the point: the accent on what you press, the app icons themselves.
 enum Theme {
     /// Taken from the app icon's gradient, so the app and its icon agree.
     static let accent = Color(red: 0.36, green: 0.31, blue: 0.93)
-    static let accentSoft = Color(red: 0.36, green: 0.31, blue: 0.93).opacity(0.14)
+    static let accentSoft = Color(red: 0.36, green: 0.31, blue: 0.93).opacity(0.12)
     /// The far end of the icon's gradient, for anything that wants depth.
     static let accentDeep = Color(red: 0.16, green: 0.13, blue: 0.85)
 
-    static let cardCorner: CGFloat = 18
+    /// The page. Grey in light, black in dark, exactly as every system app.
+    static let background = Color(uiColor: .systemGroupedBackground)
+    /// What content sits on: white over the grey, a step up out of the black.
+    static let surface = Color(uiColor: .secondarySystemGroupedBackground)
+    /// A single hairline is what separates a surface from the page without
+    /// resorting to a drop shadow on everything.
+    static let hairline = Color.primary.opacity(0.07)
+
+    static let cardCorner: CGFloat = 16
     static let rowSpacing: CGFloat = 12
 
     /// The backdrop every screen sits on.
-    ///
-    /// A soft wash rather than flat grey: glass has nothing to refract over a
-    /// plain background, so the effect only reads when there is colour beneath
-    /// it. Kept faint so it never competes with content.
     static var backdrop: some View {
-        LinearGradient(
-            colors: [accent.opacity(0.22), accentDeep.opacity(0.10), .clear],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-        .ignoresSafeArea()
-        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+        background.ignoresSafeArea()
     }
 }
 
 extension View {
-    /// Liquid Glass where the OS has it, a material where it does not.
+    /// A raised surface: the app's one container.
     ///
-    /// The deployment target is 16.4 and glassEffect arrived in 26, so this
-    /// cannot simply be called: the fallback is what the great majority of the
-    /// layout rests on, and it has to look deliberate rather than degraded.
+    /// Flat fill, hairline edge, and a shadow soft enough that you notice the
+    /// card is lifted rather than noticing the shadow. `elevated` is for the
+    /// few things that float above their own page.
     @ViewBuilder
-    func huskGlass<S: Shape>(_ shape: S, prominent: Bool = false) -> some View {
+    func huskCard<S: Shape>(_ shape: S, elevated: Bool = false) -> some View {
+        self.background(Theme.surface, in: shape)
+            .overlay(shape.stroke(Theme.hairline, lineWidth: 0.5))
+            .shadow(color: .black.opacity(elevated ? 0.10 : 0.045),
+                    radius: elevated ? 14 : 7, y: elevated ? 6 : 2)
+    }
+
+    func huskCard(elevated: Bool = false) -> some View {
+        huskCard(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous),
+                 elevated: elevated)
+    }
+
+    /// Liquid Glass, for chrome that floats over something else.
+    ///
+    /// Reserved for exactly that. Glass over a flat page has nothing to refract
+    /// and just reads as a slightly dirty panel, so content uses `huskCard` and
+    /// this is kept for the controls over the guest's picture and the strip that
+    /// sits above the app grid.
+    @ViewBuilder
+    func huskGlass<S: Shape>(_ shape: S) -> some View {
         if #available(iOS 26.0, *) {
-            self.glassEffect(prominent ? .regular.tint(Theme.accent.opacity(0.5))
-                                       : .regular,
-                             in: shape)
+            self.glassEffect(.regular, in: shape)
         } else {
-            self.background(prominent ? AnyShapeStyle(Theme.accent.opacity(0.22))
-                                      : AnyShapeStyle(.ultraThinMaterial),
-                            in: shape)
-                .overlay(shape.stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+            self.background(.ultraThinMaterial, in: shape)
+                .overlay(shape.stroke(Theme.hairline, lineWidth: 0.5))
         }
     }
 
-    func huskGlass(prominent: Bool = false) -> some View {
-        huskGlass(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous),
-                  prominent: prominent)
+    func huskGlass() -> some View {
+        huskGlass(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
     }
 }
 
@@ -67,6 +88,41 @@ extension Font {
     }
 }
 
+/// The one action a screen is for.
+///
+/// Solid accent rather than a tinted panel: the point of a primary button is
+/// that there is no question which control it is, and a translucent one asks
+/// the question every time.
+struct PrimaryButtonStyle: ButtonStyle {
+    var enabled = true
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(enabled ? Theme.accent : Color.secondary.opacity(0.35),
+                        in: Capsule())
+            .shadow(color: enabled ? Theme.accent.opacity(0.28) : .clear,
+                    radius: 12, y: 5)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// A card that is also a button: it moves a little under the finger, which is
+/// the difference between a tile that responds and one that just redraws.
+struct CardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.955 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
 /// The app's one container shape.
 struct Card<Content: View>: View {
     @ViewBuilder var content: Content
@@ -75,7 +131,7 @@ struct Card<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .huskGlass()
+            .huskCard()
     }
 }
 
@@ -125,22 +181,24 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: systemImage)
-                .font(.system(size: 42, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text(title).font(.headline)
+                .font(.system(size: 34, weight: .light))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 66, height: 66)
+                .background(Theme.accentSoft, in: Circle())
+            Text(title).font(.title3.weight(.semibold))
             Text(message)
-                .font(.callout).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
+                .padding(.horizontal, 30)
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-                    .padding(.top, 2)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, 44)
+                    .padding(.top, 6)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 30)
+        .padding(.vertical, 38)
     }
 }
 
@@ -159,8 +217,9 @@ struct GuestControl: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(active ? Theme.accent.opacity(0.9) : Color.black.opacity(0.35))
-                    .frame(width: 34, height: 34)
+                    .fill(active ? Theme.accent.opacity(0.9) : Color.black.opacity(0.42))
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 0.5))
                 if busy {
                     ProgressView().scaleEffect(0.55).tint(.white)
                 } else {

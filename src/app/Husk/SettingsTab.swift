@@ -13,46 +13,41 @@ struct SettingsTab: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Theme.backdrop
-                List {
-                    Section {
-                        NavigationLink { MachineSettings() } label: {
-                            settingRow("cpu", "Machine",
-                                       "Screen, renderer, sound", .indigo)
-                        }
-                        NavigationLink { SavedMachineSettings() } label: {
-                            settingRow("externaldrive", "Saved machine",
-                                       "Snapshots and automatic saving", .teal)
-                        }
-                        NavigationLink { AppearanceSettings() } label: {
-                            settingRow("paintbrush", "Appearance",
-                                       "App icon", .pink)
-                        }
-                        NavigationLink { DiagnosticsSettings() } label: {
-                            settingRow("stethoscope", "Diagnostics",
-                                       "Console, logs, build", .orange)
-                        }
+            // A plain inset-grouped list, drawn the way the system draws one.
+            // It used to be a list with every row background cleared, floating
+            // over a coloured wash -- which reads as a half-finished theme
+            // rather than as a settings screen. The one place in the app where
+            // the platform's own answer is unimprovable is this one.
+            List {
+                Section {
+                    NavigationLink { MachineSettings() } label: {
+                        settingRow("cpu", "Machine",
+                                   "Screen, renderer, sound", .indigo)
                     }
-                    .listRowBackground(Color.clear)
-
-                    Section {
-                        Card {
-                            VStack(spacing: 10) {
-                                DetailRow(label: "Version",
-                                          value: Bundle.main.version, mono: false)
-                                DetailRow(label: "Build", value: Bundle.main.commit)
-                                DetailRow(label: "Guest", value: GuestImage.imageVersion)
-                            }
-                        }
-                    } header: {
-                        Text("About")
+                    NavigationLink { SavedMachineSettings() } label: {
+                        settingRow("externaldrive", "Saved machine",
+                                   "Snapshots and automatic saving", .teal)
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    NavigationLink { AppearanceSettings() } label: {
+                        settingRow("paintbrush", "Appearance",
+                                   "App icon", .pink)
+                    }
+                    NavigationLink { DiagnosticsSettings() } label: {
+                        settingRow("stethoscope", "Diagnostics",
+                                   "Console, logs, build", .orange)
+                    }
                 }
-                .scrollContentBackground(.hidden)
+
+                Section {
+                    DetailRow(label: "Version",
+                              value: Bundle.main.version, mono: false)
+                    DetailRow(label: "Build", value: Bundle.main.commit)
+                    DetailRow(label: "Guest", value: GuestImage.imageVersion)
+                } header: {
+                    Text("About")
+                }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Settings")
         }
     }
@@ -283,12 +278,21 @@ struct AppearanceSettings: View {
                                 Text(icon.title).font(.caption2).lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .huskGlass(RoundedRectangle(cornerRadius: Theme.cardCorner,
-                                                        style: .continuous),
-                                       prominent: appIcon == icon)
+                            .padding(.vertical, 13)
+                            .background(Theme.surface,
+                                        in: RoundedRectangle(cornerRadius: Theme.cardCorner,
+                                                             style: .continuous))
+                            // The selected icon is ringed in the accent rather
+                            // than filled with it: the artwork is the subject
+                            // here, and a tinted panel behind it changes how
+                            // the thing you are choosing looks.
+                            .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner,
+                                                      style: .continuous)
+                                        .stroke(appIcon == icon ? Theme.accent
+                                                                : Theme.hairline,
+                                                lineWidth: appIcon == icon ? 2 : 0.5))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(CardButtonStyle())
                     }
                 }
                 .padding(.horizontal, 18).padding(.top, 12)
@@ -333,11 +337,8 @@ struct DiagnosticsSettings: View {
 
                     Button { showLogs = true } label: {
                         Label("Open console", systemImage: "terminal")
-                            .font(.headline).frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
                     }
-                    .buttonStyle(.plain)
-                    .huskGlass(Capsule(), prominent: true)
+                    .buttonStyle(PrimaryButtonStyle())
 
                     Text("The console shows Husk's live log and can share it, the "
                        + "guest's serial output and QEMU's own output. Those three "

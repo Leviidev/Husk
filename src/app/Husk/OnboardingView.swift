@@ -73,12 +73,8 @@ struct OnboardingView: View {
                         }
                     } label: {
                         Text(page < pages - 1 ? "Continue" : "Start using Husk")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
                     }
-                    .buttonStyle(.plain)
-                    .huskGlass(Capsule(), prominent: true)
+                    .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, 28)
                 }
                 .padding(.bottom, 28)
@@ -170,7 +166,7 @@ struct OnboardingView: View {
             Toggle("", isOn: isOn).labelsHidden().tint(Theme.accent)
         }
         .padding(16)
-        .huskGlass()
+        .huskCard()
     }
 
     private var ready: some View {

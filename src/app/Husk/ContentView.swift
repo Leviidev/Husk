@@ -515,6 +515,17 @@ struct SetupView: View {
 /// also be carrying every decoded bitmap around with it.
 struct AppIcon: View {
     let path: String?
+    /// The side of the square it draws itself in.
+    ///
+    /// It used to pin itself to 40pt internally, so the 62pt tile and the 96pt
+    /// header both got a 40pt picture floating in the middle of a much bigger
+    /// box -- which is most of why the grid looked like a debug list. The size
+    /// belongs to whoever is placing it.
+    var size: CGFloat = 40
+
+    /// Proportional, so a large icon is not rounded like a small one. This is
+    /// close to the ratio iOS uses for a home screen icon.
+    private var corner: CGFloat { size * 0.225 }
 
     var body: some View {
         Group {
@@ -523,16 +534,22 @@ struct AppIcon: View {
                     .resizable()
                     .interpolation(.medium)
                     .aspectRatio(contentMode: .fit)
-                    // Rounded like a launcher would draw it. Android icons are
-                    // square PNGs; nothing else gives them an app-like shape.
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             } else {
-                Image(systemName: "app.dashed")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                // A placeholder that looks like an icon rather than a missing
+                // one: most of the grid can be placeholders for the first
+                // minute of a session, and a row of grey glyphs reads as broken.
+                ZStack {
+                    Theme.accentSoft
+                    Image(systemName: "app.dashed")
+                        .font(.system(size: size * 0.42, weight: .light))
+                        .foregroundStyle(Theme.accent.opacity(0.8))
+                }
             }
         }
-        .frame(width: 40, height: 40)
+        .frame(width: size, height: size)
+        // Rounded like a launcher would draw it. Android icons are square
+        // PNGs; nothing else gives them an app-like shape.
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     }
 }
 

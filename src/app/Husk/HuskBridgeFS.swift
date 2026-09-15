@@ -1234,6 +1234,21 @@ final class AndroidHost: ObservableObject {
                 // remember to do afterwards.
                 if ok {
                     await MainActor.run {
+                        // Automatic saves being off means off. This save is as
+                        // automatic as the one after boot -- it freezes the
+                        // picture for fifteen seconds without being asked --
+                        // and someone who turned that off did not mean "except
+                        // after installing".
+                        guard QemuRunner.autoSaveEnabled else {
+                            HuskLog.log("bridge", "\(name) installed; not saving, "
+                                      + "automatic saves are off")
+                            self?.busy = "Installed. Save Android to keep it "
+                                       + "past this session."
+                            Task { try? await Task.sleep(nanoseconds: 5_000_000_000)
+                                   await MainActor.run { self?.busy = nil } }
+                            return
+                        }
+
                         // GPU mode can save now: the virgl blocker is lifted, the
                         // compositor is stopped around the write, and the log
                         // says "save succeeded". This used to tell people their
