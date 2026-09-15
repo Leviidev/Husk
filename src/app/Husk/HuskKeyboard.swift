@@ -230,7 +230,8 @@ struct SpecialKeysBar: View {
                 Text("ctrl")
                     .font(.caption2.weight(.medium))
                     .padding(.horizontal, 9).padding(.vertical, 6)
-                    .background(ctrlLatched ? AnyShapeStyle(.tint) : AnyShapeStyle(.ultraThinMaterial),
+                    .background(ctrlLatched ? AnyShapeStyle(Theme.accent)
+                                            : AnyShapeStyle(Theme.surfaceHigh),
                                 in: RoundedRectangle(cornerRadius: 7))
             }
 
@@ -247,7 +248,7 @@ struct SpecialKeysBar: View {
                         .font(.caption2.weight(.medium))
                         .frame(minWidth: 26)
                         .padding(.horizontal, 7).padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 7))
+                        .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 7))
                 }
             }
         }

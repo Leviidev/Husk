@@ -19,6 +19,8 @@ struct SettingsTab: View {
                 Theme.backdrop
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
+                        HuskHeader(mark: true, title: "Settings")
+
                         group("General") {
                             link(LibrarySettings(), "square.grid.2x2", "Library",
                                  "Your apps and their icons")
@@ -73,10 +75,8 @@ struct SettingsTab: View {
                     .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { HuskMark(size: 30) }
-            }
+            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .tabBar)
         }
     }
 

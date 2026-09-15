@@ -69,19 +69,54 @@ extension View {
                  high: high)
     }
 
-    /// Chrome that floats over something else — the controls over the guest.
-    @ViewBuilder
-    func huskGlass<S: Shape>(_ shape: S) -> some View {
-        if #available(iOS 26.0, *) {
-            self.glassEffect(.regular, in: shape)
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-                .overlay(shape.stroke(Color.white.opacity(0.12), lineWidth: 0.5))
-        }
+    /// Chrome that sits over the guest's own picture.
+    ///
+    /// Solid, not glass. iOS 26 will happily render this as Liquid Glass and it
+    /// looks wrong here: a floating, refracting pill over a game is the phone's
+    /// design language arguing with the app's, and over a dark guest screen it
+    /// mostly reads as smeared. A flat panel with a hairline is what the design
+    /// asks for, and it looks the same on every iOS.
+    func huskPanel<S: Shape>(_ shape: S) -> some View {
+        self.background(Theme.surface.opacity(0.94), in: shape)
+            .overlay(shape.stroke(Color.white.opacity(0.10), lineWidth: 0.5))
     }
+}
 
-    func huskGlass() -> some View {
-        huskGlass(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
+/// The tab bar, drawn rather than borrowed.
+///
+/// `TabView` still owns the tabs — their selection, their view lifetime, their
+/// navigation stacks. Only the bar is ours: on iOS 26 the system draws it as a
+/// floating glass capsule sitting proud of the screen, which is not the flat
+/// bar pinned to the bottom edge that the design has. So the system's bar is
+/// hidden and this one is inset in its place.
+struct HuskTabBar: View {
+    @Binding var selection: HuskTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(HuskTab.allCases) { tab in
+                Button {
+                    if selection != tab { UISelectionFeedbackGenerator().selectionChanged() }
+                    selection = tab
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 18, weight: .medium))
+                        Text(tab.title)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundStyle(selection == tab ? Theme.accent : Theme.textDim)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10).padding(.bottom, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(alignment: .top) {
+            Rectangle().fill(Theme.hairline).frame(height: 0.5)
+        }
+        .background(Theme.bg.ignoresSafeArea(edges: .bottom))
     }
 }
 
@@ -410,5 +445,53 @@ struct GuestControl: View {
         }
         .buttonStyle(.plain)
         .disabled(busy)
+    }
+}
+
+/// A screen's own header: the mark or a back arrow, whatever buttons belong in
+/// the corner, and the big title under them.
+///
+/// Drawn rather than left to the navigation bar. On iOS 26 the system bar and
+/// every button in it is Liquid Glass — a floating, refracting capsule that
+/// belongs to a different design than this one, and cannot be told not to be.
+/// Pushed screens keep the real bar, where the back gesture and the title
+/// behaviour matter more than the finish; the roots draw their own.
+struct HuskHeader<Trailing: View>: View {
+    var mark = false
+    var back: (() -> Void)? = nil
+    var title: String? = nil
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                if let back {
+                    Button(action: back) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Theme.text)
+                            .frame(width: 36, height: 36)
+                            .background(Theme.surfaceHigh, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                } else if mark {
+                    HuskMark(size: 32)
+                }
+                Spacer(minLength: 8)
+                trailing
+            }
+            if let title {
+                Text(title)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(Theme.text)
+            }
+        }
+        .padding(.top, 4)
+    }
+}
+
+extension HuskHeader where Trailing == EmptyView {
+    init(mark: Bool = false, back: (() -> Void)? = nil, title: String? = nil) {
+        self.init(mark: mark, back: back, title: title) { EmptyView() }
     }
 }

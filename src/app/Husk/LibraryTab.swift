@@ -31,19 +31,8 @@ struct LibraryTab: View {
                 Theme.backdrop
                 content
             }
-            .navigationTitle("Library")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { HuskMark(size: 30) }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 10) {
-                        CircleButton(systemImage: "magnifyingglass", active: searching) {
-                            withAnimation(.snappy(duration: 0.22)) { searching.toggle() }
-                            if searching { searchFocused = true } else { query = "" }
-                        }
-                        CircleButton(systemImage: "plus") { importing = true }
-                    }
-                }
-            }
+            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .tabBar)
             .navigationDestination(for: AndroidHost.Package.self) { app in
                 AppDetailView(app: app, onOpenGuest: onOpenGuest)
             }
@@ -63,6 +52,16 @@ struct LibraryTab: View {
     @ViewBuilder private var content: some View {
         ScrollView {
             VStack(spacing: 16) {
+                HuskHeader(mark: true, title: "Library") {
+                    HStack(spacing: 10) {
+                        CircleButton(systemImage: "magnifyingglass", active: searching) {
+                            withAnimation(.snappy(duration: 0.22)) { searching.toggle() }
+                            if searching { searchFocused = true } else { query = "" }
+                        }
+                        CircleButton(systemImage: "plus") { importing = true }
+                    }
+                }
+
                 if searching { searchField }
                 if !host.isReady { machineStrip }
                 if let busy = host.busy { busyStrip(busy) }

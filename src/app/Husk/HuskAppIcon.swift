@@ -102,4 +102,20 @@ enum HuskTab: String, CaseIterable, Identifiable {
     case settings
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .library:  return "Library"
+        case .files:    return "Files"
+        case .settings: return "Settings"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .library:  return "square.grid.2x2.fill"
+        case .files:    return "folder.fill"
+        case .settings: return "gearshape.fill"
+        }
+    }
 }

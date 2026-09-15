@@ -23,6 +23,8 @@ struct ContentView: View {
     @State private var showGuestScreen = false
     @ObservedObject private var router = Router.shared
     @State private var showOnboarding = Onboarding.needed
+    /// True while the launch boot screen is up, rather than the library.
+    @State private var booting = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -50,6 +52,9 @@ struct ContentView: View {
                 SettingsTab()
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                     .tag(HuskTab.settings)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HuskTabBar(selection: $router.tab)
             }
             .opacity(showGuestScreen && started && runner.isRunning ? 0 : 1)
 
@@ -80,6 +85,17 @@ struct ContentView: View {
                     .allowsHitTesting(showGuestScreen)
             }
 
+            // Over the tabs and over the start screen: when Husk is starting
+            // Android for you, that is the whole screen until it is done.
+            if booting {
+                BootScreen { withAnimation(.easeInOut(duration: 0.3)) { booting = false } }
+                    .transition(.opacity)
+                    .zIndex(3)
+                    .onChange(of: host.isReady) { ready in
+                        if ready { withAnimation(.easeInOut(duration: 0.45)) { booting = false } }
+                    }
+            }
+
             if showSetup {
                 // Before the guest exists there is nothing to cover, so the
                 // start screen sits above the tabs rather than inside one.
@@ -103,7 +119,10 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
                 showOnboarding = false
-                if Onboarding.autoStart, JITBootstrap.isDebuggerAttached { start() }
+                if Onboarding.autoStart, JITBootstrap.isDebuggerAttached {
+                    booting = true
+                    start()
+                }
             }
         }
         .sheet(isPresented: $showLogs) { LogView() }
@@ -138,16 +157,24 @@ struct ContentView: View {
         // network round trip, and nothing on this screen should wait for it.
         Task { await guest.checkForUpdates() }
 
-        // Deliberately does NOT start the guest.
-        //
-        // It used to: once the image was present and a debugger was attached,
-        // Husk went straight into Android with no way to reach any setting
-        // first. Booting takes minutes and its cost depends on choices made
-        // before it starts -- which display, whether to fetch a pre-booted
-        // snapshot -- so it is a decision, not a side effect of launching.
         if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
+            return
         }
+
+        // Start on launch, when that is what was asked for.
+        //
+        // This deliberately did nothing for a long time, and the reason was
+        // sound: booting takes minutes and its cost depends on choices made
+        // before it starts, so it should not be a side effect of opening the
+        // app. But the setup flow now asks the question outright, and someone
+        // who answered yes has made the decision -- continuing to ignore it
+        // just means every launch begins by pressing Start.
+        guard Onboarding.autoStart, !started, guest.state == .ready,
+              !showOnboarding else { return }
+        HuskLog.log("ui", "starting Android on launch")
+        booting = true
+        start()
     }
 
     /// Whether the start screen has anything to offer that the library does not.
@@ -276,7 +303,7 @@ struct GuestScreenView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, 18).padding(.vertical, 14)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .huskPanel(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .frame(maxWidth: 300)
                 // Below the Back/keyboard/console pill rather than centred over
                 // the guest: the ZStack is top-aligned, so without this the card
@@ -303,7 +330,7 @@ struct GuestScreenView: View {
                     if keyboard {
                         SpecialKeysBar()
                             .padding(.horizontal, 10).padding(.vertical, 8)
-                            .huskGlass(RoundedRectangle(cornerRadius: 14,
+                            .huskPanel(RoundedRectangle(cornerRadius: 14,
                                                         style: .continuous))
                     }
 
@@ -362,7 +389,7 @@ struct GuestScreenView: View {
                         }
                     }
                     .padding(.horizontal, 6).padding(.vertical, 3)
-                    .huskGlass(Capsule())
+                    .huskPanel(Capsule())
                     .padding(.bottom, 8)
                 }
             }
@@ -371,6 +398,7 @@ struct GuestScreenView: View {
         // document picker is up, and an importer attached to a view that goes
         // away goes away with it.
         .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
         .sheet(isPresented: $showControls) {
             ControlsSheet(keyboard: $keyboard)
                 .presentationDetents([.height(300)])

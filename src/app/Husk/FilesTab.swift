@@ -21,6 +21,7 @@ struct FilesTab: View {
                 .navigationDestination(for: String.self) { path in
                     DirectoryView(path: path,
                                   title: (path as NSString).lastPathComponent)
+                        .toolbar(.hidden, for: .tabBar)
                 }
         }
     }
@@ -39,21 +40,14 @@ struct DirectoryView: View {
     @State private var importing = false
     @State private var showImportSheet = false
     @State private var installing: AndroidHost.GuestEntry?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
             Theme.backdrop
             content
         }
-        .navigationTitle(title)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 10) {
-                    CircleButton(systemImage: "arrow.clockwise") { load() }
-                    CircleButton(systemImage: "plus") { showImportSheet = true }
-                }
-            }
-        }
+        .navigationBarHidden(true)
         .sheet(isPresented: $showImportSheet) {
             ImportSheet(destination: path) { showImportSheet = false; importing = true }
                 .presentationDetents([.height(320)])
@@ -83,6 +77,22 @@ struct DirectoryView: View {
     @ViewBuilder private var content: some View {
         ScrollView {
             VStack(spacing: 14) {
+                HuskHeader(back: path == FilesTab.root ? nil : { dismiss() },
+                           title: title) {
+                    HStack(spacing: 10) {
+                        CircleButton(systemImage: "arrow.clockwise") { load() }
+                        CircleButton(systemImage: "plus") { showImportSheet = true }
+                    }
+                }
+
+                if path != FilesTab.root {
+                    Text(path)
+                        .font(.technical(11))
+                        .foregroundStyle(Theme.textDim)
+                        .lineLimit(1).truncationMode(.head)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 if let space { storage(space) }
 
                 if loading && entries.isEmpty {

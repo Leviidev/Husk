@@ -42,6 +42,7 @@ struct AppDetailView: View {
             Theme.backdrop
             ScrollView {
                 VStack(spacing: 18) {
+                    HuskHeader(back: { dismiss() }) { menu }
                     header
                     launch
                     facts
@@ -52,31 +53,7 @@ struct AppDetailView: View {
                 .padding(.bottom, 30)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        UIPasteboard.general.string = app.name
-                    } label: { Label("Copy package name", systemImage: "doc.on.doc") }
-                    Button { appInfo() } label: {
-                        Label("Show in Android settings", systemImage: "gearshape")
-                    }
-                    .disabled(!canOpen)
-                    Divider()
-                    Button(role: .destructive) { confirmUninstall = true } label: {
-                        Label("Uninstall", systemImage: "trash")
-                    }
-                    .disabled(!canOpen)
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.text)
-                        .frame(width: 34, height: 34)
-                        .background(Theme.surfaceHigh, in: Circle())
-                }
-            }
-        }
+        .navigationBarHidden(true)
         .confirmationDialog("Uninstall \(live.label)?", isPresented: $confirmUninstall,
                             titleVisibility: .visible) {
             Button("Uninstall", role: .destructive) {
@@ -91,6 +68,29 @@ struct AppDetailView: View {
     }
 
     // MARK: pieces
+
+    private var menu: some View {
+        Menu {
+            Button {
+                UIPasteboard.general.string = app.name
+            } label: { Label("Copy package name", systemImage: "doc.on.doc") }
+            Button { appInfo() } label: {
+                Label("Show in Android settings", systemImage: "gearshape")
+            }
+            .disabled(!canOpen)
+            Divider()
+            Button(role: .destructive) { confirmUninstall = true } label: {
+                Label("Uninstall", systemImage: "trash")
+            }
+            .disabled(!canOpen)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.text)
+                .frame(width: 36, height: 36)
+                .background(Theme.surfaceHigh, in: Circle())
+        }
+    }
 
     private var header: some View {
         HStack(alignment: .top, spacing: 16) {
