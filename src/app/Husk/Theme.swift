@@ -12,9 +12,50 @@ enum Theme {
     /// Taken from the app icon's gradient, so the app and its icon agree.
     static let accent = Color(red: 0.36, green: 0.31, blue: 0.93)
     static let accentSoft = Color(red: 0.36, green: 0.31, blue: 0.93).opacity(0.14)
+    /// The far end of the icon's gradient, for anything that wants depth.
+    static let accentDeep = Color(red: 0.16, green: 0.13, blue: 0.85)
 
-    static let cardCorner: CGFloat = 14
+    static let cardCorner: CGFloat = 18
     static let rowSpacing: CGFloat = 12
+
+    /// The backdrop every screen sits on.
+    ///
+    /// A soft wash rather than flat grey: glass has nothing to refract over a
+    /// plain background, so the effect only reads when there is colour beneath
+    /// it. Kept faint so it never competes with content.
+    static var backdrop: some View {
+        LinearGradient(
+            colors: [accent.opacity(0.22), accentDeep.opacity(0.10), .clear],
+            startPoint: .topLeading, endPoint: .bottomTrailing)
+        .ignoresSafeArea()
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+    }
+}
+
+extension View {
+    /// Liquid Glass where the OS has it, a material where it does not.
+    ///
+    /// The deployment target is 16.4 and glassEffect arrived in 26, so this
+    /// cannot simply be called: the fallback is what the great majority of the
+    /// layout rests on, and it has to look deliberate rather than degraded.
+    @ViewBuilder
+    func huskGlass<S: Shape>(_ shape: S, prominent: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(prominent ? .regular.tint(Theme.accent.opacity(0.5))
+                                       : .regular,
+                             in: shape)
+        } else {
+            self.background(prominent ? AnyShapeStyle(Theme.accent.opacity(0.22))
+                                      : AnyShapeStyle(.ultraThinMaterial),
+                            in: shape)
+                .overlay(shape.stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+        }
+    }
+
+    func huskGlass(prominent: Bool = false) -> some View {
+        huskGlass(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous),
+                  prominent: prominent)
+    }
 }
 
 /// Technical values — sizes, counts, frame rates, commit hashes — are set in a
@@ -34,8 +75,7 @@ struct Card<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(UIColor.secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: Theme.cardCorner))
+            .huskGlass()
     }
 }
 

@@ -1029,6 +1029,30 @@ final class AndroidHost: ObservableObject {
         }
     }
 
+    /// Remove an app from the guest.
+    ///
+    /// Not followed by an automatic save, unlike installing. Removing something
+    /// is the kind of change a person may want to reconsider before it is made
+    /// permanent, and a snapshot is how it becomes permanent.
+    func uninstall(_ package: String) {
+        busy = "Removing \(package)…"
+        Task.detached { [weak self] in
+            let out = (try? GuestBridge.shared.shell("pm uninstall \(package)",
+                                                     timeout: 300)) ?? ""
+            let ok = out.contains("Success")
+            HuskLog.log("bridge", "uninstall \(package): "
+                      + out.trimmingCharacters(in: .whitespacesAndNewlines))
+            await self?.refreshPackages()
+            await MainActor.run {
+                self?.busy = ok ? nil : "Could not remove \(package)"
+            }
+            if !ok {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                await MainActor.run { self?.busy = nil }
+            }
+        }
+    }
+
     /// Copy an APK into the guest and install it.
     func install(_ apk: URL) { install([apk]) }
 

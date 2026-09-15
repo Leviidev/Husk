@@ -90,33 +90,15 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
 }
 
 
-/// The four places Husk can be.
+/// The two tabs.
 ///
-/// Kept as a type rather than inlined into the TabView so the titles and icons
-/// have one definition, and so `tag`/`selection` share a value the log can name.
+/// Android and the console used to be tabs of their own. Android is not one any
+/// more because the guest has to stay mounted whatever is on screen, and the
+/// console moved into Diagnostics -- it is something you go looking for, not a
+/// quarter of the app's navigation.
 enum HuskTab: String, CaseIterable, Identifiable {
-    case android
     case library
-    case console
     case settings
 
     var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .android:  return "Android"
-        case .library:  return "Library"
-        case .console:  return "Console"
-        case .settings: return "Settings"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .android:  return "rectangle.inset.filled"
-        case .library:  return "square.grid.2x2.fill"
-        case .console:  return "terminal"
-        case .settings: return "gearshape"
-        }
-    }
 }

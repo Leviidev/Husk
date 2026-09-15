@@ -19,48 +19,64 @@ struct ContentView: View {
     @State private var showLogs = false
     /// True while the guest's own screen is being shown instead of the library.
     /// Starts true because first boot always needs the Android wizard.
-    @State private var showGuestScreen = true
-    @State private var tab: HuskTab = .android
+    @State private var showGuestScreen = false
+    @State private var tab: HuskTab = .library
+    @State private var showOnboarding = Onboarding.needed
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        // SwiftUI's own TabView.
-        //
-        // The earlier hand-rolled bar existed because HuskGLView owns the
-        // CAMetalLayer QEMU renders into, and a torn-down layer is a black guest
-        // with a frame counter that keeps climbing -- a day was lost to that
-        // once. It is safe here for a specific reason: HuskGLScreen hands back
-        // HuskGLView.shared, a single instance for the process. UIKit moves a
-        // view between parents without recreating it, so whatever SwiftUI does
-        // with the tab, the layer QEMU holds stays the layer being composited.
-        //
-        // Android is first and the default, which also matters: probeGL needs
-        // the layer published before QEMU builds its command line, and the first
-        // tab is the one that gets laid out at launch.
-        TabView(selection: $tab) {
-            androidTab
-                .tabItem { Label(HuskTab.android.title,
-                                 systemImage: HuskTab.android.icon) }
-                .tag(HuskTab.android)
+        ZStack {
+            // Two tabs, and the guest on top of them.
+            //
+            // The guest is not a tab: HuskGLView owns the CAMetalLayer QEMU
+            // renders into, and it has to stay in the hierarchy for the whole
+            // session -- a torn-down layer is a black picture with a frame
+            // counter that keeps climbing. Keeping it mounted and covering it
+            // with the tabs is the arrangement that survives that. Showing
+            // Android is then a matter of hiding what is over it, which is also
+            // why it appears instantly rather than reloading.
+            TabView(selection: $tab) {
+                LibraryTab(onOpenGuest: { showGuestScreen = true },
+                           onStartAndroid: { start(); showGuestScreen = true },
+                           started: started && runner.isRunning)
+                    .tabItem { Label("Library", systemImage: "square.grid.2x2.fill") }
+                    .tag(HuskTab.library)
 
-            libraryTab
-                .tabItem { Label(HuskTab.library.title,
-                                 systemImage: HuskTab.library.icon) }
-                .tag(HuskTab.library)
+                SettingsTab()
+                    .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                    .tag(HuskTab.settings)
+            }
+            .opacity(showGuestScreen && started && runner.isRunning ? 0 : 1)
 
-            LogView(isSheet: false)
-                .tabItem { Label(HuskTab.console.title,
-                                 systemImage: HuskTab.console.icon) }
-                .tag(HuskTab.console)
+            if started && runner.isRunning {
+                GuestScreenView(showLogs: $showLogs,
+                                chromeHidden: false,
+                                onBack: { showGuestScreen = false })
+                    .opacity(showGuestScreen ? 1 : 0)
+                    .allowsHitTesting(showGuestScreen)
+            }
 
-            SettingsView(isSheet: false, showLogs: $showLogs)
-                .tabItem { Label(HuskTab.settings.title,
-                                 systemImage: HuskTab.settings.icon) }
-                .tag(HuskTab.settings)
+            if !started {
+                // Before the guest exists there is nothing to cover, so the
+                // start screen sits above the tabs rather than inside one.
+                SetupView(showLogs: $showLogs) { chosen in
+                    mode = chosen
+                    HuskLog.log("ui", "start mode: "
+                              + (chosen == .fullScreen ? "full screen" : "library"))
+                    showGuestScreen = (chosen == .fullScreen)
+                    start()
+                }
+                .transition(.opacity)
+            }
         }
         .tint(Theme.accent)
-        .onChange(of: tab) { HuskLog.log("ui", "tab: \($0.rawValue)") }
-        .ignoresSafeArea(.keyboard)
+        .animation(.snappy(duration: 0.22), value: showGuestScreen)
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView {
+                showOnboarding = false
+                if Onboarding.autoStart, JITBootstrap.isDebuggerAttached { start() }
+            }
+        }
         .sheet(isPresented: $showLogs) { LogView() }
         // Asking rather than downloading. Two gigabytes over someone's cellular
         // connection is not a decision to make on their behalf.
@@ -103,52 +119,6 @@ struct ContentView: View {
         if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
         }
-    }
-
-    /// The guest, or the start screen before it is running.
-    ///
-    /// Deliberately one tab rather than two: before Android exists there is
-    /// nothing to show, and a separate "main" tab would be an empty room for the
-    /// rest of the session.
-    @ViewBuilder private var androidTab: some View {
-        if started && runner.isRunning {
-            GuestScreenView(showLogs: $showLogs,
-                            chromeHidden: false,
-                            onBack: { tab = .library })
-        } else {
-            SetupView(showLogs: $showLogs) { chosen in
-                mode = chosen
-                HuskLog.log("ui", "start mode: "
-                          + (chosen == .fullScreen ? "full screen" : "library"))
-                showGuestScreen = (chosen == .fullScreen)
-                start()
-                if chosen == .library { tab = .library }
-            }
-        }
-    }
-
-    @ViewBuilder private var libraryTab: some View {
-        if started {
-            AdbLibraryView(onOpened: { tab = .android }, showLogs: $showLogs)
-                .onAppear { AndroidHost.shared.waitForReady() }
-        } else {
-            notStartedYet("The library talks to Android over the bridge, "
-                        + "so it needs Android running.")
-        }
-    }
-
-    /// Shown by a tab that cannot do anything useful until Android is up.
-    private func notStartedYet(_ why: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "power").font(.largeTitle).foregroundStyle(.secondary)
-            Text("Android is not running").font(.headline)
-            Text(why)
-                .font(.caption).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).padding(.horizontal, 40)
-            Button("Go to Android") { tab = .android }
-                .buttonStyle(.borderedProminent).padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func start() {
@@ -391,7 +361,7 @@ struct SetupView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(showLogs: $showLogs)
+            SettingsTab()
         }
     }
 
@@ -508,7 +478,7 @@ struct SetupView: View {
 /// Loaded from the file rather than held in memory: icons arrive one at a time
 /// over the guest bridge, and a list that redraws when each lands should not
 /// also be carrying every decoded bitmap around with it.
-private struct AppIcon: View {
+struct AppIcon: View {
     let path: String?
 
     var body: some View {
@@ -591,469 +561,6 @@ private struct ModeCard: View {
 ///
 /// These are the choices that have to be made before Android boots, because
 /// booting is expensive and each of them changes what that boot costs.
-struct SettingsView: View {
-    private func forget(_ mode: String, _ name: String) {
-        if QemuRunner.shared.forgetSnapshot(mode: mode) {
-            deleteResult = "Deleted the \(name) machine. The next launch boots from cold."
-        } else {
-            deleteResult = "No \(name) machine is saved, so nothing was deleted."
-        }
-    }
-
-    /// False when this is a tab rather than a sheet: there is nothing to
-    /// dismiss, and a Done button that does nothing is worse than no button.
-    var isSheet = true
-    @Environment(\.presentationMode) private var presentation
-    @Binding var showLogs: Bool
-
-    @ObservedObject private var guest = GuestImage.shared
-    @State private var gpuMode =
-        // Absent means GPU: bool(forKey:) answers false for a key nobody
-        // has set, which quietly made the slow renderer the default.
-        UserDefaults.standard.object(forKey: "husk.gpuMode") as? Bool ?? true
-    @State private var useSnapshot =
-        UserDefaults.standard.object(forKey: "husk.downloadSnapshot") as? Bool ?? true
-    @State private var keepNetwork =
-        UserDefaults.standard.object(forKey: "husk.keepNetwork") as? Bool ?? true
-    @State private var sound =
-        UserDefaults.standard.bool(forKey: "husk.sound")
-    @State private var soundDevice =
-        UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
-    @State private var autoSave =
-        UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
-    @State private var appIcon = HuskAppIcon.current
-    @State private var landscapeGuest =
-        UserDefaults.standard.bool(forKey: "husk.landscapeGuest")
-    @Environment(\.colorScheme) private var scheme
-    @State private var askWhichToDelete = false
-    @State private var deleteResult: String?
-
-    var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    Button(role: .destructive) { askWhichToDelete = true } label: {
-                        Label("Delete saved machine", systemImage: "trash")
-                    }
-                    .disabled(!QemuRunner.shared.hasSnapshot)
-                    if let deleteResult {
-                        Text(deleteResult).font(.caption2).foregroundColor(.secondary)
-                    }
-                    Toggle(isOn: $autoSave) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Save automatically")
-                            Text(autoSave
-                                 ? "Husk saves once Android settles, so later launches "
-                                 + "restore in seconds. The picture freezes while it writes."
-                                 : "Nothing is saved on its own. Every launch boots from "
-                                 + "cold; the Save button in the library still works.")
-                                .font(.caption2).foregroundColor(.secondary)
-                        }
-                    }
-                    .onChange(of: autoSave) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.autoSave")
-                        HuskLog.log("ui", v ? "automatic saving on"
-                                            : "automatic saving off")
-                    }
-                } header: {
-                    Text("Saved machine")
-                } footer: {
-                    Text(QemuRunner.shared.hasSnapshot
-                         ? "Husk restores this instead of booting, which takes seconds "
-                         + "rather than minutes. Deleting it forces one cold boot, after "
-                         + "which a fresh one is saved. Currently saved: "
-                         + ((QemuRunner.shared.snapshotDisplay ?? "sw") == "gl"
-                            ? "GPU." : "software.")
-                         : "Nothing is saved, so Android boots from cold.")
-                        .font(.caption2)
-                }
-                .confirmationDialog("Which saved machine?",
-                                    isPresented: $askWhichToDelete,
-                                    titleVisibility: .visible) {
-                    // Both offered, because which one is on disk is not something
-                    // anyone should have to remember -- and deleting the mode you
-                    // are not in should never quietly throw away the one you are.
-                    Button("GPU machine", role: .destructive) { forget("gl", "GPU") }
-                    Button("Software machine", role: .destructive) { forget("sw", "software") }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Android will boot from cold once, then save a new one.")
-                }
-
-                Section {
-                    Toggle(isOn: $useSnapshot) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Download pre-booted snapshot")
-                            Text(useSnapshot
-                                 ? "Adds about 2 GB to the download, and skips the first boot."
-                                 : "Smaller download. Android boots from cold the first time.")
-                                .font(.caption2).foregroundColor(.secondary)
-                            // The shipped snapshot was captured on the software
-                            // renderer, and a machine saved under one renderer
-                            // cannot restore into the other -- the device model
-                            // differs, so QEMU refuses the restore. On GPU it is
-                            // two gigabytes that will never be loaded.
-                            Label("This snapshot is for CPU only and will not be "
-                                + "used on GPU, which cold-boots once and then "
-                                + "saves its own.", systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                        }
-                    }
-                    .onChange(of: useSnapshot) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.downloadSnapshot")
-                        HuskLog.log("ui", v ? "will fetch the pre-booted snapshot"
-                                            : "will boot Android from cold")
-                    }
-                    if guest.hasShippedSnapshot {
-                        Label("Snapshot installed", systemImage: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.footnote)
-                    } else if useSnapshot {
-                        Button {
-                            // Close settings first: the download reports its
-                            // progress on the main screen, where the guest
-                            // image download already does.
-                            presentation.wrappedValue.dismiss()
-                            GuestImage.shared.downloadSnapshotNow()
-                        } label: {
-                            Label("Download snapshot now (2 GB)",
-                                  systemImage: "arrow.down.circle")
-                        }
-                        .disabled(guest.state != .ready)
-                    }
-                } header: {
-                    Text("First launch")
-                } footer: {
-                    Text(guest.hasShippedSnapshot
-                         ? "Android is already booted. Starting it restores that machine in seconds."
-                         : "A snapshot is a machine that has already finished booting. Restoring one takes seconds; booting takes minutes.")
-                }
-
-                Section {
-                    Toggle(isOn: $keepNetwork) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Keep the network across saves")
-                            Text(keepNetwork
-                                 ? "Saving closes apps but leaves Android's framework "
-                                 + "running, so the network still works after a restore."
-                                 : "Saving stops Android's framework too. Clears every "
-                                 + "GPU resource, which is steadier — but the network "
-                                 + "may not come back until a cold boot.")
-                                .font(.caption2).foregroundColor(.secondary)
-                        }
-                    }
-                    .onChange(of: keepNetwork) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.keepNetwork")
-                        HuskLog.log("ui", v ? "saves will keep the framework running"
-                                            : "saves will stop the framework")
-                    }
-                } header: {
-                    Text("Network")
-                } footer: {
-                    Text("Takes effect on the next save. An existing saved machine "
-                       + "keeps whichever behaviour it was saved with.")
-                        .font(.caption2)
-                }
-
-                Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 14) {
-                            ForEach(HuskAppIcon.allCases) { icon in
-                                Button {
-                                    appIcon = icon
-                                    HuskAppIcon.apply(icon)
-                                } label: {
-                                    VStack(spacing: 6) {
-                                        if let art = icon.preview(dark: scheme == .dark) {
-                                            Image(uiImage: art)
-                                                .resizable().scaledToFit()
-                                                .frame(width: 58, height: 58)
-                                                .clipShape(RoundedRectangle(cornerRadius: 13,
-                                                                            style: .continuous))
-                                        } else {
-                                            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                                .fill(.quaternary)
-                                                .frame(width: 58, height: 58)
-                                        }
-                                        Text(icon.title).font(.caption2)
-                                            .lineLimit(1)
-                                    }
-                                    .overlay(alignment: .topTrailing) {
-                                        if appIcon == icon {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.caption)
-                                                .foregroundStyle(.tint)
-                                                .offset(x: 4, y: -4)
-                                        }
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                } header: {
-                    Text("App icon")
-                } footer: {
-                    Text("Automatic follows the system appearance — light, dark "
-                       + "and tinted — and is the only option that changes with it. "
-                       + "The others pin one look. iOS shows its own confirmation "
-                       + "after a change; that alert cannot be turned off.")
-                        .font(.caption2)
-                }
-
-                Section {
-                    Toggle(isOn: $sound) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Sound (experimental)")
-                            Text("Adds a sound device to the machine. While this is "
-                               + "on, Android cannot be saved — QEMU refuses to "
-                               + "snapshot a machine with a sound device, so every "
-                               + "launch boots from cold. Turning it on or off also "
-                               + "changes the hardware, costing one cold boot.")
-                                .font(.caption2).foregroundColor(.secondary)
-                        }
-                    }
-                    .onChange(of: sound) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.sound")
-                        HuskLog.log("ui", v ? "sound on; the machine gains a device "
-                                            + "and will cold-boot once"
-                                            : "sound off; the machine loses a device "
-                                            + "and will cold-boot once")
-                    }
-                    if sound {
-                        Toggle(isOn: $soundDevice) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Attach the sound device")
-                                Text("On is normal. Off runs the audio backend "
-                                   + "with no hardware behind it — silent, and "
-                                   + "only useful for isolating a fault.")
-                                    .font(.caption2).foregroundColor(.secondary)
-                            }
-                        }
-                        .onChange(of: soundDevice) { v in
-                            UserDefaults.standard.set(v, forKey: "husk.soundDevice")
-                            HuskLog.log("ui", v ? "sound device attached"
-                                                : "sound backend only, no device")
-                        }
-                    }
-                } header: {
-                    Text("Sound")
-                }
-
-                Section {
-                    Picker("Guest screen", selection: $landscapeGuest) {
-                        Text("Portrait").tag(false)
-                        Text("Landscape").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: landscapeGuest) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.landscapeGuest")
-                        HuskLog.log("ui", v ? "guest panel will be landscape"
-                                            : "guest panel will be portrait")
-                    }
-                } header: {
-                    Text("Guest screen")
-                } footer: {
-                    Text("Android cannot reshape a running screen, so a landscape "
-                       + "game on a portrait one gets letterboxed into a band and "
-                       + "looks tiny. Creating the screen landscape instead is the "
-                       + "only way it can fill it. Changing this costs one cold "
-                       + "boot, and portrait apps are letterboxed instead.")
-                        .font(.caption2)
-                }
-
-                Section {
-                    Picker("Renderer", selection: $gpuMode) {
-                        Text("GPU").tag(true)
-                        Text("CPU").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: gpuMode) { v in
-                        UserDefaults.standard.set(v, forKey: "husk.gpuMode")
-                        HuskLog.log("ui", v ? "GPU renderer selected"
-                                            : "CPU renderer selected")
-                    }
-                } header: {
-                    Text("Display")
-                } footer: {
-                    // The old text warned that GPU mode could not be snapshotted
-                    // and cold-booted every launch. Both stopped being true once
-                    // the virgl save worked, and a warning that has gone stale is
-                    // worse than none -- it argues for the slower option.
-                    Text(gpuMode
-                         ? "Android draws on the real GPU through Metal, about four "
-                         + "times the frame rate. This is the default."
-                         : "Every pixel is drawn by the emulated CPU. Much slower, "
-                         + "and only worth choosing if the GPU misbehaves.")
-                        .font(.caption2)
-                }
-
-                Section {
-                    Button {
-                        presentation.wrappedValue.dismiss()
-                        showLogs = true
-                    } label: {
-                        Label("View logs", systemImage: "doc.text.magnifyingglass")
-                    }
-                } header: {
-                    Text("Diagnostics")
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    if isSheet {
-                        Button("Done") { presentation.wrappedValue.dismiss() }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// The app library: Android running out of sight, reached over ADB.
-///
-/// This is the point of the project. The Android desktop is a means; what a
-/// person wants is their APK, installed and opened, with none of the system UI
-/// around it. Nothing here is visible until the guest answers on ADB, because
-/// until then there is nothing to install into and saying otherwise would be a
-/// lie the user pays for in confusion.
-struct AdbLibraryView: View {
-    @ObservedObject private var host = AndroidHost.shared
-    @ObservedObject private var runner = QemuRunner.shared
-    let onOpened: () -> Void
-    @Binding var showLogs: Bool
-
-    @State private var importing = false
-    @State private var sendingFiles = false
-    /// Not persisted on purpose: it lives in the guest, and the guest is
-    /// restored from a snapshot that may or may not have had it applied.
-
-    var body: some View {
-        NavigationView {
-            Group {
-                if host.isReady { ready } else { waiting }
-            }
-            .navigationTitle("Library")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { showLogs = true } label: {
-                        Image(systemName: "doc.text.magnifyingglass")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button { importing = true } label: {
-                            Label("Install APK(s)", systemImage: "square.and.arrow.down")
-                        }
-                        Button { sendingFiles = true } label: {
-                            Label("Send files to Android", systemImage: "doc.badge.plus")
-                        }
-                    } label: { Image(systemName: "plus") }
-                        .disabled(!host.isReady || host.busy != nil)
-                }
-            }
-            // Multiple selection, for split APK sets. The base APK of a modern
-            // game carries no native code; picking it alone fails with "Failed
-            // to extract native libraries", which reads like a bad download.
-            .fileImporter(isPresented: $importing,
-                          allowedContentTypes: [.item],
-                          allowsMultipleSelection: true) { result in
-                if case .success(let urls) = result, !urls.isEmpty {
-                    HuskLog.log("ui", "importing \(urls.count) file(s): "
-                              + urls.map(\.lastPathComponent).joined(separator: ", "))
-                    host.install(urls)
-                }
-            }
-            .fileImporter(isPresented: $sendingFiles,
-                          allowedContentTypes: [.item],
-                          allowsMultipleSelection: true) { result in
-                if case .success(let urls) = result {
-                    HuskLog.log("ui", "sending \(urls.count) file(s) to Android")
-                    host.sendFiles(urls)
-                }
-            }
-        }
-        .navigationViewStyle(.stack)
-    }
-
-    private var waiting: some View {
-        VStack(spacing: 14) {
-            if QemuRunner.shared.bootProgress > 0 {
-                ProgressView(value: Double(QemuRunner.shared.bootProgress), total: 100)
-                    .progressViewStyle(.linear)
-                    .frame(maxWidth: 240)
-            } else {
-                ProgressView()
-            }
-            Text(host.status).font(.callout)
-            Text(runner.setupMessage ?? "Android is running in the background.")
-                .font(.caption2).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).padding(.horizontal, 40)
-            Button("Show Android") { onOpened() }
-                .font(.footnote).padding(.top, 6)
-        }
-    }
-
-    private var ready: some View {
-        List {
-            if let busy = host.busy {
-                Section { HStack { ProgressView(); Text(busy).font(.footnote) } }
-            }
-            if host.packages.isEmpty {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("No apps yet").font(.headline)
-                        Text("Add an APK with + and Husk installs it into Android over ADB.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 6)
-                }
-            } else {
-                Section("Installed") {
-                    ForEach(host.packages) { pkg in
-                        Button {
-                            // Open the app first, then show the screen -- so what
-                            // appears is the app, not the launcher behind it.
-                            host.launch(pkg.name) { onOpened() }
-                        } label: {
-                            HStack(spacing: 12) {
-                                AppIcon(path: pkg.iconPath)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(pkg.label)
-                                    Text(pkg.name).font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .disabled(host.busy != nil)
-                    }
-                }
-            }
-            Section {
-                Button("Show the Android desktop") { onOpened() }
-                    .font(.footnote)
-                Button {
-                    QemuRunner.shared.saveState(reason: "asked from the library")
-                } label: {
-                    Label(runner.isSavingState ? "Saving…" : "Save Android state",
-                          systemImage: "externaldrive.badge.checkmark")
-                        .font(.footnote)
-                }
-                .disabled(runner.isSavingState || host.busy != nil)
-            } footer: {
-                Text("Husk restores a saved machine instead of booting it, so anything "
-                   + "changed since the last save is dropped. Installing an app saves "
-                   + "automatically; sign-ins and Android settings need this button.")
-                    .font(.caption2)
-            }
-        }
-    }
-}
-
 struct LogView: View {
     var isSheet = true
     @Environment(\.dismiss) private var dismiss
