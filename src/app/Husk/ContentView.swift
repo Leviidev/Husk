@@ -58,6 +58,7 @@ struct ContentView: View {
                                  systemImage: HuskTab.settings.icon) }
                 .tag(HuskTab.settings)
         }
+        .tint(Theme.accent)
         .onChange(of: tab) { HuskLog.log("ui", "tab: \($0.rawValue)") }
         .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showLogs) { LogView() }
@@ -281,68 +282,53 @@ struct GuestScreenView: View {
             // condition that is now permanently false, and opening an app was a
             // one-way trip.
             if !chromeHidden {
-            HStack(spacing: 14) {
-                Button {
+            // Circular glyph buttons on a dark ground, not a capsule of bare
+            // symbols. Over a guest that can be any colour, each control needs
+            // its own edge to aim at -- and the rotate button needs a state, so
+            // it can show whether the picture is turned rather than only
+            // offering to turn it.
+            HStack(spacing: 10) {
+                GuestControl(systemImage: keyboard
+                             ? "keyboard.chevron.compact.down" : "keyboard",
+                             active: keyboard) {
                     keyboard.toggle()
                     HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
-                } label: {
-                    Image(systemName: keyboard ? "keyboard.chevron.compact.down" : "keyboard")
-                        .font(.caption)
                 }
+
                 // Turn the picture, on purpose.
                 //
                 // Android will not reshape its panel, so when an app asks for
                 // landscape it turns its own composition inside a portrait
-                // frame. This turns it back. It is a button rather than
-                // something inferred from the accelerometer because every
-                // attempt to infer it raced the boot sequence or the device
-                // being moved -- press it, then turn the phone.
-                Button {
+                // frame. This turns it back. A button rather than something
+                // inferred from the accelerometer, because every attempt to
+                // infer it raced either the boot sequence or the phone moving.
+                GuestControl(systemImage: "rotate.right", active: rotated) {
                     HuskGLView.rotated.toggle()
                     rotated = HuskGLView.rotated
-                } label: {
-                    Image(systemName: rotated
-                          ? "rotate.left.fill" : "rotate.right")
-                        .font(.caption)
                 }
 
-                // Android's own Home key, over the bridge.
-                //
-                // Three-button navigation is not being drawn, so there is no way
-                // out of an app from inside the guest -- and Husk's Back button
-                // leaves the guest entirely rather than navigating within it.
-                // `input keyevent` is the reliable route: the USB keyboard has
-                // no keycode that maps to Android's HOME.
-                Button {
+                // Android's own Home key, over the bridge. Three-button
+                // navigation is not drawn in this guest, so without it there is
+                // no way out of an app from inside Android.
+                GuestControl(systemImage: "house") {
                     DispatchQueue.global(qos: .userInitiated).async {
                         _ = try? GuestBridge.shared.shell(
                             "input keyevent KEYCODE_HOME", timeout: 20)
                         HuskLog.log("ui", "sent HOME to Android")
                     }
-                } label: {
-                    Image(systemName: "house").font(.caption)
                 }
 
-                // Saving from here, not only from the library.
-                //
-                // Full screen is where a session actually happens, and the
-                // machine worth keeping is the one you have just been using --
-                // having to leave it to press Save is the wrong way round. The
-                // spinner matters too: the save freezes the picture for about
-                // fifteen seconds, and without it that reads as a hang.
-                Button {
+                // Saving from here, not only from the library: this is where a
+                // session actually happens, and the machine worth keeping is the
+                // one you have just been using. The spinner matters -- the save
+                // freezes the picture for about fifteen seconds, and without it
+                // that reads as a hang.
+                GuestControl(systemImage: "externaldrive.badge.checkmark",
+                             busy: runner.isSavingState) {
                     QemuRunner.shared.saveState(reason: "asked from full screen")
-                } label: {
-                    if runner.isSavingState {
-                        ProgressView().scaleEffect(0.6).frame(width: 16, height: 16)
-                    } else {
-                        Image(systemName: "externaldrive.badge.checkmark")
-                            .font(.caption)
-                    }
                 }
-                .disabled(runner.isSavingState)
             }
-            .padding(.horizontal, 14).padding(.vertical, 8)
+            .padding(.horizontal, 10).padding(.vertical, 7)
             .background(.ultraThinMaterial, in: Capsule())
             .padding(.top, 6)
             }
@@ -636,6 +622,8 @@ struct SettingsView: View {
     @State private var autoSave =
         UserDefaults.standard.object(forKey: "husk.autoSave") as? Bool ?? true
     @State private var appIcon = HuskAppIcon.current
+    @State private var landscapeGuest =
+        UserDefaults.standard.bool(forKey: "husk.landscapeGuest")
     @Environment(\.colorScheme) private var scheme
     @State private var askWhichToDelete = false
     @State private var deleteResult: String?
@@ -852,6 +840,28 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Sound")
+                }
+
+                Section {
+                    Picker("Guest screen", selection: $landscapeGuest) {
+                        Text("Portrait").tag(false)
+                        Text("Landscape").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: landscapeGuest) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.landscapeGuest")
+                        HuskLog.log("ui", v ? "guest panel will be landscape"
+                                            : "guest panel will be portrait")
+                    }
+                } header: {
+                    Text("Guest screen")
+                } footer: {
+                    Text("Android cannot reshape a running screen, so a landscape "
+                       + "game on a portrait one gets letterboxed into a band and "
+                       + "looks tiny. Creating the screen landscape instead is the "
+                       + "only way it can fill it. Changing this costs one cold "
+                       + "boot, and portrait apps are letterboxed instead.")
+                        .font(.caption2)
                 }
 
                 Section {

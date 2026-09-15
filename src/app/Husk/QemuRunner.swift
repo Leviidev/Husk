@@ -173,7 +173,9 @@ final class QemuRunner: ObservableObject {
     /// restore is even possible. Was just the display; sound joins it because
     /// it changes the same thing.
     nonisolated static var machineStamp: String {
-        (glProven ? "gl" : "sw") + (soundEnabled ? "+snd" : "")
+        (glProven ? "gl" : "sw")
+            + (soundEnabled ? "+snd" : "")
+            + (landscapeGuest ? "+land" : "")
     }
 
     /// Whether Husk saves the machine on its own once Android settles.
@@ -816,15 +818,40 @@ final class QemuRunner: ObservableObject {
         return r
     }
 
+    /// Whether the guest's panel is landscape-shaped.
+    ///
+    /// Android will not reshape a running panel -- every dpy_set_ui_info request
+    /// came back with the console unchanged -- so when an app asks for landscape
+    /// on a 360x800 panel, Android letterboxes it into a band across the middle.
+    /// Turning that band in the shader gives an upright picture that is mostly
+    /// black, which is exactly what "right orientation, just way too small"
+    /// describes.
+    ///
+    /// The panel's shape is fixed when the machine is created, so the honest fix
+    /// is to create it the other way round. That costs a cold boot, and it is
+    /// part of the machine stamp so a snapshot taken in one shape never tries to
+    /// restore into the other.
+    nonisolated static var landscapeGuest: Bool {
+        UserDefaults.standard.bool(forKey: "husk.landscapeGuest")
+    }
+
     private var computedGuestResolution: (w: Int, h: Int) {
         // A shipped snapshot fixes the resolution: it was saved against one,
         // and a machine whose display differs is a different machine.
-        if GuestImage.shared.hasShippedSnapshot {
+        if GuestImage.shared.hasShippedSnapshot, !QemuRunner.landscapeGuest {
             // From the manifest the snapshot was published with, not a constant
             // compiled into this build -- an app older than a snapshot cannot
             // know the machine it was saved on.
             let pins = GuestImage.shared.snapshotPins
             return (pins.xres, pins.yres)
+        }
+        if QemuRunner.landscapeGuest {
+            // The shipped snapshot's own panel, turned. Keeping the same pixel
+            // count means the same memory footprint and the same load on TCG;
+            // only the shape changes.
+            let pins = GuestImage.shared.snapshotPins
+            let short = min(pins.xres, pins.yres), long = max(pins.xres, pins.yres)
+            return (long, short)
         }
         let size = HuskGLView.pixelSize
         guard size.width > 0, size.height > 0 else { return (360, 640) }
