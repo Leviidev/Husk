@@ -984,10 +984,18 @@ final class AndroidHost: ObservableObject {
                     return
                 }
                 self.guestListedPackages = true
+                let known = Dictionary(uniqueKeysWithValues:
+                    self.packages.map { ($0.name, $0.label) })
                 self.packages = names.map { name in
                     let cached = Self.iconDirectory.appendingPathComponent("\(name).png")
+                    // Whatever has already been resolved stays: a refresh is
+                    // for finding new apps, not for undoing what was learned
+                    // about the ones already here.
+                    let resolved = known[name].flatMap {
+                        $0 == Self.pretty(name) ? nil : $0
+                    }
                     return Package(name: name,
-                                   label: labels[name] ?? Self.pretty(name),
+                                   label: labels[name] ?? resolved ?? Self.pretty(name),
                                    iconPath: FileManager.default.fileExists(atPath: cached.path)
                                              ? cached.path : nil)
                 }
@@ -997,7 +1005,7 @@ final class AndroidHost: ObservableObject {
             }
             HuskLog.log("bridge", "\(names.count) user package(s) installed")
             await refreshMetadata(for: names)
-            for name in names { await fetchIcon(for: name) }
+            for name in names { await fetchAppInfo(for: name) }
         } catch {
             HuskLog.log("bridge", "could not list packages: \(error.localizedDescription)")
         }
@@ -1033,7 +1041,13 @@ final class AndroidHost: ObservableObject {
                 timeout: 30)
             let path = listing.trimmingCharacters(in: .whitespacesAndNewlines)
             guard path.hasPrefix("/"), path.hasSuffix(".db") else {
-                HuskLog.log("bridge", "no launcher icon cache; falling back to the APKs")
+                // Which of the two reasons it is matters: an agent without root
+                // cannot read /data/data at all, and that is a different fix
+                // from a launcher that keeps its cache somewhere else.
+                let who = (try? GuestBridge.shared.shell("id -u; ls -d /data/data/* "
+                                                       + "2>&1 | head -2", timeout: 20)) ?? ""
+                HuskLog.log("bridge", "no launcher icon cache; the APKs it is. "
+                          + who.replacingOccurrences(of: "\n", with: " | "))
                 return [:]
             }
 
@@ -1278,67 +1292,129 @@ final class AndroidHost: ObservableObject {
         "'" + path.replacingOccurrences(of: "'", with: "") + "'"
     }
 
-    /// Pull an app's launcher icon out of its APK.
+    /// Ask an app what it is called and what it looks like.
     ///
-    /// An APK is a zip, so the icon can be read straight out of it without
-    /// resolving Android resources -- which would mean parsing the binary
-    /// resource table, and is far more than a picture in a list is worth. The
-    /// entry is chosen by name and then by size: an app ships the same icon at
-    /// several densities, and the largest is the one that still looks right on
-    /// a phone screen.
-    ///
-    /// Apps whose icon is only an adaptive XML drawable have no single PNG to
-    /// find; those keep the generic placeholder, which is the honest result.
-    nonisolated private func fetchIcon(for package: String) async {
+    /// Three sources, in descending order of how much Android has already done
+    /// for us. The launcher's icon cache is best -- it holds the composited,
+    /// masked, themed bitmap and the resolved label -- but it lives under
+    /// /data/data and needs root, which is not always what the agent has. So
+    /// the one that has to work is this: the APK's own manifest and resource
+    /// table, read the way `aapt` reads them, which needs nothing but the file
+    /// itself. Only if that fails does it fall back to guessing at filenames.
+    nonisolated private func fetchAppInfo(for package: String) async {
         let dest = Self.iconDirectory.appendingPathComponent("\(package).png")
-        if FileManager.default.fileExists(atPath: dest.path) { return }
+        let haveIcon = FileManager.default.fileExists(atPath: dest.path)
+        let haveLabel = await MainActor.run {
+            guard let p = self.packages.first(where: { $0.name == package })
+            else { return false }
+            return p.label != AndroidHost.pretty(package)
+        }
+        if haveIcon && haveLabel { return }
 
         do {
             let paths = try GuestBridge.shared.shell("pm path \(package)", timeout: 30)
-            guard let apk = paths.split(separator: "\n")
-                    .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
-                    .first(where: { $0.hasPrefix("package:") })
-                    .map({ String($0.dropFirst("package:".count)) }), !apk.isEmpty else {
-                return
+            let apks = paths.split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.hasPrefix("package:") }
+                .map { String($0.dropFirst("package:".count)) }
+                .filter { !$0.isEmpty }
+            // The label and the icon are in the base APK; the config splits
+            // carry only per-density and per-ABI pieces.
+            guard let apk = apks.first(where: { $0.hasSuffix("base.apk") }) ?? apks.first
+            else { return }
+
+            var label: String?
+            var entry: String?
+
+            // resources.arsc is stored uncompressed in any APK built for
+            // Android 11 or later, so this is a copy rather than an inflate.
+            let manifest = try GuestBridge.shared.pull(
+                "unzip -p \(AndroidHost.quote(apk)) AndroidManifest.xml",
+                timeout: 90, limit: 8 << 20)
+            let arsc = try GuestBridge.shared.pull(
+                "unzip -p \(AndroidHost.quote(apk)) resources.arsc",
+                timeout: 240, limit: 48 << 20)
+            if manifest.count > 8 && arsc.count > 8 {
+                let info = ApkMetadata.read(manifest: manifest, resources: arsc)
+                label = info.label
+                entry = info.iconEntry
+                HuskLog.log("bridge", "\(package): manifest says "
+                          + "label=\(info.label ?? "?") icon=\(info.iconEntry ?? "?")")
+            } else {
+                HuskLog.log("bridge", "\(package): no manifest/resources "
+                          + "(\(manifest.count)/\(arsc.count) bytes)")
             }
 
-            // Sorted by the size column, largest first.
-            let listing = try GuestBridge.shared.shell(
-                "unzip -l \(apk) | grep -iE 'res/.*(launcher|icon).*\\.png$' "
-              + "| sort -k1 -rn | head -1", timeout: 60)
-            guard let entry = listing.split(separator: "\n").first?
-                    .split(separator: " ").last.map(String.init),
-                  entry.hasSuffix(".png") else {
-                HuskLog.log("bridge", "no icon png in \(package)")
-                return
-            }
-
-            let data = try GuestBridge.shared.pull("unzip -p \(apk) \(entry)", timeout: 90)
-            // A zip entry that does not exist gives an error on stdout rather
-            // than a file, so check it really is a PNG before keeping it.
-            guard data.count > 8, data.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47]) else {
-                HuskLog.log("bridge", "\(package): \(entry) was not a PNG (\(data.count) bytes)")
-                return
-            }
-            try data.write(to: dest)
-            HuskLog.log("bridge", "icon for \(package): \(entry), \(data.count) bytes")
-
-            await MainActor.run {
-                if let i = self.packages.firstIndex(where: { $0.name == package }) {
-                    self.packages[i].iconPath = dest.path
-                    // Written through, so the icon is on the next launch's first
-                    // screen rather than only after the guest has booted again.
-                    self.saveCatalogue(self.packages)
+            // An adaptive icon is an instruction, not a picture: follow it to
+            // the layer it draws in front and take that instead.
+            if let xmlEntry = entry, xmlEntry.hasSuffix(".xml") {
+                entry = nil
+                let xml = try GuestBridge.shared.pull(
+                    "unzip -p \(AndroidHost.quote(apk)) \(AndroidHost.quote(xmlEntry))",
+                    timeout: 90, limit: 4 << 20)
+                if let layer = ApkMetadata.adaptiveLayer(xml),
+                   let bitmap = ApkMetadata.bitmap(for: layer, resources: arsc),
+                   !bitmap.hasSuffix(".xml") {
+                    entry = bitmap
+                    HuskLog.log("bridge", "\(package): adaptive \(xmlEntry) -> \(bitmap)")
+                } else {
+                    HuskLog.log("bridge", "\(package): \(xmlEntry) has no flat layer")
                 }
             }
+
+            // Only if the app's own resources did not say. Sorted by the size
+            // column, largest first, and no longer PNG-only: a modern APK's
+            // launcher icon is far more often a WebP.
+            if entry == nil, !haveIcon {
+                let listing = try GuestBridge.shared.shell(
+                    "unzip -l \(AndroidHost.quote(apk)) | "
+                  + "grep -iE 'res/.*(launcher|icon).*\\.(png|webp)$' "
+                  + "| sort -k1 -rn | head -1", timeout: 60)
+                entry = listing.split(separator: "\n").first?
+                    .split(separator: " ").last.map(String.init)
+                if let e = entry { HuskLog.log("bridge", "\(package): guessed \(e)") }
+            }
+
+            if !haveIcon, let entry, !entry.isEmpty {
+                let data = try GuestBridge.shared.pull(
+                    "unzip -p \(AndroidHost.quote(apk)) \(AndroidHost.quote(entry))",
+                    timeout: 120)
+                // A zip entry that does not exist gives an error on stdout
+                // rather than a file, so check what came back really is an
+                // image before keeping it.
+                let png = data.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47])
+                let webp = data.prefix(4) == Data("RIFF".utf8)
+                let jpeg = data.prefix(2) == Data([0xFF, 0xD8])
+                if data.count > 16, png || webp || jpeg {
+                    try data.write(to: dest)
+                    HuskLog.log("bridge", "icon for \(package): \(entry), "
+                              + "\(data.count) bytes")
+                } else {
+                    HuskLog.log("bridge", "\(package): \(entry) is not an image "
+                              + "(\(data.count) bytes)")
+                }
+            }
+
+            let gotIcon = FileManager.default.fileExists(atPath: dest.path)
+            guard label != nil || gotIcon else { return }
+            await MainActor.run {
+                guard let i = self.packages.firstIndex(where: { $0.name == package })
+                else { return }
+                if let label, !haveLabel { self.packages[i].label = label }
+                if gotIcon { self.packages[i].iconPath = dest.path }
+                // Written through, so both are on the next launch's first
+                // screen rather than only after the guest has booted again.
+                self.saveCatalogue(self.packages)
+            }
         } catch {
-            HuskLog.log("bridge", "icon for \(package) failed: \(error.localizedDescription)")
+            HuskLog.log("bridge", "details for \(package) failed: "
+                      + error.localizedDescription)
         }
     }
 
     /// "com.dotgears.flappybird" reads better as "Flappybird" until we can ask
     /// Android for the real label.
-    nonisolated private static func pretty(_ pkg: String) -> String {
+    nonisolated static func pretty(_ pkg: String) -> String {
         (pkg.split(separator: ".").last.map(String.init) ?? pkg).capitalized
     }
 
@@ -1475,8 +1551,18 @@ final class AndroidHost: ObservableObject {
     func uninstall(_ package: String) {
         busy = "Removing \(package)…"
         Task.detached { [weak self] in
-            let out = (try? GuestBridge.shared.shell("pm uninstall \(package)",
+            var out = (try? GuestBridge.shared.shell("pm uninstall \(package)",
                                                      timeout: 300)) ?? ""
+            // As root, `pm` has no user of its own to act for, and some builds
+            // answer "not installed for 0" until told which user to remove it
+            // from. Asking again with the user named costs one round trip and
+            // fixes the whole class of failure.
+            if !out.contains("Success") {
+                HuskLog.log("bridge", "uninstall \(package) first try: "
+                          + out.trimmingCharacters(in: .whitespacesAndNewlines))
+                out = (try? GuestBridge.shared.shell(
+                    "pm uninstall --user 0 \(package)", timeout: 300)) ?? out
+            }
             let ok = out.contains("Success")
             HuskLog.log("bridge", "uninstall \(package): "
                       + out.trimmingCharacters(in: .whitespacesAndNewlines))

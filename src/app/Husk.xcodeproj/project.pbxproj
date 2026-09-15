@@ -36,6 +36,7 @@
 		BBA9636793435EF7679E62F1 /* HuskAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */; };
 		CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */; };
 		D1DB4D94478AB7DD95E1A24E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E4865C5FE44ADD210A4917 /* OnboardingView.swift */; };
+		D354FA5AC96B3361B4A5A635 /* ApkMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */; };
 		D5795B7B2815D857E136AC85 /* LibraryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EE1ED95268ED65B2AA9A5A /* LibraryTab.swift */; };
 		E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */ = {isa = PBXBuildFile; fileRef = B74F9AA42414905593B347BA /* husk-jit.js */; };
 		EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -64,6 +65,7 @@
 		1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libqemu-aarch64-softmmu.dylib"; path = "../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib"; sourceTree = "<group>"; };
 		28D3E1CEE343707BE986FA6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A9382EA9FFB54E6B2BB52A3 /* icon-clearlight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-clearlight.png"; sourceTree = "<group>"; };
+		2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApkMetadata.swift; sourceTree = "<group>"; };
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
 		336AB2FDC58A5C08D55FF8F9 /* icon-tintedlight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-tintedlight.png"; sourceTree = "<group>"; };
 		34EE1ED95268ED65B2AA9A5A /* LibraryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryTab.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 		0F8D2787A26076A289B9B8EA /* Husk */ = {
 			isa = PBXGroup;
 			children = (
+				2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */,
 				C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */,
 				28D3E1CEE343707BE986FA6E /* Assets.xcassets */,
 				6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */,
@@ -288,6 +291,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D354FA5AC96B3361B4A5A635 /* ApkMetadata.swift in Sources */,
 				5C20168883D258DF9715F6D9 /* AppDetailView.swift in Sources */,
 				853E83FF7FF5B9A7FDE5E638 /* BootScreen.swift in Sources */,
 				4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */,
