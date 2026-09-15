@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsTab: View {
     @ObservedObject private var runner = QemuRunner.shared
     @ObservedObject private var guest = GuestImage.shared
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,38 @@ struct SettingsTab: View {
             // rather than as a settings screen. The one place in the app where
             // the platform's own answer is unimprovable is this one.
             List {
+                // The app, stated once at the top, the way a well-made settings
+                // screen opens with the account it belongs to. It also puts the
+                // icon the user chose in front of them, which is the one setting
+                // on this screen they can see the result of.
+                Section {
+                    HStack(spacing: 14) {
+                        if let art = HuskAppIcon.current.preview(dark: scheme == .dark) {
+                            Image(uiImage: art)
+                                .resizable().scaledToFit()
+                                .frame(width: 58, height: 58)
+                                .clipShape(RoundedRectangle(cornerRadius: 13,
+                                                            style: .continuous))
+                                .shadow(color: .black.opacity(0.16), radius: 7, y: 3)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Husk")
+                                .font(.title3.weight(.semibold))
+                            Text("Version \(Bundle.main.version) · \(Bundle.main.commit)")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text(runner.isRunning ? "Android is running"
+                                                  : "Android is not running")
+                                .font(.caption2)
+                                .foregroundStyle(runner.isRunning ? Theme.accent
+                                                                  : .secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 6)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 4, bottom: 10, trailing: 4))
+                }
+
                 Section {
                     NavigationLink { MachineSettings() } label: {
                         settingRow("cpu", "Machine",
@@ -39,12 +72,16 @@ struct SettingsTab: View {
                 }
 
                 Section {
-                    DetailRow(label: "Version",
-                              value: Bundle.main.version, mono: false)
-                    DetailRow(label: "Build", value: Bundle.main.commit)
-                    DetailRow(label: "Guest", value: GuestImage.imageVersion)
+                    DetailRow(label: "Guest image", value: GuestImage.imageVersion)
+                    DetailRow(label: "Renderer",
+                              value: runner.displayKind == .gl ? "GPU"
+                                   : runner.displayKind == .software ? "CPU"
+                                   : "not started", mono: false)
                 } header: {
                     Text("About")
+                } footer: {
+                    Text("Husk runs unmodified Android APKs in a real Android "
+                       + "system on your iPhone.")
                 }
             }
             .listStyle(.insetGrouped)

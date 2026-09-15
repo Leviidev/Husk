@@ -108,6 +108,15 @@ final class QemuRunner: ObservableObject {
     /// when it is normal.
     @Published var bootProgress: Int = 0
 
+    /// What the guest is actually producing, and since when.
+    ///
+    /// Both were already being measured for the log -- the frame counter every
+    /// five seconds, the start time implicitly. Publishing them is what lets the
+    /// library say "48 fps, up 12 minutes" instead of "running", which is the
+    /// difference between a status light and something worth looking at.
+    @Published var fps: Double = 0
+    @Published var startedAt: Date?
+
     /// When Android announced `sys.boot_completed=1` on the serial console.
     ///
     /// Android says this itself, on a line init prints; it does not have to be
@@ -1178,6 +1187,7 @@ final class QemuRunner: ObservableObject {
             return
         }
         isRunning = true
+        startedAt = Date()
 
         let t = Thread { [weak self] in self?.run() }
         t.name = "husk.qemu"
@@ -1530,6 +1540,8 @@ final class QemuRunner: ObservableObject {
                           + "\(aSilent - lastAudioSilent) silent"
                 lastAudioFrames = aFrames
                 lastAudioSilent = aSilent
+                let rate = Double(delta) / 5.0
+                DispatchQueue.main.async { [weak self] in self?.fps = rate }
                 HuskLog.log("perf", "guest produced \(delta) frames in 5s "
                                   + "(\(String(format: "%.1f", Double(delta) / 5.0)) fps)"
                                   + audio)
