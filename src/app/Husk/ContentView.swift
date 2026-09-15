@@ -21,7 +21,7 @@ struct ContentView: View {
     /// True while the guest's own screen is being shown instead of the library.
     /// Starts true because first boot always needs the Android wizard.
     @State private var showGuestScreen = false
-    @State private var tab: HuskTab = .library
+    @ObservedObject private var router = Router.shared
     @State private var showOnboarding = Onboarding.needed
     @Environment(\.scenePhase) private var scenePhase
 
@@ -36,18 +36,41 @@ struct ContentView: View {
             // with the tabs is the arrangement that survives that. Showing
             // Android is then a matter of hiding what is over it, which is also
             // why it appears instantly rather than reloading.
-            TabView(selection: $tab) {
+            TabView(selection: $router.tab) {
                 LibraryTab(onOpenGuest: { showGuestScreen = true },
                            onStartAndroid: startFromLibrary,
                            started: started && runner.isRunning)
                     .tabItem { Label("Library", systemImage: "square.grid.2x2.fill") }
                     .tag(HuskTab.library)
 
+                FilesTab()
+                    .tabItem { Label("Files", systemImage: "folder.fill") }
+                    .tag(HuskTab.files)
+
                 SettingsTab()
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                     .tag(HuskTab.settings)
             }
             .opacity(showGuestScreen && started && runner.isRunning ? 0 : 1)
+
+            // Outcomes, over whichever tab is showing. Above the tab bar rather
+            // than over it: a message that covers the way out of the screen it
+            // appears on is a message in the way.
+            if let toast = host.toast {
+                VStack {
+                    Spacer()
+                    ToastView(toast: toast) { host.toast = nil }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .task(id: toast.id) {
+                    try? await Task.sleep(nanoseconds: 4_500_000_000)
+                    withAnimation(.snappy) {
+                        if host.toast?.id == toast.id { host.toast = nil }
+                    }
+                }
+            }
 
             if started && runner.isRunning {
                 GuestScreenView(showLogs: $showLogs,
@@ -71,7 +94,12 @@ struct ContentView: View {
             }
         }
         .tint(Theme.accent)
+        // One appearance, not the phone's. The design is built on a near-black
+        // page with surfaces lifted out of it; there is no light arrangement of
+        // it that is the same app.
+        .preferredColorScheme(.dark)
         .animation(.snappy(duration: 0.22), value: showGuestScreen)
+        .animation(.snappy(duration: 0.25), value: host.toast)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
                 showOnboarding = false
@@ -204,6 +232,7 @@ struct GuestScreenView: View {
     let onBack: () -> Void
     @State private var keyboard = false
     @State private var rotated = HuskGLView.rotated
+    @State private var showControls = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -260,88 +289,92 @@ struct GuestScreenView: View {
             // what both the on-screen keyboard and hardware key events depend on.
             KeyCapture(active: $keyboard).frame(width: 0, height: 0)
 
-            if keyboard {
-                VStack {
-                    Spacer()
-                    SpecialKeysBar()
-                        .padding(.horizontal, 10).padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        .padding(.bottom, 6)
-                }
-            }
-
-            // Always available, and deliberately only three things.
+            // The controls, as one pill at the bottom.
             //
-            // This used to show a spinner and "Android is starting -- complete
-            // its setup on screen" until the guest reported ready, and it never
-            // did: readiness came from the 9p agent, which no longer exists. So
-            // the one control that leaves this screen was hidden behind a
-            // condition that is now permanently false, and opening an app was a
-            // one-way trip.
+            // They used to be a row of circles pinned to the top left, which is
+            // where Android draws its own status bar and where a game puts its
+            // score. At the bottom they are where a thumb already rests, and
+            // there are three of them: everything rarer lives behind the last
+            // one rather than adding another circle over someone's game.
             if !chromeHidden {
-            // Circular glyph buttons on a dark ground, not a capsule of bare
-            // symbols. Over a guest that can be any colour, each control needs
-            // its own edge to aim at -- and the rotate button needs a state, so
-            // it can show whether the picture is turned rather than only
-            // offering to turn it.
-            HStack(spacing: 10) {
-                // Out of the guest, back to the library.
-                //
-                // This went missing when Android stopped being a tab: the
-                // callback was still wired up and no control called it, so
-                // showing the guest while it was still booting was a one-way
-                // trip with nothing on screen to leave by.
-                GuestControl(systemImage: "chevron.left", action: onBack)
+                VStack(spacing: 8) {
+                    Spacer()
 
-                GuestControl(systemImage: keyboard
-                             ? "keyboard.chevron.compact.down" : "keyboard",
-                             active: keyboard) {
-                    keyboard.toggle()
-                    HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
-                }
-
-                // Turn the picture, on purpose.
-                //
-                // Android will not reshape its panel, so when an app asks for
-                // landscape it turns its own composition inside a portrait
-                // frame. This turns it back. A button rather than something
-                // inferred from the accelerometer, because every attempt to
-                // infer it raced either the boot sequence or the phone moving.
-                GuestControl(systemImage: "rotate.right", active: rotated) {
-                    HuskGLView.rotated.toggle()
-                    rotated = HuskGLView.rotated
-                }
-
-                // Android's own Home key, over the bridge. Three-button
-                // navigation is not drawn in this guest, so without it there is
-                // no way out of an app from inside Android.
-                GuestControl(systemImage: "house") {
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        _ = try? GuestBridge.shared.shell(
-                            "input keyevent KEYCODE_HOME", timeout: 20)
-                        HuskLog.log("ui", "sent HOME to Android")
+                    if keyboard {
+                        SpecialKeysBar()
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .huskGlass(RoundedRectangle(cornerRadius: 14,
+                                                        style: .continuous))
                     }
-                }
 
-                // Saving from here, not only from the library: this is where a
-                // session actually happens, and the machine worth keeping is the
-                // one you have just been using. The spinner matters -- the save
-                // freezes the picture for about fifteen seconds, and without it
-                // that reads as a hang.
-                GuestControl(systemImage: "externaldrive.badge.checkmark",
-                             busy: runner.isSavingState) {
-                    QemuRunner.shared.saveState(reason: "asked from full screen")
+                    HStack(spacing: 2) {
+                        GuestControl(systemImage: "gamecontroller",
+                                     active: showControls) { showControls = true }
+
+                        GuestControl(systemImage: keyboard
+                                     ? "keyboard.chevron.compact.down" : "keyboard",
+                                     active: keyboard) {
+                            keyboard.toggle()
+                            HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
+                        }
+
+                        Menu {
+                            Button { onBack() } label: {
+                                Label("Back to Husk", systemImage: "chevron.left")
+                            }
+                            // Android's own Home key, over the bridge. Three-button
+                            // navigation is not drawn in this guest, so without it
+                            // there is no way out of an app from inside Android.
+                            Button {
+                                DispatchQueue.global(qos: .userInitiated).async {
+                                    _ = try? GuestBridge.shared.shell(
+                                        "input keyevent KEYCODE_HOME", timeout: 20)
+                                    HuskLog.log("ui", "sent HOME to Android")
+                                }
+                            } label: { Label("Home", systemImage: "house") }
+                            // Android will not reshape its panel, so when an app
+                            // asks for landscape it turns its own composition
+                            // inside a portrait frame. This turns it back.
+                            Button {
+                                HuskGLView.rotated.toggle()
+                                rotated = HuskGLView.rotated
+                            } label: {
+                                Label(rotated ? "Unrotate picture" : "Rotate picture",
+                                      systemImage: "rotate.right")
+                            }
+                            Divider()
+                            Button {
+                                QemuRunner.shared.saveState(reason: "asked from full screen")
+                            } label: {
+                                Label(runner.isSavingState ? "Saving…" : "Save Android",
+                                      systemImage: "externaldrive.badge.checkmark")
+                            }
+                            .disabled(runner.isSavingState)
+                            Button { showLogs = true } label: {
+                                Label("Console", systemImage: "terminal")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 46, height: 42)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .huskGlass(Capsule())
+                    .padding(.bottom, 8)
                 }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule())
-            .padding(.top, 6)
             }
         }
         // On the screen rather than the button: the chrome can hide while the
         // document picker is up, and an importer attached to a view that goes
         // away goes away with it.
         .statusBarHidden(true)
+        .sheet(isPresented: $showControls) {
+            ControlsSheet(keyboard: $keyboard)
+                .presentationDetents([.height(300)])
+        }
     }
 }
 
@@ -359,26 +392,27 @@ struct SetupView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: 22) {
-                // The icon the user is actually using, following the system
-                // appearance when that choice is Automatic. This used to be a
-                // fixed copy of the default artwork, which quietly disagreed
-                // with the home screen.
-                if let logo = HuskAppIcon.current.preview(dark: scheme == .dark) {
-                    Image(uiImage: logo)
-                        .resizable().scaledToFit()
-                        .frame(width: 96, height: 96)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                }
-                Text("Husk")
-                    .font(.system(size: 44, weight: .semibold, design: .rounded))
-                Text("Android app launcher")
-                    .font(.footnote).foregroundStyle(.secondary)
+            Theme.backdrop
+            VStack(spacing: 20) {
+                // The icon the user is actually using, so the first screen and
+                // the home screen agree. This used to be a fixed copy of the
+                // default artwork, which quietly disagreed with both.
+                HuskMark(size: 92)
+                    .shadow(color: Theme.accent.opacity(0.3), radius: 24, y: 10)
+                // Letterspaced, as a wordmark rather than a heading: this is
+                // the only screen in the app that is allowed to be a title card.
+                Text("HUSK")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(10)
+                    .padding(.leading, 10)
+                Text("Android apps, on your iPhone")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textDim)
+                    .padding(.top, -8)
 
                 content
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.text)
 
             // Settings, top right, out of the way of the one thing most people
             // open this screen to press.
@@ -687,4 +721,89 @@ struct ShareSheet: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// What is driving the guest, and what could be.
+///
+/// Touch is the only input Husk actually delivers today; the keyboard is real
+/// but optional, and a gamepad and a pointer are not built yet. They are listed
+/// anyway, dimmed: a control surface that hides what it cannot do leaves you
+/// wondering whether you simply cannot find it.
+struct ControlsSheet: View {
+    @Binding var keyboard: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Theme.backdrop
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Controls")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.textDim)
+                            .frame(width: 30, height: 30)
+                            .background(Theme.surfaceHigh, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                RowGroup {
+                    row("hand.tap.fill", "Touch", on: true, available: true)
+                    RowDivider()
+                    Button {
+                        keyboard.toggle()
+                        HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
+                        dismiss()
+                    } label: {
+                        row("keyboard", "Keyboard", on: keyboard, available: true)
+                    }
+                    .buttonStyle(.plain)
+                    RowDivider()
+                    row("gamecontroller", "Gamepad", on: false, available: false)
+                    RowDivider()
+                    row("computermouse", "Mouse", on: false, available: false)
+                }
+
+                Text("Touch always works. A gamepad and a pointer are not wired "
+                   + "through to Android yet.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textDim)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20).padding(.top, 18)
+        }
+    }
+
+    private func row(_ icon: String, _ title: String,
+                     on: Bool, available: Bool) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(available ? Theme.text : Theme.textDim.opacity(0.6))
+                .frame(width: 34, height: 34)
+                .background(Theme.surfaceHigh,
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(available ? Theme.text : Theme.textDim.opacity(0.6))
+            Spacer()
+            if on {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+            } else if !available {
+                Text("Not yet").font(.system(size: 12)).foregroundStyle(Theme.textDim)
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .contentShape(Rectangle())
+    }
 }

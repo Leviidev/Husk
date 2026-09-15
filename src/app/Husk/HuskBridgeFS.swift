@@ -771,12 +771,39 @@ final class GuestBridge {
 final class AndroidHost: ObservableObject {
     static let shared = AndroidHost()
 
-    struct Package: Identifiable, Equatable {
+    struct Package: Identifiable, Equatable, Hashable {
         var id: String { name }
         let name: String
         var label: String
         /// Local file the icon was written to, once it has been fetched.
         var iconPath: String?
+        /// "Game", "App" or "Tool" — set only when Android says so, which for
+        /// a sideloaded APK is often never. Nothing invents one: a wrong
+        /// category on every tile is worse than no category at all.
+        var category: String?
+        var version: String?
+        var sizeBytes: Int64?
+        /// The ABI Android picked for it, shown as "64-bit" or "32-bit".
+        var abi: String?
+        /// When it was last opened from Husk. Android's own usage stats need a
+        /// permission a sideloaded app cannot grant itself, so this counts only
+        /// the launches that went through here — which is all of them.
+        var lastUsed: Date?
+
+        var bitness: String? {
+            guard let abi, !abi.isEmpty, abi != "null" else { return nil }
+            return abi.contains("64") ? "64-bit" : "32-bit"
+        }
+    }
+
+    /// One entry in the guest's storage, as the Files tab shows it.
+    struct GuestEntry: Identifiable, Equatable {
+        var id: String { path }
+        let path: String
+        let name: String
+        let isDirectory: Bool
+        let size: Int64
+        let modified: Date?
     }
 
     /// Where pulled icons live: Application Support, not Caches.
@@ -786,7 +813,7 @@ final class AndroidHost: ObservableObject {
     /// the library lists apps before the guest has booted, so an icon the
     /// system reclaimed overnight is a blank tile on the first screen anyone
     /// sees, with no way to fill it in for another two minutes.
-    private static var iconDirectory: URL {
+    nonisolated private static var iconDirectory: URL {
         let dir = support.appendingPathComponent("husk-icons")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
@@ -795,22 +822,37 @@ final class AndroidHost: ObservableObject {
     /// iOS hands out this path whether or not it exists, and unlike Documents
     /// and Caches it is not created for us -- so every write through it has to
     /// make it first or silently do nothing.
-    private static var support: URL {
+    nonisolated private static var support: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory,
                                            in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
+    /// Throw away every icon Husk has kept, so the next refresh asks Android
+    /// again. The catalogue itself is left alone: the apps are still installed.
+    nonisolated static func forgetIcons() {
+        try? FileManager.default.removeItem(at: iconDirectory)
+        HuskLog.log("bridge", "icon cache cleared")
+    }
+
     /// Where the list of installed apps is remembered between launches.
-    private static var catalogueURL: URL {
+    nonisolated private static var catalogueURL: URL {
         support.appendingPathComponent("husk-apps.json")
     }
 
     /// Remember what is installed, so the next launch has something to show.
     private func saveCatalogue(_ list: [Package]) {
-        let rows = list.map { ["name": $0.name, "label": $0.label,
-                               "icon": $0.iconPath ?? ""] }
+        let rows: [[String: Any]] = list.map { pkg in
+            var row: [String: Any] = ["name": pkg.name, "label": pkg.label]
+            if let v = pkg.iconPath { row["icon"] = v }
+            if let v = pkg.category { row["category"] = v }
+            if let v = pkg.version { row["version"] = v }
+            if let v = pkg.sizeBytes { row["size"] = v }
+            if let v = pkg.abi { row["abi"] = v }
+            if let v = pkg.lastUsed { row["lastUsed"] = v.timeIntervalSince1970 }
+            return row
+        }
         guard let data = try? JSONSerialization.data(withJSONObject: rows) else { return }
         try? data.write(to: Self.catalogueURL, options: .atomic)
     }
@@ -821,16 +863,23 @@ final class AndroidHost: ObservableObject {
     /// point: a launcher that is empty for the first ninety seconds of every
     /// session is not a launcher. `isReady` is what gates acting on them --
     /// nothing here can be opened until Android answers.
-    private static func loadCatalogue() -> [Package] {
+    nonisolated private static func loadCatalogue() -> [Package] {
         guard let data = try? Data(contentsOf: catalogueURL),
-              let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
+              let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return [] }
         return rows.compactMap { row in
-            guard let name = row["name"], !name.isEmpty else { return nil }
-            let icon = row["icon"] ?? ""
-            return Package(name: name, label: row["label"] ?? pretty(name),
+            guard let name = row["name"] as? String, !name.isEmpty else { return nil }
+            let icon = (row["icon"] as? String) ?? ""
+            let used = row["lastUsed"] as? Double
+            return Package(name: name,
+                           label: (row["label"] as? String) ?? pretty(name),
                            iconPath: FileManager.default.fileExists(atPath: icon)
-                                     ? icon : nil)
+                                     ? icon : nil,
+                           category: row["category"] as? String,
+                           version: row["version"] as? String,
+                           sizeBytes: (row["size"] as? NSNumber)?.int64Value,
+                           abi: row["abi"] as? String,
+                           lastUsed: used.map { Date(timeIntervalSince1970: $0) })
         }
     }
 
@@ -838,6 +887,12 @@ final class AndroidHost: ObservableObject {
     @Published private(set) var status = "Starting Android…"
     @Published private(set) var packages: [Package] = AndroidHost.loadCatalogue()
     @Published private(set) var busy: String?
+    /// What just finished. Progress lives in `busy`; this is the sentence after.
+    @Published var toast: Toast?
+
+    func say(_ title: String, _ detail: String? = nil, good: Bool = true) {
+        toast = Toast(title: title, detail: detail, good: good)
+    }
 
     private var polling = false
 
@@ -902,7 +957,7 @@ final class AndroidHost: ObservableObject {
     }
 
     /// Installed third-party packages -- the things a person actually put there.
-    func refreshPackages() async {
+    nonisolated func refreshPackages() async {
         do {
             let raw = try GuestBridge.shared.shell("pm list packages -3", timeout: 60)
             let names = raw.split(separator: "\n")
@@ -912,7 +967,7 @@ final class AndroidHost: ObservableObject {
                 .filter { !$0.isEmpty }
             // Android's own labels and icons, in one round trip for every app
             // at once, before anything is put on screen.
-            let known = names.isEmpty ? [:] : self.launcherCatalogue()
+            let known = names.isEmpty ? [:] : await self.launcherCatalogue()
             var labels: [String: String] = [:]
             for (package, entry) in known {
                 if let label = entry.label { labels[package] = label }
@@ -941,6 +996,7 @@ final class AndroidHost: ObservableObject {
                 self.saveCatalogue(self.packages)
             }
             HuskLog.log("bridge", "\(names.count) user package(s) installed")
+            await refreshMetadata(for: names)
             for name in names { await fetchIcon(for: name) }
         } catch {
             HuskLog.log("bridge", "could not list packages: \(error.localizedDescription)")
@@ -968,7 +1024,8 @@ final class AndroidHost: ObservableObject {
     /// because iOS ships SQLite and the guest is not guaranteed to ship the
     /// `sqlite3` binary. A few hundred kilobytes over the bridge once a session
     /// is cheaper than depending on what a given Android build includes.
-    private func launcherCatalogue() -> [String: (label: String?, icon: Data?)] {
+    nonisolated private func launcherCatalogue() async
+            -> [String: (label: String?, icon: Data?)] {
         var found: [String: (label: String?, icon: Data?)] = [:]
         do {
             let listing = try GuestBridge.shared.shell(
@@ -1010,7 +1067,7 @@ final class AndroidHost: ObservableObject {
 
     /// Read the pulled cache. One row per launcher activity: the component it
     /// belongs to, the label under it, and the icon as a compressed bitmap.
-    private static func readIconCache(at url: URL)
+    nonisolated private static func readIconCache(at url: URL)
             -> [String: (label: String?, icon: Data?)] {
         var out: [String: (label: String?, icon: Data?)] = [:]
         var handle: OpaquePointer?
@@ -1075,6 +1132,152 @@ final class AndroidHost: ObservableObject {
         return out
     }
 
+    /// Version, size, ABI and category for every app, in one round trip.
+    ///
+    /// Asked of `dumpsys` and `pm` rather than worked out from the APK, and
+    /// batched into a single shell loop rather than four commands per app:
+    /// each round trip over the bridge costs more than the command it carries,
+    /// and a library of twenty apps would otherwise be eighty of them.
+    ///
+    /// The raw lines are parsed here rather than by `sed` or `awk` in the
+    /// guest. Both may or may not exist in a given Android's toybox; `grep`
+    /// always does, and Swift is a better place to be careful in.
+    nonisolated private func refreshMetadata(for names: [String]) async {
+        let safe = names.filter { $0.allSatisfy {
+            $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-"
+        } }
+        guard !safe.isEmpty else { return }
+
+        let script = "for p in " + safe.joined(separator: " ") + "; do "
+                   + "echo \"#P $p\"; "
+                   + "dumpsys package \"$p\" 2>/dev/null | grep -E "
+                   + "\"versionName=|primaryCpuAbi=|categoryHint=|appCategory=\" | head -8; "
+                   + "echo \"#K\"; "
+                   + "pm path \"$p\" 2>/dev/null | sed 's/^package://' | "
+                   + "while read a; do stat -c %s \"$a\" 2>/dev/null; done; done"
+
+        guard let text = try? GuestBridge.shared.shell(script, timeout: 180) else {
+            HuskLog.log("bridge", "could not read app details")
+            return
+        }
+
+        var found: [String: Package] = [:]
+        var current: String?
+        var inSizes = false
+        for raw in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("#P ") {
+                current = String(line.dropFirst(3))
+                inSizes = false
+                if let c = current { found[c] = Package(name: c, label: "", sizeBytes: 0) }
+                continue
+            }
+            guard let pkg = current, var row = found[pkg] else { continue }
+            if line == "#K" { inSizes = true; continue }
+            if inSizes {
+                if let n = Int64(line) { row.sizeBytes = (row.sizeBytes ?? 0) + n }
+            } else if row.version == nil, let v = Self.field("versionName=", line) {
+                row.version = v
+            } else if row.abi == nil, let v = Self.field("primaryCpuAbi=", line) {
+                row.abi = v
+            }
+            if row.category == nil,
+               let v = Self.field("categoryHint=", line) ?? Self.field("appCategory=", line) {
+                row.category = Self.category(v)
+            }
+            found[pkg] = row
+        }
+
+        let named = found.filter { $0.value.category != nil }.count
+        HuskLog.log("bridge", "details for \(found.count) app(s); "
+                            + "\(named) categorised by Android")
+
+        await MainActor.run {
+            for i in self.packages.indices {
+                guard let row = found[self.packages[i].name] else { continue }
+                self.packages[i].version = row.version
+                self.packages[i].abi = row.abi
+                self.packages[i].category = row.category
+                if let size = row.sizeBytes, size > 0 { self.packages[i].sizeBytes = size }
+            }
+            self.saveCatalogue(self.packages)
+        }
+    }
+
+    /// The value of `key` on a `dumpsys` line, up to the next space or comma.
+    nonisolated private static func field(_ key: String, _ line: String) -> String? {
+        guard let r = line.range(of: key) else { return nil }
+        let rest = line[r.upperBound...]
+        let value = rest.prefix { !$0.isWhitespace && $0 != "," }
+        return value.isEmpty ? nil : String(value)
+    }
+
+    /// Android's own category numbers, reduced to the three words a filter can
+    /// usefully offer. Anything undefined stays nil and shows nothing.
+    nonisolated private static func category(_ raw: String) -> String? {
+        switch Int(raw) {
+        case 0:               return "Game"
+        case 1, 2, 3, 4, 5, 6: return "App"
+        case 7, 8:            return "Tool"
+        default:              return nil
+        }
+    }
+
+    // MARK: - The guest's storage
+
+    /// One directory, as rows.
+    ///
+    /// `find … -exec stat` rather than parsing `ls -l`: the columns of `ls`
+    /// differ between implementations and shift when a name contains spaces,
+    /// while `stat -c` prints exactly the four fields asked for, in order,
+    /// separated by something no filename contains.
+    nonisolated func list(_ path: String) throws -> [GuestEntry] {
+        let quoted = Self.quote(path)
+        let out = try GuestBridge.shared.shell(
+            "find \(quoted) -maxdepth 1 -mindepth 1 -exec stat -c '%F|%s|%Y|%n' {} + "
+          + "2>/dev/null | head -800", timeout: 90)
+
+        var rows: [GuestEntry] = []
+        for line in out.split(separator: "\n") {
+            let parts = line.split(separator: "|", maxSplits: 3,
+                                   omittingEmptySubsequences: false)
+            guard parts.count == 4 else { continue }
+            let full = String(parts[3])
+            let name = (full as NSString).lastPathComponent
+            guard !name.isEmpty else { continue }
+            rows.append(GuestEntry(
+                path: full,
+                name: name,
+                isDirectory: parts[0].contains("directory"),
+                size: Int64(parts[1]) ?? 0,
+                modified: Double(parts[2]).map { Date(timeIntervalSince1970: $0) }))
+        }
+
+        // Folders first, then alphabetical: the order a file browser is read in.
+        return rows.sorted {
+            $0.isDirectory != $1.isDirectory ? $0.isDirectory
+                : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+    }
+
+    /// How much room is left where the files go.
+    nonisolated func freeSpace(at path: String) -> (free: Int64, total: Int64)? {
+        guard let out = try? GuestBridge.shared.shell(
+                "df -k \(Self.quote(path)) | tail -1", timeout: 30) else { return nil }
+        // Filesystem, 1K-blocks, Used, Available, …  — the filesystem's name can
+        // itself contain digits, so take the numbers in order after it.
+        let numbers = out.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            .compactMap { Int64($0) }
+        guard numbers.count >= 3 else { return nil }
+        return (free: numbers[2] * 1024, total: numbers[0] * 1024)
+    }
+
+    /// Single-quoted for a shell, with any quote of its own removed. A guest
+    /// filename is chosen by whoever made the file and reaches a shell verbatim.
+    nonisolated static func quote(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "") + "'"
+    }
+
     /// Pull an app's launcher icon out of its APK.
     ///
     /// An APK is a zip, so the icon can be read straight out of it without
@@ -1086,7 +1289,7 @@ final class AndroidHost: ObservableObject {
     ///
     /// Apps whose icon is only an adaptive XML drawable have no single PNG to
     /// find; those keep the generic placeholder, which is the honest result.
-    private func fetchIcon(for package: String) async {
+    nonisolated private func fetchIcon(for package: String) async {
         let dest = Self.iconDirectory.appendingPathComponent("\(package).png")
         if FileManager.default.fileExists(atPath: dest.path) { return }
 
@@ -1135,7 +1338,7 @@ final class AndroidHost: ObservableObject {
 
     /// "com.dotgears.flappybird" reads better as "Flappybird" until we can ask
     /// Android for the real label.
-    private static func pretty(_ pkg: String) -> String {
+    nonisolated private static func pretty(_ pkg: String) -> String {
         (pkg.split(separator: ".").last.map(String.init) ?? pkg).capitalized
     }
 
@@ -1181,7 +1384,7 @@ final class AndroidHost: ObservableObject {
     /// The importer already pushed APKs; everything else a person might want to
     /// get into Android -- a save file, a ROM, a texture pack, a photo -- had no
     /// route in at all. Same transfer as an install, minus pm.
-    func sendFiles(_ files: [URL]) {
+    func sendFiles(_ files: [URL], to directory: String = "/sdcard/Download") {
         guard !files.isEmpty else { return }
         busy = "Sending \(files.count == 1 ? files[0].lastPathComponent : "\(files.count) files")…"
         Task.detached { [weak self] in
@@ -1205,8 +1408,9 @@ final class AndroidHost: ObservableObject {
                     // Quoted and stripped of any path: a filename is chosen by
                     // whoever made the file, and it reaches a shell verbatim.
                     let safe = name.replacingOccurrences(of: "'", with: "")
-                    let remote = "/sdcard/Download/\(safe)"
-                    _ = try? GuestBridge.shared.shell("mkdir -p /sdcard/Download")
+                    let remote = "\(directory)/\(safe)"
+                    _ = try? GuestBridge.shared.shell(
+                        "mkdir -p \(Self.quote(directory))")
                     try GuestBridge.shared.push(file, to: "'\(remote)'") { p in
                         Task { @MainActor in
                             self?.busy = "Sending \(name) — \(Int(p * 100))%"
@@ -1229,11 +1433,12 @@ final class AndroidHost: ObservableObject {
                 }
             }
             let n = sent
+            let where_ = (directory as NSString).lastPathComponent
             await MainActor.run {
-                self?.busy = "Sent \(n) to Android's Download folder"
+                self?.busy = nil
+                self?.say(n == 1 ? "File sent" : "\(n) files sent",
+                          "In Android's \(where_) folder.")
             }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await MainActor.run { self?.busy = nil }
         }
     }
 
@@ -1242,6 +1447,31 @@ final class AndroidHost: ObservableObject {
     /// Not followed by an automatic save, unlike installing. Removing something
     /// is the kind of change a person may want to reconsider before it is made
     /// permanent, and a snapshot is how it becomes permanent.
+    /// Install an APK that is already in the guest.
+    ///
+    /// Nothing is copied: the file is on Android's own storage, so `pm` reads
+    /// it from there. This is the path for an APK that arrived through the
+    /// Files tab, or that a browser in the guest downloaded itself.
+    func installFromGuest(_ path: String, name: String) {
+        busy = "Installing \(name)…"
+        Task.detached { [weak self] in
+            let out = (try? GuestBridge.shared.shell(
+                "pm install -r \(AndroidHost.quote(path))", timeout: 900)) ?? ""
+            let ok = out.contains("Success")
+            HuskLog.log("bridge", "install \(name) from guest: "
+                      + out.trimmingCharacters(in: .whitespacesAndNewlines))
+            await self?.refreshPackages()
+            await MainActor.run {
+                self?.busy = nil
+                self?.say(ok ? "APK installed" : "Install failed",
+                          ok ? "\(name) is ready to launch."
+                             : String(out.prefix(120))
+                                 .trimmingCharacters(in: .whitespacesAndNewlines),
+                          good: ok)
+            }
+        }
+    }
+
     func uninstall(_ package: String) {
         busy = "Removing \(package)…"
         Task.detached { [weak self] in
@@ -1250,13 +1480,15 @@ final class AndroidHost: ObservableObject {
             let ok = out.contains("Success")
             HuskLog.log("bridge", "uninstall \(package): "
                       + out.trimmingCharacters(in: .whitespacesAndNewlines))
+            let label = await MainActor.run {
+                self?.packages.first { $0.name == package }?.label ?? package
+            }
             await self?.refreshPackages()
             await MainActor.run {
-                self?.busy = ok ? nil : "Could not remove \(package)"
-            }
-            if !ok {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                await MainActor.run { self?.busy = nil }
+                self?.busy = nil
+                self?.say(ok ? "Uninstalled" : "Could not uninstall",
+                          ok ? "\(label) is gone from Android." : label,
+                          good: ok)
             }
         }
     }
@@ -1385,10 +1617,9 @@ final class AndroidHost: ObservableObject {
                         guard QemuRunner.autoSaveEnabled else {
                             HuskLog.log("bridge", "\(name) installed; not saving, "
                                       + "automatic saves are off")
-                            self?.busy = "Installed. Save Android to keep it "
-                                       + "past this session."
-                            Task { try? await Task.sleep(nanoseconds: 5_000_000_000)
-                                   await MainActor.run { self?.busy = nil } }
+                            self?.busy = nil
+                            self?.say("APK installed",
+                                      "Save Android to keep it past this session.")
                             return
                         }
 
@@ -1401,17 +1632,24 @@ final class AndroidHost: ObservableObject {
                         self?.busy = "Saving Android — the screen will freeze briefly"
                         QemuRunner.shared.saveState(reason: "installed \(name)") { saved in
                             self?.busy = nil
-                            if !saved {
+                            if saved {
+                                self?.say("APK installed", "Ready to launch.")
+                            } else {
                                 HuskLog.log("bridge", "\(name) is installed but the machine "
                                           + "was not saved; it will be gone next launch")
+                                self?.say("Installed, but not saved",
+                                          "It will be gone on the next launch.",
+                                          good: false)
                             }
                         }
                     }
                 } else {
                     await MainActor.run {
-                        self?.busy = "Install failed: \(out.prefix(120))"
-                        Task { try? await Task.sleep(nanoseconds: 4_000_000_000)
-                               await MainActor.run { self?.busy = nil } }
+                        self?.busy = nil
+                        self?.say("Install failed",
+                                  String(out.prefix(120)).trimmingCharacters(
+                                      in: .whitespacesAndNewlines),
+                                  good: false)
                     }
                 }
             } catch {
@@ -1568,7 +1806,15 @@ final class AndroidHost: ObservableObject {
     ///
     /// monkey rather than `am start`, because it finds the launcher activity on
     /// its own -- we do not know the activity name and would have to resolve it.
+    /// Note that an app was opened, for the "last used" line on its page.
+    func markLaunched(_ pkg: String) {
+        guard let i = packages.firstIndex(where: { $0.name == pkg }) else { return }
+        packages[i].lastUsed = Date()
+        saveCatalogue(packages)
+    }
+
     func launch(_ pkg: String, then: @escaping () -> Void) {
+        markLaunched(pkg)
         busy = "Opening…"
         Task.detached { [weak self] in
             let out = (try? GuestBridge.shared.shell(

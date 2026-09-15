@@ -98,6 +98,7 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
 /// quarter of the app's navigation.
 enum HuskTab: String, CaseIterable, Identifiable {
     case library
+    case files
     case settings
 
     var id: String { rawValue }
