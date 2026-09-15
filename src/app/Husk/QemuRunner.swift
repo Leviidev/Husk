@@ -185,6 +185,7 @@ final class QemuRunner: ObservableObject {
         (glProven ? "gl" : "sw")
             + (soundEnabled ? "+snd" : "")
             + (landscapeGuest ? "+land" : "")
+            + (customResolution.map { "+\($0.w)x\($0.h)" } ?? "")
     }
 
     /// Whether Husk saves the machine on its own once Android settles.
@@ -844,7 +845,38 @@ final class QemuRunner: ObservableObject {
         UserDefaults.standard.bool(forKey: "husk.landscapeGuest")
     }
 
+    /// A panel size chosen by hand, when there is one.
+    ///
+    /// It overrides everything below -- including the size pinned by a shipped
+    /// snapshot -- because someone who typed a resolution meant it. That does
+    /// mean the shipped snapshot cannot be used: it was captured against its
+    /// own panel, and a machine whose display differs is a different machine.
+    /// Nothing special is needed to arrange that, only the stamp: a custom size
+    /// changes it, the restore path already refuses a machine whose stamp does
+    /// not match, and the first launch after a change boots cold and saves a
+    /// new one.
+    nonisolated static var customResolution: (w: Int, h: Int)? {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: "husk.customRes") else { return nil }
+        return validResolution(w: d.integer(forKey: "husk.resWidth"),
+                               h: d.integer(forKey: "husk.resHeight"))
+    }
+
+    /// A size both QEMU and Android will accept, or nothing.
+    ///
+    /// Rounded to a multiple of eight because that is what the guest's
+    /// compositor wants its stride to be, and bounded because the two ends of
+    /// the range are both failures rather than preferences: below about 240 the
+    /// launcher has nowhere to lay itself out, and above 2560 a software-drawn
+    /// frame costs more than the emulator can deliver in a second.
+    nonisolated static func validResolution(w: Int, h: Int) -> (w: Int, h: Int)? {
+        guard w >= 240, w <= 2560, h >= 240, h <= 2560 else { return nil }
+        return (Int((Double(w) / 8).rounded()) * 8, Int((Double(h) / 8).rounded()) * 8)
+    }
+
     private var computedGuestResolution: (w: Int, h: Int) {
+        if let custom = QemuRunner.customResolution { return custom }
+
         // A shipped snapshot fixes the resolution: it was saved against one,
         // and a machine whose display differs is a different machine.
         if GuestImage.shared.hasShippedSnapshot, !QemuRunner.landscapeGuest {

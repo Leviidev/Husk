@@ -236,6 +236,31 @@ struct PerformanceSettings: View {
 struct InputSettings: View {
     @State private var landscapeGuest =
         UserDefaults.standard.bool(forKey: "husk.landscapeGuest")
+    @State private var customRes = UserDefaults.standard.bool(forKey: "husk.customRes")
+    @State private var widthText = InputSettings.stored("husk.resWidth", 720)
+    @State private var heightText = InputSettings.stored("husk.resHeight", 1280)
+
+    /// Sizes worth offering without typing. Deliberately short: these are the
+    /// shapes a phone guest is actually run at, not a catalogue of every panel
+    /// ever made.
+    private static let presets: [(name: String, w: Int, h: Int)] = [
+        ("Small — 360 × 800", 360, 800),
+        ("HD — 720 × 1280", 720, 1280),
+        ("Full HD — 1080 × 1920", 1080, 1920),
+        ("Landscape HD — 1280 × 720", 1280, 720),
+        ("Tablet — 1280 × 800", 1280, 800),
+    ]
+
+    private static func stored(_ key: String, _ fallback: Int) -> String {
+        let v = UserDefaults.standard.integer(forKey: key)
+        return String(v > 0 ? v : fallback)
+    }
+
+    /// What the typed numbers actually come to, or nothing if they are not a
+    /// size the guest can be given.
+    private var effective: (w: Int, h: Int)? {
+        QemuRunner.validResolution(w: Int(widthText) ?? 0, h: Int(heightText) ?? 0)
+    }
 
     var body: some View {
         Form {
@@ -245,6 +270,7 @@ struct InputSettings: View {
                     Text("Landscape").tag(true)
                 }
                 .pickerStyle(.segmented)
+                .disabled(customRes)
                 .onChange(of: landscapeGuest) { v in
                     UserDefaults.standard.set(v, forKey: "husk.landscapeGuest")
                     HuskLog.log("ui", v ? "guest panel will be landscape"
@@ -253,11 +279,81 @@ struct InputSettings: View {
             } header: {
                 Text("Screen")
             } footer: {
-                Text("Android cannot reshape a screen once it is running, so a "
-                   + "landscape game on a portrait screen gets letterboxed into a "
-                   + "band and looks tiny. Creating it landscape is the only way it "
-                   + "can fill it — portrait apps are letterboxed instead. Costs one "
-                   + "cold boot.")
+                Text(customRes
+                     ? "A custom resolution sets the shape itself, so this does nothing "
+                     + "while it is on. Type a wide size for landscape."
+                     : "Android cannot reshape a screen once it is running, so a "
+                     + "landscape game on a portrait screen gets letterboxed into a "
+                     + "band and looks tiny. Creating it landscape is the only way it "
+                     + "can fill it — portrait apps are letterboxed instead. Costs one "
+                     + "cold boot.")
+            }
+
+            Section {
+                Toggle("Custom resolution", isOn: $customRes)
+                    .onChange(of: customRes) { v in
+                        UserDefaults.standard.set(v, forKey: "husk.customRes")
+                        store()
+                        HuskLog.log("ui", v ? "custom resolution on: "
+                                            + "\(widthText)x\(heightText)"
+                                            : "custom resolution off")
+                    }
+
+                if customRes {
+                    Picker("Preset", selection: Binding(
+                        get: { presetIndex },
+                        set: { i in
+                            guard i >= 0, i < Self.presets.count else { return }
+                            widthText = String(Self.presets[i].w)
+                            heightText = String(Self.presets[i].h)
+                            store()
+                        })) {
+                        ForEach(0..<Self.presets.count, id: \.self) { i in
+                            Text(Self.presets[i].name).tag(i)
+                        }
+                        Text("Custom").tag(-1)
+                    }
+
+                    HStack {
+                        Text("Width")
+                        Spacer()
+                        TextField("720", text: $widthText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.technical())
+                            .frame(width: 90)
+                            .onChange(of: widthText) { _ in store() }
+                    }
+                    HStack {
+                        Text("Height")
+                        Spacer()
+                        TextField("1280", text: $heightText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.technical())
+                            .frame(width: 90)
+                            .onChange(of: heightText) { _ in store() }
+                    }
+
+                    if let size = effective {
+                        DetailRow(label: "Android will get",
+                                  value: "\(size.w) × \(size.h)")
+                    } else {
+                        Text("Both sides must be between 240 and 2560.")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                }
+
+                DetailRow(label: "Running now", value: running)
+            } header: {
+                Text("Resolution")
+            } footer: {
+                Text("The panel is built when the machine starts, so a change costs "
+                   + "one cold boot, and the next save replaces the machine saved at "
+                   + "the old size — changing back costs another. Sizes are rounded "
+                   + "to a multiple of eight. Bigger is slower: every pixel is drawn "
+                   + "by an emulated phone. Android's density does not change with "
+                   + "the panel, so a larger one shows more rather than bigger.")
             }
 
             Section {
@@ -271,6 +367,24 @@ struct InputSettings: View {
         }
         .huskForm()
         .navigationTitle("Input")
+    }
+
+    /// The panel the guest actually has, which only means anything while there
+    /// is a guest: the stored value is last launch's until one starts.
+    private var running: String {
+        guard QemuRunner.shared.isRunning else { return "not started" }
+        return "\(QemuRunner.lastGuestRes.w) × \(QemuRunner.lastGuestRes.h)"
+    }
+
+    /// Which preset the typed numbers are, if any.
+    private var presetIndex: Int {
+        guard let size = effective else { return -1 }
+        return Self.presets.firstIndex { $0.w == size.w && $0.h == size.h } ?? -1
+    }
+
+    private func store() {
+        UserDefaults.standard.set(Int(widthText) ?? 0, forKey: "husk.resWidth")
+        UserDefaults.standard.set(Int(heightText) ?? 0, forKey: "husk.resHeight")
     }
 }
 
