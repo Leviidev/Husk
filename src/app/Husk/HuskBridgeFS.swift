@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
+import SQLite3
 import UIKit
 
 /// The host half of the host/guest bridge.
@@ -909,6 +910,17 @@ final class AndroidHost: ObservableObject {
                 .filter { $0.hasPrefix("package:") }
                 .map { String($0.dropFirst("package:".count)) }
                 .filter { !$0.isEmpty }
+            // Android's own labels and icons, in one round trip for every app
+            // at once, before anything is put on screen.
+            let known = names.isEmpty ? [:] : self.launcherCatalogue()
+            var labels: [String: String] = [:]
+            for (package, entry) in known {
+                if let label = entry.label { labels[package] = label }
+                guard let icon = entry.icon else { continue }
+                let dest = Self.iconDirectory.appendingPathComponent("\(package).png")
+                try? icon.write(to: dest)
+            }
+
             await MainActor.run {
                 guard !names.isEmpty || self.packages.isEmpty
                         || self.guestListedPackages else {
@@ -919,10 +931,13 @@ final class AndroidHost: ObservableObject {
                 self.guestListedPackages = true
                 self.packages = names.map { name in
                     let cached = Self.iconDirectory.appendingPathComponent("\(name).png")
-                    return Package(name: name, label: Self.pretty(name),
+                    return Package(name: name,
+                                   label: labels[name] ?? Self.pretty(name),
                                    iconPath: FileManager.default.fileExists(atPath: cached.path)
                                              ? cached.path : nil)
                 }
+                    .sorted { $0.label.localizedCaseInsensitiveCompare($1.label)
+                              == .orderedAscending }
                 self.saveCatalogue(self.packages)
             }
             HuskLog.log("bridge", "\(names.count) user package(s) installed")
@@ -930,6 +945,134 @@ final class AndroidHost: ObservableObject {
         } catch {
             HuskLog.log("bridge", "could not list packages: \(error.localizedDescription)")
         }
+    }
+
+    /// What Android itself calls these apps, and what it draws for them.
+    ///
+    /// Both used to be guesses. The name was the last component of the package
+    /// with a capital letter on it, so `com.dotgears.flappybird` became
+    /// "Flappybird"; the icon was the largest PNG in the APK whose path
+    /// happened to contain "launcher" or "icon", which finds a notification
+    /// icon about as often as the real one and finds nothing at all when the
+    /// launcher icon is an adaptive XML drawable -- which, since Android 8, is
+    /// most of them.
+    ///
+    /// Android has already answered both questions properly. The launcher
+    /// resolves every app's label and composites its icon once, at the size it
+    /// draws it, and caches the pair in a SQLite database. Reading that is
+    /// asking Android rather than second-guessing it: adaptive icons arrive
+    /// already composited and masked, themed icons arrive themed, and the label
+    /// is the one on the home screen, in the user's language.
+    ///
+    /// The database is pulled and read here rather than queried in the guest
+    /// because iOS ships SQLite and the guest is not guaranteed to ship the
+    /// `sqlite3` binary. A few hundred kilobytes over the bridge once a session
+    /// is cheaper than depending on what a given Android build includes.
+    private func launcherCatalogue() -> [String: (label: String?, icon: Data?)] {
+        var found: [String: (label: String?, icon: Data?)] = [:]
+        do {
+            let listing = try GuestBridge.shared.shell(
+                "ls -1 /data/data/*/databases/app_icons.db 2>/dev/null | head -1",
+                timeout: 30)
+            let path = listing.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard path.hasPrefix("/"), path.hasSuffix(".db") else {
+                HuskLog.log("bridge", "no launcher icon cache; falling back to the APKs")
+                return [:]
+            }
+
+            let db = try GuestBridge.shared.pull("cat \(path)", timeout: 120)
+            guard db.prefix(6) == Data("SQLite".utf8) else {
+                HuskLog.log("bridge", "\(path) is not a SQLite file (\(db.count) bytes)")
+                return [:]
+            }
+            let local = Self.support.appendingPathComponent("launcher-icons.db")
+            try? FileManager.default.removeItem(at: local)
+            try db.write(to: local)
+
+            // Android opens its databases in WAL mode, so the newest rows --
+            // an app installed this session, most of all -- are in the sidecar
+            // rather than the file itself. Brought along so SQLite can replay
+            // it; harmless when there is nothing to replay.
+            if let wal = try? GuestBridge.shared.pull("cat \(path)-wal", timeout: 120),
+               wal.count > 32 {
+                try? wal.write(to: Self.support.appendingPathComponent(
+                    "launcher-icons.db-wal"))
+            }
+
+            found = Self.readIconCache(at: local)
+            HuskLog.log("bridge", "launcher cache: \(found.count) app(s) named by Android")
+        } catch {
+            HuskLog.log("bridge", "launcher cache unavailable: "
+                      + error.localizedDescription)
+        }
+        return found
+    }
+
+    /// Read the pulled cache. One row per launcher activity: the component it
+    /// belongs to, the label under it, and the icon as a compressed bitmap.
+    private static func readIconCache(at url: URL)
+            -> [String: (label: String?, icon: Data?)] {
+        var out: [String: (label: String?, icon: Data?)] = [:]
+        var handle: OpaquePointer?
+        // Read-write, because replaying the write-ahead log is a write.
+        guard sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK
+        else {
+            sqlite3_close(handle)
+            return [:]
+        }
+        defer { sqlite3_close(handle) }
+
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(handle, "SELECT componentName, label, icon FROM icons",
+                                 -1, &stmt, nil) == SQLITE_OK else {
+            // Say what the file does contain rather than only that it did not
+            // contain what was expected: if a future Android renames the table,
+            // this log is the whole diagnosis.
+            var tables: OpaquePointer?
+            var names: [String] = []
+            if sqlite3_prepare_v2(handle, "SELECT name FROM sqlite_master WHERE type='table'",
+                                  -1, &tables, nil) == SQLITE_OK {
+                while sqlite3_step(tables) == SQLITE_ROW {
+                    if let t = sqlite3_column_text(tables, 0) { names.append(String(cString: t)) }
+                }
+            }
+            sqlite3_finalize(tables)
+            HuskLog.log("bridge", "icon cache has no icons table; tables: "
+                      + (names.isEmpty ? "none" : names.joined(separator: ", ")))
+            return [:]
+        }
+        defer { sqlite3_finalize(stmt) }
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let raw = sqlite3_column_text(stmt, 0) else { continue }
+            // "ComponentInfo{com.x.y/com.x.y.Main}" or plain "com.x.y/.Main".
+            let component = String(cString: raw)
+                .replacingOccurrences(of: "ComponentInfo{", with: "")
+                .replacingOccurrences(of: "}", with: "")
+            guard let package = component.split(separator: "/").first.map(String.init),
+                  !package.isEmpty else { continue }
+
+            let label = sqlite3_column_text(stmt, 1).map { String(cString: $0) }
+            var icon: Data?
+            if let bytes = sqlite3_column_blob(stmt, 2) {
+                let n = Int(sqlite3_column_bytes(stmt, 2))
+                // The launcher flattens the bitmap before storing it, so this
+                // is a PNG (or a lossless WebP on newer builds). Anything else
+                // is a format we would only guess at.
+                if n > 16 {
+                    let data = Data(bytes: bytes, count: n)
+                    if data.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47])
+                        || data.prefix(4) == Data("RIFF".utf8) { icon = data }
+                }
+            }
+
+            // First row wins per package, except that a row with an icon beats
+            // one without: an app can have several launcher entries and only
+            // the one the launcher drew has a bitmap against it.
+            if let existing = out[package], existing.icon != nil, icon == nil { continue }
+            out[package] = (label?.isEmpty == false ? label : nil, icon)
+        }
+        return out
     }
 
     /// Pull an app's launcher icon out of its APK.

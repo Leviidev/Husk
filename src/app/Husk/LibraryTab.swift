@@ -29,6 +29,8 @@ struct LibraryTab: View {
     @State private var importing = false
     @State private var sendingFiles = false
     @State private var detail: AndroidHost.Package?
+    @State private var pendingUninstall: AndroidHost.Package?
+    @State private var query = ""
     /// Ticks once a second, only so the uptime on the hero card counts up.
     @State private var now = Date()
 
@@ -83,6 +85,20 @@ struct LibraryTab: View {
                     host.sendFiles(urls)
                 }
             }
+            .searchable(text: $query, prompt: "Search apps")
+            .confirmationDialog("Uninstall \(pendingUninstall?.label ?? "")?",
+                                isPresented: Binding(get: { pendingUninstall != nil },
+                                                     set: { if !$0 { pendingUninstall = nil } }),
+                                titleVisibility: .visible) {
+                Button("Uninstall", role: .destructive) {
+                    if let app = pendingUninstall { host.uninstall(app.name) }
+                    pendingUninstall = nil
+                }
+                Button("Cancel", role: .cancel) { pendingUninstall = nil }
+            } message: {
+                Text("Its data goes with it. Save Android afterwards or the change "
+                   + "is lost on the next launch.")
+            }
             .sheet(item: $detail) { app in
                 AppDetailSheet(app: app, onLaunch: {
                     host.launch(app.name) { onOpenGuest() }
@@ -91,6 +107,18 @@ struct LibraryTab: View {
             }
         }
         .onReceive(clock) { now = $0 }
+    }
+
+    /// The apps the grid is showing: everything, or what the search matches.
+    /// Package names are searched as well as labels, because that is what you
+    /// have to go on when two apps share a name.
+    private var shown: [AndroidHost.Package] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return host.packages }
+        return host.packages.filter {
+            $0.label.localizedCaseInsensitiveContains(q)
+                || $0.name.localizedCaseInsensitiveContains(q)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -109,18 +137,28 @@ struct LibraryTab: View {
                     .huskGlass()
                 }
 
-                if !host.packages.isEmpty {
+                if !shown.isEmpty {
                     VStack(spacing: 14) {
-                        SectionHeader(title: "Your apps",
-                                      trailing: host.isReady
-                                                ? "\(host.packages.count)"
+                        SectionHeader(title: query.isEmpty ? "Your apps" : "Results",
+                                      trailing: host.isReady || !query.isEmpty
+                                                ? "\(shown.count)"
                                                 : "opens when ready")
                         LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(host.packages) { pkg in
-                                AppCard(app: pkg, dimmed: !host.isReady) { detail = pkg }
+                            ForEach(shown) { pkg in
+                                AppCard(app: pkg, dimmed: !host.isReady,
+                                        ready: host.isReady && host.busy == nil,
+                                        onOpen: {
+                                            host.launch(pkg.name) { onOpenGuest() }
+                                        },
+                                        onUninstall: { pendingUninstall = pkg },
+                                        action: { detail = pkg })
                             }
                         }
                     }
+                } else if !query.isEmpty {
+                    EmptyState(title: "No matches",
+                               message: "Nothing installed is called \"\(query)\".",
+                               systemImage: "magnifyingglass")
                 } else if started && host.isReady {
                     EmptyState(title: "No apps yet",
                                message: "Install an APK and it appears here. Split APK "
@@ -335,6 +373,9 @@ struct AppCard: View {
     /// Set while the guest cannot open anything, so a tile that is still worth
     /// tapping for its details does not claim to be ready to run.
     var dimmed = false
+    var ready = true
+    var onOpen: (() -> Void)? = nil
+    var onUninstall: (() -> Void)? = nil
     let action: () -> Void
 
     var body: some View {
@@ -352,6 +393,23 @@ struct AppCard: View {
             .opacity(dimmed ? 0.45 : 1)
         }
         .buttonStyle(CardButtonStyle())
+        // Press and hold, as on any home screen. The sheet is still there for
+        // anyone who taps, but the two things worth doing to an app should not
+        // need a sheet to reach.
+        .contextMenu {
+            if let onOpen {
+                Button(action: onOpen) { Label("Open", systemImage: "play.fill") }
+                    .disabled(!ready)
+            }
+            Button(action: action) { Label("Details", systemImage: "info.circle") }
+            if let onUninstall {
+                Divider()
+                Button(role: .destructive, action: onUninstall) {
+                    Label("Uninstall", systemImage: "trash")
+                }
+                .disabled(!ready)
+            }
+        }
     }
 }
 
