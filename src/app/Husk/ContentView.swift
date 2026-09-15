@@ -11,6 +11,7 @@ struct ContentView: View {
     @StateObject private var guest = GuestImage.shared
     @StateObject private var runner = QemuRunner.shared
     @StateObject private var bridge = HuskBridgeFS.shared
+    @ObservedObject private var host = AndroidHost.shared
 
     /// How Android was started, which decides what the app shows while it runs.
     enum StartMode { case fullScreen, library }
@@ -37,7 +38,7 @@ struct ContentView: View {
             // why it appears instantly rather than reloading.
             TabView(selection: $tab) {
                 LibraryTab(onOpenGuest: { showGuestScreen = true },
-                           onStartAndroid: { start(); showGuestScreen = true },
+                           onStartAndroid: startFromLibrary,
                            started: started && runner.isRunning)
                     .tabItem { Label("Library", systemImage: "square.grid.2x2.fill") }
                     .tag(HuskTab.library)
@@ -56,7 +57,7 @@ struct ContentView: View {
                     .allowsHitTesting(showGuestScreen)
             }
 
-            if !started {
+            if showSetup {
                 // Before the guest exists there is nothing to cover, so the
                 // start screen sits above the tabs rather than inside one.
                 SetupView(showLogs: $showLogs) { chosen in
@@ -119,6 +120,32 @@ struct ContentView: View {
         if !JITBootstrap.isDebuggerAttached {
             HuskLog.log("ui", "no debugger attached; waiting for StikDebug")
         }
+    }
+
+    /// Whether the start screen has anything to offer that the library does not.
+    ///
+    /// On a first run it has everything: the runtime has to be downloaded and
+    /// there is no catalogue, so there is literally nothing else to draw. Once
+    /// apps have been seen once they are on disk, and covering them with a
+    /// black screen holding two buttons throws away the whole point of caching
+    /// them -- the library says Android is not running and offers to start it,
+    /// which is all the start screen was saying.
+    private var showSetup: Bool {
+        !started && (guest.state != .ready || host.packages.isEmpty)
+    }
+
+    /// Start the guest from the library, without leaving it.
+    ///
+    /// `start()` returns silently when there is no debugger attached, which as
+    /// the action behind a button reads as a button that does nothing, so the
+    /// JIT prompt is raised here instead.
+    private func startFromLibrary() {
+        guard JITBootstrap.isDebuggerAttached else {
+            HuskLog.log("ui", "start asked for without JIT; opening StikDebug")
+            _ = JITBootstrap.requestAttach()
+            return
+        }
+        start()
     }
 
     private func start() {
@@ -258,6 +285,14 @@ struct GuestScreenView: View {
             // it can show whether the picture is turned rather than only
             // offering to turn it.
             HStack(spacing: 10) {
+                // Out of the guest, back to the library.
+                //
+                // This went missing when Android stopped being a tab: the
+                // callback was still wired up and no control called it, so
+                // showing the guest while it was still booting was a one-way
+                // trip with nothing on screen to leave by.
+                GuestControl(systemImage: "chevron.left", action: onBack)
+
                 GuestControl(systemImage: keyboard
                              ? "keyboard.chevron.compact.down" : "keyboard",
                              active: keyboard) {

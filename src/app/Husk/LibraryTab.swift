@@ -7,6 +7,13 @@ import SwiftUI
 /// when the list is a debugging aid. It is the app's front door, so it is a grid
 /// of cards: an icon large enough to recognise at a glance, the label under it,
 /// and everything else out of the way until asked for.
+///
+/// It is also a launcher rather than a view onto the bridge. The catalogue is
+/// written to disk the first time the guest reports its apps, so the grid is on
+/// screen the instant Husk opens — a minute before Android can answer for
+/// itself. Everything you can do without the guest (look, read, decide) works
+/// straight away; the one thing that needs it, opening an app, is greyed out,
+/// with the boot's progress shown above the grid rather than in place of it.
 struct LibraryTab: View {
     @ObservedObject private var host = AndroidHost.shared
     @ObservedObject private var runner = QemuRunner.shared
@@ -92,17 +99,29 @@ struct LibraryTab: View {
                     .huskGlass()
                 }
 
-                if !started {
+                // The grid is the page. The guest's state is a strip above it
+                // rather than a screen instead of it: a cold boot runs to a
+                // couple of minutes, and a launcher that shows nothing at all
+                // for that long is a launcher you close.
+                if !host.packages.isEmpty {
+                    if !host.isReady { statusBanner }
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(host.packages) { pkg in
+                            AppCard(app: pkg, dimmed: !host.isReady) { detail = pkg }
+                        }
+                    }
+                    .padding(.top, 2)
+                } else if !started {
                     EmptyState(title: "Android is not running",
-                               message: "The library talks to Android over the bridge, "
-                                      + "so it needs the guest up first.",
+                               message: "Start the guest and the apps you install "
+                                      + "appear here, ready the moment Husk opens.",
                                systemImage: "power",
                                actionTitle: "Start Android",
                                action: onStartAndroid)
                         .huskGlass()
                 } else if !host.isReady {
                     booting
-                } else if host.packages.isEmpty {
+                } else {
                     EmptyState(title: "No apps yet",
                                message: "Install an APK and it appears here. Split APK "
                                       + "sets work too — pick every piece at once.",
@@ -110,13 +129,6 @@ struct LibraryTab: View {
                                actionTitle: "Install APK(s)",
                                action: { importing = true })
                         .huskGlass()
-                } else {
-                    LazyVGrid(columns: columns, spacing: 18) {
-                        ForEach(host.packages) { pkg in
-                            AppCard(app: pkg) { detail = pkg }
-                        }
-                    }
-                    .padding(.top, 2)
                 }
             }
             .padding(.horizontal, 18)
@@ -124,8 +136,70 @@ struct LibraryTab: View {
         }
     }
 
+    /// The guest's state, in one line over the grid.
+    ///
+    /// Shown only while the apps on screen cannot actually be opened, so it
+    /// takes itself away rather than becoming furniture.
+    private var statusBanner: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(Theme.accentSoft).frame(width: 34, height: 34)
+                if started {
+                    ProgressView().scaleEffect(0.7).tint(Theme.accent)
+                } else {
+                    Image(systemName: "power")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(started ? host.status : "Android is not running")
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+                if started, runner.bootProgress > 0 {
+                    ProgressView(value: Double(runner.bootProgress), total: 100)
+                        .progressViewStyle(.linear).tint(Theme.accent)
+                        .frame(height: 3)
+                } else {
+                    Text(subtitle)
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 6)
+
+            Button(buttonTitle) {
+                if started { onOpenGuest() } else { onStartAndroid() }
+            }
+            .font(.footnote.weight(.medium))
+            .tint(Theme.accent)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .huskGlass()
+    }
+
+    private var subtitle: String {
+        if started { return "Apps open once it has finished starting." }
+        // Without a debugger attached there is no executable memory and so no
+        // guest, and "Start" would do nothing at all. Say which of the two is
+        // missing rather than offering a button that quietly fails.
+        return JITBootstrap.isDebuggerAttached
+            ? "Your apps are here; starting the guest opens them."
+            : "Enable JIT to start Android and open these."
+    }
+
+    private var buttonTitle: String {
+        if started { return "Show" }
+        return JITBootstrap.isDebuggerAttached ? "Start" : "Enable JIT"
+    }
+
     /// Boot progress, with the bar rather than a bare spinner — a cold boot is
     /// long enough that "something is happening" is not enough information.
+    ///
+    /// Only reached on a first ever boot, when there is no catalogue yet and so
+    /// nothing else to put on the screen.
     private var booting: some View {
         VStack(spacing: 12) {
             if runner.bootProgress > 0 {
@@ -151,6 +225,9 @@ struct LibraryTab: View {
 /// One app, as a tile.
 struct AppCard: View {
     let app: AndroidHost.Package
+    /// Set while the guest cannot open anything, so a card that is still worth
+    /// tapping for its details does not claim to be ready to run.
+    var dimmed = false
     let action: () -> Void
 
     var body: some View {
@@ -159,6 +236,7 @@ struct AppCard: View {
                 AppIcon(path: app.iconPath)
                     .frame(width: 62, height: 62)
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .opacity(dimmed ? 0.55 : 1)
                 Text(app.label)
                     .font(.caption.weight(.medium))
                     .lineLimit(2).multilineTextAlignment(.center)
@@ -184,6 +262,10 @@ struct AppDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmUninstall = false
 
+    /// Anything that reaches the guest needs the guest, which on a cold launch
+    /// is a minute or two away.
+    private var canOpen: Bool { host.isReady && host.busy == nil }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -200,13 +282,23 @@ struct AppDetailSheet: View {
                             .multilineTextAlignment(.center)
 
                         Button(action: onLaunch) {
-                            Label("Open", systemImage: "play.fill")
+                            Label(host.isReady ? "Open" : "Starting Android…",
+                                  systemImage: host.isReady ? "play.fill" : "hourglass")
                                 .font(.headline).frame(maxWidth: .infinity)
                                 .padding(.vertical, 13)
                         }
                         .buttonStyle(.plain)
-                        .huskGlass(Capsule(), prominent: true)
-                        .disabled(host.busy != nil)
+                        .huskGlass(Capsule(), prominent: host.isReady)
+                        .opacity(canOpen ? 1 : 0.45)
+                        .disabled(!canOpen)
+
+                        if !host.isReady {
+                            Text("Android is still starting. Everything else about "
+                               + "this app is here in the meantime.")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 14)
+                        }
 
                         Card {
                             VStack(spacing: 10) {
@@ -218,7 +310,7 @@ struct AppDetailSheet: View {
                             Label("Uninstall", systemImage: "trash")
                                 .font(.subheadline)
                         }
-                        .disabled(host.busy != nil)
+                        .disabled(!canOpen)
                         .padding(.top, 2)
                     }
                     .padding(.horizontal, 20).padding(.bottom, 28)

@@ -778,21 +778,75 @@ final class AndroidHost: ObservableObject {
         var iconPath: String?
     }
 
-    /// Where pulled icons live. Caches, not Documents: they are derived from
-    /// APKs that are still in the guest and can always be fetched again.
+    /// Where pulled icons live: Application Support, not Caches.
+    ///
+    /// They were a cache, which was right when the library only existed while
+    /// Android was running and every icon could simply be fetched again. Now
+    /// the library lists apps before the guest has booted, so an icon the
+    /// system reclaimed overnight is a blank tile on the first screen anyone
+    /// sees, with no way to fill it in for another two minutes.
     private static var iconDirectory: URL {
-        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("husk-icons")
+        let dir = support.appendingPathComponent("husk-icons")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
+    /// iOS hands out this path whether or not it exists, and unlike Documents
+    /// and Caches it is not created for us -- so every write through it has to
+    /// make it first or silently do nothing.
+    private static var support: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory,
+                                           in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Where the list of installed apps is remembered between launches.
+    private static var catalogueURL: URL {
+        support.appendingPathComponent("husk-apps.json")
+    }
+
+    /// Remember what is installed, so the next launch has something to show.
+    private func saveCatalogue(_ list: [Package]) {
+        let rows = list.map { ["name": $0.name, "label": $0.label,
+                               "icon": $0.iconPath ?? ""] }
+        guard let data = try? JSONSerialization.data(withJSONObject: rows) else { return }
+        try? data.write(to: Self.catalogueURL, options: .atomic)
+    }
+
+    /// The last known list, read at startup.
+    ///
+    /// These are shown while the guest is still booting, which is the whole
+    /// point: a launcher that is empty for the first ninety seconds of every
+    /// session is not a launcher. `isReady` is what gates acting on them --
+    /// nothing here can be opened until Android answers.
+    private static func loadCatalogue() -> [Package] {
+        guard let data = try? Data(contentsOf: catalogueURL),
+              let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
+        else { return [] }
+        return rows.compactMap { row in
+            guard let name = row["name"], !name.isEmpty else { return nil }
+            let icon = row["icon"] ?? ""
+            return Package(name: name, label: row["label"] ?? pretty(name),
+                           iconPath: FileManager.default.fileExists(atPath: icon)
+                                     ? icon : nil)
+        }
+    }
+
     @Published private(set) var isReady = false
     @Published private(set) var status = "Starting Android…"
-    @Published private(set) var packages: [Package] = []
+    @Published private(set) var packages: [Package] = AndroidHost.loadCatalogue()
     @Published private(set) var busy: String?
 
     private var polling = false
+
+    /// Set once the guest has answered with a package list of its own.
+    ///
+    /// Until it has, an empty answer is far more likely to be a bridge round
+    /// trip that came back short than a guest with nothing installed -- and
+    /// taking it at face value overwrites the catalogue the launcher draws
+    /// from, so the apps vanish from the next launch's first screen too.
+    private var guestListedPackages = false
 
     /// Poll until the guest's shell answers and Android reports it has booted.
     func waitForReady() {
@@ -856,12 +910,20 @@ final class AndroidHost: ObservableObject {
                 .map { String($0.dropFirst("package:".count)) }
                 .filter { !$0.isEmpty }
             await MainActor.run {
+                guard !names.isEmpty || self.packages.isEmpty
+                        || self.guestListedPackages else {
+                    HuskLog.log("bridge", "empty package list with \(self.packages.count) "
+                                        + "remembered; keeping those")
+                    return
+                }
+                self.guestListedPackages = true
                 self.packages = names.map { name in
                     let cached = Self.iconDirectory.appendingPathComponent("\(name).png")
                     return Package(name: name, label: Self.pretty(name),
                                    iconPath: FileManager.default.fileExists(atPath: cached.path)
                                              ? cached.path : nil)
                 }
+                self.saveCatalogue(self.packages)
             }
             HuskLog.log("bridge", "\(names.count) user package(s) installed")
             for name in names { await fetchIcon(for: name) }
@@ -918,6 +980,9 @@ final class AndroidHost: ObservableObject {
             await MainActor.run {
                 if let i = self.packages.firstIndex(where: { $0.name == package }) {
                     self.packages[i].iconPath = dest.path
+                    // Written through, so the icon is on the next launch's first
+                    // screen rather than only after the guest has booted again.
+                    self.saveCatalogue(self.packages)
                 }
             }
         } catch {
