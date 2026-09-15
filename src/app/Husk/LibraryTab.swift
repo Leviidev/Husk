@@ -18,7 +18,6 @@ struct LibraryTab: View {
     let started: Bool
 
     @State private var importing = false
-    @State private var searching = false
     @State private var query = ""
     @State private var filter = "All"
     @FocusState private var searchFocused: Bool
@@ -54,18 +53,25 @@ struct LibraryTab: View {
             VStack(spacing: 16) {
                 HuskHeader(mark: true, title: "Library") {
                     HStack(spacing: 10) {
-                        CircleButton(systemImage: "magnifyingglass", active: searching) {
-                            withAnimation(.snappy(duration: 0.22)) { searching.toggle() }
-                            if searching { searchFocused = true } else { query = "" }
+                        // Android itself, from the library, whenever it is up.
+                        // It used to be reachable only while it was starting,
+                        // or by opening an app -- so once it was ready there
+                        // was no way to simply look at it.
+                        if started {
+                            CircleButton(systemImage: "rectangle.inset.filled",
+                                         action: onOpenGuest)
                         }
                         CircleButton(systemImage: "plus") { importing = true }
                     }
                 }
 
-                if searching { searchField }
+                // Always there, not behind a button. Searching is what you do
+                // with a list of apps; making it a mode you enter first is a
+                // step between you and the thing you came for.
+                if !host.packages.isEmpty { searchField }
                 if !host.isReady { machineStrip }
                 if let busy = host.busy { busyStrip(busy) }
-                if !categories.isEmpty && !searching { chips }
+                if !categories.isEmpty { chips }
 
                 if !shown.isEmpty {
                     LazyVGrid(columns: columns, spacing: 12) {
@@ -125,7 +131,6 @@ struct LibraryTab: View {
         .padding(.horizontal, 14).padding(.vertical, 11)
         .huskCard(RoundedRectangle(cornerRadius: Theme.rowCorner, style: .continuous),
                   high: true)
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     /// One line about the machine, only while it cannot open anything.
