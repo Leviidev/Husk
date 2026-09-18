@@ -97,6 +97,7 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
 /// console moved into Diagnostics -- it is something you go looking for, not a
 /// quarter of the app's navigation.
 enum HuskTab: String, CaseIterable, Identifiable {
+    case discover
     case library
     case files
     case settings
@@ -105,6 +106,7 @@ enum HuskTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .discover: return "Discover"
         case .library:  return "Library"
         case .files:    return "Files"
         case .settings: return "Settings"
@@ -113,6 +115,7 @@ enum HuskTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .discover: return "sparkle.magnifyingglass"
         case .library:  return "square.grid.2x2.fill"
         case .files:    return "folder.fill"
         case .settings: return "gearshape.fill"

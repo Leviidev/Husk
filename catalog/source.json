@@ -1,0 +1,38 @@
+{
+  "name": "Husk Essentials",
+  "identifier": "com.husk.essentials",
+  "apps": [
+    {
+      "name": "F-Droid",
+      "bundleIdentifier": "org.fdroid.fdroid",
+      "version": "1.21.0",
+      "downloadURL": "https://f-droid.org/F-Droid.apk",
+      "iconURL": "https://f-droid.org/repo/org.fdroid.fdroid/en-US/icon_Qn89D6m2Hn4p_wO89v3z-iR7mPz5E0l9iA7xJmB7U_E=.png",
+      "localizedDescription": "F-Droid is an installable catalogue of FOSS (Free and Open Source Software) applications for the Android platform."
+    },
+    {
+      "name": "Aurora Store",
+      "bundleIdentifier": "com.aurora.store",
+      "version": "4.5.1",
+      "downloadURL": "https://f-droid.org/repo/com.aurora.store_55.apk",
+      "iconURL": "https://f-droid.org/repo/com.aurora.store/en-US/icon_W82R_G632wG1rKjF5s2Yt68WnIq7zB1q2C51Xf7n1uE=.png",
+      "localizedDescription": "Aurora Store is an unofficial, FOSS client to Google's Play Store with an elegant design. Not only does it download, update, and search for apps, it empowers the user with new features."
+    },
+    {
+      "name": "Termux",
+      "bundleIdentifier": "com.termux",
+      "version": "0.118.0",
+      "downloadURL": "https://f-droid.org/repo/com.termux_118.apk",
+      "iconURL": "https://f-droid.org/repo/com.termux/en-US/icon_J_Q028LzW9M_4H7U7I9E7S4Q2K6M4B_M7N8O0P_H0Z4=.png",
+      "localizedDescription": "Termux is an Android terminal emulator and Linux environment app that works directly with no rooting or setup required."
+    },
+    {
+      "name": "VLC",
+      "bundleIdentifier": "org.videolan.vlc",
+      "version": "3.5.4",
+      "downloadURL": "https://f-droid.org/repo/org.videolan.vlc_13050404.apk",
+      "iconURL": "https://f-droid.org/repo/org.videolan.vlc/en-US/icon_D82E_G5w2M6Y2_Z0Z3O5N1W_O_N_F_Q_X_Z_R_W_K_O=.png",
+      "localizedDescription": "VLC for Android is a full audio player, with a complete database, an equalizer and filters, playing all weird audio formats."
+    }
+  ]
+}
