@@ -1,14 +1,15 @@
 import Foundation
 
-struct AppSource: Codable, Identifiable, Equatable {
+// MARK: - Internal Model
+struct AppSource: Identifiable, Equatable {
     let name: String
     let identifier: String
-    let apps: [SourceApp]
+    var apps: [SourceApp]
     
     var id: String { identifier }
 }
 
-struct SourceApp: Codable, Identifiable, Equatable {
+struct SourceApp: Identifiable, Equatable {
     let name: String
     let bundleIdentifier: String
     let version: String
@@ -19,6 +20,49 @@ struct SourceApp: Codable, Identifiable, Equatable {
     var id: String { bundleIdentifier }
 }
 
+// MARK: - F-Droid v1 Schema
+struct FDroidIndex: Codable {
+    let repo: FDroidRepo
+    let apps: [FDroidApp]
+    let packages: [String: [FDroidPackage]]
+}
+
+struct FDroidRepo: Codable {
+    let name: String
+    let address: String
+}
+
+struct FDroidApp: Codable {
+    let packageName: String
+    let name: String
+    let summary: String?
+    let description: String?
+    let icon: String?
+}
+
+struct FDroidPackage: Codable {
+    let apkName: String
+    let versionName: String
+    let versionCode: Int
+}
+
+// MARK: - Husk Simple Schema
+struct HuskSimpleSource: Codable {
+    let name: String
+    let identifier: String
+    let apps: [SourceAppCodable]
+}
+
+struct SourceAppCodable: Codable {
+    let name: String
+    let bundleIdentifier: String
+    let version: String
+    let downloadURL: String
+    let iconURL: String
+    let localizedDescription: String
+}
+
+// MARK: - Manager
 @MainActor
 final class SourceManager: ObservableObject {
     static let shared = SourceManager()
@@ -27,12 +71,10 @@ final class SourceManager: ObservableObject {
     @Published var isLoading = false
     @Published var error: String? = nil
     
-    // A mapping of bundleIdentifier -> download progress (0.0 to 1.0)
     @Published var downloadProgress: [String: Double] = [:]
     
-    // The URLs the user has added. Hardcoded default.
     @Published var sourceURLs: [String] = [
-        "https://raw.githubusercontent.com/Leviidev/Husk/main/catalog/source.json"
+        "https://f-droid.org/repo/index-v1.json"
     ] {
         didSet {
             UserDefaults.standard.set(sourceURLs, forKey: "HuskSourceURLs")
@@ -55,8 +97,44 @@ final class SourceManager: ObservableObject {
             guard let url = URL(string: urlString) else { continue }
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
-                let source = try JSONDecoder().decode(AppSource.self, from: data)
-                fetched.append(source)
+                
+                // Try F-Droid format first
+                if let fdroid = try? JSONDecoder().decode(FDroidIndex.self, from: data) {
+                    var apps: [SourceApp] = []
+                    let baseURL = fdroid.repo.address
+                    for fApp in fdroid.apps {
+                        guard let pkgs = fdroid.packages[fApp.packageName], let latest = pkgs.first else { continue }
+                        
+                        let iconURL = fApp.icon != nil ? "\(baseURL)/icons/\(fApp.icon!)" : ""
+                        let downloadURL = "\(baseURL)/\(latest.apkName)"
+                        
+                        apps.append(SourceApp(
+                            name: fApp.name,
+                            bundleIdentifier: fApp.packageName,
+                            version: latest.versionName,
+                            downloadURL: downloadURL,
+                            iconURL: iconURL,
+                            localizedDescription: fApp.summary ?? fApp.description ?? ""
+                        ))
+                    }
+                    // Sort apps alphabetically
+                    apps.sort { $0.name.lowercased() < $1.name.lowercased() }
+                    
+                    fetched.append(AppSource(
+                        name: fdroid.repo.name,
+                        identifier: urlString,
+                        apps: apps
+                    ))
+                }
+                // Fallback to simple format
+                else if let simple = try? JSONDecoder().decode(HuskSimpleSource.self, from: data) {
+                    let apps = simple.apps.map {
+                        SourceApp(name: $0.name, bundleIdentifier: $0.bundleIdentifier, version: $0.version, downloadURL: $0.downloadURL, iconURL: $0.iconURL, localizedDescription: $0.localizedDescription)
+                    }
+                    fetched.append(AppSource(name: simple.name, identifier: simple.identifier, apps: apps))
+                } else {
+                    HuskLog.log("sources", "Failed to parse \(url) as any known format")
+                }
             } catch {
                 HuskLog.log("sources", "Failed to fetch \(url): \(error)")
             }
@@ -81,14 +159,12 @@ final class SourceManager: ObservableObject {
                     return
                 }
                 
-                // Move file to a temporary .apk file
                 let tempDir = FileManager.default.temporaryDirectory
                 let apkURL = tempDir.appendingPathComponent("\(app.bundleIdentifier)-\(app.version).apk")
                 
                 try? FileManager.default.removeItem(at: apkURL)
                 do {
                     try FileManager.default.moveItem(at: localURL, to: apkURL)
-                    HuskLog.log("sources", "Download complete, installing \(app.name)")
                     AndroidHost.shared.install([apkURL])
                 } catch {
                     HuskLog.log("sources", "Failed to move APK: \(error)")
@@ -96,15 +172,11 @@ final class SourceManager: ObservableObject {
             }
         }
         
-        // Use an observer for progress
         let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
             Task { @MainActor in
                 self.downloadProgress[app.bundleIdentifier] = progress.fractionCompleted
             }
         }
-        
-        // Retain observation by attaching it to the task via associated objects or just fire and forget
-        // URLSession downloadTask retains its progress object.
         task.resume()
     }
 }
