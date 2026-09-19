@@ -14,7 +14,7 @@ struct DiscoverTab: View {
             ZStack {
                 Theme.backdrop
 
-                if manager.isLoading {
+                if manager.isLoading && manager.sources.isEmpty {
                     ProgressView("Fetching Repositories...")
                         .foregroundStyle(Theme.textDim)
                 } else if manager.sources.isEmpty {
@@ -82,15 +82,21 @@ struct DiscoverTab: View {
     private var sourcesHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                ForEach(manager.sources) { source in
+                ForEach(manager.sourceURLs, id: \.self) { url in
+                    let isLoading = manager.loadingSources.contains(url)
+                    let hasError = manager.fetchErrors[url] != nil
+                    let source = manager.sources.first(where: { $0.identifier == url })
                     Button { showingSources = true } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(source.name)
-                                .font(.subheadline.bold())
-                                .foregroundStyle(Theme.text)
-                            Text("\(source.apps.count) apps")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.textDim)
+                        HStack(spacing: 6) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(source?.name ?? (isLoading ? "Loading..." : "Failed"))
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(hasError ? .red : Theme.text)
+                                Text(isLoading ? "Fetching..." : "\(source?.apps.count ?? 0) apps")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textDim)
+                            }
+                            if isLoading { ProgressView().scaleEffect(0.7) }
                         }
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(Theme.surfaceHigh)
@@ -246,12 +252,11 @@ struct DiscoverTab: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
-                        guard !newSourceURL.isEmpty, URL(string: newSourceURL) != nil else { return }
-                        if !manager.sourceURLs.contains(newSourceURL) {
-                            manager.sourceURLs.append(newSourceURL)
-                        }
+                        let url = newSourceURL
                         newSourceURL = ""
                         showingAddSource = false
+                        guard !url.isEmpty, URL(string: url) != nil else { return }
+                        Task { await manager.addSource(urlString: url) }
                     }
                     .disabled(newSourceURL.isEmpty)
                     .bold()

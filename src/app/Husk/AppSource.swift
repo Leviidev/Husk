@@ -5,7 +5,6 @@ struct AppSource: Identifiable, Equatable {
     let name: String
     let identifier: String
     var apps: [SourceApp]
-    
     var id: String { identifier }
 }
 
@@ -16,166 +15,171 @@ struct SourceApp: Identifiable, Equatable {
     let downloadURL: String
     let iconURL: String
     let localizedDescription: String
-    
     var id: String { bundleIdentifier }
 }
 
 // MARK: - F-Droid v1 Schema
-struct FDroidIndex: Codable {
+private struct FDroidIndex: Codable {
     let repo: FDroidRepo
     let apps: [FDroidApp]
     let packages: [String: [FDroidPackage]]
 }
-
-struct FDroidRepo: Codable {
-    let name: String
-    let address: String
+private struct FDroidRepo: Codable { let name: String; let address: String }
+private struct FDroidApp: Codable {
+    let packageName: String; let name: String
+    let summary: String?; let description: String?; let icon: String?
 }
-
-struct FDroidApp: Codable {
-    let packageName: String
-    let name: String
-    let summary: String?
-    let description: String?
-    let icon: String?
-}
-
-struct FDroidPackage: Codable {
-    let apkName: String
-    let versionName: String
-    let versionCode: Int
-}
+private struct FDroidPackage: Codable { let apkName: String; let versionName: String }
 
 // MARK: - Husk Simple Schema
-struct HuskSimpleSource: Codable {
-    let name: String
-    let identifier: String
-    let apps: [SourceAppCodable]
+private struct HuskSimpleSource: Codable {
+    let name: String; let identifier: String; let apps: [SourceAppCodable]
 }
-
-struct SourceAppCodable: Codable {
-    let name: String
-    let bundleIdentifier: String
-    let version: String
-    let downloadURL: String
-    let iconURL: String
-    let localizedDescription: String
+private struct SourceAppCodable: Codable {
+    let name, bundleIdentifier, version, downloadURL, iconURL, localizedDescription: String
 }
 
 // MARK: - Manager
 @MainActor
 final class SourceManager: ObservableObject {
     static let shared = SourceManager()
-    
+
     @Published var sources: [AppSource] = []
-    @Published var isLoading = false
-    @Published var error: String? = nil
-    
-    @Published var downloadProgress: [String: Double] = [:]
-    
+    @Published var loadingSources: Set<String> = Set<String>()
+    @Published var fetchErrors: [String: String] = [String: String]()
+    @Published var downloadProgress: [String: Double] = [String: Double]()
+
+    var isLoading: Bool { !loadingSources.isEmpty }
+
     @Published var sourceURLs: [String] = [
         "https://f-droid.org/repo/index-v1.json"
     ] {
         didSet {
             UserDefaults.standard.set(sourceURLs, forKey: "HuskSourceURLs")
-            Task { await fetchSources() }
         }
     }
-    
+
+    private let session: URLSession = {
+        let cfg = URLSessionConfiguration.default
+        cfg.timeoutIntervalForRequest = 120
+        cfg.timeoutIntervalForResource = 300
+        return URLSession(configuration: cfg)
+    }()
+
     init() {
         if let saved = UserDefaults.standard.stringArray(forKey: "HuskSourceURLs"), !saved.isEmpty {
-            self.sourceURLs = saved
+            sourceURLs = saved
         }
     }
-    
+
+    // Fetch everything (called on first appear / manual refresh)
     func fetchSources() async {
-        isLoading = true
-        error = nil
-        var fetched: [AppSource] = []
-        
         for urlString in sourceURLs {
-            guard let url = URL(string: urlString) else { continue }
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                
-                // Try F-Droid format first
-                if let fdroid = try? JSONDecoder().decode(FDroidIndex.self, from: data) {
-                    var apps: [SourceApp] = []
-                    let baseURL = fdroid.repo.address
-                    for fApp in fdroid.apps {
-                        guard let pkgs = fdroid.packages[fApp.packageName], let latest = pkgs.first else { continue }
-                        
-                        let iconURL = fApp.icon != nil ? "\(baseURL)/icons/\(fApp.icon!)" : ""
-                        let downloadURL = "\(baseURL)/\(latest.apkName)"
-                        
-                        apps.append(SourceApp(
-                            name: fApp.name,
-                            bundleIdentifier: fApp.packageName,
-                            version: latest.versionName,
-                            downloadURL: downloadURL,
-                            iconURL: iconURL,
-                            localizedDescription: fApp.summary ?? fApp.description ?? ""
-                        ))
-                    }
-                    // Sort apps alphabetically
-                    apps.sort { $0.name.lowercased() < $1.name.lowercased() }
-                    
-                    fetched.append(AppSource(
-                        name: fdroid.repo.name,
-                        identifier: urlString,
-                        apps: apps
+            if !sources.contains(where: { $0.identifier == urlString }) || loadingSources.isEmpty {
+                await fetchSource(urlString: urlString)
+            }
+        }
+    }
+
+    // Add a new source and fetch ONLY that one
+    func addSource(urlString: String) async {
+        guard !sourceURLs.contains(urlString) else { return }
+        sourceURLs.append(urlString)
+        await fetchSource(urlString: urlString)
+    }
+
+    // Fetch a single source by URL
+    func fetchSource(urlString: String) async {
+        guard let url = URL(string: urlString) else {
+            fetchErrors[urlString] = "Invalid URL"
+            return
+        }
+
+        loadingSources.insert(urlString)
+        fetchErrors.removeValue(forKey: urlString)
+
+        defer { loadingSources.remove(urlString) }
+
+        do {
+            let (data, _) = try await session.data(from: url)
+
+            // Try F-Droid v1 format
+            if let fdroid = try? JSONDecoder().decode(FDroidIndex.self, from: data) {
+                let baseURL = fdroid.repo.address
+                var apps: [SourceApp] = []
+                for fApp in fdroid.apps {
+                    guard let pkgs = fdroid.packages[fApp.packageName], let latest = pkgs.first else { continue }
+                    let iconURL = fApp.icon.map { "\(baseURL)/icons/\($0)" } ?? ""
+                    apps.append(SourceApp(
+                        name: fApp.name,
+                        bundleIdentifier: fApp.packageName,
+                        version: latest.versionName,
+                        downloadURL: "\(baseURL)/\(latest.apkName)",
+                        iconURL: iconURL,
+                        localizedDescription: fApp.summary ?? fApp.description ?? ""
                     ))
                 }
-                // Fallback to simple format
-                else if let simple = try? JSONDecoder().decode(HuskSimpleSource.self, from: data) {
-                    let apps = simple.apps.map {
-                        SourceApp(name: $0.name, bundleIdentifier: $0.bundleIdentifier, version: $0.version, downloadURL: $0.downloadURL, iconURL: $0.iconURL, localizedDescription: $0.localizedDescription)
-                    }
-                    fetched.append(AppSource(name: simple.name, identifier: simple.identifier, apps: apps))
-                } else {
-                    HuskLog.log("sources", "Failed to parse \(url) as any known format")
-                }
-            } catch {
-                HuskLog.log("sources", "Failed to fetch \(url): \(error)")
+                apps.sort { $0.name.lowercased() < $1.name.lowercased() }
+                let source = AppSource(name: fdroid.repo.name, identifier: urlString, apps: apps)
+                upsert(source: source)
             }
+            // Fallback: Husk simple format
+            else if let simple = try? JSONDecoder().decode(HuskSimpleSource.self, from: data) {
+                let apps = simple.apps.map {
+                    SourceApp(name: $0.name, bundleIdentifier: $0.bundleIdentifier,
+                              version: $0.version, downloadURL: $0.downloadURL,
+                              iconURL: $0.iconURL, localizedDescription: $0.localizedDescription)
+                }
+                let source = AppSource(name: simple.name, identifier: urlString, apps: apps)
+                upsert(source: source)
+            } else {
+                fetchErrors[urlString] = "Unrecognized source format"
+                HuskLog.log("sources", "Unrecognized format at \(urlString)")
+            }
+        } catch {
+            fetchErrors[urlString] = error.localizedDescription
+            HuskLog.log("sources", "Failed to fetch \(urlString): \(error)")
         }
-        
-        self.sources = fetched
-        self.isLoading = false
     }
-    
+
+    func removeSource(urlString: String) {
+        sourceURLs.removeAll { $0 == urlString }
+        sources.removeAll { $0.identifier == urlString }
+        fetchErrors.removeValue(forKey: urlString)
+    }
+
+    private func upsert(source: AppSource) {
+        if let idx = sources.firstIndex(where: { $0.identifier == source.identifier }) {
+            sources[idx] = source
+        } else {
+            sources.append(source)
+        }
+    }
+
+    // MARK: - APK Download + Install
+
     func downloadAndInstall(app: SourceApp) {
         guard let url = URL(string: app.downloadURL) else { return }
-        
         downloadProgress[app.bundleIdentifier] = 0.01
-        HuskLog.log("sources", "Starting download for \(app.name)")
-        
-        let task = URLSession.shared.downloadTask(with: url) { localURL, response, error in
+        HuskLog.log("sources", "Downloading \(app.name)")
+
+        let task = URLSession.shared.downloadTask(with: url) { localURL, _, error in
             Task { @MainActor in
                 self.downloadProgress.removeValue(forKey: app.bundleIdentifier)
-                
-                guard let localURL = localURL, error == nil else {
-                    HuskLog.log("sources", "Download failed for \(app.name): \(String(describing: error))")
+                guard let localURL, error == nil else {
+                    HuskLog.log("sources", "Download failed: \(String(describing: error))")
                     return
                 }
-                
-                let tempDir = FileManager.default.temporaryDirectory
-                let apkURL = tempDir.appendingPathComponent("\(app.bundleIdentifier)-\(app.version).apk")
-                
-                try? FileManager.default.removeItem(at: apkURL)
-                do {
-                    try FileManager.default.moveItem(at: localURL, to: apkURL)
-                    AndroidHost.shared.install([apkURL])
-                } catch {
-                    HuskLog.log("sources", "Failed to move APK: \(error)")
+                let dest = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("\(app.bundleIdentifier)-\(app.version).apk")
+                try? FileManager.default.removeItem(at: dest)
+                if (try? FileManager.default.moveItem(at: localURL, to: dest)) != nil {
+                    AndroidHost.shared.install([dest])
                 }
             }
         }
-        
-        let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
-            Task { @MainActor in
-                self.downloadProgress[app.bundleIdentifier] = progress.fractionCompleted
-            }
+        task.progress.observe(\.fractionCompleted) { progress, _ in
+            Task { @MainActor in self.downloadProgress[app.bundleIdentifier] = progress.fractionCompleted }
         }
         task.resume()
     }
