@@ -26,8 +26,18 @@ private struct FDroidIndex: Codable {
 }
 private struct FDroidRepo: Codable { let name: String; let address: String }
 private struct FDroidApp: Codable {
-    let packageName: String; let name: String
-    let summary: String?; let description: String?; let icon: String?
+    let packageName: String
+    let name: String?
+    let summary: String?
+    let description: String?
+    let icon: String?
+    let localized: [String: FDroidLocalized]?
+}
+private struct FDroidLocalized: Codable {
+    let name: String?
+    let summary: String?
+    let description: String?
+    let icon: String?
 }
 private struct FDroidPackage: Codable { let apkName: String; let versionName: String }
 
@@ -109,14 +119,19 @@ final class SourceManager: ObservableObject {
                 var apps: [SourceApp] = []
                 for fApp in fdroid.apps {
                     guard let pkgs = fdroid.packages[fApp.packageName], let latest = pkgs.first else { continue }
-                    let iconURL = fApp.icon.map { "\(baseURL)/icons/\($0)" } ?? ""
+                    let loc = fApp.localized?["en-US"] ?? fApp.localized?.values.first
+                    let appName = fApp.name ?? loc?.name ?? fApp.packageName
+                    let appSummary = fApp.summary ?? loc?.summary ?? fApp.description ?? loc?.description ?? ""
+                    let appIcon = fApp.icon ?? loc?.icon
+                    let iconURL = appIcon.map { "\(baseURL)/icons/\($0)" } ?? ""
+                    
                     apps.append(SourceApp(
-                        name: fApp.name,
+                        name: appName,
                         bundleIdentifier: fApp.packageName,
                         version: latest.versionName,
                         downloadURL: "\(baseURL)/\(latest.apkName)",
                         iconURL: iconURL,
-                        localizedDescription: fApp.summary ?? fApp.description ?? ""
+                        localizedDescription: appSummary
                     ))
                 }
                 apps.sort { $0.name.lowercased() < $1.name.lowercased() }
