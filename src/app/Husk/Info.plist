@@ -23,7 +23,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>Husk</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.2</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>UILaunchScreen</key>
@@ -43,6 +43,7 @@
 	<array>
 		<string>stikjit</string>
 		<string>stosdebug</string>
+		<string>apple-magnifier</string>
 	</array>
 	<key>UIStatusBarHidden</key>
 	<true/>

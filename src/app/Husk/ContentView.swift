@@ -200,8 +200,10 @@ struct ContentView: View {
     /// JIT prompt is raised here instead.
     private func startFromLibrary() {
         guard JITBootstrap.isDebuggerAttached else {
-            HuskLog.log("ui", "start asked for without JIT; opening StikDebug")
-            _ = JITBootstrap.requestAttach()
+            HuskLog.log("ui", "start asked for without JIT; opening debugger")
+            if !JITBootstrap.requestAttach() {
+                _ = JITBootstrap.requestTrollStoreAttach()
+            }
             return
         }
         start()
@@ -550,10 +552,17 @@ struct SetupView: View {
                         Text("Husk needs executable memory, which on iOS only an attached debugger can grant.")
                             .font(.callout).foregroundStyle(.secondary)
                             .multilineTextAlignment(.center).padding(.horizontal, 36)
-                        Button("Enable JIT with StikDebug") {
-                            _ = JITBootstrap.requestAttach()
+                        VStack(spacing: 12) {
+                            Button("Enable JIT with StikDebug") {
+                                _ = JITBootstrap.requestAttach()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            
+                            Button("Enable JIT with TrollStore") {
+                                _ = JITBootstrap.requestTrollStoreAttach()
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.borderedProminent)
                     }
                     // Attached and still unable to claim memory is a different
                     // problem from not being attached, and it used to present as

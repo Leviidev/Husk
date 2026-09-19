@@ -139,6 +139,22 @@ enum JITBootstrap {
     /// debugserver protocol, runs the script, and relaunches us. Everything after
     /// this point happens in a *new* foreground pass of the app.
     @MainActor
+    static func requestTrollStoreAttach() -> Bool {
+        HuskLog.log("jit", "requestTrollStoreAttach() -- handing off to TrollStore")
+        guard let bundleID = Bundle.main.bundleIdentifier else { return false }
+        
+        let url = "apple-magnifier://enable-jit?bundle-id=\(bundleID)"
+        guard let launchURL = URL(string: url), UIApplication.shared.canOpenURL(launchURL) else {
+            HuskLog.log("jit", "FAIL: cannot open apple-magnifier:// -- TrollStore is not installed")
+            return false
+        }
+        
+        HuskLog.log("jit", "opening apple-magnifier:// for bundle \(bundleID)")
+        UIApplication.shared.open(launchURL)
+        return true
+    }
+
+    @MainActor
     static func requestAttach() -> Bool {
         HuskLog.log("jit", "requestAttach() -- handing off to StikDebug")
 
