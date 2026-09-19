@@ -185,8 +185,10 @@ final class SourceManager: ObservableObject {
                     HuskLog.log("sources", "Download failed: \(String(describing: error))")
                     return
                 }
-                let dest = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("\(app.bundleIdentifier)-\(app.version).apk")
+                let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let downloadDir = docs.appendingPathComponent("Downloaded_APKs")
+                try? FileManager.default.createDirectory(at: downloadDir, withIntermediateDirectories: true, attributes: nil)
+                let dest = downloadDir.appendingPathComponent("\(app.bundleIdentifier)-\(app.version).apk")
                 try? FileManager.default.removeItem(at: dest)
                 if (try? FileManager.default.moveItem(at: localURL, to: dest)) != nil {
                     AndroidHost.shared.install([dest])

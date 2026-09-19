@@ -8,6 +8,7 @@ struct DiscoverTab: View {
     @State private var showingAddSource = false
     @State private var newSourceURL = ""
     @State private var searchText = ""
+    @State private var debouncedSearchText = ""
 
     var body: some View {
         NavigationStack {
@@ -70,6 +71,12 @@ struct DiscoverTab: View {
                     Task { await manager.fetchSources() }
                 }
             }
+            .task(id: searchText) {
+                do {
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                    debouncedSearchText = searchText
+                } catch {}
+            }
         }
     }
 
@@ -120,10 +127,11 @@ struct DiscoverTab: View {
     // MARK: - Helpers
 
     private func filteredApps(for source: AppSource) -> [SourceApp] {
-        if searchText.isEmpty { return source.apps }
+        if debouncedSearchText.isEmpty { return source.apps }
+        let query = debouncedSearchText.lowercased()
         return source.apps.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.bundleIdentifier.localizedCaseInsensitiveContains(searchText)
+            $0.name.lowercased().contains(query) ||
+            $0.bundleIdentifier.lowercased().contains(query)
         }
     }
 
@@ -132,13 +140,13 @@ struct DiscoverTab: View {
             Text(source.name)
                 .font(.title2.bold()).foregroundStyle(Theme.text).padding(.horizontal, 4)
 
-            let displayApps = searchText.isEmpty ? Array(apps.prefix(50)) : apps
+            let displayApps = debouncedSearchText.isEmpty ? Array(apps.prefix(50)) : apps
             ForEach(displayApps) { app in
                 appRow(app)
                 Divider()
             }
 
-            if searchText.isEmpty && apps.count > 50 {
+            if debouncedSearchText.isEmpty && apps.count > 50 {
                 Text("Search to see \(apps.count - 50) more apps...")
                     .font(.footnote).foregroundStyle(Theme.textDim)
                     .frame(maxWidth: .infinity, alignment: .center).padding(.bottom, 4)
