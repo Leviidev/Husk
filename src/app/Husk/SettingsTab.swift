@@ -438,6 +438,15 @@ struct JITSettings: View {
                           mono: false)
                 DetailRow(label: "Executable memory",
                           value: JITBootstrap.isLive ? "granted" : "not claimed", mono: false)
+                // The two routes, named separately. Either one is enough, and
+                // when someone reports "JIT does not work" these two rows are
+                // the whole diagnosis.
+                DetailRow(label: "Trap servicer",
+                          value: JITBootstrap.prewarmed ? "answering" : "not answering",
+                          mono: false)
+                DetailRow(label: "MAP_JIT",
+                          value: JITBootstrap.mapJITWorks ? "executes" : "refused",
+                          mono: false)
                 if let why = JITBootstrap.lastFailure {
                     Text(why).font(.caption).foregroundStyle(.orange)
                 }
@@ -452,8 +461,11 @@ struct JITSettings: View {
                 Text("JIT")
             } footer: {
                 Text("Husk needs memory it can write and then execute, which on iOS "
-                   + "only an attached debugger can grant. Without it QEMU cannot "
-                   + "translate a single instruction.")
+                   + "takes an attached debugger. There are two ways to get it: a "
+                   + "debugger that services trap requests, or a MAP_JIT mapping, "
+                   + "which the kernel allows any debugged process. Either one is "
+                   + "enough — which is available depends on the device and the iOS "
+                   + "version, so Husk tests both rather than assuming.")
             }
 
             Section {

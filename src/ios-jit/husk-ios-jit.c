@@ -19,6 +19,7 @@
 #include <mach/vm_map.h>        /* vm_remap/vm_protect: mach_vm.h is absent from the iOS SDK */
 #include <os/log.h>
 #include <os/proc.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -30,6 +31,14 @@
 #include <libkern/OSCacheControl.h>
 #include <sys/ucontext.h>   /* not <ucontext.h>: that one #errors without _XOPEN_SOURCE */
 #include <unistd.h>
+
+/* TCG's own W^X toggle. pthread_jit_write_protect_np() is marked unavailable in
+ * the iOS SDK -- the symbol exists but the header refuses it -- so QEMU pokes
+ * the APRR registers through the comm page instead. This file is compiled
+ * inside QEMU's tcg/ directory, so the same header is the right one to use, and
+ * using anything else would risk testing a different mechanism from the one the
+ * emulator will actually run on. */
+#include "tcg/tcg-apple-jit.h"
 
 /* Maximum verbosity by default: this path is nearly impossible to debug after the
  * fact on device, and every line here is printed at most a handful of times per
@@ -429,6 +438,138 @@ bool husk_ios_jit_is_available(void)
     return atomic_load(&g_jit_available);
 }
 
+/* ------------------------------------------------------------- MAP_JIT probe */
+/*
+ * Ask the kernel what it actually granted, before branching into it.
+ *
+ * The signal guard below catches a fault, but not every refusal arrives as a
+ * signal: a device that enforces TXM can answer an attempt to execute
+ * unblessed memory by killing the process outright, and no handler survives
+ * that. So the dangerous instruction is only reached once the kernel has said
+ * the page carries execute permission -- on a device where it does not, this
+ * returns false without ever branching there.
+ */
+static bool husk_page_is_executable(void *p)
+{
+    vm_address_t addr = (vm_address_t)p;
+    vm_size_t size = 0;
+    natural_t depth = 0;
+    vm_region_submap_info_data_64_t info;
+    mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
+
+    kern_return_t kr = vm_region_recurse_64(mach_task_self(), &addr, &size, &depth,
+                                            (vm_region_recurse_info_t)&info, &count);
+    if (kr != KERN_SUCCESS) {
+        HUSK_LOG("MAP_JIT probe: vm_region_recurse_64 failed: %s", mach_error_string(kr));
+        return false;
+    }
+    HUSK_LOG("MAP_JIT probe: kernel granted protection 0x%x (execute %s)",
+             (unsigned)info.protection,
+             (info.protection & VM_PROT_EXECUTE) ? "yes" : "NO");
+    return (info.protection & VM_PROT_EXECUTE) != 0;
+}
+
+static sigjmp_buf g_probe_jump;
+static volatile sig_atomic_t g_probe_running;
+
+static void husk_probe_handler(int sig)
+{
+    if (g_probe_running) {
+        siglongjmp(g_probe_jump, 1);
+    }
+    /* Not ours -- a fault on another thread inside the probe's brief window.
+     * Let it crash the way it would have without us. */
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+/*
+ * Can this process execute memory it wrote itself?
+ *
+ * There are two ways to get executable memory on iOS, and Husk only ever tried
+ * one of them properly. The dual mapping above needs a debugger that services
+ * brk traps; the other route is a plain MAP_JIT mapping, which the kernel
+ * honours for any process with CS_DEBUGGED set and which is what QEMU falls
+ * back to on its own. Which of the two is available depends on the device, the
+ * iOS version and which tool enabled JIT, in ways that are not worth
+ * predicting -- so this stops predicting and asks.
+ *
+ * The execution itself is guarded twice: the kernel is asked whether the page
+ * carries execute permission before anything branches into it, and a signal
+ * guard catches the fault if it turns out not to. A probe meant to answer a
+ * question must not become the thing that killed the app.
+ */
+bool husk_ios_jit_mapjit_works(void)
+{
+    static atomic_int cached;   /* 0 unknown, 1 yes, -1 no */
+    int known = atomic_load(&cached);
+    if (known != 0) {
+        return known > 0;
+    }
+
+    /* movz w0, #0x1234  ;  ret */
+    static const uint32_t kCode[2] = { 0x52824680u, 0xD65F03C0u };
+    const size_t len = 16 * 1024;   /* one iOS page */
+    bool ok = false;
+
+    void *p = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC,
+                   MAP_PRIVATE | MAP_ANON | MAP_JIT, -1, 0);
+    if (p == MAP_FAILED) {
+        HUSK_LOG("MAP_JIT probe: mmap refused (%s) -- no executable memory this "
+                 "way; a trap servicer is the only route on this device",
+                 strerror(errno));
+        atomic_store(&cached, -1);
+        return false;
+    }
+
+    if (!husk_page_is_executable(p)) {
+        HUSK_LOG("MAP_JIT probe: the mapping came back without execute permission "
+                 "-- a trap servicer is the only route on this device");
+        munmap(p, len);
+        atomic_store(&cached, -1);
+        return false;
+    }
+
+    struct sigaction sa, prev_bus, prev_segv, prev_ill;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = husk_probe_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGBUS, &sa, &prev_bus);
+    sigaction(SIGSEGV, &sa, &prev_segv);
+    sigaction(SIGILL, &sa, &prev_ill);
+
+    g_probe_running = 1;
+    if (sigsetjmp(g_probe_jump, 1) == 0) {
+        // On a device with APRR the page is write-protected until asked
+        // otherwise; on one without, it is plain RWX and these are no-ops.
+        // The guard covers the write as well as the call, so a page that
+        // refuses either fails the probe rather than the process.
+        if (jit_write_protect_supported()) { jit_write_protect(0); }
+        memcpy(p, kCode, sizeof(kCode));
+        if (jit_write_protect_supported()) { jit_write_protect(1); }
+        sys_icache_invalidate(p, sizeof(kCode));
+
+        int (*fn)(void) = (int (*)(void))p;
+        ok = (fn() == 0x1234);
+    } else {
+        HUSK_LOG("MAP_JIT probe: faulted while executing the page -- the mapping "
+                 "was granted but is not executable");
+    }
+    g_probe_running = 0;
+
+    sigaction(SIGBUS, &prev_bus, NULL);
+    sigaction(SIGSEGV, &prev_segv, NULL);
+    sigaction(SIGILL, &prev_ill, NULL);
+    munmap(p, len);
+
+    HUSK_LOG("MAP_JIT probe: %s", ok
+             ? "PASS -- this process can execute memory it wrote, so QEMU can "
+               "run on MAP_JIT even without a trap servicer"
+             : "FAIL -- MAP_JIT memory is not executable here");
+    atomic_store(&cached, ok ? 1 : -1);
+    return ok;
+}
+
 #else /* !iOS: keep the symbols so host builds and tests link */
 
 void husk_ios_jit_install_trap_handler(void) {}
@@ -446,6 +587,7 @@ bool husk_ios_jit_prewarm(size_t bytes) { (void)bytes; return false; }
 void husk_ios_jit_release(HuskDualMapping *m) { (void)m; }
 void husk_ios_jit_detach(void) {}
 bool husk_ios_jit_is_available(void) { return false; }
+bool husk_ios_jit_mapjit_works(void) { return false; }
 void husk_ios_jit_log_footprint(const char *tag) { (void)tag; }
 size_t husk_ios_available_memory(void) { return 0; }
 

@@ -616,6 +616,7 @@ wanted = [
     "husk_ios_jit_prewarm",
     "husk_ios_jit_install_trap_handler",
     "husk_ios_jit_is_available",
+    "husk_ios_jit_mapjit_works",
     "husk_ios_jit_detach",
     "husk_ios_jit_log_footprint",
     "husk_ios_available_memory",

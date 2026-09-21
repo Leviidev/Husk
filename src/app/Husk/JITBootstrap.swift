@@ -73,11 +73,19 @@ enum JITBootstrap {
                          + "before the guest download -- StikDebug does not stay attached")
         let ok = husk_ios_jit_prewarm(jitBytes)
         if ok { prewarmed = true; lastFailure = nil }
-        else {
+        else if mapJITWorks {
+            // Not a failure worth reporting: this is the ordinary shape of an
+            // iOS that does not need a trap servicer. QEMU maps its own buffer
+            // with MAP_JIT a moment later and runs exactly as well.
+            lastFailure = nil
+            HuskLog.log("jit", "no trap servicer, but MAP_JIT executes here -- "
+                             + "QEMU will map its own buffer")
+        } else {
             lastFailure = "The debugger is attached but is not answering trap "
-                        + "requests, so no executable memory could be claimed. "
-                        + "This is what happens when Husk runs inside another "
-                        + "container app rather than sideloaded on its own."
+                        + "requests, and this device will not execute a MAP_JIT "
+                        + "mapping either, so no executable memory could be "
+                        + "claimed. This is what happens when Husk runs inside "
+                        + "another container app rather than sideloaded on its own."
         }
         HuskLog.log("jit", ok ? "JIT region secured; it will be handed to QEMU later"
                               : "JIT prewarm FAILED -- StikDebug is not servicing traps")
@@ -94,16 +102,17 @@ enum JITBootstrap {
     /// kind.
     nonisolated(unsafe) static var lastFailure: String?
 
-    /// Whether this device needs the trap-servicing route specifically.
+    /// Whether a plain MAP_JIT mapping executes in this process.
     ///
-    /// With TXM there is no alternative: only a debugger servicing brk can hand
-    /// back executable memory, so a failed prewarm is the end of it. Without
-    /// TXM, CS_DEBUGGED alone is enough for a MAP_JIT mapping, which QEMU will
-    /// now reach for when the dual mapping is unavailable -- so a failed prewarm
-    /// there is a reason to continue, not to stop.
-    static var needsTrapServicer: Bool {
-        HuskLog.expectsTXM(model: HuskLog.deviceModel)
-    }
+    /// The second of the two routes to executable memory, and the one QEMU
+    /// falls back to by itself when no dual mapping is handed to it. Asked of
+    /// the kernel rather than worked out from the device model and the iOS
+    /// version, which is how this went wrong: the old guess said every recent
+    /// phone on iOS 26 must have a trap servicer, so when StikDebug attached
+    /// without servicing traps -- which on iOS 26 it has no reason to do,
+    /// because MAP_JIT works there -- Husk concluded there was no executable
+    /// memory and refused to start. There was; nobody had asked.
+    static var mapJITWorks: Bool { husk_ios_jit_mapjit_works() }
 
     /// True only after a JIT region has been allocated AND passed the execute
     /// self-test — which happens inside `qemu_init`. It is therefore always false

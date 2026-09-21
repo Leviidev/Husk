@@ -223,19 +223,24 @@ struct ContentView: View {
         // gigabytes free, which sends everyone looking at memory.
         // Refuse only when there is genuinely nothing left to try.
         //
-        // On a device with TXM the trap-servicing route is the only one, so a
-        // failed prewarm means qemu_init() has nowhere to get executable memory
-        // and starting it is a guaranteed crash. Without TXM, CS_DEBUGGED alone
-        // still buys a MAP_JIT mapping, and QEMU now falls back to it -- so
-        // stopping here would refuse to start a guest that would have run.
+        // Two routes, and the second one is not a consolation prize: with
+        // CS_DEBUGGED set the kernel honours a plain MAP_JIT mapping, which is
+        // what QEMU falls back to on its own and what every other iOS emulator
+        // runs on. Stopping here is only right when neither route exists.
+        //
+        // Which route is available is now measured. It used to be predicted
+        // from the device model and the iOS version, and the prediction was
+        // wrong for iOS 26: StikDebug attaches there without servicing traps,
+        // because on that OS it does not need to, and Husk read that as "no
+        // executable memory" and refused to start a guest that would have run.
         if !JITBootstrap.prewarm(), !JITBootstrap.isLive {
-            if JITBootstrap.needsTrapServicer {
-                HuskLog.log("jit", "refusing to start QEMU: this device needs a "
-                                 + "trap servicer and none is answering")
+            guard JITBootstrap.mapJITWorks else {
+                HuskLog.log("jit", "refusing to start QEMU: no trap servicer is "
+                                 + "answering and MAP_JIT does not execute here")
                 return
             }
-            HuskLog.log("jit", "no dual mapping, but this device has no TXM -- "
-                             + "letting QEMU try MAP_JIT instead")
+            HuskLog.log("jit", "no dual mapping, but MAP_JIT executes -- letting "
+                             + "QEMU map its own buffer")
         }
         started = true
         QemuRunner.shared.start()

@@ -98,6 +98,24 @@ HUSK_EXPORT void husk_ios_jit_detach(void);
 HUSK_EXPORT bool husk_ios_jit_is_available(void);
 
 /*
+ * Whether this process can execute memory it wrote itself, through a plain
+ * MAP_JIT mapping and TCG's own W^X toggle -- the route every other iOS
+ * emulator uses, and the one QEMU falls back to when the dual mapping is
+ * unavailable.
+ *
+ * Measured, not inferred: it maps a page, writes two instructions into it,
+ * calls them and checks the answer, with a guard around the call so a page that
+ * turns out not to be executable fails this test instead of killing the app.
+ * The result is cached after the first call.
+ *
+ * This exists because the question "does this device need a trap servicer?" was
+ * previously answered from the device model and the iOS version, and that guess
+ * is wrong on at least one real combination -- iOS 26, where StikDebug attaches
+ * but services no traps because MAP_JIT works and it does not need to.
+ */
+HUSK_EXPORT bool husk_ios_jit_mapjit_works(void);
+
+/*
  * Log the process's phys_footprint -- the number jetsam actually kills on.
  * `tag` labels the call site in the log.
  */
