@@ -1,0 +1,245 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Builds an unsigned Husk.ipa -- the same artifact scripts/package_ipa.sh makes
+# on a Mac -- and runs the translation layer's host tests alongside it.
+#
+# From a clean checkout that means building everything under build/ first:
+# QEMU's dependencies, ANGLE (from WebKit), epoxy, virglrenderer, then QEMU with
+# Husk's own sources integrated. That is most of two hours on a hosted runner,
+# so the results are cached in two layers, each keyed on exactly the files that
+# decide it:
+#
+#   deps  everything QEMU links against, ANGLE included
+#   qemu  the QEMU dylib, which also depends on src/ios-jit and every patch
+#
+# A change to the app or to src/translation-layer reuses both and needs only
+# the Xcode build. "rebuild" on a manual run ignores both caches.
+#
+# The IPA is unsigned on purpose, as package_ipa.sh explains: AltStore,
+# SideStore and TrollStore re-sign at install. It is attached to the run as an
+# artifact.
+name: Build IPA
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      xcode:
+        description: "Xcode to build with, e.g. 26.2 (default: the newest on the runner)"
+        required: false
+        default: ""
+      runner:
+        description: "macOS runner image"
+        required: false
+        default: "macos-26"
+      rebuild:
+        description: "Ignore the caches and build QEMU and its dependencies from scratch"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  translation-layer:
+    name: Translation layer tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchains
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld llvm zlib1g-dev \
+              gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user
+
+      - name: Page planner, scanner, and device checks under qemu-user
+        run: sh tests/translation-layer/run.sh
+
+  ipa:
+    name: Husk.ipa
+    runs-on: ${{ inputs.runner || 'macos-26' }}
+    timeout-minutes: 330
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      DD: ${{ github.workspace }}/build/DerivedData
+      DEPS_FILES: >-
+        scripts/sources.sh scripts/build_ios.sh scripts/build_angle_ios.sh
+        scripts/build_gpu_ios.sh patches/pixman-0.38.0.patch
+        patches/libslirp-v4.9.1.patch patches/husk-epoxy-ios-egl-path.patch
+    steps:
+      - uses: actions/checkout@v4
+
+      # The newest Xcode unless told otherwise: Husk is developed against the
+      # newest SDK, and WebKit's ANGLE tree follows it closely.
+      - name: Select Xcode
+        id: xcode
+        env:
+          WANT: ${{ inputs.xcode }}
+        run: |
+          set -euo pipefail
+          if [ -n "${WANT:-}" ]; then
+            APP="/Applications/Xcode_${WANT}.app"
+          else
+            APP="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -1)"
+          fi
+          sudo xcode-select -s "$APP/Contents/Developer"
+          xcodebuild -version
+          echo "iOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "build=$(xcodebuild -version | awk '/Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
+
+      # Since Xcode 26 the Metal compiler is a separate download, and both the
+      # app's Shaders.metal and ANGLE's built-in shaders need it.
+      - name: Metal toolchain
+        run: |
+          xcodebuild -downloadComponent MetalToolchain || echo "no separate Metal toolchain on this Xcode"
+          xcrun --sdk iphoneos -f metal
+
+      - name: Host tools
+        run: |
+          brew install meson ninja
+          command -v pkg-config >/dev/null || brew install pkgconf
+          meson --version; ninja --version; pkg-config --version
+
+      - name: Cache keys
+        id: keys
+        run: |
+          set -euo pipefail
+          # shasum over the files themselves, in a fixed order, so the key
+          # changes exactly when one of them does.
+          read -ra files <<< "$DEPS_FILES"
+          deps=$(cat "${files[@]}" | shasum -a 256 | cut -c1-16)
+          qemu=$( (cat "${files[@]}" scripts/integrate_husk.sh; \
+                   find patches src/ios-jit -type f | LC_ALL=C sort | xargs cat) \
+                 | shasum -a 256 | cut -c1-16)
+          echo "deps=deps-v1-${{ steps.xcode.outputs.build }}-$deps" >> "$GITHUB_OUTPUT"
+          echo "qemu=qemu-v1-${{ steps.xcode.outputs.build }}-$qemu" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dependencies
+        id: deps
+        if: ${{ !inputs.rebuild }}
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.keys.outputs.deps }}
+          path: |
+            build/ios-arm64/sysroot
+            build/stamps
+
+      - name: Restore QEMU
+        id: qemu
+        if: ${{ !inputs.rebuild }}
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.keys.outputs.qemu }}
+          path: |
+            build/ios-arm64/lib
+            third_party/build/qemu-10.0.12-utm/pc-bios
+
+      # fetch_sources.sh also fetches libiconv and gettext, which no stage
+      # builds, so its exit status is not the test: the trees the build needs are.
+      - name: Fetch sources
+        if: steps.deps.outputs.cache-hit != 'true' || steps.qemu.outputs.cache-hit != 'true'
+        run: |
+          scripts/fetch_sources.sh || true
+          for d in libffi-3.5.0 glib-2.83.0 pixman-0.38.0 libslirp-v4.9.1 \
+                   qemu-10.0.12-utm libucontext; do
+            [ -d "third_party/build/$d" ] || { echo "::error::missing source tree $d"; exit 1; }
+          done
+
+      - name: Build dependencies (libffi, glib, pixman, libucontext, libslirp)
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: scripts/build_ios.sh libffi glib pixman libucontext libslirp
+
+      - name: Build ANGLE
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: scripts/build_angle_ios.sh
+
+      # build_gpu_ios.sh reads cross-ios-darwin.meson, which nothing in the
+      # repository generates. build_ios.sh writes the same thing -- host system
+      # darwin, subsystem ios -- as cross-darwin.meson.
+      - name: Build epoxy and virglrenderer
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: |
+          [ -f build/ios-arm64/cross-ios-darwin.meson ] \
+            || cp build/ios-arm64/cross-darwin.meson build/ios-arm64/cross-ios-darwin.meson
+          scripts/build_gpu_ios.sh
+
+      - name: Save dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.keys.outputs.deps }}
+          path: |
+            build/ios-arm64/sysroot
+            build/stamps
+
+      # UTM's patch first, then Husk's integration: the order a developer's
+      # tree gets them in (build_ios.sh patches on its first run), and the
+      # order integrate_husk.sh's in-place edits were written against.
+      - name: Build QEMU
+        if: steps.qemu.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          Q=third_party/build/qemu-10.0.12-utm
+          if [ ! -f "$Q/.husk-patched" ]; then
+            (cd "$Q" && patch -p1 -N -r - < "$GITHUB_WORKSPACE/patches/qemu-10.0.12-utm.patch") \
+              || echo "::warning::qemu-10.0.12-utm.patch did not apply cleanly"
+            touch "$Q/.husk-patched"
+          fi
+          scripts/integrate_husk.sh
+          rm -f build/stamps/qemu
+          scripts/build_ios.sh qemu
+          ls -lh build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib
+
+      - name: Save QEMU
+        if: steps.qemu.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.keys.outputs.qemu }}
+          path: |
+            build/ios-arm64/lib
+            third_party/build/qemu-10.0.12-utm/pc-bios
+
+      - name: Guest kernel
+        uses: actions/cache@v4
+        with:
+          key: guest-phase0-${{ hashFiles('scripts/fetch_phase0_guest.sh') }}
+          path: guests/phase0
+
+      - name: Fetch guest kernel
+        run: scripts/fetch_phase0_guest.sh
+
+      # The checked-in project, not a regenerated one: it lists every source
+      # (xcodegen is deliberately not installed, so package_ipa.sh uses it
+      # as-is), and it is what the commit being built actually says.
+      - name: Build and package
+        run: |
+          mkdir -p "$DD"
+          scripts/package_ipa.sh "$RUNNER_TEMP/Husk.ipa"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Husk-${{ github.run_number }}-${{ github.sha }}
+          path: ${{ runner.temp }}/Husk.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_number }}
+          if-no-files-found: ignore
+          path: |
+            build/logs
+            build/DerivedData/build.log
+            third_party/build/qemu-10.0.12-utm/_husk_build/meson-logs
+            third_party/gpu/*/_build/meson-logs

@@ -6,6 +6,14 @@ Android app launcher for iOS.
 
 Drop in an APK, tap it, and the Android app opens full-screen.
 
+## Builds
+
+Every push builds an unsigned `Husk.ipa` in GitHub Actions
+([build-ipa.yml](.github/workflows/build-ipa.yml)). It is attached to the run
+as an artifact, ready for AltStore, SideStore or TrollStore to sign and
+install. The first run builds QEMU and its dependencies from scratch, which
+takes a couple of hours; after that they are cached.
+
 ## Licence
 
 GPL-2.0-or-later. Husk links QEMU, which is GPLv2, so the shipped binary is a
