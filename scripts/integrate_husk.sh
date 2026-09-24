@@ -19,8 +19,11 @@ if grep -q "alloc_code_gen_buffer_splitwx_husk_ios" "$Q/tcg/region.c"; then
     echo "[skip] tcg/region.c already patched"
 else
     echo "[patch] tcg/region.c <- husk-qemu-ios-jit.patch"
-    patch -p0 -d / --silent < "$HUSK_ROOT/patches/husk-qemu-ios-jit.patch" 2>/dev/null \
-      || patch -p1 -d "$Q" --silent < "$HUSK_ROOT/patches/husk-qemu-ios-jit.patch" 2>/dev/null \
+    # The file is named rather than taken from the patch's headers, which
+    # carry paths from the machine the patch was made on (/tmp/region.c.orig).
+    # No -p level finds those anywhere else, so a clean tree could never be
+    # patched -- only a tree that already had been, which this step skips.
+    patch --silent "$Q/tcg/region.c" < "$HUSK_ROOT/patches/husk-qemu-ios-jit.patch" \
       || { echo "  FAILED to apply region.c patch" >&2; exit 1; }
 fi
 
