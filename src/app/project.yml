@@ -33,6 +33,9 @@ targets:
       # so the script would be present but unfindable at runtime.
       - path: Husk/Resources
         buildPhase: resources
+      # The experimental translation layer's C side. Compiled into the app,
+      # not into the QEMU library -- see docs/04-translation-layer.md.
+      - path: ../translation-layer
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.husk.app
@@ -62,6 +65,10 @@ targets:
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/../../build/ios-arm64/lib"
+        # zlib, for the translation layer's APK reader. Part of the iOS SDK.
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-lz"
     dependencies:
       # Built by scripts/build_ios.sh. Embedded and signed into the bundle.
       - framework: ../../build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib

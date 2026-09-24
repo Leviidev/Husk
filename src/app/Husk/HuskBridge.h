@@ -101,4 +101,9 @@ void husk_snapshot_save(void (*cb)(bool ok, const char *what));
    as an allocation that has already happened. */
 void husk_balloon_set_bytes(int64_t target_bytes);
 
+/* --- The experimental translation layer --- */
+/* Compiled into the app itself, not into the QEMU library: see
+   docs/04-translation-layer.md for why the two are kept apart. */
+#include "../../translation-layer/husk-tl.h"
+
 #endif /* HUSK_BRIDGE_H */

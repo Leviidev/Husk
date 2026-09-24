@@ -44,6 +44,12 @@
 		EC8B11F723C188F32B5D9DCA /* libqemu-aarch64-softmmu.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EDD9BF5E120ED2453CB023FA /* icon-default.png in Resources */ = {isa = PBXBuildFile; fileRef = 555112D0E3895EBE37A68FEB /* icon-default.png */; };
 		F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */; };
+		EFC0A2F1B11D9619ADB7E315 /* TranslationLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC83E42F92A0698E04547E6F /* TranslationLayer.swift */; };
+		452C83A84D30C5DABAEB4D05 /* husk-tl-elf.c in Sources */ = {isa = PBXBuildFile; fileRef = 515F87051B30843363E5B776 /* husk-tl-elf.c */; };
+		676CF2348B18945B9DDAB35E /* husk-tl-json.c in Sources */ = {isa = PBXBuildFile; fileRef = 7663B5BEEE1225D3E94DE521 /* husk-tl-json.c */; };
+		56E7B8AA8BD148381709DC2E /* husk-tl-probe.c in Sources */ = {isa = PBXBuildFile; fileRef = 453981FCACC782FADCC0B637 /* husk-tl-probe.c */; };
+		D92EF42782A07D615D4551FB /* husk-tl-scan.c in Sources */ = {isa = PBXBuildFile; fileRef = 2B0F72BE6882E70F21DC8F27 /* husk-tl-scan.c */; };
+		65595F8F0BB44806C4D70B41 /* husk-tl-zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 4F90E50E9FEA77E7C6B4339E /* husk-tl-zip.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -102,6 +108,14 @@
 		EE533073FECAD5C54B677935 /* icon-tinteddark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-tinteddark.png"; sourceTree = "<group>"; };
 		F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskGLView.swift; sourceTree = "<group>"; };
 		FD559A37CF59C3290F29FA43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		CC83E42F92A0698E04547E6F /* TranslationLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationLayer.swift; sourceTree = "<group>"; };
+		515F87051B30843363E5B776 /* husk-tl-elf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-elf.c"; sourceTree = "<group>"; };
+		7663B5BEEE1225D3E94DE521 /* husk-tl-json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-json.c"; sourceTree = "<group>"; };
+		453981FCACC782FADCC0B637 /* husk-tl-probe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-probe.c"; sourceTree = "<group>"; };
+		2B0F72BE6882E70F21DC8F27 /* husk-tl-scan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-scan.c"; sourceTree = "<group>"; };
+		4F90E50E9FEA77E7C6B4339E /* husk-tl-zip.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-zip.c"; sourceTree = "<group>"; };
+		BED9C336DA2BD83F761FCE9E /* husk-tl-internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-internal.h"; sourceTree = "<group>"; };
+		32D48819C69BB867785A5D41 /* husk-tl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -149,6 +163,7 @@
 				AE14E4B61CC873501D7EAE6E /* SettingsTab.swift */,
 				A523DB1FEA5BC026771035C7 /* Shaders.metal */,
 				5EB0AF32D5E40E753DDD85DA /* Theme.swift */,
+				CC83E42F92A0698E04547E6F /* TranslationLayer.swift */,
 				FA84FD81F71FF2ACDEB879A5 /* Resources */,
 			);
 			path = Husk;
@@ -158,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				0F8D2787A26076A289B9B8EA /* Husk */,
+				0DE7482F471DC03C126FA704 /* translation-layer */,
 				6C404F9516669F7DB5047FBE /* Frameworks */,
 				72415DD8C95D3F9A6FA194B4 /* Products */,
 			);
@@ -192,6 +208,21 @@
 				336AB2FDC58A5C08D55FF8F9 /* icon-tintedlight.png */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		0DE7482F471DC03C126FA704 /* translation-layer */ = {
+			isa = PBXGroup;
+			children = (
+				515F87051B30843363E5B776 /* husk-tl-elf.c */,
+				BED9C336DA2BD83F761FCE9E /* husk-tl-internal.h */,
+				7663B5BEEE1225D3E94DE521 /* husk-tl-json.c */,
+				453981FCACC782FADCC0B637 /* husk-tl-probe.c */,
+				2B0F72BE6882E70F21DC8F27 /* husk-tl-scan.c */,
+				4F90E50E9FEA77E7C6B4339E /* husk-tl-zip.c */,
+				32D48819C69BB867785A5D41 /* husk-tl.h */,
+			);
+			name = "translation-layer";
+			path = "../translation-layer";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -323,6 +354,12 @@
 				211C2D134F11C23EE4485A2E /* SettingsTab.swift in Sources */,
 				1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */,
 				3743DAF4A88A08B2946A4066 /* Theme.swift in Sources */,
+				EFC0A2F1B11D9619ADB7E315 /* TranslationLayer.swift in Sources */,
+				452C83A84D30C5DABAEB4D05 /* husk-tl-elf.c in Sources */,
+				676CF2348B18945B9DDAB35E /* husk-tl-json.c in Sources */,
+				56E7B8AA8BD148381709DC2E /* husk-tl-probe.c in Sources */,
+				D92EF42782A07D615D4551FB /* husk-tl-scan.c in Sources */,
+				65595F8F0BB44806C4D70B41 /* husk-tl-zip.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,6 +388,10 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../../build/ios-arm64/lib",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.husk.app;
 				SDKROOT = iphoneos;
@@ -381,6 +422,10 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../../build/ios-arm64/lib",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.husk.app;
 				SDKROOT = iphoneos;

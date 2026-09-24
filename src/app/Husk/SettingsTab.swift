@@ -46,6 +46,12 @@ struct SettingsTab: View {
                                  "Saved machine", "Snapshots and automatic saving")
                         }
 
+                        group("Experimental") {
+                            link(TranslationLayerSettings(), "testtube.2",
+                                 "Android Translation Layer",
+                                 "Apps without booting Android")
+                        }
+
                         group("About") {
                             NavigationLink { AboutSettings() } label: {
                                 HStack(spacing: 14) {

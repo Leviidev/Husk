@@ -7,6 +7,9 @@ rendered surface full-screen with no Android chrome visible.
 This document records what has been **verified against source or built**, and
 marks clearly what has not yet run on a device.
 
+An experimental second runtime, which runs an app's own code without booting
+Android at all, is planned in [04-translation-layer.md](04-translation-layer.md).
+
 ## The stack
 
 ```
