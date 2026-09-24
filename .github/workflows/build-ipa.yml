@@ -102,10 +102,15 @@ jobs:
           xcodebuild -downloadComponent MetalToolchain || echo "no separate Metal toolchain on this Xcode"
           xcrun --sdk iphoneos -f metal
 
+      # PyYAML for the python3 the cross files name (build_ios.sh writes
+      # `command -v python3` into them): virglrenderer's gallium code generator
+      # imports yaml, and a fresh runner does not have it.
       - name: Host tools
         run: |
           brew install meson ninja
           command -v pkg-config >/dev/null || brew install pkgconf
+          python3 -m pip install --quiet --break-system-packages pyyaml
+          python3 -c 'import yaml; print("PyYAML", yaml.__version__, "for", __import__("sys").executable)'
           meson --version; ninja --version; pkg-config --version
 
       - name: Cache keys
