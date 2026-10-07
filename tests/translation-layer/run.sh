@@ -37,14 +37,21 @@ if ! command -v aarch64-linux-gnu-gcc >/dev/null || ! command -v qemu-aarch64 >/
 fi
 # The checks do not touch ZIP files, so the scanner's zlib is stubbed out
 # rather than cross-built.
-cat > "$OUT/noscan.c" <<'EOF'
+cat > "$OUT/nostubs.c" <<'EOF'
 #include <stddef.h>
+#include "husk-tl-internal.h"
 char *husk_tl_scan(const char *const *p, int n) { (void)p; (void)n; return NULL; }
 void *husk_tl_read_entry(const char *a, const char *b, size_t l, size_t *o)
 { (void)a; (void)b; (void)l; *o = 0; return NULL; }
+/* The dual-map check asks whether a debugger granted a mapping. Its
+   implementation is husk-tl-load.c, the Apple-side loader -- it includes
+   mach/mach_time.h unguarded -- and is therefore not linked here. NULL is also
+   what the real one answers on a machine with no StikDebug, so the check skips
+   for the honest reason rather than a faked one. */
+tl_dual_mapping *tl_find_stikdebug_prewarmed(void) { return NULL; }
 EOF
 aarch64-linux-gnu-gcc $CFLAGS -static -o "$OUT/checks_arm64" "$HERE/scan_cli.c" \
-    "$OUT/noscan.c" "$SRC"/husk-tl-json.c "$SRC"/husk-tl-probe.c \
+    "$OUT/nostubs.c" "$SRC"/husk-tl-json.c "$SRC"/husk-tl-probe.c \
     -Wl,--defsym=husk_tl_free=free -lpthread
 python3 - "$OUT/checks_arm64" <<'EOF'
 import json, subprocess, sys
