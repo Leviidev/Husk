@@ -108,10 +108,15 @@ jobs:
       - name: Host tools
         run: |
           brew install meson ninja
+          # qemu-img, for project.yml's pre-build step: it creates the firmware
+          # and userdata seeds the bundle ships, and without it the Xcode build
+          # stops with "qemu-img is required to generate the firmware and
+          # userdata seeds".
+          command -v qemu-img >/dev/null || brew install qemu
           command -v pkg-config >/dev/null || brew install pkgconf
           python3 -m pip install --quiet --break-system-packages pyyaml
           python3 -c 'import yaml; print("PyYAML", yaml.__version__, "for", __import__("sys").executable)'
-          meson --version; ninja --version; pkg-config --version
+          meson --version; ninja --version; pkg-config --version; qemu-img --version | head -1
 
       - name: Cache keys
         id: keys
@@ -121,10 +126,12 @@ jobs:
           # changes exactly when one of them does.
           read -ra files <<< "$DEPS_FILES"
           deps=$(cat "${files[@]}" | shasum -a 256 | cut -c1-16)
-          # MoltenVK stages into build/ios-arm64/lib, which is the layer the qemu
-          # key covers, so its script belongs in this hash rather than in
-          # DEPS_FILES -- a new MoltenVK version has to rebuild that layer.
-          qemu=$( (cat "${files[@]}" scripts/integrate_husk.sh scripts/build_moltenvk_ios.sh; \
+          # MoltenVK and libhusk_rppairing stage into build/ios-arm64/lib, which
+          # is the layer the qemu key covers, so their scripts belong in this
+          # hash rather than in DEPS_FILES -- a new MoltenVK version, or a new
+          # Cargo.lock, has to rebuild that layer.
+          qemu=$( (cat "${files[@]}" scripts/integrate_husk.sh scripts/build_moltenvk_ios.sh \
+                          scripts/build_rppairing_ios.sh src/rppairing-ios/Cargo.lock; \
                    find patches src/ios-jit -type f | LC_ALL=C sort | xargs cat) \
                  | shasum -a 256 | cut -c1-16)
           echo "deps=deps-v1-${{ steps.xcode.outputs.build }}-$deps" >> "$GITHUB_OUTPUT"
@@ -218,6 +225,19 @@ jobs:
       - name: Build MoltenVK
         if: steps.qemu.outputs.cache-hit != 'true'
         run: scripts/build_moltenvk_ios.sh
+
+      # The app target also links -lhusk_rppairing (Built-in StikJIT's on-device
+      # pairing, src/rppairing-ios), which stages into the same
+      # build/ios-arm64/lib, so it is built here and cached with the two above.
+      # The runner has rustup already; only the iOS target has to be added.
+      - name: Build libhusk_rppairing
+        if: steps.qemu.outputs.cache-hit != 'true'
+        run: |
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
+          command -v rustup >/dev/null || brew install rustup
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
+          rustup target add aarch64-apple-ios
+          scripts/build_rppairing_ios.sh
 
       - name: Save QEMU
         if: steps.qemu.outputs.cache-hit != 'true'
