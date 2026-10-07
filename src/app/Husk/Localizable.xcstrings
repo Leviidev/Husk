@@ -1,0 +1,5627 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ Built-in StikJIT needs iOS 26, LocalDevVPN, and a pairing file, which Husk can make itself on iOS 27.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@内置 StikJIT 需要 iOS 26、LocalDevVPN 和配对文件；在 iOS 27 上 Husk 可以自己生成配对文件。"
+          }
+        }
+      }
+    },
+    "%@ Orientation and resolution apply the next time the game starts, and a game already running in this session needs Husk closed and opened again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@方向和分辨率会在游戏下次启动时生效；如果游戏已在本次会话中运行，需要先完全关闭 Husk 再打开。"
+          }
+        }
+      }
+    },
+    "%@ is compressed inside its bundle, which Husk cannot unpack yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 在它的捆绑包内是压缩的，Husk 目前无法解压。"
+          }
+        }
+      }
+    },
+    "%@ is gone from Android.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已从 Android 中移除。"
+          }
+        }
+      }
+    },
+    "%@ is ready to launch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已可以启动。"
+          }
+        }
+      }
+    },
+    "%@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        }
+      }
+    },
+    "%@ was started in this session, and a game cannot be unloaded once it has started. Close Husk completely and open it again to run %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已在本次会话中启动过，而游戏一旦启动就无法卸载。请完全关闭 Husk 再打开，即可运行 %@。"
+          }
+        }
+      }
+    },
+    "%@, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，%@"
+          }
+        }
+      }
+    },
+    "%@. Open the Android screen and check it is running, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@。请打开 Android 屏幕确认它仍在运行，然后重试。"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个应用"
+          }
+        }
+      }
+    },
+    "%lld controllers": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个控制器"
+          }
+        }
+      }
+    },
+    "%lld files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个文件"
+          }
+        }
+      }
+    },
+    "%lld files sent": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发送 %lld 个文件"
+          }
+        }
+      }
+    },
+    "%lld min · first boot takes 5–15 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟 · 首次启动需要 5–15 分钟"
+          }
+        }
+      }
+    },
+    "%lld of them use tricks the older loader could not handle; the native runtime handles those too, except for optional anti-tamper code, which it leaves out.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中 %lld 个使用了旧加载器无法处理的技巧；原生运行时也能处理，只是会略过可选的反篡改代码。"
+          }
+        }
+      }
+    },
+    "%lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%%"
+          }
+        }
+      }
+    },
+    "%lld%%  ·  %@  ·  %@ elapsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%%  ·  %@  ·  已用 %@"
+          }
+        }
+      }
+    },
+    "%llu frame(s) drawn · native runtime": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已绘制 %llu 帧 · 原生运行时"
+          }
+        }
+      }
+    },
+    "1 file": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 个文件"
+          }
+        }
+      }
+    },
+    "1 pixel per point. Fastest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每点 1 像素。最快。"
+          }
+        }
+      }
+    },
+    "1.5 pixels per point.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每点 1.5 像素。"
+          }
+        }
+      }
+    },
+    "1280": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1280"
+          }
+        }
+      }
+    },
+    "2 pixels per point. The default.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每点 2 像素。默认值。"
+          }
+        }
+      }
+    },
+    "720": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "720"
+          }
+        }
+      }
+    },
+    "A %@ game. It runs through Husk's native runtime, which loads its %lld arm64 libraries itself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一个 %@ 游戏。它通过 Husk 的原生运行时运行，由运行时自行加载它的 %lld 个 arm64 库。"
+          }
+        }
+      }
+    },
+    "A change takes effect the next time Husk opens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改将在下次打开 Husk 时生效。"
+          }
+        }
+      }
+    },
+    "A custom resolution sets the shape itself, so this does nothing while it is on. Type a wide size for landscape.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义分辨率本身就已决定屏幕形状，因此开启它时这一项不起作用。横屏请填写较宽的尺寸。"
+          }
+        }
+      }
+    },
+    "A new Android image is available": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有新的 Android 系统镜像可用"
+          }
+        }
+      }
+    },
+    "A new pre-booted snapshot is available": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有新的预启动快照可用"
+          }
+        }
+      }
+    },
+    "APK installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APK 已安装"
+          }
+        }
+      }
+    },
+    "APK or bundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APK 或捆绑包"
+          }
+        }
+      }
+    },
+    "APKs install from the Library's + button or from the Files tab. Split sets — a base APK plus its config pieces — must be picked together; installing the base alone fails on missing native libraries.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APK 可以从应用库的 + 按钮或「文件」标签页安装。分包 APK——基础 APK 加上它的配置分片——必须一起选择；只安装基础 APK 会因为缺少原生库而失败。"
+          }
+        }
+      }
+    },
+    "ATTEMPT LOG": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尝试日志"
+          }
+        }
+      }
+    },
+    "About": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关于"
+          }
+        }
+      }
+    },
+    "Accent Colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强调色"
+          }
+        }
+      }
+    },
+    "Active Repositories": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已启用的仓库"
+          }
+        }
+      }
+    },
+    "Add": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "Add APK": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加 APK"
+          }
+        }
+      }
+    },
+    "Add App": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加应用"
+          }
+        }
+      }
+    },
+    "Add Source": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加源"
+          }
+        }
+      }
+    },
+    "Add an APK and it will be installed into the Android runtime, then appear here with its own icon.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一个 APK，它会被安装到 Android 运行环境中，然后带着自己的图标出现在这里。"
+          }
+        }
+      }
+    },
+    "Adding %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在添加 %@…"
+          }
+        }
+      }
+    },
+    "Adding %lld APKs…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在添加 %lld 个 APK…"
+          }
+        }
+      }
+    },
+    "Adds a sound device. Android cannot be saved while this is on, so every launch boots from cold.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一个声音设备。开启后无法保存 Android，因此每次启动都是冷启动。"
+          }
+        }
+      }
+    },
+    "Adds a sound device. While it is attached Android cannot be saved — QEMU refuses to snapshot a machine with one — so every launch boots from cold. Turning it on or off costs a cold boot either way.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一个声音设备。只要它处于附加状态，Android 就无法保存——QEMU 拒绝对带有声音设备的机器做快照——所以每次启动都是冷启动。无论开启还是关闭，代价都是一次冷启动。"
+          }
+        }
+      }
+    },
+    "Adds about 2 GB to the first download. It was captured on the software renderer, so it is not used on GPU — which cold-boots once and then saves its own.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次下载会多出约 2 GB。该快照是在软件渲染器上采集的，因此在 GPU 模式下不会使用——GPU 模式会先冷启动一次，然后保存自己的快照。"
+          }
+        }
+      }
+    },
+    "All": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
+          }
+        }
+      }
+    },
+    "Almost worth the wait": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差不多值得等"
+          }
+        }
+      }
+    },
+    "Always": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始终"
+          }
+        }
+      }
+    },
+    "Always this look.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始终保持这一外观。"
+          }
+        }
+      }
+    },
+    "Android Is Not Running": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 未在运行"
+          }
+        }
+      }
+    },
+    "Android and Translation Layer games need JIT, which on iOS only an attached debugger can grant. StikJIT is built into Husk and is the recommended way: it turns JIT on from inside the app, with no computer and no other app. StikDebug and TrollStore work too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 和翻译层游戏都需要 JIT，而在 iOS 上只有附加的调试器才能授予它。StikJIT 已内置于 Husk，也是推荐方式：它无需电脑、无需其他应用，直接在应用内开启 JIT。StikDebug 和 TrollStore 同样可行。"
+          }
+        }
+      }
+    },
+    "Android and Translation Layer games need JIT. StikJIT, built into Husk, turns it on without a computer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 和翻译层游戏需要 JIT。内置于 Husk 的 StikJIT 无需电脑即可开启。"
+          }
+        }
+      }
+    },
+    "Android apps, on your iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 上运行 Android 应用"
+          }
+        }
+      }
+    },
+    "Android apps, on your iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 上运行 Android 应用。"
+          }
+        }
+      }
+    },
+    "Android cannot reshape a screen once it is running, so a landscape game on a portrait screen gets letterboxed into a band and looks tiny. Creating it landscape is the only way it can fill it — portrait apps are letterboxed instead. Costs one cold boot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 一旦运行就无法改变屏幕形状，因此横屏游戏在竖屏上会被压成一条加黑边的窄带，看起来很小。只有开局就建成横屏才能填满屏幕——反过来竖屏应用会被加黑边。代价是一次冷启动。"
+          }
+        }
+      }
+    },
+    "Android draws on the real GPU through Metal — about four times the frame rate. This is the default.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 通过 Metal 在真实 GPU 上绘制——帧率约为四倍。这是默认设置。"
+          }
+        }
+      }
+    },
+    "Android installs it from where it already is — nothing is copied.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 会就地安装它——不会复制任何内容。"
+          }
+        }
+      }
+    },
+    "Android is booting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 正在启动…"
+          }
+        }
+      }
+    },
+    "Android is locked. Open the Android screen, unlock it, and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 已锁定。请打开 Android 屏幕解锁后重试。"
+          }
+        }
+      }
+    },
+    "Android is locked. Unlock it and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 已锁定。请解锁后重试。"
+          }
+        }
+      }
+    },
+    "Android is ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 已就绪"
+          }
+        }
+      }
+    },
+    "Android libraries it needs": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它需要的 Android 库"
+          }
+        }
+      }
+    },
+    "Android reaches the internet through a virtual ethernet card on QEMU's own network. Nothing on your phone's network can see the guest, and the guest cannot see it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 通过 QEMU 自有网络上的虚拟网卡访问互联网。你手机所在的网络看不到客户机，客户机也看不到它。"
+          }
+        }
+      }
+    },
+    "Android will boot from cold once, then save a new one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 会先冷启动一次，然后保存一个新的快照。"
+          }
+        }
+      }
+    },
+    "Android's native code expects things of the processor and of memory that only the phone can answer -- above all, whether a library's code can run with its data writable right beside it. Enable JIT first, or the memory checks are skipped. The results go to the console too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 的原生代码对处理器和内存有特定要求，只有这台手机能给出答案——其中最要紧的是，一个库的代码能否在紧邻其可写数据的情况下运行。请先启用 JIT，否则会跳过内存检查。结果也会写入控制台。"
+          }
+        }
+      }
+    },
+    "Android: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android：%@"
+          }
+        }
+      }
+    },
+    "Another game is already loaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加载另一个游戏"
+          }
+        }
+      }
+    },
+    "App Icon": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用图标"
+          }
+        }
+      }
+    },
+    "App Info": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用信息"
+          }
+        }
+      }
+    },
+    "App by Levi": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作者 Levi"
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外观"
+          }
+        }
+      }
+    },
+    "Apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用"
+          }
+        }
+      }
+    },
+    "Attach the sound device": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "附加声音设备"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动"
+          }
+        }
+      }
+    },
+    "Automatic follows the system appearance — light, dark and tinted. The others pin one look. iOS shows its own confirmation after a change; that alert cannot be turned off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「自动」跟随系统外观——浅色、深色和色调化。其余选项会固定一种外观。更改后 iOS 会显示自己的确认提示；该提示无法关闭。"
+          }
+        }
+      }
+    },
+    "Automatic offers the controller for games that cannot be played without one (Unreal Engine games), when no real controller is connected. Always offers it for any game that understands one. A paired controller is always used.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「自动」会在没有连接实体控制器时，为必须用控制器的游戏（虚幻引擎游戏）提供屏幕控制器；对任何识别控制器的游戏则始终提供。已配对的控制器始终优先生效。"
+          }
+        }
+      }
+    },
+    "Back to Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回 Husk"
+          }
+        }
+      }
+    },
+    "Boots the guest as soon as Husk opens, once JIT is available. Off means you start it yourself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT 可用时，Husk 一打开就启动客户机。关闭则需你手动启动。"
+          }
+        }
+      }
+    },
+    "Boots the guest as soon as Husk opens, when JIT is available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT 可用时，Husk 一打开就启动客户机。"
+          }
+        }
+      }
+    },
+    "Both sides must be between 240 and 2560.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两边都必须介于 240 和 2560 之间。"
+          }
+        }
+      }
+    },
+    "Browse Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览文件"
+          }
+        }
+      }
+    },
+    "Build": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "构建"
+          }
+        }
+      }
+    },
+    "Built-in JIT is available only on a physical device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置 JIT 仅在真机上可用。"
+          }
+        }
+      }
+    },
+    "Built-in JIT is unavailable inside LiveContainer. Use StikDebug instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 LiveContainer 内无法使用内置 JIT，请改用 StikDebug。"
+          }
+        }
+      }
+    },
+    "Built-in JIT is unavailable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置 JIT 不可用。"
+          }
+        }
+      }
+    },
+    "Built-in JIT needs iOS 26 or later. Use StikDebug instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置 JIT 需要 iOS 26 或更高版本，请改用 StikDebug。"
+          }
+        }
+      }
+    },
+    "Built-in StikJIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置 StikJIT"
+          }
+        }
+      }
+    },
+    "Built-in StikJIT needs LocalDevVPN and a pairing file, which Husk can make itself on iOS 27.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置 StikJIT 需要 LocalDevVPN 和配对文件；在 iOS 27 上 Husk 可以自己生成配对文件。"
+          }
+        }
+      }
+    },
+    "CPU": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "Cancel pairing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消配对"
+          }
+        }
+      }
+    },
+    "Cannot load": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载"
+          }
+        }
+      }
+    },
+    "Change JIT Setup": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改 JIT 设置"
+          }
+        }
+      }
+    },
+    "Check setup": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查设置"
+          }
+        }
+      }
+    },
+    "Checking LocalDevVPN and the Developer Disk Image…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查 LocalDevVPN 和开发者磁盘映像…"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查…"
+          }
+        }
+      }
+    },
+    "Choose another file": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择其他文件"
+          }
+        }
+      }
+    },
+    "Choose pairing file": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择配对文件"
+          }
+        }
+      }
+    },
+    "Clear Dark": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透明深色"
+          }
+        }
+      }
+    },
+    "Clear Light": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透明浅色"
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
+    "Connect LocalDevVPN": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 LocalDevVPN"
+          }
+        }
+      }
+    },
+    "Console": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控制台"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续"
+          }
+        }
+      }
+    },
+    "Continue with the current pairing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沿用当前配对继续"
+          }
+        }
+      }
+    },
+    "Controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控制器"
+          }
+        }
+      }
+    },
+    "Controls": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控制"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝"
+          }
+        }
+      }
+    },
+    "Copy Package Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝包名"
+          }
+        }
+      }
+    },
+    "Copying %@ — %lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在拷贝 %@ — %lld%%"
+          }
+        }
+      }
+    },
+    "Could Not Load": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载"
+          }
+        }
+      }
+    },
+    "Could not add %@: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法添加 %@：%@"
+          }
+        }
+      }
+    },
+    "Could not add the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法添加该应用"
+          }
+        }
+      }
+    },
+    "Could not send %@: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法发送 %@：%@"
+          }
+        }
+      }
+    },
+    "Could not start — see the log": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法启动——请查看日志"
+          }
+        }
+      }
+    },
+    "Could not uninstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法卸载"
+          }
+        }
+      }
+    },
+    "Could not unpack the snapshot: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法解包快照：%@"
+          }
+        }
+      }
+    },
+    "Currently saved: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前已保存：%@。"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义"
+          }
+        }
+      }
+    },
+    "Custom Colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义颜色"
+          }
+        }
+      }
+    },
+    "Custom resolution": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义分辨率"
+          }
+        }
+      }
+    },
+    "Dark": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色"
+          }
+        }
+      }
+    },
+    "Data": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据"
+          }
+        }
+      }
+    },
+    "Delete saved machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除已保存的机器"
+          }
+        }
+      }
+    },
+    "Deleted the %@ machine. The next launch boots from cold.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已删除 %@ 机器。下次启动将冷启动。"
+          }
+        }
+      }
+    },
+    "Deletes Husk's copy of the APKs. Anything installed in Android is untouched.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除 Husk 持有的 APK 副本。已安装进 Android 的内容不受影响。"
+          }
+        }
+      }
+    },
+    "Deletes what the game saved and downloaded here: saves, settings and caches. The game itself stays.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除游戏在此保存和下载的所有内容：存档、设置和缓存。游戏本身会保留。"
+          }
+        }
+      }
+    },
+    "Details": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详情"
+          }
+        }
+      }
+    },
+    "Developer Info": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发者信息"
+          }
+        }
+      }
+    },
+    "Discover": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现"
+          }
+        }
+      }
+    },
+    "Display": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示"
+          }
+        }
+      }
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "Download": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载"
+          }
+        }
+      }
+    },
+    "Download Android runtime": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载 Android 运行环境"
+          }
+        }
+      }
+    },
+    "Download did not produce a disk image: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载没有得到磁盘映像：%@"
+          }
+        }
+      }
+    },
+    "Download pre-booted snapshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载预启动快照"
+          }
+        }
+      }
+    },
+    "Downloading Android runtime": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在下载 Android 运行环境"
+          }
+        }
+      }
+    },
+    "Downloading it replaces the Android system and its pre-booted snapshot (%@), and with them everything inside Android — installed apps included. A snapshot only restores against the image it was saved on, so the two cannot be updated separately.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载它会替换 Android 系统及其预启动快照（%@），同时替换 Android 内的全部内容——包括已安装的应用。快照只能在与保存它时相同的镜像上恢复，因此两者无法分开更新。"
+          }
+        }
+      }
+    },
+    "Downloading pre-booted Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在下载预启动的 Android"
+          }
+        }
+      }
+    },
+    "Emulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模拟器"
+          }
+        }
+      }
+    },
+    "Enable JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 JIT"
+          }
+        }
+      }
+    },
+    "Enable JIT with %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 %@ 启用 JIT"
+          }
+        }
+      }
+    },
+    "Enable JIT with TrollStore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 TrollStore 启用 JIT"
+          }
+        }
+      }
+    },
+    "English": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "English"
+          }
+        }
+      }
+    },
+    "Enter it on this %@ to pair with Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 %@ 上输入它与 Husk 配对"
+          }
+        }
+      }
+    },
+    "Enter this code on your %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的 %@ 上输入此代码"
+          }
+        }
+      }
+    },
+    "Enter this code on your %@ to finish pairing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的 %@ 上输入此代码以完成配对。"
+          }
+        }
+      }
+    },
+    "Every pixel is drawn by the emulated CPU. Much slower, and only worth choosing if the GPU misbehaves.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个像素都由模拟的 CPU 绘制。慢得多，只有在 GPU 出问题时才值得选择。"
+          }
+        }
+      }
+    },
+    "Every pixel the screen has. Sharpest, and heaviest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕的全部像素。最清晰，也最吃性能。"
+          }
+        }
+      }
+    },
+    "Fetching Repositories…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在获取仓库…"
+          }
+        }
+      }
+    },
+    "File sent": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件已发送"
+          }
+        }
+      }
+    },
+    "Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件"
+          }
+        }
+      }
+    },
+    "First run downloads Android and can take several minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次运行需要下载 Android，可能要几分钟。"
+          }
+        }
+      }
+    },
+    "First time? See the setup, or use StikDebug or TrollStore instead": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第一次使用？查看设置向导，或改用 StikDebug、TrollStore"
+          }
+        }
+      }
+    },
+    "Follows the system: light, dark and tinted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统：浅色、深色和色调化。"
+          }
+        }
+      }
+    },
+    "Full HD — 1080 × 1920": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全高清 — 1080 × 1920"
+          }
+        }
+      }
+    },
+    "GPU": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU"
+          }
+        }
+      }
+    },
+    "GPU machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU 机器"
+          }
+        }
+      }
+    },
+    "Games": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏"
+          }
+        }
+      }
+    },
+    "Games and Android can run.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏和 Android 都可以运行了。"
+          }
+        }
+      }
+    },
+    "General": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通用"
+          }
+        }
+      }
+    },
+    "Get": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取"
+          }
+        }
+      }
+    },
+    "Get LocalDevVPN": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取 LocalDevVPN"
+          }
+        }
+      }
+    },
+    "Gives Android a landscape screen, which games fill properly. Portrait apps get letterboxed instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给 Android 一块横屏，游戏便能完整填满。竖屏应用则会被加黑边。"
+          }
+        }
+      }
+    },
+    "Guest image": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "客户机镜像"
+          }
+        }
+      }
+    },
+    "HD — 720 × 1280": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高清 — 720 × 1280"
+          }
+        }
+      }
+    },
+    "HUSK": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUSK"
+          }
+        }
+      }
+    },
+    "Height": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高度"
+          }
+        }
+      }
+    },
+    "Hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏"
+          }
+        }
+      }
+    },
+    "Hide log": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏日志"
+          }
+        }
+      }
+    },
+    "Hide pad": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏手柄"
+          }
+        }
+      }
+    },
+    "Hide the interface": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏界面"
+          }
+        }
+      }
+    },
+    "High": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高"
+          }
+        }
+      }
+    },
+    "Home": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主屏幕"
+          }
+        }
+      }
+    },
+    "How it connects": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接方式"
+          }
+        }
+      }
+    },
+    "How should Husk behave?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你希望 Husk 如何工作？"
+          }
+        }
+      }
+    },
+    "How to Allow JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如何允许 JIT"
+          }
+        }
+      }
+    },
+    "Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk"
+          }
+        }
+      }
+    },
+    "Husk could not announce itself on the local network. Check that Wi-Fi is on, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 无法在本地网络上广播自己。请确认 Wi-Fi 已开启，然后重试。"
+          }
+        }
+      }
+    },
+    "Husk could not copy it: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 无法复制它：%@"
+          }
+        }
+      }
+    },
+    "Husk could not open its pairing port.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 无法打开配对端口。"
+          }
+        }
+      }
+    },
+    "Husk couldn't reach this device. Connect LocalDevVPN, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 联系不上这台设备。请连接 LocalDevVPN 后重试。"
+          }
+        }
+      }
+    },
+    "Husk needs Local Network access to pair. Allow it in Settings › Apps › Husk, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 需要本地网络权限才能配对。请在「设置 › 应用 › Husk」中允许，然后重试。"
+          }
+        }
+      }
+    },
+    "Husk needs its Android runtime — about 760 MB. Android itself is downloaded afterwards by the runtime.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 需要它的 Android 运行环境——约 760 MB。Android 本身随后由运行环境下载。"
+          }
+        }
+      }
+    },
+    "Husk needs memory it can write and then execute, which on iOS takes an attached debugger. There are two ways to get it: a debugger that services trap requests, or a MAP_JIT mapping, which the kernel allows any debugged process. Either one is enough — which is available depends on the device and the iOS version, so Husk tests both rather than assuming.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 需要既能写入又能执行的内存，而在 iOS 上这需要附加调试器。有两条路可走：由调试器响应陷阱请求，或使用 MAP_JIT 映射——内核对任何被调试的进程都允许它。两者有其一即可；哪一条可用取决于设备和 iOS 版本，因此 Husk 会实际测试而不是想当然。"
+          }
+        }
+      }
+    },
+    "Husk pairing code: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 配对码：%@"
+          }
+        }
+      }
+    },
+    "Husk restores a saved machine instead of booting it, which takes seconds rather than minutes. The picture freezes while it writes. With this off, nothing saves by itself — including after an install.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 会恢复已保存的机器而不是重新启动，只需几秒而不是几分钟。写入期间画面会冻结。关闭此项后不会有任何自动保存——安装之后也不会。"
+          }
+        }
+      }
+    },
+    "Husk runs a real Android system and opens APKs inside it. A few questions first — all of them can be changed later in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 运行一个真正的 Android 系统，并在其中打开 APK。先问几个问题——全都可以稍后在「设置」中更改。"
+          }
+        }
+      }
+    },
+    "Husk runs unmodified Android APKs in a real Android system on your iPhone. The console shows Husk's live log, the guest's serial output and QEMU's own output — the three files any problem here is diagnosed from.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 在你的 iPhone 上运行真正的 Android 系统，并直接运行未经修改的 APK。控制台显示 Husk 的实时日志、客户机的串口输出和 QEMU 自身的输出——这里出现的任何问题都要靠这三个文件来诊断。"
+          }
+        }
+      }
+    },
+    "Husk turns the screen the way the game asks for.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 按游戏的要求旋转屏幕。"
+          }
+        }
+      }
+    },
+    "Husk was marked as debugged when it opened, so JIT is on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 启动时已被标记为已调试，因此 JIT 已开启。"
+          }
+        }
+      }
+    },
+    "Husk will use StikDebug.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 将使用 StikDebug。"
+          }
+        }
+      }
+    },
+    "Husk will use TrollStore.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 将使用 TrollStore。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper (%@) could not be found: %@ Reinstall Husk.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 Husk 的 JIT 辅助程序（%@）：%@ 请重新安装 Husk。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper did not start. Reinstall Husk, and keep its app extensions if your sideloader asks.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 的 JIT 辅助程序没有启动。请重新安装 Husk；如果你的侧载工具询问，请保留它的应用扩展。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper finished without an answer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 的 JIT 辅助程序结束时没有返回结果。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper is missing from this installation. Reinstall Husk, and keep its app extensions if your sideloader asks, or use StikDebug.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次安装中缺少 Husk 的 JIT 辅助程序。请重新安装 Husk；如果你的侧载工具询问，请保留它的应用扩展，或改用 StikDebug。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper stopped unexpectedly. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 的 JIT 辅助程序意外停止。请重试。"
+          }
+        }
+      }
+    },
+    "Husk's JIT helper stopped: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 的 JIT 辅助程序已停止：%@"
+          }
+        }
+      }
+    },
+    "Husk's JIT script is missing from this installation. Reinstall Husk.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次安装中缺少 Husk 的 JIT 脚本。请重新安装 Husk。"
+          }
+        }
+      }
+    },
+    "If JIT is not on when Android starts, Husk turns it on with the method you chose, or walks you through setting one up. You can change it any time in Settings › JIT & sideload.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果 Android 启动时 JIT 尚未开启，Husk 会用你选择的方式开启它，或带你完成设置。你可以随时在「设置 › JIT 与侧载」中更改。"
+          }
+        }
+      }
+    },
+    "Import": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入"
+          }
+        }
+      }
+    },
+    "Import Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入文件"
+          }
+        }
+      }
+    },
+    "Import a new pairing file": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入新的配对文件"
+          }
+        }
+      }
+    },
+    "In Android's %@ folder.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已放入 Android 的 %@ 文件夹。"
+          }
+        }
+      }
+    },
+    "Input": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入"
+          }
+        }
+      }
+    },
+    "Install": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装"
+          }
+        }
+      }
+    },
+    "Install %@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装 %@？"
+          }
+        }
+      }
+    },
+    "Install APK": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装 APK"
+          }
+        }
+      }
+    },
+    "Install an APK and it appears here. Split sets work too — pick every piece at once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装一个 APK，它就会出现在这里。分包 APK 也可以——请一次选中所有分片。"
+          }
+        }
+      }
+    },
+    "Install failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装失败"
+          }
+        }
+      }
+    },
+    "Install failed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装失败：%@"
+          }
+        }
+      }
+    },
+    "Installed, but not saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装，但未保存"
+          }
+        }
+      }
+    },
+    "Installing %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在安装 %@…"
+          }
+        }
+      }
+    },
+    "Installing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在安装…"
+          }
+        }
+      }
+    },
+    "Invalid URL": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无效的 URL"
+          }
+        }
+      }
+    },
+    "It is a landscape game: Husk turns the screen for it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是横屏游戏：Husk 会为它旋转屏幕。"
+          }
+        }
+      }
+    },
+    "It opens as soon as Android answers.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 一有响应它就会打开。"
+          }
+        }
+      }
+    },
+    "It will be gone on the next launch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次启动时它就会消失。"
+          }
+        }
+      }
+    },
+    "It's connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接"
+          }
+        }
+      }
+    },
+    "Its data goes with it. Save Android afterwards or the change is lost on the next launch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它的数据会一并删除。之后请保存 Android，否则这次更改会在下次启动时丢失。"
+          }
+        }
+      }
+    },
+    "Its own libraries link against these, and it does not carry them. Each is something the translation layer has to provide.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它自己的库依赖这些库，而它并不自带。每一个都需要翻译层来提供。"
+          }
+        }
+      }
+    },
+    "JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT"
+          }
+        }
+      }
+    },
+    "JIT & sideload": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT 与侧载"
+          }
+        }
+      }
+    },
+    "JIT allowed for apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已允许应用使用 JIT"
+          }
+        }
+      }
+    },
+    "JIT is on": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT 已开启"
+          }
+        }
+      }
+    },
+    "JIT is on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT 已开启。"
+          }
+        }
+      }
+    },
+    "Jailbreak (Dopamine)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "越狱（Dopamine）"
+          }
+        }
+      }
+    },
+    "Keep debugger attached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持调试器附加"
+          }
+        }
+      }
+    },
+    "Keep the network across saves": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存时保留网络"
+          }
+        }
+      }
+    },
+    "Keep the screen on": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持屏幕常亮"
+          }
+        }
+      }
+    },
+    "Landscape": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横屏"
+          }
+        }
+      }
+    },
+    "Landscape HD — 1280 × 720": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横屏高清 — 1280 × 720"
+          }
+        }
+      }
+    },
+    "Language": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言"
+          }
+        }
+      }
+    },
+    "Last Used": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次使用"
+          }
+        }
+      }
+    },
+    "Launch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动"
+          }
+        }
+      }
+    },
+    "Library": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用库"
+          }
+        }
+      }
+    },
+    "Light": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浅色"
+          }
+        }
+      }
+    },
+    "Loaded: Native libraries loaded (no draw)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加载：原生库加载成功（没有绘制画面）"
+          }
+        }
+      }
+    },
+    "Loading libraries and starting the engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载库并启动引擎"
+          }
+        }
+      }
+    },
+    "Loading the engine…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载引擎…"
+          }
+        }
+      }
+    },
+    "Loads arm64 native code into JIT memory on Apple Silicon and drives a NativeActivity lifecycle. Apps with Java/Dex require ART (milestone 2).": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Apple 芯片上把 arm64 原生代码加载进 JIT 内存，并驱动 NativeActivity 生命周期。含 Java/Dex 的应用需要 ART（第二阶段）。"
+          }
+        }
+      }
+    },
+    "Log": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志"
+          }
+        }
+      }
+    },
+    "Logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志"
+          }
+        }
+      }
+    },
+    "Low": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低"
+          }
+        }
+      }
+    },
+    "Manage Repositories": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理仓库"
+          }
+        }
+      }
+    },
+    "Maps as it is": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可原样映射"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
+          }
+        }
+      }
+    },
+    "Method": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "方式"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "Names and icons come from Android's own launcher, which keeps the version it draws. Re-fetching throws away Husk's copies and asks again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称和图标来自 Android 自己的桌面，而桌面会保留它绘制过的那一版。重新获取会丢弃 Husk 的副本并再问一次。"
+          }
+        }
+      }
+    },
+    "Native": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原生"
+          }
+        }
+      }
+    },
+    "Native runtime": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原生运行时"
+          }
+        }
+      }
+    },
+    "Nearly there": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就快好了"
+          }
+        }
+      }
+    },
+    "Needs JIT. StikJIT is built in — the recommended way.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要 JIT。StikJIT 已内置——这是推荐方式。"
+          }
+        }
+      }
+    },
+    "Needs loader work": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要加载器处理"
+          }
+        }
+      }
+    },
+    "Negotiating with the JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在与 JIT 交涉"
+          }
+        }
+      }
+    },
+    "Network": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网络"
+          }
+        }
+      }
+    },
+    "Never": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从不"
+          }
+        }
+      }
+    },
+    "Never from Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从未通过 Husk"
+          }
+        }
+      }
+    },
+    "No %@ machine is saved, so nothing was deleted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有保存 %@ 机器，因此未删除任何内容。"
+          }
+        }
+      }
+    },
+    "No apps yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有应用"
+          }
+        }
+      }
+    },
+    "No jailbreak was found on this %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 %@ 上未发现越狱。"
+          }
+        }
+      }
+    },
+    "No, it has not frozen": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有卡死，真的"
+          }
+        }
+      }
+    },
+    "Not now": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以后再说"
+          }
+        }
+      }
+    },
+    "Not started": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未启动"
+          }
+        }
+      }
+    },
+    "Not yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂不支持"
+          }
+        }
+      }
+    },
+    "Nothing is saved, so Android boots from cold.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有已保存的内容，Android 将冷启动。"
+          }
+        }
+      }
+    },
+    "Now": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "好"
+          }
+        }
+      }
+    },
+    "Off by default. Husk detaches StikDebug as soon as the JIT region is held, because a debugger that iOS has suspended stops the whole app the next time it is needed. Turn this on only to collect StikDebug's own logs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认关闭。一旦 JIT 区域到手，Husk 就会分离 StikDebug，因为被 iOS 挂起的调试器会在下次需要它时拖住整个应用。只有需要收集 StikDebug 自己的日志时才开启。"
+          }
+        }
+      }
+    },
+    "On a jailbroken device JIT is a setting. In Dopamine, turn on Allow JIT in Apps, then open Husk again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在已越狱的设备上，JIT 只是一项设置。请在 Dopamine 中打开「允许应用使用 JIT」，然后重新打开 Husk。"
+          }
+        }
+      }
+    },
+    "On-screen controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕控制器"
+          }
+        }
+      }
+    },
+    "Opacity": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不透明度"
+          }
+        }
+      }
+    },
+    "Open": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开"
+          }
+        }
+      }
+    },
+    "Open Console": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开控制台"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
+          }
+        }
+      }
+    },
+    "Open in Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「文件」中打开"
+          }
+        }
+      }
+    },
+    "Opening…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在打开…"
+          }
+        }
+      }
+    },
+    "Orientation": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "方向"
+          }
+        }
+      }
+    },
+    "Other Ways to Turn On JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他开启 JIT 的方式"
+          }
+        }
+      }
+    },
+    "Pad": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手柄"
+          }
+        }
+      }
+    },
+    "Pair again": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新配对"
+          }
+        }
+      }
+    },
+    "Pair this device or import its pairing file first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先与这台设备配对，或导入它的配对文件。"
+          }
+        }
+      }
+    },
+    "Paired on this %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在这台 %@ 上配对。"
+          }
+        }
+      }
+    },
+    "Paired on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在本机配对。"
+          }
+        }
+      }
+    },
+    "Paired with Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已与 Husk 配对"
+          }
+        }
+      }
+    },
+    "Pairing code %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对码 %@"
+          }
+        }
+      }
+    },
+    "Pairing failed. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对失败。请重试。"
+          }
+        }
+      }
+    },
+    "Pairing failed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对失败：%@"
+          }
+        }
+      }
+    },
+    "Pairing file imported.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对文件已导入。"
+          }
+        }
+      }
+    },
+    "Pairing finished, but Husk could not save the pairing file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对已完成，但 Husk 无法保存配对文件。"
+          }
+        }
+      }
+    },
+    "Pairing timed out. Try again when you are ready to pair from Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对超时。等你可以从「设置」配对时再试一次。"
+          }
+        }
+      }
+    },
+    "Pairing with Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在与 Husk 配对"
+          }
+        }
+      }
+    },
+    "Paste any F-Droid-compatible repository index URL.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴任意兼容 F-Droid 的仓库索引 URL。"
+          }
+        }
+      }
+    },
+    "Performance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "性能"
+          }
+        }
+      }
+    },
+    "Performance readout": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "性能读数"
+          }
+        }
+      }
+    },
+    "Play": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始游戏"
+          }
+        }
+      }
+    },
+    "Portrait": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "竖屏"
+          }
+        }
+      }
+    },
+    "Prepare for awesomeness": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备好大吃一惊"
+          }
+        }
+      }
+    },
+    "Preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预设"
+          }
+        }
+      }
+    },
+    "Presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预设"
+          }
+        }
+      }
+    },
+    "Re-fetch icons": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新获取图标"
+          }
+        }
+      }
+    },
+    "Ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就绪"
+          }
+        }
+      }
+    },
+    "Ready to launch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以启动了。"
+          }
+        }
+      }
+    },
+    "Reducing render size…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在降低渲染尺寸…"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        }
+      }
+    },
+    "Refresh from Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从 Android 刷新"
+          }
+        }
+      }
+    },
+    "Refreshing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在刷新…"
+          }
+        }
+      }
+    },
+    "Refused: Could not execute": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "被拒绝：无法执行"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除"
+          }
+        }
+      }
+    },
+    "Remove %@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除 %@？"
+          }
+        }
+      }
+    },
+    "Removing %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在移除 %@…"
+          }
+        }
+      }
+    },
+    "Renderer": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "渲染器"
+          }
+        }
+      }
+    },
+    "Repositories": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仓库"
+          }
+        }
+      }
+    },
+    "Rerun": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新运行"
+          }
+        }
+      }
+    },
+    "Reset Developer Disk Image": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置开发者磁盘映像"
+          }
+        }
+      }
+    },
+    "Reset Game Data": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置游戏数据"
+          }
+        }
+      }
+    },
+    "Reset the data of %@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置 %@ 的数据？"
+          }
+        }
+      }
+    },
+    "Resetting the Developer Disk Image cache…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重置开发者磁盘映像缓存…"
+          }
+        }
+      }
+    },
+    "Resolution": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分辨率"
+          }
+        }
+      }
+    },
+    "Restart Husk to see the change.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开 Husk 即可看到更改。"
+          }
+        }
+      }
+    },
+    "Restoring full resolution…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在恢复完整分辨率…"
+          }
+        }
+      }
+    },
+    "Return to Husk to finish setting up JIT.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回 Husk 以完成 JIT 设置。"
+          }
+        }
+      }
+    },
+    "Rotate picture": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旋转画面"
+          }
+        }
+      }
+    },
+    "Run Translation Layer Attempt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行翻译层尝试"
+          }
+        }
+      }
+    },
+    "Run again": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再运行一次"
+          }
+        }
+      }
+    },
+    "Run checks": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行检查"
+          }
+        }
+      }
+    },
+    "Running": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行中"
+          }
+        }
+      }
+    },
+    "Running Attempt...": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行尝试…"
+          }
+        }
+      }
+    },
+    "Runs Android games straight on your iPhone, without starting Android. Add an APK, or a bundle (.xapk, .apkm, .apks) — or pick a base APK and its split pieces together. Husk keeps its own copy, apart from Android's.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需启动 Android，直接在 iPhone 上运行 Android 游戏。添加一个 APK，或一个捆绑包（.xapk、.apkm、.apks）——也可以一次选中基础 APK 及其分片。Husk 会保留自己的副本，与 Android 的分开。"
+          }
+        }
+      }
+    },
+    "Save Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存 Android"
+          }
+        }
+      }
+    },
+    "Save Android to keep it past this session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存 Android，它才能留存到本次会话之后。"
+          }
+        }
+      }
+    },
+    "Save automatically": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动保存"
+          }
+        }
+      }
+    },
+    "Save now": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即保存"
+          }
+        }
+      }
+    },
+    "Saved machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存的机器"
+          }
+        }
+      }
+    },
+    "Saves the machine once Android settles, so later launches restore in seconds instead of booting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 Android 稳定后保存机器，之后启动只需几秒恢复，而无需重新引导。"
+          }
+        }
+      }
+    },
+    "Saves, settings and caches the game made here are deleted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏在此产生的存档、设置和缓存都会被删除。"
+          }
+        }
+      }
+    },
+    "Saving Android — the screen will freeze briefly": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在保存 Android — 画面会短暂冻结"
+          }
+        }
+      }
+    },
+    "Saving closes apps but leaves Android's framework running, so the network still works after a restore.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存会关闭应用，但让 Android 框架继续运行，因此恢复后网络仍然可用。"
+          }
+        }
+      }
+    },
+    "Saving stops the framework too. Clears every GPU resource, which is steadier — but the network may not come back until a cold boot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存时连框架也一并停止。这会清空所有 GPU 资源，因此更稳定——但网络可能要等到冷启动才会恢复。"
+          }
+        }
+      }
+    },
+    "Saving…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在保存…"
+          }
+        }
+      }
+    },
+    "Screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕"
+          }
+        }
+      }
+    },
+    "Screenshots": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图"
+          }
+        }
+      }
+    },
+    "Search %lld apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索 %lld 个应用"
+          }
+        }
+      }
+    },
+    "Search apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索应用"
+          }
+        }
+      }
+    },
+    "Search to see %lld more apps.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索可查看另外 %lld 个应用。"
+          }
+        }
+      }
+    },
+    "Sending %@ — %lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送 %@ — %lld%%"
+          }
+        }
+      }
+    },
+    "Sending %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送 %@…"
+          }
+        }
+      }
+    },
+    "Set Up StikJIT Now": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即设置 StikJIT"
+          }
+        }
+      }
+    },
+    "Set up JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置 JIT"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置"
+          }
+        }
+      }
+    },
+    "Settings › Privacy & Security › Developer Mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置 › 隐私与安全性 › 开发者模式"
+          }
+        }
+      }
+    },
+    "Show": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示"
+          }
+        }
+      }
+    },
+    "Show Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Android"
+          }
+        }
+      }
+    },
+    "Show in Android Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Android 设置中显示"
+          }
+        }
+      }
+    },
+    "Sideloading": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "侧载"
+          }
+        }
+      }
+    },
+    "Size": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大小"
+          }
+        }
+      }
+    },
+    "Small — 360 × 800": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小 — 360 × 800"
+          }
+        }
+      }
+    },
+    "Software machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件机器"
+          }
+        }
+      }
+    },
+    "Something went wrong": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出了点问题"
+          }
+        }
+      }
+    },
+    "Sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音"
+          }
+        }
+      }
+    },
+    "Source URL": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "源 URL"
+          }
+        }
+      }
+    },
+    "Star the repo if you like this sort of thing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "喜欢的话就给仓库点个星"
+          }
+        }
+      }
+    },
+    "Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动"
+          }
+        }
+      }
+    },
+    "Start Android on launch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时开启 Android"
+          }
+        }
+      }
+    },
+    "Start pairing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始配对"
+          }
+        }
+      }
+    },
+    "Start using Husk": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始使用 Husk"
+          }
+        }
+      }
+    },
+    "Starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动"
+          }
+        }
+      }
+    },
+    "Starting Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动 Android"
+          }
+        }
+      }
+    },
+    "Starting Android…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动 Android…"
+          }
+        }
+      }
+    },
+    "Starting Husk's JIT helper…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动 Husk 的 JIT 辅助程序…"
+          }
+        }
+      }
+    },
+    "Starting attempt...": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在开始尝试…"
+          }
+        }
+      }
+    },
+    "Starting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动…"
+          }
+        }
+      }
+    },
+    "StikDebug": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "StikDebug"
+          }
+        }
+      }
+    },
+    "StikDebug is installed, so Husk will open it to turn JIT on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "StikDebug 已安装，Husk 会打开它来开启 JIT。"
+          }
+        }
+      }
+    },
+    "StikDebug is installed, so Husk will open it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "StikDebug 已安装，Husk 会打开它。"
+          }
+        }
+      }
+    },
+    "StikDebug is not installed. Install it, or set up Built-in StikJIT.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 StikDebug。请安装它，或设置内置 StikJIT。"
+          }
+        }
+      }
+    },
+    "StikDebug, TrollStore and a jailbreak were not found, so Husk will use its built-in helper.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 StikDebug、TrollStore 和越狱，因此 Husk 将使用内置辅助程序。"
+          }
+        }
+      }
+    },
+    "StikJIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "StikJIT"
+          }
+        }
+      }
+    },
+    "StikJIT is built into Husk. You can turn JIT on right here — no computer and no other app. Games and Android both need it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "StikJIT 已内置于 Husk。你可以在这里直接开启 JIT——无需电脑，也无需其他应用。游戏和 Android 都需要它。"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止"
+          }
+        }
+      }
+    },
+    "Storage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储"
+          }
+        }
+      }
+    },
+    "Success: The guest drew frames!": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成功：客户机绘制出了画面！"
+          }
+        }
+      }
+    },
+    "System": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统"
+          }
+        }
+      }
+    },
+    "System follows the phone: light by day, dark by night. The guest's own screen stays dark either way — it is a picture of another phone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「跟随系统」随手机变化：白天浅色，夜晚深色。无论哪种，客户机自己的屏幕都保持深色——那只是另一台手机的画面。"
+          }
+        }
+      }
+    },
+    "Tablet — 1280 × 800": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平板 — 1280 × 800"
+          }
+        }
+      }
+    },
+    "Tap with three fingers to show the interface": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "三指轻点可显示界面"
+          }
+        }
+      }
+    },
+    "Teaching an iPhone to speak Android": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "教 iPhone 说 Android 语"
+          }
+        }
+      }
+    },
+    "Technical detail in the Android Translation Layer screens: library reports, device checks and run logs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译层各界面中的技术细节：库报告、设备检查和运行日志。"
+          }
+        }
+      }
+    },
+    "That bundle uses a zip format (Zip64) Husk does not read yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该捆绑包使用了 Husk 尚不支持的 zip 格式（Zip64）。"
+          }
+        }
+      }
+    },
+    "That file is not a bundle Husk can read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该文件不是 Husk 能读取的捆绑包。"
+          }
+        }
+      }
+    },
+    "That is not a remote pairing file. Make one with the StikDebug pairing-file guide and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这不是远程配对文件。请按 StikDebug 的配对文件指南生成一个，然后重试。"
+          }
+        }
+      }
+    },
+    "The debugger is attached but is not answering trap requests, and this device will not execute a MAP_JIT mapping either, so no executable memory could be claimed. This is what happens when Husk runs inside another container app rather than sideloaded on its own.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调试器已附加，但不响应陷阱请求，而这台设备也不执行 MAP_JIT 映射，因此无法取得可执行内存。当 Husk 运行在另一个容器应用内、而不是独立侧载时，就会出现这种情况。"
+          }
+        }
+      }
+    },
+    "The downloaded image did not match the release. Tap to retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载的镜像与发布版本不符。轻点重试。"
+          }
+        }
+      }
+    },
+    "The game exited": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏已退出"
+          }
+        }
+      }
+    },
+    "The game is loaded in this session. Close Husk completely and open it again to reset its data.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏已在本次会话中加载。请完全关闭 Husk 再打开，才能重置它的数据。"
+          }
+        }
+      }
+    },
+    "The game starts with nothing over it: no bar, no controller, no readout, the picture to every edge. Tap with three fingers at once to bring the bar back, and again to hide it. The Hide button in the bar does the same while playing, but leaves the strip the bar sat in.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏启动时画面上什么都没有：没有工具条，没有控制器，没有读数，画面铺满每一个边缘。三指同时轻点可唤回工具条，再点一次收起。游戏过程中工具条上的「隐藏」按钮效果相同，但会留下工具条所占的那一条区域。"
+          }
+        }
+      }
+    },
+    "The helper did not attach within 90 seconds. Check that LocalDevVPN is connected, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辅助程序在 90 秒内没有附加。请确认 LocalDevVPN 已连接，然后重试。"
+          }
+        }
+      }
+    },
+    "The language Husk is drawn in. Android and the apps inside it keep their own, chosen in Android's settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Husk 界面所用的语言。Android 和其中的应用有各自的语言，在 Android 的设置里选择。"
+          }
+        }
+      }
+    },
+    "The list is written to disk, so it is on screen before Android has finished starting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这份列表已写入磁盘，因此在 Android 启动完成之前就能显示出来。"
+          }
+        }
+      }
+    },
+    "The pairing file stays in Husk's Documents folder and is only sent to Husk's own helper.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对文件保存在 Husk 的「文档」文件夹中，只会发送给 Husk 自己的辅助程序。"
+          }
+        }
+      }
+    },
+    "The panel is built when the machine starts, so a change costs one cold boot, and the next save replaces the machine saved at the old size — changing back costs another. Sizes are rounded to a multiple of eight. Bigger is slower: every pixel is drawn by an emulated phone. Android's density does not change with the panel, so a larger one shows more rather than bigger.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕在机器启动时构建，因此每次更改都要付出一次冷启动的代价，而下一次保存会替换掉以旧尺寸保存的机器——改回去又要再一次。尺寸会取整到 8 的倍数。越大越慢：每个像素都由模拟的手机绘制。Android 的密度不随屏幕变化，所以更大的屏幕显示的是更多内容，而不是更大的画面。"
+          }
+        }
+      }
+    },
+    "The plan, in order, is docs/04-translation-layer.md in Husk's source.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按顺序推进的计划写在 Husk 源码的 docs/04-translation-layer.md 中。"
+          }
+        }
+      }
+    },
+    "The request for Husk's JIT helper could not be encoded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发给 Husk JIT 辅助程序的请求无法编码。"
+          }
+        }
+      }
+    },
+    "The runtime on disk is not a valid image (%@). Tap to retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "磁盘上的运行环境不是有效镜像（%@）。轻点重试。"
+          }
+        }
+      }
+    },
+    "The snapshot did not match the release (sha256 %@, expected %@).": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快照与发布版本不符（sha256 %@，应为 %@）。"
+          }
+        }
+      }
+    },
+    "Theme": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主题"
+          }
+        }
+      }
+    },
+    "There are no APKs in that bundle.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该捆绑包里没有 APK。"
+          }
+        }
+      }
+    },
+    "There is no screen to show the file picker on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有可用于显示文件选择器的屏幕。"
+          }
+        }
+      }
+    },
+    "They go to %@. Unmodified APKs install from here too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它们会放入 %@。未经修改的 APK 也可以从这里安装。"
+          }
+        }
+      }
+    },
+    "This device closed the connection, which usually means it no longer accepts Husk's pairing. Pair again, and check that LocalDevVPN is connected.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台设备断开了连接，通常意味着它不再接受 Husk 的配对。请重新配对，并确认 LocalDevVPN 已连接。"
+          }
+        }
+      }
+    },
+    "This device is jailbroken, so JIT comes from the jailbreak's Allow JIT in Apps setting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台设备已越狱，因此 JIT 来自越狱设置中的「允许应用使用 JIT」。"
+          }
+        }
+      }
+    },
+    "This iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 iPhone"
+          }
+        }
+      }
+    },
+    "This installation can only wait about 30 seconds in the background, so go to Settings straight away.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次安装在后台只能等待约 30 秒，请立刻前往「设置」。"
+          }
+        }
+      }
+    },
+    "This is a whole operating system — be patient": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一整套操作系统——请耐心等待"
+          }
+        }
+      }
+    },
+    "Tinted Dark": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色调化深色"
+          }
+        }
+      }
+    },
+    "Tinted Light": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色调化浅色"
+          }
+        }
+      }
+    },
+    "Tints buttons, switches and selected states throughout the app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为整个应用中的按钮、开关和选中状态着色。"
+          }
+        }
+      }
+    },
+    "Today, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天 %@"
+          }
+        }
+      }
+    },
+    "Tools": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工具"
+          }
+        }
+      }
+    },
+    "Touch always works. A gamepad and a pointer are not wired through to Android yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "触摸始终可用。手柄和指针目前还没有接入 Android。"
+          }
+        }
+      }
+    },
+    "Touch is always on. The keyboard and the rotate control are in the pill at the bottom of the guest's screen; a gamepad and a pointer are not wired through yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "触摸始终开启。键盘和旋转控制在客户机屏幕底部的胶囊条里；手柄和指针目前还没有接入。"
+          }
+        }
+      }
+    },
+    "Translating arm64, one block at a time": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐块翻译 arm64"
+          }
+        }
+      }
+    },
+    "Translation Layer": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译层"
+          }
+        }
+      }
+    },
+    "TrollStore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TrollStore"
+          }
+        }
+      }
+    },
+    "TrollStore can turn JIT on for Husk: it opens Husk and enables it, with no computer. In TrollStore's Settings, URL Scheme must be on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TrollStore 可以为 Husk 开启 JIT：它会打开 Husk 并启用 JIT，无需电脑。TrollStore 的设置中必须打开「URL Scheme」。"
+          }
+        }
+      }
+    },
+    "TrollStore could not be opened. Install Husk through TrollStore, or choose another method.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开 TrollStore。请通过 TrollStore 安装 Husk，或选择其他方式。"
+          }
+        }
+      }
+    },
+    "TrollStore did not enable JIT. In TrollStore's Settings turn on URL Scheme, and make sure Husk was installed through TrollStore (or is signed with get-task-allow).": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TrollStore 没有启用 JIT。请在 TrollStore 的设置中打开「URL Scheme」，并确认 Husk 是通过 TrollStore 安装的（或以 get-task-allow 签名）。"
+          }
+        }
+      }
+    },
+    "TrollStore is installed, so Husk will ask it to enable JIT.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TrollStore 已安装，Husk 会请它启用 JIT。"
+          }
+        }
+      }
+    },
+    "TrollStore was not found on this %@. Husk can only use it once it is installed and Husk was installed through it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 %@ 上未找到 TrollStore。只有安装了它、并且 Husk 是通过它安装的，Husk 才能使用它。"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "Turn On JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启 JIT"
+          }
+        }
+      }
+    },
+    "Turn On JIT with StikDebug": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 StikDebug 开启 JIT"
+          }
+        }
+      }
+    },
+    "Turn On JIT with StikJIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 StikJIT 开启 JIT"
+          }
+        }
+      }
+    },
+    "Turn On JIT with TrollStore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 TrollStore 开启 JIT"
+          }
+        }
+      }
+    },
+    "Turn on Allow JIT in Apps in Dopamine's settings, then open Husk again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在 Dopamine 的设置中打开「允许应用使用 JIT」，然后重新打开 Husk。"
+          }
+        }
+      }
+    },
+    "Turn on JIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启 JIT"
+          }
+        }
+      }
+    },
+    "Turn on JIT first. Close the game with Close at the top.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先开启 JIT。用顶部的「关闭」结束游戏。"
+          }
+        }
+      }
+    },
+    "Turning on JIT…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在开启 JIT…"
+          }
+        }
+      }
+    },
+    "Uninstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载"
+          }
+        }
+      }
+    },
+    "Uninstall %@?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载 %@？"
+          }
+        }
+      }
+    },
+    "Uninstalled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已卸载"
+          }
+        }
+      }
+    },
+    "Unity, cocos2d-x, Minecraft and SDL3 games": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unity、cocos2d-x、Minecraft 和 SDL3 游戏"
+          }
+        }
+      }
+    },
+    "Unpacking the guest": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在解包客户机"
+          }
+        }
+      }
+    },
+    "Unrecognized source format": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法识别的源格式"
+          }
+        }
+      }
+    },
+    "Unrotate picture": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消旋转画面"
+          }
+        }
+      }
+    },
+    "Use Husk while it starts": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动期间先使用 Husk"
+          }
+        }
+      }
+    },
+    "Use StikDebug": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 StikDebug"
+          }
+        }
+      }
+    },
+    "Use TrollStore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 TrollStore"
+          }
+        }
+      }
+    },
+    "Use the jailbreak": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用越狱"
+          }
+        }
+      }
+    },
+    "Version": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本"
+          }
+        }
+      }
+    },
+    "Version %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 %@"
+          }
+        }
+      }
+    },
+    "Version %@ · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 %@ · %@"
+          }
+        }
+      }
+    },
+    "Vibrate on a press": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按下时振动"
+          }
+        }
+      }
+    },
+    "View logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看日志"
+          }
+        }
+      }
+    },
+    "Waiting for Android (%llds)…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待 Android（%lld 秒）…"
+          }
+        }
+      }
+    },
+    "Waiting for TrollStore to enable JIT…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待 TrollStore 启用 JIT…"
+          }
+        }
+      }
+    },
+    "Waiting for the helper to attach…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待辅助程序附加…"
+          }
+        }
+      }
+    },
+    "Waiting for your %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待你的 %@…"
+          }
+        }
+      }
+    },
+    "Waking Android up": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在唤醒 Android"
+          }
+        }
+      }
+    },
+    "What it is": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是什么"
+          }
+        }
+      }
+    },
+    "What the game is called in Husk. The game itself is not changed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏在 Husk 里显示的名称。游戏本身不会被改动。"
+          }
+        }
+      }
+    },
+    "Where it stands": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前进展"
+          }
+        }
+      }
+    },
+    "Which saved machine?": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哪一台已保存的机器？"
+          }
+        }
+      }
+    },
+    "Width": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宽度"
+          }
+        }
+      }
+    },
+    "Without it Android boots from cold, which takes several minutes. The download is %@, and it replaces what is inside Android now, including installed apps.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有它，Android 就要冷启动，需要好几分钟。下载量为 %@，并会替换 Android 内当前的全部内容，包括已安装的应用。"
+          }
+        }
+      }
+    },
+    "Working…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在处理…"
+          }
+        }
+      }
+    },
+    "Yesterday, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨天 %@"
+          }
+        }
+      }
+    },
+    "Your apps are here; start it to open them.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的应用都在这里；启动后即可打开。"
+          }
+        }
+      }
+    },
+    "about %lld minutes remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约剩 %lld 分钟"
+          }
+        }
+      }
+    },
+    "about %lld seconds remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约剩 %lld 秒"
+          }
+        }
+      }
+    },
+    "answering": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已响应"
+          }
+        }
+      }
+    },
+    "attached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已附加"
+          }
+        }
+      }
+    },
+    "ctrl": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ctrl"
+          }
+        }
+      }
+    },
+    "detached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已分离"
+          }
+        }
+      }
+    },
+    "executes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可执行"
+          }
+        }
+      }
+    },
+    "file imported": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入文件"
+          }
+        }
+      }
+    },
+    "first boot takes 5–15 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次启动需要 5–15 分钟"
+          }
+        }
+      }
+    },
+    "found; Allow JIT in Apps is off": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已找到；「允许应用使用 JIT」已关闭"
+          }
+        }
+      }
+    },
+    "granted": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已获得"
+          }
+        }
+      }
+    },
+    "https://f-droid.org/repo/index-v1.json": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://f-droid.org/repo/index-v1.json"
+          }
+        }
+      }
+    },
+    "iOS did not provide the extension API Husk's JIT helper needs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 没有提供 Husk 的 JIT 辅助程序所需的扩展 API。"
+          }
+        }
+      }
+    },
+    "iOS stopped Husk in the background before pairing finished. Try again, and pair from Settings straight away.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对完成前 iOS 已在后台停止了 Husk。请重试，并立即从「设置」进行配对。"
+          }
+        }
+      }
+    },
+    "iOS stopped the pairing in the background. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 已在后台停止了配对。请重试。"
+          }
+        }
+      }
+    },
+    "installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装"
+          }
+        }
+      }
+    },
+    "no": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "否"
+          }
+        }
+      }
+    },
+    "none": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "not answering": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未响应"
+          }
+        }
+      }
+    },
+    "not attached": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未附加"
+          }
+        }
+      }
+    },
+    "not claimed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未获取"
+          }
+        }
+      }
+    },
+    "not found": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到"
+          }
+        }
+      }
+    },
+    "not set up": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置"
+          }
+        }
+      }
+    },
+    "not started": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未启动"
+          }
+        }
+      }
+    },
+    "not tested": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未测试"
+          }
+        }
+      }
+    },
+    "not used (TXM)": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未使用（TXM）"
+          }
+        }
+      }
+    },
+    "nothing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "paired on this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在本机配对"
+          }
+        }
+      }
+    },
+    "refused": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "被拒绝"
+          }
+        }
+      }
+    },
+    "software": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件"
+          }
+        }
+      }
+    },
+    "starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动"
+          }
+        }
+      }
+    },
+    "tap to show": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点显示"
+          }
+        }
+      }
+    },
+    "the Android shell is not answering": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android shell 没有响应"
+          }
+        }
+      }
+    },
+    "the request was cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求已取消"
+          }
+        }
+      }
+    },
+    "this %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台 %@"
+          }
+        }
+      }
+    },
+    "working": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可用"
+          }
+        }
+      }
+    },
+    "yes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "是"
+          }
+        }
+      }
+    },
+    "…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…"
+          }
+        }
+      }
+    },
+    "简体中文": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简体中文"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

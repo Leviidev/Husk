@@ -24,6 +24,7 @@ struct SettingsTab: View {
                     row(LibrarySettings(), "square.grid.2x2.fill", .blue, "Library", "Your apps and their icons")
                     row(PerformanceSettings(), "speedometer", .orange, "Performance", "Renderer, sound")
                     row(AppearanceSettings(), "paintbrush.fill", .pink, "Appearance", "Light or dark, accent colour, app icon")
+                    row(LanguageSettings(), "character.bubble.fill", .purple, "Language", "English or Simplified Chinese")
                 }
 
                 Section("Emulator") {
@@ -51,7 +52,7 @@ struct SettingsTab: View {
     }
 
     private func row<D: View>(_ destination: D, _ icon: String, _ tint: Color,
-                              _ title: String, _ subtitle: String) -> some View {
+                              _ title: LocalizedStringKey, _ subtitle: LocalizedStringKey) -> some View {
         NavigationLink { destination } label: {
             Label {
                 VStack(alignment: .leading, spacing: 1) {
@@ -97,8 +98,8 @@ struct LibrarySettings: View {
                           value: "\(host.packages.filter { $0.iconPath != nil }.count)",
                           mono: false)
             } footer: {
-                Text("The list is written to disk, so it is on screen before Android "
-                   + "has finished starting.")
+                Text(localizedKey("The list is written to disk, so it is on screen before Android "
+                   + "has finished starting."))
             }
 
             Section {
@@ -106,7 +107,7 @@ struct LibrarySettings: View {
                     working = true
                     Task { await host.refreshPackages(); working = false }
                 } label: {
-                    Label(working ? "Refreshing…" : "Refresh from Android",
+                    Label(localizedKey(working ? "Refreshing…" : "Refresh from Android"),
                           systemImage: "arrow.clockwise")
                 }
                 .disabled(working || !host.isReady)
@@ -120,9 +121,9 @@ struct LibrarySettings: View {
                 }
                 .disabled(working || !host.isReady)
             } footer: {
-                Text("Names and icons come from Android's own launcher, which keeps "
+                Text(localizedKey("Names and icons come from Android's own launcher, which keeps "
                    + "the version it draws. Re-fetching throws away Husk's copies and "
-                   + "asks again.")
+                   + "asks again."))
             }
         }
         .huskForm()
@@ -155,11 +156,11 @@ struct PerformanceSettings: View {
             } header: {
                 Text("Renderer")
             } footer: {
-                Text(gpuMode
+                Text(localizedKey(gpuMode
                      ? "Android draws on the real GPU through Metal — about four times "
                      + "the frame rate. This is the default."
                      : "Every pixel is drawn by the emulated CPU. Much slower, and only "
-                     + "worth choosing if the GPU misbehaves.")
+                     + "worth choosing if the GPU misbehaves."))
             }
 
             Section {
@@ -187,10 +188,10 @@ struct PerformanceSettings: View {
             } header: {
                 Text("Sound")
             } footer: {
-                Text("Adds a sound device. While it is attached Android cannot be "
+                Text(localizedKey("Adds a sound device. While it is attached Android cannot be "
                    + "saved — QEMU refuses to snapshot a machine with one — so every "
                    + "launch boots from cold. Turning it on or off costs a cold boot "
-                   + "either way.")
+                   + "either way."))
             }
         }
         .huskForm()
@@ -210,7 +211,7 @@ struct InputSettings: View {
     /// Sizes worth offering without typing. Deliberately short: these are the
     /// shapes a phone guest is actually run at, not a catalogue of every panel
     /// ever made.
-    private static let presets: [(name: String, w: Int, h: Int)] = [
+    private static let presets: [(name: LocalizedStringKey, w: Int, h: Int)] = [
         ("Small — 360 × 800", 360, 800),
         ("HD — 720 × 1280", 720, 1280),
         ("Full HD — 1080 × 1920", 1080, 1920),
@@ -246,14 +247,14 @@ struct InputSettings: View {
             } header: {
                 Text("Screen")
             } footer: {
-                Text(customRes
+                Text(localizedKey(customRes
                      ? "A custom resolution sets the shape itself, so this does nothing "
                      + "while it is on. Type a wide size for landscape."
                      : "Android cannot reshape a screen once it is running, so a "
                      + "landscape game on a portrait screen gets letterboxed into a "
                      + "band and looks tiny. Creating it landscape is the only way it "
                      + "can fill it — portrait apps are letterboxed instead. Costs one "
-                     + "cold boot.")
+                     + "cold boot."))
             }
 
             Section {
@@ -315,18 +316,18 @@ struct InputSettings: View {
             } header: {
                 Text("Resolution")
             } footer: {
-                Text("The panel is built when the machine starts, so a change costs "
+                Text(localizedKey("The panel is built when the machine starts, so a change costs "
                    + "one cold boot, and the next save replaces the machine saved at "
                    + "the old size — changing back costs another. Sizes are rounded "
                    + "to a multiple of eight. Bigger is slower: every pixel is drawn "
                    + "by an emulated phone. Android's density does not change with "
-                   + "the panel, so a larger one shows more rather than bigger.")
+                   + "the panel, so a larger one shows more rather than bigger."))
             }
 
             Section {
-                Text("Touch is always on. The keyboard and the rotate control are "
+                Text(localizedKey("Touch is always on. The keyboard and the rotate control are "
                    + "in the pill at the bottom of the guest's screen; a gamepad "
-                   + "and a pointer are not wired through yet.")
+                   + "and a pointer are not wired through yet."))
                     .font(.footnote).foregroundStyle(.secondary)
             } header: {
                 Text("Controls")
@@ -339,7 +340,7 @@ struct InputSettings: View {
     /// The panel the guest actually has, which only means anything while there
     /// is a guest: the stored value is last launch's until one starts.
     private var running: String {
-        guard QemuRunner.shared.isRunning else { return "not started" }
+        guard QemuRunner.shared.isRunning else { return localizedString("not started") }
         return "\(QemuRunner.lastGuestRes.w) × \(QemuRunner.lastGuestRes.h)"
     }
 
@@ -369,18 +370,18 @@ struct NetworkSettings: View {
                         UserDefaults.standard.set(v, forKey: "husk.keepNetwork")
                     }
             } footer: {
-                Text(keepNetwork
+                Text(localizedKey(keepNetwork
                      ? "Saving closes apps but leaves Android's framework running, so "
                      + "the network still works after a restore."
                      : "Saving stops the framework too. Clears every GPU resource, "
                      + "which is steadier — but the network may not come back until a "
-                     + "cold boot.")
+                     + "cold boot."))
             }
 
             Section {
-                Text("Android reaches the internet through a virtual ethernet card "
+                Text(localizedKey("Android reaches the internet through a virtual ethernet card "
                    + "on QEMU's own network. Nothing on your phone's network can see "
-                   + "the guest, and the guest cannot see it.")
+                   + "the guest, and the guest cannot see it."))
                     .font(.footnote).foregroundStyle(.secondary)
             } header: {
                 Text("How it connects")
@@ -401,9 +402,9 @@ struct JITSettings: View {
 
     private var pairingLabel: String {
         switch jit.pairingSource {
-        case .onDevice: return "paired on this device"
-        case .imported: return "file imported"
-        case nil: return "not set up"
+        case .onDevice: return localizedString("paired on this device")
+        case .imported: return localizedString("file imported")
+        case nil: return localizedString("not set up")
         }
     }
 
@@ -420,14 +421,14 @@ struct JITSettings: View {
                     ForEach(JITMethod.allCases) { Text($0.title).tag($0) }
                 }
                 DetailRow(label: "StikDebug",
-                          value: JITBootstrap.isStikDebugInstalled ? "installed" : "not found", mono: false)
+                          value: localizedString(JITBootstrap.isStikDebugInstalled ? "installed" : "not found"), mono: false)
                 DetailRow(label: "TrollStore",
-                          value: JITBootstrap.isTrollStoreInstalled ? "installed" : "not found", mono: false)
+                          value: localizedString(JITBootstrap.isTrollStoreInstalled ? "installed" : "not found"), mono: false)
                 DetailRow(label: "Installed with TrollStore",
-                          value: JITBootstrap.isInstalledWithTrollStore ? "yes" : "no", mono: false)
+                          value: localizedString(JITBootstrap.isInstalledWithTrollStore ? "yes" : "no"), mono: false)
                 DetailRow(label: "Jailbreak",
-                          value: JITBootstrap.debuggedAtLaunch ? "JIT allowed for apps"
-                               : JITBootstrap.isJailbroken ? "found; Allow JIT in Apps is off" : "not found", mono: false)
+                          value: localizedString(JITBootstrap.debuggedAtLaunch ? "JIT allowed for apps"
+                               : JITBootstrap.isJailbroken ? "found; Allow JIT in Apps is off" : "not found"), mono: false)
                 DetailRow(label: "Built-in pairing", value: pairingLabel, mono: false)
                 Button {
                     jit.showSetup = true
@@ -437,34 +438,40 @@ struct JITSettings: View {
             } header: {
                 Text("Other Ways to Turn On JIT")
             } footer: {
-                Text(jit.method == .automatic
-                     ? jit.automaticDescription + " Built-in StikJIT needs iOS 26, LocalDevVPN, and a "
-                       + "pairing file, which Husk can make itself on iOS 27."
-                     : HuskBuiltInJIT.unavailableReason ?? "Built-in StikJIT needs LocalDevVPN and a pairing "
-                       + "file, which Husk can make itself on iOS 27.")
+                // Composed rather than concatenated: the method's own sentence and
+                // the caveat about the built-in route are two keys, and a
+                // concatenation of the two would be a third that no translator
+                // could see.
+                if jit.method == .automatic {
+                    Text("\(jit.automaticDescription) Built-in StikJIT needs iOS 26, LocalDevVPN, and a pairing file, which Husk can make itself on iOS 27.")
+                } else if let reason = HuskBuiltInJIT.unavailableReason {
+                    Text(localizedKey(reason))
+                } else {
+                    Text("Built-in StikJIT needs LocalDevVPN and a pairing file, which Husk can make itself on iOS 27.")
+                }
             }
 
             Section {
                 DetailRow(label: "Debugger",
-                          value: JITBootstrap.isDebuggerAttached ? "attached" : "not attached",
+                          value: localizedString(JITBootstrap.isDebuggerAttached ? "attached" : "not attached"),
                           mono: false)
                 DetailRow(label: "Executable memory",
-                          value: JITBootstrap.isLive ? "granted" : "not claimed", mono: false)
+                          value: localizedString(JITBootstrap.isLive ? "granted" : "not claimed"), mono: false)
                 // The two routes, named separately. Either one is enough, and
                 // when someone reports "JIT does not work" these two rows are
                 // the whole diagnosis.
                 DetailRow(label: "Trap servicer",
-                          value: JITBootstrap.prewarmed ? "answering" : "not answering",
+                          value: localizedString(JITBootstrap.prewarmed ? "answering" : "not answering"),
                           mono: false)
                 // Cached answer only: running the probe from a view body
                 // could freeze the app (see JITBootstrap.mapJITWorks).
                 DetailRow(label: "MAP_JIT",
-                          value: JITBootstrap.deviceEnforcesTXM ? "not used (TXM)"
-                               : JITBootstrap.mapJITResult.map { $0 ? "executes" : "refused" }
-                                 ?? "not tested",
+                          value: JITBootstrap.deviceEnforcesTXM ? localizedString("not used (TXM)")
+                               : JITBootstrap.mapJITResult.map { $0 ? localizedString("executes") : localizedString("refused") }
+                                 ?? localizedString("not tested"),
                           mono: false)
                 DetailRow(label: "Debugger after setup",
-                          value: JITBootstrap.detached ? "detached" : "attached",
+                          value: localizedString(JITBootstrap.detached ? "detached" : "attached"),
                           mono: false)
                 if let why = JITBootstrap.lastFailure {
                     Text(why).font(.caption).foregroundStyle(.orange)
@@ -485,12 +492,12 @@ struct JITSettings: View {
             } header: {
                 Text("JIT")
             } footer: {
-                Text("Husk needs memory it can write and then execute, which on iOS "
+                Text(localizedKey("Husk needs memory it can write and then execute, which on iOS "
                    + "takes an attached debugger. There are two ways to get it: a "
                    + "debugger that services trap requests, or a MAP_JIT mapping, "
                    + "which the kernel allows any debugged process. Either one is "
                    + "enough — which is available depends on the device and the iOS "
-                   + "version, so Husk tests both rather than assuming.")
+                   + "version, so Husk tests both rather than assuming."))
             }
 
             Section {
@@ -506,17 +513,17 @@ struct JITSettings: View {
                 Toggle("Keep debugger attached", isOn: $keepAttached)
                     .onChange(of: keepAttached) { v in JITBootstrap.keepDebuggerAttached = v }
             } footer: {
-                Text("Off by default. Husk detaches StikDebug as soon as the "
+                Text(localizedKey("Off by default. Husk detaches StikDebug as soon as the "
                    + "JIT region is held, because a debugger that iOS has suspended "
                    + "stops the whole app the next time it is needed. Turn this on "
-                   + "only to collect StikDebug's own logs.")
+                   + "only to collect StikDebug's own logs."))
             }
 
             Section {
-                Text("APKs install from the Library's + button or from the Files tab. "
+                Text(localizedKey("APKs install from the Library's + button or from the Files tab. "
                    + "Split sets — a base APK plus its config pieces — must be picked "
                    + "together; installing the base alone fails on missing native "
-                   + "libraries.")
+                   + "libraries."))
                     .font(.footnote).foregroundStyle(.secondary)
             } header: {
                 Text("Sideloading")
@@ -549,15 +556,15 @@ struct SavedMachineSettings: View {
                 Button {
                     QemuRunner.shared.saveState(reason: "asked from settings")
                 } label: {
-                    Label(runner.isSavingState ? "Saving…" : "Save now",
+                    Label(localizedKey(runner.isSavingState ? "Saving…" : "Save now"),
                           systemImage: "externaldrive.badge.checkmark")
                 }
                 .disabled(runner.isSavingState)
             } footer: {
-                Text("Husk restores a saved machine instead of booting it, which takes "
+                Text(localizedKey("Husk restores a saved machine instead of booting it, which takes "
                    + "seconds rather than minutes. The picture freezes while it writes. "
                    + "With this off, nothing saves by itself — including after an "
-                   + "install.")
+                   + "install."))
             }
 
             Section {
@@ -569,11 +576,15 @@ struct SavedMachineSettings: View {
                     Text(deleteResult).font(.caption).foregroundStyle(.secondary)
                 }
             } footer: {
-                Text(QemuRunner.shared.hasSnapshot
-                     ? "Currently saved: "
-                     + ((QemuRunner.shared.snapshotDisplay ?? "sw").contains("gl")
-                        ? "GPU" : "software") + "."
-                     : "Nothing is saved, so Android boots from cold.")
+                // Composed rather than concatenated: "GPU" and "software" name the
+                // renderer the snapshot was taken on, and are keys of their own.
+                if QemuRunner.shared.hasSnapshot {
+                    let kind = (QemuRunner.shared.snapshotDisplay ?? "sw").contains("gl")
+                        ? localizedString("GPU") : localizedString("software")
+                    Text("Currently saved: \(kind).")
+                } else {
+                    Text("Nothing is saved, so Android boots from cold.")
+                }
             }
 
             Section {
@@ -582,9 +593,9 @@ struct SavedMachineSettings: View {
                         UserDefaults.standard.set(v, forKey: "husk.downloadSnapshot")
                     }
             } footer: {
-                Text("Adds about 2 GB to the first download. It was captured on the "
+                Text(localizedKey("Adds about 2 GB to the first download. It was captured on the "
                    + "software renderer, so it is not used on GPU — which cold-boots "
-                   + "once and then saves its own.")
+                   + "once and then saves its own."))
             }
         }
         .huskForm()
@@ -600,10 +611,13 @@ struct SavedMachineSettings: View {
     }
 
     private func forget(_ mode: String, _ name: String) {
+        // `name` is itself a key -- "GPU" or "software" -- so the sentence around
+        // it stays one piece for the translator rather than a concatenation.
+        let kind = localizedString(name)
         if QemuRunner.shared.forgetSnapshot(mode: mode) {
-            deleteResult = "Deleted the \(name) machine. The next launch boots from cold."
+            deleteResult = String(localized: "Deleted the \(kind) machine. The next launch boots from cold.")
         } else {
-            deleteResult = "No \(name) machine is saved, so nothing was deleted."
+            deleteResult = String(localized: "No \(kind) machine is saved, so nothing was deleted.")
         }
     }
 }
@@ -632,8 +646,8 @@ struct AppearanceSettings: View {
             } header: {
                 Text("Theme")
             } footer: {
-                Text("System follows the phone: light by day, dark by night. The guest's own "
-                   + "screen stays dark either way — it is a picture of another phone.")
+                Text(localizedKey("System follows the phone: light by day, dark by night. The guest's own "
+                   + "screen stays dark either way — it is a picture of another phone."))
             }
 
             Section {
@@ -646,7 +660,7 @@ struct AppearanceSettings: View {
                             swatch(preset.color, selected: preset.color.themeHex == theme.accentColor.themeHex)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(preset.name)
+                        .accessibilityLabel(localizedKey(preset.name))
                     }
                 }
                 .padding(.vertical, 6)
@@ -689,8 +703,8 @@ struct AppearanceSettings: View {
             } header: {
                 Text("App Icon")
             } footer: {
-                Text("Automatic follows the system appearance — light, dark and tinted. The others pin "
-                   + "one look. iOS shows its own confirmation after a change; that alert cannot be turned off.")
+                Text(localizedKey("Automatic follows the system appearance — light, dark and tinted. The others pin "
+                   + "one look. iOS shows its own confirmation after a change; that alert cannot be turned off."))
             }
         }
         .navigationTitle("Appearance")
@@ -738,17 +752,17 @@ struct AboutSettings: View {
                 LabeledContent("Build", value: Bundle.main.commit)
                 LabeledContent("Guest image", value: GuestImage.imageVersion)
                 LabeledContent("Renderer",
-                               value: runner.displayKind == .gl ? "GPU"
+                               value: localizedString(runner.displayKind == .gl ? "GPU"
                                     : runner.displayKind == .software ? "CPU"
-                                    : "Not started")
+                                    : "Not started"))
             }
 
             Section {
                 Toggle(isOn: $devInfo) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Developer Info")
-                        Text("Technical detail in the Android Translation Layer screens: "
-                           + "library reports, device checks and run logs.")
+                        Text(localizedKey("Technical detail in the Android Translation Layer screens: "
+                           + "library reports, device checks and run logs."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -756,14 +770,55 @@ struct AboutSettings: View {
                     Label("Open Console", systemImage: "terminal")
                 }
             } footer: {
-                Text("Husk runs unmodified Android APKs in a real Android system on your iPhone. "
+                Text(localizedKey("Husk runs unmodified Android APKs in a real Android system on your iPhone. "
                    + "The console shows Husk's live log, the guest's serial output and QEMU's own "
-                   + "output — the three files any problem here is diagnosed from.")
+                   + "output — the three files any problem here is diagnosed from."))
             }
         }
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showLogs) { LogView() }
+    }
+}
+
+// MARK: - Language
+
+/// Which language Husk is drawn in.
+///
+/// The picker writes `AppleLanguages` into Husk's own defaults, which iOS reads
+/// once, when the process starts — hence the note rather than an instant change.
+/// The catalogues are `Localizable.xcstrings` and `InfoPlist.xcstrings`; adding a
+/// language is a matter of adding it to those, not of touching this file.
+struct LanguageSettings: View {
+    @State private var language = AppLanguage.current
+    @State private var pending = AppLanguage.isPending
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Language", selection: $language) {
+                    ForEach(AppLanguage.allCases) { Text($0.title).tag($0) }
+                }
+                .onChange(of: language) { choice in
+                    AppLanguage.apply(choice)
+                    pending = AppLanguage.isPending
+                }
+            } footer: {
+                Text("The language Husk is drawn in. Android and the apps inside it keep their own, chosen in Android's settings.")
+            }
+
+            Section {
+                // Say which of the two it is: a note that always claims a
+                // restart is needed, on a screen that changed nothing, is a note
+                // people learn to ignore.
+                Text(localizedKey(pending
+                     ? "Restart Husk to see the change."
+                     : "A change takes effect the next time Husk opens."))
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .huskForm()
+        .navigationTitle("Language")
     }
 }
 

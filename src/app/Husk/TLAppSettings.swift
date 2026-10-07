@@ -10,7 +10,7 @@ struct TLAppSettings: Codable, Equatable {
         /// What the game asks for (its manifest), landscape when it does not say.
         case auto, landscape, portrait
         var id: String { rawValue }
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .auto: return "Automatic"
             case .landscape: return "Landscape"
@@ -23,7 +23,7 @@ struct TLAppSettings: Codable, Equatable {
     enum Resolution: String, Codable, CaseIterable, Identifiable {
         case low, medium, high, native
         var id: String { rawValue }
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .low: return "Low"
             case .medium: return "Medium"
@@ -33,10 +33,10 @@ struct TLAppSettings: Codable, Equatable {
         }
         var detail: String {
             switch self {
-            case .low: return "1 pixel per point. Fastest."
-            case .medium: return "1.5 pixels per point."
-            case .high: return "2 pixels per point. The default."
-            case .native: return "Every pixel the screen has. Sharpest, and heaviest."
+            case .low: return localizedString("1 pixel per point. Fastest.")
+            case .medium: return localizedString("1.5 pixels per point.")
+            case .high: return localizedString("2 pixels per point. The default.")
+            case .native: return localizedString("Every pixel the screen has. Sharpest, and heaviest.")
             }
         }
         @MainActor var scale: CGFloat {
@@ -54,7 +54,7 @@ struct TLAppSettings: Codable, Equatable {
         /// For the games that cannot be played without a controller (Unreal), when none is connected.
         case auto, always, never
         var id: String { rawValue }
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .auto: return "Automatic"
             case .always: return "Always"
@@ -120,7 +120,7 @@ struct TLAppSettingsView: View {
     @ObservedObject private var store = TranslationLayerStore.shared
     @State private var settings: TLAppSettings
     @State private var name: String
-    @State private var dataSize: String = "…"
+    @State private var dataSize: String = localizedString("…")
     @State private var confirmReset = false
     @FocusState private var nameFocused: Bool
 
@@ -171,8 +171,7 @@ struct TLAppSettingsView: View {
             } header: {
                 Text("Display")
             } footer: {
-                Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again.")
+                Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already running in this session needs Husk closed and opened again.")
             }
 
             Section {
@@ -180,9 +179,9 @@ struct TLAppSettingsView: View {
             } header: {
                 Text("Screenshots")
             } footer: {
-                Text("The game starts with nothing over it: no bar, no controller, no readout, the picture to every edge. Tap with three "
+                Text(localizedKey("The game starts with nothing over it: no bar, no controller, no readout, the picture to every edge. Tap with three "
                    + "fingers at once to bring the bar back, and again to hide it. The Hide button in the bar does the same while "
-                   + "playing, but leaves the strip the bar sat in.")
+                   + "playing, but leaves the strip the bar sat in."))
             }
 
             Section {
@@ -199,8 +198,8 @@ struct TLAppSettingsView: View {
             } header: {
                 Text("Controller")
             } footer: {
-                Text("Automatic offers the controller for games that cannot be played without one (Unreal Engine games), when no real "
-                   + "controller is connected. Always offers it for any game that understands one. A paired controller is always used.")
+                Text(localizedKey("Automatic offers the controller for games that cannot be played without one (Unreal Engine games), when no real "
+                   + "controller is connected. Always offers it for any game that understands one. A paired controller is always used."))
             }
 
             Section {
@@ -212,8 +211,8 @@ struct TLAppSettingsView: View {
             } header: {
                 Text("Data")
             } footer: {
-                Text(inUse ? "The game is loaded in this session. Close Husk completely and open it again to reset its data."
-                           : "Deletes what the game saved and downloaded here: saves, settings and caches. The game itself stays.")
+                Text(localizedKey(inUse ? "The game is loaded in this session. Close Husk completely and open it again to reset its data."
+                                        : "Deletes what the game saved and downloaded here: saves, settings and caches. The game itself stays."))
             }
         }
         .huskForm()
@@ -251,7 +250,7 @@ struct TLAppSettingsView: View {
                     if values?.isRegularFile == true { bytes += Int64(values?.fileSize ?? 0) }
                 }
             }
-            return bytes == 0 ? "nothing" : ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+            return bytes == 0 ? localizedString("nothing") : ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
         }.value
     }
 }

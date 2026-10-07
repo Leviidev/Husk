@@ -20,7 +20,7 @@ struct FilesTab: View {
             DirectoryView(path: Self.root, title: "Files")
                 .navigationDestination(for: String.self) { path in
                     DirectoryView(path: path,
-                                  title: (path as NSString).lastPathComponent)
+                                  title: localizedKey((path as NSString).lastPathComponent))
                 }
         }
     }
@@ -29,7 +29,7 @@ struct FilesTab: View {
 /// One directory.
 struct DirectoryView: View {
     let path: String
-    let title: String
+    let title: LocalizedStringKey
 
     @ObservedObject private var host = AndroidHost.shared
     @State private var entries: [AndroidHost.GuestEntry] = []
@@ -60,7 +60,8 @@ struct DirectoryView: View {
             if loading && entries.isEmpty {
                 ProgressView()
             } else if let failure {
-                EmptyState(title: "Cannot Read This Folder", message: failure, systemImage: "lock")
+                EmptyState(title: "Cannot Read This Folder", message: localizedKey(failure),
+                           systemImage: "lock")
             } else if entries.isEmpty {
                 EmptyState(title: "Empty", message: "Nothing is in this folder yet.",
                            systemImage: "folder", actionTitle: "Import Files",
@@ -101,15 +102,16 @@ struct DirectoryView: View {
     @ViewBuilder private func row(_ e: AndroidHost.GuestEntry) -> some View {
         if e.isDirectory {
             NavigationLink(value: e.path) {
-                fileLabel(icon: "folder.fill", tint: .accentColor, title: e.name,
-                          subtitle: e.modified.map(Self.when))
+                fileLabel(icon: "folder.fill", tint: .accentColor, title: localizedKey(e.name),
+                          subtitle: e.modified.map { localizedKey(Self.when($0)) })
             }
         } else {
             Button {
                 if e.name.lowercased().hasSuffix(".apk") { installing = e }
             } label: {
                 HStack {
-                    fileLabel(icon: icon(for: e.name), tint: .secondary, title: e.name, subtitle: subtitle(e))
+                    fileLabel(icon: icon(for: e.name), tint: .secondary, title: localizedKey(e.name),
+                              subtitle: subtitle(e))
                     if e.name.lowercased().hasSuffix(".apk") {
                         Spacer()
                         Image(systemName: "arrow.down.circle").foregroundStyle(Color.accentColor)
@@ -120,7 +122,8 @@ struct DirectoryView: View {
         }
     }
 
-    private func fileLabel(icon: String, tint: Color, title: String, subtitle: String?) -> some View {
+    private func fileLabel(icon: String, tint: Color, title: LocalizedStringKey,
+                           subtitle: LocalizedStringKey?) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.title3)
@@ -154,9 +157,9 @@ struct DirectoryView: View {
         return min(max(CGFloat(s.total - s.free) / CGFloat(s.total), 0.02), 1)
     }
 
-    private func subtitle(_ e: AndroidHost.GuestEntry) -> String {
+    private func subtitle(_ e: AndroidHost.GuestEntry) -> LocalizedStringKey {
         let size = AppDetailView.bytes(e.size)
-        guard let m = e.modified else { return size }
+        guard let m = e.modified else { return localizedKey(size) }
         return "\(size) · \(Self.when(m))"
     }
 
@@ -213,12 +216,12 @@ struct ImportSheet: View {
         NavigationStack {
             VStack(spacing: 18) {
                 VStack(spacing: 10) {
+                    let folder = (destination as NSString).lastPathComponent
                     Image(systemName: "doc.badge.plus")
                         .font(.system(size: 34, weight: .light))
                         .foregroundStyle(Color.accentColor)
                     Text("Import Files").font(.headline)
-                    Text("They go to \((destination as NSString).lastPathComponent). "
-                       + "Unmodified APKs install from here too.")
+                    Text("They go to \(folder). Unmodified APKs install from here too.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

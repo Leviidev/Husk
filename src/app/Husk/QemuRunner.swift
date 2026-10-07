@@ -85,6 +85,8 @@ final class QemuRunner: ObservableObject {
     /// init are over in seconds, and the long tail is app compilation after
     /// bootanim exits. Evenly spaced numbers would race to 90% and then sit
     /// there, which is the specific thing progress bars are distrusted for.
+    /// The middle element is the key shown on the boot screen, not the
+    /// sentence: `localizedString` turns it into one where the message is built.
     nonisolated(unsafe) static let bootMilestones: [(String, String, Int)] = [
         ("Linux version",                 "Starting the Linux kernel",           5),
         ("init: init first stage started","Android init, first stage",           10),
@@ -1782,8 +1784,7 @@ final class QemuRunner: ObservableObject {
                             Task { @MainActor in
                                 let r = QemuRunner.shared
                                 if percent > r.bootProgress { r.bootProgress = percent }
-                                r.setupMessage =
-                                    "\(r.bootProgress)%  ·  \(milestone)  ·  \(stamp) elapsed"
+                                r.setupMessage = String(localized: "\(r.bootProgress)%  ·  \(localizedString(milestone))  ·  \(stamp) elapsed")
                             }
                             break
                         }

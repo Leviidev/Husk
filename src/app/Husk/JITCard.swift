@@ -27,22 +27,20 @@ struct JITCard: View {
         .padding(.vertical, 4)
     }
 
-    private var explanation: String {
+    private var explanation: LocalizedStringKey {
         switch offered {
         case .trollStore:
-            return "TrollStore can turn JIT on for Husk: it opens Husk and enables it, with no computer. "
-                 + "In TrollStore's Settings, URL Scheme must be on."
+            return "TrollStore can turn JIT on for Husk: it opens Husk and enables it, with no computer. In TrollStore's Settings, URL Scheme must be on."
         case .jailbreak:
             return "On a jailbroken device JIT is a setting. In Dopamine, turn on Allow JIT in Apps, then open Husk again."
         case .stikDebug:
             return "StikDebug is installed, so Husk will open it to turn JIT on."
         default:
-            return "StikJIT is built into Husk. You can turn JIT on right here — no computer and no other app. "
-                 + "Games and Android both need it."
+            return "StikJIT is built into Husk. You can turn JIT on right here — no computer and no other app. Games and Android both need it."
         }
     }
 
-    private var buttonTitle: String {
+    private var buttonTitle: LocalizedStringKey {
         switch offered {
         case .trollStore: return "Turn On JIT with TrollStore"
         case .jailbreak: return "How to Allow JIT"
@@ -74,7 +72,7 @@ struct JITCard: View {
                     Image(systemName: "bolt.fill").font(.title3).foregroundStyle(Color.accentColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(offered == .builtIn ? "StikJIT" : offered.title).font(.title3.weight(.semibold))
+                    Text(localizedKey(offered == .builtIn ? "StikJIT" : offered.title)).font(.title3.weight(.semibold))
                     Text("Turn on JIT").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -91,7 +89,7 @@ struct JITCard: View {
             if jit.busy {
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text(jit.status ?? "Turning on JIT…").font(.subheadline).foregroundStyle(.secondary)
+                    Text(localizedKey(jit.status ?? "Turning on JIT…")).font(.subheadline).foregroundStyle(.secondary)
                 }
             } else {
                 Button {

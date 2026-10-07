@@ -107,7 +107,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_unity_perf_snapshot(&p)
         let text = p.fps > 0
             ? String(format: "%.0f fps · %.1f ms · max %.0f", p.fps, p.mean_ms, p.max_ms)
-            : "starting"
+            : localizedString("starting")
         stats.text = text
         onStats?(text)
     }
@@ -217,7 +217,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         typedLabel.autoresizingMask = [.flexibleWidth]
         bar.addSubview(typedLabel)
         let done = UIButton(type: .system)
-        done.setTitle("Done", for: .normal)
+        done.setTitle(localizedString("Done"), for: .normal)
         done.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         done.frame = CGRect(x: 100, y: 0, width: 80, height: 44)
         done.autoresizingMask = [.flexibleLeftMargin]
@@ -365,7 +365,7 @@ final class TLUnityModel: ObservableObject {
         }
     }
 
-    var statusText: String {
+    var statusText: LocalizedStringKey {
         switch state {
         case Int32(HUSK_UNITY_STARTING): return "Loading the engine…"
         case Int32(HUSK_UNITY_RUNNING):  return "Running"
@@ -375,7 +375,7 @@ final class TLUnityModel: ObservableObject {
         }
     }
 
-    var subStatusText: String {
+    var subStatusText: LocalizedStringKey {
         switch state {
         case Int32(HUSK_UNITY_RUNNING): return "\(frames) frame(s) drawn · native runtime"
         case Int32(HUSK_UNITY_STARTING): return "Loading libraries and starting the engine"
@@ -474,7 +474,7 @@ struct TLUnityAttemptView: View {
                 if showLog {
                     ScrollViewReader { proxy in
                         ScrollView {
-                            Text(model.logText.isEmpty ? "Starting…" : model.logText)
+                            Text(localizedKey(model.logText.isEmpty ? "Starting…" : model.logText))
                                 .font(.technical(11))
                                 .foregroundStyle(Theme.text)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -512,7 +512,7 @@ struct TLCocosAttemptView: View {
     @StateObject private var model = TLUnityModel()
     @AppStorage("husk.tl.unity.showLog") private var showLogSetting = false
     @AppStorage(TranslationLayer.devInfoKey) private var devInfo = false
-    @State private var stats = "starting"
+    @State private var stats = localizedString("starting")
     @ObservedObject private var pads = HuskGamepads.shared
     @StateObject private var virtualPad = VirtualPad()
     /// This game's own settings (TLAppSettings), read once as the screen opens.
@@ -662,16 +662,18 @@ struct TLCocosAttemptView: View {
             }
             .tint(.white)
             Circle().fill(model.statusColor).frame(width: 7, height: 7)
-            Text(model.state == Int32(HUSK_UNITY_RUNNING) ? app.label : model.statusText)
+            Text(model.state == Int32(HUSK_UNITY_RUNNING) ? localizedKey(app.label) : model.statusText)
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
             Spacer()
             if !pads.names.isEmpty {
-                Label(pads.names.count == 1 ? pads.names[0] : "\(pads.names.count) controllers", systemImage: "gamecontroller.fill")
+                Label(pads.names.count == 1 ? pads.names[0]
+                                            : String(localized: "\(pads.names.count) controllers"),
+                      systemImage: "gamecontroller.fill")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
             }
             if padOffered {
                 Button { settings.padShown.toggle(); settings.save(app.id) } label: {
-                    Label(settings.padShown ? "Hide pad" : "Pad", systemImage: "gamecontroller").font(.system(size: 12, weight: .semibold))
+                    Label(localizedKey(settings.padShown ? "Hide pad" : "Pad"), systemImage: "gamecontroller").font(.system(size: 12, weight: .semibold))
                 }
                 .tint(.white)
             }
@@ -680,7 +682,7 @@ struct TLCocosAttemptView: View {
             }
             if devInfo {
                 Button { withAnimation(.snappy(duration: 0.25)) { showLog.toggle() } } label: {
-                    Text(showLog ? "Hide log" : "Log").font(.system(size: 12, weight: .semibold))
+                    Text(localizedKey(showLog ? "Hide log" : "Log")).font(.system(size: 12, weight: .semibold))
                 }
                 .tint(.white)
             }
@@ -706,7 +708,7 @@ struct TLCocosAttemptView: View {
             .padding(.horizontal, 10).padding(.vertical, 6)
             ScrollViewReader { proxy in
                 ScrollView {
-                    Text(model.logText.isEmpty ? "Starting…" : model.logText)
+                    Text(localizedKey(model.logText.isEmpty ? "Starting…" : model.logText))
                         .font(.technical(10))
                         .foregroundStyle(Theme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)

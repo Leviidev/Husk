@@ -44,7 +44,7 @@ enum Theme {
 
         var id: String { rawValue }
 
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .system: return "System"
             case .light: return "Light"
@@ -203,8 +203,11 @@ struct Chip: View {
 }
 
 /// A small tag under a title — a category, an ABI, a state.
+///
+/// The text is a key, so a category or an ABI that has no entry is drawn as
+/// itself, which is what data should do.
 struct Tag: View {
-    let text: String
+    let text: LocalizedStringKey
     var tint: Color = Theme.textDim
 
     var body: some View {
@@ -217,8 +220,11 @@ struct Tag: View {
 }
 
 /// A label and a value on one line, for anything worth reading off.
+///
+/// The label is a key; the value is data — a count, a size, a state — and is
+/// localized by whoever knows whether it is a sentence or a measurement.
 struct DetailRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
     var mono: Bool = true
 
@@ -240,8 +246,8 @@ struct DetailRow: View {
 /// chevron that says it goes somewhere.
 struct HuskRow: View {
     let systemImage: String
-    let title: String
-    var subtitle: String? = nil
+    let title: LocalizedStringKey
+    var subtitle: LocalizedStringKey? = nil
     var tint: Color = Theme.text
     var showsChevron = true
 
@@ -297,8 +303,8 @@ struct RowDivider: View {
 
 /// A section label above a group.
 struct SectionHeader: View {
-    let title: String
-    var trailing: String? = nil
+    let title: LocalizedStringKey
+    var trailing: LocalizedStringKey? = nil
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -315,7 +321,7 @@ struct SectionHeader: View {
 
 /// A small status pill. The tint carries the meaning, the text the detail.
 struct StatusPill: View {
-    let text: String
+    let text: LocalizedStringKey
     let systemImage: String
     var tint: Color = Theme.accent
 
@@ -330,10 +336,10 @@ struct StatusPill: View {
 
 /// What a screen shows when it has nothing to show.
 struct EmptyState: View {
-    let title: String
-    let message: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
     let systemImage: String
-    var actionTitle: String? = nil
+    var actionTitle: LocalizedStringKey? = nil
     var action: (() -> Void)? = nil
 
     var body: some View {

@@ -23,7 +23,7 @@ enum HuskFilePicker {
         live = coordinator
         guard let top = topController() else {
             live = nil
-            onFail?("There is no screen to show the file picker on.")
+            onFail?(localizedString("There is no screen to show the file picker on."))
             return
         }
         HuskLog.log("ui", "file picker: presenting from \(type(of: top))")

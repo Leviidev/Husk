@@ -43,13 +43,13 @@ enum HuskBuiltInJIT {
 
     static var unavailableReason: String? {
 #if targetEnvironment(simulator)
-        return "Built-in JIT is available only on a physical device."
+        return localizedString("Built-in JIT is available only on a physical device.")
 #else
         guard #available(iOS 26.0, *) else {
-            return "Built-in JIT needs iOS 26 or later. Use StikDebug instead."
+            return localizedString("Built-in JIT needs iOS 26 or later. Use StikDebug instead.")
         }
         if getenv("LC_HOME_PATH") != nil {
-            return "Built-in JIT is unavailable inside LiveContainer. Use StikDebug instead."
+            return localizedString("Built-in JIT is unavailable inside LiveContainer. Use StikDebug instead.")
         }
         return nil
 #endif
@@ -71,31 +71,30 @@ enum HuskBuiltInJIT {
             completion(.failure(HelperRequest.error(code, message)))
         }
         guard unavailableReason == nil else {
-            fail(1, unavailableReason ?? "Built-in JIT is unavailable.")
+            fail(1, unavailableReason ?? localizedString("Built-in JIT is unavailable."))
             return
         }
         guard let identifier = helperIdentifier else {
-            fail(2, "Husk's JIT helper is missing from this installation. Reinstall Husk, and keep "
-                  + "its app extensions if your sideloader asks, or use StikDebug.")
+            fail(2, localizedString("Husk's JIT helper is missing from this installation. Reinstall Husk, and keep "
+                  + "its app extensions if your sideloader asks, or use StikDebug."))
             return
         }
         if NSClassFromString("NSExtension") == nil {
             dlopen("/System/Library/Frameworks/ExtensionFoundation.framework/ExtensionFoundation", RTLD_NOW)
         }
         guard let extensionClass = NSClassFromString("NSExtension") else {
-            fail(3, "iOS did not provide the extension API Husk's JIT helper needs.")
+            fail(3, localizedString("iOS did not provide the extension API Husk's JIT helper needs."))
             return
         }
         let factory = unsafeBitCast(extensionClass as AnyObject, to: NSExtensionClassShim.self)
         let found: AnyObject
         do { found = try factory.extension(withIdentifier: identifier) }
         catch {
-            fail(2, "Husk's JIT helper (\(identifier)) could not be found: \(error.localizedDescription) "
-                  + "Reinstall Husk.")
+            fail(2, String(localized: "Husk's JIT helper (\(identifier)) could not be found: \(error.localizedDescription) Reinstall Husk."))
             return
         }
         guard let data = try? JSONEncoder().encode(request) else {
-            fail(4, "The request for Husk's JIT helper could not be encoded.")
+            fail(4, localizedString("The request for Husk's JIT helper could not be encoded."))
             return
         }
         let helper = HelperRequest(extension: found, operation: request.operation.rawValue,
@@ -133,14 +132,14 @@ private final class HelperRequest {
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.returned(payload) } }
         }
         shim.setRequestCancellationBlock { [weak self] _, error in
-            let message = error?.localizedDescription ?? "the request was cancelled"
+            let message = error?.localizedDescription ?? localizedString("the request was cancelled")
             DispatchQueue.main.async { MainActor.assumeIsolated {
-                self?.end(.failure(Self.error(5, "Husk's JIT helper stopped: \(message)")))
+                self?.end(.failure(Self.error(5, String(localized: "Husk's JIT helper stopped: \(message)"))))
             } }
         }
         shim.setRequestInterruptionBlock { [weak self] _ in
             DispatchQueue.main.async { MainActor.assumeIsolated {
-                self?.end(.failure(Self.error(6, "Husk's JIT helper stopped unexpectedly. Try again.")))
+                self?.end(.failure(Self.error(6, localizedString("Husk's JIT helper stopped unexpectedly. Try again."))))
             } }
         }
         let item = NSExtensionItem()
@@ -149,8 +148,8 @@ private final class HelperRequest {
             DispatchQueue.main.async { MainActor.assumeIsolated {
                 guard let self else { return }
                 guard let uuid else {
-                    self.end(.failure(Self.error(7, "Husk's JIT helper did not start. Reinstall Husk, and "
-                                                  + "keep its app extensions if your sideloader asks.")))
+                    self.end(.failure(Self.error(7, localizedString("Husk's JIT helper did not start. Reinstall Husk, and "
+                                                                  + "keep its app extensions if your sideloader asks."))))
                     return
                 }
                 HuskLog.log("jit-helper", "\(self.operation): started \(identifier) as pid "
@@ -163,7 +162,7 @@ private final class HelperRequest {
     private func returned(_ payload: Data?) {
         guard let payload,
               let response = try? JSONDecoder().decode(HuskJITRequest.Response.self, from: payload) else {
-            end(.failure(Self.error(8, "Husk's JIT helper finished without an answer.")))
+            end(.failure(Self.error(8, localizedString("Husk's JIT helper finished without an answer."))))
             return
         }
         HuskLog.log("jit-helper", "\(operation): finished success=\(response.success ? 1 : 0)")

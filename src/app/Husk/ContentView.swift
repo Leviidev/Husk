@@ -315,7 +315,7 @@ struct GuestScreenView: View {
                     ProgressView(value: Double(runner.bootProgress), total: 100)
                         .progressViewStyle(.linear)
                         .frame(width: 200)
-                    Text(runner.setupMessage ?? "Starting Android…")
+                    Text(localizedKey(runner.setupMessage ?? "Starting Android…"))
                         .font(.caption2).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -383,14 +383,14 @@ struct GuestScreenView: View {
                                 HuskGLView.rotated.toggle()
                                 rotated = HuskGLView.rotated
                             } label: {
-                                Label(rotated ? "Unrotate picture" : "Rotate picture",
+                                Label(localizedKey(rotated ? "Unrotate picture" : "Rotate picture"),
                                       systemImage: "rotate.right")
                             }
                             Divider()
                             Button {
                                 QemuRunner.shared.saveState(reason: "asked from full screen")
                             } label: {
-                                Label(runner.isSavingState ? "Saving…" : "Save Android",
+                                Label(localizedKey(runner.isSavingState ? "Saving…" : "Save Android"),
                                       systemImage: "externaldrive.badge.checkmark")
                             }
                             .disabled(runner.isSavingState)
@@ -499,7 +499,10 @@ struct SetupView: View {
                 } else {
                     ProgressView()
                 }
-                Text(runner.setupMessage.map { "Android: \($0)" } ?? "Starting Android…")
+                // Composed rather than concatenated: the runner's own sentence is
+                // already translated, and "Android:" is the key around it.
+                Text(runner.setupMessage.map { String(localized: "Android: \($0)") }
+                     ?? localizedString("Starting Android…"))
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal, 36)
                 Text("First run downloads Android and can take several minutes.")
@@ -510,9 +513,9 @@ struct SetupView: View {
             switch guest.state {
             case .downloading(let p, let received, let total):
                 VStack(spacing: 10) {
-                    Text(guest.hasShippedSnapshot || GuestImage.shared.isFetchingSnapshot
+                    Text(localizedKey(guest.hasShippedSnapshot || GuestImage.shared.isFetchingSnapshot
                          ? "Downloading pre-booted Android"
-                         : "Downloading Android runtime").font(.headline)
+                         : "Downloading Android runtime")).font(.headline)
                     ProgressView(value: p).padding(.horizontal, 50)
                     Text("\(fmt(received)) of \(total > 0 ? fmt(total) : "…")")
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -730,8 +733,8 @@ struct ControlsSheet: View {
                     row("computermouse", "Mouse", on: false, available: false)
                 }
 
-                Text("Touch always works. A gamepad and a pointer are not wired "
-                   + "through to Android yet.")
+                Text(localizedKey("Touch always works. A gamepad and a pointer are not wired "
+                   + "through to Android yet."))
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textDim)
                     .multilineTextAlignment(.center)
@@ -743,7 +746,7 @@ struct ControlsSheet: View {
         }
     }
 
-    private func row(_ icon: String, _ title: String,
+    private func row(_ icon: String, _ title: LocalizedStringKey,
                      on: Bool, available: Bool) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)

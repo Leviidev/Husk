@@ -57,8 +57,8 @@ struct LibraryTab: View {
                                    systemImage: "magnifyingglass")
                     } else if host.packages.isEmpty && host.isReady {
                         EmptyState(title: "No Apps Yet",
-                                   message: "Install an APK and it appears here. Split sets "
-                                          + "work too — pick every piece at once.",
+                                   message: localizedKey("Install an APK and it appears here. Split sets "
+                                          + "work too — pick every piece at once."),
                                    systemImage: "square.grid.2x2",
                                    actionTitle: "Install APK(s)",
                                    action: { importing = true })
@@ -113,22 +113,25 @@ struct LibraryTab: View {
                 }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(started ? "Starting Android" : "Android Is Not Running")
+                Text(localizedKey(started ? "Starting Android" : "Android Is Not Running"))
                     .font(.subheadline.weight(.semibold))
                 if started, runner.bootProgress > 0 {
                     ProgressView(value: Double(runner.bootProgress), total: 100)
                 } else {
-                    Text(started ? host.status
+                    Text(localizedKey(started ? host.status
                                  : JITBootstrap.isDebuggerAttached
                                    ? "Your apps are here; start it to open them."
-                                   : "Needs JIT. StikJIT is built in — the recommended way.")
+                                   : "Needs JIT. StikJIT is built in — the recommended way."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
             }
             Spacer(minLength: 6)
-            Button(started ? "Show" : JITBootstrap.isDebuggerAttached ? "Start" : "Enable JIT") {
+            Button(localizedKey(started ? "Show"
+                                        : JITBootstrap.isDebuggerAttached
+                                          ? "Start"
+                                          : "Enable JIT")) {
                 if started { onOpenGuest() } else { onStartAndroid() }
             }
             .buttonStyle(.borderedProminent)
@@ -142,7 +145,7 @@ struct LibraryTab: View {
     private func busyStrip(_ text: String) -> some View {
         HStack(spacing: 12) {
             ProgressView()
-            Text(text).font(.subheadline).lineLimit(2)
+            Text(localizedKey(text)).font(.subheadline).lineLimit(2)
             Spacer(minLength: 0)
         }
         .padding(14)
@@ -167,7 +170,7 @@ struct LibraryTab: View {
         return ["Game", "App", "Tool"].filter { set.contains($0) }
     }
 
-    private func plural(_ c: String) -> String {
+    private func plural(_ c: String) -> LocalizedStringKey {
         c == "Game" ? "Games" : c == "App" ? "Apps" : "Tools"
     }
 
@@ -197,7 +200,7 @@ struct AppCard: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                Text(app.category ?? app.bitness ?? " ")
+                Text(localizedKey(app.category ?? app.bitness ?? " "))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

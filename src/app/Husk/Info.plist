@@ -16,6 +16,15 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- The languages Husk ships. The catalogues are Localizable.xcstrings and
+	     InfoPlist.xcstrings; the build turns them into one .lproj per language,
+	     and this is what tells iOS which of them it may choose between. Adding a
+	     language means adding it here and to both catalogues. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>

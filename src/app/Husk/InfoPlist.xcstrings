@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Shown by iOS when Husk first asks for local network access, for on-device pairing. The key is an Info.plist key rather than a sentence, so the English text has to be spelled out here as well -- without it the compiled en.lproj table maps the key to itself and the prompt reads \"NSLocalNetworkUsageDescription\".",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husk uses the local network to pair with this iPhone for JIT, without a computer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husk 通过本地网络与此 iPhone 配对以开启 JIT，无需电脑。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

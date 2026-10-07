@@ -46,7 +46,7 @@ struct AppDetailView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Label(canOpen ? "Launch" : "Starting Android…",
+                        Label(localizedKey(canOpen ? "Launch" : "Starting Android…"),
                               systemImage: canOpen ? "play.fill" : "hourglass")
                             .font(.headline)
                         Spacer()
@@ -63,7 +63,9 @@ struct AppDetailView: View {
             Section {
                 LabeledContent("Version", value: live.version ?? "—")
                 LabeledContent("Size", value: live.sizeBytes.map(Self.bytes) ?? "—")
-                LabeledContent("Last Used", value: live.lastUsed.map(Self.when) ?? "Never from Husk")
+                LabeledContent("Last Used",
+                               value: live.lastUsed.map(Self.when)
+                                      ?? localizedString("Never from Husk"))
             }
 
             Section {
@@ -92,8 +94,8 @@ struct AppDetailView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Its data goes with it. Save Android afterwards or the change is "
-               + "lost on the next launch.")
+            Text(localizedKey("Its data goes with it. Save Android afterwards or the change is "
+               + "lost on the next launch."))
         }
     }
 
@@ -130,8 +132,8 @@ struct AppDetailView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 6) {
-                    if let c = live.category { Tag(text: c) }
-                    if let b = live.bitness { Tag(text: b) }
+                    if let c = live.category { Tag(text: localizedKey(c)) }
+                    if let b = live.bitness { Tag(text: localizedKey(b)) }
                 }
                 .padding(.top, 2)
             }
@@ -158,16 +160,20 @@ struct AppDetailView: View {
         ByteCountFormatter.string(fromByteCount: n, countStyle: .file)
     }
 
+    /// "Today, 14:03" for the last two days and a plain date before that.
+    ///
+    /// The time itself is formatted, not spelled out, so it follows the phone's
+    /// own 12- or 24-hour setting; only the word in front of it is a key. A date
+    /// format of `'Today,' h:mm a` would have frozen both the wording and the
+    /// clock into English.
     static func when(_ date: Date) -> String {
-        let f = DateFormatter()
+        let time = date.formatted(date: .omitted, time: .shortened)
         if Calendar.current.isDateInToday(date) {
-            f.dateFormat = "'Today,' h:mm a"
-        } else if Calendar.current.isDateInYesterday(date) {
-            f.dateFormat = "'Yesterday,' h:mm a"
-        } else {
-            f.dateStyle = .medium
-            f.timeStyle = .none
+            return String(localized: "Today, \(time)")
         }
-        return f.string(from: date)
+        if Calendar.current.isDateInYesterday(date) {
+            return String(localized: "Yesterday, \(time)")
+        }
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 }

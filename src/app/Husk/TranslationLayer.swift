@@ -63,15 +63,14 @@ extension TLReport {
     var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .nativeactivity ? "NativeActivity" : "Unity" }
 
     var displaySummary: String {
-        guard runsOnNativeRuntime else { return summary }
+        guard runsOnNativeRuntime else { return localizedString(summary) }
         let flagged = libraries.filter { $0.abi == "arm64-v8a" && $0.status != "ok" }.count
         let total = libraries.filter { $0.abi == "arm64-v8a" }.count
-        var text = "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
-        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
-        else if nativeEngine == .sdl || nativeEngine == .nativeactivity { text += " Husk turns the screen the way the game asks for." }
+        var text = String(localized: "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself.")
+        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " " + String(localized: "It is a landscape game: Husk turns the screen for it.") }
+        else if nativeEngine == .sdl || nativeEngine == .nativeactivity { text += " " + String(localized: "Husk turns the screen the way the game asks for.") }
         if flagged > 0 {
-            text += " \(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, "
-                  + "except for optional anti-tamper code, which it leaves out."
+            text += " " + String(localized: "\(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, except for optional anti-tamper code, which it leaves out.")
         }
         return text
     }
@@ -193,8 +192,8 @@ final class TranslationLayerStore: ObservableObject {
     /// picked together -- and report on it.
     func add(_ urls: [URL], move: Bool = false) {
         guard !urls.isEmpty, busy == nil else { return }
-        busy = urls.count == 1 ? "Adding \(urls[0].lastPathComponent)…"
-                               : "Adding \(urls.count) APKs…"
+        busy = urls.count == 1 ? String(localized: "Adding \(urls[0].lastPathComponent)…")
+                               : String(localized: "Adding \(urls.count) APKs…")
         Task.detached(priority: .userInitiated) {
             let failure = Self.ingest(urls, move: move)
             await MainActor.run {
@@ -308,7 +307,7 @@ final class TranslationLayerStore: ObservableObject {
         } catch {
             try? fm.removeItem(at: dir)
             HuskLog.log("tl", "FAILED to add: \(error.localizedDescription)")
-            return "Husk could not copy it: \(error.localizedDescription)"
+            return String(localized: "Husk could not copy it: \(error.localizedDescription)")
         }
 
         let apks = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
@@ -485,9 +484,9 @@ struct TranslationLayerTab: View {
         } header: {
             Text("Apps")
         } footer: {
-            Text("Runs Android games straight on your iPhone, without starting Android. Add an APK, or a bundle "
+            Text(localizedKey("Runs Android games straight on your iPhone, without starting Android. Add an APK, or a bundle "
                + "(.xapk, .apkm, .apks) — or pick a base APK and its split pieces together. "
-               + "Husk keeps its own copy, apart from Android's.")
+               + "Husk keeps its own copy, apart from Android's."))
         }
     }
 
@@ -510,28 +509,28 @@ struct TranslationLayerTab: View {
             Button {
                 store.runChecks()
             } label: {
-                Label(store.checking ? "Checking…"
-                      : store.checks.isEmpty ? "Run checks" : "Run again",
+                Label(localizedKey(store.checking ? "Checking…"
+                                   : store.checks.isEmpty ? "Run checks" : "Run again"),
                       systemImage: "stethoscope")
             }
             .disabled(store.checking)
         } header: {
             Text("This iPhone")
         } footer: {
-            Text("Android's native code expects things of the processor and of memory "
+            Text(localizedKey("Android's native code expects things of the processor and of memory "
                + "that only the phone can answer -- above all, whether a library's code "
                + "can run with its data writable right beside it. Enable JIT first, or "
-               + "the memory checks are skipped. The results go to the console too.")
+               + "the memory checks are skipped. The results go to the console too."))
         }
     }
 
     private var progressSection: some View {
         Section {
-            DetailRow(label: "App reports", value: "working", mono: false)
-            DetailRow(label: "Device checks", value: "working", mono: false)
-            DetailRow(label: "Library loader", value: "working", mono: false)
+            DetailRow(label: "App reports", value: localizedString("working"), mono: false)
+            DetailRow(label: "Device checks", value: localizedString("working"), mono: false)
+            DetailRow(label: "Library loader", value: localizedString("working"), mono: false)
             DetailRow(label: "Android runtime", value: "Unity, cocos2d-x, GameActivity, SDL3", mono: false)
-            DetailRow(label: "Opening apps", value: "Unity, cocos2d-x, Minecraft and SDL3 games", mono: false)
+            DetailRow(label: "Opening apps", value: localizedString("Unity, cocos2d-x, Minecraft and SDL3 games"), mono: false)
         } header: {
             Text("Where it stands")
         } footer: {
@@ -542,7 +541,7 @@ struct TranslationLayerTab: View {
 
 /// A verdict, as words and a colour.
 struct TLVerdict {
-    let title: String
+    let title: LocalizedStringKey
     let tint: Color
 
     init(_ report: TLReport?) {
@@ -563,7 +562,7 @@ struct TLVerdict {
 
 /// What a person who is not debugging needs to know about an app: will it run here, or may it not.
 struct TLPlainStatus {
-    let title: String
+    let title: LocalizedStringKey
     let tint: Color
 
     init(_ report: TLReport?) {
@@ -678,7 +677,7 @@ struct TLAppReportView: View {
                     showAttempt = true
                 } label: {
                     HStack {
-                        Label(devInfo ? "Run Translation Layer Attempt" : "Play", systemImage: "play.circle.fill")
+                        Label(localizedKey(devInfo ? "Run Translation Layer Attempt" : "Play"), systemImage: "play.circle.fill")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Theme.accent)
                         Spacer()
@@ -694,8 +693,8 @@ struct TLAppReportView: View {
                 }
             } footer: {
                 if devInfo {
-                    Text("Loads arm64 native code into JIT memory on Apple Silicon and drives "
-                       + "a NativeActivity lifecycle. Apps with Java/Dex require ART (milestone 2).")
+                    Text(localizedKey("Loads arm64 native code into JIT memory on Apple Silicon and drives "
+                       + "a NativeActivity lifecycle. Apps with Java/Dex require ART (milestone 2)."))
                 } else {
                     Text("Turn on JIT first. Close the game with Close at the top.")
                 }
@@ -708,7 +707,7 @@ struct TLAppReportView: View {
                     }
                     DetailRow(label: "Dex", value: dex(report), mono: false)
                     DetailRow(label: "ABIs", value: report.abis.isEmpty
-                              ? "none" : report.abis.joined(separator: ", "))
+                              ? localizedString("none") : report.abis.joined(separator: ", "))
                     DetailRow(label: "APKs", value: "\(app.apks.count)", mono: false)
                 } header: {
                     Text("What it is")
@@ -723,9 +722,9 @@ struct TLAppReportView: View {
                     } header: {
                         Text("Android libraries it needs")
                     } footer: {
-                        Text("Its own libraries link against these, and it does not "
+                        Text(localizedKey("Its own libraries link against these, and it does not "
                            + "carry them. Each is something the translation layer has "
-                           + "to provide.")
+                           + "to provide."))
                     }
                 }
 
@@ -743,8 +742,8 @@ struct TLAppReportView: View {
                     Label("Remove", systemImage: "trash")
                 }
             } footer: {
-                Text("Deletes Husk's copy of the APKs. Anything installed in Android is "
-                   + "untouched.")
+                Text(localizedKey("Deletes Husk's copy of the APKs. Anything installed in Android is "
+                   + "untouched."))
             }
         }
         .huskForm()
@@ -769,16 +768,17 @@ struct TLAppReportView: View {
     }
 
     private func dex(_ report: TLReport) -> String {
-        let files = report.dexCount == 1 ? "1 file" : "\(report.dexCount) files"
+        let files = report.dexCount == 1 ? localizedString("1 file")
+                                         : String(localized: "\(report.dexCount) files")
         let size = ByteCountFormatter.string(fromByteCount: report.dexBytes, countStyle: .file)
-        return "\(files), \(size)"
+        return String(localized: "\(files), \(size)")
     }
 }
 
 private struct TLLibraryRows: View {
     let lib: TLLibrary
 
-    private var statusTitle: String {
+    private var statusTitle: LocalizedStringKey {
         switch lib.status {
         case "ok":      return "Maps as it is"
         case "work":    return "Needs loader work"
@@ -828,7 +828,7 @@ private struct TLLibraryRows: View {
             DetailRow(label: "Thread register reads", value: "\(reads)")
         }
         if lib.tls == true {
-            DetailRow(label: "Thread-local storage", value: "yes", mono: false)
+            DetailRow(label: "Thread-local storage", value: localizedString("yes"), mono: false)
         }
     }
 }
@@ -845,7 +845,7 @@ final class TLAttemptRunner: ObservableObject {
 
     private var timer: Timer?
 
-    var statusText: String {
+    var statusText: LocalizedStringKey {
         if isRunning { return "Running Attempt..." }
         guard let code = exitCode else { return "Ready" }
         switch code {
@@ -865,7 +865,7 @@ final class TLAttemptRunner: ObservableObject {
         }
     }
 
-    var subStatusText: String {
+    var subStatusText: LocalizedStringKey {
         if isRunning {
             return "\(frameCount) frame(s) posted · driving lifecycle"
         }
@@ -1061,7 +1061,7 @@ struct TLClassicAttemptView: View {
                 if showLog {
                     ScrollViewReader { proxy in
                         ScrollView {
-                            Text(runner.logText.isEmpty ? "Starting attempt..." : runner.logText)
+                            Text(localizedKey(runner.logText.isEmpty ? "Starting attempt..." : runner.logText))
                                 .font(.technical(11))
                                 .foregroundStyle(Theme.text)
                                 .frame(maxWidth: .infinity, alignment: .leading)

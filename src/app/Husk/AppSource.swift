@@ -101,7 +101,7 @@ final class SourceManager: ObservableObject {
     // Fetch a single source by URL
     func fetchSource(urlString: String) async {
         guard let url = URL(string: urlString) else {
-            fetchErrors[urlString] = "Invalid URL"
+            fetchErrors[urlString] = localizedString("Invalid URL")
             return
         }
 
@@ -148,7 +148,7 @@ final class SourceManager: ObservableObject {
                 let source = AppSource(name: simple.name, identifier: urlString, apps: apps)
                 upsert(source: source)
             } else {
-                fetchErrors[urlString] = "Unrecognized source format"
+                fetchErrors[urlString] = localizedString("Unrecognized source format")
                 HuskLog.log("sources", "Unrecognized format at \(urlString)")
             }
         } catch {

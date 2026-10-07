@@ -56,6 +56,7 @@
 		60DF5AC57C0225BEE8C9FB3A /* icon-dark.png in Resources */ = {isa = PBXBuildFile; fileRef = EA7240C2BD49C9F0CF7CB3DF /* icon-dark.png */; };
 		61B170D2F117D85F651CD6E6 /* icon-cleardark.png in Resources */ = {isa = PBXBuildFile; fileRef = E3A701AA76E485A6CE15F106 /* icon-cleardark.png */; };
 		622DA3EB6E956A9ED06CF55C /* husk-tl-probe.c in Sources */ = {isa = PBXBuildFile; fileRef = E4D1C81CB49D39A7D865A0DA /* husk-tl-probe.c */; };
+		66067DD03C99969CE47038F2 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7D060CA77FBF8A9F33B77A37 /* Localizable.xcstrings */; };
 		6A8A2290222C62C81EBF2E3E /* husk-tl-bionic-pthread.c in Sources */ = {isa = PBXBuildFile; fileRef = C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */; };
 		70AAC964808B173B7E8E395B /* husk-tl-va.c in Sources */ = {isa = PBXBuildFile; fileRef = 23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */; };
 		70AF7E999105691EB51B54FD /* JITSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83275C7FEF2DEB950028D914 /* JITSetup.swift */; };
@@ -77,9 +78,11 @@
 		9883B80CE2F3C84E5D6E0A8F /* husk-tl-elf.c in Sources */ = {isa = PBXBuildFile; fileRef = D08FCD7F480D6E2F65F26636 /* husk-tl-elf.c */; };
 		9E3948EF967C2A0773C521DD /* husk-tl-jni-assetstream.c in Sources */ = {isa = PBXBuildFile; fileRef = FD6B5A72980D1EC374BFC326 /* husk-tl-jni-assetstream.c */; };
 		9FA806201E1AF87FE7581742 /* husk-tl-jni-security.c in Sources */ = {isa = PBXBuildFile; fileRef = 85D8F83C8952092997CE071C /* husk-tl-jni-security.c */; };
+		A9E109EC6075A61B2B7E74DE /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F32D9806ADF6A69A331563B6 /* InfoPlist.xcstrings */; };
 		AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */ = {isa = PBXBuildFile; fileRef = AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */; };
 		AC5C07974C7A8658358A55C9 /* husk-tl-a64.c in Sources */ = {isa = PBXBuildFile; fileRef = 3ADCEA1477DA816D867C1EBB /* husk-tl-a64.c */; };
 		B4CE75407A317521C77A2207 /* husk-tl-jni-loop.c in Sources */ = {isa = PBXBuildFile; fileRef = FE8922E7AB75C8C61B37986A /* husk-tl-jni-loop.c */; };
+		B56BEF1EEE20E2F7957DD29E /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11EA5A31D4A26E847447C926 /* Localization.swift */; };
 		B5C5BB7A0CFE28C032188D75 /* husk-tl-jni-ue4.c in Sources */ = {isa = PBXBuildFile; fileRef = ED3F7E0267BE8F2AC09FF772 /* husk-tl-jni-ue4.c */; };
 		B7335D9F68CE6EAF0E3D9825 /* icon-tintedlight.png in Resources */ = {isa = PBXBuildFile; fileRef = 336AB2FDC58A5C08D55FF8F9 /* icon-tintedlight.png */; };
 		B9D7168A505DD009DE222599 /* husk-tl-gamepad.c in Sources */ = {isa = PBXBuildFile; fileRef = 46287061DCF461334B1A8D2E /* husk-tl-gamepad.c */; };
@@ -168,6 +171,7 @@
 		0C8178C469873F2DA90BB728 /* husk-tl-gameactivity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-gameactivity.h"; sourceTree = "<group>"; };
 		0F570EB6EAB321272B32955C /* VirtualPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualPad.swift; sourceTree = "<group>"; };
 		100DF87CB49D35A4DA089C94 /* husk-tl-framework.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-framework.h"; sourceTree = "<group>"; };
+		11EA5A31D4A26E847447C926 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskAudio.swift; sourceTree = "<group>"; };
 		15D08F1730303C74C1B7DE23 /* AppSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSource.swift; sourceTree = "<group>"; };
 		198FA3419B26F852A2B05ED9 /* HuskJITMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskJITMessages.swift; sourceTree = "<group>"; };
@@ -241,6 +245,7 @@
 		79E4865C5FE44ADD210A4917 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7B5E2D3E9F12A2A3BB5BBDC7 /* husk-tl-gtasa.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-gtasa.h"; sourceTree = "<group>"; };
 		7CC582FAC1F17C1C659C9D47 /* husk-tl-bionic-io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-io.c"; sourceTree = "<group>"; };
+		7D060CA77FBF8A9F33B77A37 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		7F8AFBCC1E9A402444C2D1E6 /* husk-tl-bionic-net.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-net.c"; sourceTree = "<group>"; };
 		7FD8DC66414547110F0E0B0E /* husk-tl-res.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-res.c"; sourceTree = "<group>"; };
 		7FE5D3DD79B5BEA14506FF60 /* husk-tl-dex.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dex.c"; sourceTree = "<group>"; };
@@ -297,6 +302,7 @@
 		EE533073FECAD5C54B677935 /* icon-tinteddark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-tinteddark.png"; sourceTree = "<group>"; };
 		EF6C1917FEC08090833D9CF0 /* JITPairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITPairing.swift; sourceTree = "<group>"; };
 		F13D91C39BBC9C52E70E1520 /* husk-tl-dexindex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-dexindex.h"; sourceTree = "<group>"; };
+		F32D9806ADF6A69A331563B6 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskGLView.swift; sourceTree = "<group>"; };
 		F54A47159D39CB8039E9E44E /* JITCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITCard.swift; sourceTree = "<group>"; };
 		F7FE1E9438A6B743456806DF /* husk-tl-xmem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-xmem.h"; sourceTree = "<group>"; };
@@ -361,6 +367,7 @@
 				D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */,
 				7FFF8E257AE872A53A4E3066 /* HuskRPPairing.h */,
 				FD559A37CF59C3290F29FA43 /* Info.plist */,
+				F32D9806ADF6A69A331563B6 /* InfoPlist.xcstrings */,
 				5664FE015975D16E7500F3C7 /* JITBootstrap.swift */,
 				43C233A62FB57030C0818489 /* JITBuiltIn.swift */,
 				F54A47159D39CB8039E9E44E /* JITCard.swift */,
@@ -369,6 +376,8 @@
 				5894E74BA308222C01AEE311 /* JITSetupView.swift */,
 				34EE1ED95268ED65B2AA9A5A /* LibraryTab.swift */,
 				56DAE8E0DADC5483D33F6B7B /* LibraryView.swift */,
+				7D060CA77FBF8A9F33B77A37 /* Localizable.xcstrings */,
+				11EA5A31D4A26E847447C926 /* Localization.swift */,
 				79E4865C5FE44ADD210A4917 /* OnboardingView.swift */,
 				766F6F7816E672E83CFFE47D /* PipeShim.c */,
 				2E91A601F16886103BC482AB /* QemuRunner.swift */,
@@ -621,6 +630,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 1E59FB82FCE9A2CABD19395C;
 			minimizedProjectReferenceProxies = 1;
@@ -641,9 +651,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				38A9F59D462DE5A28D3F579D /* Assets.xcassets in Resources */,
+				A9E109EC6075A61B2B7E74DE /* InfoPlist.xcstrings in Resources */,
 				FA8097D8E118A8CE8DBCF763 /* LICENSE-StikJIT-MPL-2.0.txt in Resources */,
 				DD78A64F53CD2C615EB004B3 /* LICENSE-idevice-MIT.txt in Resources */,
 				1D576C7E088182B888F811BB /* LICENSES-rppairing-crates.txt in Resources */,
+				66067DD03C99969CE47038F2 /* Localizable.xcstrings in Resources */,
 				50A3A90912B5C9D90B87D9BF /* cacert.pem in Resources */,
 				E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */,
 				7A7A40B3B76C8BA2D7262907 /* husk-tl-egl-es31.inc in Resources */,
@@ -748,6 +760,7 @@
 				D61EF536158A8495F2B0CE79 /* JITSetupView.swift in Sources */,
 				D5795B7B2815D857E136AC85 /* LibraryTab.swift in Sources */,
 				CE5D4B4D666CC7B351345EB3 /* LibraryView.swift in Sources */,
+				B56BEF1EEE20E2F7957DD29E /* Localization.swift in Sources */,
 				D1DB4D94478AB7DD95E1A24E /* OnboardingView.swift in Sources */,
 				F1E2ED25F28A24BA7197C5DB /* PipeShim.c in Sources */,
 				5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */,

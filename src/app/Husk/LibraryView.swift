@@ -122,7 +122,7 @@ struct LibraryView: View {
             }
             .buttonStyle(.borderedProminent)
             if let msg = bridge.lastAgentMessage {
-                Text(msg)
+                Text(localizedKey(msg))
                     .font(.caption2).foregroundStyle(.orange)
                     .multilineTextAlignment(.center).padding(.horizontal, 30)
             }

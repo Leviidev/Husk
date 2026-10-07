@@ -23,20 +23,22 @@ enum HuskAppIcon: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// A localized `String` rather than a key: this is drawn as a caption and
+    /// also named in the log when the icon is applied.
     var title: String {
         switch self {
-        case .automatic:   return "Automatic"
-        case .clearLight:  return "Clear Light"
-        case .clearDark:   return "Clear Dark"
-        case .tintedLight: return "Tinted Light"
-        case .tintedDark:  return "Tinted Dark"
+        case .automatic:   return localizedString("Automatic")
+        case .clearLight:  return localizedString("Clear Light")
+        case .clearDark:   return localizedString("Clear Dark")
+        case .tintedLight: return localizedString("Tinted Light")
+        case .tintedDark:  return localizedString("Tinted Dark")
         }
     }
 
     var detail: String {
         self == .automatic
-            ? "Follows the system: light, dark and tinted."
-            : "Always this look."
+            ? localizedString("Follows the system: light, dark and tinted.")
+            : localizedString("Always this look.")
     }
 
     /// What UIKit wants: nil for the primary, the asset name otherwise.
