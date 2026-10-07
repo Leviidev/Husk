@@ -121,11 +121,16 @@ jobs:
           # changes exactly when one of them does.
           read -ra files <<< "$DEPS_FILES"
           deps=$(cat "${files[@]}" | shasum -a 256 | cut -c1-16)
-          qemu=$( (cat "${files[@]}" scripts/integrate_husk.sh; \
+          # MoltenVK stages into build/ios-arm64/lib, which is the layer the qemu
+          # key covers, so its script belongs in this hash rather than in
+          # DEPS_FILES -- a new MoltenVK version has to rebuild that layer.
+          qemu=$( (cat "${files[@]}" scripts/integrate_husk.sh scripts/build_moltenvk_ios.sh; \
                    find patches src/ios-jit -type f | LC_ALL=C sort | xargs cat) \
                  | shasum -a 256 | cut -c1-16)
           echo "deps=deps-v1-${{ steps.xcode.outputs.build }}-$deps" >> "$GITHUB_OUTPUT"
-          echo "qemu=qemu-v1-${{ steps.xcode.outputs.build }}-$qemu" >> "$GITHUB_OUTPUT"
+          # v2: a v1 lib/ was saved before the MoltenVK step existed, so it has
+          # no MoltenVK.xcframework in it and must not be restored.
+          echo "qemu=qemu-v2-${{ steps.xcode.outputs.build }}-$qemu" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
         id: deps
@@ -202,6 +207,17 @@ jobs:
           rm -f build/stamps/qemu
           scripts/build_ios.sh qemu
           ls -lh build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib
+
+      # project.yml embeds build/ios-arm64/lib/MoltenVK.xcframework: the Vulkan
+      # renderer Unreal Engine games draw through (Minecraft Dungeons) is
+      # MoltenVK on Apple hardware. Nothing else in this workflow builds it, and
+      # without it the app target does not get as far as compiling --
+      # "There is no XCFramework found at .../MoltenVK.xcframework". It stages
+      # into build/ios-arm64/lib, the path the cache below covers, so it is built
+      # before that cache is saved.
+      - name: Build MoltenVK
+        if: steps.qemu.outputs.cache-hit != 'true'
+        run: scripts/build_moltenvk_ios.sh
 
       - name: Save QEMU
         if: steps.qemu.outputs.cache-hit != 'true'
