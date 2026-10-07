@@ -583,7 +583,10 @@ static void check_dualmap(tl_json *j, size_t page, tl_dual_mapping *stik)
 
     uint32_t code[2] = { 0x52800540u, 0xD65F03C0u }; /* movz w0, #42; ret */
     memcpy(rw, code, sizeof(code));
-    sys_icache_invalidate(rx, sizeof(code));
+    /* flush_icache, not sys_icache_invalidate: this block is compiled for
+       aarch64 Linux too (tests/translation-layer/run.sh builds it with
+       aarch64-linux-gnu-gcc), where the Apple call does not exist. */
+    flush_icache(rx, sizeof(code));
 
     guard_arm();
     const char *status = "fail";
