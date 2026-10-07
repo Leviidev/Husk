@@ -613,7 +613,7 @@ const tl_bionic_entry tl_tab_ndk[] = {
     TL_WRAP("AMotionEvent_getButtonState", b_AMotionEvent_getButtonState), TL_WRAP("AMotionEvent_getEdgeFlags", b_AMotionEvent_getEdgeFlags),
     TL_WRAP("AMotionEvent_getEventTime", b_AMotionEvent_getEventTime), TL_WRAP("AMotionEvent_getDownTime", b_AMotionEvent_getDownTime),
     TL_WRAP("AMotionEvent_getPointerCount", b_AMotionEvent_getPointerCount), TL_WRAP("AMotionEvent_getPointerId", b_AMotionEvent_getPointerId),
-    TL_WRAP("AMotionEvent_getX", b_AMotionEvent_getX), TL_WRAP("AMotionEvent_getY", b_AMotionEvent_getY), TL_WRAP("AMotionEvent_getPressure", b_AMotionEvent_getPressure),
+    TL_WRAP("AMotionEvent_getX", b_AMotionEvent_getX), TL_WRAP("AMotionEvent_getY", b_AMotionEvent_getY), TL_WRAP("AMotionEvent_getRawX", b_AMotionEvent_getX), TL_WRAP("AMotionEvent_getRawY", b_AMotionEvent_getY), TL_WRAP("AMotionEvent_getPressure", b_AMotionEvent_getPressure),
     TL_WRAP("AMotionEvent_getSize", b_AMotionEvent_getSize), TL_WRAP("AMotionEvent_getHistorySize", b_AMotionEvent_getHistorySize), TL_WRAP("AMotionEvent_getAxisValue", b_AMotionEvent_getAxisValue),
     TL_WRAP("AKeyEvent_getAction", b_AKeyEvent_getAction), TL_WRAP("AKeyEvent_getKeyCode", b_AKeyEvent_getKeyCode), TL_WRAP("AKeyEvent_getFlags", b_AKeyEvent_getFlags),
     TL_WRAP("AKeyEvent_getMetaState", b_AKeyEvent_getMetaState), TL_WRAP("AKeyEvent_getRepeatCount", b_AKeyEvent_getRepeatCount), TL_WRAP("AKeyEvent_getScanCode", b_AKeyEvent_getScanCode),

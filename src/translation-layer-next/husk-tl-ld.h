@@ -41,8 +41,12 @@ bool tl_ld_add_apk(const char *path);
 struct tl_zip;
 const struct tl_zip *tl_ld_apk_at(int index);
 
+/* Bind every later import of `name` to `fn` instead of the library that defines it (the original is still reachable with tl_ld_sym). Call before the libraries load. */
+void tl_ld_interpose(const char *name, void *fn);
+
 /* Whether one of the APKs carries this arm64 library (an engine is told by the libraries it ships). */
 bool tl_ld_has_lib(const char *name);
+int tl_ld_apk_libs(void (*cb)(const char *name, uint64_t size, void *user), void *user);
 
 /*
  * Load a library by file name or soname (already-loaded ones are returned as

@@ -50,6 +50,7 @@ extension TLReport {
         if engine == "SDL" { return .sdl }
         if engine == "Unreal Engine" { return .ue4 }
         if engine == "Rockstar" { return .gta }
+        if engine == "NativeActivity" { return .nativeactivity }
         return nil
     }
 
@@ -59,14 +60,15 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : "Unity" }
+    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .nativeactivity ? "NativeActivity" : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
         let flagged = libraries.filter { $0.abi == "arm64-v8a" && $0.status != "ok" }.count
         let total = libraries.filter { $0.abi == "arm64-v8a" }.count
         var text = "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
-        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .sdl || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
+        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
+        else if nativeEngine == .sdl || nativeEngine == .nativeactivity { text += " Husk turns the screen the way the game asks for." }
         if flagged > 0 {
             text += " \(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, "
                   + "except for optional anti-tamper code, which it leaves out."
@@ -140,6 +142,11 @@ final class TranslationLayerStore: ObservableObject {
 
     private init() { reload() }
 
+    /// Which reading of an app's libraries its report came from. A newer Husk that recognises more (an engine, a kind of game) reads
+    /// the apps it already holds again, so they are not left with what the old one knew.
+    nonisolated static let scanVersion = 4
+    private var rescanning = false
+
     func reload() {
         let dirs = (try? FileManager.default.contentsOfDirectory(
             at: TranslationLayer.root, includingPropertiesForKeys: nil,
@@ -147,6 +154,39 @@ final class TranslationLayerStore: ObservableObject {
         apps = dirs.compactMap(Self.load).sorted {
             $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
         }
+        rescanStale()
+    }
+
+    nonisolated private static func scanStamp(_ id: String) -> Int {
+        let url = TranslationLayer.root.appendingPathComponent(id, isDirectory: true).appendingPathComponent("scan-version.txt")
+        return (try? String(contentsOf: url, encoding: .utf8)).flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) } ?? 0
+    }
+
+    private func rescanStale() {
+        guard !rescanning else { return }
+        let stale = apps.filter { Self.scanStamp($0.id) != Self.scanVersion }
+        guard !stale.isEmpty else { return }
+        rescanning = true
+        HuskLog.log("tl", "reading \(stale.count) app(s) again with the newer scanner")
+        Task.detached(priority: .utility) {
+            for app in stale {
+                let dir = TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
+                try? Data(Self.scan(app.apks).utf8).write(to: dir.appendingPathComponent("report.json"))
+                try? "\(Self.scanVersion)".write(to: dir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
+            }
+            await MainActor.run {
+                self.rescanning = false
+                self.reload()
+            }
+        }
+    }
+
+    /// Call the app something else. The name Android gave it is only where it started.
+    func rename(_ app: TLApp, to name: String) {
+        let dir = TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
+        try? name.write(to: dir.appendingPathComponent("label.txt"), atomically: true, encoding: .utf8)
+        HuskLog.log("tl", "renamed \(app.label) to \(name)")
+        reload()
     }
 
     /// Keep a copy of one app -- one APK, or a base APK and its splits,
@@ -277,6 +317,7 @@ final class TranslationLayerStore: ObservableObject {
         describe(apks, into: dir)
         let json = scan(apks)
         try? Data(json.utf8).write(to: dir.appendingPathComponent("report.json"))
+        try? "\(scanVersion)".write(to: dir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
         HuskLog.log("tl", "report for \(dir.lastPathComponent): \(json)")
         return nil
     }
@@ -355,6 +396,11 @@ struct TranslationLayerTab: View {
     @ObservedObject private var store = TranslationLayerStore.shared
     @State private var importing = false
     @AppStorage(TranslationLayer.devInfoKey) private var devInfo = false
+    /// Where a tap on a game goes: its page, or its settings.
+    private enum Destination: Hashable { case detail(String), settings(String) }
+    @State private var destination: Destination?
+    /// A game started from its tile's menu, without opening its page first.
+    @State private var playing: TLApp?
 
     var body: some View {
         NavigationStack {
@@ -385,6 +431,15 @@ struct TranslationLayerTab: View {
                           + urls.map(\.lastPathComponent).joined(separator: ", "))
                 store.add(urls)
             }
+            .navigationDestination(isPresented: Binding(get: { destination != nil }, set: { if !$0 { destination = nil } })) {
+                switch destination {
+                case .detail(let id)?: if let app = store.apps.first(where: { $0.id == id }) { TLAppReportView(app: app) }
+                case .settings(let id)?: if let app = store.apps.first(where: { $0.id == id }) { TLAppSettingsView(app: app) }
+                case nil: EmptyView()
+                }
+            }
+            // A native-runtime game is swiped, and a sheet takes a swipe down for itself: it goes full screen.
+            .fullScreenCover(item: $playing) { TLAttemptView(app: $0) }
             .onAppear { store.adoptDroppedAPKs() }
             .alert("Could not add the app", isPresented: Binding(
                     get: { store.lastError != nil },
@@ -396,27 +451,37 @@ struct TranslationLayerTab: View {
         }
     }
 
+    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 12)]
+
     private var appsSection: some View {
         Section {
-            ForEach(store.apps) { app in
-                NavigationLink {
-                    TLAppReportView(app: app)
-                } label: {
-                    TLAppRow(app: app)
+            // A grid, as the Library has for the apps inside Android. Each tile is a plain button in a custom style, so a row of
+            // them does not turn into one big tap target the way buttons in a list do.
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(store.apps) { app in
+                    Button { destination = .detail(app.id) } label: { TLAppTile(app: app) }
+                        .buttonStyle(CardButtonStyle())
+                        .contextMenu {
+                            if app.report?.runsOnNativeRuntime == true {
+                                Button { playing = app } label: { Label("Play", systemImage: "play.fill") }
+                            }
+                            Button { destination = .detail(app.id) } label: { Label("Details", systemImage: "info.circle") }
+                            Button { destination = .settings(app.id) } label: { Label("Settings", systemImage: "gearshape") }
+                        }
                 }
+                Button { importing = true } label: { TLAddTile() }
+                    .buttonStyle(CardButtonStyle())
+                    .disabled(store.busy != nil)
             }
+            .padding(.vertical, 4)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            .listRowBackground(Color.clear)
             if let busy = store.busy {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text(busy).foregroundStyle(Theme.textDim)
                 }
             }
-            Button {
-                importing = true
-            } label: {
-                Label("Add APK or Bundle", systemImage: "plus")
-            }
-            .disabled(store.busy != nil)
         } header: {
             Text("Apps")
         } footer: {
@@ -507,23 +572,54 @@ struct TLPlainStatus {
     }
 }
 
-private struct TLAppRow: View {
+/// One game in the grid: its icon, its name, and whether it will run.
+private struct TLAppTile: View {
     let app: TLApp
     @AppStorage(TranslationLayer.devInfoKey) private var devInfo = false
 
     var body: some View {
         let verdict = TLVerdict(app.report)
         let plain = TLPlainStatus(app.report)
-        HStack(spacing: 12) {
-            AppIcon(path: app.iconPath, size: 36)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(app.label).foregroundStyle(Theme.text).lineLimit(1)
-                Text(devInfo ? verdict.title : plain.title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(devInfo ? verdict.tint : plain.tint)
-            }
+        VStack(spacing: 8) {
+            AppIcon(path: app.iconPath, size: 56)
+            Text(app.label)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .top)
+            Text(devInfo ? verdict.title : plain.title)
+                .font(.caption2)
+                .foregroundStyle(devInfo ? verdict.tint : plain.tint)
+                .lineLimit(1)
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity)
+        .padding(12)
+        .huskCard()
+    }
+}
+
+/// The last tile: add another.
+private struct TLAddTile: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 56, height: 56)
+                .background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 56 * 0.225, style: .continuous))
+            Text("Add")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .top)
+            Text("APK or bundle")
+                .font(.caption2)
+                .foregroundStyle(Theme.textDim)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(12)
+        .huskCard()
     }
 }
 
@@ -582,7 +678,7 @@ struct TLAppReportView: View {
                     showAttempt = true
                 } label: {
                     HStack {
-                        Label("Run Translation Layer Attempt", systemImage: "play.circle.fill")
+                        Label(devInfo ? "Run Translation Layer Attempt" : "Play", systemImage: "play.circle.fill")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Theme.accent)
                         Spacer()
@@ -590,6 +686,11 @@ struct TLAppReportView: View {
                             .font(.caption.bold())
                             .foregroundStyle(Theme.textDim.opacity(0.5))
                     }
+                }
+                NavigationLink {
+                    TLAppSettingsView(app: app)
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
                 }
             } footer: {
                 if devInfo {
@@ -856,7 +957,7 @@ struct TLAttemptView: View {
     let app: TLApp
 
     var body: some View {
-        if app.report?.nativeEngine == .cocos || app.report?.nativeEngine == .minecraft || app.report?.nativeEngine == .sdl || app.report?.nativeEngine == .ue4 || app.report?.nativeEngine == .gta {
+        if app.report?.nativeEngine == .cocos || app.report?.nativeEngine == .minecraft || app.report?.nativeEngine == .sdl || app.report?.nativeEngine == .ue4 || app.report?.nativeEngine == .gta || app.report?.nativeEngine == .nativeactivity {
             TLCocosAttemptView(app: app)
         } else if app.report?.runsOnNativeRuntime == true {
             TLUnityAttemptView(app: app)

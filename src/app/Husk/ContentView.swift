@@ -45,13 +45,22 @@ struct ContentView: View {
                     .tabItem { Label("Native", systemImage: "gamecontroller.fill") }
                     .tag(HuskTab.translation)
 
-                LibraryTab(onOpenGuest: { showGuestScreen = true },
-                           onStartAndroid: startFromLibrary,
-                           started: started && runner.isRunning)
+                // Only the tabs that are Android's wait for its download; the Native games and Settings never need it.
+                Group {
+                    if showSetup {
+                        SetupView(showLogs: $showLogs)
+                    } else {
+                        LibraryTab(onOpenGuest: { showGuestScreen = true },
+                                   onStartAndroid: startFromLibrary,
+                                   started: started && runner.isRunning)
+                    }
+                }
                     .tabItem { Label("Library", systemImage: "square.grid.2x2.fill") }
                     .tag(HuskTab.library)
 
-                FilesTab()
+                Group {
+                    if showSetup { SetupView(showLogs: $showLogs) } else { FilesTab() }
+                }
                     .tabItem { Label("Files", systemImage: "folder.fill") }
                     .tag(HuskTab.files)
 
@@ -99,12 +108,6 @@ struct ContentView: View {
                     }
             }
 
-            if showSetup {
-                // Before the runtime exists there is nothing to cover, so the
-                // start screen sits above the tabs rather than inside one.
-                SetupView(showLogs: $showLogs)
-                    .transition(.opacity)
-            }
         }
         .tint(theme.accentColor)
         // The user's appearance: the system's, unless they pinned one. Set on the

@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// LocalDevVPN and enabling. StikDebug has its own short page. Presented from
 /// onboarding, Settings › JIT, and whenever Start finds JIT not set up.
 struct JITSetupFlow: View {
-    enum Step: Hashable { case pairOnDevice, importFile, connect, enable, stikDebug, trollStore }
+    enum Step: Hashable { case pairOnDevice, importFile, connect, enable, stikDebug, trollStore, jailbreak }
 
     @ObservedObject private var jit = JITCoordinator.shared
     @ObservedObject private var pairing = OnDevicePairing.shared
@@ -30,6 +30,7 @@ struct JITSetupFlow: View {
                     case .enable: enable
                     case .stikDebug: stikDebug
                     case .trollStore: trollStore
+                    case .jailbreak: jailbreak
                     }
                 }
         }
@@ -87,6 +88,11 @@ struct JITSetupFlow: View {
                     detail: JITBootstrap.isTrollStoreInstalled ? "TrollStore is installed."
                         : "For a Husk installed through TrollStore.",
                     done: jit.method == .trollStore) { path.append(.trollStore) }
+                way("Use a jailbreak", symbol: "lock.open",
+                    detail: JITBootstrap.debuggedAtLaunch ? "JIT was already on when Husk opened."
+                        : JITBootstrap.isJailbroken ? "A jailbreak was found. Turn on Allow JIT in Apps."
+                        : "Dopamine can give every app JIT with one setting.",
+                    done: jit.method == .jailbreak || JITBootstrap.debuggedAtLaunch) { path.append(.jailbreak) }
             }
             if jit.hasPairing && HuskBuiltInJIT.isAvailable {
                 Button { path.append(.connect) } label: {
@@ -360,10 +366,13 @@ struct JITSetupFlow: View {
              subtitle: "TrollStore can enable JIT for apps it installed, with no pairing file, "
                      + "VPN or computer.") {
             VStack(alignment: .leading, spacing: 14) {
-                point(1, "Install Husk through TrollStore, on an iOS version TrollStore supports.",
+                point(1, "Install Husk.ipa through TrollStore, on an iOS version TrollStore supports. It carries the "
+                       + "entitlements TrollStore keeps, so the same file works there and in a sideloader.",
+                      done: JITBootstrap.isInstalledWithTrollStore)
+                point(2, "In TrollStore's Settings, turn on URL Scheme. TrollStore ignores enable-jit requests without it.",
                       done: JITBootstrap.isTrollStoreInstalled)
-                point(2, "Whenever Android starts, Husk asks TrollStore to enable JIT, "
-                       + "and TrollStore reopens Husk with it on.")
+                point(3, "Whenever Android or a game starts, Husk asks TrollStore to enable JIT. TrollStore opens Husk, "
+                       + "attaches to it for a moment and lets go, which leaves it allowed to run code it wrote.")
             }
             .padding(16).huskCard()
             if !JITBootstrap.isTrollStoreInstalled {
@@ -376,6 +385,36 @@ struct JITSetupFlow: View {
             Button("Use TrollStore") {
                 jit.method = .trollStore
                 HuskLog.log("ui", "JIT method set to TrollStore")
+                close()
+            }
+            .buttonStyle(PrimaryButtonStyle())
+        }
+    }
+
+    // MARK: Jailbreak
+
+    private var jailbreak: some View {
+        page(symbol: "lock.open", title: "Use a jailbreak",
+             subtitle: "On a device jailbroken with Dopamine, JIT is a setting: the jailbreak marks every app as "
+                     + "debugged when it opens, and a debugged app may run code it wrote. Husk needs nothing else.") {
+            VStack(alignment: .leading, spacing: 14) {
+                point(1, "Open Dopamine and go to its Settings.", done: JITBootstrap.isJailbroken)
+                point(2, "Turn on Allow JIT in Apps.")
+                point(3, "Close Husk completely and open it again. The setting applies to apps as they start.",
+                      done: JITBootstrap.debuggedAtLaunch)
+            }
+            .padding(16).huskCard()
+            if JITBootstrap.debuggedAtLaunch {
+                Label("Husk was marked as debugged when it opened, so JIT is on.", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 13)).foregroundStyle(.green)
+            } else if !JITBootstrap.isJailbroken {
+                Label("No jailbreak was found on this \(device).", systemImage: "info.circle")
+                    .font(.system(size: 13)).foregroundStyle(Theme.textDim)
+            }
+        } actions: {
+            Button("Use the jailbreak") {
+                jit.method = .jailbreak
+                HuskLog.log("ui", "JIT method set to jailbreak")
                 close()
             }
             .buttonStyle(PrimaryButtonStyle())

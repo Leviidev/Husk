@@ -368,6 +368,10 @@ void husk_native_add_package(const char *apk)
     if (apk && A.nextra < 3 && atomic_load(&A.state) == HUSK_UNITY_IDLE) snprintf(A.extra[A.nextra++], sizeof(A.extra[0]), "%s", apk);
 }
 void husk_sdl_set_safe_insets(int left, int top, int right, int bottom) { tl_sdl_set_safe_insets(left, top, right, bottom); }
+int husk_sdl_apk_is_portrait(const char *apk) { return tl_sdl_manifest_portrait(apk) ? 1 : 0; }
+void husk_sdl_set_keyboard_handler(void (*handler)(int action)) { tl_sdl_set_keyboard_handler(handler); }
+void husk_sdl_commit_text(const char *utf8) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_commit_text(utf8); }
+void husk_sdl_key(int keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_key(keycode, down != 0); }
 
 /* ---------------------------------------------------------------- controllers */
 

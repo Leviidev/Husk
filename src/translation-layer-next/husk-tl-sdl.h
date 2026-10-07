@@ -32,6 +32,14 @@ void tl_sdl_touch(int phase, int id, float x, float y);
 
 void tl_sdl_set_paused(bool paused);
 
+/* The keyboard: the handler is told (on the game's thread) 1 = show, 2 = hide. Text typed goes in with tl_sdl_commit_text, Backspace and Enter as Android key codes. */
+/* True if the manifest asks for a portrait screen. */
+bool tl_sdl_manifest_portrait(const char *apk);
+void tl_sdl_mouse(int phase, float x, float y);
+void tl_sdl_set_keyboard_handler(void (*handler)(int action));
+void tl_sdl_commit_text(const char *utf8);
+void tl_sdl_key(int android_keycode, bool down);
+
 /* The screen's safe-area insets (a notch, rounded corners) in surface pixels, as the activity would report them from its display cutout. */
 void tl_sdl_set_safe_insets(int left, int top, int right, int bottom);
 unsigned long tl_sdl_frames(void);

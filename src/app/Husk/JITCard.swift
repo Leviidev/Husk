@@ -11,12 +11,44 @@ struct JITCard: View {
 
     private var isOn: Bool { JITBootstrap.isDebuggerAttached || JITBootstrap.debuggedFlag }
 
+    /// The way the card offers: StikJIT where Husk has it (iOS 26 and later), and otherwise whatever this device has -- TrollStore, a
+    /// jailbreak -- since StikJIT cannot run on an iOS before 26.
+    private var offered: JITMethod {
+        if HuskBuiltInJIT.isAvailable { return .builtIn }
+        let resolved = jit.resolvedMethod
+        return resolved == .builtIn ? .builtIn : resolved
+    }
+
     var body: some View {
         Group {
             if isOn { on } else { off }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+    }
+
+    private var explanation: String {
+        switch offered {
+        case .trollStore:
+            return "TrollStore can turn JIT on for Husk: it opens Husk and enables it, with no computer. "
+                 + "In TrollStore's Settings, URL Scheme must be on."
+        case .jailbreak:
+            return "On a jailbroken device JIT is a setting. In Dopamine, turn on Allow JIT in Apps, then open Husk again."
+        case .stikDebug:
+            return "StikDebug is installed, so Husk will open it to turn JIT on."
+        default:
+            return "StikJIT is built into Husk. You can turn JIT on right here — no computer and no other app. "
+                 + "Games and Android both need it."
+        }
+    }
+
+    private var buttonTitle: String {
+        switch offered {
+        case .trollStore: return "Turn On JIT with TrollStore"
+        case .jailbreak: return "How to Allow JIT"
+        case .stikDebug: return "Turn On JIT with StikDebug"
+        default: return HuskBuiltInJIT.isAvailable ? "Turn On JIT with StikJIT" : "Turn On JIT"
+        }
     }
 
     private var on: some View {
@@ -42,14 +74,13 @@ struct JITCard: View {
                     Image(systemName: "bolt.fill").font(.title3).foregroundStyle(Color.accentColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("StikJIT").font(.title3.weight(.semibold))
+                    Text(offered == .builtIn ? "StikJIT" : offered.title).font(.title3.weight(.semibold))
                     Text("Turn on JIT").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
 
-            Text("StikJIT is built into Husk. You can turn JIT on right here — no computer and no other app. "
-               + "Games and Android both need it.")
+            Text(explanation)
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -64,13 +95,13 @@ struct JITCard: View {
                 }
             } else {
                 Button {
-                    // The built-in one, whatever "Automatic" would have picked: it is the one this card recommends.
-                    if HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
+                    // The one this card offers, whatever "Automatic" would have picked.
+                    if offered == .builtIn, HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
                     jit.enable()
                 } label: {
                     HStack {
                         Spacer()
-                        Label(HuskBuiltInJIT.isAvailable ? "Turn On JIT with StikJIT" : "Turn On JIT", systemImage: "bolt.fill")
+                        Label(buttonTitle, systemImage: "bolt.fill")
                             .font(.headline)
                         Spacer()
                     }

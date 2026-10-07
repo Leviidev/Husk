@@ -9,6 +9,7 @@ enum JITMethod: String, CaseIterable, Identifiable {
     case automatic
     case stikDebug
     case trollStore
+    case jailbreak
     case builtIn
 
     var id: String { rawValue }
@@ -17,6 +18,7 @@ enum JITMethod: String, CaseIterable, Identifiable {
         case .automatic: return "Automatic"
         case .stikDebug: return "StikDebug"
         case .trollStore: return "TrollStore"
+        case .jailbreak: return "Jailbreak (Dopamine)"
         case .builtIn: return "Built-in StikJIT"
         }
     }
@@ -137,6 +139,7 @@ final class JITCoordinator: ObservableObject {
         guard method == .automatic else { return method }
         if JITBootstrap.isStikDebugInstalled { return .stikDebug }
         if JITBootstrap.isTrollStoreInstalled { return .trollStore }
+        if JITBootstrap.isJailbroken { return .jailbreak }
         return .builtIn
     }
 
@@ -144,7 +147,8 @@ final class JITCoordinator: ObservableObject {
         switch resolvedMethod {
         case .stikDebug: return "StikDebug is installed, so Husk will open it."
         case .trollStore: return "TrollStore is installed, so Husk will ask it to enable JIT."
-        default: return "StikDebug and TrollStore were not found, so Husk will use its built-in helper."
+        case .jailbreak: return "This device is jailbroken, so JIT comes from the jailbreak's Allow JIT in Apps setting."
+        default: return "StikDebug, TrollStore and a jailbreak were not found, so Husk will use its built-in helper."
         }
     }
 
@@ -169,10 +173,16 @@ final class JITCoordinator: ObservableObject {
                 showSetup = true
             }
         case .trollStore:
-            if !JITBootstrap.requestTrollStoreAttach() {
+            if JITBootstrap.requestTrollStoreAttach() {
+                awaitTrollStore()
+            } else {
                 error = "TrollStore could not be opened. Install Husk through TrollStore, or choose another method."
                 showSetup = true
             }
+        case .jailbreak:
+            // Nothing to ask: a jailbreak marks an app as debugged as it opens, if it has been told to. Say what to turn on.
+            error = "Turn on Allow JIT in Apps in Dopamine's settings, then open Husk again."
+            showSetup = true
         case .builtIn:
             guard HuskBuiltInJIT.isAvailable, hasPairing else {
                 log("built-in JIT is not set up; opening the walkthrough")
@@ -180,6 +190,31 @@ final class JITCoordinator: ObservableObject {
                 return
             }
             enableBuiltIn()
+        }
+    }
+
+    /// After TrollStore is asked: it opens Husk again and attaches to it for a moment, which marks the process as debugged. Watch for
+    /// that, so the Games tab and the Library notice without waiting for another trip to the foreground, and say what to check if
+    /// it never comes -- TrollStore only answers enable-jit once its URL Scheme setting is on.
+    private func awaitTrollStore() {
+        busy = true
+        status = "Waiting for TrollStore to enable JIT…"
+        log("waiting for TrollStore's attach")
+        _ = Self.waitForDebugger(timeout: 60) { [weak self] attached in
+            guard let self else { return }
+            busy = false
+            if attached {
+                status = "JIT is on."
+                error = nil
+                attachGeneration += 1
+                log("TrollStore enabled JIT")
+            } else {
+                status = nil
+                error = "TrollStore did not enable JIT. In TrollStore's Settings turn on URL Scheme, and make sure Husk was "
+                      + "installed through TrollStore (or is signed with get-task-allow)."
+                log("TrollStore did not enable JIT within a minute")
+                showSetup = true
+            }
         }
     }
 

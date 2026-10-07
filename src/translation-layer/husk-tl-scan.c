@@ -65,7 +65,7 @@ static bool is_dex(const char *name)
 
 /* Recognised by the libraries an engine always ships. */
 typedef struct engine_scan {
-    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123;
+    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity;
 } engine_scan;
 
 static void note_engine(engine_scan *s, const char *f)
@@ -103,8 +103,10 @@ static const char *engine_name(const engine_scan *s)
     if (s->cocos) return "Cocos";
     if (s->minecraft) return "Minecraft";
     /* SDL 2 is told by the pair its Java shell always loads: libSDL2 and the game's own libmain (SDL 3 games ship libSDL3 alone, as it is the only SDL there). */
-    if (s->sdl || (s->sdl2 && s->mainlib)) return "SDL";
+    if (s->sdl || (s->sdl2 && s->mainlib) || s->sdl_symbols) return "SDL";
     if (s->gdx) return "libGDX";
+    /* A game that is only a NativeActivity library of its own (sokol, android_native_app_glue): the runtime drives the activity itself. */
+    if (s->native_activity) return "NativeActivity";
     return NULL;
 }
 
@@ -304,6 +306,8 @@ char *husk_tl_scan(const char *const *paths, int count)
             for (int n = 0; n < rep->needed_count; n++) {
                 nameset_add(needed, rep->needed[n]);
             }
+            if (rep->exports_sdl_main) eng.sdl_symbols = true;
+            if (rep->exports_native_activity) eng.native_activity = true;
             arm64_libs++;
             if (strcmp(lib_status(rep), "ok") != 0) {
                 arm64_trouble++;

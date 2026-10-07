@@ -218,6 +218,11 @@ static void *control_thread(void *arg)
             else if (sscanf(line, "hold %f %f %ld", &a, &b, &ms) == 3) { tl_sdl_touch(0, 0, a, b); sleep_ms(ms); tl_sdl_touch(2, 0, a, b); }
             else if (sscanf(line, "swipe %f %f %f %f %ld", &a, &b, &c, &d, &ms) == 5) do_swipe(a, b, c, d, ms);
             else if (sscanf(line, "wait %ld", &ms) == 1) sleep_ms(ms);
+            else if (sscanf(line, "key %f", &a) == 1) { tl_sdl_key((int)a, true); sleep_ms(50); tl_sdl_key((int)a, false); }          /* an Android key code */
+            else if (sscanf(line, "mouse %f %f", &a, &b) == 2) { tl_sdl_mouse(1, a, b); sleep_ms(50); tl_sdl_mouse(0, a, b); sleep_ms(80); tl_sdl_mouse(2, a, b); }
+            else if (!strncmp(line, "pause", 5)) tl_sdl_set_paused(true);
+            else if (!strncmp(line, "resume", 6)) tl_sdl_set_paused(false);
+            else if (!strncmp(line, "type ", 5)) { char t[200]; snprintf(t, sizeof(t), "%s", line + 5); t[strcspn(t, "\r\n")] = 0; tl_sdl_commit_text(t); }
             else if (sscanf(line, "shot %399s", p) == 1) {
                 char cmd[900]; snprintf(cmd, sizeof(cmd), "sips -s format png '%s/latest.bmp' --out '%s' >/dev/null 2>&1", g_frame_dir, p);
                 if (system(cmd)) fprintf(stderr, "ctl: shot failed\n");
@@ -442,7 +447,7 @@ int main(int argc, char **argv)
     if (getenv("TL_EXTRA_APKS")) { char ex[2000]; snprintf(ex, sizeof(ex), "%s", getenv("TL_EXTRA_APKS")); for (char *p = strtok(ex, ":"); p; p = strtok(NULL, ":")) if (!tl_sdl_add_package(p)) fprintf(stderr, "cannot add %s\n", p); }
     if (getenv("TL_AUDIO")) tl_audio_install();
     if (getenv("TL_PAD")) tl_pad_connect(0, "Xbox Wireless Controller");
-    if (!tl_sdl_start(&cfg, getenv("TL_ACTIVITY") ? getenv("TL_ACTIVITY") : "com/vectorunit/cobalt/MainActivity")) { fprintf(stderr, "ue4: start failed\n"); return 1; }
+    if (!tl_sdl_start(&cfg, getenv("TL_ACTIVITY") ? getenv("TL_ACTIVITY") : getenv("TL_PKG") ? NULL : "com/vectorunit/cobalt/MainActivity")) { fprintf(stderr, "ue4: start failed\n"); return 1; }
     if (getenv("TL_PROBE")) install_probes(getenv("TL_PROBE"));
     if (getenv("TL_BLR_PROBE")) install_blr_probes(getenv("TL_BLR_PROBE"));
     if (getenv("TL_WINFLAGS_PROBE")) { tl_lib *L = tl_ld_find_lib("libmain.so"); if (L && !tl_ld_probe(L, strtoull(getenv("TL_WINFLAGS_PROBE"), NULL, 16), winflags_probe)) fprintf(stderr, "window flags probe failed\n"); }

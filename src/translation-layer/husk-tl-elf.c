@@ -619,6 +619,11 @@ static void analyze_dynamic(const elf *e, tl_elf_report *r)
             const uint8_t *s = e->d + symoff + i * 24;
             if (rd16(s + 6) == 0 && rd32(s) != 0) {     /* SHN_UNDEF, named */
                 r->imports++;
+            } else if (have_strings && rd32(s) != 0) {
+                char nm[64];
+                copy_string(e, stroff, d.strsz, rd32(s), nm, sizeof(nm));
+                if (!strcmp(nm, "SDL_main") || !strcmp(nm, "SDL_Main") || !strncmp(nm, "Java_org_libsdl_app_SDLActivity_", 32)) r->exports_sdl_main = true;
+                else if (!strcmp(nm, "ANativeActivity_onCreate")) r->exports_native_activity = true;
             }
         }
     }

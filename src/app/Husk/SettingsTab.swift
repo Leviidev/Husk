@@ -423,6 +423,11 @@ struct JITSettings: View {
                           value: JITBootstrap.isStikDebugInstalled ? "installed" : "not found", mono: false)
                 DetailRow(label: "TrollStore",
                           value: JITBootstrap.isTrollStoreInstalled ? "installed" : "not found", mono: false)
+                DetailRow(label: "Installed with TrollStore",
+                          value: JITBootstrap.isInstalledWithTrollStore ? "yes" : "no", mono: false)
+                DetailRow(label: "Jailbreak",
+                          value: JITBootstrap.debuggedAtLaunch ? "JIT allowed for apps"
+                               : JITBootstrap.isJailbroken ? "found; Allow JIT in Apps is off" : "not found", mono: false)
                 DetailRow(label: "Built-in pairing", value: pairingLabel, mono: false)
                 Button {
                     jit.showSetup = true

@@ -8,10 +8,12 @@
 #include <ctype.h>
 #include <crt_externs.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fnmatch.h>
 #include <getopt.h>
 #include <locale.h>
 #include <net/if.h>
+#include <regex.h>
 #include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
@@ -29,6 +31,9 @@
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n);   /* husk-tl-bionic-io.c */
 int tl_synth_open(const char *path);
+int tl_atomic_open(const char *real, int dflags, unsigned mode);
+void tl_atomic_closed(int fd);
+void tl_atomic_abandon(int fd);
 
 /* --------------------------------------------------------------- the stdio */
 
@@ -196,13 +201,29 @@ static void *b_fopen(const char *path, const char *mode)
     char buf[1024];
     int sfd = tl_synth_open(path);
     if (sfd >= 0) return fdopen(sfd, mode[0] == 'r' ? "r" : "r");
+    const char *real = tl_path_resolve(path, buf, sizeof(buf));
     TL_ERRNO_BEGIN();
-    FILE *f = fopen(tl_path_resolve(path, buf, sizeof(buf)), mode);
+    FILE *f = NULL;
+    /* "w" and "w+" rewrite a file: done crash-safe, as open(O_TRUNC) is (tl_atomic_open). */
+    if (mode[0] == 'w') {
+        int fd = tl_atomic_open(real, (strchr(mode, '+') ? O_RDWR : O_WRONLY) | O_CREAT | O_TRUNC, 0666);
+        if (fd >= 0 && !(f = fdopen(fd, mode))) { close(fd); tl_atomic_abandon(fd); }
+    }
+    if (!f) f = fopen(real, mode);
     TL_ERRNO_END();
     return f;
 }
+/* freopen: a game that sends its console output to a file (Wesnoth's log file) would otherwise redirect the runtime's own log; its standard streams are left where they are. */
+static void *b_freopen(const char *path, const char *mode, void *stream)
+{
+    FILE *f = map_stream(stream);
+    if (is_log_stream(f) || f == stdin) return stream;
+    char buf[1024];
+    TL_ERRNO_BEGIN(); FILE *r = freopen(tl_path_resolve(path, buf, sizeof(buf)), mode, f); TL_ERRNO_END();
+    return r;
+}
 static void *b_fdopen(int fd, const char *mode) { TL_ERRNO_BEGIN(); FILE *f = fdopen(fd, mode); TL_ERRNO_END(); return f; }
-static int b_fclose(void *f) { TL_ERRNO_BEGIN(); int r = fclose(map_stream(f)); TL_ERRNO_END(); return r; }
+static int b_fclose(void *f) { FILE *h = map_stream(f); int fd = fileno(h); TL_ERRNO_BEGIN(); int r = fclose(h); tl_atomic_closed(fd); TL_ERRNO_END(); return r; }
 static char *b_fgets(char *s, int n, void *f) { TL_ERRNO_BEGIN(); char *r = fgets(s, n, map_stream(f)); TL_ERRNO_END(); return r; }
 static size_t b_fread(void *p, size_t sz, size_t n, void *f) { TL_ERRNO_BEGIN(); size_t r = fread(p, sz, n, map_stream(f)); TL_ERRNO_END(); return r; }
 static size_t b_fwrite(const void *p, size_t sz, size_t n, void *f)
@@ -436,6 +457,10 @@ static void *b_memalign(size_t align, size_t size)
     return posix_memalign(&p, align, size) ? NULL : p;
 }
 
+/* The floating-point environment: bionic's fenv_t is two words of its own layout, and nothing here turns on exceptions or rounding, so these report success. */
+static int b_fe_env(void *env) { if (env) memset(env, 0, 8); return 0; }
+static int b_fe_ok(void) { return 0; }
+
 static void *b_memrchr(const void *s, int c, size_t n)
 {
     const unsigned char *p = (const unsigned char *)s + n;
@@ -576,7 +601,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_DATA("sys_signame", g_sys_signame),
     /* stdio.h */
     TL_DATA("__sF", g_sF),
-    TL_WRAP("fopen", b_fopen), TL_WRAP("fdopen", b_fdopen), TL_WRAP("fclose", b_fclose), TL_WRAP("fgets", b_fgets),
+    TL_WRAP("fopen", b_fopen), TL_WRAP("freopen", b_freopen), TL_WRAP("freopen64", b_freopen), TL_WRAP("fopen64", b_fopen), TL_WRAP("fseeko64", b_fseeko), TL_WRAP("ftello64", b_ftello), TL_DIRECT(funopen), TL_DIRECT(wcwidth), TL_WRAP("fdopen", b_fdopen), TL_WRAP("fclose", b_fclose), TL_WRAP("fgets", b_fgets),
     TL_WRAP("fread", b_fread), TL_WRAP("fwrite", b_fwrite), TL_WRAP("fseek", b_fseek), TL_WRAP("fseeko", b_fseeko),
     TL_WRAP("ftell", b_ftell), TL_WRAP("ftello", b_ftello), TL_WRAP("fflush", b_fflush), TL_WRAP("fputc", b_fputc),
     TL_WRAP("putc", b_putc), TL_WRAP("getc", b_getc), TL_WRAP("fgetc", b_getc), TL_WRAP("ungetc", b_ungetc), TL_WRAP("getwc", b_getwc),
@@ -623,7 +648,8 @@ const tl_bionic_entry tl_tab_str2[] = {
     TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("wcsrtombs", b_wcsrtombs),
     TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_DIRECT(sleep), TL_DIRECT(pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
     TL_DIRECT(ceil), TL_DIRECT(floor), TL_DIRECT(fabs), TL_DIRECT(trunc), TL_DIRECT(cbrt), TL_DIRECT(acosh), TL_DIRECT(atanh), TL_DIRECT(cosh),
-    TL_DIRECT(sinh), TL_DIRECT(sinhf), TL_DIRECT(scalbnf), TL_DIRECT(mbstowcs), TL_DIRECT(wcstombs), TL_DIRECT(exp2), TL_DIRECT(expm1), TL_DIRECT(log1p), TL_DIRECT(hypotf), TL_DIRECT(ilogbf), TL_DIRECT(nextafter),
+    TL_WRAP("feholdexcept", b_fe_env), TL_WRAP("fegetenv", b_fe_env), TL_WRAP("fesetenv", b_fe_env), TL_WRAP("feupdateenv", b_fe_env), TL_WRAP("fegetround", b_fe_ok), TL_WRAP("fesetround", b_fe_ok), TL_WRAP("feclearexcept", b_fe_ok), TL_WRAP("feraiseexcept", b_fe_ok), TL_WRAP("fetestexcept", b_fe_ok),
+    TL_DIRECT(regcomp), TL_DIRECT(regexec), TL_DIRECT(regfree), TL_DIRECT(regerror), TL_DIRECT(sinh), TL_DIRECT(sinhf), TL_DIRECT(scalbnf), TL_DIRECT(mbstowcs), TL_DIRECT(wcstombs), TL_DIRECT(exp2), TL_DIRECT(expm1), TL_DIRECT(log1p), TL_DIRECT(hypotf), TL_DIRECT(ilogbf), TL_DIRECT(nextafter),
     TL_DIRECT(nextafterf), TL_DIRECT(frexpf), TL_DIRECT(if_indextoname),
     TL_END
 };

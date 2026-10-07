@@ -12,12 +12,18 @@
 #include <TargetConditionals.h>
 #include <libkern/OSCacheControl.h>
 #include <mach/mach.h>
+#include <mach/vm_map.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <unistd.h>
 #if TARGET_OS_OSX
 #include <mach/mach_vm.h>
 #endif
 #endif
 
 #include "husk-tl-internal.h"
+
+void tl_log_line(const char *fmt, ...);
 
 static struct {
     uint8_t *rx, *rw;
@@ -26,21 +32,107 @@ static struct {
     pthread_mutex_t lock;
 } g_x = { .lock = PTHREAD_MUTEX_INITIALIZER };
 
+#if defined(__APPLE__)
+/*
+ * Executable memory a process makes for itself, on a device that does not need a debugger to hand it out: one where the kernel lets a process that is marked as debugged
+ * (CS_DEBUGGED) run pages it wrote. That is what a jailbreak does when it is told to allow JIT in apps (Dopamine marks every app it launches as debugged), what
+ * TrollStore's enable-jit does (its root helper attaches with ptrace and lets go, which leaves the flag set), and what a debugger's attach does on an iOS before TXM. It is
+ * the way UTM gets its JIT there too: an anonymous read+execute mapping, and a read+write alias of the same pages made with vm_remap.
+ *
+ * The two views sit side by side, the alias right after the executable one, because the loader reaches one from the other with adrp (+-4 GiB). Nothing is trusted until a
+ * function written through the alias has been called through the executable view; a guard turns a refusal into a failure rather than a crash.
+ */
+extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
+#define TL_CS_OPS_STATUS 0
+#define TL_CS_DEBUGGED   0x10000000u
+
+static sigjmp_buf g_self_jump;
+static volatile sig_atomic_t g_self_running;
+static void self_fault(int sig)
+{
+    if (g_self_running) siglongjmp(g_self_jump, 1);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+/* movz w0, #0x5a5a ; ret */
+static bool self_selftest(uint8_t *rx, uint8_t *rw)
+{
+    static const uint32_t code[2] = { 0x528B4B40u, 0xD65F03C0u };
+    vm_address_t addr = (vm_address_t)rx; vm_size_t sz = 0; natural_t depth = 0;
+    vm_region_submap_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_SUBMAP_INFO_COUNT_64;
+    if (vm_region_recurse_64(mach_task_self(), &addr, &sz, &depth, (vm_region_recurse_info_t)&info, &cnt) != KERN_SUCCESS || !(info.protection & VM_PROT_EXECUTE)) return false;
+    struct sigaction sa, ob, os, oi;
+    memset(&sa, 0, sizeof(sa)); sa.sa_handler = self_fault; sigemptyset(&sa.sa_mask);
+    sigaction(SIGBUS, &sa, &ob); sigaction(SIGSEGV, &sa, &os); sigaction(SIGILL, &sa, &oi);
+    bool ok = false;
+    g_self_running = 1;
+    if (sigsetjmp(g_self_jump, 1) == 0) {
+        memcpy(rw, code, sizeof(code));
+        sys_icache_invalidate(rx, sizeof(code));
+        ok = ((int (*)(void))(void *)rx)() == 0x5a5a;
+    }
+    g_self_running = 0;
+    sigaction(SIGBUS, &ob, NULL); sigaction(SIGSEGV, &os, NULL); sigaction(SIGILL, &oi, NULL);
+    return ok;
+}
+
+static bool grant_self(size_t host_bytes, char *err, size_t errlen)
+{
+    uint32_t flags = 0;
+    bool debugged = csops(getpid(), TL_CS_OPS_STATUS, &flags, sizeof(flags)) == 0 && (flags & TL_CS_DEBUGGED);
+    static const int how[2][2] = { { PROT_READ | PROT_EXEC, 0 }, { PROT_READ | PROT_WRITE | PROT_EXEC, MAP_JIT } };
+    int last_errno = 0;
+    for (size_t size = (host_bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1); size >= (64u << 20); size /= 2) {
+        uint8_t *base = mmap(NULL, size * 2, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (base == MAP_FAILED) { last_errno = errno; continue; }
+        for (int h = 0; h < 2; h++) {
+            uint8_t *rx = mmap(base, size, how[h][0], MAP_FIXED | MAP_PRIVATE | MAP_ANON | how[h][1], -1, 0);
+            if (rx == MAP_FAILED) { last_errno = errno; continue; }
+            vm_address_t alias = (vm_address_t)(uintptr_t)(base + size);
+            vm_prot_t cur, max;
+            kern_return_t kr = vm_remap(mach_task_self(), &alias, size, 0, VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE, mach_task_self(), (vm_address_t)(uintptr_t)rx, FALSE, &cur, &max, VM_INHERIT_NONE);
+            if (kr != KERN_SUCCESS || vm_protect(mach_task_self(), alias, size, FALSE, VM_PROT_READ | VM_PROT_WRITE) != KERN_SUCCESS) {
+                last_errno = EPERM;
+                mmap(base, size * 2, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANON, -1, 0);
+                continue;
+            }
+            if (self_selftest(rx, (uint8_t *)(uintptr_t)alias)) {
+                g_x.rx = rx; g_x.rw = (uint8_t *)(uintptr_t)alias; g_x.size = size;
+                tl_log_line("xmem: made its own %zu MiB executable region (%s mapping, rx %p, rw %p, process %s debugged)", size >> 20, h ? "MAP_JIT" : "plain", (void *)rx, (void *)alias, debugged ? "is" : "is not");
+                return true;
+            }
+            last_errno = EPERM;
+            munmap(base, size * 2);
+            base = mmap(NULL, size * 2, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+            if (base == MAP_FAILED) break;
+        }
+        if (base != MAP_FAILED) munmap(base, size * 2);
+    }
+    snprintf(err, errlen, "this process cannot make executable memory for itself (%s%s). It needs JIT: a jailbreak with JIT allowed for apps, TrollStore's enable-jit, or a debugger",
+             last_errno ? strerror(last_errno) : "refused", debugged ? "" : "; it is not marked as debugged");
+    return false;
+}
+#endif
+
 #if defined(__APPLE__) && !TARGET_OS_OSX
-/* The phone: StikDebug's region. Found through the allocator that asked for it. */
+/* The phone: StikDebug's region if a debugger granted one, otherwise one the process makes for itself where the device allows that (before TXM). */
 static bool open_platform(size_t host_bytes, char *err, size_t errlen)
 {
-    (void)host_bytes;
     tl_dual_mapping *m = tl_find_stikdebug_prewarmed();
-    if (!m || !m->rw_addr || !m->rx_addr) {
-        snprintf(err, errlen, "no StikDebug JIT region: executable memory is the one "
-                              "thing guest code cannot run without");
+    if (m && m->rw_addr && m->rx_addr) {
+        g_x.rx = m->rx_addr;
+        g_x.rw = m->rw_addr;
+        g_x.size = m->size;
+        return true;
+    }
+    /* From iOS 26 the Trusted Execution Monitor decides what may execute, and an attempt to run unblessed memory can end the process rather than fail. Only a debugger
+     * servicing traps can grant memory there, so nothing is tried. */
+    if (__builtin_available(iOS 26.0, *)) {
+        snprintf(err, errlen, "no StikDebug JIT region: this iOS enforces TXM, where only a debugger (StikDebug or Built-in StikJIT) can grant executable memory");
         return false;
     }
-    g_x.rx = m->rx_addr;
-    g_x.rw = m->rw_addr;
-    g_x.size = m->size;
-    return true;
+    return grant_self(host_bytes, err, errlen);
 }
 #else
 /* A Mac (or a plain host): two views of ordinary memory. */
@@ -48,6 +140,10 @@ static bool open_platform(size_t host_bytes, char *err, size_t errlen)
 {
     /* TL_XMEM_MIB: size the region as a phone's would be, to see whether a game fits there */
     if (getenv("TL_XMEM_MIB")) host_bytes = (size_t)atoi(getenv("TL_XMEM_MIB")) << 20;
+#if defined(__APPLE__)
+    /* TL_XMEM_SELF=1: make the region the way a jailbroken or TrollStore phone does, to test that path here */
+    if (getenv("TL_XMEM_SELF")) return grant_self(host_bytes, err, errlen);
+#endif
     size_t size = (host_bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1);
     /* Reserve twice the span and put the two views side by side. adrp reaches +-4 GiB, and
      * the loader retargets code at the writable view with it, so the views must stay close:

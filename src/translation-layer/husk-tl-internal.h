@@ -164,6 +164,8 @@ typedef struct tl_elf_report {
     uint32_t first_unsupported;
     const char *packing;        /* "none", "android" (APS2) or "relr" */
     uint32_t imports;
+    bool     exports_sdl_main;          /* SDL_main / SDL_Main, or SDLActivity natives: a game that carries SDL */
+    bool     exports_native_activity;   /* ANativeActivity_onCreate */
     char     soname[96];
     int      needed_count;
     char     needed[TL_MAX_NEEDED][64];

@@ -2,6 +2,7 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-nativeactivity.h"
 
+#include <dirent.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -70,6 +71,8 @@ static struct {
     jobj *activity;
     ANativeActivity na;
     ANativeActivityCallbacks callbacks;
+    bool generic;                          /* a NativeActivity game of its own (no libUE4): nothing of Unreal is set up for it */
+    char main_lib[64];                     /* the library that exports ANativeActivity_onCreate */
     void *window;
     pthread_t ui;
     bool started;
@@ -155,6 +158,59 @@ static void na_pad_motion(jobj *ev, int device, int source, int64_t down_ms, int
     tl_jni_unref(ev);
 }
 
+/* A NativeActivity game that is not Unreal: load its libraries (the manifest names one; here, whichever of the app's own libraries exports ANativeActivity_onCreate). */
+struct na_libs { char name[6][64]; int n; };
+static void na_lib_cb(const char *name, uint64_t size, void *user)
+{
+    (void)size;
+    struct na_libs *l = user;
+    static const char *const support[] = { "libc++_shared", "libSDL", "libopenal", "libsentry", "libFirebase", "libcrashlytics", "libandroidx" };
+    for (size_t i = 0; i < sizeof(support) / sizeof(support[0]); i++) if (!strncmp(name, support[i], strlen(support[i]))) return;
+    if (l->n < 6) snprintf(l->name[l->n++], 64, "%s", name);
+}
+static bool start_generic(void)
+{
+    struct na_libs libs = { .n = 0 };
+    tl_ld_apk_libs(na_lib_cb, &libs);
+    if (tl_ld_has_lib("libc++_shared.so")) load_library("c++_shared");
+    for (int i = 0; i < libs.n; i++) {
+        char base[64]; snprintf(base, sizeof(base), "%s", libs.name[i] + 3); base[strlen(base) - 3] = 0;
+        load_library(base);
+        if (tl_jni_pending()) { tl_log_line("na: loading %s failed", libs.name[i]); tl_jni_clear(); continue; }
+        tl_lib *l = tl_ld_find_lib(libs.name[i]);
+        if (l && tl_ld_sym(l, "ANativeActivity_onCreate")) { snprintf(N.main_lib, sizeof(N.main_lib), "%s", libs.name[i]); break; }
+    }
+    if (!N.main_lib[0]) { tl_log_line("na: no library exports ANativeActivity_onCreate"); return false; }
+    tl_log_line("na: native activity in %s", N.main_lib);
+    N.started = true;
+    return true;
+}
+
+/*
+ * An Unreal save that is empty: what a game ended while rewriting it leaves behind (before Husk made rewrites crash-safe). A real
+ * one never is -- it starts with a GVAS header -- and Minecraft Dungeons waits forever on its title screen for an empty
+ * GlobalSave.sav it cannot read. Taken away, the game makes a new one, and the other saves (its characters) stay.
+ */
+static void drop_empty_saves(const char *dir, int depth)
+{
+    DIR *d = opendir(dir);
+    if (!d) return;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char p[1024];
+        snprintf(p, sizeof(p), "%s/%s", dir, e->d_name);
+        struct stat st;
+        if (lstat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { if (depth < 10) drop_empty_saves(p, depth + 1); continue; }
+        size_t n = strlen(e->d_name);
+        if (S_ISREG(st.st_mode) && st.st_size == 0 && n > 4 && !strcmp(e->d_name + n - 4, ".sav") && strstr(dir, "/SaveGames")) {
+            if (unlink(p) == 0) tl_log_line("ue4: removed an empty save, %s (left by a save cut off part-way)", p);
+        }
+    }
+    closedir(d);
+}
+
 bool tl_na_start(const tl_ga_config *cfg)
 {
     N.cfg = *cfg;
@@ -177,13 +233,23 @@ bool tl_na_start(const tl_ga_config *cfg)
     int n = tl_dexidx_open(cfg->apk_path);
     tl_log_line("ue4: %d classes in the APK's DEX", n);
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
-    tl_egl_es31_shim(true);
-    tl_egl_offscreen_windows(!getenv("TL_UE4_NO_VULKAN") && (getenv("TL_UE4_FORCE_VULKAN") || tl_vk_available()));
+    N.generic = !tl_ld_has_lib("libUE4.so");
+    if (!N.generic) {
+        tl_egl_es31_shim(true);
+        tl_egl_offscreen_windows(!getenv("TL_UE4_NO_VULKAN") && (getenv("TL_UE4_FORCE_VULKAN") || tl_vk_available()));
+    }
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     tl_jni_init();
     tl_hle_configure(cfg->package_name, cfg->apk_path, cfg->data_dir, cfg->width, cfg->height);
     tl_jni_hle_install();
+    if (N.generic) {
+        tl_jni_declare("android/app/NativeActivity", "android/app/Activity");
+        N.activity = tl_jni_new_object(tl_jni_class("android/app/NativeActivity"));
+        tl_hle_set_activity(N.activity);
+        return start_generic();
+    }
     tl_ue4_hle_install(cfg->package_name, cfg->apk_path, cfg->data_dir, N.ext_dir);
+    drop_empty_saves(N.data, 0);
 
     N.activity = tl_jni_new_object(tl_jni_class(CLS));
     tl_hle_set_activity(N.activity);
@@ -223,27 +289,30 @@ static void *ui_main(void *arg)
     jobj *activity = N.activity;
 
     /* GameActivity.onCreate, before it hands over to NativeActivity: the facts the engine wants to know. */
-    typedef void (*ver_fn)(void *env, void *self, void *release, int sdk, void *a, void *b, void *c, void *d);
-    ver_fn set_version = (ver_fn)NATIVE("nativeSetAndroidVersionInformation", "(Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-    if (set_version) set_version(env, activity, tl_jni_new_string("14"), 34, tl_jni_new_string("Google"), tl_jni_new_string("Pixel 8"),
-                                 tl_jni_new_string("shiba"), tl_jni_new_string("google"));
-    typedef void (*glob_fn)(void *env, void *self, uint8_t ext, uint8_t pub, void *internal_path, void *external_path, uint8_t obb_in_apk, void *apk);
-    glob_fn set_global = (glob_fn)NATIVE("nativeSetGlobalActivity", "(ZZLjava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V");
-    if (set_global) set_global(env, activity, 1, 1, tl_jni_new_string(N.internal_dir), tl_jni_new_string(N.ext_dir), 0, tl_jni_new_string(N.apk));
-    typedef void (*obb_fn)(void *env, void *self, void *project, void *package, int version, int patch, void *apptype);
-    obb_fn set_obb = (obb_fn)NATIVE("nativeSetObbInfo", "(Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;)V");
-    if (set_obb) set_obb(env, activity, tl_jni_new_string(tl_ue4_meta("com.epicgames.ue4.GameActivity.ProjectName") ? tl_ue4_meta("com.epicgames.ue4.GameActivity.ProjectName") : "ShooterGame"), tl_jni_new_string(N.pkg), OBB_VERSION, 0, tl_jni_new_string(""));
-    typedef void (*obbp_fn)(void *env, void *self, void *a, void *b, void *c, void *d);
-    obbp_fn set_obb_paths = (obbp_fn)NATIVE("nativeSetObbFilePaths", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-    if (set_obb_paths) set_obb_paths(env, activity, tl_jni_new_string(N.obb_file), tl_jni_new_string(""), tl_jni_new_string(""), tl_jni_new_string(""));
-    typedef void (*rules_fn)(void *env, void *self, void *vars);
-    rules_fn set_rules = (rules_fn)NATIVE("nativeSetConfigRulesVariables", "([Ljava/lang/String;)V");
-    if (set_rules) set_rules(env, activity, tl_jni_new_obj_array(tl_jni_class("java/lang/String"), 0));
+    if (!N.generic) {
+        typedef void (*ver_fn)(void *env, void *self, void *release, int sdk, void *a, void *b, void *c, void *d);
+        ver_fn set_version = (ver_fn)NATIVE("nativeSetAndroidVersionInformation", "(Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+        if (set_version) set_version(env, activity, tl_jni_new_string("14"), 34, tl_jni_new_string("Google"), tl_jni_new_string("Pixel 8"),
+                                     tl_jni_new_string("shiba"), tl_jni_new_string("google"));
+        typedef void (*glob_fn)(void *env, void *self, uint8_t ext, uint8_t pub, void *internal_path, void *external_path, uint8_t obb_in_apk, void *apk);
+        glob_fn set_global = (glob_fn)NATIVE("nativeSetGlobalActivity", "(ZZLjava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V");
+        if (set_global) set_global(env, activity, 1, 1, tl_jni_new_string(N.internal_dir), tl_jni_new_string(N.ext_dir), 0, tl_jni_new_string(N.apk));
+        typedef void (*obb_fn)(void *env, void *self, void *project, void *package, int version, int patch, void *apptype);
+        obb_fn set_obb = (obb_fn)NATIVE("nativeSetObbInfo", "(Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;)V");
+        if (set_obb) set_obb(env, activity, tl_jni_new_string(tl_ue4_meta("com.epicgames.ue4.GameActivity.ProjectName") ? tl_ue4_meta("com.epicgames.ue4.GameActivity.ProjectName") : "ShooterGame"), tl_jni_new_string(N.pkg), OBB_VERSION, 0, tl_jni_new_string(""));
+        typedef void (*obbp_fn)(void *env, void *self, void *a, void *b, void *c, void *d);
+        obbp_fn set_obb_paths = (obbp_fn)NATIVE("nativeSetObbFilePaths", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+        if (set_obb_paths) set_obb_paths(env, activity, tl_jni_new_string(N.obb_file), tl_jni_new_string(""), tl_jni_new_string(""), tl_jni_new_string(""));
+        typedef void (*rules_fn)(void *env, void *self, void *vars);
+        rules_fn set_rules = (rules_fn)NATIVE("nativeSetConfigRulesVariables", "([Ljava/lang/String;)V");
+        if (set_rules) set_rules(env, activity, tl_jni_new_obj_array(tl_jni_class("java/lang/String"), 0));
+
+    }
 
     /* NativeActivity: the system calls the library's entry point with the activity it describes. */
-    tl_lib *lib = tl_ld_find_lib("libUE4.so");
+    tl_lib *lib = tl_ld_find_lib(N.generic ? N.main_lib : "libUE4.so");
     void (*on_create)(ANativeActivity *, void *, size_t) = lib ? tl_ld_sym(lib, "ANativeActivity_onCreate") : NULL;
-    if (!on_create) { tl_log_line("ue4: libUE4.so has no ANativeActivity_onCreate"); return NULL; }
+    if (!on_create) { tl_log_line("na: the library has no ANativeActivity_onCreate"); return NULL; }
     jobj *assets = tl_hle_assets();
     void *(*from_java)(void *, void *) = tl_bionic_find("AAssetManager_fromJava");
     N.na.callbacks = &N.callbacks;
@@ -261,18 +330,22 @@ static void *ui_main(void *arg)
     if (N.callbacks.onStart) N.callbacks.onStart(&N.na);
     if (N.callbacks.onResume) N.callbacks.onResume(&N.na);
     if (N.callbacks.onInputQueueCreated) N.callbacks.onInputQueueCreated(&N.na, (void *)&N);          /* a queue nothing arrives through */
-    typedef void (*win_fn)(void *env, void *self, uint8_t portrait, int depth);
-    win_fn set_window_info = (win_fn)NATIVE("nativeSetWindowInfo", "(ZI)V");
-    if (set_window_info) set_window_info(env, activity, N.cfg.width < N.cfg.height, 24);
-    typedef void (*sv_fn)(void *env, void *self, int w, int h);
-    sv_fn set_surface = (sv_fn)NATIVE("nativeSetSurfaceViewInfo", "(II)V");
-    if (set_surface) set_surface(env, activity, N.cfg.width, N.cfg.height);
+    if (!N.generic) {
+        typedef void (*win_fn)(void *env, void *self, uint8_t portrait, int depth);
+        win_fn set_window_info = (win_fn)NATIVE("nativeSetWindowInfo", "(ZI)V");
+        if (set_window_info) set_window_info(env, activity, N.cfg.width < N.cfg.height, 24);
+        typedef void (*sv_fn)(void *env, void *self, int w, int h);
+        sv_fn set_surface = (sv_fn)NATIVE("nativeSetSurfaceViewInfo", "(II)V");
+        if (set_surface) set_surface(env, activity, N.cfg.width, N.cfg.height);
+    }
     if (N.callbacks.onNativeWindowCreated) N.callbacks.onNativeWindowCreated(&N.na, N.window);
     if (N.callbacks.onNativeWindowResized) N.callbacks.onNativeWindowResized(&N.na, N.window);
     if (N.callbacks.onWindowFocusChanged) N.callbacks.onWindowFocusChanged(&N.na, 1);
-    typedef void (*void_fn)(void *env, void *self);
-    void_fn resume_init = (void_fn)NATIVE("nativeResumeMainInit", "()V");
-    if (resume_init) resume_init(env, activity);
+    if (!N.generic) {
+        typedef void (*void_fn)(void *env, void *self);
+        void_fn resume_init = (void_fn)NATIVE("nativeResumeMainInit", "()V");
+        if (resume_init) resume_init(env, activity);
+    }
     tl_log_line("ue4: lifecycle delivered");
 
     /* The activity's message loop: nothing to serve beyond keeping the thread (and its looper) alive. */
@@ -285,7 +358,7 @@ bool tl_na_run(void)
 {
     if (!N.started) return false;
     /* The OBB is inside the APK: say where, so the engine finds it where it expects. */
-    {
+    if (!N.generic) {
         unsigned long long off = 0, size = 0;
         const char *entry = getenv("TL_UE4_OBB_ENTRY") ? getenv("TL_UE4_OBB_ENTRY") : "assets/main.obb.png";
         char name[200]; snprintf(name, sizeof(name), "main.%d.%s.obb", OBB_VERSION, N.pkg);

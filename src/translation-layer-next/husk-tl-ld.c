@@ -126,6 +126,20 @@ bool tl_ld_add_apk(const char *path)
 
 const tl_zip *tl_ld_apk_at(int i) { return (i >= 0 && i < G.napks) ? &G.apks[i] : NULL; }
 
+/* Every arm64 library the APKs carry, by file name and size: a game that links SDL into its own library names no SDL library to look for. */
+int tl_ld_apk_libs(void (*cb)(const char *name, uint64_t size, void *user), void *user)
+{
+    int n = 0;
+    for (int i = 0; i < G.napks; i++)
+        for (size_t k = 0; k < G.apks[i].count; k++) {
+            const char *nm = G.apks[i].entries[k].name;
+            size_t l = strlen(nm);
+            if (strncmp(nm, "lib/arm64-v8a/", 14) || l < 18 || strcmp(nm + l - 3, ".so") || strchr(nm + 14, '/')) continue;
+            cb(nm + 14, G.apks[i].entries[k].usize, user); n++;
+        }
+    return n;
+}
+
 bool tl_ld_has_lib(const char *name)
 {
     char path[160];
@@ -306,9 +320,19 @@ static void build_scope(tl_lib *L)
 }
 
 /* Symbol lookup the way a library sees it: its own scope, then the system. */
+/* Functions a driver puts in front of whatever the libraries define: an import of one of these names is bound to the replacement, which can still call the original. */
+#define MAX_INTERPOSE 8
+static struct { char name[48]; void *fn; } g_interpose[MAX_INTERPOSE];
+static int g_ninterpose;
+void tl_ld_interpose(const char *name, void *fn)
+{
+    if (g_ninterpose < MAX_INTERPOSE) { snprintf(g_interpose[g_ninterpose].name, sizeof(g_interpose[0].name), "%s", name); g_interpose[g_ninterpose++].fn = fn; }
+}
+
 static void *lookup_for(tl_lib *L, const char *name, bool *weak_hit)
 {
     (void)weak_hit;
+    for (int i = 0; i < g_ninterpose; i++) if (!strcmp(g_interpose[i].name, name)) return g_interpose[i].fn;
     build_scope(L);
     const elf_sym *s = lib_find(L, name);
     if (s && (s->st_info & 0xf) != STT_GNU_IFUNC_) return sym_value(L, s);

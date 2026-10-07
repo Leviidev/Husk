@@ -36,6 +36,9 @@ struct HuskApp: App {
         // to lose the first line of.
         HuskLog.start()
         HuskLog.logFootprint("app-launch")
+        // Before anything asks a debugger for anything: was this process already marked as debugged (a jailbreak that allows JIT in apps)?
+        JITBootstrap.noteLaunchState()
+        HuskLog.log("jit", "debugged at launch: \(JITBootstrap.debuggedAtLaunch); TrollStore install: \(JITBootstrap.isInstalledWithTrollStore); jailbreak: \(JITBootstrap.isJailbroken); can grant its own JIT: \(JITBootstrap.canGrantOwnJIT)")
 
         // Then the trap guard: without it, any brk we issue when StikDebug is
         // absent kills the process outright rather than returning an error.

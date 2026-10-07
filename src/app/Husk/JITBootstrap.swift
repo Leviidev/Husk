@@ -214,6 +214,33 @@ enum JITBootstrap {
         URL(string: "apple-magnifier://").map(UIApplication.shared.canOpenURL) ?? false
     }
 
+    /// Whether this copy of Husk was installed by TrollStore (or TrollStore Lite): it leaves a marker file next to the app in
+    /// its bundle container (TrollStore's `TS_MARKER`). Only then is it a TrollStore app, which keeps the entitlements it was
+    /// built with -- including the memory ones.
+    static var isInstalledWithTrollStore: Bool {
+        let container = Bundle.main.bundleURL.deletingLastPathComponent()
+        return ["_TrollStore", "_TrollStoreLite"].contains {
+            FileManager.default.fileExists(atPath: container.appendingPathComponent($0).path)
+        }
+    }
+
+    /// A rootless jailbreak (Dopamine and its kin) puts its files in /var/jb and lets apps see it.
+    static var isJailbroken: Bool { FileManager.default.fileExists(atPath: "/var/jb") }
+
+    /// Whether Husk was already marked as debugged when it was opened, before it asked anything of anyone. That is what a
+    /// jailbreak that allows JIT in apps does to every app it launches (Dopamine's "Allow JIT in Apps" setting), and it needs
+    /// no hand-off at all. Read once, early (HuskApp.init), so a later attach is not mistaken for it.
+    nonisolated(unsafe) static var debuggedAtLaunch = false
+    static func noteLaunchState() { debuggedAtLaunch = (csStatus() ?? 0) & CS_DEBUGGED != 0 }
+
+    /// Whether this iOS lets a process that is marked as debugged make executable memory for itself, as opposed to needing a
+    /// debugger to hand it out: true before iOS 26, which is when the Trusted Execution Monitor arrived. It is what makes
+    /// TrollStore and jailbreaks enough, without StikDebug.
+    static var canGrantOwnJIT: Bool {
+        if #available(iOS 26, *) { return false }
+        return true
+    }
+
     /// husk-jit.js as standard base64, which Built-in StikJIT's custom script takes.
     static var scriptBase64: String? {
         loadScript()?.data(using: .utf8)?.base64EncodedString()

@@ -54,6 +54,12 @@ void husk_ue4_set_vulkan(const char *dylib);
 void husk_native_add_package(const char *apk);
 /* The screen's safe-area insets in pixels, for a game that keeps its controls out of a notch (SDL games ask). Before the launch call, or any time. */
 void husk_sdl_set_safe_insets(int left, int top, int right, int bottom);
+/* Whether an SDL game's manifest asks for a portrait screen (the others are landscape). */
+int husk_sdl_apk_is_portrait(const char *apk);
+/* Soft keyboard for an SDL game: the handler is told 1 = show, 2 = hide; typed text goes in with husk_sdl_commit_text, Backspace (67) and Enter (66) with husk_sdl_key. */
+void husk_sdl_set_keyboard_handler(void (*handler)(int action));
+void husk_sdl_commit_text(const char *utf8);
+void husk_sdl_key(int keycode, int down);
 /* Soft keyboard for a cocos2d-x game. The handler is told (on the game's GL thread) 0 = toggle, 1 = show, 2 = hide. */
 void husk_cocos_set_keyboard_handler(void (*handler)(int action));
 void husk_cocos_insert_text(const char *utf8);
