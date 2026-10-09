@@ -97,6 +97,9 @@ void husk_gamepad_update(int slot, unsigned buttons, float lx, float ly, float r
 /* The APK of the game started this session, or NULL. An engine cannot be loaded twice, nor two games at once. */
 const char *husk_native_loaded_apk(void);
 
+/* Whether the running game has no touch controls of its own and wants the on-screen controller (a PC game through DXVK). */
+bool husk_native_wants_controller(void);
+
 int  husk_unity_state(void);
 unsigned long husk_unity_frames(void);
 typedef struct husk_unity_perf { double fps, mean_ms, max_ms; } husk_unity_perf;

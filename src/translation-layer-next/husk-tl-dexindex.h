@@ -39,6 +39,9 @@ bool tl_dexidx_field_sig(const char *cls, const char *name, char *out, size_t n)
 bool tl_dexidx_method_named(const char *cls, const char *name);
 bool tl_dexidx_find_method_lenient(const char *cls, const char *name, const char *want, char *out, size_t n, bool *is_static);
 
+/* Calls `fn` with every string constant in the APK's DEX files, until it returns false. */
+void tl_dexidx_each_string(bool (*fn)(const char *s, void *ctx), void *ctx);
+
 #ifdef __cplusplus
 }
 #endif

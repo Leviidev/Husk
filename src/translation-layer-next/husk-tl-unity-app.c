@@ -438,6 +438,12 @@ void husk_ga_delete_backward(void) { if (ga_running()) tl_ga_delete_backward(); 
 void husk_ga_editor_action(void) { if (ga_running()) tl_ga_editor_action(); }
 void husk_ga_text(char *out, unsigned long cap) { if (cap) out[0] = 0; if (ga_running()) tl_ga_text_copy(out, cap); }
 
+/* A game that renders Direct3D through DXVK is a PC game ported over, and its menus answer a keyboard, mouse or controller, not touch. */
+bool husk_native_wants_controller(void)
+{
+    return tl_ld_find_lib("libdxvk_dxgi.so") || tl_ld_find_lib("libdxvk_d3d11.so") || tl_ld_find_lib("libdxvk_d3d9.so");
+}
+
 const char *husk_native_loaded_apk(void) { return atomic_load(&A.state) == HUSK_UNITY_IDLE ? NULL : A.apk; }
 
 int husk_unity_state(void)

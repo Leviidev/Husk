@@ -19,6 +19,7 @@
 #include "husk-tl-jni.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-vulkan.h"
 
 void tl_jni_hle_install(void);
 void tl_hle_configure(const char *pkg, const char *apk, const char *data, int w, int h);
@@ -763,6 +764,27 @@ static void *sdl_main_thread(void *arg)
     return NULL;
 }
 
+/* Some ports read the screen size from environment variables their Java activity sets from DisplayMetrics before SDL starts
+ * (Os.setenv("<NAME>_DISPLAY_WIDTH", ...)). No Java runs here, so a game asking for one finds nothing, falls back to a default
+ * render size and is stretched to the screen. Any such name in the DEX gets the real size. */
+typedef struct { int w, h, n; } display_env;
+
+static bool set_display_env(const char *str, void *ctx)
+{
+    display_env *d = ctx;
+    size_t n = strlen(str);
+    if (n < 15 || n > 64 || strspn(str, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != n) return true;
+    int v = 0;
+    if (!strcmp(str + n - 14, "_DISPLAY_WIDTH")) v = d->w;
+    else if (n >= 16 && !strcmp(str + n - 15, "_DISPLAY_HEIGHT")) v = d->h;
+    else return true;
+    char num[16];
+    snprintf(num, sizeof(num), "%d", v);
+    setenv(str, num, 1);
+    tl_log_line("sdl: %s=%s (the activity would set it from DisplayMetrics)", str, num);
+    return ++d->n < 8;
+}
+
 static void *ui_main(void *arg)
 {
     (void)arg;
@@ -830,6 +852,9 @@ static void *ui_main(void *arg)
      * the GL context it believes it saved, and with nothing saved there is nothing to put back. */
     tl_log_line("sdl: lifecycle delivered");
 
+    display_env de = { w, h, 0 };
+    tl_dexidx_each_string(set_display_env, &de);
+
     pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setstacksize(&a, 8u << 20);
     if (pthread_create(&S.sdl, &a, sdl_main_thread, NULL) != 0) tl_log_line("sdl: cannot start the SDL thread");
     pthread_attr_destroy(&a);
@@ -855,7 +880,8 @@ bool tl_sdl_run(void)
     return true;
 }
 
-unsigned long tl_sdl_frames(void) { return tl_egl_frames_presented(); }
+/* SDL games draw with GL or, through SDL_Vulkan, with Vulkan: frames presented by either. */
+unsigned long tl_sdl_frames(void) { return tl_egl_frames_presented() + tl_vk_frames_presented(); }
 
 /* Text and keys from the app's keyboard: SDLInputConnection.nativeCommitText for characters, onNativeKeyDown/Up for Backspace (67) and Enter (66). */
 void tl_sdl_commit_text(const char *utf8)

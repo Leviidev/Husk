@@ -505,8 +505,11 @@ struct TLCocosAttemptView: View {
     /// Whether an on-screen controller may be offered: not when the game's settings say never, not while a real one is connected, and
     /// without "Always" only for Unreal, whose menus answer nothing else.
     private var padOffered: Bool {
-        settings.pad != .never && pads.names.isEmpty && (settings.pad == .always || engine == .ue4)
+        settings.pad != .never && pads.names.isEmpty && (settings.pad == .always || engine == .ue4 || wantsController)
     }
+
+    /// A game that has no touch controls of its own, found once it is running.
+    private var wantsController: Bool { model.state == Int32(HUSK_UNITY_RUNNING) && husk_native_wants_controller() }
 
     /// Another game is already loaded in this session, and an engine cannot be loaded twice.
     private var blockedBy: String? {

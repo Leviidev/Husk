@@ -51,7 +51,7 @@ struct TLAppSettings: Codable, Equatable {
 
     /// When the on-screen controller is offered.
     enum PadMode: String, Codable, CaseIterable, Identifiable {
-        /// For the games that cannot be played without a controller (Unreal), when none is connected.
+        /// For the games that cannot be played without a controller (Unreal, PC games through DXVK), when none is connected.
         case auto, always, never
         var id: String { rawValue }
         var title: String {
