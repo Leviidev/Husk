@@ -18,7 +18,18 @@ set -euo pipefail
 
 HUSK_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DD="${DD:-/tmp/husk_ipa}"
-OUT="${1:-$HOME/Desktop/Husk.ipa}"
+TROLLSTORE=false
+OUT=""
+for arg in "$@"; do
+    case "$arg" in
+        --trollstore|--tipa) TROLLSTORE=true ;;
+        *) OUT="${OUT:-$arg}" ;;
+    esac
+done
+[[ "$OUT" == *.tipa ]] && TROLLSTORE=true
+if [ -z "$OUT" ]; then
+    OUT="$HOME/Desktop/Husk.$([ "$TROLLSTORE" = true ] && echo tipa || echo ipa)"
+fi
 mkdir -p "$DD"
 
 # The .app is not the only thing that can be stale. The Xcode target links the
@@ -154,7 +165,19 @@ cp -R "$APP" "$STAGE/Payload/"
 
 # Ad hoc, inside out: loose dylibs and frameworks, then app extensions, then the
 # app with its entitlements (see the top of this file for why).
-ENT="$HUSK_ROOT/src/app/Husk/Husk.entitlements"
+ENT_BASE="$HUSK_ROOT/src/app/Husk/Husk.entitlements"
+ENT="$STAGE/entitlements.plist"
+cp "$ENT_BASE" "$ENT"
+BANNED_KEYS=(
+    "com.apple.private.cs.debugger"
+    "dynamic-codesigning"
+    "com.apple.private.skip-library-validation"
+)
+if [ "$TROLLSTORE" = true ]; then
+    for key in "${BANNED_KEYS[@]}"; do
+        plutil -remove "$key" "$ENT" 2>/dev/null || true
+    done
+fi
 SAPP="$STAGE/Payload/$(basename "$APP")"
 sign() { codesign --force --sign - --timestamp=none "$@"; }
 find "$SAPP" -name "*.dylib" -not -path "*/Frameworks/*.framework/*" | while read -r f; do sign "$f"; done
@@ -162,12 +185,26 @@ for fw in "$SAPP"/Frameworks/*.framework; do [ -d "$fw" ] && sign "$fw"; done
 for ex in "$SAPP"/PlugIns/*.appex; do [ -d "$ex" ] && sign "$ex"; done
 sign --entitlements "$ENT" "$SAPP"
 echo "==> entitlements in the signed app:"
-codesign -d --entitlements - "$SAPP" 2>/dev/null | grep -E "get-task-allow|dynamic-codesigning|increased-memory|extended-virtual" \
-    || { echo "==> entitlements did not embed; refusing to package" >&2; rm -rf "$STAGE"; exit 1; }
-TMP_IPA="$STAGE/Husk.ipa"
-( cd "$STAGE" && zip -qry "$TMP_IPA" Payload )
+EMBEDDED_ENTS=$(codesign -d --entitlements - "$SAPP" 2>&1 || true)
+REQUIRED_PATTERN="get-task-allow|increased-memory|extended-virtual"
+[ "$TROLLSTORE" != true ] && REQUIRED_PATTERN+="|dynamic-codesigning"
+if ! grep -qE "$REQUIRED_PATTERN" <<< "$EMBEDDED_ENTS"; then
+    echo "==> entitlements did not embed; refusing to package" >&2
+    rm -rf "$STAGE"
+    exit 1
+fi
+if [ "$TROLLSTORE" = true ]; then
+    BANNED_PATTERN=$(IFS='|'; echo "${BANNED_KEYS[*]}")
+    if matched=$(grep -oE "$BANNED_PATTERN" <<< "$EMBEDDED_ENTS" | head -n 1) && [ -n "$matched" ]; then
+        echo "==> banned entitlement '$matched' found in trollstore package; refusing to package" >&2
+        rm -rf "$STAGE"
+        exit 1
+    fi
+fi
+TMP_OUT="$STAGE/package.tmp"
+( cd "$STAGE" && zip -qry "$TMP_OUT" Payload )
 
 # Atomic replace so a half-written IPA never sits where the good one was.
-mv -f "$TMP_IPA" "$OUT"
+mv -f "$TMP_OUT" "$OUT"
 rm -rf "$STAGE"
 echo "==> $OUT  ($(du -h "$OUT" | cut -f1))"
