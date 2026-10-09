@@ -1183,7 +1183,7 @@ static uint64_t bind_symbol(tl_lib *L, uint32_t symidx, bool *failed)
             val = (uint64_t)(uintptr_t)stub;
             L->n_unresolved++;
             G.unresolved++;
-            if (G.verbosity >= 2) tl_log_line("ld: %s: unresolved import %s", L->name, name);
+            if (G.verbosity >= 2 || L->n_unresolved <= 32) tl_log_line("ld: %s: unresolved import %s", L->name, name);
         }
     }
     if (cached) L->symcache[symidx] = val ? val : 1;   /* 1 marks a resolved NULL */

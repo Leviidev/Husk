@@ -609,7 +609,7 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("closelog", bionic_closelog),
     TL_WRAP("abort", bionic_abort),
     TL_WRAP("exit", bionic_exit),
-    TL_DIRECT(_exit),
+    TL_DIRECT(_exit), TL_DIRECT(_Exit),
     TL_WRAP("__stack_chk_fail", bionic___stack_chk_fail),
     TL_WRAP("__assert2", bionic___assert2),
     TL_WRAP("android_set_abort_message", bionic_android_set_abort_message),

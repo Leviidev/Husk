@@ -158,6 +158,7 @@ TL_VA_STUB(tl_va_fscanf, tl_vai_fscanf);
 extern void tl_va_fscanf(void);
 
 static int b_vsnprintf(char *s, size_t n, const char *fmt, tl_va_list *ap) { return tl_format(s, n, fmt, ap); }
+static int b_vswprintf(wchar_t *s, size_t n, const wchar_t *fmt, tl_va_list *ap) { return tl_format_wide(s, n, fmt, ap); }
 static int b___vsnprintf_chk(char *s, size_t n, int flag, size_t slen, const char *fmt, tl_va_list *ap)
 {
     (void)flag;
@@ -226,6 +227,13 @@ static void *b_fdopen(int fd, const char *mode) { TL_ERRNO_BEGIN(); FILE *f = fd
 static int b_fclose(void *f) { FILE *h = map_stream(f); int fd = fileno(h); TL_ERRNO_BEGIN(); int r = fclose(h); tl_atomic_closed(fd); TL_ERRNO_END(); return r; }
 static char *b_fgets(char *s, int n, void *f) { TL_ERRNO_BEGIN(); char *r = fgets(s, n, map_stream(f)); TL_ERRNO_END(); return r; }
 static size_t b_fread(void *p, size_t sz, size_t n, void *f) { TL_ERRNO_BEGIN(); size_t r = fread(p, sz, n, map_stream(f)); TL_ERRNO_END(); return r; }
+static size_t b_fwrite(const void *p, size_t sz, size_t n, void *f);
+/* FORTIFY's fwrite: the same, with the size of the buffer it reads from. */
+static size_t b___fwrite_chk(const void *p, size_t sz, size_t n, void *f, size_t buf_size) { (void)buf_size; return b_fwrite(p, sz, n, f); }
+/* There is no shell to run a command in: as Android does without /system/bin/sh. */
+static int b_system(const char *cmd) { return cmd ? -1 : 0; }
+/* Darwin has no sched_getcpu; the CPU a thread is on is only ever a hint. */
+static int b_sched_getcpu(void) { return 0; }
 static size_t b_fwrite(const void *p, size_t sz, size_t n, void *f)
 {
     FILE *s = map_stream(f);
@@ -592,6 +600,9 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_DIRECT(pow), TL_DIRECT(powf), TL_DIRECT(scalbn), TL_DIRECT(sin), TL_DIRECT(sinf), TL_DIRECT(sqrtf), TL_DIRECT(tan),
     TL_DIRECT(tanf), TL_WRAP("sincosf", b_sincosf), TL_WRAP("sincos", b_sincos),
     TL_DIRECT(sqrt), TL_DIRECT(fmin), TL_DIRECT(fmax), TL_DIRECT(frexp), TL_DIRECT(asinh), TL_DIRECT(tanh),
+    TL_DIRECT(tanhf), TL_DIRECT(cosh), TL_DIRECT(coshf), TL_DIRECT(sinh), TL_DIRECT(sinhf), TL_DIRECT(asinhf), TL_DIRECT(acosh),
+    TL_DIRECT(acoshf), TL_DIRECT(atanh), TL_DIRECT(atanhf), TL_DIRECT(expm1), TL_DIRECT(expm1f), TL_DIRECT(log1p), TL_DIRECT(log1pf),
+    TL_DIRECT(exp2), TL_DIRECT(cbrt), TL_DIRECT(hypotf), TL_DIRECT(frexpf), TL_DIRECT(scalbnf),
     TL_WRAP("__isnanf", b___isnanf), TL_WRAP("__fpclassifyd", b___fpclassifyd),
     /* locale.h */
     TL_WRAP("setlocale", b_setlocale), TL_WRAP("newlocale", b_newlocale), TL_DIRECT(freelocale), TL_DIRECT(uselocale),
@@ -611,6 +622,8 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("remove", b_remove), TL_WRAP("rename", b_rename),
     TL_WRAP("snprintf", tl_va_snprintf), TL_WRAP("sprintf", tl_va_sprintf), TL_WRAP("printf", tl_va_printf),
     TL_WRAP("fprintf", tl_va_fprintf), TL_WRAP("sscanf", tl_va_sscanf), TL_WRAP("fscanf", tl_va_fscanf),
+    TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
+    TL_WRAP("sched_getcpu", b_sched_getcpu), TL_DIRECT(wcslcpy), TL_DIRECT(wcslcat), TL_DIRECT(wcscasecmp), TL_DIRECT(wcsncasecmp),
     TL_WRAP("vsnprintf", b_vsnprintf), TL_WRAP("__vsnprintf_chk", b___vsnprintf_chk), TL_WRAP("__vsprintf_chk", b___vsprintf_chk),
     TL_WRAP("vprintf", b_vprintf), TL_WRAP("vfprintf", b_vfprintf), TL_WRAP("vasprintf", b_vasprintf), TL_WRAP("vsscanf", b_vsscanf),
     TL_END
