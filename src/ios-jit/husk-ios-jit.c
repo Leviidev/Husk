@@ -385,7 +385,7 @@ static HuskDualMapping husk_self_dual_mapping(size_t bytes)
         HUSK_LOG("self: MAP_JIT refused (%s)", strerror(errno));
     } else {
         uint8_t *rw = husk_rw_alias(rx, size, false);
-        if (rw && husk_self_selftest(rx, rw)) {
+        if (rw && vm_protect(mach_task_self(), (vm_address_t)rx, size, FALSE, VM_PROT_READ | VM_PROT_EXECUTE) == KERN_SUCCESS && husk_self_selftest(rx, rw)) {
             HuskDualMapping m = { rw, rx, size };
             atomic_store(&g_jit_available, true);
             g_self_route = "MAP_JIT";
