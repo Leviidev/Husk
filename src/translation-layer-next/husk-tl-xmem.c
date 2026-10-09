@@ -35,9 +35,10 @@ static struct {
 #if defined(__APPLE__)
 /*
  * Executable memory a process makes for itself, on a device that does not need a debugger to hand it out: one where the kernel lets a process that is marked as debugged
- * (CS_DEBUGGED) run pages it wrote. That is what a jailbreak does when it is told to allow JIT in apps (Dopamine marks every app it launches as debugged), what
- * TrollStore's enable-jit does (its root helper attaches with ptrace and lets go, which leaves the flag set), and what a debugger's attach does on an iOS before TXM. It is
- * the way UTM gets its JIT there too: an anonymous read+execute mapping, and a read+write alias of the same pages made with vm_remap.
+ * (CS_DEBUGGED) run pages it wrote. That is what jailbreak environments provide, what TrollStore's enable-jit does
+ * (its root helper attaches with ptrace and lets go, leaving the process in the allow-invalid/debugged state), and what a debugger attach does on iOS versions where that state is sufficient for JIT:
+ * an anonymous mapping allocated with RWX max protection, a read+write alias made with vm_remap, and the executable mapping demoted to read+execute via vm_protect
+ * to work around W^X restrictions.
  *
  * The two views sit side by side, the alias right after the executable one, because the loader reaches one from the other with adrp (+-4 GiB). Nothing is trusted until a
  * function written through the alias has been called through the executable view; a guard turns a refusal into a failure rather than a crash.

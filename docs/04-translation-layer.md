@@ -137,8 +137,9 @@ real generated code:
 
 Both pass on arm64 Linux under qemu-user (`tests/translation-layer/run.sh`),
 which proves the code the checks generate. Whether XNU allows either is
-what the phone answers. The checks run where MAP_JIT executes (TrollStore,
-and iOS versions where a debugger is enough). The region a *trap-servicing*
+what the phone answers. The checks run where dynamic code execution is available (devices
+where dynamic-codesigning allows MAP_JIT, TrollStore via its enable-jit fallback, and iOS versions
+where a debugger is enough). The region a *trap-servicing*
 debugger grants belongs to the allocator compiled into the QEMU library, so that
 case is reported as not measured. Measuring it means moving
 `src/ios-jit/husk-ios-jit.c` into a small library of its own, which both modes

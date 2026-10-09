@@ -283,21 +283,20 @@ static bool husk_jit_selftest(const HuskDualMapping *m)
 
 /* ------------------------------------------------------------ self-granted */
 /*
- * Executable memory without a trap servicer, before iOS 26 (no TXM). This is how TrollStore and jailbreaks give an app JIT:
+ * Executable memory without a trap servicer. This is how TrollStore and jailbreaks give an app JIT:
  *
- *   - TrollStore keeps the entitlements an app is signed with, so Husk's dynamic-codesigning is honoured and a MAP_JIT mapping
- *     executes with no debugger at all. TrollStore's own enable-jit (RootHelper/jit.m: ptrace(PT_ATTACHEXC), 100 ms, PT_DETACH)
- *     additionally leaves CS_DEBUGGED set.
- *   - Dopamine allows invalid pages in every app it launches (launchdhook's systemwide checkin calls cs_allow_invalid), but its
- *     csops hook hides CS_DEBUGGED from the app unless "Allow JIT in Apps" is on. MAP_JIT is refused there (no entitlement), so it
- *     needs plain memory made executable.
- *   - A debugger that attached and let go (TrollStore, AltJIT, SideJITServer, StikDebug on an older iOS) leaves CS_DEBUGGED set,
- *     which allows the same.
+ *   - TrollStore apps cannot use banned entitlements such as dynamic-codesigning on affected systems
+ *     (see https://github.com/opa334/TrollStore#banned-entitlements), so they cannot rely on the normal entitlement-based JIT path.
+ *     TrollStore's "Open with JIT" / enable-jit instead attaches with ptrace and detaches, leaving the process debugged.
+ *   - Dopamine similarly allows invalid executable pages for jailbreak processes, while its csops hook may hide CS_DEBUGGED
+ *     unless "Allow JIT in Apps" is enabled.
+ *   - Debugger-based JIT methods such as AltJIT, SideJITServer and StikDebug use the same general mechanism on affected iOS versions.
  *
- * Both routes give QEMU and the native runtime the same shape StikDebug's region has: an executable view and a writable alias of
- * the same pages, side by side (the native loader reaches one from the other with adrp). The plain route is only tried where the
- * kernel is known to allow unsigned pages, because executing one where it is not is a code-signing kill, not a signal. Every
- * route is proven by calling a function written through the alias, under a fault guard.
+ * Under W^X restrictions, memory cannot be simultaneously writable and executable through the same mapping. The fallback path:
+ *   1. Allocates backing memory with RWX maximum protection.
+ *   2. Creates a separate RW alias with vm_remap() for code generation.
+ *   3. Demotes the executable mapping to RX with vm_protect().
+ * This gives separate RW and RX views of the same backing pages.
  */
 /* csops straight to the kernel: Dopamine hooks the libc function to hide CS_DEBUGGED (systemhook's csops_hook). */
 #pragma clang diagnostic push
@@ -379,7 +378,7 @@ static HuskDualMapping husk_self_dual_mapping(size_t bytes)
     }
     size_t size = (bytes + 0x3fff) & ~(size_t)0x3fff;
 
-    /* 1. MAP_JIT, honoured where dynamic-codesigning is (TrollStore). Refused with EPERM elsewhere, harmlessly. */
+    /* 1. MAP_JIT: requires dynamic-codesigning. Refused with EPERM elsewhere, harmlessly. */
     uint8_t *rx = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON | MAP_JIT, -1, 0);
     if (rx == MAP_FAILED) {
         HUSK_LOG("self: MAP_JIT refused (%s)", strerror(errno));
