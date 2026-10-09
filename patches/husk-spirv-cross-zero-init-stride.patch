@@ -1,0 +1,25 @@
+diff --git a/spirv_msl.cpp b/spirv_msl.cpp
+index c5a9d433..1f23b2b1 100644
+--- a/spirv_msl.cpp
++++ b/spirv_msl.cpp
+@@ -20917,7 +20917,19 @@ void CompilerMSL::emit_workgroup_initialization(const SPIRVariable &var)
+ 		statement("threadgroup uint *", var_ptr_name, " = (threadgroup uint *)&", var_name, ";");
+ 		statement("uint ", var_size_name, " = ", "sizeof(", var_name, ");");
+ 		statement("uint ", var_pos_name, " = gl_LocalInvocationIndex;");
+-		statement("uint ", var_stride_name, " = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;");
++		// gl_WorkGroupSize is only declared when the shader uses the WorkgroupSize builtin (or for mesh shaders);
++		// otherwise take the size from the LocalSize / LocalSizeId execution mode.
++		auto &execution = get_entry_point();
++		string stride_expr;
++		if (execution.workgroup_size.constant != 0 || is_mesh_shader())
++			stride_expr = "gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z";
++		else if (execution.flags.get(ExecutionModeLocalSizeId))
++			stride_expr = join("uint(", to_expression(execution.workgroup_size.id_x), ") * uint(",
++			                   to_expression(execution.workgroup_size.id_y), ") * uint(",
++			                   to_expression(execution.workgroup_size.id_z), ")");
++		else
++			stride_expr = join(execution.workgroup_size.x * execution.workgroup_size.y * execution.workgroup_size.z, "u");
++		statement("uint ", var_stride_name, " = ", stride_expr, ";");
+ 
+ 		statement("while (sizeof(uint) * ", var_pos_name, " < ", var_size_name, ")");
+ 		begin_scope();

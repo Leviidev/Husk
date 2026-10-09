@@ -10,6 +10,17 @@ QEMU tree.
 
 GPL-2.0-or-later, same as the file it patches.
 
+## `husk-spirv-cross-zero-init-stride.patch`
+
+Husk's own, against SPIRV-Cross at the revision MoltenVK pins. When a compute shader's
+shared memory has a zero initializer (DXVK's groupshared variables), the MSL backend
+zeroes it in a loop whose stride it wrote as `gl_WorkGroupSize`, which is only declared
+when the shader uses the WorkgroupSize builtin. The Metal compile then failed and the
+pipeline was dropped. The stride now comes from LocalSize / LocalSizeId when there is no
+such builtin. Applied by `scripts/build_moltenvk_ios.sh`.
+
+Apache-2.0, same as the file it patches.
+
 ## `qemu-10.0.12-utm.patch`, `pixman-0.38.0.patch`, `libslirp-v4.9.1.patch`
 
 Not ours. Taken verbatim from UTM's `patches/` directory

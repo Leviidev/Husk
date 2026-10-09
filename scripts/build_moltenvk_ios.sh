@@ -16,7 +16,25 @@ if [ ! -d "$SRC" ]; then
     git clone --depth 1 --branch "$VERSION" https://github.com/KhronosGroup/MoltenVK "$SRC"
 fi
 cd "$SRC"
-[ -d External/build/Release/SPIRVCross.xcframework ] || { echo "==> fetching dependencies"; ./fetchDependencies --ios; }
+# SPIRV-Cross at MoltenVK's pinned revision with Husk's patches, kept outside External/ (fetchDependencies force-checks-out what is there).
+# The dependencies are rebuilt whenever the patches change.
+SPVC_REV="$(cat ExternalRevisions/SPIRV-Cross_repo_revision)"
+SPVC="$HUSK_ROOT/third_party/build/SPIRV-Cross-$SPVC_REV"
+if [ ! -d "$SPVC/.git" ]; then
+    echo "==> cloning SPIRV-Cross $SPVC_REV"
+    git clone https://github.com/KhronosGroup/SPIRV-Cross "$SPVC"
+    git -C "$SPVC" checkout -q "$SPVC_REV"
+fi
+for p in "$HUSK_ROOT"/patches/husk-spirv-cross-*.patch; do
+    git -C "$SPVC" apply --reverse --check "$p" 2>/dev/null || { echo "==> applying $(basename "$p")"; git -C "$SPVC" apply "$p"; }
+done
+STAMP=External/build/husk-patches.stamp
+WANT="$(cat "$HUSK_ROOT"/patches/husk-spirv-cross-*.patch | shasum | cut -c1-40)"
+if [ ! -d External/build/Release/SPIRVCross.xcframework ] || [ "$(cat "$STAMP" 2>/dev/null)" != "$WANT" ]; then
+    echo "==> fetching and building dependencies"
+    ./fetchDependencies --ios --spirv-cross-root "$SPVC"
+    echo "$WANT" > "$STAMP"
+fi
 echo "==> building"
 make ios
 mkdir -p "$OUT"
