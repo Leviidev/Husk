@@ -7,6 +7,7 @@
 #include <TargetConditionals.h>
 #if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
+#include <os/proc.h>
 #endif
 #include <dispatch/dispatch.h>
 #include <dlfcn.h>
@@ -575,6 +576,65 @@ static void bind_vb2(pfn_bind_vb2 real, void *cmd, uint32_t first, uint32_t n, c
 static void w_vkCmdBindVertexBuffers2(void *cmd, uint32_t first, uint32_t n, const uint64_t *b, const uint64_t *o, const uint64_t *z, const uint64_t *s) { resolve_binds(); bind_vb2(g_real_bind_vb2, cmd, first, n, b, o, z, s); }
 static void w_vkCmdBindVertexBuffers2EXT(void *cmd, uint32_t first, uint32_t n, const uint64_t *b, const uint64_t *o, const uint64_t *z, const uint64_t *s) { resolve_binds(); bind_vb2(g_real_bind_vb2ext ? g_real_bind_vb2ext : g_real_bind_vb2, cmd, first, n, b, o, z, s); }
 
+/* ------------------------------------------------------------ video memory */
+/*
+ * MoltenVK reports most of the phone's shared memory as one device-local heap (11 GiB on a 12 GiB phone). DXVK passes that on as
+ * the adapter's video memory, and a PC game sizes its texture streaming to it, then streams until iOS kills the app. For DXVK games
+ * the heap (and VK_EXT_memory_budget's budget) is reported as a share of what the app may really use: TL_VK_HEAP_MB overrides it.
+ */
+typedef void (*pfn_mem_props)(void *, vk_mem_props *);
+typedef struct { uint32_t sType; void *pNext; vk_mem_props p; } vk_mem_props2;
+typedef struct { uint32_t sType; void *pNext; uint64_t budget[16], usage[16]; } vk_mem_budget;
+#define VK_STYPE_MEM_PROPS2 1000059006
+#define VK_STYPE_MEM_BUDGET 1000237000
+static pfn_mem_props g_real_mem_props;
+static void (*g_real_mem_props2)(void *, vk_mem_props2 *), (*g_real_mem_props2khr)(void *, vk_mem_props2 *);
+
+static uint64_t heap_cap(void)
+{
+    static uint64_t cap;
+    if (cap) return cap;
+    const char *e = getenv("TL_VK_HEAP_MB");
+    if (e && atoi(e) > 0) cap = (uint64_t)atoi(e) << 20;
+    else {
+#if TARGET_OS_IOS
+        uint64_t avail = os_proc_available_memory();
+#else
+        uint64_t avail = 6ull << 30;
+#endif
+        cap = avail * 3 / 10;
+        if (cap < (768ull << 20)) cap = 768ull << 20;
+        cap &= ~((256ull << 20) - 1);
+    }
+    tl_log_line("vulkan: DXVK game: device-local heaps reported as at most %llu MiB", (unsigned long long)(cap >> 20));
+    return cap;
+}
+
+static void cap_heaps(vk_mem_props *p)
+{
+    if (!dxvk_game()) return;
+    for (uint32_t i = 0; i < p->heapCount && i < 16; i++) if ((p->heaps[i].flags & 1) && p->heaps[i].size > heap_cap()) p->heaps[i].size = heap_cap();
+}
+
+static void cap_chain(vk_mem_props2 *p)
+{
+    cap_heaps(&p->p);
+    if (!dxvk_game()) return;
+    for (vk_base *b = p->pNext; b; b = (vk_base *)b->pNext)
+        if (b->sType == VK_STYPE_MEM_BUDGET) {
+            vk_mem_budget *m = (vk_mem_budget *)b;
+            for (uint32_t i = 0; i < p->p.heapCount && i < 16; i++) if (m->budget[i] > p->p.heaps[i].size) m->budget[i] = p->p.heaps[i].size;
+        }
+}
+
+static void w_vkGetPhysicalDeviceMemoryProperties(void *pd, vk_mem_props *p) { if (g_real_mem_props) g_real_mem_props(pd, p); cap_heaps(p); }
+static void w_vkGetPhysicalDeviceMemoryProperties2(void *pd, vk_mem_props2 *p) { if (g_real_mem_props2) g_real_mem_props2(pd, p); cap_chain(p); }
+static void w_vkGetPhysicalDeviceMemoryProperties2KHR(void *pd, vk_mem_props2 *p)
+{
+    if (g_real_mem_props2khr) g_real_mem_props2khr(pd, p); else if (g_real_mem_props2) g_real_mem_props2(pd, p);
+    cap_chain(p);
+}
+
 static pfn_create_device g_real_create_device;
 static int w_vkCreateDevice(void *pd, const vk_device_ci *ci, const void *alloc, void **out)
 {
@@ -631,6 +691,9 @@ static void resolve_feature_hooks(void *instance)
     if (!g_real_gpdf2khr) g_real_gpdf2khr = (pfn_get_features2)V.gipa(instance, "vkGetPhysicalDeviceFeatures2KHR");
     if (!g_real_create_device) g_real_create_device = (pfn_create_device)V.gipa(instance, "vkCreateDevice");
     if (!g_real_enum_dev_ext) g_real_enum_dev_ext = (pfn_enum_dev_ext)V.gipa(instance, "vkEnumerateDeviceExtensionProperties");
+    if (!g_real_mem_props) g_real_mem_props = (pfn_mem_props)V.gipa(instance, "vkGetPhysicalDeviceMemoryProperties");
+    if (!g_real_mem_props2) g_real_mem_props2 = (void (*)(void *, vk_mem_props2 *))V.gipa(instance, "vkGetPhysicalDeviceMemoryProperties2");
+    if (!g_real_mem_props2khr) g_real_mem_props2khr = (void (*)(void *, vk_mem_props2 *))V.gipa(instance, "vkGetPhysicalDeviceMemoryProperties2KHR");
 }
 
 static void *w_vkGetInstanceProcAddr(void *instance, const char *name);
@@ -649,6 +712,9 @@ static const struct { const char *name; void *fn; } k_over[] = {
     { "vkGetPhysicalDeviceFeatures2", w_vkGetPhysicalDeviceFeatures2 },
     { "vkGetPhysicalDeviceFeatures2KHR", w_vkGetPhysicalDeviceFeatures2KHR },
     { "vkCreateDevice", w_vkCreateDevice },
+    { "vkGetPhysicalDeviceMemoryProperties", w_vkGetPhysicalDeviceMemoryProperties },
+    { "vkGetPhysicalDeviceMemoryProperties2", w_vkGetPhysicalDeviceMemoryProperties2 },
+    { "vkGetPhysicalDeviceMemoryProperties2KHR", w_vkGetPhysicalDeviceMemoryProperties2KHR },
     { "vkEnumerateDeviceExtensionProperties", w_vkEnumerateDeviceExtensionProperties },
     { "vkCmdBindVertexBuffers", w_vkCmdBindVertexBuffers },
     { "vkCmdBindVertexBuffers2", w_vkCmdBindVertexBuffers2 },
