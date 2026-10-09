@@ -409,9 +409,9 @@ static HuskDualMapping husk_self_dual_mapping(size_t bytes)
         HUSK_LOG("self: could not reserve %zu MiB: %s", (size * 2) >> 20, strerror(errno));
         return none;
     }
-    rx = mmap(base, size, PROT_READ | PROT_EXEC, MAP_FIXED | MAP_PRIVATE | MAP_ANON, -1, 0);
+    rx = mmap(base, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_FIXED | MAP_PRIVATE | MAP_ANON, -1, 0);
     uint8_t *rw = rx == MAP_FAILED ? NULL : husk_rw_alias(rx, size, true);
-    if (rw && husk_self_selftest(rx, rw)) {
+    if (rw && vm_protect(mach_task_self(), (vm_address_t)rx, size, FALSE, VM_PROT_READ | VM_PROT_EXECUTE) == KERN_SUCCESS && husk_self_selftest(rx, rw)) {
         HuskDualMapping m = { rw, rx, size };
         atomic_store(&g_jit_available, true);
         g_self_route = "plain";
