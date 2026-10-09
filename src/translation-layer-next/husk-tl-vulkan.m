@@ -66,6 +66,9 @@ void tl_vk_configure(const char *path, const char *frame_dir, int frame_every)
 static void vk_load(void)
 {
     V.trace = getenv("TL_VK_TRACE") ? 1 : 0;
+    /* One failed Metal command buffer (a GPU fault, or iOS cutting off a frame that kept the GPU too long) would otherwise lose the device for good, and a game
+     * has no way back from VK_ERROR_DEVICE_LOST: DXVK reports it as a removed device and the game ends itself. Read once, when MoltenVK first needs its settings. */
+    setenv("MVK_CONFIG_RESUME_LOST_DEVICE", "1", 0);
     V.lib = V.have_path ? dlopen(V.path, RTLD_NOW | RTLD_LOCAL) : RTLD_DEFAULT;
     V.gipa = V.lib ? (pfn_gipa)dlsym(V.lib, "vkGetInstanceProcAddr") : NULL;
     tl_log_line("vulkan: %s", V.gipa ? (V.have_path ? V.path : "MoltenVK linked into the process") : "MoltenVK not found");

@@ -547,14 +547,12 @@ struct TLCocosAttemptView: View {
                                   scale: settings.resolution.scale, onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
                     .overlay {
-                        // A game whose menus answer only a controller: with none paired, one on the glass. Kept in place and
-                        // connected while the interface is hidden, so the game does not see a controller come and go.
+                        // A game whose menus answer only a controller: with none paired, one on the glass. Hiding the bar leaves
+                        // it in place; only Hide pad takes it away.
                         if padOffered, settings.padShown, model.state == Int32(HUSK_UNITY_RUNNING) {
                             VirtualPadView(pad: virtualPad, opacity: settings.padOpacity, haptics: settings.haptics,
                                            layout: padLayout, editing: editingPad, selected: $padSelected,
                                            onChange: { padLayout = $0; padLayout.save(app.id) })
-                                .opacity(uiHidden && !editingPad ? 0 : 1)
-                                .allowsHitTesting(!uiHidden || editingPad)
                                 .overlay(alignment: .center) { if editingPad { padEditor } }
                         }
                     }

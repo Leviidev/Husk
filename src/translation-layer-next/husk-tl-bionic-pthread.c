@@ -183,6 +183,28 @@ static int b_cond_timedwait(void *g, void *m, const struct timespec *abs)
     return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
 }
 
+/* Bionic's clock ids: 0 is CLOCK_REALTIME, 1 CLOCK_MONOTONIC. */
+static int cond_wait_until(void *g, void *m, clockid_t clk, const struct timespec *abs)
+{
+    guest_obj *o = g;
+    obj_host(g, make_cond);
+    struct timespec now, rel;
+    clock_gettime(clk, &now);
+    rel.tv_sec = abs->tv_sec - now.tv_sec;
+    rel.tv_nsec = abs->tv_nsec - now.tv_nsec;
+    if (rel.tv_nsec < 0) { rel.tv_sec--; rel.tv_nsec += 1000000000L; }
+    if (rel.tv_sec < 0) { rel.tv_sec = 0; rel.tv_nsec = 0; }
+    return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
+}
+
+static int b_cond_clockwait(void *g, void *m, int clock, const struct timespec *abs)
+{
+    if (clock != 0 && clock != 1) return 22;
+    return cond_wait_until(g, m, clock == 1 ? CLOCK_MONOTONIC : CLOCK_REALTIME, abs);
+}
+
+static int b_cond_timedwait_monotonic(void *g, void *m, const struct timespec *abs) { return cond_wait_until(g, m, CLOCK_MONOTONIC, abs); }
+
 static int b_condattr_init(long *a)    { *a = 0; return 0; }
 static int b_condattr_destroy(long *a) { (void)a; return 0; }
 static int b_condattr_setclock(long *a, int clock)
@@ -467,7 +489,8 @@ const tl_bionic_entry tl_tab_pthread[] = {
     TL_WRAP("pthread_mutexattr_settype", b_mutexattr_settype), TL_WRAP("pthread_mutexattr_gettype", b_mutexattr_gettype),
     TL_WRAP("pthread_cond_init", b_cond_init), TL_WRAP("pthread_cond_destroy", b_cond_destroy),
     TL_WRAP("pthread_cond_signal", b_cond_signal), TL_WRAP("pthread_cond_broadcast", b_cond_broadcast),
-    TL_WRAP("pthread_cond_wait", b_cond_wait), TL_WRAP("pthread_cond_timedwait", b_cond_timedwait),
+    TL_WRAP("pthread_cond_wait", b_cond_wait), TL_WRAP("pthread_cond_timedwait", b_cond_timedwait), TL_WRAP("pthread_cond_clockwait", b_cond_clockwait),
+    TL_WRAP("pthread_cond_timedwait_monotonic_np", b_cond_timedwait_monotonic), TL_WRAP("pthread_cond_timedwait_monotonic", b_cond_timedwait_monotonic),
     TL_WRAP("pthread_condattr_init", b_condattr_init), TL_WRAP("pthread_condattr_destroy", b_condattr_destroy),
     TL_WRAP("pthread_condattr_setclock", b_condattr_setclock),
     TL_WRAP("pthread_rwlock_init", b_rwlock_init), TL_WRAP("pthread_rwlock_destroy", b_rwlock_destroy),
