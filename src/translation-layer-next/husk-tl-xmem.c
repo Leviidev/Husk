@@ -81,7 +81,7 @@ static bool grant_self(size_t host_bytes, char *err, size_t errlen)
 {
     uint32_t flags = 0;
     bool debugged = csops(getpid(), TL_CS_OPS_STATUS, &flags, sizeof(flags)) == 0 && (flags & TL_CS_DEBUGGED);
-    static const int how[2][2] = { { PROT_READ | PROT_EXEC, 0 }, { PROT_READ | PROT_WRITE | PROT_EXEC, MAP_JIT } };
+    static const int how[2][2] = { { PROT_READ | PROT_WRITE | PROT_EXEC, 0 }, { PROT_READ | PROT_WRITE | PROT_EXEC, MAP_JIT } };
     int last_errno = 0;
     for (size_t size = (host_bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1); size >= (64u << 20); size /= 2) {
         uint8_t *base = mmap(NULL, size * 2, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -92,7 +92,9 @@ static bool grant_self(size_t host_bytes, char *err, size_t errlen)
             vm_address_t alias = (vm_address_t)(uintptr_t)(base + size);
             vm_prot_t cur, max;
             kern_return_t kr = vm_remap(mach_task_self(), &alias, size, 0, VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE, mach_task_self(), (vm_address_t)(uintptr_t)rx, FALSE, &cur, &max, VM_INHERIT_NONE);
-            if (kr != KERN_SUCCESS || vm_protect(mach_task_self(), alias, size, FALSE, VM_PROT_READ | VM_PROT_WRITE) != KERN_SUCCESS) {
+            if (kr != KERN_SUCCESS ||
+                vm_protect(mach_task_self(), alias, size, FALSE, VM_PROT_READ | VM_PROT_WRITE) != KERN_SUCCESS ||
+                vm_protect(mach_task_self(), (vm_address_t)(uintptr_t)rx, size, FALSE, VM_PROT_READ | VM_PROT_EXECUTE) != KERN_SUCCESS) {
                 last_errno = EPERM;
                 mmap(base, size * 2, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANON, -1, 0);
                 continue;
