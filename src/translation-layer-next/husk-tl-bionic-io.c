@@ -39,6 +39,8 @@
 #include <mach/mach.h>
 #include <time.h>
 #include <search.h>
+#include <dlfcn.h>
+#include <libkern/OSCacheControl.h>
 #include <unistd.h>
 #include <utime.h>
 
@@ -612,6 +614,7 @@ static long b_readlink(const char *p, char *buf, size_t n)
 }
 static char *b_realpath(const char *p, char *out) { char b[1024]; TL_ERRNO_BEGIN(); char *r = realpath(tl_path_resolve(p, b, sizeof(b)), out); TL_ERRNO_END(); return r; }
 static char *b_getcwd(char *buf, size_t n) { TL_ERRNO_BEGIN(); char *r = getcwd(buf, n); TL_ERRNO_END(); return r; }
+static char *b___getcwd_chk(char *buf, size_t n, size_t bl) { (void)bl; return b_getcwd(buf, n); }
 static int b_utimes(const char *p, const struct timeval tv[2]) { char b[1024]; TL_ERRNO_BEGIN(); int r = utimes(tl_path_resolve(p, b, sizeof(b)), tv); TL_ERRNO_END(); return r; }
 static int b_utime(const char *p, const struct utimbuf *t) { char b[1024]; TL_ERRNO_BEGIN(); int r = utime(tl_path_resolve(p, b, sizeof(b)), t); TL_ERRNO_END(); return r; }
 static int b_futimens(int fd, const struct timespec ts[2]) { TL_ERRNO_BEGIN(); int r = futimens(fd, ts); TL_ERRNO_END(); return r; }
@@ -991,15 +994,40 @@ static bool anon_contains(uintptr_t addr, size_t len)
 
 /* A guest turning its own anonymous memory executable is a JIT (LuaJIT, a regex engine) and can not be given that; saying so lets it fall back to its interpreter, where
  * pretending to succeed would have it jump into data. */
+const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void **sym_addr);
 static int b_mprotect(void *a, size_t l, int prot)
 {
     /* Code a hooking library is about to patch: its permissions stay as they are, and its stores are carried out through
      * the writable view as they fault (husk-tl-codewrite.c). */
     if (tl_codewrite_enabled() && tl_xmem_contains(a)) { mm_trace("mprotect", a, l, prot, 0); return 0; }
-    if ((prot & PROT_EXEC) && anon_contains((uintptr_t)a, l)) {
-        tl_note_once("mprotect asked to make the guest's own memory executable: refused");
-        tl_set_guest_errno(13);                                                                                            /* EACCES */
-        return -1;
+    if (prot & PROT_EXEC) {
+        /* the host's own code (a guest that patches "the linker", which here is Apple's): never touched */
+        Dl_info di;
+        if (dladdr(a, &di) && di.dli_fname && !tl_xmem_contains(a)) {
+            tl_note_once("mprotect asked to make the host's code writable: refused");
+            tl_set_guest_errno(13);
+            return -1;
+        }
+        /* the guest's own memory it wrote code into (Meta's and ByteDance's stubs, a JIT): made executable when the system lets a
+         * process do that (a debugger attached for JIT, or a Mac), write access dropped if both were asked for (W^X); refused
+         * otherwise, which lets a JIT fall back to its interpreter. TL_NO_GUEST_JIT=1 always refuses. */
+        static int allow = -1;
+        if (allow < 0) allow = getenv("TL_NO_GUEST_JIT") ? 0 : 1;
+        int r = -1;
+        if (allow) {
+            TL_ERRNO_BEGIN();
+            r = mprotect(a, l, prot & (PROT_READ | PROT_WRITE | PROT_EXEC));
+            if (r != 0 && (prot & PROT_WRITE)) r = mprotect(a, l, (prot & ~PROT_WRITE) & (PROT_READ | PROT_EXEC));
+            TL_ERRNO_END();
+            if (r == 0) { sys_icache_invalidate(a, l); tl_note_once("the guest made memory of its own executable (generated code)"); }
+        }
+        if (r != 0) {
+            tl_note_once("mprotect asked to make the guest's own memory executable: refused");
+            tl_set_guest_errno(13);                                                                                        /* EACCES */
+            return -1;
+        }
+        mm_trace("mprotect", a, l, prot, 0);
+        return 0;
     }
     TL_ERRNO_BEGIN(); int r = mprotect(a, l, prot_filter(prot, "mprotect")); int e = errno; TL_ERRNO_END(); mm_trace("mprotect", a, l, prot, r ? e : 0); return r; }
 static int b_madvise(void *a, size_t l, int adv)
@@ -1369,7 +1397,7 @@ const tl_bionic_entry tl_tab_io[] = {
     TL_WRAP("ftruncate", b_ftruncate), TL_WRAP("ftruncate64", b_ftruncate), TL_WRAP("truncate", b_truncate), TL_WRAP("isatty", b_isatty), TL_WRAP("flock", b_flock),
     TL_WRAP("unlink", b_unlink), TL_WRAP("rmdir", b_rmdir), TL_WRAP("mkdir", b_mkdir), TL_WRAP("access", b_access),
     TL_WRAP("chmod", b_chmod), TL_WRAP("fchmod", b_fchmod), TL_WRAP("link", b_link), TL_WRAP("symlink", b_symlink),
-    TL_WRAP("readlink", b_readlink), TL_WRAP("realpath", b_realpath), TL_WRAP("getcwd", b_getcwd),
+    TL_WRAP("readlink", b_readlink), TL_WRAP("realpath", b_realpath), TL_WRAP("getcwd", b_getcwd), TL_WRAP("__getcwd_chk", b___getcwd_chk),
     TL_WRAP("utimes", b_utimes), TL_WRAP("utime", b_utime), TL_WRAP("futimens", b_futimens),
     TL_WRAP("__umask_chk", b___umask_chk), TL_WRAP("sendfile", b_sendfile), TL_WRAP("sendfile64", b_sendfile),
     TL_WRAP("stat", b_stat), TL_WRAP("fstatat", b_fstatat), TL_WRAP("fstatat64", b_fstatat), TL_WRAP("lstat", b_lstat), TL_WRAP("fstat", b_fstat), TL_WRAP("lstat64", b_lstat), TL_WRAP("fstat64", b_fstat), TL_WRAP("statfs", b_statfs),
@@ -1441,6 +1469,8 @@ static int b_mkdirat(int dirfd, const char *path, unsigned mode)
     TL_ERRNO_BEGIN(); int r = mkdirat(dirfd, path, (mode_t)mode); TL_ERRNO_END();
     return r;
 }
+static long b_readlinkat(int dirfd, const char *path, char *buf, size_t n);
+static long b___readlinkat_chk(int dirfd, const char *path, char *buf, size_t n, size_t bl) { (void)bl; return b_readlinkat(dirfd, path, buf, n); }
 static long b_readlinkat(int dirfd, const char *path, char *buf, size_t n)
 {
     if (at_plain(dirfd, path)) return b_readlink(path, buf, n);
@@ -1512,7 +1542,7 @@ static long b_pathconf(const char *p, int name)
 
 const tl_bionic_entry tl_tab_io2[] = {
     TL_WRAP("openat", b_openat), TL_WRAP("__openat_2", b___openat_2), TL_WRAP("faccessat", b_faccessat), TL_WRAP("mkdirat", b_mkdirat),
-    TL_WRAP("readlinkat", b_readlinkat), TL_WRAP("__readlink_chk", b___readlink_chk), TL_WRAP("renameat", b_renameat), TL_WRAP("symlinkat", b_symlinkat),
+    TL_WRAP("readlinkat", b_readlinkat), TL_WRAP("__readlinkat_chk", b___readlinkat_chk), TL_WRAP("__readlink_chk", b___readlink_chk), TL_WRAP("renameat", b_renameat), TL_WRAP("symlinkat", b_symlinkat),
     TL_WRAP("__poll_chk", b___poll_chk), TL_WRAP("unlinkat", b_unlinkat), TL_WRAP("fchmodat", b_fchmodat), TL_WRAP("fchown", b_fchown),
     TL_WRAP("chdir", b_chdir), TL_WRAP("utimensat", b_utimensat), TL_WRAP("stat64", b_stat), TL_WRAP("statvfs", b_statvfs),
     TL_WRAP("statvfs64", b_statvfs), TL_WRAP("pathconf", b_pathconf),

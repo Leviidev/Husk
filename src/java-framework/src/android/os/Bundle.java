@@ -83,7 +83,7 @@ public final class Bundle extends BaseBundle implements Cloneable, Parcelable {
     public static final int STATUS_BINDERS_NOT_PRESENT = 0;
     public static final int STATUS_BINDERS_PRESENT = 1;
     public static final int STATUS_BINDERS_UNKNOWN = 2;
-    public static android.os.Bundle STRIPPED;
+    public static android.os.Bundle STRIPPED = new android.os.Bundle();
     public static java.lang.Class intentClass;
     public Bundle(android.os.Parcel p0) { this(); }
     public Bundle(android.os.Parcel p0, int p1) { this(); }

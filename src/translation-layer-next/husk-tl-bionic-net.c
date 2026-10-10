@@ -221,6 +221,8 @@ static long b_recv(int fd, void *p, size_t n, int flags)
 {
     TL_ERRNO_BEGIN(); long r = recv(fd, p, n, msg_flags_to_darwin(flags)); int e = errno; TL_ERRNO_END(); NTRACE("recv(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
 }
+static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, socklen_t glen);
+static long b___sendto_chk(int fd, const void *p, size_t n, size_t bl, int flags, const void *g, socklen_t glen) { (void)bl; return b_sendto(fd, p, n, flags, g, glen); }
 static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, socklen_t glen)
 {
     struct sockaddr_storage s; socklen_t sl = 0;
@@ -513,7 +515,7 @@ const tl_bionic_entry tl_tab_net[] = {
     TL_WRAP("getifaddrs", b_getifaddrs), TL_WRAP("freeifaddrs", b_freeifaddrs),
     TL_WRAP("socket", b_socket), TL_WRAP("socketpair", b_socketpair), TL_WRAP("bind", b_bind), TL_WRAP("connect", b_connect),
     TL_WRAP("listen", b_listen), TL_WRAP("accept", b_accept), TL_WRAP("accept4", b_accept4), TL_WRAP("send", b_send),
-    TL_WRAP("recv", b_recv), TL_WRAP("sendto", b_sendto), TL_WRAP("recvfrom", b_recvfrom), TL_WRAP("__recvfrom_chk", b___recvfrom_chk), TL_WRAP("sendmsg", b_sendmsg),
+    TL_WRAP("recv", b_recv), TL_WRAP("sendto", b_sendto), TL_WRAP("__sendto_chk", b___sendto_chk), TL_WRAP("recvfrom", b_recvfrom), TL_WRAP("__recvfrom_chk", b___recvfrom_chk), TL_WRAP("sendmsg", b_sendmsg),
     TL_WRAP("recvmsg", b_recvmsg), TL_WRAP("sendmmsg", b_sendmmsg), TL_WRAP("recvmmsg", b_recvmmsg), TL_WRAP("shutdown", b_shutdown), TL_WRAP("getsockname", b_getsockname),
     TL_WRAP("getpeername", b_getpeername), TL_WRAP("setsockopt", b_setsockopt), TL_WRAP("getsockopt", b_getsockopt),
     TL_WRAP("getaddrinfo", b_getaddrinfo), TL_WRAP("android_getaddrinfofornet", b_android_getaddrinfofornet), TL_WRAP("freeaddrinfo", b_freeaddrinfo), TL_WRAP("gai_strerror", b_gai_strerror),

@@ -5,7 +5,7 @@ package android.provider;
 public final class ContactsContract {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String AUTHORITY = "com.android.contacts";
-    public static android.net.Uri AUTHORITY_URI;
+    public static android.net.Uri AUTHORITY_URI = android.net.Uri.parse("content://com.android.contacts");
     public static final java.lang.String CALLER_IS_SYNCADAPTER = "caller_is_syncadapter";
     public static final java.lang.String DEFERRED_SNIPPETING = "deferred_snippeting";
     public static final java.lang.String DEFERRED_SNIPPETING_QUERY = "deferred_snippeting_query";
@@ -53,8 +53,8 @@ public final class ContactsContract {
         }
         public static final class Callable implements android.provider.ContactsContract.DataColumnsWithJoins, android.provider.ContactsContract.CommonDataKinds.CommonColumns, android.provider.ContactsContract.ContactCounts {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_FILTER_URI;
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/data/callables/filter");
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/data/callables");
             public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI;
             public Callable() {}
         }
@@ -73,14 +73,14 @@ public final class ContactsContract {
         public static final class Email implements android.provider.ContactsContract.DataColumnsWithJoins, android.provider.ContactsContract.CommonDataKinds.CommonColumns, android.provider.ContactsContract.ContactCounts {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public static final java.lang.String ADDRESS = "data1";
-            public static android.net.Uri CONTENT_FILTER_URI;
+            public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/data/emails/filter");
             public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/email_v2";
-            public static android.net.Uri CONTENT_LOOKUP_URI;
+            public static android.net.Uri CONTENT_LOOKUP_URI = android.net.Uri.parse("content://com.android.contacts/data/emails/lookup");
             public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/email_v2";
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/data/emails");
             public static final java.lang.String DISPLAY_NAME = "data4";
-            public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI;
-            public static android.net.Uri ENTERPRISE_CONTENT_LOOKUP_URI;
+            public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/data/emails/filter_enterprise");
+            public static android.net.Uri ENTERPRISE_CONTENT_LOOKUP_URI = android.net.Uri.parse("content://com.android.contacts/data/emails/lookup_enterprise");
             public static final int TYPE_HOME = 1;
             public static final int TYPE_MOBILE = 4;
             public static final int TYPE_OTHER = 3;
@@ -175,11 +175,11 @@ public final class ContactsContract {
         }
         public static final class Phone implements android.provider.ContactsContract.DataColumnsWithJoins, android.provider.ContactsContract.CommonDataKinds.CommonColumns, android.provider.ContactsContract.ContactCounts {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_FILTER_URI;
+            public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/data/phones/filter");
             public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/phone_v2";
             public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/phone_v2";
-            public static android.net.Uri CONTENT_URI;
-            public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/data/phones");
+            public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/data/phones/filter_enterprise");
             public static android.net.Uri ENTERPRISE_CONTENT_URI;
             public static final java.lang.String NORMALIZED_NUMBER = "data4";
             public static final java.lang.String NUMBER = "data1";
@@ -272,7 +272,7 @@ public final class ContactsContract {
             public static final java.lang.String CITY = "data7";
             public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/postal-address_v2";
             public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/postal-address_v2";
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/data/postals");
             public static final java.lang.String COUNTRY = "data10";
             public static final java.lang.String FORMATTED_ADDRESS = "data1";
             public static final java.lang.String NEIGHBORHOOD = "data6";
@@ -338,22 +338,22 @@ public final class ContactsContract {
     }
     public static class Contacts implements android.provider.BaseColumns, android.provider.ContactsContract.ContactsColumns, android.provider.ContactsContract.ContactOptionsColumns, android.provider.ContactsContract.ContactNameColumns, android.provider.ContactsContract.ContactStatusColumns, android.provider.ContactsContract.ContactCounts {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_FILTER_URI;
-        public static android.net.Uri CONTENT_FREQUENT_URI;
-        public static android.net.Uri CONTENT_GROUP_URI;
+        public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/contacts/filter");
+        public static android.net.Uri CONTENT_FREQUENT_URI = android.net.Uri.parse("content://com.android.contacts/contacts/frequent");
+        public static android.net.Uri CONTENT_GROUP_URI = android.net.Uri.parse("content://com.android.contacts/contacts/group");
         public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/contact";
-        public static android.net.Uri CONTENT_LOOKUP_URI;
-        public static android.net.Uri CONTENT_MULTI_VCARD_URI;
+        public static android.net.Uri CONTENT_LOOKUP_URI = android.net.Uri.parse("content://com.android.contacts/contacts/lookup");
+        public static android.net.Uri CONTENT_MULTI_VCARD_URI = android.net.Uri.parse("content://com.android.contacts/contacts/as_multi_vcard");
         public static android.net.Uri CONTENT_STREQUENT_FILTER_URI;
-        public static android.net.Uri CONTENT_STREQUENT_URI;
+        public static android.net.Uri CONTENT_STREQUENT_URI = android.net.Uri.parse("content://com.android.contacts/contacts/strequent");
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/contact";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/contacts");
         public static final java.lang.String CONTENT_VCARD_TYPE = "text/x-vcard";
-        public static android.net.Uri CONTENT_VCARD_URI;
-        public static android.net.Uri CORP_CONTENT_URI;
+        public static android.net.Uri CONTENT_VCARD_URI = android.net.Uri.parse("content://com.android.contacts/contacts/as_vcard");
+        public static android.net.Uri CORP_CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/contacts/corp");
         public static long ENTERPRISE_CONTACT_ID_BASE;
         public static java.lang.String ENTERPRISE_CONTACT_LOOKUP_PREFIX;
-        public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI;
+        public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/contacts/filter_enterprise");
         public static android.net.Uri ENTERPRISE_CONTENT_URI;
         public static final java.lang.String QUERY_PARAMETER_VCARD_NO_PHOTO = "no_photo";
         public static android.net.Uri createCorpLookupUriFromEnterpriseLookupUri(android.net.Uri p0) { return null; }
@@ -423,7 +423,7 @@ public final class ContactsContract {
     public static final class Data implements android.provider.ContactsContract.DataColumnsWithJoins, android.provider.ContactsContract.ContactCounts {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/data";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/data");
         public static final java.lang.String VISIBLE_CONTACTS_ONLY = "visible_contacts_only";
         public static android.net.Uri getContactLookupUri(android.content.ContentResolver p0, android.net.Uri p1) { return null; }
         protected Data() {}
@@ -558,9 +558,9 @@ public final class ContactsContract {
     public static final class Groups implements android.provider.BaseColumns, android.provider.ContactsContract.GroupsColumns, android.provider.ContactsContract.SyncColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/group";
-        public static android.net.Uri CONTENT_SUMMARY_URI;
+        public static android.net.Uri CONTENT_SUMMARY_URI = android.net.Uri.parse("content://com.android.contacts/groups_summary");
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/group";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/groups");
         public static android.content.EntityIterator newEntityIterator(android.database.Cursor p0) { return null; }
         protected Groups() {}
     }
@@ -677,9 +677,9 @@ public final class ContactsContract {
     }
     public static final class PhoneLookup implements android.provider.BaseColumns, android.provider.ContactsContract.PhoneLookupColumns, android.provider.ContactsContract.ContactsColumns, android.provider.ContactsContract.ContactOptionsColumns, android.provider.ContactsContract.ContactNameColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_FILTER_URI;
+        public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/phone_lookup");
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/phone_lookup";
-        public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI;
+        public static android.net.Uri ENTERPRISE_CONTENT_FILTER_URI = android.net.Uri.parse("content://com.android.contacts/phone_lookup_enterprise");
         public static final java.lang.String QUERY_PARAMETER_SIP_ADDRESS = "sip";
         protected PhoneLookup() {}
     }
@@ -728,9 +728,9 @@ public final class ContactsContract {
     }
     public static final class Profile implements android.provider.BaseColumns, android.provider.ContactsContract.ContactsColumns, android.provider.ContactsContract.ContactOptionsColumns, android.provider.ContactsContract.ContactNameColumns, android.provider.ContactsContract.ContactStatusColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_RAW_CONTACTS_URI;
-        public static android.net.Uri CONTENT_URI;
-        public static android.net.Uri CONTENT_VCARD_URI;
+        public static android.net.Uri CONTENT_RAW_CONTACTS_URI = android.net.Uri.parse("content://com.android.contacts/profile/raw_contacts");
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/profile");
+        public static android.net.Uri CONTENT_VCARD_URI = android.net.Uri.parse("content://com.android.contacts/profile/as_vcard");
         public static final long MIN_ID = 9223372034707292160L;
         protected Profile() {}
     }
@@ -783,7 +783,7 @@ public final class ContactsContract {
         public static final int AGGREGATION_MODE_SUSPENDED = 2;
         public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/raw_contact";
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/raw_contact";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.contacts/raw_contacts");
         public static android.net.Uri getContactLookupUri(android.content.ContentResolver p0, android.net.Uri p1) { return null; }
         public static java.lang.String getLocalAccountName(android.content.Context p0) { return null; }
         public static java.lang.String getLocalAccountType(android.content.Context p0) { return null; }

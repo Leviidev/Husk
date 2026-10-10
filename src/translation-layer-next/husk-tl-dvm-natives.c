@@ -632,6 +632,20 @@ static void *thread_main(void *p)
         tl_log_line("dvm: uncaught exception in a thread: %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
         /* the thread's (or the default) uncaught exception handler gets it, as on Android */
         jobj *e = tl_jni_pending_object();
+        if (e) {   /* where it came from, briefly */
+            tl_jni_clear();
+            jvalue a1[1], st; a1[0].j = 0; a1[0].l = e;
+            if (tl_dvm_call_static("android/util/Log", "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;", a1, &st)) {
+                const char *tx = tl_jni_string(st.l);
+                for (int ln = 0; tx && *tx && ln < 10; ln++) {
+                    const char *nl = strchr(tx, '\n');
+                    if (ln) tl_log_line("dvm:   %.*s", nl ? (int)(nl - tx) : (int)strlen(tx), tx);
+                    tx = nl ? nl + 1 : NULL;
+                }
+            }
+            tl_jni_clear();
+            tl_jni_set_pending(e);
+        }
         tl_jni_set_pending(NULL);
         dvm_method *d = e ? dvm_find_virtual(dvm_object_class(t), "dispatchUncaughtException", "(Ljava/lang/Throwable;)V") : NULL;
         if (d) { jvalue arg; arg.j = 0; arg.l = e; jvalue r2; if (!dvm_call(d, t, &arg, &r2)) tl_jni_set_pending(NULL); }

@@ -10,7 +10,7 @@ public final class CalendarContract {
     public static final java.lang.String ACTION_VIEW_MANAGED_PROFILE_CALENDAR_EVENT = "android.provider.calendar.action.VIEW_MANAGED_PROFILE_CALENDAR_EVENT";
     public static final java.lang.String AUTHORITY = "com.android.calendar";
     public static final java.lang.String CALLER_IS_SYNCADAPTER = "caller_is_syncadapter";
-    public static android.net.Uri CONTENT_URI;
+    public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar");
     public static android.net.Uri ENTERPRISE_CONTENT_URI;
     public static final java.lang.String EXTRA_CUSTOM_APP_URI = "customAppUri";
     public static final java.lang.String EXTRA_EVENT_ALL_DAY = "allDay";
@@ -21,7 +21,7 @@ public final class CalendarContract {
     protected CalendarContract() {}
     public static final class Attendees implements android.provider.BaseColumns, android.provider.CalendarContract.AttendeesColumns, android.provider.CalendarContract.EventsColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar/attendees");
         public static android.database.Cursor query(android.content.ContentResolver p0, long p1, java.lang.String[] p2) { return null; }
         protected Attendees() {}
     }
@@ -148,7 +148,7 @@ public final class CalendarContract {
     public static final class Calendars implements android.provider.BaseColumns, android.provider.CalendarContract.SyncColumns, android.provider.CalendarContract.CalendarColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String CALENDAR_LOCATION = "calendar_location";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar/calendars");
         public static final java.lang.String DEFAULT_SORT_ORDER = "calendar_displayName";
         public static android.net.Uri ENTERPRISE_CONTENT_URI;
         public static final java.lang.String NAME = "name";
@@ -180,8 +180,8 @@ public final class CalendarContract {
     }
     public static final class Events implements android.provider.BaseColumns, android.provider.CalendarContract.SyncColumns, android.provider.CalendarContract.EventsColumns, android.provider.CalendarContract.CalendarColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_EXCEPTION_URI;
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_EXCEPTION_URI = android.net.Uri.parse("content://com.android.calendar/exception");
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar/events");
         public static android.net.Uri ENTERPRISE_CONTENT_URI;
         public static java.lang.String[] PROVIDER_WRITABLE_COLUMNS;
         public static java.lang.String[] SYNC_WRITABLE_COLUMNS;
@@ -279,10 +279,10 @@ public final class CalendarContract {
     public static final class Instances implements android.provider.BaseColumns, android.provider.CalendarContract.EventsColumns, android.provider.CalendarContract.CalendarColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String BEGIN = "begin";
-        public static android.net.Uri CONTENT_BY_DAY_URI;
-        public static android.net.Uri CONTENT_SEARCH_BY_DAY_URI;
-        public static android.net.Uri CONTENT_SEARCH_URI;
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_BY_DAY_URI = android.net.Uri.parse("content://com.android.calendar/instances/whenbyday");
+        public static android.net.Uri CONTENT_SEARCH_BY_DAY_URI = android.net.Uri.parse("content://com.android.calendar/instances/searchbyday");
+        public static android.net.Uri CONTENT_SEARCH_URI = android.net.Uri.parse("content://com.android.calendar/instances/search");
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar/instances/when");
         public static final java.lang.String END = "end";
         public static final java.lang.String END_DAY = "endDay";
         public static final java.lang.String END_MINUTE = "endMinute";
@@ -299,7 +299,7 @@ public final class CalendarContract {
     }
     public static final class Reminders implements android.provider.BaseColumns, android.provider.CalendarContract.RemindersColumns, android.provider.CalendarContract.EventsColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://com.android.calendar/reminders");
         public static android.database.Cursor query(android.content.ContentResolver p0, long p1, java.lang.String[] p2) { return null; }
         protected Reminders() {}
     }

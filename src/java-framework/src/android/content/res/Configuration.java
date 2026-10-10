@@ -200,7 +200,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
     public static final int ASSETS_SEQ_UNDEFINED = 0;
     public static final int DENSITY_DPI_ANY = 65534;
     public static final int DENSITY_DPI_NONE = 65535;
-    public static android.content.res.Configuration EMPTY;
+    public static android.content.res.Configuration EMPTY = new android.content.res.Configuration();
     public static final int GRAMMATICAL_GENDER_UNDEFINED = -1;
     public static final int KEYBOARDHIDDEN_SOFT = 3;
     public static final int NATIVE_CONFIG_COLOR_MODE = 65536;

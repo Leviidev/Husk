@@ -4,7 +4,7 @@ package android.provider;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class Browser {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.net.Uri BOOKMARKS_URI;
+    public static android.net.Uri BOOKMARKS_URI = android.net.Uri.parse("content://browser/bookmarks");
     public static final java.lang.String EXTRA_APPLICATION_ID = "com.android.browser.application_id";
     public static final java.lang.String EXTRA_CREATE_NEW_TAB = "create_new_tab";
     public static final java.lang.String EXTRA_HEADERS = "com.android.browser.headers";
@@ -24,7 +24,7 @@ public class Browser {
     public static java.lang.String[] SEARCHES_PROJECTION;
     public static final int SEARCHES_PROJECTION_DATE_INDEX = 2;
     public static final int SEARCHES_PROJECTION_SEARCH_INDEX = 1;
-    public static android.net.Uri SEARCHES_URI;
+    public static android.net.Uri SEARCHES_URI = android.net.Uri.parse("content://browser/searches");
     public static java.lang.String[] TRUNCATE_HISTORY_PROJECTION;
     public static final int TRUNCATE_HISTORY_PROJECTION_ID_INDEX = 0;
     public static final int TRUNCATE_N_OLDEST = 5;

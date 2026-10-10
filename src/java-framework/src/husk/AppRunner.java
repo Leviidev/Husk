@@ -95,6 +95,7 @@ public final class AppRunner {
         return Native.packageName();
     }
     static Activity launch(String cls, Intent intent, Activity caller, int request, Manifest.Component info) throws Exception {
+        android.util.Log.d("Husk", "launch " + cls);
         Activity prev = top();
         Activity a = (Activity) Class.forName(cls).newInstance();
         ContextImpl base = ContextImpl.forActivity();
@@ -113,6 +114,7 @@ public final class AppRunner {
     /** Context.startActivity: an activity of the app's own, or something the host can open (a web page, mail, the store). */
     public static void startActivity(Context from, Intent i, int request, Bundle opts) {
         Manifest.Component c = Manifest.resolve(i);
+        android.util.Log.d("Husk", "startActivity " + i + (c != null ? " -> " + c.name : " (not an activity of this app)"));
         if (c != null) {
             final Activity caller = from instanceof Activity ? (Activity) from : top();
             final Intent intent = new Intent(i);
@@ -161,6 +163,7 @@ public final class AppRunner {
     /** Activity.finish: the one below comes back (with the result when it asked for one). */
     public static void finish(Activity a) { sHandler.post(() -> finishNow(a, true)); }
     private static void finishNow(Activity a, boolean resumeBelow) {
+        android.util.Log.d("Husk", "finish " + a.getClass().getName());
         int idx = sStack.indexOf(a);
         if (idx < 0) return;
         boolean wasTop = idx == sStack.size() - 1;
@@ -181,6 +184,14 @@ public final class AppRunner {
         if (sStack.isEmpty()) sHandler.post(() -> { if (sStack.isEmpty()) Native.exit(); });
     }
     public static void finishAll() { sHandler.post(() -> { while (!sStack.isEmpty()) finishNow(top(), false); }); }
+    /** Activity.finishAffinity(): the activity and those under it in the task go; activities it started, above it, stay. */
+    public static void finishAffinity(Activity a) {
+        sHandler.post(() -> {
+            int i = sStack.indexOf(a);
+            if (i < 0) return;
+            for (int k = i; k >= 0; k--) if (k < sStack.size()) finishNow(sStack.get(k), sStack.size() - 1 == k);
+        });
+    }
     public static void recreate(Activity a) {
         sHandler.post(() -> {
             int idx = sStack.indexOf(a);

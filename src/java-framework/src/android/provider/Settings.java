@@ -294,7 +294,7 @@ public final class Settings {
     public static void setInSystemServer() {}
     public static final class Bookmarks implements android.provider.BaseColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://settings/bookmarks");
         public static final java.lang.String FOLDER = "folder";
         public static final java.lang.String ID = "_id";
         public static final java.lang.String INTENT = "intent";
@@ -309,7 +309,7 @@ public final class Settings {
     }
     public static final class Config extends android.provider.Settings.NameValueTable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://settings/config");
         public static final int SYNC_DISABLED_MODE_NONE = 0;
         public static final int SYNC_DISABLED_MODE_PERSISTENT = 1;
         public static final int SYNC_DISABLED_MODE_UNTIL_REBOOT = 2;
@@ -471,7 +471,7 @@ public final class Settings {
         public static final java.lang.String CONTACTS_DATABASE_WAL_ENABLED = "contacts_database_wal_enabled";
         public static final java.lang.String CONTACT_METADATA_SYNC = "contact_metadata_sync";
         public static final java.lang.String CONTACT_METADATA_SYNC_ENABLED = "contact_metadata_sync_enabled";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://settings/global");
         public static final java.lang.String CONVERSATION_ACTIONS_UPDATE_CONTENT_URL = "conversation_actions_content_url";
         public static final java.lang.String CONVERSATION_ACTIONS_UPDATE_METADATA_URL = "conversation_actions_metadata_url";
         public static final java.lang.String CUSTOM_BUGREPORT_HANDLER_APP = "custom_bugreport_handler_app";
@@ -1374,7 +1374,7 @@ public final class Settings {
         public static final java.lang.String COMPLETED_CATEGORY_PREFIX = "suggested.completed_category.";
         public static final java.lang.String CONNECTIVITY_RELEASE_PENDING_INTENT_DELAY_MS = "connectivity_release_pending_intent_delay_ms";
         public static final java.lang.String CONTENT_CAPTURE_ENABLED = "content_capture_enabled";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://settings/secure");
         public static final java.lang.String CONTEXTUAL_SCREEN_TIMEOUT_ENABLED = "contextual_screen_timeout_enabled";
         public static final java.lang.String CONTEXTUAL_SEARCH_PACKAGE = "contextual_search_package";
         public static final java.lang.String CONTRAST_LEVEL = "contrast_level";
@@ -1885,7 +1885,7 @@ public final class Settings {
         public static final java.lang.String CAR_UNDOCK_SOUND = "car_undock_sound";
         public static final java.lang.String CLOCKWORK_BLUETOOTH_SETTINGS_PREF = "cw_bt_settings_pref";
         public static java.util.Map CLONE_FROM_PARENT_ON_VALUE;
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://settings/system");
         public static final java.lang.String CV_DYNAMIC_ENABLED = "cv_dynamic_enabled";
         public static final java.lang.String CV_ENABLED = "cv_enabled";
         public static final java.lang.String CV_PREFERRED_INTENSITY = "cv_preferred_intensity";
@@ -1893,10 +1893,10 @@ public final class Settings {
         public static final java.lang.String DATE_FORMAT = "date_format";
         public static final java.lang.String DEBUG_APP = "debug_app";
         public static final java.lang.String DEBUG_ENABLE_ENHANCED_CALL_BLOCKING = "debug.enable_enhanced_calling";
-        public static android.net.Uri DEFAULT_ALARM_ALERT_URI;
+        public static android.net.Uri DEFAULT_ALARM_ALERT_URI = android.net.Uri.parse("content://settings/system/alarm_alert");
         public static final java.lang.String DEFAULT_DEVICE_FONT_SCALE = "device_font_scale";
-        public static android.net.Uri DEFAULT_NOTIFICATION_URI;
-        public static android.net.Uri DEFAULT_RINGTONE_URI;
+        public static android.net.Uri DEFAULT_NOTIFICATION_URI = android.net.Uri.parse("content://settings/system/notification_sound");
+        public static android.net.Uri DEFAULT_RINGTONE_URI = android.net.Uri.parse("content://settings/system/ringtone");
         public static final java.lang.String DESK_DOCK_SOUND = "desk_dock_sound";
         public static final java.lang.String DESK_UNDOCK_SOUND = "desk_undock_sound";
         public static final java.lang.String DEVICE_PROVISIONED = "device_provisioned";

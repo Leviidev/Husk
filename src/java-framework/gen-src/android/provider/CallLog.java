@@ -7,7 +7,7 @@ public class CallLog {
     public static final java.lang.String AUTHORITY = "call_log";
     public static android.net.Uri CALL_COMPOSER_PICTURE_URI;
     public static final java.lang.String CALL_COMPOSER_SEGMENT = "call_composer";
-    public static android.net.Uri CONTENT_URI;
+    public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://call_log");
     public static final java.lang.String SHADOW_AUTHORITY = "call_log_shadow";
     public static android.net.Uri SHADOW_CALL_COMPOSER_PICTURE_URI;
     public CallLog() {}
@@ -53,11 +53,11 @@ public class CallLog {
         public static final java.lang.String CALL_SCREENING_APP_NAME = "call_screening_app_name";
         public static final java.lang.String CALL_SCREENING_COMPONENT_NAME = "call_screening_component_name";
         public static final java.lang.String COMPOSER_PHOTO_URI = "composer_photo_uri";
-        public static android.net.Uri CONTENT_FILTER_URI;
+        public static android.net.Uri CONTENT_FILTER_URI = android.net.Uri.parse("content://call_log/calls/filter");
         public static final java.lang.String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/calls";
         public static final java.lang.String CONTENT_TYPE = "vnd.android.cursor.dir/calls";
-        public static android.net.Uri CONTENT_URI;
-        public static android.net.Uri CONTENT_URI_WITH_VOICEMAIL;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://call_log/calls");
+        public static android.net.Uri CONTENT_URI_WITH_VOICEMAIL = android.net.Uri.parse("content://call_log/calls?allow_voicemails=true");
         public static android.net.Uri CONTENT_URI_WITH_VOIP_CALLS;
         public static android.net.Uri CONTENT_VOIP_URI;
         public static final java.lang.String COUNTRY_ISO = "countryiso";

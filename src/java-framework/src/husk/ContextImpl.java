@@ -97,7 +97,10 @@ public final class ContextImpl extends Context {
         throw new PackageManager.NameNotFoundException(pkg);
     }
     @Override public Context createConfigurationContext(Configuration c) {
-        Resources r = new Resources(getAssets(), null, c);
+        /* the override applies over this context's configuration, as on Android */
+        Configuration base = new Configuration(getResources().getConfiguration());
+        if (c != null) base.updateFrom(c);
+        Resources r = new Resources(getAssets(), getResources().getDisplayMetrics(), base);
         return new ContextImpl(r);
     }
     private final java.util.ArrayList<ComponentCallbacks> mCallbacks = new java.util.ArrayList<>();

@@ -188,6 +188,7 @@ static int bionic___system_property_get(const char *name, char *value)
     snprintf(value, 92, "%s", v);
     return (int)strlen(value);
 }
+int tl_property_get(const char *name, char *value) { return bionic___system_property_get(name, value); }
 
 /* The rest of the property API Android's own libraries use (ART's libbase reads properties through the callback). */
 typedef void (*guest_prop_cb)(void *cookie, const char *name, const char *value, uint32_t serial);

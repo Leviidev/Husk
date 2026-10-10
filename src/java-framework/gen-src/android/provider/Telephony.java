@@ -142,7 +142,7 @@ public final class Telephony {
         public static final int CARRIER_EDITED = 4;
         public static final java.lang.String CARRIER_ENABLED = "carrier_enabled";
         public static final java.lang.String CARRIER_ID = "carrier_id";
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://telephony/carriers");
         public static final java.lang.String CURRENT = "current";
         public static final java.lang.String DEFAULT_SORT_ORDER = "name ASC";
         public static android.net.Uri DPC_URI;
@@ -258,7 +258,7 @@ public final class Telephony {
     }
     public static final class Mms implements android.provider.Telephony.BaseMmsColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://mms");
         public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
         public static java.util.regex.Pattern NAME_ADDR_EMAIL_PATTERN;
         public static android.net.Uri REPORT_REQUEST_URI;
@@ -345,7 +345,7 @@ public final class Telephony {
         public static android.net.Uri CONTENT_FILTER_BYPHONE_URI;
         public static android.net.Uri CONTENT_LOCKED_URI;
         public static android.net.Uri CONTENT_UNDELIVERED_URI;
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://mms-sms/");
         public static final int ERR_TYPE_GENERIC = 1;
         public static final int ERR_TYPE_GENERIC_PERMANENT = 10;
         public static final int ERR_TYPE_MMS_PROTO_PERMANENT = 12;
@@ -514,7 +514,7 @@ public final class Telephony {
     }
     public static final class Sms implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms");
         public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
         public static android.net.Uri addMessageToUri(int p0, android.content.ContentResolver p1, android.net.Uri p2, java.lang.String p3, java.lang.String p4, java.lang.String p5, java.lang.Long p6, boolean p7, boolean p8) { return null; }
         public static android.net.Uri addMessageToUri(int p0, android.content.ContentResolver p1, android.net.Uri p2, java.lang.String p3, java.lang.String p4, java.lang.String p5, java.lang.Long p6, boolean p7, boolean p8, long p9) { return null; }
@@ -530,7 +530,7 @@ public final class Telephony {
         protected Sms() {}
         public static final class Conversations implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms/conversations");
             public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
             public static final java.lang.String MESSAGE_COUNT = "msg_count";
             public static final java.lang.String SNIPPET = "snippet";
@@ -538,7 +538,7 @@ public final class Telephony {
         }
         public static final class Draft implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms/draft");
             public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
             public static android.net.Uri addMessage(int p0, android.content.ContentResolver p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.Long p5) { return null; }
             public static android.net.Uri addMessage(android.content.ContentResolver p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.Long p4) { return null; }
@@ -546,7 +546,7 @@ public final class Telephony {
         }
         public static final class Inbox implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms/inbox");
             public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
             public static android.net.Uri addMessage(int p0, android.content.ContentResolver p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.Long p5, boolean p6) { return null; }
             public static android.net.Uri addMessage(android.content.ContentResolver p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.Long p4, boolean p5) { return null; }
@@ -592,7 +592,7 @@ public final class Telephony {
         }
         public static final class Outbox implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms/outbox");
             public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
             public static android.net.Uri addMessage(int p0, android.content.ContentResolver p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.Long p5, boolean p6, long p7) { return null; }
             public static android.net.Uri addMessage(android.content.ContentResolver p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.Long p4, boolean p5, long p6) { return null; }
@@ -600,7 +600,7 @@ public final class Telephony {
         }
         public static final class Sent implements android.provider.BaseColumns, android.provider.Telephony.TextBasedSmsColumns {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public static android.net.Uri CONTENT_URI;
+            public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://sms/sent");
             public static final java.lang.String DEFAULT_SORT_ORDER = "date DESC";
             public static android.net.Uri addMessage(int p0, android.content.ContentResolver p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.Long p5) { return null; }
             public static android.net.Uri addMessage(android.content.ContentResolver p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.Long p4) { return null; }
@@ -657,7 +657,7 @@ public final class Telephony {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int BROADCAST_THREAD = 1;
         public static int COMMON_THREAD;
-        public static android.net.Uri CONTENT_URI;
+        public static android.net.Uri CONTENT_URI = android.net.Uri.parse("content://mms-sms/conversations");
         public static android.net.Uri OBSOLETE_THREADS_URI;
         public static long getOrCreateThreadId(android.content.Context p0, java.lang.String p1) { return 0L; }
         public static long getOrCreateThreadId(android.content.Context p0, java.util.Set p1) { return 0L; }
