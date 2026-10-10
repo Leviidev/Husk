@@ -62,6 +62,7 @@ extension TLReport {
         if engine == "Godot" { return .godot }
         if engine == "NativeActivity" { return .nativeactivity }
         if engine == "Flutter" { return .flutter }
+        if engine == "GameMaker" { return .gamemaker }
         return nil
     }
 
@@ -71,7 +72,7 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : "Unity" }
+    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
@@ -81,7 +82,7 @@ extension TLReport {
             ? "A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself."
             : "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
         if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
-        else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot { text += " Husk turns the screen the way the game asks for." }
+        else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot || nativeEngine == .gamemaker { text += " Husk turns the screen the way the game asks for." }
         if flagged > 0 {
             text += " \(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, "
                   + "except for optional anti-tamper code, which it leaves out."

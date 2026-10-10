@@ -158,7 +158,7 @@ struct TLAppSettingsView: View {
 
     private var dataDirs: [URL] {
         let dir = TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
-        return ["unity-data", "cocos-data", "minecraft-data", "sdl-data", "ue4-data", "gta-data", "na-data"]
+        return ["unity-data", "cocos-data", "minecraft-data", "sdl-data", "ue4-data", "gta-data", "na-data", "godot-data", "flutter-data", "gm-data", "web"]
             .map { dir.appendingPathComponent($0, isDirectory: true) }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
     }

@@ -29,6 +29,7 @@ extension TLApp {
         case .godot?: name = "godot-data"
         case .nativeactivity?: name = "na-data"
         case .flutter?: name = "flutter-data"
+        case .gamemaker?: name = "gm-data"
         case .cocos?: name = "cocos-data"
         case nil: name = report?.webKind != nil ? "web" : "classic-data"
         default: name = "unity-data"

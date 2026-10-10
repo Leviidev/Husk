@@ -55,6 +55,7 @@
 		3FFF24EF3C18B086F2D0B97C /* husk-tl-vulkan.m in Sources */ = {isa = PBXBuildFile; fileRef = 42A3D0C796971935D477F89B /* husk-tl-vulkan.m */; };
 		48B7AF4FFC377766FF6158A4 /* PlayDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036699CBF5693E75237EF112 /* PlayDevice.swift */; };
 		48E699E0016694F530355275 /* FilesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BF573E8CED9B238E762BA6 /* FilesTab.swift */; };
+		493E20A0B04C84895AF33F83 /* husk-tl-jni-audiotrack.c in Sources */ = {isa = PBXBuildFile; fileRef = 3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */; };
 		4B9909AA3D98168EA99BF2D1 /* HuskJITMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198FA3419B26F852A2B05ED9 /* HuskJITMessages.swift */; };
 		4C11B3EFED23B912383D12E2 /* Protobuf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F492FB5CD1D4A0B2D79E12 /* Protobuf.swift */; };
 		4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */; };
@@ -158,6 +159,7 @@
 		FA8097D8E118A8CE8DBCF763 /* LICENSE-StikJIT-MPL-2.0.txt in Resources */ = {isa = PBXBuildFile; fileRef = 2E95AED70FA457D447AE0DFF /* LICENSE-StikJIT-MPL-2.0.txt */; };
 		FB6777B7C3F72DF377987A11 /* husk-tl-godot.c in Sources */ = {isa = PBXBuildFile; fileRef = 182A386166343D705B52A7BF /* husk-tl-godot.c */; };
 		FC2A6DCF8BB4C5E874D4F4D3 /* HuskGamepad.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE13DC571D193621CD6149EA /* HuskGamepad.swift */; };
+		FC45D56054E524839BB0C555 /* husk-tl-gamemaker.c in Sources */ = {isa = PBXBuildFile; fileRef = 95865DA863ED1D2635023E54 /* husk-tl-gamemaker.c */; };
 		FC8F2E79EF7CDBC99D95F4F6 /* husk-tl-jni-input.c in Sources */ = {isa = PBXBuildFile; fileRef = 28152D0874B73915225FE8EA /* husk-tl-jni-input.c */; };
 		FCC98727BBE825F227BA85DC /* husk-tl-prefs.c in Sources */ = {isa = PBXBuildFile; fileRef = 86A6E743652A606829BC044B /* husk-tl-prefs.c */; };
 /* End PBXBuildFile section */
@@ -255,6 +257,7 @@
 		3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libANGLE-shared.dylib"; path = "../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib"; sourceTree = "<group>"; };
 		3B72237F810FCE0EE433FA3D /* husk-tl-nativeactivity.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-nativeactivity.c"; sourceTree = "<group>"; };
 		3B9FC5A63D4CAA7FBDA016EB /* fishhook.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fishhook.h; sourceTree = "<group>"; };
+		3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-audiotrack.c"; sourceTree = "<group>"; };
 		40BF573E8CED9B238E762BA6 /* FilesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesTab.swift; sourceTree = "<group>"; };
 		411E4F9A6C6D4F737E8611B9 /* husk-tl-jni-http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-http.c"; sourceTree = "<group>"; };
 		42A3D0C796971935D477F89B /* husk-tl-vulkan.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-vulkan.m"; sourceTree = "<group>"; };
@@ -324,6 +327,7 @@
 		9235AEC134C86769DDF7E880 /* husk-tl-geode.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-geode.c"; sourceTree = "<group>"; };
 		92BB8B6B5EA2FAE7198451C0 /* GoogleSignInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInSheet.swift; sourceTree = "<group>"; };
 		9545A76356E04E05C3174FA8 /* husk-tl-va.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-va.h"; sourceTree = "<group>"; };
+		95865DA863ED1D2635023E54 /* husk-tl-gamemaker.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gamemaker.c"; sourceTree = "<group>"; };
 		96F492FB5CD1D4A0B2D79E12 /* Protobuf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protobuf.swift; sourceTree = "<group>"; };
 		9713186CDCF6F1188BB4ABE1 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = "../../build/ios-arm64/lib/MoltenVK.xcframework"; sourceTree = "<group>"; };
 		9736391C1BCE43667293DB7B /* Geode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geode.swift; sourceTree = "<group>"; };
@@ -396,6 +400,7 @@
 		FCBE4C5BD3BC5033100C968E /* husk-tl-gtasa.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gtasa.c"; sourceTree = "<group>"; };
 		FD559A37CF59C3290F29FA43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FD6B5A72980D1EC374BFC326 /* husk-tl-jni-assetstream.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-assetstream.c"; sourceTree = "<group>"; };
+		FDF944ADD896E0A8B1E40965 /* husk-tl-gamemaker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-gamemaker.h"; sourceTree = "<group>"; };
 		FE13DC571D193621CD6149EA /* HuskGamepad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskGamepad.swift; sourceTree = "<group>"; };
 		FE8922E7AB75C8C61B37986A /* husk-tl-jni-loop.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-loop.c"; sourceTree = "<group>"; };
 		FF5A120A4E0B3EE166D789C4 /* husk-tl-bionic-ndk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-ndk.c"; sourceTree = "<group>"; };
@@ -582,6 +587,8 @@
 				6A015D18C0BBEB07C1AB42C0 /* husk-tl-flutter.h */,
 				CFAB9C41A483CA08C1037AAC /* husk-tl-gameactivity.c */,
 				0C8178C469873F2DA90BB728 /* husk-tl-gameactivity.h */,
+				95865DA863ED1D2635023E54 /* husk-tl-gamemaker.c */,
+				FDF944ADD896E0A8B1E40965 /* husk-tl-gamemaker.h */,
 				46287061DCF461334B1A8D2E /* husk-tl-gamepad.c */,
 				CC60CF82D64B2CBA61196F88 /* husk-tl-gamepad.h */,
 				9235AEC134C86769DDF7E880 /* husk-tl-geode.c */,
@@ -593,6 +600,7 @@
 				97E83F7EE31FE180D0FA3105 /* husk-tl-http.h */,
 				4B24977AD9B892864CD39481 /* husk-tl-http.m */,
 				FD6B5A72980D1EC374BFC326 /* husk-tl-jni-assetstream.c */,
+				3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */,
 				B76CE6F39722749AA0027959 /* husk-tl-jni-cocos.c */,
 				C575FDA8867C3A75AB2392E3 /* husk-tl-jni-fmod.c */,
 				1F4699CEF50111F7720E34F4 /* husk-tl-jni-gms.c */,
@@ -999,12 +1007,14 @@
 				9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */,
 				80F03D2EAABE3BFEA4A2785B /* husk-tl-framework.c in Sources */,
 				12F633F698047D7DED62A51D /* husk-tl-gameactivity.c in Sources */,
+				FC45D56054E524839BB0C555 /* husk-tl-gamemaker.c in Sources */,
 				B9D7168A505DD009DE222599 /* husk-tl-gamepad.c in Sources */,
 				A687EB34AE28E4CBBA4136BF /* husk-tl-geode.c in Sources */,
 				FB6777B7C3F72DF377987A11 /* husk-tl-godot.c in Sources */,
 				BF3B75F24D911729EFB2E8A6 /* husk-tl-gtasa.c in Sources */,
 				5926C1BBD1419AFBBFA2D1D6 /* husk-tl-http.m in Sources */,
 				9E3948EF967C2A0773C521DD /* husk-tl-jni-assetstream.c in Sources */,
+				493E20A0B04C84895AF33F83 /* husk-tl-jni-audiotrack.c in Sources */,
 				240D4917EC7FC510B753EB4E /* husk-tl-jni-cocos.c in Sources */,
 				50F7B80FBADEAF705EC960F8 /* husk-tl-jni-fmod.c in Sources */,
 				5777A56AE7ED3B43B62869BF /* husk-tl-jni-gms.c in Sources */,

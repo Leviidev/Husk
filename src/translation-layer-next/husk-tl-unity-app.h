@@ -61,6 +61,10 @@ void husk_ue4_set_vulkan(const char *dylib);
 bool husk_flutter_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                          const char *angle_dylib, const char *ca_bundle);
 int  husk_flutter_is_app(const char *apk);
+/* A GameMaker game (YoYo's runner, libyoyo.so). */
+bool husk_gamemaker_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
+                           const char *angle_dylib, const char *ca_bundle);
+int  husk_gamemaker_orientation(const char *apk);                   /* from options.ini: 1 portrait, 0 landscape, -1 either */
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
 void husk_flutter_resize(int width, int height);                     /* the view's new size in pixels, after the launch */

@@ -65,7 +65,7 @@ static bool is_dex(const char *name)
 
 /* Recognised by the libraries an engine always ships. */
 typedef struct engine_scan {
-    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor;
+    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor, gamemaker;
 } engine_scan;
 
 static void note_engine(engine_scan *s, const char *f)
@@ -74,6 +74,7 @@ static void note_engine(engine_scan *s, const char *f)
     else if (!strcmp(f, "libunity.so")) s->unity = true;
     else if (!strcmp(f, "libmonobdwgc-2.0.so") || !strcmp(f, "libmono.so")) s->mono_unity = true;
     else if (!strcmp(f, "libflutter.so")) s->flutter = true;
+    else if (!strcmp(f, "libyoyo.so")) s->gamemaker = true;
     else if (!strcmp(f, "libreactnativejni.so") || !strcmp(f, "libhermes.so")) s->react = true;
     else if (!strcmp(f, "libmonosgen-2.0.so") || !strcmp(f, "libmonodroid.so")) s->dotnet = true;
     else if (!strcmp(f, "libgodot_android.so")) s->godot = true;
@@ -96,6 +97,7 @@ static const char *engine_name(const engine_scan *s)
     if (s->il2cpp) return "Unity (IL2CPP)";
     if (s->unity) return s->mono_unity ? "Unity (Mono)" : "Unity";
     if (s->flutter) return "Flutter";
+    if (s->gamemaker) return "GameMaker";
     /* Web apps: the app is HTML and JavaScript in a WebView (Ionic is one or the other underneath). */
     if (s->capacitor) return "Capacitor";
     if (s->cordova) return "Cordova";

@@ -15,6 +15,7 @@ enum TLNativeEngine {
     case ue4       // Minecraft Dungeons and other Unreal Engine 4 games: landscape, touch and controllers, Vulkan on MoltenVK
     case godot     // A Godot 3 or 4 game: the manifest says which way up, OpenGL ES through ANGLE, multi-touch
     case nativeactivity // A game that is a NativeActivity library of its own (Open Golf): the manifest says which way up, OpenGL ES through ANGLE
+    case gamemaker // A GameMaker game: YoYo's runner draws with OpenGL ES through ANGLE; options.ini says which way up
     case flutter   // A Flutter app: the engine and the app's Dart run natively, Impeller draws through ANGLE; portrait unless the manifest says
 }
 
@@ -209,7 +210,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try? session.setActive(true)
         }
-        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : "unity"))")
+        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : engine == .gamemaker ? "gamemaker" : "unity"))")
         // Splits and the asset pack are part of the app, whatever its engine; the game's libraries and data may be in any of
         // them (a Google Play install keeps a Unity game's libraries in one split and its data in an asset pack).
         for extra in extraApks.prefix(3) { husk_native_add_package(extra) }
@@ -244,6 +245,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             husk_cocos_set_geode(geode?.zip, geode?.launcher)
             if geode != nil { HuskLog.log("geode", "loading Geode into the game") }
             started = husk_cocos_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
+        case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:
             // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
             husk_flutter_set_pixel_ratio(Float(contentScaleFactor))
@@ -808,6 +810,7 @@ extension TLApp {
         case .godot: return .godot
         case .nativeactivity: return .nativeactivity
         case .flutter: return .flutter
+        case .gamemaker: return .gamemaker
         case .cocos: return .cocos
         default: return .unity
         }
@@ -828,6 +831,7 @@ extension TLApp {
         case .godot: return "godot-data"
         case .nativeactivity: return "na-data"
         case .flutter: return "flutter-data"
+        case .gamemaker: return "gm-data"
         case .cocos: return "cocos-data"
         }
     }
@@ -841,6 +845,10 @@ extension TLApp {
         case .auto:
             // A Flutter app is a phone app: portrait, unless its manifest asks for landscape.
             if screenEngine == .flutter, let apk = apks.first { return husk_apk_orientation(apk) != 0 }
+            if screenEngine == .gamemaker, let apk = apks.first {
+                let o = husk_gamemaker_orientation(apk)
+                return o == 1 || (o < 0 && husk_sdl_apk_is_portrait(apk) != 0)
+            }
             guard screenEngine == .sdl || screenEngine == .nativeactivity || screenEngine == .unity || screenEngine == .godot, let apk = apks.first else { return false }
             return husk_sdl_apk_is_portrait(apk) != 0
         }

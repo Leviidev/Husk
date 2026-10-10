@@ -155,8 +155,10 @@ static __thread cleanup_rec *t_cleanup;
 static void b___pthread_cleanup_push(cleanup_rec *c, void (*routine)(void *), void *arg) { c->routine = routine; c->arg = arg; c->prev = t_cleanup; t_cleanup = c; }
 static void b___pthread_cleanup_pop(cleanup_rec *c, int execute) { t_cleanup = c->prev; if (execute && c->routine) c->routine(c->arg); }
 
-/* bionic's struct mallinfo is ten ints; Darwin keeps no such numbers */
-static void b_mallinfo(int *out) { memset(out, 0, 10 * sizeof(int)); }
+/* bionic's struct mallinfo is ten size_t (80 bytes on arm64), returned by value -- through x8, as any struct over 16 bytes is, so
+ * this must return the struct, not take a pointer. Darwin keeps no such numbers. */
+typedef struct { size_t arena, ordblks, smblks, hblks, hblkhd, usmblks, fsmblks, uordblks, fordblks, keepcost; } b_mallinfo_t;
+static b_mallinfo_t b_mallinfo(void) { b_mallinfo_t m; memset(&m, 0, sizeof(m)); return m; }
 static size_t b_malloc_usable_size(void *p) { return p ? malloc_size(p) : 0; }
 
 
