@@ -13,7 +13,7 @@ public final class RenderingConfig implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.RenderingConfig.Builder addKey(java.lang.String p0) { return this; }
-        public android.adservices.ondevicepersonalization.RenderingConfig build() { return new android.adservices.ondevicepersonalization.RenderingConfig(); }
+        public android.adservices.ondevicepersonalization.RenderingConfig build() { android.adservices.ondevicepersonalization.RenderingConfig x = new android.adservices.ondevicepersonalization.RenderingConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.RenderingConfig.Builder setKeys(java.util.List p0) { huskProps.put("Keys", p0); return this; }
     }
 }

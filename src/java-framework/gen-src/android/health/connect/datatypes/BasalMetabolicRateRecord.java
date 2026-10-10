@@ -11,7 +11,7 @@ public final class BasalMetabolicRateRecord extends android.health.connect.datat
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, android.health.connect.datatypes.units.Power p2) {}
-        public android.health.connect.datatypes.BasalMetabolicRateRecord build() { return new android.health.connect.datatypes.BasalMetabolicRateRecord(); }
+        public android.health.connect.datatypes.BasalMetabolicRateRecord build() { android.health.connect.datatypes.BasalMetabolicRateRecord x = new android.health.connect.datatypes.BasalMetabolicRateRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BasalMetabolicRateRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BasalMetabolicRateRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BasalMetabolicRateRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

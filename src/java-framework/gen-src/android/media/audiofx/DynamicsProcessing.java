@@ -124,7 +124,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(int p0, int p1, boolean p2, int p3, boolean p4, int p5, boolean p6, int p7, boolean p8) {}
-            public android.media.audiofx.DynamicsProcessing.Config build() { return new android.media.audiofx.DynamicsProcessing.Config(); }
+            public android.media.audiofx.DynamicsProcessing.Config build() { android.media.audiofx.DynamicsProcessing.Config x = new android.media.audiofx.DynamicsProcessing.Config(); x.huskProps.putAll(huskProps); return x; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setAllChannelsTo(android.media.audiofx.DynamicsProcessing.Channel p0) { huskProps.put("AllChannelsTo", p0); return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setChannelTo(int p0, android.media.audiofx.DynamicsProcessing.Channel p1) { return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setInputGainAllChannelsTo(float p0) { huskProps.put("InputGainAllChannelsTo", Float.valueOf(p0)); return this; }

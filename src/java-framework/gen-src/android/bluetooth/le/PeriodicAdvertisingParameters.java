@@ -13,7 +13,7 @@ public final class PeriodicAdvertisingParameters implements android.os.Parcelabl
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.le.PeriodicAdvertisingParameters build() { return new android.bluetooth.le.PeriodicAdvertisingParameters(); }
+        public android.bluetooth.le.PeriodicAdvertisingParameters build() { android.bluetooth.le.PeriodicAdvertisingParameters x = new android.bluetooth.le.PeriodicAdvertisingParameters(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.PeriodicAdvertisingParameters.Builder setIncludeTxPower(boolean p0) { huskProps.put("IncludeTxPower", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.PeriodicAdvertisingParameters.Builder setInterval(int p0) { huskProps.put("Interval", Integer.valueOf(p0)); return this; }
     }

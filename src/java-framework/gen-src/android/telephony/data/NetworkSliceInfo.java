@@ -31,7 +31,7 @@ public final class NetworkSliceInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.data.NetworkSliceInfo build() { return new android.telephony.data.NetworkSliceInfo(); }
+        public android.telephony.data.NetworkSliceInfo build() { android.telephony.data.NetworkSliceInfo x = new android.telephony.data.NetworkSliceInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.data.NetworkSliceInfo.Builder setMappedHplmnSliceDifferentiator(int p0) { huskProps.put("MappedHplmnSliceDifferentiator", Integer.valueOf(p0)); return this; }
         public android.telephony.data.NetworkSliceInfo.Builder setMappedHplmnSliceServiceType(int p0) { huskProps.put("MappedHplmnSliceServiceType", Integer.valueOf(p0)); return this; }
         public android.telephony.data.NetworkSliceInfo.Builder setSliceDifferentiator(int p0) { huskProps.put("SliceDifferentiator", Integer.valueOf(p0)); return this; }

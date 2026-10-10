@@ -11,7 +11,7 @@ public final class WebTriggerOutput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.WebTriggerOutput.Builder addEventLogRecord(android.adservices.ondevicepersonalization.EventLogRecord p0) { return this; }
-        public android.adservices.ondevicepersonalization.WebTriggerOutput build() { return new android.adservices.ondevicepersonalization.WebTriggerOutput(); }
+        public android.adservices.ondevicepersonalization.WebTriggerOutput build() { android.adservices.ondevicepersonalization.WebTriggerOutput x = new android.adservices.ondevicepersonalization.WebTriggerOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.WebTriggerOutput.Builder setEventLogRecords(java.util.List p0) { huskProps.put("EventLogRecords", p0); return this; }
         public android.adservices.ondevicepersonalization.WebTriggerOutput.Builder setRequestLogRecord(android.adservices.ondevicepersonalization.RequestLogRecord p0) { huskProps.put("RequestLogRecord", p0); return this; }
     }

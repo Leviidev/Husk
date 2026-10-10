@@ -41,7 +41,7 @@ public final class AdvertisingSetParameters implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.le.AdvertisingSetParameters build() { return new android.bluetooth.le.AdvertisingSetParameters(); }
+        public android.bluetooth.le.AdvertisingSetParameters build() { android.bluetooth.le.AdvertisingSetParameters x = new android.bluetooth.le.AdvertisingSetParameters(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.AdvertisingSetParameters.Builder setAnonymous(boolean p0) { huskProps.put("Anonymous", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertisingSetParameters.Builder setConnectable(boolean p0) { huskProps.put("Connectable", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertisingSetParameters.Builder setDirected(boolean p0) { huskProps.put("Directed", Boolean.valueOf(p0)); return this; }

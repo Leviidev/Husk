@@ -17,7 +17,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig build() { return new android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig build() { android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig x = new android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.BlobHandlePropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             Builder() { this((java.lang.String) null); }
@@ -30,7 +30,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.BooleanPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.BooleanPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.BooleanPropertyConfig build() { android.app.appsearch.AppSearchSchema.BooleanPropertyConfig x = new android.app.appsearch.AppSearchSchema.BooleanPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.BooleanPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.BooleanPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             public android.app.appsearch.AppSearchSchema.BooleanPropertyConfig.Builder setScoringEnabled(boolean p0) { huskProps.put("ScoringEnabled", Boolean.valueOf(p0)); return this; }
@@ -56,7 +56,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.BytesPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.BytesPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.BytesPropertyConfig build() { android.app.appsearch.AppSearchSchema.BytesPropertyConfig x = new android.app.appsearch.AppSearchSchema.BytesPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.BytesPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.BytesPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             Builder() { this((java.lang.String) null); }
@@ -75,7 +75,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder addIndexableNestedProperties(java.lang.String[] p0) { return this; }
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder addIndexableNestedPropertyPaths(java.util.Collection p0) { return this; }
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder addIndexableNestedPropertyPaths(android.app.appsearch.PropertyPath[] p0) { return this; }
-            public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.DocumentPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig build() { android.app.appsearch.AppSearchSchema.DocumentPropertyConfig x = new android.app.appsearch.AppSearchSchema.DocumentPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             public android.app.appsearch.AppSearchSchema.DocumentPropertyConfig.Builder setShouldIndexNestedProperties(boolean p0) { huskProps.put("ShouldIndexNestedProperties", Boolean.valueOf(p0)); return this; }
@@ -89,7 +89,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.DoublePropertyConfig build() { return new android.app.appsearch.AppSearchSchema.DoublePropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.DoublePropertyConfig build() { android.app.appsearch.AppSearchSchema.DoublePropertyConfig x = new android.app.appsearch.AppSearchSchema.DoublePropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.DoublePropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.DoublePropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             public android.app.appsearch.AppSearchSchema.DoublePropertyConfig.Builder setScoringEnabled(boolean p0) { huskProps.put("ScoringEnabled", Boolean.valueOf(p0)); return this; }
@@ -108,7 +108,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig build() { android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig x = new android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             public android.app.appsearch.AppSearchSchema.EmbeddingPropertyConfig.Builder setIndexingType(int p0) { huskProps.put("IndexingType", Integer.valueOf(p0)); return this; }
@@ -126,7 +126,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.LongPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.LongPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.LongPropertyConfig build() { android.app.appsearch.AppSearchSchema.LongPropertyConfig x = new android.app.appsearch.AppSearchSchema.LongPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.LongPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.LongPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
             public android.app.appsearch.AppSearchSchema.LongPropertyConfig.Builder setIndexingType(int p0) { huskProps.put("IndexingType", Integer.valueOf(p0)); return this; }
@@ -175,7 +175,7 @@ public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.A
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchSchema.StringPropertyConfig build() { return new android.app.appsearch.AppSearchSchema.StringPropertyConfig(); }
+            public android.app.appsearch.AppSearchSchema.StringPropertyConfig build() { android.app.appsearch.AppSearchSchema.StringPropertyConfig x = new android.app.appsearch.AppSearchSchema.StringPropertyConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.app.appsearch.AppSearchSchema.StringPropertyConfig.Builder setCardinality(int p0) { huskProps.put("Cardinality", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.StringPropertyConfig.Builder setDeletePropagationType(int p0) { huskProps.put("DeletePropagationType", Integer.valueOf(p0)); return this; }
             public android.app.appsearch.AppSearchSchema.StringPropertyConfig.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }

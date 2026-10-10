@@ -20,7 +20,7 @@ public final class AvailableNetworkInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telephony.AvailableNetworkInfo build() { return new android.telephony.AvailableNetworkInfo(); }
+        public android.telephony.AvailableNetworkInfo build() { android.telephony.AvailableNetworkInfo x = new android.telephony.AvailableNetworkInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.AvailableNetworkInfo.Builder setMccMncs(java.util.List p0) { huskProps.put("MccMncs", p0); return this; }
         public android.telephony.AvailableNetworkInfo.Builder setPriority(int p0) { huskProps.put("Priority", Integer.valueOf(p0)); return this; }
         public android.telephony.AvailableNetworkInfo.Builder setRadioAccessSpecifiers(java.util.List p0) { huskProps.put("RadioAccessSpecifiers", p0); return this; }

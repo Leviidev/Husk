@@ -49,7 +49,7 @@ public final class AttributionSource implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
         public Builder(android.content.AttributionSource p0) {}
-        public android.content.AttributionSource build() { return new android.content.AttributionSource(); }
+        public android.content.AttributionSource build() { android.content.AttributionSource x = new android.content.AttributionSource(); x.huskProps.putAll(huskProps); return x; }
         public android.content.AttributionSource.Builder setAttributionTag(java.lang.String p0) { huskProps.put("AttributionTag", p0); return this; }
         public android.content.AttributionSource.Builder setDeviceId(int p0) { huskProps.put("DeviceId", Integer.valueOf(p0)); return this; }
         public android.content.AttributionSource.Builder setNext(android.content.AttributionSource p0) { huskProps.put("Next", p0); return this; }

@@ -11,7 +11,7 @@ public final class StepsRecord extends android.health.connect.datatypes.Interval
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, long p3) {}
-        public android.health.connect.datatypes.StepsRecord build() { return new android.health.connect.datatypes.StepsRecord(); }
+        public android.health.connect.datatypes.StepsRecord build() { android.health.connect.datatypes.StepsRecord x = new android.health.connect.datatypes.StepsRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.StepsRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.StepsRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.StepsRecord.Builder clearStartZoneOffset() { return this; }

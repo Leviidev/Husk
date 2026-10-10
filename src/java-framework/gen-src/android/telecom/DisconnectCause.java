@@ -41,7 +41,7 @@ public final class DisconnectCause implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telecom.DisconnectCause build() { return new android.telecom.DisconnectCause(); }
+        public android.telecom.DisconnectCause build() { android.telecom.DisconnectCause x = new android.telecom.DisconnectCause(); x.huskProps.putAll(huskProps); return x; }
         public android.telecom.DisconnectCause.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }
         public android.telecom.DisconnectCause.Builder setImsReasonInfo(android.telephony.ims.ImsReasonInfo p0) { huskProps.put("ImsReasonInfo", p0); return this; }
         public android.telecom.DisconnectCause.Builder setLabel(java.lang.CharSequence p0) { huskProps.put("Label", p0); return this; }

@@ -16,7 +16,7 @@ public final class RouteListingPreference implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.media.RouteListingPreference build() { return new android.media.RouteListingPreference(); }
+        public android.media.RouteListingPreference build() { android.media.RouteListingPreference x = new android.media.RouteListingPreference(); x.huskProps.putAll(huskProps); return x; }
         public android.media.RouteListingPreference.Builder setItems(java.util.List p0) { huskProps.put("Items", p0); return this; }
         public android.media.RouteListingPreference.Builder setLinkedItemComponentName(android.content.ComponentName p0) { huskProps.put("LinkedItemComponentName", p0); return this; }
         public android.media.RouteListingPreference.Builder setUseSystemOrdering(boolean p0) { huskProps.put("UseSystemOrdering", Boolean.valueOf(p0)); return this; }
@@ -50,7 +50,7 @@ public final class RouteListingPreference implements android.os.Parcelable {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.media.RouteListingPreference.Item build() { return new android.media.RouteListingPreference.Item(); }
+            public android.media.RouteListingPreference.Item build() { android.media.RouteListingPreference.Item x = new android.media.RouteListingPreference.Item(); x.huskProps.putAll(huskProps); return x; }
             public android.media.RouteListingPreference.Item.Builder setCustomSubtextMessage(java.lang.CharSequence p0) { huskProps.put("CustomSubtextMessage", p0); return this; }
             public android.media.RouteListingPreference.Item.Builder setFlags(int p0) { huskProps.put("Flags", Integer.valueOf(p0)); return this; }
             public android.media.RouteListingPreference.Item.Builder setSelectionBehavior(int p0) { huskProps.put("SelectionBehavior", Integer.valueOf(p0)); return this; }

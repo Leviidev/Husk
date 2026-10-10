@@ -45,7 +45,7 @@ public final class RangingResult implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.net.wifi.rtt.RangingResult p0) {}
-        public android.net.wifi.rtt.RangingResult build() { return new android.net.wifi.rtt.RangingResult(); }
+        public android.net.wifi.rtt.RangingResult build() { android.net.wifi.rtt.RangingResult x = new android.net.wifi.rtt.RangingResult(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.rtt.RangingResult.Builder set80211azInitiatorTxLtfRepetitionsCount(int p0) { huskProps.put("80211azInitiatorTxLtfRepetitionsCount", Integer.valueOf(p0)); return this; }
         public android.net.wifi.rtt.RangingResult.Builder set80211azNtbMeasurement(boolean p0) { huskProps.put("80211azNtbMeasurement", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.rtt.RangingResult.Builder set80211azNumberOfRxSpatialStreams(int p0) { huskProps.put("80211azNumberOfRxSpatialStreams", Integer.valueOf(p0)); return this; }

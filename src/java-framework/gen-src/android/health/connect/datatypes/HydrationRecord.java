@@ -11,7 +11,7 @@ public final class HydrationRecord extends android.health.connect.datatypes.Inte
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, android.health.connect.datatypes.units.Volume p3) {}
-        public android.health.connect.datatypes.HydrationRecord build() { return new android.health.connect.datatypes.HydrationRecord(); }
+        public android.health.connect.datatypes.HydrationRecord build() { android.health.connect.datatypes.HydrationRecord x = new android.health.connect.datatypes.HydrationRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.HydrationRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.HydrationRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.HydrationRecord.Builder clearStartZoneOffset() { return this; }

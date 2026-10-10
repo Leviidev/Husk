@@ -30,7 +30,7 @@ public final class PublishConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.aware.PublishConfig build() { return new android.net.wifi.aware.PublishConfig(); }
+        public android.net.wifi.aware.PublishConfig build() { android.net.wifi.aware.PublishConfig x = new android.net.wifi.aware.PublishConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.aware.PublishConfig.Builder setDataPathSecurityConfig(android.net.wifi.aware.WifiAwareDataPathSecurityConfig p0) { huskProps.put("DataPathSecurityConfig", p0); return this; }
         public android.net.wifi.aware.PublishConfig.Builder setInstantCommunicationModeEnabled(boolean p0, int p1) { return this; }
         public android.net.wifi.aware.PublishConfig.Builder setMatchFilter(java.util.List p0) { huskProps.put("MatchFilter", p0); return this; }

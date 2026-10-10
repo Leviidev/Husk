@@ -10,7 +10,7 @@ public final class BoneMassRecord extends android.health.connect.datatypes.Insta
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, android.health.connect.datatypes.units.Mass p2) {}
-        public android.health.connect.datatypes.BoneMassRecord build() { return new android.health.connect.datatypes.BoneMassRecord(); }
+        public android.health.connect.datatypes.BoneMassRecord build() { android.health.connect.datatypes.BoneMassRecord x = new android.health.connect.datatypes.BoneMassRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BoneMassRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BoneMassRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BoneMassRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

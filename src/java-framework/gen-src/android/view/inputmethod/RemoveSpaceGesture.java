@@ -13,7 +13,7 @@ public final class RemoveSpaceGesture extends android.view.inputmethod.Handwriti
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.RemoveSpaceGesture build() { return new android.view.inputmethod.RemoveSpaceGesture(); }
+        public android.view.inputmethod.RemoveSpaceGesture build() { android.view.inputmethod.RemoveSpaceGesture x = new android.view.inputmethod.RemoveSpaceGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.RemoveSpaceGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.RemoveSpaceGesture.Builder setPoints(android.graphics.PointF p0, android.graphics.PointF p1) { return this; }
     }

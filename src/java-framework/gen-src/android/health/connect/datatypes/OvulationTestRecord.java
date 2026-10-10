@@ -10,7 +10,7 @@ public final class OvulationTestRecord extends android.health.connect.datatypes.
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2) {}
-        public android.health.connect.datatypes.OvulationTestRecord build() { return new android.health.connect.datatypes.OvulationTestRecord(); }
+        public android.health.connect.datatypes.OvulationTestRecord build() { android.health.connect.datatypes.OvulationTestRecord x = new android.health.connect.datatypes.OvulationTestRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.OvulationTestRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.OvulationTestRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.OvulationTestRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

@@ -20,7 +20,7 @@ public final class FormEditRecord implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, int p2) {}
-        public android.graphics.pdf.models.FormEditRecord build() { return new android.graphics.pdf.models.FormEditRecord(); }
+        public android.graphics.pdf.models.FormEditRecord build() { android.graphics.pdf.models.FormEditRecord x = new android.graphics.pdf.models.FormEditRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.pdf.models.FormEditRecord.Builder setClickPoint(android.graphics.Point p0) { huskProps.put("ClickPoint", p0); return this; }
         public android.graphics.pdf.models.FormEditRecord.Builder setSelectedIndices(int[] p0) { huskProps.put("SelectedIndices", p0); return this; }
         public android.graphics.pdf.models.FormEditRecord.Builder setText(java.lang.String p0) { huskProps.put("Text", p0); return this; }

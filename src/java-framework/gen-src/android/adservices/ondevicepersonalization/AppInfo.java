@@ -13,7 +13,7 @@ public final class AppInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.AppInfo build() { return new android.adservices.ondevicepersonalization.AppInfo(); }
+        public android.adservices.ondevicepersonalization.AppInfo build() { android.adservices.ondevicepersonalization.AppInfo x = new android.adservices.ondevicepersonalization.AppInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.AppInfo.Builder setInstalled(boolean p0) { huskProps.put("Installed", Boolean.valueOf(p0)); return this; }
     }
 }

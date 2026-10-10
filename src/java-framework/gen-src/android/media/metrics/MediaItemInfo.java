@@ -48,7 +48,7 @@ public final class MediaItemInfo implements android.os.Parcelable {
         public android.media.metrics.MediaItemInfo.Builder addCodecName(java.lang.String p0) { return this; }
         public android.media.metrics.MediaItemInfo.Builder addDataType(long p0) { return this; }
         public android.media.metrics.MediaItemInfo.Builder addSampleMimeType(java.lang.String p0) { return this; }
-        public android.media.metrics.MediaItemInfo build() { return new android.media.metrics.MediaItemInfo(); }
+        public android.media.metrics.MediaItemInfo build() { android.media.metrics.MediaItemInfo x = new android.media.metrics.MediaItemInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.MediaItemInfo.Builder setAudioChannelCount(int p0) { huskProps.put("AudioChannelCount", Integer.valueOf(p0)); return this; }
         public android.media.metrics.MediaItemInfo.Builder setAudioSampleCount(long p0) { huskProps.put("AudioSampleCount", Long.valueOf(p0)); return this; }
         public android.media.metrics.MediaItemInfo.Builder setAudioSampleRateHz(int p0) { huskProps.put("AudioSampleRateHz", Integer.valueOf(p0)); return this; }

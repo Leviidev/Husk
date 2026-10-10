@@ -13,7 +13,7 @@ public final class TrainingInterval {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.TrainingInterval build() { return new android.adservices.ondevicepersonalization.TrainingInterval(); }
+        public android.adservices.ondevicepersonalization.TrainingInterval build() { android.adservices.ondevicepersonalization.TrainingInterval x = new android.adservices.ondevicepersonalization.TrainingInterval(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.TrainingInterval.Builder setMinimumInterval(java.time.Duration p0) { huskProps.put("MinimumInterval", p0); return this; }
         public android.adservices.ondevicepersonalization.TrainingInterval.Builder setSchedulingMode(int p0) { huskProps.put("SchedulingMode", Integer.valueOf(p0)); return this; }
     }

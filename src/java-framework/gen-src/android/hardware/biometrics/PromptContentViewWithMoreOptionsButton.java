@@ -13,7 +13,7 @@ public final class PromptContentViewWithMoreOptionsButton implements android.har
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.hardware.biometrics.PromptContentViewWithMoreOptionsButton build() { return new android.hardware.biometrics.PromptContentViewWithMoreOptionsButton(); }
+        public android.hardware.biometrics.PromptContentViewWithMoreOptionsButton build() { android.hardware.biometrics.PromptContentViewWithMoreOptionsButton x = new android.hardware.biometrics.PromptContentViewWithMoreOptionsButton(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.biometrics.PromptContentViewWithMoreOptionsButton.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
         public android.hardware.biometrics.PromptContentViewWithMoreOptionsButton.Builder setMoreOptionsButtonListener(java.util.concurrent.Executor p0, android.content.DialogInterface.OnClickListener p1) { return this; }
     }

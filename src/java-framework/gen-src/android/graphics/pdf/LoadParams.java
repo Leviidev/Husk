@@ -9,7 +9,7 @@ public final class LoadParams {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.graphics.pdf.LoadParams build() { return new android.graphics.pdf.LoadParams(); }
+        public android.graphics.pdf.LoadParams build() { android.graphics.pdf.LoadParams x = new android.graphics.pdf.LoadParams(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.pdf.LoadParams.Builder setPassword(java.lang.String p0) { huskProps.put("Password", p0); return this; }
     }
 }

@@ -26,7 +26,7 @@ public final class ProviderProperties implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.location.provider.ProviderProperties p0) {}
-        public android.location.provider.ProviderProperties build() { return new android.location.provider.ProviderProperties(); }
+        public android.location.provider.ProviderProperties build() { android.location.provider.ProviderProperties x = new android.location.provider.ProviderProperties(); x.huskProps.putAll(huskProps); return x; }
         public android.location.provider.ProviderProperties.Builder setAccuracy(int p0) { huskProps.put("Accuracy", Integer.valueOf(p0)); return this; }
         public android.location.provider.ProviderProperties.Builder setHasAltitudeSupport(boolean p0) { huskProps.put("HasAltitudeSupport", Boolean.valueOf(p0)); return this; }
         public android.location.provider.ProviderProperties.Builder setHasBearingSupport(boolean p0) { huskProps.put("HasBearingSupport", Boolean.valueOf(p0)); return this; }

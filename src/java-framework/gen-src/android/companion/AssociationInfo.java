@@ -41,7 +41,7 @@ public final class AssociationInfo implements android.os.Parcelable {
         public Builder(int p0, int p1, java.lang.String p2) {}
         public Builder(int p0, int p1, java.lang.String p2, android.companion.AssociationInfo p3) {}
         public Builder(android.companion.AssociationInfo p0) {}
-        public android.companion.AssociationInfo build() { return new android.companion.AssociationInfo(); }
+        public android.companion.AssociationInfo build() { android.companion.AssociationInfo x = new android.companion.AssociationInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.companion.AssociationInfo.Builder setAssociatedDevice(android.companion.AssociatedDevice p0) { huskProps.put("AssociatedDevice", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceIcon(android.graphics.drawable.Icon p0) { huskProps.put("DeviceIcon", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceId(android.companion.DeviceId p0) { huskProps.put("DeviceId", p0); return this; }

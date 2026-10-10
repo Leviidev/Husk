@@ -14,6 +14,6 @@ public final class PutDocumentsRequest {
         public android.app.appsearch.PutDocumentsRequest.Builder addGenericDocuments(android.app.appsearch.GenericDocument[] p0) { return this; }
         public android.app.appsearch.PutDocumentsRequest.Builder addTakenActionGenericDocuments(java.util.Collection p0) { return this; }
         public android.app.appsearch.PutDocumentsRequest.Builder addTakenActionGenericDocuments(android.app.appsearch.GenericDocument[] p0) { return this; }
-        public android.app.appsearch.PutDocumentsRequest build() { return new android.app.appsearch.PutDocumentsRequest(); }
+        public android.app.appsearch.PutDocumentsRequest build() { android.app.appsearch.PutDocumentsRequest x = new android.app.appsearch.PutDocumentsRequest(); x.huskProps.putAll(huskProps); return x; }
     }
 }

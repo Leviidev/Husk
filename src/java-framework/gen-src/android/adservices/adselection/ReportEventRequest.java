@@ -17,7 +17,7 @@ public class ReportEventRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(long p0, java.lang.String p1, java.lang.String p2, int p3) {}
-        public android.adservices.adselection.ReportEventRequest build() { return new android.adservices.adselection.ReportEventRequest(); }
+        public android.adservices.adselection.ReportEventRequest build() { android.adservices.adselection.ReportEventRequest x = new android.adservices.adselection.ReportEventRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.ReportEventRequest.Builder setAdSelectionId(long p0) { huskProps.put("AdSelectionId", Long.valueOf(p0)); return this; }
         public android.adservices.adselection.ReportEventRequest.Builder setData(java.lang.String p0) { huskProps.put("Data", p0); return this; }
         public android.adservices.adselection.ReportEventRequest.Builder setInputEvent(android.view.InputEvent p0) { huskProps.put("InputEvent", p0); return this; }

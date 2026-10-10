@@ -27,7 +27,7 @@ public final class ExerciseRoute implements android.os.Parcelable {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.time.Instant p0, double p1, double p2) {}
-            public android.health.connect.datatypes.ExerciseRoute.Location build() { return new android.health.connect.datatypes.ExerciseRoute.Location(); }
+            public android.health.connect.datatypes.ExerciseRoute.Location build() { android.health.connect.datatypes.ExerciseRoute.Location x = new android.health.connect.datatypes.ExerciseRoute.Location(); x.huskProps.putAll(huskProps); return x; }
             public android.health.connect.datatypes.ExerciseRoute.Location buildWithoutValidation() { return null; }
             public android.health.connect.datatypes.ExerciseRoute.Location.Builder setAltitude(android.health.connect.datatypes.units.Length p0) { huskProps.put("Altitude", p0); return this; }
             public android.health.connect.datatypes.ExerciseRoute.Location.Builder setHorizontalAccuracy(android.health.connect.datatypes.units.Length p0) { huskProps.put("HorizontalAccuracy", p0); return this; }

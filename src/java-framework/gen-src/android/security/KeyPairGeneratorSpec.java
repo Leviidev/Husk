@@ -20,7 +20,7 @@ public final class KeyPairGeneratorSpec implements java.security.spec.AlgorithmP
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0) {}
-        public android.security.KeyPairGeneratorSpec build() { return new android.security.KeyPairGeneratorSpec(); }
+        public android.security.KeyPairGeneratorSpec build() { android.security.KeyPairGeneratorSpec x = new android.security.KeyPairGeneratorSpec(); x.huskProps.putAll(huskProps); return x; }
         public android.security.KeyPairGeneratorSpec.Builder setAlgorithmParameterSpec(java.security.spec.AlgorithmParameterSpec p0) { huskProps.put("AlgorithmParameterSpec", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setAlias(java.lang.String p0) { huskProps.put("Alias", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setEncryptionRequired() { return this; }

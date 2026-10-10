@@ -9,7 +9,7 @@ public final class IntermenstrualBleedingRecord extends android.health.connect.d
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1) {}
-        public android.health.connect.datatypes.IntermenstrualBleedingRecord build() { return new android.health.connect.datatypes.IntermenstrualBleedingRecord(); }
+        public android.health.connect.datatypes.IntermenstrualBleedingRecord build() { android.health.connect.datatypes.IntermenstrualBleedingRecord x = new android.health.connect.datatypes.IntermenstrualBleedingRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.IntermenstrualBleedingRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.IntermenstrualBleedingRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.IntermenstrualBleedingRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

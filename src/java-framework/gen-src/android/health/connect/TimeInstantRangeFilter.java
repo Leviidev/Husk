@@ -11,7 +11,7 @@ public final class TimeInstantRangeFilter implements android.health.connect.Time
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.health.connect.TimeInstantRangeFilter build() { return new android.health.connect.TimeInstantRangeFilter(); }
+        public android.health.connect.TimeInstantRangeFilter build() { android.health.connect.TimeInstantRangeFilter x = new android.health.connect.TimeInstantRangeFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.TimeInstantRangeFilter.Builder setEndTime(java.time.Instant p0) { huskProps.put("EndTime", p0); return this; }
         public android.health.connect.TimeInstantRangeFilter.Builder setStartTime(java.time.Instant p0) { huskProps.put("StartTime", p0); return this; }
     }

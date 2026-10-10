@@ -23,7 +23,7 @@ public final class TranslationContext implements android.os.Parcelable {
     public static final class Builder extends android.view.translation.TranslationContext.BaseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.translation.TranslationSpec p0, android.view.translation.TranslationSpec p1) { super(); }
-        public android.view.translation.TranslationContext build() { return new android.view.translation.TranslationContext(); }
+        public android.view.translation.TranslationContext build() { android.view.translation.TranslationContext x = new android.view.translation.TranslationContext(); x.huskProps.putAll(huskProps); return x; }
         public android.view.translation.TranslationContext.Builder setActivityId(android.app.assist.ActivityId p0) { huskProps.put("ActivityId", p0); return this; }
         public android.view.translation.TranslationContext.Builder setTranslationFlags(int p0) { huskProps.put("TranslationFlags", Integer.valueOf(p0)); return this; }
         Builder() { this((android.view.translation.TranslationSpec) null, (android.view.translation.TranslationSpec) null); }

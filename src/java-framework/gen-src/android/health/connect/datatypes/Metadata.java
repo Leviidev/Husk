@@ -21,7 +21,7 @@ public final class Metadata {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.health.connect.datatypes.Metadata build() { return new android.health.connect.datatypes.Metadata(); }
+        public android.health.connect.datatypes.Metadata build() { android.health.connect.datatypes.Metadata x = new android.health.connect.datatypes.Metadata(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.Metadata.Builder setClientRecordId(java.lang.String p0) { huskProps.put("ClientRecordId", p0); return this; }
         public android.health.connect.datatypes.Metadata.Builder setClientRecordVersion(long p0) { huskProps.put("ClientRecordVersion", Long.valueOf(p0)); return this; }
         public android.health.connect.datatypes.Metadata.Builder setDataOrigin(android.health.connect.datatypes.DataOrigin p0) { huskProps.put("DataOrigin", p0); return this; }

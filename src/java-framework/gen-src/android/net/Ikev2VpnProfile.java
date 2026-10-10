@@ -33,7 +33,7 @@ public final class Ikev2VpnProfile extends android.net.PlatformVpnProfile {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.ipsec.ike.IkeTunnelConnectionParams p0) {}
         public Builder(java.lang.String p0, java.lang.String p1) {}
-        public android.net.Ikev2VpnProfile build() { return new android.net.Ikev2VpnProfile(); }
+        public android.net.Ikev2VpnProfile build() { android.net.Ikev2VpnProfile x = new android.net.Ikev2VpnProfile(); x.huskProps.putAll(huskProps); return x; }
         public android.net.Ikev2VpnProfile.Builder restrictToTestNetworks() { return this; }
         public android.net.Ikev2VpnProfile.Builder setAllowedAlgorithms(java.util.List p0) { huskProps.put("AllowedAlgorithms", p0); return this; }
         public android.net.Ikev2VpnProfile.Builder setAuthDigitalSignature(java.security.cert.X509Certificate p0, java.security.PrivateKey p1, java.security.cert.X509Certificate p2) { return this; }

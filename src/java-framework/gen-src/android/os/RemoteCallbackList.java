@@ -32,7 +32,7 @@ public class RemoteCallbackList {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.os.RemoteCallbackList build() { return new android.os.RemoteCallbackList(); }
+        public android.os.RemoteCallbackList build() { android.os.RemoteCallbackList x = new android.os.RemoteCallbackList(); x.huskProps.putAll(huskProps); return x; }
         public android.os.RemoteCallbackList.Builder setExecutor(java.util.concurrent.Executor p0) { huskProps.put("Executor", p0); return this; }
         public android.os.RemoteCallbackList.Builder setInterfaceDiedCallback(android.os.RemoteCallbackList.Builder.InterfaceDiedCallback p0) { huskProps.put("InterfaceDiedCallback", p0); return this; }
         public android.os.RemoteCallbackList.Builder setMaxQueueSize(int p0) { huskProps.put("MaxQueueSize", Integer.valueOf(p0)); return this; }

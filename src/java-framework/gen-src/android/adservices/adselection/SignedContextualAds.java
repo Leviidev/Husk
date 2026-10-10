@@ -16,7 +16,7 @@ public final class SignedContextualAds implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.adservices.adselection.SignedContextualAds p0) {}
-        public android.adservices.adselection.SignedContextualAds build() { return new android.adservices.adselection.SignedContextualAds(); }
+        public android.adservices.adselection.SignedContextualAds build() { android.adservices.adselection.SignedContextualAds x = new android.adservices.adselection.SignedContextualAds(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.SignedContextualAds.Builder setAdsWithBid(java.util.List p0) { huskProps.put("AdsWithBid", p0); return this; }
         public android.adservices.adselection.SignedContextualAds.Builder setBuyer(android.adservices.common.AdTechIdentifier p0) { huskProps.put("Buyer", p0); return this; }
         public android.adservices.adselection.SignedContextualAds.Builder setDecisionLogicUri(android.net.Uri p0) { huskProps.put("DecisionLogicUri", p0); return this; }

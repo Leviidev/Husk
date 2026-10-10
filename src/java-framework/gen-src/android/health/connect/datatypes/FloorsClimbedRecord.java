@@ -11,7 +11,7 @@ public final class FloorsClimbedRecord extends android.health.connect.datatypes.
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, double p3) {}
-        public android.health.connect.datatypes.FloorsClimbedRecord build() { return new android.health.connect.datatypes.FloorsClimbedRecord(); }
+        public android.health.connect.datatypes.FloorsClimbedRecord build() { android.health.connect.datatypes.FloorsClimbedRecord x = new android.health.connect.datatypes.FloorsClimbedRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.FloorsClimbedRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.FloorsClimbedRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.FloorsClimbedRecord.Builder clearStartZoneOffset() { return this; }

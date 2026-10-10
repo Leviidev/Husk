@@ -23,7 +23,7 @@ public class LineBreaker {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.graphics.text.LineBreaker build() { return new android.graphics.text.LineBreaker(); }
+        public android.graphics.text.LineBreaker build() { android.graphics.text.LineBreaker x = new android.graphics.text.LineBreaker(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.text.LineBreaker.Builder setBreakStrategy(int p0) { huskProps.put("BreakStrategy", Integer.valueOf(p0)); return this; }
         public android.graphics.text.LineBreaker.Builder setHyphenationFrequency(int p0) { huskProps.put("HyphenationFrequency", Integer.valueOf(p0)); return this; }
         public android.graphics.text.LineBreaker.Builder setIndents(int[] p0) { huskProps.put("Indents", p0); return this; }

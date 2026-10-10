@@ -18,6 +18,6 @@ public final class ChildSaProposal extends android.net.ipsec.ike.SaProposal {
         public android.net.ipsec.ike.ChildSaProposal.Builder addDhGroup(int p0) { return this; }
         public android.net.ipsec.ike.ChildSaProposal.Builder addEncryptionAlgorithm(int p0, int p1) { return this; }
         public android.net.ipsec.ike.ChildSaProposal.Builder addIntegrityAlgorithm(int p0) { return this; }
-        public android.net.ipsec.ike.ChildSaProposal build() { return new android.net.ipsec.ike.ChildSaProposal(); }
+        public android.net.ipsec.ike.ChildSaProposal build() { android.net.ipsec.ike.ChildSaProposal x = new android.net.ipsec.ike.ChildSaProposal(); x.huskProps.putAll(huskProps); return x; }
     }
 }

@@ -18,7 +18,7 @@ public final class ViewTranslationRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.autofill.AutofillId p0) {}
         public Builder(android.view.autofill.AutofillId p0, long p1) {}
-        public android.view.translation.ViewTranslationRequest build() { return new android.view.translation.ViewTranslationRequest(); }
+        public android.view.translation.ViewTranslationRequest build() { android.view.translation.ViewTranslationRequest x = new android.view.translation.ViewTranslationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.view.translation.ViewTranslationRequest.Builder setValue(java.lang.String p0, android.view.translation.TranslationRequestValue p1) { return this; }
         Builder() { this((android.view.autofill.AutofillId) null); }
     }

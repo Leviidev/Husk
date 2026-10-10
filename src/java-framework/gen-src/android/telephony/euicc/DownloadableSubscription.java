@@ -23,7 +23,7 @@ public final class DownloadableSubscription implements android.os.Parcelable {
         public Builder() {}
         public Builder(android.telephony.euicc.DownloadableSubscription p0) {}
         public Builder(java.lang.String p0) {}
-        public android.telephony.euicc.DownloadableSubscription build() { return new android.telephony.euicc.DownloadableSubscription(); }
+        public android.telephony.euicc.DownloadableSubscription build() { android.telephony.euicc.DownloadableSubscription x = new android.telephony.euicc.DownloadableSubscription(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.euicc.DownloadableSubscription.Builder setAccessRules(java.util.List p0) { huskProps.put("AccessRules", p0); return this; }
         public android.telephony.euicc.DownloadableSubscription.Builder setCarrierName(java.lang.String p0) { huskProps.put("CarrierName", p0); return this; }
         public android.telephony.euicc.DownloadableSubscription.Builder setConfirmationCode(java.lang.String p0) { huskProps.put("ConfirmationCode", p0); return this; }

@@ -19,7 +19,7 @@ public final class ChildSessionConfiguration {
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder addInternalDhcpServer(java.net.InetAddress p0) { return this; }
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder addInternalDnsServer(java.net.InetAddress p0) { return this; }
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder addInternalSubnet(android.net.IpPrefix p0) { return this; }
-        public android.net.ipsec.ike.ChildSessionConfiguration build() { return new android.net.ipsec.ike.ChildSessionConfiguration(); }
+        public android.net.ipsec.ike.ChildSessionConfiguration build() { android.net.ipsec.ike.ChildSessionConfiguration x = new android.net.ipsec.ike.ChildSessionConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder clearInternalAddresses() { return this; }
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder clearInternalDhcpServers() { return this; }
         public android.net.ipsec.ike.ChildSessionConfiguration.Builder clearInternalDnsServers() { return this; }

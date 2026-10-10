@@ -25,7 +25,7 @@ public final class IpConfiguration implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.IpConfiguration build() { return new android.net.IpConfiguration(); }
+        public android.net.IpConfiguration build() { android.net.IpConfiguration x = new android.net.IpConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.net.IpConfiguration.Builder setHttpProxy(android.net.ProxyInfo p0) { huskProps.put("HttpProxy", p0); return this; }
         public android.net.IpConfiguration.Builder setStaticIpConfiguration(android.net.StaticIpConfiguration p0) { huskProps.put("StaticIpConfiguration", p0); return this; }
     }

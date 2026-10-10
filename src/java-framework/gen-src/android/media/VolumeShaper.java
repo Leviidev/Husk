@@ -41,7 +41,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
             public Builder(android.media.VolumeShaper.Configuration p0) {}
-            public android.media.VolumeShaper.Configuration build() { return new android.media.VolumeShaper.Configuration(); }
+            public android.media.VolumeShaper.Configuration build() { android.media.VolumeShaper.Configuration x = new android.media.VolumeShaper.Configuration(); x.huskProps.putAll(huskProps); return x; }
             public android.media.VolumeShaper.Configuration.Builder invertVolumes() { return this; }
             public android.media.VolumeShaper.Configuration.Builder reflectTimes() { return this; }
             public android.media.VolumeShaper.Configuration.Builder scaleToEndVolume(float p0) { return this; }
@@ -67,7 +67,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
             public Builder(android.media.VolumeShaper.Operation p0) {}
-            public android.media.VolumeShaper.Operation build() { return new android.media.VolumeShaper.Operation(); }
+            public android.media.VolumeShaper.Operation build() { android.media.VolumeShaper.Operation x = new android.media.VolumeShaper.Operation(); x.huskProps.putAll(huskProps); return x; }
             public android.media.VolumeShaper.Operation.Builder createIfNeeded() { return this; }
             public android.media.VolumeShaper.Operation.Builder defer() { return this; }
             public android.media.VolumeShaper.Operation.Builder replace(int p0, boolean p1) { return this; }

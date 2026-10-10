@@ -373,7 +373,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo build() { return new android.view.accessibility.AccessibilityNodeInfo.CollectionInfo(); }
+            public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo build() { android.view.accessibility.AccessibilityNodeInfo.CollectionInfo x = new android.view.accessibility.AccessibilityNodeInfo.CollectionInfo(); x.huskProps.putAll(huskProps); return x; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setColumnCount(int p0) { huskProps.put("ColumnCount", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setHierarchical(boolean p0) { huskProps.put("Hierarchical", Boolean.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setImportantForAccessibilityItemCount(int p0) { huskProps.put("ImportantForAccessibilityItemCount", Integer.valueOf(p0)); return this; }
@@ -409,7 +409,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo build() { return new android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo(); }
+            public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo build() { android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo x = new android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo(); x.huskProps.putAll(huskProps); return x; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnIndex(int p0) { huskProps.put("ColumnIndex", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnSpan(int p0) { huskProps.put("ColumnSpan", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnTitle(java.lang.String p0) { huskProps.put("ColumnTitle", p0); return this; }

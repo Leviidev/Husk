@@ -13,7 +13,7 @@ public final class FetchAndJoinCustomAudienceRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.Uri p0) {}
-        public android.adservices.customaudience.FetchAndJoinCustomAudienceRequest build() { return new android.adservices.customaudience.FetchAndJoinCustomAudienceRequest(); }
+        public android.adservices.customaudience.FetchAndJoinCustomAudienceRequest build() { android.adservices.customaudience.FetchAndJoinCustomAudienceRequest x = new android.adservices.customaudience.FetchAndJoinCustomAudienceRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.FetchAndJoinCustomAudienceRequest.Builder setActivationTime(java.time.Instant p0) { huskProps.put("ActivationTime", p0); return this; }
         public android.adservices.customaudience.FetchAndJoinCustomAudienceRequest.Builder setExpirationTime(java.time.Instant p0) { huskProps.put("ExpirationTime", p0); return this; }
         public android.adservices.customaudience.FetchAndJoinCustomAudienceRequest.Builder setFetchUri(android.net.Uri p0) { huskProps.put("FetchUri", p0); return this; }

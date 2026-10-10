@@ -27,7 +27,7 @@ public final class BidiFormatter {
         public Builder() {}
         public Builder(java.util.Locale p0) {}
         public Builder(boolean p0) {}
-        public android.text.BidiFormatter build() { return new android.text.BidiFormatter(); }
+        public android.text.BidiFormatter build() { android.text.BidiFormatter x = new android.text.BidiFormatter(); x.huskProps.putAll(huskProps); return x; }
         public android.text.BidiFormatter.Builder setTextDirectionHeuristic(android.text.TextDirectionHeuristic p0) { huskProps.put("TextDirectionHeuristic", p0); return this; }
         public android.text.BidiFormatter.Builder stereoReset(boolean p0) { return this; }
     }

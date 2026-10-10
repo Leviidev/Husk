@@ -14,7 +14,7 @@ public final class BeginGetCredentialRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.service.credentials.BeginGetCredentialRequest.Builder addBeginGetCredentialOption(android.service.credentials.BeginGetCredentialOption p0) { return this; }
-        public android.service.credentials.BeginGetCredentialRequest build() { return new android.service.credentials.BeginGetCredentialRequest(); }
+        public android.service.credentials.BeginGetCredentialRequest build() { android.service.credentials.BeginGetCredentialRequest x = new android.service.credentials.BeginGetCredentialRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.service.credentials.BeginGetCredentialRequest.Builder setBeginGetCredentialOptions(java.util.List p0) { huskProps.put("BeginGetCredentialOptions", p0); return this; }
         public android.service.credentials.BeginGetCredentialRequest.Builder setCallingAppInfo(android.service.credentials.CallingAppInfo p0) { huskProps.put("CallingAppInfo", p0); return this; }
     }

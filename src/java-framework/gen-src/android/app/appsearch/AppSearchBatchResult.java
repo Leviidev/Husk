@@ -14,7 +14,7 @@ public final class AppSearchBatchResult {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.app.appsearch.AppSearchBatchResult p0) {}
-        public android.app.appsearch.AppSearchBatchResult build() { return new android.app.appsearch.AppSearchBatchResult(); }
+        public android.app.appsearch.AppSearchBatchResult build() { android.app.appsearch.AppSearchBatchResult x = new android.app.appsearch.AppSearchBatchResult(); x.huskProps.putAll(huskProps); return x; }
         public android.app.appsearch.AppSearchBatchResult.Builder setFailure(java.lang.Object p0, int p1, java.lang.String p2) { return this; }
         public android.app.appsearch.AppSearchBatchResult.Builder setResult(java.lang.Object p0, android.app.appsearch.AppSearchResult p1) { return this; }
         public android.app.appsearch.AppSearchBatchResult.Builder setSuccess(java.lang.Object p0, java.lang.Object p1) { return this; }

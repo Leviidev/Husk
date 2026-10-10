@@ -21,7 +21,7 @@ public final class RequestLogRecord implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() { super(); }
         public android.adservices.ondevicepersonalization.RequestLogRecord.Builder addRow(android.content.ContentValues p0) { return this; }
-        public android.adservices.ondevicepersonalization.RequestLogRecord build() { return new android.adservices.ondevicepersonalization.RequestLogRecord(); }
+        public android.adservices.ondevicepersonalization.RequestLogRecord build() { android.adservices.ondevicepersonalization.RequestLogRecord x = new android.adservices.ondevicepersonalization.RequestLogRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.RequestLogRecord.Builder setRequestId(long p0) { huskProps.put("RequestId", Long.valueOf(p0)); return this; }
         public android.adservices.ondevicepersonalization.RequestLogRecord.Builder setRows(java.util.List p0) { huskProps.put("Rows", p0); return this; }
         public android.adservices.ondevicepersonalization.RequestLogRecord.Builder setTimeMillis(long p0) { huskProps.put("TimeMillis", Long.valueOf(p0)); return this; }

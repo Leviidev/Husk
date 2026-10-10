@@ -37,7 +37,7 @@ public final class MtpObjectInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.mtp.MtpObjectInfo p0) {}
-        public android.mtp.MtpObjectInfo build() { return new android.mtp.MtpObjectInfo(); }
+        public android.mtp.MtpObjectInfo build() { android.mtp.MtpObjectInfo x = new android.mtp.MtpObjectInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.mtp.MtpObjectInfo.Builder setAssociationDesc(int p0) { huskProps.put("AssociationDesc", Integer.valueOf(p0)); return this; }
         public android.mtp.MtpObjectInfo.Builder setAssociationType(int p0) { huskProps.put("AssociationType", Integer.valueOf(p0)); return this; }
         public android.mtp.MtpObjectInfo.Builder setCompressedSize(long p0) { huskProps.put("CompressedSize", Long.valueOf(p0)); return this; }

@@ -29,7 +29,7 @@ public class SpellCheckerSession {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams build() { return new android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams(); }
+            public android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams build() { android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams x = new android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams(); x.huskProps.putAll(huskProps); return x; }
             public android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
             public android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams.Builder setLocale(java.util.Locale p0) { huskProps.put("Locale", p0); return this; }
             public android.view.textservice.SpellCheckerSession.SpellCheckerSessionParams.Builder setShouldReferToSpellCheckerLanguageSettings(boolean p0) { huskProps.put("ShouldReferToSpellCheckerLanguageSettings", Boolean.valueOf(p0)); return this; }

@@ -11,7 +11,7 @@ public final class BasalBodyTemperatureRecord extends android.health.connect.dat
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2, android.health.connect.datatypes.units.Temperature p3) {}
-        public android.health.connect.datatypes.BasalBodyTemperatureRecord build() { return new android.health.connect.datatypes.BasalBodyTemperatureRecord(); }
+        public android.health.connect.datatypes.BasalBodyTemperatureRecord build() { android.health.connect.datatypes.BasalBodyTemperatureRecord x = new android.health.connect.datatypes.BasalBodyTemperatureRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BasalBodyTemperatureRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BasalBodyTemperatureRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BasalBodyTemperatureRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

@@ -283,7 +283,13 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     public boolean startNextMatchingActivity(Intent i) { return false; }
     public void startIntentSenderForResult(IntentSender s, int request, Intent fill, int mask, int values, int extra) {}
     public void startIntentSenderForResult(IntentSender s, int request, Intent fill, int mask, int values, int extra, Bundle o) {}
-    public void finish() { if (mFinished) return; mFinished = true; husk.AppRunner.finish(this); }
+    public void finish() {
+        if (mFinished) return;
+        mFinished = true;
+        // the app's last activity going ends the app: say where from, which is often all a log has to explain it
+        if (husk.AppRunner.top() == this && husk.AppRunner.stackSize() == 1) android.util.Log.i("Husk", "the last activity finishes", new Throwable("finish() called from"));
+        husk.AppRunner.finish(this);
+    }
     public void finishAffinity() { husk.AppRunner.finishAll(); }
     public void finishAndRemoveTask() { finishAffinity(); }
     public void finishAfterTransition() { finish(); }

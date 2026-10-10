@@ -11,7 +11,7 @@ public final class GetAdSelectionDataRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.GetAdSelectionDataRequest build() { return new android.adservices.adselection.GetAdSelectionDataRequest(); }
+        public android.adservices.adselection.GetAdSelectionDataRequest build() { android.adservices.adselection.GetAdSelectionDataRequest x = new android.adservices.adselection.GetAdSelectionDataRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.GetAdSelectionDataRequest.Builder setCoordinatorOriginUri(android.net.Uri p0) { huskProps.put("CoordinatorOriginUri", p0); return this; }
         public android.adservices.adselection.GetAdSelectionDataRequest.Builder setSeller(android.adservices.common.AdTechIdentifier p0) { huskProps.put("Seller", p0); return this; }
         public android.adservices.adselection.GetAdSelectionDataRequest.Builder setSellerConfiguration(android.adservices.adselection.SellerConfiguration p0) { huskProps.put("SellerConfiguration", p0); return this; }

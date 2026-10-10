@@ -67,7 +67,7 @@ public interface TextClassifier {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.textclassifier.TextClassifier.EntityConfig build() { return new android.view.textclassifier.TextClassifier.EntityConfig(); }
+            public android.view.textclassifier.TextClassifier.EntityConfig build() { android.view.textclassifier.TextClassifier.EntityConfig x = new android.view.textclassifier.TextClassifier.EntityConfig(); x.huskProps.putAll(huskProps); return x; }
             public android.view.textclassifier.TextClassifier.EntityConfig.Builder includeTypesFromTextClassifier(boolean p0) { return this; }
             public android.view.textclassifier.TextClassifier.EntityConfig.Builder setExcludedTypes(java.util.Collection p0) { huskProps.put("ExcludedTypes", p0); return this; }
             public android.view.textclassifier.TextClassifier.EntityConfig.Builder setHints(java.util.Collection p0) { huskProps.put("Hints", p0); return this; }

@@ -18,7 +18,7 @@ public final class BeginGetCredentialResponse implements android.os.Parcelable {
         public android.service.credentials.BeginGetCredentialResponse.Builder addAction(android.service.credentials.Action p0) { return this; }
         public android.service.credentials.BeginGetCredentialResponse.Builder addAuthenticationAction(android.service.credentials.Action p0) { return this; }
         public android.service.credentials.BeginGetCredentialResponse.Builder addCredentialEntry(android.service.credentials.CredentialEntry p0) { return this; }
-        public android.service.credentials.BeginGetCredentialResponse build() { return new android.service.credentials.BeginGetCredentialResponse(); }
+        public android.service.credentials.BeginGetCredentialResponse build() { android.service.credentials.BeginGetCredentialResponse x = new android.service.credentials.BeginGetCredentialResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.service.credentials.BeginGetCredentialResponse.Builder setActions(java.util.List p0) { huskProps.put("Actions", p0); return this; }
         public android.service.credentials.BeginGetCredentialResponse.Builder setAuthenticationActions(java.util.List p0) { huskProps.put("AuthenticationActions", p0); return this; }
         public android.service.credentials.BeginGetCredentialResponse.Builder setCredentialEntries(java.util.List p0) { huskProps.put("CredentialEntries", p0); return this; }

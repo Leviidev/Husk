@@ -34,7 +34,7 @@ public final class RangingRequest implements android.os.Parcelable {
         public android.net.wifi.rtt.RangingRequest.Builder addResponders(java.util.List p0) { return this; }
         public android.net.wifi.rtt.RangingRequest.Builder addWifiAwarePeer(android.net.MacAddress p0) { return this; }
         public android.net.wifi.rtt.RangingRequest.Builder addWifiAwarePeer(android.net.wifi.aware.PeerHandle p0) { return this; }
-        public android.net.wifi.rtt.RangingRequest build() { return new android.net.wifi.rtt.RangingRequest(); }
+        public android.net.wifi.rtt.RangingRequest build() { android.net.wifi.rtt.RangingRequest x = new android.net.wifi.rtt.RangingRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.rtt.RangingRequest.Builder setRttBurstSize(int p0) { huskProps.put("RttBurstSize", Integer.valueOf(p0)); return this; }
         public android.net.wifi.rtt.RangingRequest.Builder setSecurityMode(int p0) { huskProps.put("SecurityMode", Integer.valueOf(p0)); return this; }
         public android.net.wifi.rtt.RangingRequest.Builder setVendorData(java.util.List p0) { huskProps.put("VendorData", p0); return this; }

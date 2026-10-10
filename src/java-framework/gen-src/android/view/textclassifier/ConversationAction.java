@@ -29,7 +29,7 @@ public final class ConversationAction implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.view.textclassifier.ConversationAction build() { return new android.view.textclassifier.ConversationAction(); }
+        public android.view.textclassifier.ConversationAction build() { android.view.textclassifier.ConversationAction x = new android.view.textclassifier.ConversationAction(); x.huskProps.putAll(huskProps); return x; }
         public android.view.textclassifier.ConversationAction.Builder setAction(android.app.RemoteAction p0) { huskProps.put("Action", p0); return this; }
         public android.view.textclassifier.ConversationAction.Builder setConfidenceScore(float p0) { huskProps.put("ConfidenceScore", Float.valueOf(p0)); return this; }
         public android.view.textclassifier.ConversationAction.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

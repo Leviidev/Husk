@@ -15,7 +15,7 @@ public final class GnssAutomaticGainControl implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.location.GnssAutomaticGainControl p0) {}
-        public android.location.GnssAutomaticGainControl build() { return new android.location.GnssAutomaticGainControl(); }
+        public android.location.GnssAutomaticGainControl build() { android.location.GnssAutomaticGainControl x = new android.location.GnssAutomaticGainControl(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssAutomaticGainControl.Builder setCarrierFrequencyHz(long p0) { huskProps.put("CarrierFrequencyHz", Long.valueOf(p0)); return this; }
         public android.location.GnssAutomaticGainControl.Builder setConstellationType(int p0) { huskProps.put("ConstellationType", Integer.valueOf(p0)); return this; }
         public android.location.GnssAutomaticGainControl.Builder setLevelDb(double p0) { huskProps.put("LevelDb", Double.valueOf(p0)); return this; }

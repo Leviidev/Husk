@@ -30,7 +30,7 @@ public final class Control implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public StatefulBuilder(android.service.controls.Control p0) {}
         public StatefulBuilder(java.lang.String p0, android.app.PendingIntent p1) {}
-        public android.service.controls.Control build() { return new android.service.controls.Control(); }
+        public android.service.controls.Control build() { android.service.controls.Control x = new android.service.controls.Control(); x.huskProps.putAll(huskProps); return x; }
         public android.service.controls.Control.StatefulBuilder setAppIntent(android.app.PendingIntent p0) { huskProps.put("AppIntent", p0); return this; }
         public android.service.controls.Control.StatefulBuilder setAuthRequired(boolean p0) { huskProps.put("AuthRequired", Boolean.valueOf(p0)); return this; }
         public android.service.controls.Control.StatefulBuilder setControlId(java.lang.String p0) { huskProps.put("ControlId", p0); return this; }
@@ -50,7 +50,7 @@ public final class Control implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public StatelessBuilder(android.service.controls.Control p0) {}
         public StatelessBuilder(java.lang.String p0, android.app.PendingIntent p1) {}
-        public android.service.controls.Control build() { return new android.service.controls.Control(); }
+        public android.service.controls.Control build() { android.service.controls.Control x = new android.service.controls.Control(); x.huskProps.putAll(huskProps); return x; }
         public android.service.controls.Control.StatelessBuilder setAppIntent(android.app.PendingIntent p0) { huskProps.put("AppIntent", p0); return this; }
         public android.service.controls.Control.StatelessBuilder setControlId(java.lang.String p0) { huskProps.put("ControlId", p0); return this; }
         public android.service.controls.Control.StatelessBuilder setCustomColor(android.content.res.ColorStateList p0) { huskProps.put("CustomColor", p0); return this; }

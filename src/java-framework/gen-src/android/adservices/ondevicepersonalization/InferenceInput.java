@@ -14,7 +14,7 @@ public final class InferenceInput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.adservices.ondevicepersonalization.InferenceInput.Params p0, byte[] p1) {}
         public Builder(android.adservices.ondevicepersonalization.InferenceInput.Params p0, java.lang.Object[] p1, android.adservices.ondevicepersonalization.InferenceOutput p2) {}
-        public android.adservices.ondevicepersonalization.InferenceInput build() { return new android.adservices.ondevicepersonalization.InferenceInput(); }
+        public android.adservices.ondevicepersonalization.InferenceInput build() { android.adservices.ondevicepersonalization.InferenceInput x = new android.adservices.ondevicepersonalization.InferenceInput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.InferenceInput.Builder setBatchSize(int p0) { huskProps.put("BatchSize", Integer.valueOf(p0)); return this; }
         public android.adservices.ondevicepersonalization.InferenceInput.Builder setExpectedOutputStructure(android.adservices.ondevicepersonalization.InferenceOutput p0) { huskProps.put("ExpectedOutputStructure", p0); return this; }
         public android.adservices.ondevicepersonalization.InferenceInput.Builder setInputData(byte[] p0) { huskProps.put("InputData", p0); return this; }
@@ -37,7 +37,7 @@ public final class InferenceInput {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(android.adservices.ondevicepersonalization.KeyValueStore p0, java.lang.String p1) {}
-            public android.adservices.ondevicepersonalization.InferenceInput.Params build() { return new android.adservices.ondevicepersonalization.InferenceInput.Params(); }
+            public android.adservices.ondevicepersonalization.InferenceInput.Params build() { android.adservices.ondevicepersonalization.InferenceInput.Params x = new android.adservices.ondevicepersonalization.InferenceInput.Params(); x.huskProps.putAll(huskProps); return x; }
             public android.adservices.ondevicepersonalization.InferenceInput.Params.Builder setDelegateType(int p0) { huskProps.put("DelegateType", Integer.valueOf(p0)); return this; }
             public android.adservices.ondevicepersonalization.InferenceInput.Params.Builder setKeyValueStore(android.adservices.ondevicepersonalization.KeyValueStore p0) { huskProps.put("KeyValueStore", p0); return this; }
             public android.adservices.ondevicepersonalization.InferenceInput.Params.Builder setModelKey(java.lang.String p0) { huskProps.put("ModelKey", p0); return this; }

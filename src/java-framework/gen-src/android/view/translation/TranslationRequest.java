@@ -27,7 +27,7 @@ public final class TranslationRequest implements android.os.Parcelable {
         public Builder() { super(); }
         public android.view.translation.TranslationRequest.Builder addTranslationRequestValue(android.view.translation.TranslationRequestValue p0) { return this; }
         public android.view.translation.TranslationRequest.Builder addViewTranslationRequest(android.view.translation.ViewTranslationRequest p0) { return this; }
-        public android.view.translation.TranslationRequest build() { return new android.view.translation.TranslationRequest(); }
+        public android.view.translation.TranslationRequest build() { android.view.translation.TranslationRequest x = new android.view.translation.TranslationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.view.translation.TranslationRequest.Builder setFlags(int p0) { huskProps.put("Flags", Integer.valueOf(p0)); return this; }
         public android.view.translation.TranslationRequest.Builder setTranslationRequestValues(java.util.List p0) { huskProps.put("TranslationRequestValues", p0); return this; }
         public android.view.translation.TranslationRequest.Builder setViewTranslationRequests(java.util.List p0) { huskProps.put("ViewTranslationRequests", p0); return this; }

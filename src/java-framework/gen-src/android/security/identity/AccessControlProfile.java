@@ -8,7 +8,7 @@ public class AccessControlProfile {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.security.identity.AccessControlProfileId p0) {}
-        public android.security.identity.AccessControlProfile build() { return new android.security.identity.AccessControlProfile(); }
+        public android.security.identity.AccessControlProfile build() { android.security.identity.AccessControlProfile x = new android.security.identity.AccessControlProfile(); x.huskProps.putAll(huskProps); return x; }
         public android.security.identity.AccessControlProfile.Builder setReaderCertificate(java.security.cert.X509Certificate p0) { huskProps.put("ReaderCertificate", p0); return this; }
         public android.security.identity.AccessControlProfile.Builder setUserAuthenticationRequired(boolean p0) { huskProps.put("UserAuthenticationRequired", Boolean.valueOf(p0)); return this; }
         public android.security.identity.AccessControlProfile.Builder setUserAuthenticationTimeout(long p0) { huskProps.put("UserAuthenticationTimeout", Long.valueOf(p0)); return this; }

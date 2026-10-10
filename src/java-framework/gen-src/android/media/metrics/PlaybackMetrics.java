@@ -55,7 +55,7 @@ public final class PlaybackMetrics implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.media.metrics.PlaybackMetrics.Builder addExperimentId(long p0) { return this; }
-        public android.media.metrics.PlaybackMetrics build() { return new android.media.metrics.PlaybackMetrics(); }
+        public android.media.metrics.PlaybackMetrics build() { android.media.metrics.PlaybackMetrics x = new android.media.metrics.PlaybackMetrics(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.PlaybackMetrics.Builder setAudioUnderrunCount(int p0) { huskProps.put("AudioUnderrunCount", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackMetrics.Builder setContentType(int p0) { huskProps.put("ContentType", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackMetrics.Builder setDrmSessionId(byte[] p0) { huskProps.put("DrmSessionId", p0); return this; }

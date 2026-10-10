@@ -20,7 +20,7 @@ public final class ExerciseSessionRecord extends android.health.connect.datatype
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, int p3) {}
-        public android.health.connect.datatypes.ExerciseSessionRecord build() { return new android.health.connect.datatypes.ExerciseSessionRecord(); }
+        public android.health.connect.datatypes.ExerciseSessionRecord build() { android.health.connect.datatypes.ExerciseSessionRecord x = new android.health.connect.datatypes.ExerciseSessionRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.ExerciseSessionRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.ExerciseSessionRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.ExerciseSessionRecord.Builder clearRateOfPerceivedExertion() { return this; }

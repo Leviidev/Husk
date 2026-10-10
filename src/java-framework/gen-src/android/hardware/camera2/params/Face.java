@@ -20,7 +20,7 @@ public final class Face {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.params.Face p0) {}
-        public android.hardware.camera2.params.Face build() { return new android.hardware.camera2.params.Face(); }
+        public android.hardware.camera2.params.Face build() { android.hardware.camera2.params.Face x = new android.hardware.camera2.params.Face(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.camera2.params.Face.Builder setBounds(android.graphics.Rect p0) { huskProps.put("Bounds", p0); return this; }
         public android.hardware.camera2.params.Face.Builder setId(int p0) { huskProps.put("Id", Integer.valueOf(p0)); return this; }
         public android.hardware.camera2.params.Face.Builder setLeftEyePosition(android.graphics.Point p0) { huskProps.put("LeftEyePosition", p0); return this; }

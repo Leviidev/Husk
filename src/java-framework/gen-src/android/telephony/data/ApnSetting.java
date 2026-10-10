@@ -131,7 +131,7 @@ public class ApnSetting implements android.os.Parcelable {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.data.ApnSetting build() { return new android.telephony.data.ApnSetting(); }
+        public android.telephony.data.ApnSetting build() { android.telephony.data.ApnSetting x = new android.telephony.data.ApnSetting(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.data.ApnSetting buildWithoutCheck() { return null; }
         public android.telephony.data.ApnSetting.Builder setAlwaysOn(boolean p0) { huskProps.put("AlwaysOn", Boolean.valueOf(p0)); return this; }
         public android.telephony.data.ApnSetting.Builder setApnName(java.lang.String p0) { huskProps.put("ApnName", p0); return this; }

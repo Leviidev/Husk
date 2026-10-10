@@ -51,7 +51,7 @@ public final class SignalThresholdInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.SignalThresholdInfo build() { return new android.telephony.SignalThresholdInfo(); }
+        public android.telephony.SignalThresholdInfo build() { android.telephony.SignalThresholdInfo x = new android.telephony.SignalThresholdInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.SignalThresholdInfo.Builder setHysteresisDb(int p0) { huskProps.put("HysteresisDb", Integer.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setHysteresisMs(int p0) { huskProps.put("HysteresisMs", Integer.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setIsEnabled(boolean p0) { huskProps.put("IsEnabled", Boolean.valueOf(p0)); return this; }

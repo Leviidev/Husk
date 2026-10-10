@@ -18,7 +18,7 @@ public final class DnsOptions {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.http.DnsOptions build() { return new android.net.http.DnsOptions(); }
+        public android.net.http.DnsOptions build() { android.net.http.DnsOptions x = new android.net.http.DnsOptions(); x.huskProps.putAll(huskProps); return x; }
         public android.net.http.DnsOptions.Builder setPersistHostCache(int p0) { huskProps.put("PersistHostCache", Integer.valueOf(p0)); return this; }
         public android.net.http.DnsOptions.Builder setPersistHostCachePeriod(java.time.Duration p0) { huskProps.put("PersistHostCachePeriod", p0); return this; }
         public android.net.http.DnsOptions.Builder setPreestablishConnectionsToStaleDnsResults(int p0) { huskProps.put("PreestablishConnectionsToStaleDnsResults", Integer.valueOf(p0)); return this; }
@@ -37,7 +37,7 @@ public final class DnsOptions {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.net.http.DnsOptions.StaleDnsOptions build() { return new android.net.http.DnsOptions.StaleDnsOptions(); }
+            public android.net.http.DnsOptions.StaleDnsOptions build() { android.net.http.DnsOptions.StaleDnsOptions x = new android.net.http.DnsOptions.StaleDnsOptions(); x.huskProps.putAll(huskProps); return x; }
             public android.net.http.DnsOptions.StaleDnsOptions.Builder setAllowCrossNetworkUsage(int p0) { huskProps.put("AllowCrossNetworkUsage", Integer.valueOf(p0)); return this; }
             public android.net.http.DnsOptions.StaleDnsOptions.Builder setFreshLookupTimeout(java.time.Duration p0) { huskProps.put("FreshLookupTimeout", p0); return this; }
             public android.net.http.DnsOptions.StaleDnsOptions.Builder setMaxExpiredDelay(java.time.Duration p0) { huskProps.put("MaxExpiredDelay", p0); return this; }

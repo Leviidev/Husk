@@ -10,7 +10,7 @@ public final class DownloadCompletedOutput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.DownloadCompletedOutput.Builder addRetainedKey(java.lang.String p0) { return this; }
-        public android.adservices.ondevicepersonalization.DownloadCompletedOutput build() { return new android.adservices.ondevicepersonalization.DownloadCompletedOutput(); }
+        public android.adservices.ondevicepersonalization.DownloadCompletedOutput build() { android.adservices.ondevicepersonalization.DownloadCompletedOutput x = new android.adservices.ondevicepersonalization.DownloadCompletedOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.DownloadCompletedOutput.Builder setRetainedKeys(java.util.List p0) { huskProps.put("RetainedKeys", p0); return this; }
     }
 }

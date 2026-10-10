@@ -11,7 +11,7 @@ public final class LocalTimeRangeFilter implements android.health.connect.TimeRa
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.health.connect.LocalTimeRangeFilter build() { return new android.health.connect.LocalTimeRangeFilter(); }
+        public android.health.connect.LocalTimeRangeFilter build() { android.health.connect.LocalTimeRangeFilter x = new android.health.connect.LocalTimeRangeFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.LocalTimeRangeFilter.Builder setEndTime(java.time.LocalDateTime p0) { huskProps.put("EndTime", p0); return this; }
         public android.health.connect.LocalTimeRangeFilter.Builder setStartTime(java.time.LocalDateTime p0) { huskProps.put("StartTime", p0); return this; }
     }

@@ -172,7 +172,7 @@ public final class ScanResult implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.net.wifi.WifiSsid p0, java.lang.String p1) {}
-        public android.net.wifi.ScanResult build() { return new android.net.wifi.ScanResult(); }
+        public android.net.wifi.ScanResult build() { android.net.wifi.ScanResult x = new android.net.wifi.ScanResult(); x.huskProps.putAll(huskProps); return x; }
         public void clear() {}
         public android.net.wifi.ScanResult.Builder setAnqpDomainId(int p0) { huskProps.put("AnqpDomainId", Integer.valueOf(p0)); return this; }
         public android.net.wifi.ScanResult.Builder setBssid(java.lang.String p0) { huskProps.put("Bssid", p0); return this; }

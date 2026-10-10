@@ -21,7 +21,7 @@ public final class UserData implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.UserData.Builder addAppInfo(java.lang.String p0, android.adservices.ondevicepersonalization.AppInfo p1) { return this; }
-        public android.adservices.ondevicepersonalization.UserData build() { return new android.adservices.ondevicepersonalization.UserData(); }
+        public android.adservices.ondevicepersonalization.UserData build() { android.adservices.ondevicepersonalization.UserData x = new android.adservices.ondevicepersonalization.UserData(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.UserData.Builder setAppInfos(java.util.Map p0) { huskProps.put("AppInfos", p0); return this; }
         public android.adservices.ondevicepersonalization.UserData.Builder setAvailableStorageBytes(long p0) { huskProps.put("AvailableStorageBytes", Long.valueOf(p0)); return this; }
         public android.adservices.ondevicepersonalization.UserData.Builder setBatteryPercentage(int p0) { huskProps.put("BatteryPercentage", Integer.valueOf(p0)); return this; }

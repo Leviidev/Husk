@@ -113,7 +113,7 @@ public final class ZenPolicy implements android.os.Parcelable {
         public android.service.notification.ZenPolicy.Builder allowReminders(boolean p0) { return this; }
         public android.service.notification.ZenPolicy.Builder allowRepeatCallers(boolean p0) { return this; }
         public android.service.notification.ZenPolicy.Builder allowSystem(boolean p0) { return this; }
-        public android.service.notification.ZenPolicy build() { return new android.service.notification.ZenPolicy(); }
+        public android.service.notification.ZenPolicy build() { android.service.notification.ZenPolicy x = new android.service.notification.ZenPolicy(); x.huskProps.putAll(huskProps); return x; }
         public android.service.notification.ZenPolicy.Builder disallowAllSounds() { return this; }
         public android.service.notification.ZenPolicy.Builder hideAllVisualEffects() { return this; }
         public android.service.notification.ZenPolicy.Builder showAllVisualEffects() { return this; }

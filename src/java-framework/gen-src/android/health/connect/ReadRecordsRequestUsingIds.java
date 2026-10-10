@@ -12,7 +12,7 @@ public final class ReadRecordsRequestUsingIds extends android.health.connect.Rea
         public Builder(java.lang.Class p0) {}
         public android.health.connect.ReadRecordsRequestUsingIds.Builder addClientRecordId(java.lang.String p0) { return this; }
         public android.health.connect.ReadRecordsRequestUsingIds.Builder addId(java.lang.String p0) { return this; }
-        public android.health.connect.ReadRecordsRequestUsingIds build() { return new android.health.connect.ReadRecordsRequestUsingIds(); }
+        public android.health.connect.ReadRecordsRequestUsingIds build() { android.health.connect.ReadRecordsRequestUsingIds x = new android.health.connect.ReadRecordsRequestUsingIds(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.lang.Class) null); }
     }
 }

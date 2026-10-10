@@ -39,7 +39,7 @@ public final class BloodPressureRecord extends android.health.connect.datatypes.
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2, android.health.connect.datatypes.units.Pressure p3, android.health.connect.datatypes.units.Pressure p4, int p5) {}
-        public android.health.connect.datatypes.BloodPressureRecord build() { return new android.health.connect.datatypes.BloodPressureRecord(); }
+        public android.health.connect.datatypes.BloodPressureRecord build() { android.health.connect.datatypes.BloodPressureRecord x = new android.health.connect.datatypes.BloodPressureRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BloodPressureRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BloodPressureRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BloodPressureRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

@@ -33,7 +33,7 @@ public final class CursorAnchorInfo implements android.os.Parcelable {
         public Builder() {}
         public android.view.inputmethod.CursorAnchorInfo.Builder addCharacterBounds(int p0, float p1, float p2, float p3, float p4, int p5) { return this; }
         public android.view.inputmethod.CursorAnchorInfo.Builder addVisibleLineBounds(float p0, float p1, float p2, float p3) { return this; }
-        public android.view.inputmethod.CursorAnchorInfo build() { return new android.view.inputmethod.CursorAnchorInfo(); }
+        public android.view.inputmethod.CursorAnchorInfo build() { android.view.inputmethod.CursorAnchorInfo x = new android.view.inputmethod.CursorAnchorInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.CursorAnchorInfo.Builder clearVisibleLineBounds() { return this; }
         public void reset() {}
         public android.view.inputmethod.CursorAnchorInfo.Builder setComposingText(int p0, java.lang.CharSequence p1) { return this; }

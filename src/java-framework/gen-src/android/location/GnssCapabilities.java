@@ -75,7 +75,7 @@ public final class GnssCapabilities implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.location.GnssCapabilities p0) {}
-        public android.location.GnssCapabilities build() { return new android.location.GnssCapabilities(); }
+        public android.location.GnssCapabilities build() { android.location.GnssCapabilities x = new android.location.GnssCapabilities(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssCapabilities.Builder setGnssSignalTypes(java.util.List p0) { huskProps.put("GnssSignalTypes", p0); return this; }
         public android.location.GnssCapabilities.Builder setHasAccumulatedDeltaRange(int p0) { huskProps.put("HasAccumulatedDeltaRange", Integer.valueOf(p0)); return this; }
         public android.location.GnssCapabilities.Builder setHasAntennaInfo(boolean p0) { huskProps.put("HasAntennaInfo", Boolean.valueOf(p0)); return this; }

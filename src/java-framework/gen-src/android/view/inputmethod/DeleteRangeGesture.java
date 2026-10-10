@@ -14,7 +14,7 @@ public final class DeleteRangeGesture extends android.view.inputmethod.Previewab
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.DeleteRangeGesture build() { return new android.view.inputmethod.DeleteRangeGesture(); }
+        public android.view.inputmethod.DeleteRangeGesture build() { android.view.inputmethod.DeleteRangeGesture x = new android.view.inputmethod.DeleteRangeGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.DeleteRangeGesture.Builder setDeletionEndArea(android.graphics.RectF p0) { huskProps.put("DeletionEndArea", p0); return this; }
         public android.view.inputmethod.DeleteRangeGesture.Builder setDeletionStartArea(android.graphics.RectF p0) { huskProps.put("DeletionStartArea", p0); return this; }
         public android.view.inputmethod.DeleteRangeGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }

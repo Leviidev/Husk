@@ -15,7 +15,7 @@ public final class VisualVoicemailSms implements android.os.Parcelable {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.VisualVoicemailSms build() { return new android.telephony.VisualVoicemailSms(); }
+        public android.telephony.VisualVoicemailSms build() { android.telephony.VisualVoicemailSms x = new android.telephony.VisualVoicemailSms(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.VisualVoicemailSms.Builder setFields(android.os.Bundle p0) { huskProps.put("Fields", p0); return this; }
         public android.telephony.VisualVoicemailSms.Builder setMessageBody(java.lang.String p0) { huskProps.put("MessageBody", p0); return this; }
         public android.telephony.VisualVoicemailSms.Builder setPhoneAccountHandle(android.telecom.PhoneAccountHandle p0) { huskProps.put("PhoneAccountHandle", p0); return this; }

@@ -13,7 +13,7 @@ public final class InsertGesture extends android.view.inputmethod.HandwritingGes
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.InsertGesture build() { return new android.view.inputmethod.InsertGesture(); }
+        public android.view.inputmethod.InsertGesture build() { android.view.inputmethod.InsertGesture x = new android.view.inputmethod.InsertGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.InsertGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.InsertGesture.Builder setInsertionPoint(android.graphics.PointF p0) { huskProps.put("InsertionPoint", p0); return this; }
         public android.view.inputmethod.InsertGesture.Builder setTextToInsert(java.lang.String p0) { huskProps.put("TextToInsert", p0); return this; }

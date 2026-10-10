@@ -27,7 +27,7 @@ public final class MediaProjectionConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.media.projection.MediaProjectionConfig build() { return new android.media.projection.MediaProjectionConfig(); }
+        public android.media.projection.MediaProjectionConfig build() { android.media.projection.MediaProjectionConfig x = new android.media.projection.MediaProjectionConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.media.projection.MediaProjectionConfig.Builder setInitiallySelectedSource(int p0) { huskProps.put("InitiallySelectedSource", Integer.valueOf(p0)); return this; }
         public android.media.projection.MediaProjectionConfig.Builder setOwnAppContentProvided(android.content.Context p0, boolean p1) { return this; }
         public android.media.projection.MediaProjectionConfig.Builder setRequesterHint(java.lang.String p0) { huskProps.put("RequesterHint", p0); return this; }

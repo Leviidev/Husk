@@ -18,7 +18,7 @@ public final class IkeSessionConfiguration {
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder addIkeExtension(int p0) { return this; }
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder addPcscfServer(java.net.InetAddress p0) { return this; }
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder addRemoteVendorId(byte[] p0) { return this; }
-        public android.net.ipsec.ike.IkeSessionConfiguration build() { return new android.net.ipsec.ike.IkeSessionConfiguration(); }
+        public android.net.ipsec.ike.IkeSessionConfiguration build() { android.net.ipsec.ike.IkeSessionConfiguration x = new android.net.ipsec.ike.IkeSessionConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder clearIkeExtensions() { return this; }
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder clearPcscfServers() { return this; }
         public android.net.ipsec.ike.IkeSessionConfiguration.Builder clearRemoteApplicationVersion() { return this; }

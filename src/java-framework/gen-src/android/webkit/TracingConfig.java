@@ -25,7 +25,7 @@ public class TracingConfig {
         public android.webkit.TracingConfig.Builder addCategories(java.util.Collection p0) { return this; }
         public android.webkit.TracingConfig.Builder addCategories(int[] p0) { return this; }
         public android.webkit.TracingConfig.Builder addCategories(java.lang.String[] p0) { return this; }
-        public android.webkit.TracingConfig build() { return new android.webkit.TracingConfig(); }
+        public android.webkit.TracingConfig build() { android.webkit.TracingConfig x = new android.webkit.TracingConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.webkit.TracingConfig.Builder setTracingMode(int p0) { huskProps.put("TracingMode", Integer.valueOf(p0)); return this; }
     }
 }

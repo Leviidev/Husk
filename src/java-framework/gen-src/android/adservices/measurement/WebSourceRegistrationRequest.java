@@ -17,7 +17,7 @@ public final class WebSourceRegistrationRequest implements android.os.Parcelable
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.util.List p0, android.net.Uri p1) {}
-        public android.adservices.measurement.WebSourceRegistrationRequest build() { return new android.adservices.measurement.WebSourceRegistrationRequest(); }
+        public android.adservices.measurement.WebSourceRegistrationRequest build() { android.adservices.measurement.WebSourceRegistrationRequest x = new android.adservices.measurement.WebSourceRegistrationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.measurement.WebSourceRegistrationRequest.Builder setAppDestination(android.net.Uri p0) { huskProps.put("AppDestination", p0); return this; }
         public android.adservices.measurement.WebSourceRegistrationRequest.Builder setInputEvent(android.view.InputEvent p0) { huskProps.put("InputEvent", p0); return this; }
         public android.adservices.measurement.WebSourceRegistrationRequest.Builder setVerifiedDestination(android.net.Uri p0) { huskProps.put("VerifiedDestination", p0); return this; }

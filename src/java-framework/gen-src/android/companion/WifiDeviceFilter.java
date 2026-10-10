@@ -19,7 +19,7 @@ public final class WifiDeviceFilter implements android.companion.DeviceFilter {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.companion.WifiDeviceFilter build() { return new android.companion.WifiDeviceFilter(); }
+        public android.companion.WifiDeviceFilter build() { android.companion.WifiDeviceFilter x = new android.companion.WifiDeviceFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.companion.WifiDeviceFilter.Builder setBssid(android.net.MacAddress p0) { huskProps.put("Bssid", p0); return this; }
         public android.companion.WifiDeviceFilter.Builder setBssidMask(android.net.MacAddress p0) { huskProps.put("BssidMask", p0); return this; }
         public android.companion.WifiDeviceFilter.Builder setNamePattern(java.util.regex.Pattern p0) { huskProps.put("NamePattern", p0); return this; }

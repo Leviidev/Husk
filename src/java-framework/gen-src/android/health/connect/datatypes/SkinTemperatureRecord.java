@@ -20,7 +20,7 @@ public final class SkinTemperatureRecord extends android.health.connect.datatype
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2) {}
-        public android.health.connect.datatypes.SkinTemperatureRecord build() { return new android.health.connect.datatypes.SkinTemperatureRecord(); }
+        public android.health.connect.datatypes.SkinTemperatureRecord build() { android.health.connect.datatypes.SkinTemperatureRecord x = new android.health.connect.datatypes.SkinTemperatureRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.SkinTemperatureRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.SkinTemperatureRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.SkinTemperatureRecord.Builder clearStartZoneOffset() { return this; }

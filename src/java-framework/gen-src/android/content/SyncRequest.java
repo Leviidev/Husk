@@ -20,7 +20,7 @@ public class SyncRequest implements android.os.Parcelable {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.content.SyncRequest build() { return new android.content.SyncRequest(); }
+        public android.content.SyncRequest build() { android.content.SyncRequest x = new android.content.SyncRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.content.SyncRequest.Builder setDisallowMetered(boolean p0) { huskProps.put("DisallowMetered", Boolean.valueOf(p0)); return this; }
         public android.content.SyncRequest.Builder setExpedited(boolean p0) { huskProps.put("Expedited", Boolean.valueOf(p0)); return this; }
         public android.content.SyncRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

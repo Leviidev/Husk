@@ -45,7 +45,7 @@ public final class AssociationRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() { super(); }
         public android.companion.AssociationRequest.Builder addDeviceFilter(android.companion.DeviceFilter p0) { return this; }
-        public android.companion.AssociationRequest build() { return new android.companion.AssociationRequest(); }
+        public android.companion.AssociationRequest build() { android.companion.AssociationRequest x = new android.companion.AssociationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.companion.AssociationRequest.Builder setDeviceIcon(android.graphics.drawable.Icon p0) { huskProps.put("DeviceIcon", p0); return this; }
         public android.companion.AssociationRequest.Builder setDeviceProfile(java.lang.String p0) { huskProps.put("DeviceProfile", p0); return this; }
         public android.companion.AssociationRequest.Builder setDisplayName(java.lang.CharSequence p0) { huskProps.put("DisplayName", p0); return this; }

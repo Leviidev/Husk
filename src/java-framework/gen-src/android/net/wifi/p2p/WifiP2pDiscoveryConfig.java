@@ -14,7 +14,7 @@ public final class WifiP2pDiscoveryConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.net.wifi.p2p.WifiP2pDiscoveryConfig build() { return new android.net.wifi.p2p.WifiP2pDiscoveryConfig(); }
+        public android.net.wifi.p2p.WifiP2pDiscoveryConfig build() { android.net.wifi.p2p.WifiP2pDiscoveryConfig x = new android.net.wifi.p2p.WifiP2pDiscoveryConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.p2p.WifiP2pDiscoveryConfig.Builder setFrequencyMhz(int p0) { huskProps.put("FrequencyMhz", Integer.valueOf(p0)); return this; }
         public android.net.wifi.p2p.WifiP2pDiscoveryConfig.Builder setVendorData(java.util.List p0) { huskProps.put("VendorData", p0); return this; }
         Builder() { this((int) 0); }

@@ -15,7 +15,7 @@ public final class AudioMixerAttributes implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.media.AudioFormat p0) {}
-        public android.media.AudioMixerAttributes build() { return new android.media.AudioMixerAttributes(); }
+        public android.media.AudioMixerAttributes build() { android.media.AudioMixerAttributes x = new android.media.AudioMixerAttributes(); x.huskProps.putAll(huskProps); return x; }
         public android.media.AudioMixerAttributes.Builder setMixerBehavior(int p0) { huskProps.put("MixerBehavior", Integer.valueOf(p0)); return this; }
         Builder() { this((android.media.AudioFormat) null); }
     }

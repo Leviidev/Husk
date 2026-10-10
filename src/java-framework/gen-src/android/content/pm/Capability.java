@@ -12,7 +12,7 @@ public final class Capability implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.content.pm.Capability build() { return new android.content.pm.Capability(); }
+        public android.content.pm.Capability build() { android.content.pm.Capability x = new android.content.pm.Capability(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.lang.String) null); }
     }
 }

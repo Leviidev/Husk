@@ -17,7 +17,7 @@ public final class GnssAntennaInfo implements android.os.Parcelable {
         public Builder() {}
         public Builder(double p0, android.location.GnssAntennaInfo.PhaseCenterOffset p1) {}
         public Builder(android.location.GnssAntennaInfo p0) {}
-        public android.location.GnssAntennaInfo build() { return new android.location.GnssAntennaInfo(); }
+        public android.location.GnssAntennaInfo build() { android.location.GnssAntennaInfo x = new android.location.GnssAntennaInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssAntennaInfo.Builder setCarrierFrequencyMHz(double p0) { huskProps.put("CarrierFrequencyMHz", Double.valueOf(p0)); return this; }
         public android.location.GnssAntennaInfo.Builder setPhaseCenterOffset(android.location.GnssAntennaInfo.PhaseCenterOffset p0) { huskProps.put("PhaseCenterOffset", p0); return this; }
         public android.location.GnssAntennaInfo.Builder setPhaseCenterVariationCorrections(android.location.GnssAntennaInfo.SphericalCorrections p0) { huskProps.put("PhaseCenterVariationCorrections", p0); return this; }

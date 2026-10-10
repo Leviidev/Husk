@@ -25,7 +25,7 @@ public final class KeyedFrequencyCap implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, java.time.Duration p2) {}
-        public android.adservices.common.KeyedFrequencyCap build() { return new android.adservices.common.KeyedFrequencyCap(); }
+        public android.adservices.common.KeyedFrequencyCap build() { android.adservices.common.KeyedFrequencyCap x = new android.adservices.common.KeyedFrequencyCap(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.common.KeyedFrequencyCap.Builder setAdCounterKey(int p0) { huskProps.put("AdCounterKey", Integer.valueOf(p0)); return this; }
         public android.adservices.common.KeyedFrequencyCap.Builder setInterval(java.time.Duration p0) { huskProps.put("Interval", p0); return this; }
         public android.adservices.common.KeyedFrequencyCap.Builder setMaxCount(int p0) { huskProps.put("MaxCount", Integer.valueOf(p0)); return this; }

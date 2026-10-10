@@ -13,7 +13,7 @@ public final class TrainingExampleRecord implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.TrainingExampleRecord build() { return new android.adservices.ondevicepersonalization.TrainingExampleRecord(); }
+        public android.adservices.ondevicepersonalization.TrainingExampleRecord build() { android.adservices.ondevicepersonalization.TrainingExampleRecord x = new android.adservices.ondevicepersonalization.TrainingExampleRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.TrainingExampleRecord.Builder setResumptionToken(byte[] p0) { huskProps.put("ResumptionToken", p0); return this; }
         public android.adservices.ondevicepersonalization.TrainingExampleRecord.Builder setTrainingExample(byte[] p0) { huskProps.put("TrainingExample", p0); return this; }
     }

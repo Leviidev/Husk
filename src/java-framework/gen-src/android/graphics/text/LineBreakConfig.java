@@ -35,7 +35,7 @@ public final class LineBreakConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.graphics.text.LineBreakConfig build() { return new android.graphics.text.LineBreakConfig(); }
+        public android.graphics.text.LineBreakConfig build() { android.graphics.text.LineBreakConfig x = new android.graphics.text.LineBreakConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.text.LineBreakConfig.Builder merge(android.graphics.text.LineBreakConfig p0) { return this; }
         public android.graphics.text.LineBreakConfig.Builder reset(android.graphics.text.LineBreakConfig p0) { return this; }
         public android.graphics.text.LineBreakConfig.Builder setHyphenation(int p0) { huskProps.put("Hyphenation", Integer.valueOf(p0)); return this; }

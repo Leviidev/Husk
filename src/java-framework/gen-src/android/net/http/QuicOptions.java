@@ -15,7 +15,7 @@ public class QuicOptions {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.net.http.QuicOptions.Builder addAllowedQuicHost(java.lang.String p0) { return this; }
-        public android.net.http.QuicOptions build() { return new android.net.http.QuicOptions(); }
+        public android.net.http.QuicOptions build() { android.net.http.QuicOptions x = new android.net.http.QuicOptions(); x.huskProps.putAll(huskProps); return x; }
         public android.net.http.QuicOptions.Builder setHandshakeUserAgent(java.lang.String p0) { huskProps.put("HandshakeUserAgent", p0); return this; }
         public android.net.http.QuicOptions.Builder setIdleConnectionTimeout(java.time.Duration p0) { huskProps.put("IdleConnectionTimeout", p0); return this; }
         public android.net.http.QuicOptions.Builder setInMemoryServerConfigsCacheSize(int p0) { huskProps.put("InMemoryServerConfigsCacheSize", Integer.valueOf(p0)); return this; }

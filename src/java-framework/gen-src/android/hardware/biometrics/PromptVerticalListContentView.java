@@ -17,7 +17,7 @@ public final class PromptVerticalListContentView implements android.hardware.bio
         public Builder() {}
         public android.hardware.biometrics.PromptVerticalListContentView.Builder addListItem(android.hardware.biometrics.PromptContentItem p0) { return this; }
         public android.hardware.biometrics.PromptVerticalListContentView.Builder addListItem(android.hardware.biometrics.PromptContentItem p0, int p1) { return this; }
-        public android.hardware.biometrics.PromptVerticalListContentView build() { return new android.hardware.biometrics.PromptVerticalListContentView(); }
+        public android.hardware.biometrics.PromptVerticalListContentView build() { android.hardware.biometrics.PromptVerticalListContentView x = new android.hardware.biometrics.PromptVerticalListContentView(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.biometrics.PromptVerticalListContentView.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }
     }
 }

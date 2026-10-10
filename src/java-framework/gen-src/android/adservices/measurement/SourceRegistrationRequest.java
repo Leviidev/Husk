@@ -13,7 +13,7 @@ public final class SourceRegistrationRequest implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.util.List p0) {}
-        public android.adservices.measurement.SourceRegistrationRequest build() { return new android.adservices.measurement.SourceRegistrationRequest(); }
+        public android.adservices.measurement.SourceRegistrationRequest build() { android.adservices.measurement.SourceRegistrationRequest x = new android.adservices.measurement.SourceRegistrationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.measurement.SourceRegistrationRequest.Builder setInputEvent(android.view.InputEvent p0) { huskProps.put("InputEvent", p0); return this; }
         Builder() { this((java.util.List) null); }
     }

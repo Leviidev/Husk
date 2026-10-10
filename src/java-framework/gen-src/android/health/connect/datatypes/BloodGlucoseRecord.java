@@ -13,7 +13,7 @@ public final class BloodGlucoseRecord extends android.health.connect.datatypes.I
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2, android.health.connect.datatypes.units.BloodGlucose p3, int p4, int p5) {}
-        public android.health.connect.datatypes.BloodGlucoseRecord build() { return new android.health.connect.datatypes.BloodGlucoseRecord(); }
+        public android.health.connect.datatypes.BloodGlucoseRecord build() { android.health.connect.datatypes.BloodGlucoseRecord x = new android.health.connect.datatypes.BloodGlucoseRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BloodGlucoseRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BloodGlucoseRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BloodGlucoseRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

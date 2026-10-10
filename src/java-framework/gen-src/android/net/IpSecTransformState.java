@@ -18,7 +18,7 @@ public final class IpSecTransformState implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.IpSecTransformState build() { return new android.net.IpSecTransformState(); }
+        public android.net.IpSecTransformState build() { android.net.IpSecTransformState x = new android.net.IpSecTransformState(); x.huskProps.putAll(huskProps); return x; }
         public android.net.IpSecTransformState.Builder setByteCount(long p0) { huskProps.put("ByteCount", Long.valueOf(p0)); return this; }
         public android.net.IpSecTransformState.Builder setPacketCount(long p0) { huskProps.put("PacketCount", Long.valueOf(p0)); return this; }
         public android.net.IpSecTransformState.Builder setReplayBitmap(byte[] p0) { huskProps.put("ReplayBitmap", p0); return this; }

@@ -39,7 +39,7 @@ public final class SubscriptionPlan implements android.os.Parcelable {
         public static android.telephony.SubscriptionPlan.Builder createRecurringDaily(java.time.ZonedDateTime p0) { return new Builder(); }
         public static android.telephony.SubscriptionPlan.Builder createRecurringMonthly(java.time.ZonedDateTime p0) { return new Builder(); }
         public static android.telephony.SubscriptionPlan.Builder createRecurringWeekly(java.time.ZonedDateTime p0) { return new Builder(); }
-        public android.telephony.SubscriptionPlan build() { return new android.telephony.SubscriptionPlan(); }
+        public android.telephony.SubscriptionPlan build() { android.telephony.SubscriptionPlan x = new android.telephony.SubscriptionPlan(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.SubscriptionPlan.Builder resetNetworkTypes() { return this; }
         public android.telephony.SubscriptionPlan.Builder setDataLimit(long p0, int p1) { return this; }
         public android.telephony.SubscriptionPlan.Builder setDataUsage(long p0, long p1) { return this; }

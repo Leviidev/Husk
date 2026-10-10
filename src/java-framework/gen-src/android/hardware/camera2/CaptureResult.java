@@ -148,7 +148,7 @@ public class CaptureResult extends android.hardware.camera2.CameraMetadata {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.CaptureResult p0) {}
-        public android.hardware.camera2.CaptureResult build() { return new android.hardware.camera2.CaptureResult(); }
+        public android.hardware.camera2.CaptureResult build() { android.hardware.camera2.CaptureResult x = new android.hardware.camera2.CaptureResult(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.camera2.CaptureResult.Builder set(android.hardware.camera2.CaptureResult.Key p0, java.lang.Object p1) { return this; }
     }
     public static final class Key {

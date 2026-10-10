@@ -19,7 +19,7 @@ public final class MagnificationConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.accessibilityservice.MagnificationConfig build() { return new android.accessibilityservice.MagnificationConfig(); }
+        public android.accessibilityservice.MagnificationConfig build() { android.accessibilityservice.MagnificationConfig x = new android.accessibilityservice.MagnificationConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.accessibilityservice.MagnificationConfig.Builder setActivated(boolean p0) { huskProps.put("Activated", Boolean.valueOf(p0)); return this; }
         public android.accessibilityservice.MagnificationConfig.Builder setCenterX(float p0) { huskProps.put("CenterX", Float.valueOf(p0)); return this; }
         public android.accessibilityservice.MagnificationConfig.Builder setCenterY(float p0) { huskProps.put("CenterY", Float.valueOf(p0)); return this; }

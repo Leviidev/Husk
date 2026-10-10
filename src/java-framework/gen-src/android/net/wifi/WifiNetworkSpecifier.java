@@ -23,7 +23,7 @@ public final class WifiNetworkSpecifier extends android.net.NetworkSpecifier imp
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.WifiNetworkSpecifier build() { return new android.net.wifi.WifiNetworkSpecifier(); }
+        public android.net.wifi.WifiNetworkSpecifier build() { android.net.wifi.WifiNetworkSpecifier x = new android.net.wifi.WifiNetworkSpecifier(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.WifiNetworkSpecifier.Builder setBand(int p0) { huskProps.put("Band", Integer.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSpecifier.Builder setBssid(android.net.MacAddress p0) { huskProps.put("Bssid", p0); return this; }
         public android.net.wifi.WifiNetworkSpecifier.Builder setBssidPattern(android.net.MacAddress p0, android.net.MacAddress p1) { return this; }

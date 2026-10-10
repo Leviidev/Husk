@@ -14,7 +14,7 @@ public final class ExerciseLap implements android.health.connect.datatypes.TimeI
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.time.Instant p0, java.time.Instant p1) {}
-        public android.health.connect.datatypes.ExerciseLap build() { return new android.health.connect.datatypes.ExerciseLap(); }
+        public android.health.connect.datatypes.ExerciseLap build() { android.health.connect.datatypes.ExerciseLap x = new android.health.connect.datatypes.ExerciseLap(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.ExerciseLap buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.ExerciseLap.Builder setLength(android.health.connect.datatypes.units.Length p0) { huskProps.put("Length", p0); return this; }
         Builder() { this((java.time.Instant) null, (java.time.Instant) null); }

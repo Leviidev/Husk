@@ -22,7 +22,7 @@ public final class VcnCellUnderlyingNetworkTemplate extends android.net.vcn.VcnU
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.vcn.VcnCellUnderlyingNetworkTemplate build() { return new android.net.vcn.VcnCellUnderlyingNetworkTemplate(); }
+        public android.net.vcn.VcnCellUnderlyingNetworkTemplate build() { android.net.vcn.VcnCellUnderlyingNetworkTemplate x = new android.net.vcn.VcnCellUnderlyingNetworkTemplate(); x.huskProps.putAll(huskProps); return x; }
         public android.net.vcn.VcnCellUnderlyingNetworkTemplate.Builder setCbs(int p0) { huskProps.put("Cbs", Integer.valueOf(p0)); return this; }
         public android.net.vcn.VcnCellUnderlyingNetworkTemplate.Builder setDun(int p0) { huskProps.put("Dun", Integer.valueOf(p0)); return this; }
         public android.net.vcn.VcnCellUnderlyingNetworkTemplate.Builder setIms(int p0) { huskProps.put("Ims", Integer.valueOf(p0)); return this; }

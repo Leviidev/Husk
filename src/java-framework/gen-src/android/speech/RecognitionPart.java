@@ -27,7 +27,7 @@ public final class RecognitionPart implements android.os.Parcelable {
     public static final class Builder extends android.speech.RecognitionPart.BaseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) { super(); }
-        public android.speech.RecognitionPart build() { return new android.speech.RecognitionPart(); }
+        public android.speech.RecognitionPart build() { android.speech.RecognitionPart x = new android.speech.RecognitionPart(); x.huskProps.putAll(huskProps); return x; }
         public android.speech.RecognitionPart.Builder setConfidenceLevel(int p0) { huskProps.put("ConfidenceLevel", Integer.valueOf(p0)); return this; }
         public android.speech.RecognitionPart.Builder setFormattedText(java.lang.String p0) { huskProps.put("FormattedText", p0); return this; }
         public android.speech.RecognitionPart.Builder setRawText(java.lang.String p0) { huskProps.put("RawText", p0); return this; }

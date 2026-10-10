@@ -33,7 +33,7 @@ public final class FrequencyCapFilters implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.common.FrequencyCapFilters build() { return new android.adservices.common.FrequencyCapFilters(); }
+        public android.adservices.common.FrequencyCapFilters build() { android.adservices.common.FrequencyCapFilters x = new android.adservices.common.FrequencyCapFilters(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.common.FrequencyCapFilters.Builder setKeyedFrequencyCapsForClickEvents(java.util.List p0) { huskProps.put("KeyedFrequencyCapsForClickEvents", p0); return this; }
         public android.adservices.common.FrequencyCapFilters.Builder setKeyedFrequencyCapsForImpressionEvents(java.util.List p0) { huskProps.put("KeyedFrequencyCapsForImpressionEvents", p0); return this; }
         public android.adservices.common.FrequencyCapFilters.Builder setKeyedFrequencyCapsForViewEvents(java.util.List p0) { huskProps.put("KeyedFrequencyCapsForViewEvents", p0); return this; }

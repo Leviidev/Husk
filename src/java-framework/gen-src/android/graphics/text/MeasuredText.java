@@ -22,7 +22,7 @@ public class MeasuredText {
         public android.graphics.text.MeasuredText.Builder appendReplacementRun(android.graphics.Paint p0, int p1, float p2) { return this; }
         public android.graphics.text.MeasuredText.Builder appendStyleRun(android.graphics.Paint p0, int p1, boolean p2) { return this; }
         public android.graphics.text.MeasuredText.Builder appendStyleRun(android.graphics.Paint p0, android.graphics.text.LineBreakConfig p1, int p2, boolean p3) { return this; }
-        public android.graphics.text.MeasuredText build() { return new android.graphics.text.MeasuredText(); }
+        public android.graphics.text.MeasuredText build() { android.graphics.text.MeasuredText x = new android.graphics.text.MeasuredText(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.text.MeasuredText.Builder setComputeBounds(boolean p0) { huskProps.put("ComputeBounds", Boolean.valueOf(p0)); return this; }
         public android.graphics.text.MeasuredText.Builder setComputeHyphenation(int p0) { huskProps.put("ComputeHyphenation", Integer.valueOf(p0)); return this; }
         public android.graphics.text.MeasuredText.Builder setComputeHyphenation(boolean p0) { huskProps.put("ComputeHyphenation", Boolean.valueOf(p0)); return this; }

@@ -48,7 +48,7 @@ public final class TvInputInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0, android.content.ComponentName p1) {}
         public Builder(android.content.Context p0, android.content.pm.ResolveInfo p1) {}
-        public android.media.tv.TvInputInfo build() { return new android.media.tv.TvInputInfo(); }
+        public android.media.tv.TvInputInfo build() { android.media.tv.TvInputInfo x = new android.media.tv.TvInputInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.media.tv.TvInputInfo.Builder setCanPauseRecording(boolean p0) { huskProps.put("CanPauseRecording", Boolean.valueOf(p0)); return this; }
         public android.media.tv.TvInputInfo.Builder setCanRecord(boolean p0) { huskProps.put("CanRecord", Boolean.valueOf(p0)); return this; }
         public android.media.tv.TvInputInfo.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

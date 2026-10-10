@@ -22,7 +22,7 @@ public final class VisualVoicemailSmsFilterSettings implements android.os.Parcel
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.VisualVoicemailSmsFilterSettings build() { return new android.telephony.VisualVoicemailSmsFilterSettings(); }
+        public android.telephony.VisualVoicemailSmsFilterSettings build() { android.telephony.VisualVoicemailSmsFilterSettings x = new android.telephony.VisualVoicemailSmsFilterSettings(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.VisualVoicemailSmsFilterSettings.Builder setClientPrefix(java.lang.String p0) { huskProps.put("ClientPrefix", p0); return this; }
         public android.telephony.VisualVoicemailSmsFilterSettings.Builder setDestinationPort(int p0) { huskProps.put("DestinationPort", Integer.valueOf(p0)); return this; }
         public android.telephony.VisualVoicemailSmsFilterSettings.Builder setOriginatingNumbers(java.util.List p0) { huskProps.put("OriginatingNumbers", p0); return this; }

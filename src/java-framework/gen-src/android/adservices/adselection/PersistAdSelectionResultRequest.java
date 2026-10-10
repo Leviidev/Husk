@@ -12,7 +12,7 @@ public final class PersistAdSelectionResultRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.PersistAdSelectionResultRequest build() { return new android.adservices.adselection.PersistAdSelectionResultRequest(); }
+        public android.adservices.adselection.PersistAdSelectionResultRequest build() { android.adservices.adselection.PersistAdSelectionResultRequest x = new android.adservices.adselection.PersistAdSelectionResultRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.PersistAdSelectionResultRequest.Builder setAdSelectionDataId(long p0) { huskProps.put("AdSelectionDataId", Long.valueOf(p0)); return this; }
         public android.adservices.adselection.PersistAdSelectionResultRequest.Builder setAdSelectionId(long p0) { huskProps.put("AdSelectionId", Long.valueOf(p0)); return this; }
         public android.adservices.adselection.PersistAdSelectionResultRequest.Builder setAdSelectionResult(byte[] p0) { huskProps.put("AdSelectionResult", p0); return this; }

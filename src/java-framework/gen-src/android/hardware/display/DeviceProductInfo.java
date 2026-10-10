@@ -30,7 +30,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1) {}
-        public android.hardware.display.DeviceProductInfo build() { return new android.hardware.display.DeviceProductInfo(); }
+        public android.hardware.display.DeviceProductInfo build() { android.hardware.display.DeviceProductInfo x = new android.hardware.display.DeviceProductInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.display.DeviceProductInfo.Builder setConnectionToSinkType(int p0) { huskProps.put("ConnectionToSinkType", Integer.valueOf(p0)); return this; }
         public android.hardware.display.DeviceProductInfo.Builder setEdidStructureMetadata(int p0, int p1) { return this; }
         public android.hardware.display.DeviceProductInfo.Builder setManufactureDate(int p0, int p1) { return this; }

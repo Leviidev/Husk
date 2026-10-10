@@ -13,7 +13,7 @@ public final class RestingHeartRateRecord extends android.health.connect.datatyp
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, long p2) {}
-        public android.health.connect.datatypes.RestingHeartRateRecord build() { return new android.health.connect.datatypes.RestingHeartRateRecord(); }
+        public android.health.connect.datatypes.RestingHeartRateRecord build() { android.health.connect.datatypes.RestingHeartRateRecord x = new android.health.connect.datatypes.RestingHeartRateRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.RestingHeartRateRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.RestingHeartRateRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.RestingHeartRateRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

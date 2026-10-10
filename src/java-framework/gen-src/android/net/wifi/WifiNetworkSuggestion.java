@@ -47,7 +47,7 @@ public final class WifiNetworkSuggestion implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.WifiNetworkSuggestion build() { return new android.net.wifi.WifiNetworkSuggestion(); }
+        public android.net.wifi.WifiNetworkSuggestion build() { android.net.wifi.WifiNetworkSuggestion x = new android.net.wifi.WifiNetworkSuggestion(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setBssid(android.net.MacAddress p0) { huskProps.put("Bssid", p0); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierId(int p0) { huskProps.put("CarrierId", Integer.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierMerged(boolean p0) { huskProps.put("CarrierMerged", Boolean.valueOf(p0)); return this; }

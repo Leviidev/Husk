@@ -28,7 +28,7 @@ public final class TextBoundsInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1) {}
-        public android.view.inputmethod.TextBoundsInfo build() { return new android.view.inputmethod.TextBoundsInfo(); }
+        public android.view.inputmethod.TextBoundsInfo build() { android.view.inputmethod.TextBoundsInfo x = new android.view.inputmethod.TextBoundsInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.TextBoundsInfo.Builder clear() { return this; }
         public android.view.inputmethod.TextBoundsInfo.Builder setCharacterBidiLevel(int[] p0) { huskProps.put("CharacterBidiLevel", p0); return this; }
         public android.view.inputmethod.TextBoundsInfo.Builder setCharacterBounds(float[] p0) { huskProps.put("CharacterBounds", p0); return this; }

@@ -30,7 +30,7 @@ public final class PlaybackStateEvent extends android.media.metrics.Event implem
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.media.metrics.PlaybackStateEvent build() { return new android.media.metrics.PlaybackStateEvent(); }
+        public android.media.metrics.PlaybackStateEvent build() { android.media.metrics.PlaybackStateEvent x = new android.media.metrics.PlaybackStateEvent(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.PlaybackStateEvent.Builder setMetricsBundle(android.os.Bundle p0) { huskProps.put("MetricsBundle", p0); return this; }
         public android.media.metrics.PlaybackStateEvent.Builder setState(int p0) { huskProps.put("State", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackStateEvent.Builder setTimeSinceCreatedMillis(long p0) { huskProps.put("TimeSinceCreatedMillis", Long.valueOf(p0)); return this; }

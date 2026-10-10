@@ -58,7 +58,7 @@ public final class BluetoothCodecConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.BluetoothCodecConfig build() { return new android.bluetooth.BluetoothCodecConfig(); }
+        public android.bluetooth.BluetoothCodecConfig build() { android.bluetooth.BluetoothCodecConfig x = new android.bluetooth.BluetoothCodecConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.BluetoothCodecConfig.Builder setBitsPerSample(int p0) { huskProps.put("BitsPerSample", Integer.valueOf(p0)); return this; }
         public android.bluetooth.BluetoothCodecConfig.Builder setChannelMode(int p0) { huskProps.put("ChannelMode", Integer.valueOf(p0)); return this; }
         public android.bluetooth.BluetoothCodecConfig.Builder setCodecPriority(int p0) { huskProps.put("CodecPriority", Integer.valueOf(p0)); return this; }

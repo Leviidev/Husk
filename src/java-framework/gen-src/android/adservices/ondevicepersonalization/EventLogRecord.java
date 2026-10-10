@@ -22,7 +22,7 @@ public final class EventLogRecord implements android.os.Parcelable {
     public static final class Builder extends android.adservices.ondevicepersonalization.EventLogRecord.BaseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() { super(); }
-        public android.adservices.ondevicepersonalization.EventLogRecord build() { return new android.adservices.ondevicepersonalization.EventLogRecord(); }
+        public android.adservices.ondevicepersonalization.EventLogRecord build() { android.adservices.ondevicepersonalization.EventLogRecord x = new android.adservices.ondevicepersonalization.EventLogRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.EventLogRecord.Builder setData(android.content.ContentValues p0) { huskProps.put("Data", p0); return this; }
         public android.adservices.ondevicepersonalization.EventLogRecord.Builder setRequestLogRecord(android.adservices.ondevicepersonalization.RequestLogRecord p0) { huskProps.put("RequestLogRecord", p0); return this; }
         public android.adservices.ondevicepersonalization.EventLogRecord.Builder setRowIndex(int p0) { huskProps.put("RowIndex", Integer.valueOf(p0)); return this; }

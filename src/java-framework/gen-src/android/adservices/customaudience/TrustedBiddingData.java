@@ -13,7 +13,7 @@ public final class TrustedBiddingData implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.customaudience.TrustedBiddingData build() { return new android.adservices.customaudience.TrustedBiddingData(); }
+        public android.adservices.customaudience.TrustedBiddingData build() { android.adservices.customaudience.TrustedBiddingData x = new android.adservices.customaudience.TrustedBiddingData(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.TrustedBiddingData.Builder setTrustedBiddingKeys(java.util.List p0) { huskProps.put("TrustedBiddingKeys", p0); return this; }
         public android.adservices.customaudience.TrustedBiddingData.Builder setTrustedBiddingUri(android.net.Uri p0) { huskProps.put("TrustedBiddingUri", p0); return this; }
     }

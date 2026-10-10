@@ -13,7 +13,7 @@ public final class ReportSystemUsageRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1, java.lang.String p2, java.lang.String p3) {}
-        public android.app.appsearch.ReportSystemUsageRequest build() { return new android.app.appsearch.ReportSystemUsageRequest(); }
+        public android.app.appsearch.ReportSystemUsageRequest build() { android.app.appsearch.ReportSystemUsageRequest x = new android.app.appsearch.ReportSystemUsageRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.app.appsearch.ReportSystemUsageRequest.Builder setUsageTimestampMillis(long p0) { huskProps.put("UsageTimestampMillis", Long.valueOf(p0)); return this; }
         Builder() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
     }

@@ -15,7 +15,7 @@ public final class ContextParams {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.content.ContextParams p0) {}
-        public android.content.ContextParams build() { return new android.content.ContextParams(); }
+        public android.content.ContextParams build() { android.content.ContextParams x = new android.content.ContextParams(); x.huskProps.putAll(huskProps); return x; }
         public android.content.ContextParams.Builder setAttributionTag(java.lang.String p0) { huskProps.put("AttributionTag", p0); return this; }
         public android.content.ContextParams.Builder setNextAttributionSource(android.content.AttributionSource p0) { huskProps.put("NextAttributionSource", p0); return this; }
         public android.content.ContextParams.Builder setRenouncedPermissions(java.util.Set p0) { huskProps.put("RenouncedPermissions", p0); return this; }

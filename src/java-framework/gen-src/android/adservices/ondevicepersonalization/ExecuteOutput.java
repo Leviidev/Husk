@@ -14,7 +14,7 @@ public final class ExecuteOutput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.ExecuteOutput.Builder addEventLogRecord(android.adservices.ondevicepersonalization.EventLogRecord p0) { return this; }
-        public android.adservices.ondevicepersonalization.ExecuteOutput build() { return new android.adservices.ondevicepersonalization.ExecuteOutput(); }
+        public android.adservices.ondevicepersonalization.ExecuteOutput build() { android.adservices.ondevicepersonalization.ExecuteOutput x = new android.adservices.ondevicepersonalization.ExecuteOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.ExecuteOutput.Builder setBestValue(int p0) { huskProps.put("BestValue", Integer.valueOf(p0)); return this; }
         public android.adservices.ondevicepersonalization.ExecuteOutput.Builder setEventLogRecords(java.util.List p0) { huskProps.put("EventLogRecords", p0); return this; }
         public android.adservices.ondevicepersonalization.ExecuteOutput.Builder setOutputData(byte[] p0) { huskProps.put("OutputData", p0); return this; }

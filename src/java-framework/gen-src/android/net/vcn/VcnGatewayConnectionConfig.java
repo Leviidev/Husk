@@ -28,7 +28,7 @@ public final class VcnGatewayConnectionConfig {
         public Builder(java.lang.String p0, android.net.ipsec.ike.IkeTunnelConnectionParams p1) {}
         public android.net.vcn.VcnGatewayConnectionConfig.Builder addExposedCapability(int p0) { return this; }
         public android.net.vcn.VcnGatewayConnectionConfig.Builder addGatewayOption(int p0) { return this; }
-        public android.net.vcn.VcnGatewayConnectionConfig build() { return new android.net.vcn.VcnGatewayConnectionConfig(); }
+        public android.net.vcn.VcnGatewayConnectionConfig build() { android.net.vcn.VcnGatewayConnectionConfig x = new android.net.vcn.VcnGatewayConnectionConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.vcn.VcnGatewayConnectionConfig.Builder removeExposedCapability(int p0) { return this; }
         public android.net.vcn.VcnGatewayConnectionConfig.Builder removeGatewayOption(int p0) { return this; }
         public android.net.vcn.VcnGatewayConnectionConfig.Builder setMaxMtu(int p0) { huskProps.put("MaxMtu", Integer.valueOf(p0)); return this; }

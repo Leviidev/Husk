@@ -764,7 +764,7 @@ public class WifiManager {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.net.wifi.WifiManager.ScreenOffScanSchedule build() { return new android.net.wifi.WifiManager.ScreenOffScanSchedule(); }
+            public android.net.wifi.WifiManager.ScreenOffScanSchedule build() { android.net.wifi.WifiManager.ScreenOffScanSchedule x = new android.net.wifi.WifiManager.ScreenOffScanSchedule(); x.huskProps.putAll(huskProps); return x; }
             public android.net.wifi.WifiManager.ScreenOffScanSchedule.Builder setMovingScanInterval(java.time.Duration p0) { huskProps.put("MovingScanInterval", p0); return this; }
             public android.net.wifi.WifiManager.ScreenOffScanSchedule.Builder setScanIterations(int p0) { huskProps.put("ScanIterations", Integer.valueOf(p0)); return this; }
             public android.net.wifi.WifiManager.ScreenOffScanSchedule.Builder setScanMultiplier(int p0) { huskProps.put("ScanMultiplier", Integer.valueOf(p0)); return this; }

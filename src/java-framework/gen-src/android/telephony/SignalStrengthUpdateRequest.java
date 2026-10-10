@@ -15,7 +15,7 @@ public final class SignalStrengthUpdateRequest implements android.os.Parcelable 
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.SignalStrengthUpdateRequest build() { return new android.telephony.SignalStrengthUpdateRequest(); }
+        public android.telephony.SignalStrengthUpdateRequest build() { android.telephony.SignalStrengthUpdateRequest x = new android.telephony.SignalStrengthUpdateRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.SignalStrengthUpdateRequest.Builder setReportingRequestedWhileIdle(boolean p0) { huskProps.put("ReportingRequestedWhileIdle", Boolean.valueOf(p0)); return this; }
         public android.telephony.SignalStrengthUpdateRequest.Builder setSignalThresholdInfos(java.util.Collection p0) { huskProps.put("SignalThresholdInfos", p0); return this; }
         public android.telephony.SignalStrengthUpdateRequest.Builder setSystemThresholdReportingRequestedWhileIdle(boolean p0) { huskProps.put("SystemThresholdReportingRequestedWhileIdle", Boolean.valueOf(p0)); return this; }

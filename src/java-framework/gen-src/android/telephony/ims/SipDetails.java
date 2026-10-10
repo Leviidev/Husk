@@ -22,7 +22,7 @@ public final class SipDetails implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telephony.ims.SipDetails build() { return new android.telephony.ims.SipDetails(); }
+        public android.telephony.ims.SipDetails build() { android.telephony.ims.SipDetails x = new android.telephony.ims.SipDetails(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.ims.SipDetails.Builder setCSeq(int p0) { huskProps.put("CSeq", Integer.valueOf(p0)); return this; }
         public android.telephony.ims.SipDetails.Builder setCallId(java.lang.String p0) { huskProps.put("CallId", p0); return this; }
         public android.telephony.ims.SipDetails.Builder setSipResponseCode(int p0, java.lang.String p1) { return this; }

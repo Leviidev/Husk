@@ -26,7 +26,7 @@ public final class ConnectionRequest implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telecom.ConnectionRequest build() { return new android.telecom.ConnectionRequest(); }
+        public android.telecom.ConnectionRequest build() { android.telecom.ConnectionRequest x = new android.telecom.ConnectionRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.telecom.ConnectionRequest.Builder setAccountHandle(android.telecom.PhoneAccountHandle p0) { huskProps.put("AccountHandle", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setAddress(android.net.Uri p0) { huskProps.put("Address", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

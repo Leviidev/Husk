@@ -11,7 +11,7 @@ public final class WheelchairPushesRecord extends android.health.connect.datatyp
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, long p3) {}
-        public android.health.connect.datatypes.WheelchairPushesRecord build() { return new android.health.connect.datatypes.WheelchairPushesRecord(); }
+        public android.health.connect.datatypes.WheelchairPushesRecord build() { android.health.connect.datatypes.WheelchairPushesRecord x = new android.health.connect.datatypes.WheelchairPushesRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.WheelchairPushesRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.WheelchairPushesRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.WheelchairPushesRecord.Builder clearStartZoneOffset() { return this; }

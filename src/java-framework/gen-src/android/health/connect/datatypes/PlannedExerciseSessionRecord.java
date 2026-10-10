@@ -19,7 +19,7 @@ public final class PlannedExerciseSessionRecord extends android.health.connect.d
         public Builder(android.health.connect.datatypes.Metadata p0, int p1, java.time.Instant p2, java.time.Instant p3) {}
         public Builder(android.health.connect.datatypes.Metadata p0, int p1, java.time.LocalDate p2, java.time.Duration p3) {}
         public android.health.connect.datatypes.PlannedExerciseSessionRecord.Builder addBlock(android.health.connect.datatypes.PlannedExerciseBlock p0) { return this; }
-        public android.health.connect.datatypes.PlannedExerciseSessionRecord build() { return new android.health.connect.datatypes.PlannedExerciseSessionRecord(); }
+        public android.health.connect.datatypes.PlannedExerciseSessionRecord build() { android.health.connect.datatypes.PlannedExerciseSessionRecord x = new android.health.connect.datatypes.PlannedExerciseSessionRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.PlannedExerciseSessionRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.PlannedExerciseSessionRecord.Builder clearBlocks() { return this; }
         public android.health.connect.datatypes.PlannedExerciseSessionRecord.Builder clearEndZoneOffset() { return this; }

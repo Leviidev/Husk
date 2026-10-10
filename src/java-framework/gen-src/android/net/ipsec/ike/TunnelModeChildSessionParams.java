@@ -23,7 +23,7 @@ public final class TunnelModeChildSessionParams extends android.net.ipsec.ike.Ch
         public android.net.ipsec.ike.TunnelModeChildSessionParams.Builder addInternalDnsServerRequest(java.net.InetAddress p0) { return this; }
         public android.net.ipsec.ike.TunnelModeChildSessionParams.Builder addOutboundTrafficSelectors(android.net.ipsec.ike.IkeTrafficSelector p0) { return this; }
         public android.net.ipsec.ike.TunnelModeChildSessionParams.Builder addSaProposal(android.net.ipsec.ike.ChildSaProposal p0) { return this; }
-        public android.net.ipsec.ike.TunnelModeChildSessionParams build() { return new android.net.ipsec.ike.TunnelModeChildSessionParams(); }
+        public android.net.ipsec.ike.TunnelModeChildSessionParams build() { android.net.ipsec.ike.TunnelModeChildSessionParams x = new android.net.ipsec.ike.TunnelModeChildSessionParams(); x.huskProps.putAll(huskProps); return x; }
         public android.net.ipsec.ike.TunnelModeChildSessionParams.Builder setLifetimeSeconds(int p0, int p1) { return this; }
     }
     public interface ConfigRequestIpv4Address extends android.net.ipsec.ike.TunnelModeChildSessionParams.TunnelModeChildConfigRequest {

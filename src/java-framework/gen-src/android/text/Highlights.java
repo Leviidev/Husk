@@ -13,6 +13,6 @@ public class Highlights {
         public Builder() {}
         public android.text.Highlights.Builder addRange(android.graphics.Paint p0, int p1, int p2) { return this; }
         public android.text.Highlights.Builder addRanges(android.graphics.Paint p0, int[] p1) { return this; }
-        public android.text.Highlights build() { return new android.text.Highlights(); }
+        public android.text.Highlights build() { android.text.Highlights x = new android.text.Highlights(); x.huskProps.putAll(huskProps); return x; }
     }
 }

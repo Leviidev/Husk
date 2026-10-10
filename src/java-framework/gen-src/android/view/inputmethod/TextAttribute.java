@@ -13,7 +13,7 @@ public final class TextAttribute implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.TextAttribute build() { return new android.view.inputmethod.TextAttribute(); }
+        public android.view.inputmethod.TextAttribute build() { android.view.inputmethod.TextAttribute x = new android.view.inputmethod.TextAttribute(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.TextAttribute.Builder setExtras(android.os.PersistableBundle p0) { huskProps.put("Extras", p0); return this; }
         public android.view.inputmethod.TextAttribute.Builder setTextConversionSuggestions(java.util.List p0) { huskProps.put("TextConversionSuggestions", p0); return this; }
     }

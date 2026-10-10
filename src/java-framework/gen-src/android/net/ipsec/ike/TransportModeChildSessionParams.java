@@ -14,7 +14,7 @@ public final class TransportModeChildSessionParams extends android.net.ipsec.ike
         public android.net.ipsec.ike.TransportModeChildSessionParams.Builder addInboundTrafficSelectors(android.net.ipsec.ike.IkeTrafficSelector p0) { return this; }
         public android.net.ipsec.ike.TransportModeChildSessionParams.Builder addOutboundTrafficSelectors(android.net.ipsec.ike.IkeTrafficSelector p0) { return this; }
         public android.net.ipsec.ike.TransportModeChildSessionParams.Builder addSaProposal(android.net.ipsec.ike.ChildSaProposal p0) { return this; }
-        public android.net.ipsec.ike.TransportModeChildSessionParams build() { return new android.net.ipsec.ike.TransportModeChildSessionParams(); }
+        public android.net.ipsec.ike.TransportModeChildSessionParams build() { android.net.ipsec.ike.TransportModeChildSessionParams x = new android.net.ipsec.ike.TransportModeChildSessionParams(); x.huskProps.putAll(huskProps); return x; }
         public android.net.ipsec.ike.TransportModeChildSessionParams.Builder setLifetimeSeconds(int p0, int p1) { return this; }
     }
 }

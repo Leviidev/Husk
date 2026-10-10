@@ -17,7 +17,7 @@ public final class WifiAwareDataPathSecurityConfig implements android.os.Parcela
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.net.wifi.aware.WifiAwareDataPathSecurityConfig build() { return new android.net.wifi.aware.WifiAwareDataPathSecurityConfig(); }
+        public android.net.wifi.aware.WifiAwareDataPathSecurityConfig build() { android.net.wifi.aware.WifiAwareDataPathSecurityConfig x = new android.net.wifi.aware.WifiAwareDataPathSecurityConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPmk(byte[] p0) { huskProps.put("Pmk", p0); return this; }
         public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPmkId(byte[] p0) { huskProps.put("PmkId", p0); return this; }
         public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPskPassphrase(java.lang.String p0) { huskProps.put("PskPassphrase", p0); return this; }

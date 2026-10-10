@@ -18,7 +18,7 @@ public final class AdFilters implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.common.AdFilters build() { return new android.adservices.common.AdFilters(); }
+        public android.adservices.common.AdFilters build() { android.adservices.common.AdFilters x = new android.adservices.common.AdFilters(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.common.AdFilters.Builder setAppInstallFilters(android.adservices.common.AppInstallFilters p0) { huskProps.put("AppInstallFilters", p0); return this; }
         public android.adservices.common.AdFilters.Builder setFrequencyCapFilters(android.adservices.common.FrequencyCapFilters p0) { huskProps.put("FrequencyCapFilters", p0); return this; }
     }

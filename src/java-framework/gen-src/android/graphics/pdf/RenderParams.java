@@ -21,7 +21,7 @@ public final class RenderParams {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.graphics.pdf.RenderParams build() { return new android.graphics.pdf.RenderParams(); }
+        public android.graphics.pdf.RenderParams build() { android.graphics.pdf.RenderParams x = new android.graphics.pdf.RenderParams(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.pdf.RenderParams.Builder setRenderFlags(int p0) { huskProps.put("RenderFlags", Integer.valueOf(p0)); return this; }
         public android.graphics.pdf.RenderParams.Builder setRenderFlags(int p0, int p1) { return this; }
         public android.graphics.pdf.RenderParams.Builder setRenderFormContentMode(int p0) { huskProps.put("RenderFormContentMode", Integer.valueOf(p0)); return this; }

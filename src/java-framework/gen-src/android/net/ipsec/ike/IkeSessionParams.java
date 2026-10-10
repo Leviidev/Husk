@@ -74,7 +74,7 @@ public final class IkeSessionParams {
         public android.net.ipsec.ike.IkeSessionParams.Builder addPcscfServerRequest(int p0) { return this; }
         public android.net.ipsec.ike.IkeSessionParams.Builder addPcscfServerRequest(java.net.InetAddress p0) { return this; }
         public android.net.ipsec.ike.IkeSessionParams.Builder addSaProposal(android.net.ipsec.ike.IkeSaProposal p0) { return this; }
-        public android.net.ipsec.ike.IkeSessionParams build() { return new android.net.ipsec.ike.IkeSessionParams(); }
+        public android.net.ipsec.ike.IkeSessionParams build() { android.net.ipsec.ike.IkeSessionParams x = new android.net.ipsec.ike.IkeSessionParams(); x.huskProps.putAll(huskProps); return x; }
         public android.net.ipsec.ike.IkeSessionParams.Builder removeIkeOption(int p0) { return this; }
         public android.net.ipsec.ike.IkeSessionParams.Builder setAuthDigitalSignature(java.security.cert.X509Certificate p0, java.security.cert.X509Certificate p1, java.security.PrivateKey p2) { return this; }
         public android.net.ipsec.ike.IkeSessionParams.Builder setAuthDigitalSignature(java.security.cert.X509Certificate p0, java.security.cert.X509Certificate p1, java.util.List p2, java.security.PrivateKey p3) { return this; }

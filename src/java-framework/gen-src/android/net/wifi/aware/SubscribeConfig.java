@@ -54,7 +54,7 @@ public final class SubscribeConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.aware.SubscribeConfig build() { return new android.net.wifi.aware.SubscribeConfig(); }
+        public android.net.wifi.aware.SubscribeConfig build() { android.net.wifi.aware.SubscribeConfig x = new android.net.wifi.aware.SubscribeConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.aware.SubscribeConfig.Builder setCenterFreq0Mhz(int p0) { huskProps.put("CenterFreq0Mhz", Integer.valueOf(p0)); return this; }
         public android.net.wifi.aware.SubscribeConfig.Builder setCenterFreq1Mhz(int p0) { huskProps.put("CenterFreq1Mhz", Integer.valueOf(p0)); return this; }
         public android.net.wifi.aware.SubscribeConfig.Builder setChannelWidth(int p0) { huskProps.put("ChannelWidth", Integer.valueOf(p0)); return this; }

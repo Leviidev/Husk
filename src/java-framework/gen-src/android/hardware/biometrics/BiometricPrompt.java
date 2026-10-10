@@ -60,7 +60,7 @@ public class BiometricPrompt implements android.hardware.biometrics.BiometricAut
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0) {}
         public android.hardware.biometrics.BiometricPrompt.Builder addFallbackOption(java.lang.CharSequence p0, int p1, java.util.concurrent.Executor p2, android.content.DialogInterface.OnClickListener p3) { return this; }
-        public android.hardware.biometrics.BiometricPrompt build() { return new android.hardware.biometrics.BiometricPrompt(); }
+        public android.hardware.biometrics.BiometricPrompt build() { android.hardware.biometrics.BiometricPrompt x = new android.hardware.biometrics.BiometricPrompt(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.biometrics.BiometricPrompt.Builder setAllowBackgroundAuthentication(boolean p0) { huskProps.put("AllowBackgroundAuthentication", Boolean.valueOf(p0)); return this; }
         public android.hardware.biometrics.BiometricPrompt.Builder setAllowBackgroundAuthentication(boolean p0, boolean p1) { return this; }
         public android.hardware.biometrics.BiometricPrompt.Builder setAllowedAuthenticators(int p0) { huskProps.put("AllowedAuthenticators", Integer.valueOf(p0)); return this; }

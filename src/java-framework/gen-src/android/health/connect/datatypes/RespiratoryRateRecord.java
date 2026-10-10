@@ -10,7 +10,7 @@ public final class RespiratoryRateRecord extends android.health.connect.datatype
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, double p2) {}
-        public android.health.connect.datatypes.RespiratoryRateRecord build() { return new android.health.connect.datatypes.RespiratoryRateRecord(); }
+        public android.health.connect.datatypes.RespiratoryRateRecord build() { android.health.connect.datatypes.RespiratoryRateRecord x = new android.health.connect.datatypes.RespiratoryRateRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.RespiratoryRateRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.RespiratoryRateRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.RespiratoryRateRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

@@ -57,7 +57,7 @@ public class PrecomputedText implements android.text.Spannable {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(android.text.PrecomputedText.Params p0) {}
             public Builder(android.text.TextPaint p0) {}
-            public android.text.PrecomputedText.Params build() { return new android.text.PrecomputedText.Params(); }
+            public android.text.PrecomputedText.Params build() { android.text.PrecomputedText.Params x = new android.text.PrecomputedText.Params(); x.huskProps.putAll(huskProps); return x; }
             public android.text.PrecomputedText.Params.Builder setBreakStrategy(int p0) { huskProps.put("BreakStrategy", Integer.valueOf(p0)); return this; }
             public android.text.PrecomputedText.Params.Builder setHyphenationFrequency(int p0) { huskProps.put("HyphenationFrequency", Integer.valueOf(p0)); return this; }
             public android.text.PrecomputedText.Params.Builder setLineBreakConfig(android.graphics.text.LineBreakConfig p0) { huskProps.put("LineBreakConfig", p0); return this; }

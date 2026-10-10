@@ -11,7 +11,7 @@ public final class RenderOutput {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.RenderOutput build() { return new android.adservices.ondevicepersonalization.RenderOutput(); }
+        public android.adservices.ondevicepersonalization.RenderOutput build() { android.adservices.ondevicepersonalization.RenderOutput x = new android.adservices.ondevicepersonalization.RenderOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.RenderOutput.Builder setContent(java.lang.String p0) { huskProps.put("Content", p0); return this; }
         public android.adservices.ondevicepersonalization.RenderOutput.Builder setTemplateId(java.lang.String p0) { huskProps.put("TemplateId", p0); return this; }
         public android.adservices.ondevicepersonalization.RenderOutput.Builder setTemplateParams(android.os.PersistableBundle p0) { huskProps.put("TemplateParams", p0); return this; }

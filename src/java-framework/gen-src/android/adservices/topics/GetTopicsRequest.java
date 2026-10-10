@@ -10,7 +10,7 @@ public final class GetTopicsRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.topics.GetTopicsRequest build() { return new android.adservices.topics.GetTopicsRequest(); }
+        public android.adservices.topics.GetTopicsRequest build() { android.adservices.topics.GetTopicsRequest x = new android.adservices.topics.GetTopicsRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.topics.GetTopicsRequest.Builder setAdsSdkName(java.lang.String p0) { huskProps.put("AdsSdkName", p0); return this; }
         public android.adservices.topics.GetTopicsRequest.Builder setShouldRecordObservation(boolean p0) { huskProps.put("ShouldRecordObservation", Boolean.valueOf(p0)); return this; }
     }

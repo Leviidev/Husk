@@ -65,7 +65,7 @@ public final class ResponderConfig implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.net.wifi.rtt.ResponderConfig p0) {}
-        public android.net.wifi.rtt.ResponderConfig build() { return new android.net.wifi.rtt.ResponderConfig(); }
+        public android.net.wifi.rtt.ResponderConfig build() { android.net.wifi.rtt.ResponderConfig x = new android.net.wifi.rtt.ResponderConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.rtt.ResponderConfig.Builder set80211azNtbSupported(boolean p0) { huskProps.put("80211azNtbSupported", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.rtt.ResponderConfig.Builder set80211mcSupported(boolean p0) { huskProps.put("80211mcSupported", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.rtt.ResponderConfig.Builder setCenterFreq0Mhz(int p0) { huskProps.put("CenterFreq0Mhz", Integer.valueOf(p0)); return this; }

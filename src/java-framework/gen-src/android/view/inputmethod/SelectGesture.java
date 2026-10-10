@@ -13,7 +13,7 @@ public final class SelectGesture extends android.view.inputmethod.PreviewableHan
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.SelectGesture build() { return new android.view.inputmethod.SelectGesture(); }
+        public android.view.inputmethod.SelectGesture build() { android.view.inputmethod.SelectGesture x = new android.view.inputmethod.SelectGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.SelectGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.SelectGesture.Builder setGranularity(int p0) { huskProps.put("Granularity", Integer.valueOf(p0)); return this; }
         public android.view.inputmethod.SelectGesture.Builder setSelectionArea(android.graphics.RectF p0) { huskProps.put("SelectionArea", p0); return this; }

@@ -220,7 +220,7 @@ public final class CameraCharacteristics extends android.hardware.camera2.Camera
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.CameraCharacteristics p0) {}
-        public android.hardware.camera2.CameraCharacteristics build() { return new android.hardware.camera2.CameraCharacteristics(); }
+        public android.hardware.camera2.CameraCharacteristics build() { android.hardware.camera2.CameraCharacteristics x = new android.hardware.camera2.CameraCharacteristics(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.camera2.CameraCharacteristics.Builder set(android.hardware.camera2.CameraCharacteristics.Key p0, java.lang.Object p1) { return this; }
         public android.hardware.camera2.CameraCharacteristics.Builder setAvailableCaptureRequestKeys(java.util.List p0) { huskProps.put("AvailableCaptureRequestKeys", p0); return this; }
         public android.hardware.camera2.CameraCharacteristics.Builder setAvailableCaptureResultKeys(java.util.List p0) { huskProps.put("AvailableCaptureResultKeys", p0); return this; }

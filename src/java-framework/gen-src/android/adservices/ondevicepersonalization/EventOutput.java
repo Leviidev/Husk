@@ -9,7 +9,7 @@ public final class EventOutput {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.EventOutput build() { return new android.adservices.ondevicepersonalization.EventOutput(); }
+        public android.adservices.ondevicepersonalization.EventOutput build() { android.adservices.ondevicepersonalization.EventOutput x = new android.adservices.ondevicepersonalization.EventOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.EventOutput.Builder setEventLogRecord(android.adservices.ondevicepersonalization.EventLogRecord p0) { huskProps.put("EventLogRecord", p0); return this; }
     }
 }

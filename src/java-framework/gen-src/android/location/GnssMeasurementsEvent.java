@@ -17,7 +17,7 @@ public final class GnssMeasurementsEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.location.GnssMeasurementsEvent p0) {}
-        public android.location.GnssMeasurementsEvent build() { return new android.location.GnssMeasurementsEvent(); }
+        public android.location.GnssMeasurementsEvent build() { android.location.GnssMeasurementsEvent x = new android.location.GnssMeasurementsEvent(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssMeasurementsEvent.Builder clearIsFullTracking() { return this; }
         public android.location.GnssMeasurementsEvent.Builder setClock(android.location.GnssClock p0) { huskProps.put("Clock", p0); return this; }
         public android.location.GnssMeasurementsEvent.Builder setGnssAutomaticGainControls(java.util.Collection p0) { huskProps.put("GnssAutomaticGainControls", p0); return this; }

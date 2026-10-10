@@ -31,7 +31,7 @@ public final class Font {
         public Builder(java.nio.ByteBuffer p0) {}
         public Builder(java.nio.ByteBuffer p0, java.io.File p1, java.lang.String p2) {}
         public static java.nio.ByteBuffer createBuffer(android.content.res.AssetManager p0, java.lang.String p1, boolean p2, int p3) { return null; }
-        public android.graphics.fonts.Font build() { return new android.graphics.fonts.Font(); }
+        public android.graphics.fonts.Font build() { android.graphics.fonts.Font x = new android.graphics.fonts.Font(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.fonts.Font.Builder setFontVariationSettings(java.lang.String p0) { huskProps.put("FontVariationSettings", p0); return this; }
         public android.graphics.fonts.Font.Builder setFontVariationSettings(android.graphics.fonts.FontVariationAxis[] p0) { huskProps.put("FontVariationSettings", p0); return this; }
         public android.graphics.fonts.Font.Builder setSlant(int p0) { huskProps.put("Slant", Integer.valueOf(p0)); return this; }

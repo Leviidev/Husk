@@ -15,7 +15,7 @@ public final class AdSelectionFromOutcomesConfig implements android.os.Parcelabl
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.AdSelectionFromOutcomesConfig build() { return new android.adservices.adselection.AdSelectionFromOutcomesConfig(); }
+        public android.adservices.adselection.AdSelectionFromOutcomesConfig build() { android.adservices.adselection.AdSelectionFromOutcomesConfig x = new android.adservices.adselection.AdSelectionFromOutcomesConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.AdSelectionFromOutcomesConfig.Builder setAdSelectionIds(java.util.List p0) { huskProps.put("AdSelectionIds", p0); return this; }
         public android.adservices.adselection.AdSelectionFromOutcomesConfig.Builder setSelectionLogicUri(android.net.Uri p0) { huskProps.put("SelectionLogicUri", p0); return this; }
         public android.adservices.adselection.AdSelectionFromOutcomesConfig.Builder setSelectionSignals(android.adservices.common.AdSelectionSignals p0) { huskProps.put("SelectionSignals", p0); return this; }

@@ -36,7 +36,7 @@ public final class GnssStatus implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.location.GnssStatus.Builder addSatellite(int p0, int p1, float p2, float p3, float p4, boolean p5, boolean p6, boolean p7, boolean p8, float p9, boolean p10, float p11) { return this; }
-        public android.location.GnssStatus build() { return new android.location.GnssStatus(); }
+        public android.location.GnssStatus build() { android.location.GnssStatus x = new android.location.GnssStatus(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssStatus.Builder clearSatellites() { return this; }
     }
     public static abstract class Callback {

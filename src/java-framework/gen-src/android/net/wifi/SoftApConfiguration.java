@@ -65,7 +65,7 @@ public final class SoftApConfiguration implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.net.wifi.SoftApConfiguration p0) {}
-        public android.net.wifi.SoftApConfiguration build() { return new android.net.wifi.SoftApConfiguration(); }
+        public android.net.wifi.SoftApConfiguration build() { android.net.wifi.SoftApConfiguration x = new android.net.wifi.SoftApConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.SoftApConfiguration buildWithoutCheck() { return null; }
         public android.net.wifi.SoftApConfiguration.Builder setAllowedAcsChannels(int p0, int[] p1) { return this; }
         public android.net.wifi.SoftApConfiguration.Builder setAllowedClientList(java.util.List p0) { huskProps.put("AllowedClientList", p0); return this; }

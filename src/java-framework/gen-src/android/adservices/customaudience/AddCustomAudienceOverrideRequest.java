@@ -14,7 +14,7 @@ public class AddCustomAudienceOverrideRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.customaudience.AddCustomAudienceOverrideRequest build() { return new android.adservices.customaudience.AddCustomAudienceOverrideRequest(); }
+        public android.adservices.customaudience.AddCustomAudienceOverrideRequest build() { android.adservices.customaudience.AddCustomAudienceOverrideRequest x = new android.adservices.customaudience.AddCustomAudienceOverrideRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.AddCustomAudienceOverrideRequest.Builder setBiddingLogicJs(java.lang.String p0) { huskProps.put("BiddingLogicJs", p0); return this; }
         public android.adservices.customaudience.AddCustomAudienceOverrideRequest.Builder setBiddingLogicJsVersion(long p0) { huskProps.put("BiddingLogicJsVersion", Long.valueOf(p0)); return this; }
         public android.adservices.customaudience.AddCustomAudienceOverrideRequest.Builder setBuyer(android.adservices.common.AdTechIdentifier p0) { huskProps.put("Buyer", p0); return this; }

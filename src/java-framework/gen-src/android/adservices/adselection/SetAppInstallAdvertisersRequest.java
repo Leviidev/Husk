@@ -9,7 +9,7 @@ public class SetAppInstallAdvertisersRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.SetAppInstallAdvertisersRequest build() { return new android.adservices.adselection.SetAppInstallAdvertisersRequest(); }
+        public android.adservices.adselection.SetAppInstallAdvertisersRequest build() { android.adservices.adselection.SetAppInstallAdvertisersRequest x = new android.adservices.adselection.SetAppInstallAdvertisersRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.SetAppInstallAdvertisersRequest.Builder setAdvertisers(java.util.Set p0) { huskProps.put("Advertisers", p0); return this; }
     }
 }

@@ -29,7 +29,7 @@ public final class AwarePairingConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.aware.AwarePairingConfig build() { return new android.net.wifi.aware.AwarePairingConfig(); }
+        public android.net.wifi.aware.AwarePairingConfig build() { android.net.wifi.aware.AwarePairingConfig x = new android.net.wifi.aware.AwarePairingConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.aware.AwarePairingConfig.Builder setBootstrappingMethods(int p0) { huskProps.put("BootstrappingMethods", Integer.valueOf(p0)); return this; }
         public android.net.wifi.aware.AwarePairingConfig.Builder setPairingCacheEnabled(boolean p0) { huskProps.put("PairingCacheEnabled", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.aware.AwarePairingConfig.Builder setPairingSetupEnabled(boolean p0) { huskProps.put("PairingSetupEnabled", Boolean.valueOf(p0)); return this; }

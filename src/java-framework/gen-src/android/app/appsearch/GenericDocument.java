@@ -42,7 +42,7 @@ public class GenericDocument {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.app.appsearch.GenericDocument p0) {}
         public Builder(java.lang.String p0, java.lang.String p1, java.lang.String p2) {}
-        public android.app.appsearch.GenericDocument build() { return new android.app.appsearch.GenericDocument(); }
+        public android.app.appsearch.GenericDocument build() { android.app.appsearch.GenericDocument x = new android.app.appsearch.GenericDocument(); x.huskProps.putAll(huskProps); return x; }
         public android.app.appsearch.GenericDocument.Builder clearProperty(java.lang.String p0) { return this; }
         public android.app.appsearch.GenericDocument.Builder setCreationTimestampMillis(long p0) { huskProps.put("CreationTimestampMillis", Long.valueOf(p0)); return this; }
         public android.app.appsearch.GenericDocument.Builder setId(java.lang.String p0) { huskProps.put("Id", p0); return this; }

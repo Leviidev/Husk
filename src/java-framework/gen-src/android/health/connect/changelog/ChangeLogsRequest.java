@@ -13,7 +13,7 @@ public final class ChangeLogsRequest implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.health.connect.changelog.ChangeLogsRequest build() { return new android.health.connect.changelog.ChangeLogsRequest(); }
+        public android.health.connect.changelog.ChangeLogsRequest build() { android.health.connect.changelog.ChangeLogsRequest x = new android.health.connect.changelog.ChangeLogsRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.changelog.ChangeLogsRequest.Builder setPageSize(int p0) { huskProps.put("PageSize", Integer.valueOf(p0)); return this; }
         Builder() { this((java.lang.String) null); }
     }

@@ -19,7 +19,7 @@ public final class CredentialOption implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, android.os.Bundle p1, android.os.Bundle p2) {}
         public android.credentials.CredentialOption.Builder addAllowedProvider(android.content.ComponentName p0) { return this; }
-        public android.credentials.CredentialOption build() { return new android.credentials.CredentialOption(); }
+        public android.credentials.CredentialOption build() { android.credentials.CredentialOption x = new android.credentials.CredentialOption(); x.huskProps.putAll(huskProps); return x; }
         public android.credentials.CredentialOption.Builder setAllowedProviders(java.util.Set p0) { huskProps.put("AllowedProviders", p0); return this; }
         public android.credentials.CredentialOption.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); return this; }
         Builder() { this((java.lang.String) null, (android.os.Bundle) null, (android.os.Bundle) null); }

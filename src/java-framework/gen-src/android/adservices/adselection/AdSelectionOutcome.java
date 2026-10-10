@@ -16,7 +16,7 @@ public class AdSelectionOutcome {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.AdSelectionOutcome build() { return new android.adservices.adselection.AdSelectionOutcome(); }
+        public android.adservices.adselection.AdSelectionOutcome build() { android.adservices.adselection.AdSelectionOutcome x = new android.adservices.adselection.AdSelectionOutcome(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.AdSelectionOutcome.Builder setAdSelectionId(long p0) { huskProps.put("AdSelectionId", Long.valueOf(p0)); return this; }
         public android.adservices.adselection.AdSelectionOutcome.Builder setComponentAdUris(java.util.List p0) { huskProps.put("ComponentAdUris", p0); return this; }
         public android.adservices.adselection.AdSelectionOutcome.Builder setRenderUri(android.net.Uri p0) { huskProps.put("RenderUri", p0); return this; }

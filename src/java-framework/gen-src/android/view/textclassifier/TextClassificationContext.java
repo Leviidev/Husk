@@ -15,7 +15,7 @@ public final class TextClassificationContext implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1) {}
-        public android.view.textclassifier.TextClassificationContext build() { return new android.view.textclassifier.TextClassificationContext(); }
+        public android.view.textclassifier.TextClassificationContext build() { android.view.textclassifier.TextClassificationContext x = new android.view.textclassifier.TextClassificationContext(); x.huskProps.putAll(huskProps); return x; }
         public android.view.textclassifier.TextClassificationContext.Builder setWidgetVersion(java.lang.String p0) { huskProps.put("WidgetVersion", p0); return this; }
         Builder() { this((java.lang.String) null, (java.lang.String) null); }
     }

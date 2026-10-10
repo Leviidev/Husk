@@ -15,7 +15,7 @@ public class CredentialDataRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.security.identity.CredentialDataRequest build() { return new android.security.identity.CredentialDataRequest(); }
+        public android.security.identity.CredentialDataRequest build() { android.security.identity.CredentialDataRequest x = new android.security.identity.CredentialDataRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.security.identity.CredentialDataRequest.Builder setAllowUsingExhaustedKeys(boolean p0) { huskProps.put("AllowUsingExhaustedKeys", Boolean.valueOf(p0)); return this; }
         public android.security.identity.CredentialDataRequest.Builder setAllowUsingExpiredKeys(boolean p0) { huskProps.put("AllowUsingExpiredKeys", Boolean.valueOf(p0)); return this; }
         public android.security.identity.CredentialDataRequest.Builder setDeviceSignedEntriesToRequest(java.util.Map p0) { huskProps.put("DeviceSignedEntriesToRequest", p0); return this; }

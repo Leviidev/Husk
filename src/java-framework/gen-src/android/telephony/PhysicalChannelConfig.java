@@ -34,7 +34,7 @@ public final class PhysicalChannelConfig implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.telephony.PhysicalChannelConfig p0) {}
-        public android.telephony.PhysicalChannelConfig build() { return new android.telephony.PhysicalChannelConfig(); }
+        public android.telephony.PhysicalChannelConfig build() { android.telephony.PhysicalChannelConfig x = new android.telephony.PhysicalChannelConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.PhysicalChannelConfig.Builder setBand(int p0) { huskProps.put("Band", Integer.valueOf(p0)); return this; }
         public android.telephony.PhysicalChannelConfig.Builder setCellBandwidthDownlinkKhz(int p0) { huskProps.put("CellBandwidthDownlinkKhz", Integer.valueOf(p0)); return this; }
         public android.telephony.PhysicalChannelConfig.Builder setCellBandwidthUplinkKhz(int p0) { huskProps.put("CellBandwidthUplinkKhz", Integer.valueOf(p0)); return this; }

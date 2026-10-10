@@ -19,7 +19,7 @@ public final class ExerciseSegment implements android.health.connect.datatypes.T
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.time.Instant p0, java.time.Instant p1, int p2) {}
-        public android.health.connect.datatypes.ExerciseSegment build() { return new android.health.connect.datatypes.ExerciseSegment(); }
+        public android.health.connect.datatypes.ExerciseSegment build() { android.health.connect.datatypes.ExerciseSegment x = new android.health.connect.datatypes.ExerciseSegment(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.ExerciseSegment buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.ExerciseSegment.Builder clearRateOfPerceivedExertion() { return this; }
         public android.health.connect.datatypes.ExerciseSegment.Builder clearSetIndex() { return this; }

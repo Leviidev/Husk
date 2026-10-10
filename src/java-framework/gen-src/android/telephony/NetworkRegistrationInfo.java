@@ -75,7 +75,7 @@ public final class NetworkRegistrationInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.telephony.NetworkRegistrationInfo p0) {}
-        public android.telephony.NetworkRegistrationInfo build() { return new android.telephony.NetworkRegistrationInfo(); }
+        public android.telephony.NetworkRegistrationInfo build() { android.telephony.NetworkRegistrationInfo x = new android.telephony.NetworkRegistrationInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.NetworkRegistrationInfo.Builder setAccessNetworkTechnology(int p0) { huskProps.put("AccessNetworkTechnology", Integer.valueOf(p0)); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setAvailableServices(java.util.List p0) { huskProps.put("AvailableServices", p0); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setCellIdentity(android.telephony.CellIdentity p0) { huskProps.put("CellIdentity", p0); return this; }

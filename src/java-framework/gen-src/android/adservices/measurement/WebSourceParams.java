@@ -13,7 +13,7 @@ public final class WebSourceParams implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.Uri p0) {}
-        public android.adservices.measurement.WebSourceParams build() { return new android.adservices.measurement.WebSourceParams(); }
+        public android.adservices.measurement.WebSourceParams build() { android.adservices.measurement.WebSourceParams x = new android.adservices.measurement.WebSourceParams(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.measurement.WebSourceParams.Builder setDebugKeyAllowed(boolean p0) { huskProps.put("DebugKeyAllowed", Boolean.valueOf(p0)); return this; }
         Builder() { this((android.net.Uri) null); }
     }

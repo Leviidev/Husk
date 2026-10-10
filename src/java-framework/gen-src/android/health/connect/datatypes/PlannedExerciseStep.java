@@ -22,7 +22,7 @@ public final class PlannedExerciseStep {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, android.health.connect.datatypes.ExerciseCompletionGoal p2) {}
         public android.health.connect.datatypes.PlannedExerciseStep.Builder addPerformanceGoal(android.health.connect.datatypes.ExercisePerformanceGoal p0) { return this; }
-        public android.health.connect.datatypes.PlannedExerciseStep build() { return new android.health.connect.datatypes.PlannedExerciseStep(); }
+        public android.health.connect.datatypes.PlannedExerciseStep build() { android.health.connect.datatypes.PlannedExerciseStep x = new android.health.connect.datatypes.PlannedExerciseStep(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.PlannedExerciseStep.Builder clearPerformanceGoals() { return this; }
         public android.health.connect.datatypes.PlannedExerciseStep.Builder setCompletionGoal(android.health.connect.datatypes.ExerciseCompletionGoal p0) { huskProps.put("CompletionGoal", p0); return this; }
         public android.health.connect.datatypes.PlannedExerciseStep.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }

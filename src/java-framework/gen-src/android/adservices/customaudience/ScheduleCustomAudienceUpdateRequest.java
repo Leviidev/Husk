@@ -13,7 +13,7 @@ public final class ScheduleCustomAudienceUpdateRequest {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.Uri p0, java.time.Duration p1) {}
         public Builder(android.net.Uri p0, java.time.Duration p1, java.util.List p2) {}
-        public android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest build() { return new android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest(); }
+        public android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest build() { android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest x = new android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest.Builder setMinDelay(java.time.Duration p0) { huskProps.put("MinDelay", p0); return this; }
         public android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest.Builder setPartialCustomAudienceList(java.util.List p0) { huskProps.put("PartialCustomAudienceList", p0); return this; }
         public android.adservices.customaudience.ScheduleCustomAudienceUpdateRequest.Builder setShouldReplacePendingUpdates(boolean p0) { huskProps.put("ShouldReplacePendingUpdates", Boolean.valueOf(p0)); return this; }

@@ -18,7 +18,7 @@ public final class VcnConfig implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0) {}
         public android.net.vcn.VcnConfig.Builder addGatewayConnectionConfig(android.net.vcn.VcnGatewayConnectionConfig p0) { return this; }
-        public android.net.vcn.VcnConfig build() { return new android.net.vcn.VcnConfig(); }
+        public android.net.vcn.VcnConfig build() { android.net.vcn.VcnConfig x = new android.net.vcn.VcnConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.vcn.VcnConfig.Builder setIsTestModeProfile() { return this; }
         public android.net.vcn.VcnConfig.Builder setRestrictedUnderlyingNetworkTransports(java.util.Set p0) { huskProps.put("RestrictedUnderlyingNetworkTransports", p0); return this; }
         Builder() { this((android.content.Context) null); }

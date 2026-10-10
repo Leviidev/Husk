@@ -31,7 +31,7 @@ public final class ConversationStatus implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, int p1) {}
-        public android.app.people.ConversationStatus build() { return new android.app.people.ConversationStatus(); }
+        public android.app.people.ConversationStatus build() { android.app.people.ConversationStatus x = new android.app.people.ConversationStatus(); x.huskProps.putAll(huskProps); return x; }
         public android.app.people.ConversationStatus.Builder setAvailability(int p0) { huskProps.put("Availability", Integer.valueOf(p0)); return this; }
         public android.app.people.ConversationStatus.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }
         public android.app.people.ConversationStatus.Builder setEndTimeMillis(long p0) { huskProps.put("EndTimeMillis", Long.valueOf(p0)); return this; }

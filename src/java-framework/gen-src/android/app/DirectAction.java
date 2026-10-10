@@ -20,7 +20,7 @@ public final class DirectAction implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.app.DirectAction build() { return new android.app.DirectAction(); }
+        public android.app.DirectAction build() { android.app.DirectAction x = new android.app.DirectAction(); x.huskProps.putAll(huskProps); return x; }
         public android.app.DirectAction.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.app.DirectAction.Builder setLocusId(android.content.LocusId p0) { huskProps.put("LocusId", p0); return this; }
         Builder() { this((java.lang.String) null); }

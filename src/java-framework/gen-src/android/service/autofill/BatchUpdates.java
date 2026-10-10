@@ -13,7 +13,7 @@ public final class BatchUpdates implements android.os.Parcelable {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.service.autofill.BatchUpdates build() { return new android.service.autofill.BatchUpdates(); }
+        public android.service.autofill.BatchUpdates build() { android.service.autofill.BatchUpdates x = new android.service.autofill.BatchUpdates(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.BatchUpdates.Builder transformChild(int p0, android.service.autofill.Transformation p1) { return this; }
         public android.service.autofill.BatchUpdates.Builder updateTemplate(android.widget.RemoteViews p0) { return this; }
     }

@@ -13,7 +13,7 @@ public final class AggregateRecordsRequest {
         public Builder(android.health.connect.TimeRangeFilter p0) {}
         public android.health.connect.AggregateRecordsRequest.Builder addAggregationType(android.health.connect.datatypes.AggregationType p0) { return this; }
         public android.health.connect.AggregateRecordsRequest.Builder addDataOriginsFilter(android.health.connect.datatypes.DataOrigin p0) { return this; }
-        public android.health.connect.AggregateRecordsRequest build() { return new android.health.connect.AggregateRecordsRequest(); }
+        public android.health.connect.AggregateRecordsRequest build() { android.health.connect.AggregateRecordsRequest x = new android.health.connect.AggregateRecordsRequest(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((android.health.connect.TimeRangeFilter) null); }
     }
 }

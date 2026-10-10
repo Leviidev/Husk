@@ -15,7 +15,7 @@ public class ConnectionMigrationOptions {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.http.ConnectionMigrationOptions build() { return new android.net.http.ConnectionMigrationOptions(); }
+        public android.net.http.ConnectionMigrationOptions build() { android.net.http.ConnectionMigrationOptions x = new android.net.http.ConnectionMigrationOptions(); x.huskProps.putAll(huskProps); return x; }
         public android.net.http.ConnectionMigrationOptions.Builder setAllowNonDefaultNetworkUsage(int p0) { huskProps.put("AllowNonDefaultNetworkUsage", Integer.valueOf(p0)); return this; }
         public android.net.http.ConnectionMigrationOptions.Builder setDefaultNetworkMigration(int p0) { huskProps.put("DefaultNetworkMigration", Integer.valueOf(p0)); return this; }
         public android.net.http.ConnectionMigrationOptions.Builder setPathDegradationMigration(int p0) { huskProps.put("PathDegradationMigration", Integer.valueOf(p0)); return this; }

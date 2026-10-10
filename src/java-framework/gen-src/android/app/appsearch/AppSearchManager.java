@@ -16,7 +16,7 @@ public class AppSearchManager {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(java.lang.String p0) {}
-            public android.app.appsearch.AppSearchManager.SearchContext build() { return new android.app.appsearch.AppSearchManager.SearchContext(); }
+            public android.app.appsearch.AppSearchManager.SearchContext build() { android.app.appsearch.AppSearchManager.SearchContext x = new android.app.appsearch.AppSearchManager.SearchContext(); x.huskProps.putAll(huskProps); return x; }
             Builder() { this((java.lang.String) null); }
         }
     }

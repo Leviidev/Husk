@@ -44,7 +44,7 @@ public final class FillResponse implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.service.autofill.FillResponse.Builder addDataset(android.service.autofill.Dataset p0) { return this; }
-        public android.service.autofill.FillResponse build() { return new android.service.autofill.FillResponse(); }
+        public android.service.autofill.FillResponse build() { android.service.autofill.FillResponse x = new android.service.autofill.FillResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.FillResponse.Builder disableAutofill(long p0) { return this; }
         public android.service.autofill.FillResponse.Builder setAuthentication(android.view.autofill.AutofillId[] p0, android.content.IntentSender p1, android.service.autofill.Presentations p2) { return this; }
         public android.service.autofill.FillResponse.Builder setAuthentication(android.view.autofill.AutofillId[] p0, android.content.IntentSender p1, android.widget.RemoteViews p2) { return this; }

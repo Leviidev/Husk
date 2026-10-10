@@ -11,7 +11,7 @@ public final class ActiveCaloriesBurnedRecord extends android.health.connect.dat
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, android.health.connect.datatypes.units.Energy p3) {}
-        public android.health.connect.datatypes.ActiveCaloriesBurnedRecord build() { return new android.health.connect.datatypes.ActiveCaloriesBurnedRecord(); }
+        public android.health.connect.datatypes.ActiveCaloriesBurnedRecord build() { android.health.connect.datatypes.ActiveCaloriesBurnedRecord x = new android.health.connect.datatypes.ActiveCaloriesBurnedRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.ActiveCaloriesBurnedRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.ActiveCaloriesBurnedRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.ActiveCaloriesBurnedRecord.Builder clearStartZoneOffset() { return this; }

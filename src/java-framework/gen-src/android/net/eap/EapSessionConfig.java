@@ -21,7 +21,7 @@ public final class EapSessionConfig {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.net.eap.EapSessionConfig.Builder addEapMethodConfig(android.net.eap.EapSessionConfig.EapMethodConfig p0) { return this; }
-        public android.net.eap.EapSessionConfig build() { return new android.net.eap.EapSessionConfig(); }
+        public android.net.eap.EapSessionConfig build() { android.net.eap.EapSessionConfig x = new android.net.eap.EapSessionConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.eap.EapSessionConfig.Builder setEapAkaConfig(int p0, int p1) { return this; }
         public android.net.eap.EapSessionConfig.Builder setEapAkaConfig(int p0, int p1, android.net.eap.EapSessionConfig.EapAkaOption p2) { return this; }
         public android.net.eap.EapSessionConfig.Builder setEapAkaPrimeConfig(int p0, int p1, java.lang.String p2, boolean p3) { return this; }
@@ -49,7 +49,7 @@ public final class EapSessionConfig {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.net.eap.EapSessionConfig.EapAkaOption build() { return new android.net.eap.EapSessionConfig.EapAkaOption(); }
+            public android.net.eap.EapSessionConfig.EapAkaOption build() { android.net.eap.EapSessionConfig.EapAkaOption x = new android.net.eap.EapSessionConfig.EapAkaOption(); x.huskProps.putAll(huskProps); return x; }
             public android.net.eap.EapSessionConfig.EapAkaOption.Builder setReauthId(byte[] p0) { huskProps.put("ReauthId", p0); return this; }
         }
     }

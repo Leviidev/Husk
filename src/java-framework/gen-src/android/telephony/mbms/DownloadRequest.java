@@ -25,7 +25,7 @@ public final class DownloadRequest implements android.os.Parcelable {
         public Builder(android.net.Uri p0, android.net.Uri p1) {}
         public static android.telephony.mbms.DownloadRequest.Builder fromDownloadRequest(android.telephony.mbms.DownloadRequest p0) { return new Builder(); }
         public static android.telephony.mbms.DownloadRequest.Builder fromSerializedRequest(byte[] p0) { return new Builder(); }
-        public android.telephony.mbms.DownloadRequest build() { return new android.telephony.mbms.DownloadRequest(); }
+        public android.telephony.mbms.DownloadRequest build() { android.telephony.mbms.DownloadRequest x = new android.telephony.mbms.DownloadRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.mbms.DownloadRequest.Builder setAppIntent(android.content.Intent p0) { huskProps.put("AppIntent", p0); return this; }
         public android.telephony.mbms.DownloadRequest.Builder setServiceId(java.lang.String p0) { huskProps.put("ServiceId", p0); return this; }
         public android.telephony.mbms.DownloadRequest.Builder setServiceInfo(android.telephony.mbms.FileServiceInfo p0) { huskProps.put("ServiceInfo", p0); return this; }

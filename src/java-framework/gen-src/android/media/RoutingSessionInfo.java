@@ -43,7 +43,7 @@ public final class RoutingSessionInfo implements android.os.Parcelable {
         public android.media.RoutingSessionInfo.Builder addSelectableRoute(java.lang.String p0) { return this; }
         public android.media.RoutingSessionInfo.Builder addSelectedRoute(java.lang.String p0) { return this; }
         public android.media.RoutingSessionInfo.Builder addTransferableRoute(java.lang.String p0) { return this; }
-        public android.media.RoutingSessionInfo build() { return new android.media.RoutingSessionInfo(); }
+        public android.media.RoutingSessionInfo build() { android.media.RoutingSessionInfo x = new android.media.RoutingSessionInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.media.RoutingSessionInfo.Builder clearDeselectableRoutes() { return this; }
         public android.media.RoutingSessionInfo.Builder clearSelectableRoutes() { return this; }
         public android.media.RoutingSessionInfo.Builder clearSelectedRoutes() { return this; }

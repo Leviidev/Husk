@@ -148,7 +148,7 @@ public class WifiInfo implements android.net.TransportInfo, android.os.Parcelabl
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.WifiInfo build() { return new android.net.wifi.WifiInfo(); }
+        public android.net.wifi.WifiInfo build() { android.net.wifi.WifiInfo x = new android.net.wifi.WifiInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.WifiInfo.Builder enableApTidToLinkMappingNegotiationSupport(boolean p0) { return this; }
         public android.net.wifi.WifiInfo.Builder setAffiliatedMloLinks(java.util.List p0) { huskProps.put("AffiliatedMloLinks", p0); return this; }
         public android.net.wifi.WifiInfo.Builder setApMldMacAddress(android.net.MacAddress p0) { huskProps.put("ApMldMacAddress", p0); return this; }

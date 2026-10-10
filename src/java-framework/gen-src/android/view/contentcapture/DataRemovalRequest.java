@@ -16,7 +16,7 @@ public final class DataRemovalRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.view.contentcapture.DataRemovalRequest.Builder addLocusId(android.content.LocusId p0, int p1) { return this; }
-        public android.view.contentcapture.DataRemovalRequest build() { return new android.view.contentcapture.DataRemovalRequest(); }
+        public android.view.contentcapture.DataRemovalRequest build() { android.view.contentcapture.DataRemovalRequest x = new android.view.contentcapture.DataRemovalRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.view.contentcapture.DataRemovalRequest.Builder forEverything() { return this; }
     }
     public static final class LocusIdRequest {

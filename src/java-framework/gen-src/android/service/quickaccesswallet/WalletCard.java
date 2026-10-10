@@ -25,7 +25,7 @@ public final class WalletCard implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, int p1, android.graphics.drawable.Icon p2, java.lang.CharSequence p3, android.app.PendingIntent p4) {}
         public Builder(java.lang.String p0, android.graphics.drawable.Icon p1, java.lang.CharSequence p2, android.app.PendingIntent p3) {}
-        public android.service.quickaccesswallet.WalletCard build() { return new android.service.quickaccesswallet.WalletCard(); }
+        public android.service.quickaccesswallet.WalletCard build() { android.service.quickaccesswallet.WalletCard x = new android.service.quickaccesswallet.WalletCard(); x.huskProps.putAll(huskProps); return x; }
         public android.service.quickaccesswallet.WalletCard.Builder setCardIcon(android.graphics.drawable.Icon p0) { huskProps.put("CardIcon", p0); return this; }
         public android.service.quickaccesswallet.WalletCard.Builder setCardLabel(java.lang.CharSequence p0) { huskProps.put("CardLabel", p0); return this; }
         public android.service.quickaccesswallet.WalletCard.Builder setCardLocations(java.util.List p0) { huskProps.put("CardLocations", p0); return this; }

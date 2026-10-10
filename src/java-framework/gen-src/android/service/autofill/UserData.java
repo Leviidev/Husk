@@ -27,7 +27,7 @@ public final class UserData implements android.service.autofill.FieldClassificat
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1, java.lang.String p2) {}
         public android.service.autofill.UserData.Builder add(java.lang.String p0, java.lang.String p1) { return this; }
-        public android.service.autofill.UserData build() { return new android.service.autofill.UserData(); }
+        public android.service.autofill.UserData build() { android.service.autofill.UserData x = new android.service.autofill.UserData(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.UserData.Builder setFieldClassificationAlgorithm(java.lang.String p0, android.os.Bundle p1) { return this; }
         public android.service.autofill.UserData.Builder setFieldClassificationAlgorithmForCategory(java.lang.String p0, java.lang.String p1, android.os.Bundle p2) { return this; }
         Builder() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }

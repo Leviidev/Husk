@@ -11,7 +11,7 @@ public class RemoveCustomAudienceOverrideRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.customaudience.RemoveCustomAudienceOverrideRequest build() { return new android.adservices.customaudience.RemoveCustomAudienceOverrideRequest(); }
+        public android.adservices.customaudience.RemoveCustomAudienceOverrideRequest build() { android.adservices.customaudience.RemoveCustomAudienceOverrideRequest x = new android.adservices.customaudience.RemoveCustomAudienceOverrideRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.RemoveCustomAudienceOverrideRequest.Builder setBuyer(android.adservices.common.AdTechIdentifier p0) { huskProps.put("Buyer", p0); return this; }
         public android.adservices.customaudience.RemoveCustomAudienceOverrideRequest.Builder setName(java.lang.String p0) { huskProps.put("Name", p0); return this; }
     }

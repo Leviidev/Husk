@@ -35,7 +35,7 @@ public final class AudioPresentation implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.media.AudioPresentation build() { return new android.media.AudioPresentation(); }
+        public android.media.AudioPresentation build() { android.media.AudioPresentation x = new android.media.AudioPresentation(); x.huskProps.putAll(huskProps); return x; }
         public android.media.AudioPresentation.Builder setHasAudioDescription(boolean p0) { huskProps.put("HasAudioDescription", Boolean.valueOf(p0)); return this; }
         public android.media.AudioPresentation.Builder setHasDialogueEnhancement(boolean p0) { huskProps.put("HasDialogueEnhancement", Boolean.valueOf(p0)); return this; }
         public android.media.AudioPresentation.Builder setHasSpokenSubtitles(boolean p0) { huskProps.put("HasSpokenSubtitles", Boolean.valueOf(p0)); return this; }

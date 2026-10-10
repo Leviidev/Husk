@@ -18,7 +18,7 @@ public class DeletionRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.measurement.DeletionRequest build() { return new android.adservices.measurement.DeletionRequest(); }
+        public android.adservices.measurement.DeletionRequest build() { android.adservices.measurement.DeletionRequest x = new android.adservices.measurement.DeletionRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.measurement.DeletionRequest.Builder setDeletionMode(int p0) { huskProps.put("DeletionMode", Integer.valueOf(p0)); return this; }
         public android.adservices.measurement.DeletionRequest.Builder setDomainUris(java.util.List p0) { huskProps.put("DomainUris", p0); return this; }
         public android.adservices.measurement.DeletionRequest.Builder setEnd(java.time.Instant p0) { huskProps.put("End", p0); return this; }

@@ -17,7 +17,7 @@ public final class TableResponse extends android.media.tv.BroadcastInfoResponse 
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, int p2, int p3, int p4) {}
-        public android.media.tv.TableResponse build() { return new android.media.tv.TableResponse(); }
+        public android.media.tv.TableResponse build() { android.media.tv.TableResponse x = new android.media.tv.TableResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.media.tv.TableResponse.Builder setTableByteArray(byte[] p0) { huskProps.put("TableByteArray", p0); return this; }
         public android.media.tv.TableResponse.Builder setTableSharedMemory(android.os.SharedMemory p0) { huskProps.put("TableSharedMemory", p0); return this; }
         public android.media.tv.TableResponse.Builder setTableUri(android.net.Uri p0) { huskProps.put("TableUri", p0); return this; }

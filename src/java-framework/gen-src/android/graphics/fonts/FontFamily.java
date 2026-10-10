@@ -21,8 +21,8 @@ public final class FontFamily {
         public Builder(android.graphics.fonts.Font p0) {}
         public static int analyzeAndResolveVariableType(java.util.ArrayList p0) { return 0; }
         public android.graphics.fonts.FontFamily.Builder addFont(android.graphics.fonts.Font p0) { return this; }
-        public android.graphics.fonts.FontFamily build() { return new android.graphics.fonts.FontFamily(); }
-        public android.graphics.fonts.FontFamily build(java.lang.String p0, int p1, boolean p2, boolean p3, int p4) { return new android.graphics.fonts.FontFamily(); }
+        public android.graphics.fonts.FontFamily build() { android.graphics.fonts.FontFamily x = new android.graphics.fonts.FontFamily(); x.huskProps.putAll(huskProps); return x; }
+        public android.graphics.fonts.FontFamily build(java.lang.String p0, int p1, boolean p2, boolean p3, int p4) { android.graphics.fonts.FontFamily x = new android.graphics.fonts.FontFamily(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.fonts.FontFamily buildVariableFamily() { return null; }
         Builder() { this((android.graphics.fonts.Font) null); }
     }

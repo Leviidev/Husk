@@ -17,7 +17,7 @@ public final class CreateCredentialRequest implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, android.os.Bundle p1, android.os.Bundle p2) {}
-        public android.credentials.CreateCredentialRequest build() { return new android.credentials.CreateCredentialRequest(); }
+        public android.credentials.CreateCredentialRequest build() { android.credentials.CreateCredentialRequest x = new android.credentials.CreateCredentialRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.credentials.CreateCredentialRequest.Builder setAlwaysSendAppInfoToProvider(boolean p0) { huskProps.put("AlwaysSendAppInfoToProvider", Boolean.valueOf(p0)); return this; }
         public android.credentials.CreateCredentialRequest.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); return this; }
         public android.credentials.CreateCredentialRequest.Builder setOrigin(java.lang.String p0) { huskProps.put("Origin", p0); return this; }

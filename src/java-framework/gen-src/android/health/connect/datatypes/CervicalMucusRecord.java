@@ -11,7 +11,7 @@ public final class CervicalMucusRecord extends android.health.connect.datatypes.
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2, int p3) {}
-        public android.health.connect.datatypes.CervicalMucusRecord build() { return new android.health.connect.datatypes.CervicalMucusRecord(); }
+        public android.health.connect.datatypes.CervicalMucusRecord build() { android.health.connect.datatypes.CervicalMucusRecord x = new android.health.connect.datatypes.CervicalMucusRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.CervicalMucusRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.CervicalMucusRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.CervicalMucusRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

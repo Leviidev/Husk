@@ -13,7 +13,7 @@ public final class SpeedRecord extends android.health.connect.datatypes.Interval
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, java.util.List p3) {}
-        public android.health.connect.datatypes.SpeedRecord build() { return new android.health.connect.datatypes.SpeedRecord(); }
+        public android.health.connect.datatypes.SpeedRecord build() { android.health.connect.datatypes.SpeedRecord x = new android.health.connect.datatypes.SpeedRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.SpeedRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.SpeedRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.SpeedRecord.Builder clearStartZoneOffset() { return this; }

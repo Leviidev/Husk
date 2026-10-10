@@ -15,7 +15,7 @@ public final class OverlayManagerTransaction implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.content.om.OverlayManagerTransaction build() { return new android.content.om.OverlayManagerTransaction(); }
+        public android.content.om.OverlayManagerTransaction build() { android.content.om.OverlayManagerTransaction x = new android.content.om.OverlayManagerTransaction(); x.huskProps.putAll(huskProps); return x; }
         public android.content.om.OverlayManagerTransaction.Builder registerFabricatedOverlay(android.content.om.FabricatedOverlay p0) { return this; }
         public android.content.om.OverlayManagerTransaction.Builder setEnabled(android.content.om.OverlayIdentifier p0, boolean p1) { return this; }
         public android.content.om.OverlayManagerTransaction.Builder setEnabled(android.content.om.OverlayIdentifier p0, boolean p1, int p2) { return this; }

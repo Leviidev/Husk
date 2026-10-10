@@ -73,7 +73,7 @@ public final class PhoneAccount implements android.os.Parcelable {
         public Builder(android.telecom.PhoneAccount p0) {}
         public Builder(android.telecom.PhoneAccountHandle p0, java.lang.CharSequence p1) {}
         public android.telecom.PhoneAccount.Builder addSupportedUriScheme(java.lang.String p0) { return this; }
-        public android.telecom.PhoneAccount build() { return new android.telecom.PhoneAccount(); }
+        public android.telecom.PhoneAccount build() { android.telecom.PhoneAccount x = new android.telecom.PhoneAccount(); x.huskProps.putAll(huskProps); return x; }
         public android.telecom.PhoneAccount.Builder clearSimultaneousCallingRestriction() { return this; }
         public android.telecom.PhoneAccount.Builder setAddress(android.net.Uri p0) { huskProps.put("Address", p0); return this; }
         public android.telecom.PhoneAccount.Builder setCapabilities(int p0) { huskProps.put("Capabilities", Integer.valueOf(p0)); return this; }

@@ -28,6 +28,7 @@ public final class AppRunner {
 
     public static void run(String activityClass, String applicationClass) throws Exception {
         android.webkit.MimeTypeMap.huskInstallDefault();
+        KeyStoreProvider.install();
         Looper.prepareMainLooper();
         sHandler = new Handler(Looper.getMainLooper());
         Manifest.read();
@@ -70,6 +71,7 @@ public final class AppRunner {
     }
 
     // ---- activities
+    public static int stackSize() { return sStack.size(); }
     public static Activity top() { return sStack.isEmpty() ? null : sStack.get(sStack.size() - 1); }
     public static CharSequence appLabel(Context c) {
         try { if (Manifest.appLabel != 0) return c.getResources().getText(Manifest.appLabel); } catch (Exception e) {}
@@ -158,7 +160,8 @@ public final class AppRunner {
         }
         a.huskStop();
         a.huskDestroy();
-        if (sStack.isEmpty()) Native.exit();
+        // the app ends with its last activity, unless one it started just before (finish(); startActivity(...)) is still to come
+        if (sStack.isEmpty()) sHandler.post(() -> { if (sStack.isEmpty()) Native.exit(); });
     }
     public static void finishAll() { sHandler.post(() -> { while (!sStack.isEmpty()) finishNow(top(), false); }); }
     public static void recreate(Activity a) {

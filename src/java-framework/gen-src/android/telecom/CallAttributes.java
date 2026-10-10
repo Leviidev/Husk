@@ -30,7 +30,7 @@ public final class CallAttributes implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.telecom.PhoneAccountHandle p0, int p1, java.lang.CharSequence p2, android.net.Uri p3) {}
-        public android.telecom.CallAttributes build() { return new android.telecom.CallAttributes(); }
+        public android.telecom.CallAttributes build() { android.telecom.CallAttributes x = new android.telecom.CallAttributes(); x.huskProps.putAll(huskProps); return x; }
         public android.telecom.CallAttributes.Builder setCallCapabilities(int p0) { huskProps.put("CallCapabilities", Integer.valueOf(p0)); return this; }
         public android.telecom.CallAttributes.Builder setCallType(int p0) { huskProps.put("CallType", Integer.valueOf(p0)); return this; }
         public android.telecom.CallAttributes.Builder setLogExcluded(boolean p0) { huskProps.put("LogExcluded", Boolean.valueOf(p0)); return this; }

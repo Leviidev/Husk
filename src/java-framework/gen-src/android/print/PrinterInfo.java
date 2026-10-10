@@ -24,7 +24,7 @@ public final class PrinterInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.print.PrinterId p0, java.lang.String p1, int p2) {}
         public Builder(android.print.PrinterInfo p0) {}
-        public android.print.PrinterInfo build() { return new android.print.PrinterInfo(); }
+        public android.print.PrinterInfo build() { android.print.PrinterInfo x = new android.print.PrinterInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.print.PrinterInfo.Builder incCustomPrinterIconGen() { return this; }
         public android.print.PrinterInfo.Builder setCapabilities(android.print.PrinterCapabilitiesInfo p0) { huskProps.put("Capabilities", p0); return this; }
         public android.print.PrinterInfo.Builder setDescription(java.lang.String p0) { huskProps.put("Description", p0); return this; }

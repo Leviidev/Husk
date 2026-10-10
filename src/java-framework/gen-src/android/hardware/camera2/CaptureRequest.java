@@ -115,7 +115,7 @@ public final class CaptureRequest extends android.hardware.camera2.CameraMetadat
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.hardware.camera2.impl.CameraMetadataNative p0, boolean p1, int p2, java.lang.String p3, java.util.Set p4) {}
         public void addTarget(android.view.Surface p0) {}
-        public android.hardware.camera2.CaptureRequest build() { return new android.hardware.camera2.CaptureRequest(); }
+        public android.hardware.camera2.CaptureRequest build() { android.hardware.camera2.CaptureRequest x = new android.hardware.camera2.CaptureRequest(); x.huskProps.putAll(huskProps); return x; }
         public java.lang.Object get(android.hardware.camera2.CaptureRequest.Key p0) { return null; }
         public java.lang.Object getPhysicalCameraKey(android.hardware.camera2.CaptureRequest.Key p0, java.lang.String p1) { return null; }
         public boolean isEmpty() { return (huskProps.get("Empty") instanceof Boolean ? (Boolean) huskProps.get("Empty") : false); }

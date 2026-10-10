@@ -28,7 +28,7 @@ public final class InlineSuggestionsRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.util.List p0) { super(); }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder addInlinePresentationSpecs(android.widget.inline.InlinePresentationSpec p0) { return this; }
-        public android.view.inputmethod.InlineSuggestionsRequest build() { return new android.view.inputmethod.InlineSuggestionsRequest(); }
+        public android.view.inputmethod.InlineSuggestionsRequest build() { android.view.inputmethod.InlineSuggestionsRequest x = new android.view.inputmethod.InlineSuggestionsRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setInlinePresentationSpecs(java.util.List p0) { huskProps.put("InlinePresentationSpecs", p0); return this; }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setInlineTooltipPresentationSpec(android.widget.inline.InlinePresentationSpec p0) { huskProps.put("InlineTooltipPresentationSpec", p0); return this; }

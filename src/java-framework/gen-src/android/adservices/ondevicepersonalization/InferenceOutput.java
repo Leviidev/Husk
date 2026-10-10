@@ -11,7 +11,7 @@ public final class InferenceOutput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.InferenceOutput.Builder addDataOutput(int p0, java.lang.Object p1) { return this; }
-        public android.adservices.ondevicepersonalization.InferenceOutput build() { return new android.adservices.ondevicepersonalization.InferenceOutput(); }
+        public android.adservices.ondevicepersonalization.InferenceOutput build() { android.adservices.ondevicepersonalization.InferenceOutput x = new android.adservices.ondevicepersonalization.InferenceOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.InferenceOutput.Builder setData(byte[] p0) { huskProps.put("Data", p0); return this; }
         public android.adservices.ondevicepersonalization.InferenceOutput.Builder setDataOutputs(java.util.Map p0) { huskProps.put("DataOutputs", p0); return this; }
     }

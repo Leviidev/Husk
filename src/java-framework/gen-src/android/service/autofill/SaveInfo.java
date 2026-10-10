@@ -44,7 +44,7 @@ public final class SaveInfo implements android.os.Parcelable {
         public Builder(int p0) {}
         public Builder(int p0, android.view.autofill.AutofillId[] p1) {}
         public android.service.autofill.SaveInfo.Builder addSanitizer(android.service.autofill.Sanitizer p0, android.view.autofill.AutofillId[] p1) { return this; }
-        public android.service.autofill.SaveInfo build() { return new android.service.autofill.SaveInfo(); }
+        public android.service.autofill.SaveInfo build() { android.service.autofill.SaveInfo x = new android.service.autofill.SaveInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.SaveInfo.Builder setCustomDescription(android.service.autofill.CustomDescription p0) { huskProps.put("CustomDescription", p0); return this; }
         public android.service.autofill.SaveInfo.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }
         public android.service.autofill.SaveInfo.Builder setFlags(int p0) { huskProps.put("Flags", Integer.valueOf(p0)); return this; }

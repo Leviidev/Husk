@@ -9,7 +9,7 @@ public final class FederatedComputeInput {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.ondevicepersonalization.FederatedComputeInput build() { return new android.adservices.ondevicepersonalization.FederatedComputeInput(); }
+        public android.adservices.ondevicepersonalization.FederatedComputeInput build() { android.adservices.ondevicepersonalization.FederatedComputeInput x = new android.adservices.ondevicepersonalization.FederatedComputeInput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.FederatedComputeInput.Builder setPopulationName(java.lang.String p0) { huskProps.put("PopulationName", p0); return this; }
     }
 }

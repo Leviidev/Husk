@@ -50,7 +50,7 @@ public class WifiP2pConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.wifi.p2p.WifiP2pConfig build() { return new android.net.wifi.p2p.WifiP2pConfig(); }
+        public android.net.wifi.p2p.WifiP2pConfig build() { android.net.wifi.p2p.WifiP2pConfig x = new android.net.wifi.p2p.WifiP2pConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.p2p.WifiP2pConfig.Builder enablePersistentMode(boolean p0) { return this; }
         public android.net.wifi.p2p.WifiP2pConfig.Builder setAuthorizeConnectionFromPeerEnabled(boolean p0) { huskProps.put("AuthorizeConnectionFromPeerEnabled", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.p2p.WifiP2pConfig.Builder setDeviceAddress(android.net.MacAddress p0) { huskProps.put("DeviceAddress", p0); return this; }

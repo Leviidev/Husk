@@ -33,7 +33,7 @@ public final class TvTrackInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, java.lang.String p1) {}
-        public android.media.tv.TvTrackInfo build() { return new android.media.tv.TvTrackInfo(); }
+        public android.media.tv.TvTrackInfo build() { android.media.tv.TvTrackInfo x = new android.media.tv.TvTrackInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.media.tv.TvTrackInfo.Builder setAudioChannelCount(int p0) { huskProps.put("AudioChannelCount", Integer.valueOf(p0)); return this; }
         public android.media.tv.TvTrackInfo.Builder setAudioDescription(boolean p0) { huskProps.put("AudioDescription", Boolean.valueOf(p0)); return this; }
         public android.media.tv.TvTrackInfo.Builder setAudioSampleRate(int p0) { huskProps.put("AudioSampleRate", Integer.valueOf(p0)); return this; }

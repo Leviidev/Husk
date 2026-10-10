@@ -34,7 +34,7 @@ public final class WifiAwareNetworkSpecifier extends android.net.NetworkSpecifie
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.wifi.aware.DiscoverySession p0, android.net.wifi.aware.PeerHandle p1) {}
         public Builder(android.net.wifi.aware.PublishDiscoverySession p0) {}
-        public android.net.wifi.aware.WifiAwareNetworkSpecifier build() { return new android.net.wifi.aware.WifiAwareNetworkSpecifier(); }
+        public android.net.wifi.aware.WifiAwareNetworkSpecifier build() { android.net.wifi.aware.WifiAwareNetworkSpecifier x = new android.net.wifi.aware.WifiAwareNetworkSpecifier(); x.huskProps.putAll(huskProps); return x; }
         public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelFrequencyMhz(int p0, boolean p1) { return this; }
         public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setDataPathSecurityConfig(android.net.wifi.aware.WifiAwareDataPathSecurityConfig p0) { huskProps.put("DataPathSecurityConfig", p0); return this; }
         public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPmk(byte[] p0) { huskProps.put("Pmk", p0); return this; }

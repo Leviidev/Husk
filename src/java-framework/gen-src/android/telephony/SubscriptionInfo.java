@@ -56,7 +56,7 @@ public class SubscriptionInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.telephony.SubscriptionInfo p0) {}
-        public android.telephony.SubscriptionInfo build() { return new android.telephony.SubscriptionInfo(); }
+        public android.telephony.SubscriptionInfo build() { android.telephony.SubscriptionInfo x = new android.telephony.SubscriptionInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.SubscriptionInfo.Builder setCardId(int p0) { huskProps.put("CardId", Integer.valueOf(p0)); return this; }
         public android.telephony.SubscriptionInfo.Builder setCardString(java.lang.String p0) { huskProps.put("CardString", p0); return this; }
         public android.telephony.SubscriptionInfo.Builder setCarrierConfigAccessRules(android.telephony.UiccAccessRule[] p0) { huskProps.put("CarrierConfigAccessRules", p0); return this; }

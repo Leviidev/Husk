@@ -23,7 +23,7 @@ public final class AdvertiseData implements android.os.Parcelable {
         public android.bluetooth.le.AdvertiseData.Builder addServiceSolicitationUuid(android.os.ParcelUuid p0) { return this; }
         public android.bluetooth.le.AdvertiseData.Builder addServiceUuid(android.os.ParcelUuid p0) { return this; }
         public android.bluetooth.le.AdvertiseData.Builder addTransportDiscoveryData(android.bluetooth.le.TransportDiscoveryData p0) { return this; }
-        public android.bluetooth.le.AdvertiseData build() { return new android.bluetooth.le.AdvertiseData(); }
+        public android.bluetooth.le.AdvertiseData build() { android.bluetooth.le.AdvertiseData x = new android.bluetooth.le.AdvertiseData(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.AdvertiseData.Builder setIncludeDeviceName(boolean p0) { huskProps.put("IncludeDeviceName", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseData.Builder setIncludeTxPowerLevel(boolean p0) { huskProps.put("IncludeTxPowerLevel", Boolean.valueOf(p0)); return this; }
     }

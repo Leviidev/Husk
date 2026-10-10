@@ -52,7 +52,7 @@ public final class PlaybackErrorEvent extends android.media.metrics.Event implem
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.media.metrics.PlaybackErrorEvent build() { return new android.media.metrics.PlaybackErrorEvent(); }
+        public android.media.metrics.PlaybackErrorEvent build() { android.media.metrics.PlaybackErrorEvent x = new android.media.metrics.PlaybackErrorEvent(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.PlaybackErrorEvent.Builder setErrorCode(int p0) { huskProps.put("ErrorCode", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackErrorEvent.Builder setException(java.lang.Exception p0) { huskProps.put("Exception", p0); return this; }
         public android.media.metrics.PlaybackErrorEvent.Builder setMetricsBundle(android.os.Bundle p0) { huskProps.put("MetricsBundle", p0); return this; }

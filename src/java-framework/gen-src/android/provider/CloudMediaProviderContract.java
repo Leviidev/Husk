@@ -89,7 +89,7 @@ public final class CloudMediaProviderContract {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.provider.CloudMediaProviderContract.Capabilities build() { return new android.provider.CloudMediaProviderContract.Capabilities(); }
+            public android.provider.CloudMediaProviderContract.Capabilities build() { android.provider.CloudMediaProviderContract.Capabilities x = new android.provider.CloudMediaProviderContract.Capabilities(); x.huskProps.putAll(huskProps); return x; }
             public android.provider.CloudMediaProviderContract.Capabilities.Builder setAlbumsAsCategoryEnabled(boolean p0) { huskProps.put("AlbumsAsCategoryEnabled", Boolean.valueOf(p0)); return this; }
             public android.provider.CloudMediaProviderContract.Capabilities.Builder setMediaCategoriesEnabled(boolean p0) { huskProps.put("MediaCategoriesEnabled", Boolean.valueOf(p0)); return this; }
             public android.provider.CloudMediaProviderContract.Capabilities.Builder setSearchEnabled(boolean p0) { huskProps.put("SearchEnabled", Boolean.valueOf(p0)); return this; }

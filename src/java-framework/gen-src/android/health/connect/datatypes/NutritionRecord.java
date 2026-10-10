@@ -95,7 +95,7 @@ public final class NutritionRecord extends android.health.connect.datatypes.Inte
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2) {}
-        public android.health.connect.datatypes.NutritionRecord build() { return new android.health.connect.datatypes.NutritionRecord(); }
+        public android.health.connect.datatypes.NutritionRecord build() { android.health.connect.datatypes.NutritionRecord x = new android.health.connect.datatypes.NutritionRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.NutritionRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.NutritionRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.NutritionRecord.Builder clearStartZoneOffset() { return this; }

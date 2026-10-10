@@ -103,7 +103,7 @@ public final class MediaRouter2 {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.media.MediaRouter2.ScanRequest build() { return new android.media.MediaRouter2.ScanRequest(); }
+            public android.media.MediaRouter2.ScanRequest build() { android.media.MediaRouter2.ScanRequest x = new android.media.MediaRouter2.ScanRequest(); x.huskProps.putAll(huskProps); return x; }
             public android.media.MediaRouter2.ScanRequest.Builder setScreenOffScan(boolean p0) { huskProps.put("ScreenOffScan", Boolean.valueOf(p0)); return this; }
         }
     }

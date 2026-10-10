@@ -14,7 +14,7 @@ public final class ChooserAction implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.graphics.drawable.Icon p0, java.lang.CharSequence p1, android.app.PendingIntent p2) {}
-        public android.service.chooser.ChooserAction build() { return new android.service.chooser.ChooserAction(); }
+        public android.service.chooser.ChooserAction build() { android.service.chooser.ChooserAction x = new android.service.chooser.ChooserAction(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((android.graphics.drawable.Icon) null, (java.lang.CharSequence) null, (android.app.PendingIntent) null); }
     }
 }

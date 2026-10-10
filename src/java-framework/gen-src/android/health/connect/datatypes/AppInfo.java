@@ -11,7 +11,7 @@ public final class AppInfo {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1, android.graphics.Bitmap p2) {}
-        public android.health.connect.datatypes.AppInfo build() { return new android.health.connect.datatypes.AppInfo(); }
+        public android.health.connect.datatypes.AppInfo build() { android.health.connect.datatypes.AppInfo x = new android.health.connect.datatypes.AppInfo(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.lang.String) null, (java.lang.String) null, (android.graphics.Bitmap) null); }
     }
 }

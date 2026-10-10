@@ -26,7 +26,7 @@ public final class ImsRegistrationAttributes implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telephony.ims.ImsRegistrationAttributes build() { return new android.telephony.ims.ImsRegistrationAttributes(); }
+        public android.telephony.ims.ImsRegistrationAttributes build() { android.telephony.ims.ImsRegistrationAttributes x = new android.telephony.ims.ImsRegistrationAttributes(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFeatureTags(java.util.Set p0) { huskProps.put("FeatureTags", p0); return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFlagRegistrationTypeEmergency() { return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFlagVirtualRegistrationForEmergencyCall() { return this; }

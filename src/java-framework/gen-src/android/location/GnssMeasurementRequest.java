@@ -17,7 +17,7 @@ public final class GnssMeasurementRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.location.GnssMeasurementRequest p0) {}
-        public android.location.GnssMeasurementRequest build() { return new android.location.GnssMeasurementRequest(); }
+        public android.location.GnssMeasurementRequest build() { android.location.GnssMeasurementRequest x = new android.location.GnssMeasurementRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.location.GnssMeasurementRequest.Builder setCorrelationVectorOutputsEnabled(boolean p0) { huskProps.put("CorrelationVectorOutputsEnabled", Boolean.valueOf(p0)); return this; }
         public android.location.GnssMeasurementRequest.Builder setFullTracking(boolean p0) { huskProps.put("FullTracking", Boolean.valueOf(p0)); return this; }
         public android.location.GnssMeasurementRequest.Builder setIntervalMillis(int p0) { huskProps.put("IntervalMillis", Integer.valueOf(p0)); return this; }

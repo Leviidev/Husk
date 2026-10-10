@@ -33,7 +33,7 @@ public final class Magnifier {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.View p0) {}
-        public android.widget.Magnifier build() { return new android.widget.Magnifier(); }
+        public android.widget.Magnifier build() { android.widget.Magnifier x = new android.widget.Magnifier(); x.huskProps.putAll(huskProps); return x; }
         public android.widget.Magnifier.Builder setClippingEnabled(boolean p0) { huskProps.put("ClippingEnabled", Boolean.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setCornerRadius(float p0) { huskProps.put("CornerRadius", Float.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setDefaultSourceToMagnifierOffset(int p0, int p1) { return this; }

@@ -9,7 +9,7 @@ public final class DataOrigin {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.health.connect.datatypes.DataOrigin build() { return new android.health.connect.datatypes.DataOrigin(); }
+        public android.health.connect.datatypes.DataOrigin build() { android.health.connect.datatypes.DataOrigin x = new android.health.connect.datatypes.DataOrigin(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.DataOrigin.Builder setPackageName(java.lang.String p0) { huskProps.put("PackageName", p0); return this; }
     }
 }

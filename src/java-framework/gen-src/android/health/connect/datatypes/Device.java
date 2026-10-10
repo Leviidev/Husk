@@ -29,7 +29,7 @@ public final class Device {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.health.connect.datatypes.Device build() { return new android.health.connect.datatypes.Device(); }
+        public android.health.connect.datatypes.Device build() { android.health.connect.datatypes.Device x = new android.health.connect.datatypes.Device(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.Device.Builder setDisplayName(java.lang.String p0) { huskProps.put("DisplayName", p0); return this; }
         public android.health.connect.datatypes.Device.Builder setManufacturer(java.lang.String p0) { huskProps.put("Manufacturer", p0); return this; }
         public android.health.connect.datatypes.Device.Builder setModel(java.lang.String p0) { huskProps.put("Model", p0); return this; }

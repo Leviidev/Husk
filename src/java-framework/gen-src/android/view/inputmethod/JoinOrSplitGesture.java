@@ -12,7 +12,7 @@ public final class JoinOrSplitGesture extends android.view.inputmethod.Handwriti
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.JoinOrSplitGesture build() { return new android.view.inputmethod.JoinOrSplitGesture(); }
+        public android.view.inputmethod.JoinOrSplitGesture build() { android.view.inputmethod.JoinOrSplitGesture x = new android.view.inputmethod.JoinOrSplitGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.JoinOrSplitGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.JoinOrSplitGesture.Builder setJoinOrSplitPoint(android.graphics.PointF p0) { huskProps.put("JoinOrSplitPoint", p0); return this; }
     }

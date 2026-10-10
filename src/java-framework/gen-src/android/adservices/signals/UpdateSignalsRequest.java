@@ -9,7 +9,7 @@ public final class UpdateSignalsRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.net.Uri p0) {}
-        public android.adservices.signals.UpdateSignalsRequest build() { return new android.adservices.signals.UpdateSignalsRequest(); }
+        public android.adservices.signals.UpdateSignalsRequest build() { android.adservices.signals.UpdateSignalsRequest x = new android.adservices.signals.UpdateSignalsRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.signals.UpdateSignalsRequest.Builder setUpdateUri(android.net.Uri p0) { huskProps.put("UpdateUri", p0); return this; }
         Builder() { this((android.net.Uri) null); }
     }

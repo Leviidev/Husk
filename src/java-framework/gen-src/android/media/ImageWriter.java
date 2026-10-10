@@ -23,7 +23,7 @@ public class ImageWriter implements java.lang.AutoCloseable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.Surface p0) {}
-        public android.media.ImageWriter build() { return new android.media.ImageWriter(); }
+        public android.media.ImageWriter build() { android.media.ImageWriter x = new android.media.ImageWriter(); x.huskProps.putAll(huskProps); return x; }
         public android.media.ImageWriter.Builder setDataSpace(int p0) { huskProps.put("DataSpace", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setHardwareBufferFormat(int p0) { huskProps.put("HardwareBufferFormat", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setImageFormat(int p0) { huskProps.put("ImageFormat", Integer.valueOf(p0)); return this; }

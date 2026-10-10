@@ -16,7 +16,7 @@ public final class AppInstallFilters implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.common.AppInstallFilters build() { return new android.adservices.common.AppInstallFilters(); }
+        public android.adservices.common.AppInstallFilters build() { android.adservices.common.AppInstallFilters x = new android.adservices.common.AppInstallFilters(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.common.AppInstallFilters.Builder setPackageNames(java.util.Set p0) { huskProps.put("PackageNames", p0); return this; }
     }
 }

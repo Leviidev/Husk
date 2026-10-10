@@ -61,7 +61,7 @@ public final class LocationRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(long p0) {}
         public Builder(android.location.LocationRequest p0) {}
-        public android.location.LocationRequest build() { return new android.location.LocationRequest(); }
+        public android.location.LocationRequest build() { android.location.LocationRequest x = new android.location.LocationRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.location.LocationRequest.Builder clearMinUpdateIntervalMillis() { return this; }
         public android.location.LocationRequest.Builder setAdasGnssBypass(boolean p0) { huskProps.put("AdasGnssBypass", Boolean.valueOf(p0)); return this; }
         public android.location.LocationRequest.Builder setDurationMillis(long p0) { huskProps.put("DurationMillis", Long.valueOf(p0)); return this; }

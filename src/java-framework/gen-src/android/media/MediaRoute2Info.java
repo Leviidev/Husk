@@ -96,7 +96,7 @@ public final class MediaRoute2Info implements android.os.Parcelable {
         public Builder(java.lang.String p0, java.lang.CharSequence p1) {}
         public android.media.MediaRoute2Info.Builder addFeature(java.lang.String p0) { return this; }
         public android.media.MediaRoute2Info.Builder addFeatures(java.util.Collection p0) { return this; }
-        public android.media.MediaRoute2Info build() { return new android.media.MediaRoute2Info(); }
+        public android.media.MediaRoute2Info build() { android.media.MediaRoute2Info x = new android.media.MediaRoute2Info(); x.huskProps.putAll(huskProps); return x; }
         public android.media.MediaRoute2Info.Builder clearFeatures() { return this; }
         public android.media.MediaRoute2Info.Builder setAddress(java.lang.String p0) { huskProps.put("Address", p0); return this; }
         public android.media.MediaRoute2Info.Builder setClientPackageName(java.lang.String p0) { huskProps.put("ClientPackageName", p0); return this; }

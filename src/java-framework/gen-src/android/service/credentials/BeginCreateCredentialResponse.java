@@ -14,7 +14,7 @@ public final class BeginCreateCredentialResponse implements android.os.Parcelabl
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.service.credentials.BeginCreateCredentialResponse.Builder addCreateEntry(android.service.credentials.CreateEntry p0) { return this; }
-        public android.service.credentials.BeginCreateCredentialResponse build() { return new android.service.credentials.BeginCreateCredentialResponse(); }
+        public android.service.credentials.BeginCreateCredentialResponse build() { android.service.credentials.BeginCreateCredentialResponse x = new android.service.credentials.BeginCreateCredentialResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.service.credentials.BeginCreateCredentialResponse.Builder setCreateEntries(java.util.List p0) { huskProps.put("CreateEntries", p0); return this; }
         public android.service.credentials.BeginCreateCredentialResponse.Builder setRemoteCreateEntry(android.service.credentials.RemoteEntry p0) { huskProps.put("RemoteCreateEntry", p0); return this; }
     }

@@ -17,6 +17,6 @@ public final class AppUriAuthenticationPolicy implements android.os.Parcelable {
         public Builder() {}
         public android.security.AppUriAuthenticationPolicy.Builder addAppAndUriMapping(java.lang.String p0, android.net.Uri p1, java.lang.String p2) { return this; }
         public android.security.AppUriAuthenticationPolicy.Builder addAppAndUriMapping(java.lang.String p0, android.security.UrisToAliases p1) { return this; }
-        public android.security.AppUriAuthenticationPolicy build() { return new android.security.AppUriAuthenticationPolicy(); }
+        public android.security.AppUriAuthenticationPolicy build() { android.security.AppUriAuthenticationPolicy x = new android.security.AppUriAuthenticationPolicy(); x.huskProps.putAll(huskProps); return x; }
     }
 }

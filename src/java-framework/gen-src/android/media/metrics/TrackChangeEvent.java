@@ -37,7 +37,7 @@ public final class TrackChangeEvent extends android.media.metrics.Event implemen
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.media.metrics.TrackChangeEvent build() { return new android.media.metrics.TrackChangeEvent(); }
+        public android.media.metrics.TrackChangeEvent build() { android.media.metrics.TrackChangeEvent x = new android.media.metrics.TrackChangeEvent(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.TrackChangeEvent.Builder setAudioSampleRate(int p0) { huskProps.put("AudioSampleRate", Integer.valueOf(p0)); return this; }
         public android.media.metrics.TrackChangeEvent.Builder setBitrate(int p0) { huskProps.put("Bitrate", Integer.valueOf(p0)); return this; }
         public android.media.metrics.TrackChangeEvent.Builder setChannelCount(int p0) { huskProps.put("ChannelCount", Integer.valueOf(p0)); return this; }

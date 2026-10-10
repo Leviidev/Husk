@@ -15,7 +15,7 @@ public final class ReadRecordsRequestUsingFilters extends android.health.connect
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.Class p0) {}
         public android.health.connect.ReadRecordsRequestUsingFilters.Builder addDataOrigins(android.health.connect.datatypes.DataOrigin p0) { return this; }
-        public android.health.connect.ReadRecordsRequestUsingFilters build() { return new android.health.connect.ReadRecordsRequestUsingFilters(); }
+        public android.health.connect.ReadRecordsRequestUsingFilters build() { android.health.connect.ReadRecordsRequestUsingFilters x = new android.health.connect.ReadRecordsRequestUsingFilters(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.ReadRecordsRequestUsingFilters.Builder setAscending(boolean p0) { huskProps.put("Ascending", Boolean.valueOf(p0)); return this; }
         public android.health.connect.ReadRecordsRequestUsingFilters.Builder setPageSize(int p0) { huskProps.put("PageSize", Integer.valueOf(p0)); return this; }
         public android.health.connect.ReadRecordsRequestUsingFilters.Builder setPageToken(long p0) { huskProps.put("PageToken", Long.valueOf(p0)); return this; }

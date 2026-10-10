@@ -9,7 +9,7 @@ public class PersonalizationData {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.security.identity.PersonalizationData.Builder addAccessControlProfile(android.security.identity.AccessControlProfile p0) { return this; }
-        public android.security.identity.PersonalizationData build() { return new android.security.identity.PersonalizationData(); }
+        public android.security.identity.PersonalizationData build() { android.security.identity.PersonalizationData x = new android.security.identity.PersonalizationData(); x.huskProps.putAll(huskProps); return x; }
         public android.security.identity.PersonalizationData.Builder putEntry(java.lang.String p0, java.lang.String p1, java.util.Collection p2, byte[] p3) { return this; }
     }
 }

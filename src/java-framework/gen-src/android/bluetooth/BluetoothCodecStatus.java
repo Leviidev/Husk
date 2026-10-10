@@ -17,7 +17,7 @@ public final class BluetoothCodecStatus implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.BluetoothCodecStatus build() { return new android.bluetooth.BluetoothCodecStatus(); }
+        public android.bluetooth.BluetoothCodecStatus build() { android.bluetooth.BluetoothCodecStatus x = new android.bluetooth.BluetoothCodecStatus(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.BluetoothCodecStatus.Builder setCodecConfig(android.bluetooth.BluetoothCodecConfig p0) { huskProps.put("CodecConfig", p0); return this; }
         public android.bluetooth.BluetoothCodecStatus.Builder setCodecsLocalCapabilities(java.util.List p0) { huskProps.put("CodecsLocalCapabilities", p0); return this; }
         public android.bluetooth.BluetoothCodecStatus.Builder setCodecsSelectableCapabilities(java.util.List p0) { huskProps.put("CodecsSelectableCapabilities", p0); return this; }

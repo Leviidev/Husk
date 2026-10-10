@@ -9,7 +9,7 @@ public class JoinCustomAudienceRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.customaudience.JoinCustomAudienceRequest build() { return new android.adservices.customaudience.JoinCustomAudienceRequest(); }
+        public android.adservices.customaudience.JoinCustomAudienceRequest build() { android.adservices.customaudience.JoinCustomAudienceRequest x = new android.adservices.customaudience.JoinCustomAudienceRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.JoinCustomAudienceRequest.Builder setCustomAudience(android.adservices.customaudience.CustomAudience p0) { huskProps.put("CustomAudience", p0); return this; }
     }
 }

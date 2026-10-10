@@ -14,7 +14,7 @@ public final class SelectRangeGesture extends android.view.inputmethod.Previewab
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.SelectRangeGesture build() { return new android.view.inputmethod.SelectRangeGesture(); }
+        public android.view.inputmethod.SelectRangeGesture build() { android.view.inputmethod.SelectRangeGesture x = new android.view.inputmethod.SelectRangeGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.SelectRangeGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.SelectRangeGesture.Builder setGranularity(int p0) { huskProps.put("Granularity", Integer.valueOf(p0)); return this; }
         public android.view.inputmethod.SelectRangeGesture.Builder setSelectionEndArea(android.graphics.RectF p0) { huskProps.put("SelectionEndArea", p0); return this; }

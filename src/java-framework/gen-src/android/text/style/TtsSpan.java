@@ -99,7 +99,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.text.style.TtsSpan build() { return new android.text.style.TtsSpan(); }
+        public android.text.style.TtsSpan build() { android.text.style.TtsSpan x = new android.text.style.TtsSpan(); x.huskProps.putAll(huskProps); return x; }
         public android.text.style.TtsSpan.Builder setIntArgument(java.lang.String p0, int p1) { return this; }
         public android.text.style.TtsSpan.Builder setLongArgument(java.lang.String p0, long p1) { return this; }
         public android.text.style.TtsSpan.Builder setStringArgument(java.lang.String p0, java.lang.String p1) { return this; }

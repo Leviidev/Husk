@@ -26,7 +26,7 @@ public final class BluetoothLeDeviceFilter implements android.companion.DeviceFi
     public static abstract class Builder extends android.provider.OneTimeUseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() { super(); }
-        public android.companion.BluetoothLeDeviceFilter build() { return new android.companion.BluetoothLeDeviceFilter(); }
+        public android.companion.BluetoothLeDeviceFilter build() { android.companion.BluetoothLeDeviceFilter x = new android.companion.BluetoothLeDeviceFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.companion.BluetoothLeDeviceFilter.Builder setNamePattern(java.util.regex.Pattern p0) { huskProps.put("NamePattern", p0); return this; }
         public android.companion.BluetoothLeDeviceFilter.Builder setRawDataFilter(byte[] p0, byte[] p1) { return this; }
         public android.companion.BluetoothLeDeviceFilter.Builder setRenameFromBytes(java.lang.String p0, java.lang.String p1, int p2, int p3, java.nio.ByteOrder p4) { return this; }

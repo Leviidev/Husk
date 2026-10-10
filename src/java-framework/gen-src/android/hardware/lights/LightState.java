@@ -15,7 +15,7 @@ public final class LightState implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.hardware.lights.LightState build() { return new android.hardware.lights.LightState(); }
+        public android.hardware.lights.LightState build() { android.hardware.lights.LightState x = new android.hardware.lights.LightState(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.lights.LightState.Builder setColor(int p0) { huskProps.put("Color", Integer.valueOf(p0)); return this; }
         public android.hardware.lights.LightState.Builder setPlayerId(int p0) { huskProps.put("PlayerId", Integer.valueOf(p0)); return this; }
     }

@@ -12,7 +12,7 @@ public final class Field {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.service.autofill.Field build() { return new android.service.autofill.Field(); }
+        public android.service.autofill.Field build() { android.service.autofill.Field x = new android.service.autofill.Field(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.Field.Builder setFilter(java.util.regex.Pattern p0) { huskProps.put("Filter", p0); return this; }
         public android.service.autofill.Field.Builder setPresentations(android.service.autofill.Presentations p0) { huskProps.put("Presentations", p0); return this; }
         public android.service.autofill.Field.Builder setValue(android.view.autofill.AutofillValue p0) { huskProps.put("Value", p0); return this; }

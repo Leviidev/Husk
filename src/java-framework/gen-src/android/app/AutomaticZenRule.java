@@ -68,7 +68,7 @@ public final class AutomaticZenRule implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.app.AutomaticZenRule p0) {}
         public Builder(java.lang.String p0, android.net.Uri p1) {}
-        public android.app.AutomaticZenRule build() { return new android.app.AutomaticZenRule(); }
+        public android.app.AutomaticZenRule build() { android.app.AutomaticZenRule x = new android.app.AutomaticZenRule(); x.huskProps.putAll(huskProps); return x; }
         public android.app.AutomaticZenRule.Builder setConditionId(android.net.Uri p0) { huskProps.put("ConditionId", p0); return this; }
         public android.app.AutomaticZenRule.Builder setConfigurationActivity(android.content.ComponentName p0) { huskProps.put("ConfigurationActivity", p0); return this; }
         public android.app.AutomaticZenRule.Builder setCreationTime(long p0) { huskProps.put("CreationTime", Long.valueOf(p0)); return this; }

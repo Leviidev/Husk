@@ -34,7 +34,7 @@ public final class SetSchemaRequest {
         public android.app.appsearch.SetSchemaRequest.Builder addSchemaTypeVisibleToConfig(java.lang.String p0, android.app.appsearch.SchemaVisibilityConfig p1) { return this; }
         public android.app.appsearch.SetSchemaRequest.Builder addSchemas(java.util.Collection p0) { return this; }
         public android.app.appsearch.SetSchemaRequest.Builder addSchemas(android.app.appsearch.AppSearchSchema[] p0) { return this; }
-        public android.app.appsearch.SetSchemaRequest build() { return new android.app.appsearch.SetSchemaRequest(); }
+        public android.app.appsearch.SetSchemaRequest build() { android.app.appsearch.SetSchemaRequest x = new android.app.appsearch.SetSchemaRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.app.appsearch.SetSchemaRequest.Builder clearMigrators() { return this; }
         public android.app.appsearch.SetSchemaRequest.Builder clearRequiredPermissionsForSchemaTypeVisibility(java.lang.String p0) { return this; }
         public android.app.appsearch.SetSchemaRequest.Builder clearSchemaTypeVisibleToConfigs(java.lang.String p0) { return this; }

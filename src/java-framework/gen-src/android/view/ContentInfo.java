@@ -26,7 +26,7 @@ public final class ContentInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.ClipData p0, int p1) {}
         public Builder(android.view.ContentInfo p0) {}
-        public android.view.ContentInfo build() { return new android.view.ContentInfo(); }
+        public android.view.ContentInfo build() { android.view.ContentInfo x = new android.view.ContentInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.view.ContentInfo.Builder setClip(android.content.ClipData p0) { huskProps.put("Clip", p0); return this; }
         public android.view.ContentInfo.Builder setDragAndDropPermissions(android.view.DragAndDropPermissions p0) { huskProps.put("DragAndDropPermissions", p0); return this; }
         public android.view.ContentInfo.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

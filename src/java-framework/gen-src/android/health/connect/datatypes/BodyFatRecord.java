@@ -10,7 +10,7 @@ public final class BodyFatRecord extends android.health.connect.datatypes.Instan
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, android.health.connect.datatypes.units.Percentage p2) {}
-        public android.health.connect.datatypes.BodyFatRecord build() { return new android.health.connect.datatypes.BodyFatRecord(); }
+        public android.health.connect.datatypes.BodyFatRecord build() { android.health.connect.datatypes.BodyFatRecord x = new android.health.connect.datatypes.BodyFatRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.BodyFatRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.BodyFatRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.BodyFatRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

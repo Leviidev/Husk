@@ -13,7 +13,7 @@ public final class HeightRecord extends android.health.connect.datatypes.Instant
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, android.health.connect.datatypes.units.Length p2) {}
-        public android.health.connect.datatypes.HeightRecord build() { return new android.health.connect.datatypes.HeightRecord(); }
+        public android.health.connect.datatypes.HeightRecord build() { android.health.connect.datatypes.HeightRecord x = new android.health.connect.datatypes.HeightRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.HeightRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.HeightRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.HeightRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

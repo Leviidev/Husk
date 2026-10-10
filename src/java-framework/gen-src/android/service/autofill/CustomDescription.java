@@ -18,7 +18,7 @@ public final class CustomDescription implements android.os.Parcelable {
         public android.service.autofill.CustomDescription.Builder addChild(int p0, android.service.autofill.Transformation p1) { return this; }
         public android.service.autofill.CustomDescription.Builder addOnClickAction(int p0, android.service.autofill.OnClickAction p1) { return this; }
         public android.service.autofill.CustomDescription.Builder batchUpdate(android.service.autofill.Validator p0, android.service.autofill.BatchUpdates p1) { return this; }
-        public android.service.autofill.CustomDescription build() { return new android.service.autofill.CustomDescription(); }
+        public android.service.autofill.CustomDescription build() { android.service.autofill.CustomDescription x = new android.service.autofill.CustomDescription(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((android.widget.RemoteViews) null); }
     }
 }

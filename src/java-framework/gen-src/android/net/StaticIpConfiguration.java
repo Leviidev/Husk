@@ -25,7 +25,7 @@ public final class StaticIpConfiguration implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.StaticIpConfiguration build() { return new android.net.StaticIpConfiguration(); }
+        public android.net.StaticIpConfiguration build() { android.net.StaticIpConfiguration x = new android.net.StaticIpConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.net.StaticIpConfiguration.Builder setDnsServers(java.lang.Iterable p0) { huskProps.put("DnsServers", p0); return this; }
         public android.net.StaticIpConfiguration.Builder setDomains(java.lang.String p0) { huskProps.put("Domains", p0); return this; }
         public android.net.StaticIpConfiguration.Builder setGateway(java.net.InetAddress p0) { huskProps.put("Gateway", p0); return this; }

@@ -24,7 +24,7 @@ public final class PreferentialNetworkServiceConfig implements android.os.Parcel
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.app.admin.PreferentialNetworkServiceConfig build() { return new android.app.admin.PreferentialNetworkServiceConfig(); }
+        public android.app.admin.PreferentialNetworkServiceConfig build() { android.app.admin.PreferentialNetworkServiceConfig x = new android.app.admin.PreferentialNetworkServiceConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.app.admin.PreferentialNetworkServiceConfig.Builder setEnabled(boolean p0) { huskProps.put("Enabled", Boolean.valueOf(p0)); return this; }
         public android.app.admin.PreferentialNetworkServiceConfig.Builder setExcludedUids(int[] p0) { huskProps.put("ExcludedUids", p0); return this; }
         public android.app.admin.PreferentialNetworkServiceConfig.Builder setFallbackToDefaultConnectionAllowed(boolean p0) { huskProps.put("FallbackToDefaultConnectionAllowed", Boolean.valueOf(p0)); return this; }

@@ -32,7 +32,7 @@ public final class FormWidgetInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, android.graphics.Rect p2, java.lang.String p3, java.lang.String p4) {}
-        public android.graphics.pdf.models.FormWidgetInfo build() { return new android.graphics.pdf.models.FormWidgetInfo(); }
+        public android.graphics.pdf.models.FormWidgetInfo build() { android.graphics.pdf.models.FormWidgetInfo x = new android.graphics.pdf.models.FormWidgetInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.graphics.pdf.models.FormWidgetInfo.Builder setEditableText(boolean p0) { huskProps.put("EditableText", Boolean.valueOf(p0)); return this; }
         public android.graphics.pdf.models.FormWidgetInfo.Builder setFontSize(float p0) { huskProps.put("FontSize", Float.valueOf(p0)); return this; }
         public android.graphics.pdf.models.FormWidgetInfo.Builder setListItems(java.util.List p0) { huskProps.put("ListItems", p0); return this; }

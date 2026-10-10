@@ -10,7 +10,7 @@ public final class MenstruationFlowRecord extends android.health.connect.datatyp
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, int p2) {}
-        public android.health.connect.datatypes.MenstruationFlowRecord build() { return new android.health.connect.datatypes.MenstruationFlowRecord(); }
+        public android.health.connect.datatypes.MenstruationFlowRecord build() { android.health.connect.datatypes.MenstruationFlowRecord x = new android.health.connect.datatypes.MenstruationFlowRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.MenstruationFlowRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.MenstruationFlowRecord.Builder clearZoneOffset() { return this; }
         public android.health.connect.datatypes.MenstruationFlowRecord.Builder setZoneOffset(java.time.ZoneOffset p0) { huskProps.put("ZoneOffset", p0); return this; }

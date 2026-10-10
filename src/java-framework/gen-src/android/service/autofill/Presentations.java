@@ -12,7 +12,7 @@ public final class Presentations {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.service.autofill.Presentations build() { return new android.service.autofill.Presentations(); }
+        public android.service.autofill.Presentations build() { android.service.autofill.Presentations x = new android.service.autofill.Presentations(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.Presentations.Builder setDialogPresentation(android.widget.RemoteViews p0) { huskProps.put("DialogPresentation", p0); return this; }
         public android.service.autofill.Presentations.Builder setInlinePresentation(android.service.autofill.InlinePresentation p0) { huskProps.put("InlinePresentation", p0); return this; }
         public android.service.autofill.Presentations.Builder setInlineTooltipPresentation(android.service.autofill.InlinePresentation p0) { huskProps.put("InlineTooltipPresentation", p0); return this; }

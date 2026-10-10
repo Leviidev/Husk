@@ -13,7 +13,7 @@ public final class WebTriggerRegistrationRequest implements android.os.Parcelabl
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.util.List p0, android.net.Uri p1) {}
-        public android.adservices.measurement.WebTriggerRegistrationRequest build() { return new android.adservices.measurement.WebTriggerRegistrationRequest(); }
+        public android.adservices.measurement.WebTriggerRegistrationRequest build() { android.adservices.measurement.WebTriggerRegistrationRequest x = new android.adservices.measurement.WebTriggerRegistrationRequest(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.util.List) null, (android.net.Uri) null); }
     }
 }

@@ -19,7 +19,7 @@ public final class RecognitionSupport implements android.os.Parcelable {
         public android.speech.RecognitionSupport.Builder addOnlineLanguage(java.lang.String p0) { return this; }
         public android.speech.RecognitionSupport.Builder addPendingOnDeviceLanguage(java.lang.String p0) { return this; }
         public android.speech.RecognitionSupport.Builder addSupportedOnDeviceLanguage(java.lang.String p0) { return this; }
-        public android.speech.RecognitionSupport build() { return new android.speech.RecognitionSupport(); }
+        public android.speech.RecognitionSupport build() { android.speech.RecognitionSupport x = new android.speech.RecognitionSupport(); x.huskProps.putAll(huskProps); return x; }
         public android.speech.RecognitionSupport.Builder setInstalledOnDeviceLanguages(java.util.List p0) { huskProps.put("InstalledOnDeviceLanguages", p0); return this; }
         public android.speech.RecognitionSupport.Builder setOnlineLanguages(java.util.List p0) { huskProps.put("OnlineLanguages", p0); return this; }
         public android.speech.RecognitionSupport.Builder setPendingOnDeviceLanguages(java.util.List p0) { huskProps.put("PendingOnDeviceLanguages", p0); return this; }

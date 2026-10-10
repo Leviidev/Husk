@@ -25,7 +25,7 @@ public final class NetworkEvent extends android.media.metrics.Event implements a
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.media.metrics.NetworkEvent build() { return new android.media.metrics.NetworkEvent(); }
+        public android.media.metrics.NetworkEvent build() { android.media.metrics.NetworkEvent x = new android.media.metrics.NetworkEvent(); x.huskProps.putAll(huskProps); return x; }
         public android.media.metrics.NetworkEvent.Builder setMetricsBundle(android.os.Bundle p0) { huskProps.put("MetricsBundle", p0); return this; }
         public android.media.metrics.NetworkEvent.Builder setNetworkType(int p0) { huskProps.put("NetworkType", Integer.valueOf(p0)); return this; }
         public android.media.metrics.NetworkEvent.Builder setTimeSinceCreatedMillis(long p0) { huskProps.put("TimeSinceCreatedMillis", Long.valueOf(p0)); return this; }

@@ -10,7 +10,7 @@ public final class EapAkaInfo extends android.net.eap.EapInfo {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.eap.EapAkaInfo build() { return new android.net.eap.EapAkaInfo(); }
+        public android.net.eap.EapAkaInfo build() { android.net.eap.EapAkaInfo x = new android.net.eap.EapAkaInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.net.eap.EapAkaInfo.Builder setReauthId(byte[] p0) { huskProps.put("ReauthId", p0); return this; }
     }
 }

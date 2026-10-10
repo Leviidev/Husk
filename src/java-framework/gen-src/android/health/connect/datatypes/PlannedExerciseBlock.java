@@ -13,7 +13,7 @@ public final class PlannedExerciseBlock {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
         public android.health.connect.datatypes.PlannedExerciseBlock.Builder addStep(android.health.connect.datatypes.PlannedExerciseStep p0) { return this; }
-        public android.health.connect.datatypes.PlannedExerciseBlock build() { return new android.health.connect.datatypes.PlannedExerciseBlock(); }
+        public android.health.connect.datatypes.PlannedExerciseBlock build() { android.health.connect.datatypes.PlannedExerciseBlock x = new android.health.connect.datatypes.PlannedExerciseBlock(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.PlannedExerciseBlock.Builder clearSteps() { return this; }
         public android.health.connect.datatypes.PlannedExerciseBlock.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }
         public android.health.connect.datatypes.PlannedExerciseBlock.Builder setRepetitions(int p0) { huskProps.put("Repetitions", Integer.valueOf(p0)); return this; }

@@ -10,7 +10,7 @@ public final class TrainingExamplesOutput {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.adservices.ondevicepersonalization.TrainingExamplesOutput.Builder addTrainingExampleRecord(android.adservices.ondevicepersonalization.TrainingExampleRecord p0) { return this; }
-        public android.adservices.ondevicepersonalization.TrainingExamplesOutput build() { return new android.adservices.ondevicepersonalization.TrainingExamplesOutput(); }
+        public android.adservices.ondevicepersonalization.TrainingExamplesOutput build() { android.adservices.ondevicepersonalization.TrainingExamplesOutput x = new android.adservices.ondevicepersonalization.TrainingExamplesOutput(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.ondevicepersonalization.TrainingExamplesOutput.Builder setTrainingExampleRecords(java.util.List p0) { huskProps.put("TrainingExampleRecords", p0); return this; }
     }
 }

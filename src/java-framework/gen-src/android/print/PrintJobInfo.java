@@ -61,7 +61,7 @@ public final class PrintJobInfo implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.print.PrintJobInfo p0) {}
-        public android.print.PrintJobInfo build() { return new android.print.PrintJobInfo(); }
+        public android.print.PrintJobInfo build() { android.print.PrintJobInfo x = new android.print.PrintJobInfo(); x.huskProps.putAll(huskProps); return x; }
         public void putAdvancedOption(java.lang.String p0, int p1) {}
         public void putAdvancedOption(java.lang.String p0, java.lang.String p1) {}
         public void setAttributes(android.print.PrintAttributes p0) { huskProps.put("Attributes", p0); }

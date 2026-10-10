@@ -16,7 +16,7 @@ public final class DiscoveryRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, java.lang.String p1) {}
         public Builder(java.lang.String p0) {}
-        public android.net.nsd.DiscoveryRequest build() { return new android.net.nsd.DiscoveryRequest(); }
+        public android.net.nsd.DiscoveryRequest build() { android.net.nsd.DiscoveryRequest x = new android.net.nsd.DiscoveryRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.net.nsd.DiscoveryRequest.Builder setNetwork(android.net.Network p0) { huskProps.put("Network", p0); return this; }
         public android.net.nsd.DiscoveryRequest.Builder setServiceType(java.lang.String p0) { huskProps.put("ServiceType", p0); return this; }
         public android.net.nsd.DiscoveryRequest.Builder setSubtype(java.lang.String p0) { huskProps.put("Subtype", p0); return this; }

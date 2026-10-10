@@ -15,7 +15,7 @@ public final class FactoryResetProtectionPolicy implements android.os.Parcelable
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.app.admin.FactoryResetProtectionPolicy build() { return new android.app.admin.FactoryResetProtectionPolicy(); }
+        public android.app.admin.FactoryResetProtectionPolicy build() { android.app.admin.FactoryResetProtectionPolicy x = new android.app.admin.FactoryResetProtectionPolicy(); x.huskProps.putAll(huskProps); return x; }
         public android.app.admin.FactoryResetProtectionPolicy.Builder setFactoryResetProtectionAccounts(java.util.List p0) { huskProps.put("FactoryResetProtectionAccounts", p0); return this; }
         public android.app.admin.FactoryResetProtectionPolicy.Builder setFactoryResetProtectionEnabled(boolean p0) { huskProps.put("FactoryResetProtectionEnabled", Boolean.valueOf(p0)); return this; }
     }

@@ -15,7 +15,7 @@ public final class CapabilityParams implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1) {}
         public android.content.pm.CapabilityParams.Builder addAlias(java.lang.String p0) { return this; }
-        public android.content.pm.CapabilityParams build() { return new android.content.pm.CapabilityParams(); }
+        public android.content.pm.CapabilityParams build() { android.content.pm.CapabilityParams x = new android.content.pm.CapabilityParams(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.lang.String) null, (java.lang.String) null); }
     }
 }

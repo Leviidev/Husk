@@ -13,7 +13,7 @@ public final class VcnWifiUnderlyingNetworkTemplate extends android.net.vcn.VcnU
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.vcn.VcnWifiUnderlyingNetworkTemplate build() { return new android.net.vcn.VcnWifiUnderlyingNetworkTemplate(); }
+        public android.net.vcn.VcnWifiUnderlyingNetworkTemplate build() { android.net.vcn.VcnWifiUnderlyingNetworkTemplate x = new android.net.vcn.VcnWifiUnderlyingNetworkTemplate(); x.huskProps.putAll(huskProps); return x; }
         public android.net.vcn.VcnWifiUnderlyingNetworkTemplate.Builder setMetered(int p0) { huskProps.put("Metered", Integer.valueOf(p0)); return this; }
         public android.net.vcn.VcnWifiUnderlyingNetworkTemplate.Builder setMinDownstreamBandwidthKbps(int p0, int p1) { return this; }
         public android.net.vcn.VcnWifiUnderlyingNetworkTemplate.Builder setMinUpstreamBandwidthKbps(int p0, int p1) { return this; }

@@ -15,7 +15,7 @@ public final class PartialCustomAudience implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.adservices.customaudience.PartialCustomAudience build() { return new android.adservices.customaudience.PartialCustomAudience(); }
+        public android.adservices.customaudience.PartialCustomAudience build() { android.adservices.customaudience.PartialCustomAudience x = new android.adservices.customaudience.PartialCustomAudience(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.PartialCustomAudience.Builder setActivationTime(java.time.Instant p0) { huskProps.put("ActivationTime", p0); return this; }
         public android.adservices.customaudience.PartialCustomAudience.Builder setExpirationTime(java.time.Instant p0) { huskProps.put("ExpirationTime", p0); return this; }
         public android.adservices.customaudience.PartialCustomAudience.Builder setUserBiddingSignals(android.adservices.common.AdSelectionSignals p0) { huskProps.put("UserBiddingSignals", p0); return this; }

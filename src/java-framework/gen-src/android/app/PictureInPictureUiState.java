@@ -14,7 +14,7 @@ public final class PictureInPictureUiState implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.app.PictureInPictureUiState build() { return new android.app.PictureInPictureUiState(); }
+        public android.app.PictureInPictureUiState build() { android.app.PictureInPictureUiState x = new android.app.PictureInPictureUiState(); x.huskProps.putAll(huskProps); return x; }
         public android.app.PictureInPictureUiState.Builder setStashed(boolean p0) { huskProps.put("Stashed", Boolean.valueOf(p0)); return this; }
         public android.app.PictureInPictureUiState.Builder setTransitioningToPip(boolean p0) { huskProps.put("TransitioningToPip", Boolean.valueOf(p0)); return this; }
     }

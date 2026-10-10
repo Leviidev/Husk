@@ -26,7 +26,7 @@ public final class TranslationResponse implements android.os.Parcelable {
     public static final class Builder extends android.view.translation.TranslationResponse.BaseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) { super(); }
-        public android.view.translation.TranslationResponse build() { return new android.view.translation.TranslationResponse(); }
+        public android.view.translation.TranslationResponse build() { android.view.translation.TranslationResponse x = new android.view.translation.TranslationResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.view.translation.TranslationResponse.Builder setFinalResponse(boolean p0) { huskProps.put("FinalResponse", Boolean.valueOf(p0)); return this; }
         public android.view.translation.TranslationResponse.Builder setTranslationResponseValue(int p0, android.view.translation.TranslationResponseValue p1) { return this; }
         public android.view.translation.TranslationResponse.Builder setTranslationResponseValues(android.util.SparseArray p0) { huskProps.put("TranslationResponseValues", p0); return this; }

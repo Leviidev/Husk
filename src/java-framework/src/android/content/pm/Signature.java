@@ -2,7 +2,7 @@ package android.content.pm;
 public class Signature implements android.os.Parcelable {
     private final byte[] mBytes;
     public Signature(byte[] b) { mBytes = b.clone(); }
-    public Signature(String hex) { mBytes = hex.getBytes(); }
+    public Signature(String hex) { int n = hex.length() / 2; mBytes = new byte[n]; for (int i = 0; i < n; i++) mBytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16); }
     public byte[] toByteArray() { return mBytes.clone(); }
     public char[] toChars() { return toCharsString().toCharArray(); }
     public String toCharsString() { StringBuilder b = new StringBuilder(); for (byte x : mBytes) b.append(String.format("%02x", x & 255)); return b.toString(); }

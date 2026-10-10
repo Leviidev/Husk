@@ -11,7 +11,7 @@ public final class DistanceRecord extends android.health.connect.datatypes.Inter
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, android.health.connect.datatypes.units.Length p3) {}
-        public android.health.connect.datatypes.DistanceRecord build() { return new android.health.connect.datatypes.DistanceRecord(); }
+        public android.health.connect.datatypes.DistanceRecord build() { android.health.connect.datatypes.DistanceRecord x = new android.health.connect.datatypes.DistanceRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.DistanceRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.DistanceRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.DistanceRecord.Builder clearStartZoneOffset() { return this; }

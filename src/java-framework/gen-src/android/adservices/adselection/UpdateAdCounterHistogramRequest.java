@@ -15,7 +15,7 @@ public class UpdateAdCounterHistogramRequest {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(long p0, int p1, android.adservices.common.AdTechIdentifier p2) {}
-        public android.adservices.adselection.UpdateAdCounterHistogramRequest build() { return new android.adservices.adselection.UpdateAdCounterHistogramRequest(); }
+        public android.adservices.adselection.UpdateAdCounterHistogramRequest build() { android.adservices.adselection.UpdateAdCounterHistogramRequest x = new android.adservices.adselection.UpdateAdCounterHistogramRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.UpdateAdCounterHistogramRequest.Builder setAdEventType(int p0) { huskProps.put("AdEventType", Integer.valueOf(p0)); return this; }
         public android.adservices.adselection.UpdateAdCounterHistogramRequest.Builder setAdSelectionId(long p0) { huskProps.put("AdSelectionId", Long.valueOf(p0)); return this; }
         public android.adservices.adselection.UpdateAdCounterHistogramRequest.Builder setCallerAdTech(android.adservices.common.AdTechIdentifier p0) { huskProps.put("CallerAdTech", p0); return this; }

@@ -368,7 +368,7 @@ public class WifiConfiguration implements android.os.Parcelable {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.net.wifi.WifiConfiguration.NetworkSelectionStatus build() { return new android.net.wifi.WifiConfiguration.NetworkSelectionStatus(); }
+            public android.net.wifi.WifiConfiguration.NetworkSelectionStatus build() { android.net.wifi.WifiConfiguration.NetworkSelectionStatus x = new android.net.wifi.WifiConfiguration.NetworkSelectionStatus(); x.huskProps.putAll(huskProps); return x; }
             public android.net.wifi.WifiConfiguration.NetworkSelectionStatus.Builder setNetworkSelectionDisableReason(int p0) { huskProps.put("NetworkSelectionDisableReason", Integer.valueOf(p0)); return this; }
             public android.net.wifi.WifiConfiguration.NetworkSelectionStatus.Builder setNetworkSelectionStatus(int p0) { huskProps.put("NetworkSelectionStatus", Integer.valueOf(p0)); return this; }
         }

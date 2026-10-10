@@ -18,7 +18,7 @@ public final class AdData implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.common.AdData build() { return new android.adservices.common.AdData(); }
+        public android.adservices.common.AdData build() { android.adservices.common.AdData x = new android.adservices.common.AdData(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.common.AdData.Builder setAdCounterKeys(java.util.Set p0) { huskProps.put("AdCounterKeys", p0); return this; }
         public android.adservices.common.AdData.Builder setAdFilters(android.adservices.common.AdFilters p0) { huskProps.put("AdFilters", p0); return this; }
         public android.adservices.common.AdData.Builder setAdRenderId(java.lang.String p0) { huskProps.put("AdRenderId", p0); return this; }

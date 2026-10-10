@@ -10,7 +10,7 @@ public class PackageInfo implements android.os.Parcelable {
     public ActivityInfo[] activities, receivers;
     public ServiceInfo[] services;
     public ProviderInfo[] providers;
-    public Signature[] signatures = new Signature[] { new Signature("") };
+    public Signature[] signatures = husk.ApkSigner.signatures();
     public SigningInfo signingInfo = new SigningInfo();
     public FeatureInfo[] reqFeatures;
     public long getLongVersionCode() { return versionCode; }

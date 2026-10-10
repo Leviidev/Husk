@@ -22,7 +22,7 @@ public final class PrinterCapabilitiesInfo implements android.os.Parcelable {
         public Builder(android.print.PrinterId p0) {}
         public android.print.PrinterCapabilitiesInfo.Builder addMediaSize(android.print.PrintAttributes.MediaSize p0, boolean p1) { return this; }
         public android.print.PrinterCapabilitiesInfo.Builder addResolution(android.print.PrintAttributes.Resolution p0, boolean p1) { return this; }
-        public android.print.PrinterCapabilitiesInfo build() { return new android.print.PrinterCapabilitiesInfo(); }
+        public android.print.PrinterCapabilitiesInfo build() { android.print.PrinterCapabilitiesInfo x = new android.print.PrinterCapabilitiesInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.print.PrinterCapabilitiesInfo.Builder setColorModes(int p0, int p1) { return this; }
         public android.print.PrinterCapabilitiesInfo.Builder setDuplexModes(int p0, int p1) { return this; }
         public android.print.PrinterCapabilitiesInfo.Builder setMinMargins(android.print.PrintAttributes.Margins p0) { huskProps.put("MinMargins", p0); return this; }

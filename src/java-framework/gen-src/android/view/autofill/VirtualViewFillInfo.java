@@ -9,7 +9,7 @@ public final class VirtualViewFillInfo {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.autofill.VirtualViewFillInfo build() { return new android.view.autofill.VirtualViewFillInfo(); }
+        public android.view.autofill.VirtualViewFillInfo build() { android.view.autofill.VirtualViewFillInfo x = new android.view.autofill.VirtualViewFillInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.view.autofill.VirtualViewFillInfo.Builder setAutofillHints(java.lang.String[] p0) { huskProps.put("AutofillHints", p0); return this; }
     }
 }

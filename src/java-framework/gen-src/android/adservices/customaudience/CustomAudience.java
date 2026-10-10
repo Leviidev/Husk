@@ -26,7 +26,7 @@ public final class CustomAudience implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.customaudience.CustomAudience build() { return new android.adservices.customaudience.CustomAudience(); }
+        public android.adservices.customaudience.CustomAudience build() { android.adservices.customaudience.CustomAudience x = new android.adservices.customaudience.CustomAudience(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.customaudience.CustomAudience.Builder setActivationTime(java.time.Instant p0) { huskProps.put("ActivationTime", p0); return this; }
         public android.adservices.customaudience.CustomAudience.Builder setAds(java.util.List p0) { huskProps.put("Ads", p0); return this; }
         public android.adservices.customaudience.CustomAudience.Builder setAuctionServerRequestFlags(int p0) { huskProps.put("AuctionServerRequestFlags", Integer.valueOf(p0)); return this; }

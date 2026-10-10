@@ -14,7 +14,7 @@ public final class GestureDescription {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.accessibilityservice.GestureDescription.Builder addStroke(android.accessibilityservice.GestureDescription.StrokeDescription p0) { return this; }
-        public android.accessibilityservice.GestureDescription build() { return new android.accessibilityservice.GestureDescription(); }
+        public android.accessibilityservice.GestureDescription build() { android.accessibilityservice.GestureDescription x = new android.accessibilityservice.GestureDescription(); x.huskProps.putAll(huskProps); return x; }
         public android.accessibilityservice.GestureDescription.Builder setDisplayId(int p0) { huskProps.put("DisplayId", Integer.valueOf(p0)); return this; }
     }
     public static class GestureStep implements android.os.Parcelable {

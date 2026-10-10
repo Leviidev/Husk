@@ -33,7 +33,7 @@ public final class PixelCopy {
             public static android.view.PixelCopy.Request.Builder ofSurface(android.view.SurfaceView p0) { return new Builder(); }
             public static android.view.PixelCopy.Request.Builder ofWindow(android.view.View p0) { return new Builder(); }
             public static android.view.PixelCopy.Request.Builder ofWindow(android.view.Window p0) { return new Builder(); }
-            public android.view.PixelCopy.Request build() { return new android.view.PixelCopy.Request(); }
+            public android.view.PixelCopy.Request build() { android.view.PixelCopy.Request x = new android.view.PixelCopy.Request(); x.huskProps.putAll(huskProps); return x; }
             public android.view.PixelCopy.Request.Builder setDestinationBitmap(android.graphics.Bitmap p0) { huskProps.put("DestinationBitmap", p0); return this; }
             public android.view.PixelCopy.Request.Builder setSourceRect(android.graphics.Rect p0) { huskProps.put("SourceRect", p0); return this; }
             protected Builder() {}

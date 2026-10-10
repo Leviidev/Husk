@@ -21,7 +21,7 @@ public final class BluetoothDeviceFilter implements android.companion.DeviceFilt
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() { super(); }
         public android.companion.BluetoothDeviceFilter.Builder addServiceUuid(android.os.ParcelUuid p0, android.os.ParcelUuid p1) { return this; }
-        public android.companion.BluetoothDeviceFilter build() { return new android.companion.BluetoothDeviceFilter(); }
+        public android.companion.BluetoothDeviceFilter build() { android.companion.BluetoothDeviceFilter x = new android.companion.BluetoothDeviceFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.companion.BluetoothDeviceFilter.Builder setAddress(java.lang.String p0) { huskProps.put("Address", p0); return this; }
         public android.companion.BluetoothDeviceFilter.Builder setNamePattern(java.util.regex.Pattern p0) { huskProps.put("NamePattern", p0); return this; }
     }

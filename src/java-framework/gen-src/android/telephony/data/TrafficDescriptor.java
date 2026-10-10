@@ -14,7 +14,7 @@ public final class TrafficDescriptor implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.data.TrafficDescriptor build() { return new android.telephony.data.TrafficDescriptor(); }
+        public android.telephony.data.TrafficDescriptor build() { android.telephony.data.TrafficDescriptor x = new android.telephony.data.TrafficDescriptor(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.data.TrafficDescriptor.Builder setDataNetworkName(java.lang.String p0) { huskProps.put("DataNetworkName", p0); return this; }
         public android.telephony.data.TrafficDescriptor.Builder setOsAppId(byte[] p0) { huskProps.put("OsAppId", p0); return this; }
     }

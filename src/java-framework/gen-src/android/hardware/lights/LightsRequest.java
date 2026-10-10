@@ -12,7 +12,7 @@ public final class LightsRequest {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.hardware.lights.LightsRequest.Builder addLight(android.hardware.lights.Light p0, android.hardware.lights.LightState p1) { return this; }
-        public android.hardware.lights.LightsRequest build() { return new android.hardware.lights.LightsRequest(); }
+        public android.hardware.lights.LightsRequest build() { android.hardware.lights.LightsRequest x = new android.hardware.lights.LightsRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.hardware.lights.LightsRequest.Builder clearLight(android.hardware.lights.Light p0) { return this; }
         public android.hardware.lights.LightsRequest.Builder setLight(android.hardware.lights.Light p0, android.hardware.lights.LightState p1) { return this; }
     }

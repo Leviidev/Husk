@@ -38,7 +38,7 @@ public final class Dataset implements android.os.Parcelable {
         public Builder(android.service.autofill.InlinePresentation p0) {}
         public Builder(android.service.autofill.Presentations p0) {}
         public Builder(android.widget.RemoteViews p0) {}
-        public android.service.autofill.Dataset build() { return new android.service.autofill.Dataset(); }
+        public android.service.autofill.Dataset build() { android.service.autofill.Dataset x = new android.service.autofill.Dataset(); x.huskProps.putAll(huskProps); return x; }
         public android.service.autofill.Dataset.Builder setAuthentication(android.content.IntentSender p0) { huskProps.put("Authentication", p0); return this; }
         public android.service.autofill.Dataset.Builder setContent(android.view.autofill.AutofillId p0, android.content.ClipData p1) { return this; }
         public android.service.autofill.Dataset.Builder setCredentialFillInIntent(android.content.Intent p0) { huskProps.put("CredentialFillInIntent", p0); return this; }

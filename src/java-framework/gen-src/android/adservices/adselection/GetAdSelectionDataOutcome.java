@@ -11,7 +11,7 @@ public final class GetAdSelectionDataOutcome {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.GetAdSelectionDataOutcome build() { return new android.adservices.adselection.GetAdSelectionDataOutcome(); }
+        public android.adservices.adselection.GetAdSelectionDataOutcome build() { android.adservices.adselection.GetAdSelectionDataOutcome x = new android.adservices.adselection.GetAdSelectionDataOutcome(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.GetAdSelectionDataOutcome.Builder setAdSelectionData(byte[] p0) { huskProps.put("AdSelectionData", p0); return this; }
         public android.adservices.adselection.GetAdSelectionDataOutcome.Builder setAdSelectionId(long p0) { huskProps.put("AdSelectionId", Long.valueOf(p0)); return this; }
     }

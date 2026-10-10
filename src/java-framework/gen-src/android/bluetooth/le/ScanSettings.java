@@ -45,7 +45,7 @@ public final class ScanSettings implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.le.ScanSettings build() { return new android.bluetooth.le.ScanSettings(); }
+        public android.bluetooth.le.ScanSettings build() { android.bluetooth.le.ScanSettings x = new android.bluetooth.le.ScanSettings(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.ScanSettings.Builder setCallbackType(int p0) { huskProps.put("CallbackType", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setLegacy(boolean p0) { huskProps.put("Legacy", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setMatchMode(int p0) { huskProps.put("MatchMode", Integer.valueOf(p0)); return this; }

@@ -13,7 +13,7 @@ public final class DeleteGesture extends android.view.inputmethod.PreviewableHan
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.view.inputmethod.DeleteGesture build() { return new android.view.inputmethod.DeleteGesture(); }
+        public android.view.inputmethod.DeleteGesture build() { android.view.inputmethod.DeleteGesture x = new android.view.inputmethod.DeleteGesture(); x.huskProps.putAll(huskProps); return x; }
         public android.view.inputmethod.DeleteGesture.Builder setDeletionArea(android.graphics.RectF p0) { huskProps.put("DeletionArea", p0); return this; }
         public android.view.inputmethod.DeleteGesture.Builder setFallbackText(java.lang.String p0) { huskProps.put("FallbackText", p0); return this; }
         public android.view.inputmethod.DeleteGesture.Builder setGranularity(int p0) { huskProps.put("Granularity", Integer.valueOf(p0)); return this; }

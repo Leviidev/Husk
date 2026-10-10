@@ -11,7 +11,7 @@ public final class GetTopicsResponse {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.util.List p0) {}
         public Builder(java.util.List p0, java.util.List p1) {}
-        public android.adservices.topics.GetTopicsResponse build() { return new android.adservices.topics.GetTopicsResponse(); }
+        public android.adservices.topics.GetTopicsResponse build() { android.adservices.topics.GetTopicsResponse x = new android.adservices.topics.GetTopicsResponse(); x.huskProps.putAll(huskProps); return x; }
         Builder() { this((java.util.List) null); }
     }
 }

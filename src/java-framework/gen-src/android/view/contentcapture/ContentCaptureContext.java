@@ -29,7 +29,7 @@ public final class ContentCaptureContext implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.LocusId p0) {}
-        public android.view.contentcapture.ContentCaptureContext build() { return new android.view.contentcapture.ContentCaptureContext(); }
+        public android.view.contentcapture.ContentCaptureContext build() { android.view.contentcapture.ContentCaptureContext x = new android.view.contentcapture.ContentCaptureContext(); x.huskProps.putAll(huskProps); return x; }
         public android.view.contentcapture.ContentCaptureContext.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         Builder() { this((android.content.LocusId) null); }
     }

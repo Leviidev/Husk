@@ -13,6 +13,6 @@ public final class DeviceStateSensorOrientationMap {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.hardware.camera2.params.DeviceStateSensorOrientationMap.Builder addOrientationForState(long p0, long p1) { return this; }
-        public android.hardware.camera2.params.DeviceStateSensorOrientationMap build() { return new android.hardware.camera2.params.DeviceStateSensorOrientationMap(); }
+        public android.hardware.camera2.params.DeviceStateSensorOrientationMap build() { android.hardware.camera2.params.DeviceStateSensorOrientationMap x = new android.hardware.camera2.params.DeviceStateSensorOrientationMap(); x.huskProps.putAll(huskProps); return x; }
     }
 }

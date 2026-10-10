@@ -21,7 +21,7 @@ public final class AdSelectionConfig implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.adservices.adselection.AdSelectionConfig build() { return new android.adservices.adselection.AdSelectionConfig(); }
+        public android.adservices.adselection.AdSelectionConfig build() { android.adservices.adselection.AdSelectionConfig x = new android.adservices.adselection.AdSelectionConfig(); x.huskProps.putAll(huskProps); return x; }
         public android.adservices.adselection.AdSelectionConfig.Builder setAdSelectionSignals(android.adservices.common.AdSelectionSignals p0) { huskProps.put("AdSelectionSignals", p0); return this; }
         public android.adservices.adselection.AdSelectionConfig.Builder setCustomAudienceBuyers(java.util.List p0) { huskProps.put("CustomAudienceBuyers", p0); return this; }
         public android.adservices.adselection.AdSelectionConfig.Builder setDecisionLogicUri(android.net.Uri p0) { huskProps.put("DecisionLogicUri", p0); return this; }

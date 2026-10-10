@@ -18,6 +18,6 @@ public final class IkeSaProposal extends android.net.ipsec.ike.SaProposal {
         public android.net.ipsec.ike.IkeSaProposal.Builder addEncryptionAlgorithm(int p0, int p1) { return this; }
         public android.net.ipsec.ike.IkeSaProposal.Builder addIntegrityAlgorithm(int p0) { return this; }
         public android.net.ipsec.ike.IkeSaProposal.Builder addPseudorandomFunction(int p0) { return this; }
-        public android.net.ipsec.ike.IkeSaProposal build() { return new android.net.ipsec.ike.IkeSaProposal(); }
+        public android.net.ipsec.ike.IkeSaProposal build() { android.net.ipsec.ike.IkeSaProposal x = new android.net.ipsec.ike.IkeSaProposal(); x.huskProps.putAll(huskProps); return x; }
     }
 }

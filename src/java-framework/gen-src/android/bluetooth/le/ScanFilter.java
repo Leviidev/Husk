@@ -35,7 +35,7 @@ public final class ScanFilter implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int LEN_IRK_OCTETS = 16;
         public Builder() {}
-        public android.bluetooth.le.ScanFilter build() { return new android.bluetooth.le.ScanFilter(); }
+        public android.bluetooth.le.ScanFilter build() { android.bluetooth.le.ScanFilter x = new android.bluetooth.le.ScanFilter(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.ScanFilter.Builder setAdvertisingDataType(int p0) { huskProps.put("AdvertisingDataType", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanFilter.Builder setAdvertisingDataTypeWithData(int p0, byte[] p1, byte[] p2) { return this; }
         public android.bluetooth.le.ScanFilter.Builder setDeviceAddress(java.lang.String p0) { huskProps.put("DeviceAddress", p0); return this; }

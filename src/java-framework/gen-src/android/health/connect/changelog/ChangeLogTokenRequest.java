@@ -19,6 +19,6 @@ public final class ChangeLogTokenRequest implements android.os.Parcelable {
         public android.health.connect.changelog.ChangeLogTokenRequest.Builder addDataOriginFilter(android.health.connect.datatypes.DataOrigin p0) { return this; }
         public android.health.connect.changelog.ChangeLogTokenRequest.Builder addMedicalResourceType(int p0) { return this; }
         public android.health.connect.changelog.ChangeLogTokenRequest.Builder addRecordType(java.lang.Class p0) { return this; }
-        public android.health.connect.changelog.ChangeLogTokenRequest build() { return new android.health.connect.changelog.ChangeLogTokenRequest(); }
+        public android.health.connect.changelog.ChangeLogTokenRequest build() { android.health.connect.changelog.ChangeLogTokenRequest x = new android.health.connect.changelog.ChangeLogTokenRequest(); x.huskProps.putAll(huskProps); return x; }
     }
 }

@@ -179,7 +179,7 @@ public final class ShortcutInfo implements android.os.Parcelable {
         public Builder(android.content.Context p0) {}
         public Builder(android.content.Context p0, java.lang.String p1) {}
         public android.content.pm.ShortcutInfo.Builder addCapabilityBinding(android.content.pm.Capability p0, android.content.pm.CapabilityParams p1) { return this; }
-        public android.content.pm.ShortcutInfo build() { return new android.content.pm.ShortcutInfo(); }
+        public android.content.pm.ShortcutInfo build() { android.content.pm.ShortcutInfo x = new android.content.pm.ShortcutInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.content.pm.ShortcutInfo.Builder setActivity(android.content.ComponentName p0) { huskProps.put("Activity", p0); return this; }
         public android.content.pm.ShortcutInfo.Builder setCategories(java.util.Set p0) { huskProps.put("Categories", p0); return this; }
         public android.content.pm.ShortcutInfo.Builder setDisabledMessage(java.lang.CharSequence p0) { huskProps.put("DisabledMessage", p0); return this; }

@@ -14,7 +14,7 @@ public final class TelephonyNetworkSpecifier extends android.net.NetworkSpecifie
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.net.TelephonyNetworkSpecifier build() { return new android.net.TelephonyNetworkSpecifier(); }
+        public android.net.TelephonyNetworkSpecifier build() { android.net.TelephonyNetworkSpecifier x = new android.net.TelephonyNetworkSpecifier(); x.huskProps.putAll(huskProps); return x; }
         public android.net.TelephonyNetworkSpecifier.Builder setSubscriptionId(int p0) { huskProps.put("SubscriptionId", Integer.valueOf(p0)); return this; }
     }
 }

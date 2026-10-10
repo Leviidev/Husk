@@ -24,7 +24,7 @@ public final class AdvertiseSettings implements android.os.Parcelable {
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.bluetooth.le.AdvertiseSettings build() { return new android.bluetooth.le.AdvertiseSettings(); }
+        public android.bluetooth.le.AdvertiseSettings build() { android.bluetooth.le.AdvertiseSettings x = new android.bluetooth.le.AdvertiseSettings(); x.huskProps.putAll(huskProps); return x; }
         public android.bluetooth.le.AdvertiseSettings.Builder setAdvertiseMode(int p0) { huskProps.put("AdvertiseMode", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseSettings.Builder setConnectable(boolean p0) { huskProps.put("Connectable", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseSettings.Builder setDiscoverable(boolean p0) { huskProps.put("Discoverable", Boolean.valueOf(p0)); return this; }

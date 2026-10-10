@@ -298,6 +298,9 @@ def main():
                         ret = ' return this; '
                 if af & 8 and r == c and can_new:
                     ret = ' return new %s(); ' % simple
+                elif n == 'build' and not af & 8 and props and r in newable and '$' in c and r == c[:c.rindex('$')] + ';' and r not in shells:
+                    # a Builder's product: what was set on the builder, it has (same property names, kept the same way)
+                    ret = ' %s x = new %s(); x.huskProps.putAll(huskProps); return x; ' % (jtype(r), jtype(r))
                 elif n in ('build', 'create', 'obtain', 'newInstance', 'getInstance', 'from', 'of', 'copy', 'clone') and r in newable:
                     ret = ' return new %s(); ' % jtype(r)
                 if is_if:

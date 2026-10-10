@@ -41,7 +41,7 @@ public abstract class MediaRoute2ProviderService extends android.app.Service {
         protected MediaStreams() {}
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public android.media.MediaRoute2ProviderService.MediaStreams build() { return new android.media.MediaRoute2ProviderService.MediaStreams(); }
+            public android.media.MediaRoute2ProviderService.MediaStreams build() { android.media.MediaRoute2ProviderService.MediaStreams x = new android.media.MediaRoute2ProviderService.MediaStreams(); x.huskProps.putAll(huskProps); return x; }
             public android.media.MediaRoute2ProviderService.MediaStreams.Builder setAudioStream(android.media.audiopolicy.AudioPolicy p0, android.media.AudioRecord p1) { return this; }
             protected Builder() {}
         }
@@ -53,7 +53,7 @@ public abstract class MediaRoute2ProviderService extends android.app.Service {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.media.MediaRoute2ProviderService.MediaStreamsFormats build() { return new android.media.MediaRoute2ProviderService.MediaStreamsFormats(); }
+            public android.media.MediaRoute2ProviderService.MediaStreamsFormats build() { android.media.MediaRoute2ProviderService.MediaStreamsFormats x = new android.media.MediaRoute2ProviderService.MediaStreamsFormats(); x.huskProps.putAll(huskProps); return x; }
             public android.media.MediaRoute2ProviderService.MediaStreamsFormats.Builder setAudioFormat(android.media.AudioFormat p0) { huskProps.put("AudioFormat", p0); return this; }
         }
     }
@@ -65,7 +65,7 @@ public abstract class MediaRoute2ProviderService extends android.app.Service {
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.media.MediaRoute2ProviderService.SystemRoutingSessionParams build() { return new android.media.MediaRoute2ProviderService.SystemRoutingSessionParams(); }
+            public android.media.MediaRoute2ProviderService.SystemRoutingSessionParams build() { android.media.MediaRoute2ProviderService.SystemRoutingSessionParams x = new android.media.MediaRoute2ProviderService.SystemRoutingSessionParams(); x.huskProps.putAll(huskProps); return x; }
             public android.media.MediaRoute2ProviderService.SystemRoutingSessionParams.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
             public android.media.MediaRoute2ProviderService.SystemRoutingSessionParams.Builder setPackageName(java.lang.String p0) { huskProps.put("PackageName", p0); return this; }
         }

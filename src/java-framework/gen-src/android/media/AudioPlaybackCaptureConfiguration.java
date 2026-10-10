@@ -15,7 +15,7 @@ public final class AudioPlaybackCaptureConfiguration {
         public Builder(android.media.projection.MediaProjection p0) {}
         public android.media.AudioPlaybackCaptureConfiguration.Builder addMatchingUid(int p0) { return this; }
         public android.media.AudioPlaybackCaptureConfiguration.Builder addMatchingUsage(int p0) { return this; }
-        public android.media.AudioPlaybackCaptureConfiguration build() { return new android.media.AudioPlaybackCaptureConfiguration(); }
+        public android.media.AudioPlaybackCaptureConfiguration build() { android.media.AudioPlaybackCaptureConfiguration x = new android.media.AudioPlaybackCaptureConfiguration(); x.huskProps.putAll(huskProps); return x; }
         public android.media.AudioPlaybackCaptureConfiguration.Builder excludeUid(int p0) { return this; }
         public android.media.AudioPlaybackCaptureConfiguration.Builder excludeUsage(int p0) { return this; }
         Builder() { this((android.media.projection.MediaProjection) null); }

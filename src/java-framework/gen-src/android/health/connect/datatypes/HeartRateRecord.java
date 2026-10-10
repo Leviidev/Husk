@@ -14,7 +14,7 @@ public final class HeartRateRecord extends android.health.connect.datatypes.Inte
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.health.connect.datatypes.Metadata p0, java.time.Instant p1, java.time.Instant p2, java.util.List p3) {}
-        public android.health.connect.datatypes.HeartRateRecord build() { return new android.health.connect.datatypes.HeartRateRecord(); }
+        public android.health.connect.datatypes.HeartRateRecord build() { android.health.connect.datatypes.HeartRateRecord x = new android.health.connect.datatypes.HeartRateRecord(); x.huskProps.putAll(huskProps); return x; }
         public android.health.connect.datatypes.HeartRateRecord buildWithoutValidation() { return null; }
         public android.health.connect.datatypes.HeartRateRecord.Builder clearEndZoneOffset() { return this; }
         public android.health.connect.datatypes.HeartRateRecord.Builder clearStartZoneOffset() { return this; }

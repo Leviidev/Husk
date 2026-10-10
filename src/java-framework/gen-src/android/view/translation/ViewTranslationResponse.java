@@ -19,7 +19,7 @@ public final class ViewTranslationResponse implements android.os.Parcelable {
     public static final class Builder extends android.view.translation.ViewTranslationResponse.BaseBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.autofill.AutofillId p0) { super(); }
-        public android.view.translation.ViewTranslationResponse build() { return new android.view.translation.ViewTranslationResponse(); }
+        public android.view.translation.ViewTranslationResponse build() { android.view.translation.ViewTranslationResponse x = new android.view.translation.ViewTranslationResponse(); x.huskProps.putAll(huskProps); return x; }
         public android.view.translation.ViewTranslationResponse.Builder setValue(java.lang.String p0, android.view.translation.TranslationResponseValue p1) { return this; }
         Builder() { this((android.view.autofill.AutofillId) null); }
     }
