@@ -85,6 +85,8 @@ int main(int argc, char **argv)
                          .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : 10 };
     void tl_set_cacerts_dir(const char *dir);
     tl_set_cacerts_dir(getenv("TL_CACERTS") ? getenv("TL_CACERTS") : "/Volumes/GTAV/husk2/root/apex/com.android.conscrypt/cacerts");
+    void tl_set_system_fonts_dir(const char *dir);
+    tl_set_system_fonts_dir(getenv("TL_SYSFONTS") ? getenv("TL_SYSFONTS") : "/Volumes/GTAV/husk2/root/system");
     tl_flutter_set_pixel_ratio(getenv("TL_RATIO") ? (float)atof(getenv("TL_RATIO")) : 2.0f);
     if (!tl_flutter_start(&cfg)) { fprintf(stderr, "flutter: start failed\n"); return 1; }
     if (getenv("TL_PROBE")) {

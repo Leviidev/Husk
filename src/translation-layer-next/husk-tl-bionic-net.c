@@ -448,7 +448,43 @@ static unsigned b_if_nametoindex(const char *n) { return if_nametoindex(n); }
 static int b_inet_pton(int af, const char *src, void *dst) { int d = dom_to_darwin(af); return d < 0 ? -1 : inet_pton(d, src, dst); }
 static const char *b_inet_ntop(int af, const void *src, char *dst, socklen_t size) { int d = dom_to_darwin(af); return d < 0 ? NULL : inet_ntop(d, src, dst, size); }
 
+/*
+ * getifaddrs: the host's interfaces with IPv4 or IPv6 addresses, in bionic's struct ifaddrs (the same fields, Linux sockaddrs). Each
+ * entry is one allocation holding its name and addresses, so freeifaddrs frees the chain entry by entry. Flags keep their meaning;
+ * IFF_MULTICAST is 0x1000 on Linux, 0x8000 here.
+ */
+#include <ifaddrs.h>
+#include <net/if.h>
+typedef struct guest_ifaddrs { struct guest_ifaddrs *next; char *name; uint32_t flags; void *addr, *netmask, *ifu, *data; } guest_ifaddrs;
+static int b_getifaddrs(guest_ifaddrs **out)
+{
+    struct ifaddrs *list;
+    if (getifaddrs(&list) != 0) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; }
+    guest_ifaddrs *head = NULL, **tail = &head;
+    for (struct ifaddrs *i = list; i; i = i->ifa_next) {
+        if (!i->ifa_addr || (i->ifa_addr->sa_family != AF_INET && i->ifa_addr->sa_family != AF_INET6)) continue;
+        size_t nl = strlen(i->ifa_name) + 1;
+        uint8_t *blk = calloc(1, sizeof(guest_ifaddrs) + 3 * 32 + nl);
+        guest_ifaddrs *g = (guest_ifaddrs *)blk;
+        uint8_t *sa = blk + sizeof(guest_ifaddrs);
+        g->name = (char *)(sa + 96); memcpy(g->name, i->ifa_name, nl);
+        uint32_t f = i->ifa_flags & 0x3FF & ~0x20u;
+        if (i->ifa_flags & IFF_MULTICAST) f |= 0x1000;
+        g->flags = f;
+        sa_from_darwin(i->ifa_addr, sa, 32); g->addr = sa;
+        if (i->ifa_netmask) { struct sockaddr_storage m; memcpy(&m, i->ifa_netmask, i->ifa_netmask->sa_len < sizeof(m) ? i->ifa_netmask->sa_len : sizeof(m));
+                              m.ss_family = i->ifa_addr->sa_family; sa_from_darwin((struct sockaddr *)&m, sa + 32, 32); g->netmask = sa + 32; }
+        if (i->ifa_dstaddr && (i->ifa_flags & (IFF_BROADCAST | IFF_POINTOPOINT))) { sa_from_darwin(i->ifa_dstaddr, sa + 64, 32); g->ifu = sa + 64; }
+        *tail = g; tail = &g->next;
+    }
+    freeifaddrs(list);
+    *out = head;
+    return 0;
+}
+static void b_freeifaddrs(guest_ifaddrs *g) { while (g) { guest_ifaddrs *n = g->next; free(g); g = n; } }
+
 const tl_bionic_entry tl_tab_net[] = {
+    TL_WRAP("getifaddrs", b_getifaddrs), TL_WRAP("freeifaddrs", b_freeifaddrs),
     TL_WRAP("socket", b_socket), TL_WRAP("socketpair", b_socketpair), TL_WRAP("bind", b_bind), TL_WRAP("connect", b_connect),
     TL_WRAP("listen", b_listen), TL_WRAP("accept", b_accept), TL_WRAP("accept4", b_accept4), TL_WRAP("send", b_send),
     TL_WRAP("recv", b_recv), TL_WRAP("sendto", b_sendto), TL_WRAP("recvfrom", b_recvfrom), TL_WRAP("__recvfrom_chk", b___recvfrom_chk), TL_WRAP("sendmsg", b_sendmsg),

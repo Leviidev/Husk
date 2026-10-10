@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <math.h>
 #include <zlib.h>
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n);   /* husk-tl-bionic-io.c */
@@ -241,7 +242,8 @@ static void *tfd_thread(void *arg)
             uint64_t now = clock_ns(t->clock);
             if (now >= t->due) {
                 uint64_t one = 1;
-                (void)!write(t->wr, &one, sizeof(one));
+                ssize_t w = write(t->wr, &one, sizeof(one));
+                { static int tr = -1; if (tr < 0) tr = getenv("TL_TIMERFD_TRACE") ? 1 : 0; if (tr) tl_log_line("timerfd: fd %d fired (write %zd)", i, w); }
                 if (t->interval) { while (t->due <= now) t->due += t->interval; } else t->armed = false;
             }
             if (t->armed && t->due - now < wait) wait = t->due - now;
@@ -257,6 +259,9 @@ static void *tfd_thread(void *arg)
     }
     return NULL;
 }
+
+/* For tracing: whether fd is a timerfd's read end. */
+bool tl_timerfd_is(int fd) { return fd >= 0 && fd < 1024 && g_tfd[fd] != NULL; }
 
 static int b_timerfd_create(int clock, int flags)
 {
@@ -395,6 +400,13 @@ static int b_eventfd(unsigned initval, int flags)
     return p[0];
 }
 
+static int b_setsid(void) { return (int)getpid(); }
+static int b_wait(int *status) { (void)status; tl_set_guest_errno(10 /* ECHILD */); return -1; }
+static int b_execvp(const char *file, char *const argv[]) { (void)file; (void)argv; tl_set_guest_errno(38); return -1; }
+static int b_posix_madvise(void *addr, size_t len, int advice) { (void)addr; (void)len; (void)advice; return 0; }
+static int b_inotify_init1(int flags) { (void)flags; tl_set_guest_errno(38); return -1; }
+static int b_inotify_rm_watch(int fd, int wd) { (void)fd; (void)wd; tl_set_guest_errno(22); return -1; }
+
 const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("getprogname", b_getprogname),
     TL_WRAP("android_get_device_api_level", b_android_get_device_api_level),
@@ -415,7 +427,9 @@ const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("__libc_current_sigrtmin", b___libc_current_sigrtmin), TL_WRAP("__libc_current_sigrtmax", b___libc_current_sigrtmax),
     TL_WRAP("sigwaitinfo", b_sigwaitinfo), TL_WRAP("sigwaitinfo64", b_sigwaitinfo),
     TL_WRAP("__cxa_thread_atexit_impl", b___cxa_thread_atexit_impl),
-    TL_DIRECT(adler32_combine),
+    TL_DIRECT(adler32_combine), TL_DIRECT(strndup), TL_DIRECT(erff), TL_DIRECT(fabsf), TL_DIRECT(remainder), TL_DIRECT(round),
+    TL_WRAP("setsid", b_setsid), TL_WRAP("wait", b_wait), TL_WRAP("execvp", b_execvp), TL_WRAP("posix_madvise", b_posix_madvise),
+    TL_WRAP("inotify_init1", b_inotify_init1), TL_WRAP("inotify_rm_watch", b_inotify_rm_watch),
     TL_WRAP("epoll_create", b_epoll_create), TL_WRAP("epoll_create1", b_epoll_create1), TL_WRAP("epoll_ctl", b_epoll_ctl),
     TL_WRAP("epoll_wait", b_epoll_wait), TL_WRAP("epoll_pwait", b_epoll_pwait), TL_WRAP("eventfd", b_eventfd),
     TL_WRAP("timerfd_create", b_timerfd_create), TL_WRAP("timerfd_settime", b_timerfd_settime), TL_WRAP("timerfd_gettime", b_timerfd_gettime),

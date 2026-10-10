@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -216,7 +217,12 @@ static void on_message(const char *channel, const uint8_t *d, size_t len, int id
             return;
         }
     }
-    if (trace() || id) tl_log_line("flutter: no handler for channel %s (%zu bytes)%s", channel, len, id ? ", replied empty" : "");
+    if (trace() || id) {
+        /* name the method, if the message is a method call in either codec */
+        char what[96] = "";
+        if (!json_method(d, len, what, sizeof(what))) { size_t used = 0; sv *mname = sv_decode(d, len, &used); if (mname && mname->type == SV_STRING) snprintf(what, sizeof(what), "%s", mname->s); sv_free(mname); }
+        tl_log_line("flutter: no handler for %s%s%s (%zu bytes)%s", channel, what[0] ? " " : "", what, len, id ? ", replied empty" : "");
+    }
     reply(id, NULL, 0);
 }
 
@@ -357,6 +363,9 @@ bool tl_flutter_start(const tl_ga_config *cfg)
 
     /* The Dart VM finds the app's BSS by its distance from the snapshot's code and writes the few words there at start-up: that address
      * is in the executable view of libapp.so, so those stores go through the writable view (husk-tl-codewrite.c). */
+    /* Every Android process has these from init; Skia finds the system fonts under $ANDROID_ROOT/fonts */
+    setenv("ANDROID_ROOT", "/system", 0);
+    setenv("ANDROID_DATA", "/data", 0);
     tl_codewrite_enable();
     tl_flutter_plugins_configure(F.data, F.pkg, NULL, NULL, 0);
     tl_set_data_dir(cfg->data_dir);
@@ -404,11 +413,19 @@ static void send_metrics(void)
 {
     char sig[192];
     if (!declared_sig("nativeSetViewportMetrics", sig, sizeof(sig))) return;
-    jvalue a[40]; int n = 0, ints = 0;
+    jvalue a[40]; int n = 0, ints = 0, after = 0;
+    bool past_arrays = false;
     a[n++].j = F.shell;
     for (const char *p = sig + 2; *p && *p != ')' && n < 40; p++) {     /* after the J */
         if (*p == 'F') { a[n++] = vf(F.ratio); continue; }
-        if (*p == '[') { while (*p == '[') p++; if (*p == 'L') p = strchr(p, ';'); a[n++] = vl(tl_jni_new_prim_array('I', 0)); continue; }
+        if (*p == '[') { while (*p == '[') p++; if (*p == 'L') p = strchr(p, ';'); a[n++] = vl(tl_jni_new_prim_array('I', 0)); past_arrays = true; continue; }
+        if (*p == 'I' && past_arrays) {
+            /* newer engines: the view's size constraints (min width, max width, min height, max height: a view of exactly the
+             * surface), then the display's corner radii (none) */
+            int k = after++;
+            a[n++] = vi(k == 0 || k == 1 ? F.cfg.width : k == 2 || k == 3 ? F.cfg.height : 0);
+            continue;
+        }
         if (*p == 'I') {
             int v = 0;
             switch (ints++) {
@@ -494,6 +511,7 @@ static void *platform_main(void *arg)
     pthread_setname_np("main");
     void *looper = ((void *(*)(int))tl_bionic_find("ALooper_prepare"))(0);
     if (pipe(g_post) == 0) {
+        fcntl(g_post[0], F_SETFL, O_NONBLOCK);              /* on_post drains it: a read must not wait for the next event */
         int (*add_fd)(void *, int, int, int, void *, void *) = tl_bionic_find("ALooper_addFd");
         add_fd(looper, g_post[0], -2 /* ALOOPER_POLL_CALLBACK */, 1 /* input */, (void *)on_post, NULL);
     }
@@ -510,15 +528,15 @@ static void *platform_main(void *arg)
      * that merged queue from our input path is never run by the platform loop as it is driven here. Apps can turn the merge off in
      * their manifest (DisableMergedPlatformUIThread); this does the same, and Dart gets its own UI thread as it had before 3.29.
      * Older engines ignore the switch. */
-    const char *args[] = { "--icu-symbol-prefix=_binary_icudtl_dat", lib, cache, "--leak-vm=true", "--no-enable-merged-platform-ui-thread",
-                           getenv("TL_FLUTTER_ARGS") };
-    int nargs = getenv("TL_FLUTTER_ARGS") ? 6 : 5;
+    const char *args[] = { "--icu-symbol-prefix=_binary_icudtl_dat", lib, cache, "--leak-vm=true", getenv("TL_FLUTTER_ARGS") };
+    int nargs = getenv("TL_FLUTTER_ARGS") ? 5 : 4;
     jobj *jargs = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), (uint32_t)nargs);
     for (int i = 0; i < nargs; i++) jargs->oarr.v[i] = tl_jni_new_string(args[i]);
     char files[700], caches[700];
     snprintf(files, sizeof(files), "%s/files", F.data);
     snprintf(caches, sizeof(caches), "%s/cache", F.data);
-    jvalue in[7] = { vl(F.activity), vl(jargs), vl(NULL), vl(tl_jni_new_string(files)), vl(tl_jni_new_string(caches)), { .j = now_ms() }, vi(1) };
+    /* the last argument (newer engines) is the Android API level, from which the engine decides whether Impeller can run */
+    jvalue in[7] = { vl(F.activity), vl(jargs), vl(NULL), vl(tl_jni_new_string(files)), vl(tl_jni_new_string(caches)), { .j = now_ms() }, vi(36) };
     fj_call("nativeInit", in, param_count("nativeInit"));
     if (tl_jni_pending()) { tl_log_line("flutter: nativeInit threw"); tl_jni_clear(); }
     tl_log_line("flutter: engine initialised");

@@ -211,6 +211,8 @@ static void *b_fopen(const char *path, const char *mode)
         if (fd >= 0 && !(f = fdopen(fd, mode))) { close(fd); tl_atomic_abandon(fd); }
     }
     if (!f) f = fopen(real, mode);
+    { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0;
+      if (tr) tl_log_line("file: fopen(%s, %s) -> %s%s", path, mode, f ? "ok" : "failed", real != path ? " (mapped)" : ""); }
     TL_ERRNO_END();
     return f;
 }

@@ -18,7 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "husk-tl-bionic.h"
@@ -238,14 +241,21 @@ static sv *device_info(void)
     static const char *const vals[] = { "husk", "husk", "Husk", "husk/husk/husk:16/HUSK/1:user/release-keys", "husk", "husk", "HUSK",
                                         "Husk", "Husk", "husk", "release-keys", "user", "unknown", "husk" };
     size_t nk = sizeof(keys) / sizeof(keys[0]);
-    sv *version = sv_map(5);
+    sv *version = sv_map(7);
     sv_map_set(version, 0, sv_string("sdkInt"), sv_int(36));
     sv_map_set(version, 1, sv_string("release"), sv_string("16"));
     sv_map_set(version, 2, sv_string("codename"), sv_string("REL"));
     sv_map_set(version, 3, sv_string("incremental"), sv_string("1"));
     sv_map_set(version, 4, sv_string("securityPatch"), sv_string("2026-09-01"));
+    sv_map_set(version, 5, sv_string("previewSdkInt"), sv_int(0));
+    sv_map_set(version, 6, sv_string("baseOS"), sv_string(""));
     static const char *const abis[] = { "arm64-v8a" };
-    sv *m = sv_map(nk + 8);
+    /* disk and memory: the real ones, from the app's data volume and the device */
+    struct statfs fs; int64_t disk_total = 0, disk_free = 0;
+    if (statfs(g_data, &fs) == 0) { disk_total = (int64_t)fs.f_blocks * fs.f_bsize; disk_free = (int64_t)fs.f_bavail * fs.f_bsize; }
+    int64_t ram = 0; size_t rl = sizeof(ram); sysctlbyname("hw.memsize", &ram, &rl, NULL, 0);
+    struct timespec now; clock_gettime(CLOCK_REALTIME, &now);
+    sv *m = sv_map(nk + 14);
     size_t i = 0;
     for (; i < nk; i++) sv_map_set(m, i, sv_string(keys[i]), sv_string(vals[i]));
     sv_map_set(m, i++, sv_string("version"), version);
@@ -256,6 +266,12 @@ static sv *device_info(void)
     sv_map_set(m, i++, sv_string("systemFeatures"), sv_list(0));
     sv_map_set(m, i++, sv_string("isLowRamDevice"), sv_bool(false));
     sv_map_set(m, i++, sv_string("serialNumber"), sv_string("unknown"));
+    sv_map_set(m, i++, sv_string("name"), sv_string("Husk"));
+    sv_map_set(m, i++, sv_string("time"), sv_int((int64_t)now.tv_sec * 1000));
+    sv_map_set(m, i++, sv_string("totalDiskSize"), sv_int(disk_total));
+    sv_map_set(m, i++, sv_string("freeDiskSize"), sv_int(disk_free));
+    sv_map_set(m, i++, sv_string("physicalRamSize"), sv_int(ram / (1024 * 1024)));
+    sv_map_set(m, i++, sv_string("availableRamSize"), sv_int(ram / (2 * 1024 * 1024)));
     return m;
 }
 

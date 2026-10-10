@@ -101,7 +101,9 @@ static int b_ALooper_pollOnce(int timeout_ms, int *out_fd, int *out_events, void
         pfds[n++] = (struct pollfd){ f->fd, ev, 0 };
     }
     pthread_mutex_unlock(&l->mu);
+    { static int tr = -1; if (tr < 0) tr = getenv("TL_LOOPER_TRACE") ? 2 : 0; if (tr) { char b[200]; int k = 0; for (int i = 0; i < n && k < 180; i++) k += snprintf(b + k, sizeof(b) - (size_t)k, " %d", pfds[i].fd); tl_log_line("looper: poll(%d ms) on%s", timeout_ms, b); } }
     int r = poll(pfds, (nfds_t)n, timeout_ms);
+    { static int tr = -1; if (tr < 0) tr = getenv("TL_LOOPER_TRACE") ? 2 : 0; if (tr) { char b[200]; int k = 0; for (int i = 0; i < n && k < 180; i++) if (pfds[i].revents) k += snprintf(b + k, sizeof(b) - (size_t)k, " %d:%x", pfds[i].fd, pfds[i].revents); tl_log_line("looper: poll -> %d:%s", r, b); } }
     if (r < 0) return ALOOPER_POLL_ERROR;
     if (r == 0) return ALOOPER_POLL_TIMEOUT;
     if (pfds[0].revents & POLLIN) { char buf[64]; while (read(l->wake[0], buf, sizeof(buf)) > 0) {} }
@@ -111,6 +113,7 @@ static int b_ALooper_pollOnce(int timeout_ms, int *out_fd, int *out_events, void
         int ev = ((pfds[i].revents & POLLIN) ? ALOOPER_EVENT_INPUT : 0) | ((pfds[i].revents & POLLOUT) ? ALOOPER_EVENT_OUTPUT : 0)
                | ((pfds[i].revents & POLLERR) ? ALOOPER_EVENT_ERROR : 0) | ((pfds[i].revents & POLLHUP) ? ALOOPER_EVENT_HANGUP : 0);
         if (f->callback) {
+            { static int tr = -1; if (tr < 0) tr = getenv("TL_LOOPER_TRACE") ? 1 : 0; if (tr) tl_log_line("looper: callback for fd %d (%d fds watched)", f->fd, n - 1); }
             int keep = ((int (*)(int, int, void *))f->callback)(f->fd, ev, f->data);
             if (!keep) b_ALooper_removeFd(l, f->fd);
             return ALOOPER_POLL_CALLBACK;
