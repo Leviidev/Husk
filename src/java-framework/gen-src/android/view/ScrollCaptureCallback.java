@@ -3,4 +3,8 @@ package android.view;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public interface ScrollCaptureCallback {
+    void onScrollCaptureEnd(java.lang.Runnable p0);
+    void onScrollCaptureImageRequest(android.view.ScrollCaptureSession p0, android.os.CancellationSignal p1, android.graphics.Rect p2, java.util.function.Consumer p3);
+    void onScrollCaptureSearch(android.os.CancellationSignal p0, java.util.function.Consumer p1);
+    void onScrollCaptureStart(android.view.ScrollCaptureSession p0, android.os.CancellationSignal p1, java.lang.Runnable p2);
 }

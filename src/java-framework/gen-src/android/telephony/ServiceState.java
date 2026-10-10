@@ -2,6 +2,145 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class ServiceState implements android.os.Parcelable {
-    protected ServiceState() {}
+public class ServiceState implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int DUPLEX_MODE_FDD = 1;
+    public static final int DUPLEX_MODE_TDD = 2;
+    public static final int DUPLEX_MODE_UNKNOWN = 0;
+    public static final int FREQUENCY_RANGE_COUNT = 5;
+    public static final int FREQUENCY_RANGE_HIGH = 3;
+    public static final int FREQUENCY_RANGE_LOW = 1;
+    public static final int FREQUENCY_RANGE_MID = 2;
+    public static final int FREQUENCY_RANGE_MMWAVE = 4;
+    public static final int FREQUENCY_RANGE_UNKNOWN = 0;
+    public static final int RIL_RADIO_TECHNOLOGY_1xRTT = 6;
+    public static final int RIL_RADIO_TECHNOLOGY_EDGE = 2;
+    public static final int RIL_RADIO_TECHNOLOGY_EHRPD = 13;
+    public static final int RIL_RADIO_TECHNOLOGY_EVDO_0 = 7;
+    public static final int RIL_RADIO_TECHNOLOGY_EVDO_A = 8;
+    public static final int RIL_RADIO_TECHNOLOGY_EVDO_B = 12;
+    public static final int RIL_RADIO_TECHNOLOGY_GPRS = 1;
+    public static final int RIL_RADIO_TECHNOLOGY_GSM = 16;
+    public static final int RIL_RADIO_TECHNOLOGY_HSDPA = 9;
+    public static final int RIL_RADIO_TECHNOLOGY_HSPA = 11;
+    public static final int RIL_RADIO_TECHNOLOGY_HSPAP = 15;
+    public static final int RIL_RADIO_TECHNOLOGY_HSUPA = 10;
+    public static final int RIL_RADIO_TECHNOLOGY_IS95A = 4;
+    public static final int RIL_RADIO_TECHNOLOGY_IS95B = 5;
+    public static final int RIL_RADIO_TECHNOLOGY_IWLAN = 18;
+    public static final int RIL_RADIO_TECHNOLOGY_LTE = 14;
+    public static final int RIL_RADIO_TECHNOLOGY_LTE_CA = 19;
+    public static final int RIL_RADIO_TECHNOLOGY_NR = 20;
+    public static final int RIL_RADIO_TECHNOLOGY_TD_SCDMA = 17;
+    public static final int RIL_RADIO_TECHNOLOGY_UMTS = 3;
+    public static final int RIL_RADIO_TECHNOLOGY_UNKNOWN = 0;
+    public static final int ROAMING_TYPE_DOMESTIC = 2;
+    public static final int ROAMING_TYPE_INTERNATIONAL = 3;
+    public static final int ROAMING_TYPE_NOT_ROAMING = 0;
+    public static final int ROAMING_TYPE_UNKNOWN = 1;
+    public static final int STATE_EMERGENCY_ONLY = 2;
+    public static final int STATE_IN_SERVICE = 0;
+    public static final int STATE_OUT_OF_SERVICE = 1;
+    public static final int STATE_POWER_OFF = 3;
+    public static final int UNKNOWN_ID = -1;
+    public ServiceState() {}
+    public ServiceState(android.os.Parcel p0) {}
+    public ServiceState(android.telephony.ServiceState p0) {}
+    public static boolean bitmaskHasTech(int p0, int p1) { return false; }
+    public static int convertBearerBitmaskToNetworkTypeBitmask(int p0) { return 0; }
+    public static int convertNetworkTypeBitmaskToBearerBitmask(int p0) { return 0; }
+    public static java.lang.String frequencyRangeToString(int p0) { return null; }
+    public static int getBitmaskForTech(int p0) { return 0; }
+    public static int getBitmaskFromString(java.lang.String p0) { return 0; }
+    public static java.lang.String getRoamingLogString(int p0) { return null; }
+    public static boolean isCdma(int p0) { return false; }
+    public static boolean isFrequencyRangeValid(int p0) { return false; }
+    public static boolean isGsm(int p0) { return false; }
+    public static boolean isPsOnlyTech(int p0) { return false; }
+    public static android.telephony.ServiceState mergeServiceStates(android.telephony.ServiceState p0, android.telephony.ServiceState p1) { return new ServiceState(); }
+    public static int networkTypeToRilRadioTechnology(int p0) { return 0; }
+    public static android.telephony.ServiceState newFromBundle(android.os.Bundle p0) { return new ServiceState(); }
+    public static int rilRadioTechnologyToAccessNetworkType(int p0) { return 0; }
+    public static int rilRadioTechnologyToNetworkType(int p0) { return 0; }
+    public static java.lang.String rilRadioTechnologyToString(int p0) { return null; }
+    public static java.lang.String rilServiceStateToString(int p0) { return null; }
+    public static java.lang.String roamingTypeToString(int p0) { return null; }
+    public void addNetworkRegistrationInfo(android.telephony.NetworkRegistrationInfo p0) {}
+    protected void copyFrom(android.telephony.ServiceState p0) {}
+    public android.telephony.ServiceState createLocationInfoSanitizedCopy(boolean p0) { return this; }
+    public int describeContents() { return 0; }
+    public void fillInNotifierBundle(android.os.Bundle p0) {}
+    public int getArfcnRsrpBoost() { return (huskProps.get("ArfcnRsrpBoost") instanceof Integer ? (Integer) huskProps.get("ArfcnRsrpBoost") : 0); }
+    public int getCdmaNetworkId() { return (huskProps.get("CdmaNetworkId") instanceof Integer ? (Integer) huskProps.get("CdmaNetworkId") : 0); }
+    public int getCdmaSystemId() { return (huskProps.get("CdmaSystemId") instanceof Integer ? (Integer) huskProps.get("CdmaSystemId") : 0); }
+    public int[] getCellBandwidths() { return (int[]) huskProps.get("CellBandwidths"); }
+    public int getChannelNumber() { return (huskProps.get("ChannelNumber") instanceof Integer ? (Integer) huskProps.get("ChannelNumber") : 0); }
+    public int getCssIndicator() { return (huskProps.get("CssIndicator") instanceof Integer ? (Integer) huskProps.get("CssIndicator") : 0); }
+    public int getDataNetworkType() { return (huskProps.get("DataNetworkType") instanceof Integer ? (Integer) huskProps.get("DataNetworkType") : 0); }
+    public java.lang.String getDataOperatorAlphaShort() { return (java.lang.String) huskProps.get("DataOperatorAlphaShort"); }
+    public java.lang.String getDataOperatorNumeric() { return (java.lang.String) huskProps.get("DataOperatorNumeric"); }
+    public int getDataRegState() { return (huskProps.get("DataRegState") instanceof Integer ? (Integer) huskProps.get("DataRegState") : 0); }
+    public int getDataRegistrationState() { return (huskProps.get("DataRegistrationState") instanceof Integer ? (Integer) huskProps.get("DataRegistrationState") : 0); }
+    public boolean getDataRoaming() { return (huskProps.get("DataRoaming") instanceof Boolean ? (Boolean) huskProps.get("DataRoaming") : false); }
+    public boolean getDataRoamingFromRegistration() { return (huskProps.get("DataRoamingFromRegistration") instanceof Boolean ? (Boolean) huskProps.get("DataRoamingFromRegistration") : false); }
+    public int getDataRoamingType() { return (huskProps.get("DataRoamingType") instanceof Integer ? (Integer) huskProps.get("DataRoamingType") : 0); }
+    public int getDuplexMode() { return (huskProps.get("DuplexMode") instanceof Integer ? (Integer) huskProps.get("DuplexMode") : 0); }
+    public boolean getIsManualSelection() { return (huskProps.get("IsManualSelection") instanceof Boolean ? (Boolean) huskProps.get("IsManualSelection") : false); }
+    public android.telephony.NetworkRegistrationInfo getNetworkRegistrationInfo(int p0, int p1) { return null; }
+    public java.util.List getNetworkRegistrationInfoList() { return (huskProps.get("NetworkRegistrationInfoList") != null ? (java.util.List) huskProps.get("NetworkRegistrationInfoList") : new java.util.ArrayList()); }
+    public java.util.List getNetworkRegistrationInfoListForDomain(int p0) { return new java.util.ArrayList(); }
+    public java.util.List getNetworkRegistrationInfoListForTransportType(int p0) { return new java.util.ArrayList(); }
+    public int getNrFrequencyRange() { return (huskProps.get("NrFrequencyRange") instanceof Integer ? (Integer) huskProps.get("NrFrequencyRange") : 0); }
+    public int getNrState() { return (huskProps.get("NrState") instanceof Integer ? (Integer) huskProps.get("NrState") : 0); }
+    public java.lang.String getOperatorAlpha() { return (java.lang.String) huskProps.get("OperatorAlpha"); }
+    public java.lang.String getOperatorAlphaLong() { return (java.lang.String) huskProps.get("OperatorAlphaLong"); }
+    public java.lang.String getOperatorAlphaLongRaw() { return (java.lang.String) huskProps.get("OperatorAlphaLongRaw"); }
+    public java.lang.String getOperatorAlphaShort() { return (java.lang.String) huskProps.get("OperatorAlphaShort"); }
+    public java.lang.String getOperatorAlphaShortRaw() { return (java.lang.String) huskProps.get("OperatorAlphaShortRaw"); }
+    public java.lang.String getOperatorNumeric() { return (java.lang.String) huskProps.get("OperatorNumeric"); }
+    public int getRilDataRadioTechnology() { return (huskProps.get("RilDataRadioTechnology") instanceof Integer ? (Integer) huskProps.get("RilDataRadioTechnology") : 0); }
+    public int getRilVoiceRadioTechnology() { return (huskProps.get("RilVoiceRadioTechnology") instanceof Integer ? (Integer) huskProps.get("RilVoiceRadioTechnology") : 0); }
+    public boolean getRoaming() { return (huskProps.get("Roaming") instanceof Boolean ? (Boolean) huskProps.get("Roaming") : false); }
+    public int getState() { return (huskProps.get("State") instanceof Integer ? (Integer) huskProps.get("State") : 0); }
+    public int getVoiceNetworkType() { return (huskProps.get("VoiceNetworkType") instanceof Integer ? (Integer) huskProps.get("VoiceNetworkType") : 0); }
+    public java.lang.String getVoiceOperatorAlphaLong() { return (java.lang.String) huskProps.get("VoiceOperatorAlphaLong"); }
+    public java.lang.String getVoiceOperatorAlphaShort() { return (java.lang.String) huskProps.get("VoiceOperatorAlphaShort"); }
+    public java.lang.String getVoiceOperatorNumeric() { return (java.lang.String) huskProps.get("VoiceOperatorNumeric"); }
+    public int getVoiceRegState() { return (huskProps.get("VoiceRegState") instanceof Integer ? (Integer) huskProps.get("VoiceRegState") : 0); }
+    public boolean getVoiceRoaming() { return (huskProps.get("VoiceRoaming") instanceof Boolean ? (Boolean) huskProps.get("VoiceRoaming") : false); }
+    public int getVoiceRoamingType() { return (huskProps.get("VoiceRoamingType") instanceof Integer ? (Integer) huskProps.get("VoiceRoamingType") : 0); }
+    public boolean isEmergencyOnly() { return (huskProps.get("EmergencyOnly") instanceof Boolean ? (Boolean) huskProps.get("EmergencyOnly") : false); }
+    public boolean isIwlanPreferred() { return (huskProps.get("IwlanPreferred") instanceof Boolean ? (Boolean) huskProps.get("IwlanPreferred") : false); }
+    public boolean isSearching() { return (huskProps.get("Searching") instanceof Boolean ? (Boolean) huskProps.get("Searching") : false); }
+    public boolean isUsingCarrierAggregation() { return (huskProps.get("UsingCarrierAggregation") instanceof Boolean ? (Boolean) huskProps.get("UsingCarrierAggregation") : false); }
+    public boolean isUsingNonTerrestrialNetwork() { return (huskProps.get("UsingNonTerrestrialNetwork") instanceof Boolean ? (Boolean) huskProps.get("UsingNonTerrestrialNetwork") : false); }
+    public void setArfcnRsrpBoost(int p0) { huskProps.put("ArfcnRsrpBoost", Integer.valueOf(p0)); }
+    public void setCdmaSystemAndNetworkId(int p0, int p1) {}
+    public void setCellBandwidths(int[] p0) { huskProps.put("CellBandwidths", p0); }
+    public void setChannelNumber(int p0) { huskProps.put("ChannelNumber", Integer.valueOf(p0)); }
+    public void setCssIndicator(int p0) { huskProps.put("CssIndicator", Integer.valueOf(p0)); }
+    public void setDataRegState(int p0) { huskProps.put("DataRegState", Integer.valueOf(p0)); }
+    public void setDataRoaming(boolean p0) { huskProps.put("DataRoaming", Boolean.valueOf(p0)); }
+    public void setDataRoamingFromRegistration(boolean p0) { huskProps.put("DataRoamingFromRegistration", Boolean.valueOf(p0)); }
+    public void setDataRoamingType(int p0) { huskProps.put("DataRoamingType", Integer.valueOf(p0)); }
+    public void setEmergencyOnly(boolean p0) { huskProps.put("EmergencyOnly", Boolean.valueOf(p0)); }
+    public void setIsManualSelection(boolean p0) { huskProps.put("IsManualSelection", Boolean.valueOf(p0)); }
+    public void setIwlanPreferred(boolean p0) { huskProps.put("IwlanPreferred", Boolean.valueOf(p0)); }
+    public void setNrFrequencyRange(int p0) { huskProps.put("NrFrequencyRange", Integer.valueOf(p0)); }
+    public void setOperatorAlphaLong(java.lang.String p0) { huskProps.put("OperatorAlphaLong", p0); }
+    public void setOperatorAlphaLongRaw(java.lang.String p0) { huskProps.put("OperatorAlphaLongRaw", p0); }
+    public void setOperatorAlphaShortRaw(java.lang.String p0) { huskProps.put("OperatorAlphaShortRaw", p0); }
+    public void setOperatorName(java.lang.String p0, java.lang.String p1, java.lang.String p2) {}
+    public void setOutOfService(boolean p0) { huskProps.put("OutOfService", Boolean.valueOf(p0)); }
+    public void setRilDataRadioTechnology(int p0) { huskProps.put("RilDataRadioTechnology", Integer.valueOf(p0)); }
+    public void setRilVoiceRadioTechnology(int p0) { huskProps.put("RilVoiceRadioTechnology", Integer.valueOf(p0)); }
+    public void setRoaming(boolean p0) { huskProps.put("Roaming", Boolean.valueOf(p0)); }
+    public void setState(int p0) { huskProps.put("State", Integer.valueOf(p0)); }
+    public void setStateOff() {}
+    public void setStateOutOfService() {}
+    public void setVoiceRegState(int p0) { huskProps.put("VoiceRegState", Integer.valueOf(p0)); }
+    public void setVoiceRoaming(boolean p0) { huskProps.put("VoiceRoaming", Boolean.valueOf(p0)); }
+    public void setVoiceRoamingType(int p0) { huskProps.put("VoiceRoamingType", Integer.valueOf(p0)); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
 }

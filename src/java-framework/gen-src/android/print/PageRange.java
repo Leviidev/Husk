@@ -2,6 +2,17 @@
 package android.print;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class PageRange implements android.os.Parcelable {
-    protected PageRange() {}
+public final class PageRange implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.print.PageRange ALL_PAGES;
+    public static android.print.PageRange[] ALL_PAGES_ARRAY;
+    public static android.os.Parcelable.Creator CREATOR;
+    public PageRange(int p0, int p1) {}
+    public boolean contains(int p0) { return false; }
+    public int describeContents() { return 0; }
+    public int getEnd() { return (huskProps.get("End") instanceof Integer ? (Integer) huskProps.get("End") : 0); }
+    public int getSize() { return (huskProps.get("Size") instanceof Integer ? (Integer) huskProps.get("Size") : 0); }
+    public int getStart() { return (huskProps.get("Start") instanceof Integer ? (Integer) huskProps.get("Start") : 0); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PageRange() { this((int) 0, (int) 0); }
 }

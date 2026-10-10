@@ -2,6 +2,85 @@
 package android.media;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class RemoteControlClient {
-    protected RemoteControlClient() {}
+public class RemoteControlClient {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int DEFAULT_PLAYBACK_VOLUME = 15;
+    public static final int DEFAULT_PLAYBACK_VOLUME_HANDLING = 1;
+    public static final int FLAGS_KEY_MEDIA_NONE = 0;
+    public static final int FLAG_INFORMATION_REQUEST_ALBUM_ART = 8;
+    public static final int FLAG_INFORMATION_REQUEST_KEY_MEDIA = 2;
+    public static final int FLAG_INFORMATION_REQUEST_METADATA = 1;
+    public static final int FLAG_INFORMATION_REQUEST_PLAYSTATE = 4;
+    public static final int FLAG_KEY_MEDIA_FAST_FORWARD = 64;
+    public static final int FLAG_KEY_MEDIA_NEXT = 128;
+    public static final int FLAG_KEY_MEDIA_PAUSE = 16;
+    public static final int FLAG_KEY_MEDIA_PLAY = 4;
+    public static final int FLAG_KEY_MEDIA_PLAY_PAUSE = 8;
+    public static final int FLAG_KEY_MEDIA_POSITION_UPDATE = 256;
+    public static final int FLAG_KEY_MEDIA_PREVIOUS = 1;
+    public static final int FLAG_KEY_MEDIA_RATING = 512;
+    public static final int FLAG_KEY_MEDIA_REWIND = 2;
+    public static final int FLAG_KEY_MEDIA_STOP = 32;
+    public static int MEDIA_POSITION_READABLE;
+    public static int MEDIA_POSITION_WRITABLE;
+    public static final int PLAYBACKINFO_INVALID_VALUE = -2147483648;
+    public static final int PLAYBACKINFO_PLAYBACK_TYPE = 1;
+    public static final int PLAYBACKINFO_USES_STREAM = 5;
+    public static final int PLAYBACKINFO_VOLUME = 2;
+    public static final int PLAYBACKINFO_VOLUME_HANDLING = 4;
+    public static final int PLAYBACKINFO_VOLUME_MAX = 3;
+    public static final long PLAYBACK_POSITION_ALWAYS_UNKNOWN = -9216204211029966080L;
+    public static final long PLAYBACK_POSITION_INVALID = -1L;
+    public static final float PLAYBACK_SPEED_1X = 1.0f;
+    public static final int PLAYBACK_TYPE_LOCAL = 0;
+    public static final int PLAYBACK_TYPE_REMOTE = 1;
+    public static final int PLAYBACK_VOLUME_FIXED = 0;
+    public static final int PLAYBACK_VOLUME_VARIABLE = 1;
+    public static final int PLAYSTATE_BUFFERING = 8;
+    public static final int PLAYSTATE_ERROR = 9;
+    public static final int PLAYSTATE_FAST_FORWARDING = 4;
+    public static final int PLAYSTATE_NONE = 0;
+    public static final int PLAYSTATE_PAUSED = 2;
+    public static final int PLAYSTATE_PLAYING = 3;
+    public static final int PLAYSTATE_REWINDING = 5;
+    public static final int PLAYSTATE_SKIPPING_BACKWARDS = 7;
+    public static final int PLAYSTATE_SKIPPING_FORWARDS = 6;
+    public static final int PLAYSTATE_STOPPED = 1;
+    public static final int RCSE_ID_UNREGISTERED = -1;
+    public RemoteControlClient(android.app.PendingIntent p0) {}
+    public RemoteControlClient(android.app.PendingIntent p0, android.os.Looper p1) {}
+    public android.media.RemoteControlClient.MetadataEditor editMetadata(boolean p0) { return null; }
+    public android.media.session.MediaSession getMediaSession() { return (android.media.session.MediaSession) huskProps.get("MediaSession"); }
+    public android.app.PendingIntent getRcMediaIntent() { return (android.app.PendingIntent) huskProps.get("RcMediaIntent"); }
+    public void registerWithSession(android.media.session.MediaSessionLegacyHelper p0) {}
+    public void setMetadataUpdateListener(android.media.RemoteControlClient.OnMetadataUpdateListener p0) { huskProps.put("MetadataUpdateListener", p0); }
+    public void setOnGetPlaybackPositionListener(android.media.RemoteControlClient.OnGetPlaybackPositionListener p0) { huskProps.put("OnGetPlaybackPositionListener", p0); }
+    public void setPlaybackPositionUpdateListener(android.media.RemoteControlClient.OnPlaybackPositionUpdateListener p0) { huskProps.put("PlaybackPositionUpdateListener", p0); }
+    public void setPlaybackState(int p0) { huskProps.put("PlaybackState", Integer.valueOf(p0)); }
+    public void setPlaybackState(int p0, long p1, float p2) {}
+    public void setTransportControlFlags(int p0) { huskProps.put("TransportControlFlags", Integer.valueOf(p0)); }
+    public void unregisterWithSession(android.media.session.MediaSessionLegacyHelper p0) {}
+    RemoteControlClient() { this((android.app.PendingIntent) null); }
+    public static class MetadataEditor extends android.media.MediaMetadataEditor {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static final int BITMAP_KEY_ARTWORK = 100;
+        public static final int METADATA_KEY_ARTWORK = 100;
+        public void apply() {}
+        public void clear() {}
+        public java.lang.Object clone() { return null; }
+        public android.media.RemoteControlClient.MetadataEditor putBitmap(int p0, android.graphics.Bitmap p1) { return this; }
+        public android.media.RemoteControlClient.MetadataEditor putLong(int p0, long p1) { return this; }
+        public android.media.RemoteControlClient.MetadataEditor putObject(int p0, java.lang.Object p1) { return this; }
+        public android.media.RemoteControlClient.MetadataEditor putString(int p0, java.lang.String p1) { return this; }
+        protected MetadataEditor() { super(); }
+    }
+    public interface OnGetPlaybackPositionListener {
+        long onGetPlaybackPosition();
+    }
+    public interface OnMetadataUpdateListener {
+        void onMetadataUpdate(int p0, java.lang.Object p1);
+    }
+    public interface OnPlaybackPositionUpdateListener {
+        void onPlaybackPositionUpdate(long p0);
+    }
 }

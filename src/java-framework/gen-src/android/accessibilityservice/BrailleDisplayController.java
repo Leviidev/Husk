@@ -3,4 +3,26 @@ package android.accessibilityservice;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public interface BrailleDisplayController {
+    java.lang.String TEST_BRAILLE_DISPLAY_BUS_BLUETOOTH = "BUS_BLUETOOTH";
+    java.lang.String TEST_BRAILLE_DISPLAY_DESCRIPTOR = "DESCRIPTOR";
+    java.lang.String TEST_BRAILLE_DISPLAY_HIDRAW_PATH = "HIDRAW_PATH";
+    java.lang.String TEST_BRAILLE_DISPLAY_NAME = "NAME";
+    java.lang.String TEST_BRAILLE_DISPLAY_UNIQUE_ID = "UNIQUE_ID";
+    static void checkApiFlagIsEnabled() {}
+    static void setTestBrailleDisplayData(android.accessibilityservice.AccessibilityService p0, java.util.List p1) {}
+    void connect(android.bluetooth.BluetoothDevice p0, android.accessibilityservice.BrailleDisplayController.BrailleDisplayCallback p1);
+    void connect(android.bluetooth.BluetoothDevice p0, java.util.concurrent.Executor p1, android.accessibilityservice.BrailleDisplayController.BrailleDisplayCallback p2);
+    void connect(android.hardware.usb.UsbDevice p0, android.accessibilityservice.BrailleDisplayController.BrailleDisplayCallback p1);
+    void connect(android.hardware.usb.UsbDevice p0, java.util.concurrent.Executor p1, android.accessibilityservice.BrailleDisplayController.BrailleDisplayCallback p2);
+    void disconnect();
+    boolean isConnected();
+    void write(byte[] p0);
+    public interface BrailleDisplayCallback {
+        int FLAG_ERROR_BRAILLE_DISPLAY_NOT_FOUND = 2;
+        int FLAG_ERROR_CANNOT_ACCESS = 1;
+        void onConnected(byte[] p0);
+        void onConnectionFailed(int p0);
+        void onDisconnected();
+        void onInput(byte[] p0);
+    }
 }

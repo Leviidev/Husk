@@ -2,6 +2,21 @@
 package android.content.pm;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class LauncherUserInfo implements android.os.Parcelable {
+public final class LauncherUserInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final java.lang.String PRIVATE_SPACE_ENTRYPOINT_HIDDEN = "private_space_entrypoint_hidden";
+    public int describeContents() { return 0; }
+    public android.os.Bundle getUserConfig() { return (android.os.Bundle) huskProps.get("UserConfig"); }
+    public int getUserSerialNumber() { return (huskProps.get("UserSerialNumber") instanceof Integer ? (Integer) huskProps.get("UserSerialNumber") : 0); }
+    public java.lang.String getUserType() { return (java.lang.String) huskProps.get("UserType"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected LauncherUserInfo() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(java.lang.String p0, int p1) {}
+        public Builder(java.lang.String p0, int p1, android.os.Bundle p2) {}
+        public android.content.pm.LauncherUserInfo build() { android.content.pm.LauncherUserInfo x = new android.content.pm.LauncherUserInfo(); x.huskProps.putAll(huskProps); return x; }
+        Builder() { this((java.lang.String) null, (int) 0); }
+    }
 }

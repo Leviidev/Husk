@@ -196,8 +196,16 @@ public abstract class ActivityOptions extends android.app.ComponentOptions {
     public android.os.Bundle toBundle() { return null; }
     public void update(android.app.ActivityOptions p0) {}
     ActivityOptions() { this((android.os.Bundle) null); }
-    public static abstract class LaunchCookie implements android.os.Parcelable {
-        protected LaunchCookie() {}
+    public static final class LaunchCookie implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public android.os.IBinder binder;
+        public LaunchCookie() {}
+        public LaunchCookie(java.lang.String p0) {}
+        public static android.app.ActivityOptions.LaunchCookie readFromParcel(android.os.Parcel p0) { return new LaunchCookie(); }
+        public static void writeToParcel(android.app.ActivityOptions.LaunchCookie p0, android.os.Parcel p1) {}
+        public int describeContents() { return 0; }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
     }
     public interface OnAnimationFinishedListener {
         void onAnimationFinished(long p0);
@@ -205,24 +213,8 @@ public abstract class ActivityOptions extends android.app.ComponentOptions {
     public interface OnAnimationStartedListener {
         void onAnimationStarted(long p0);
     }
-    public static class SceneTransitionInfo implements android.os.Parcelable {
-        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
-        public SceneTransitionInfo() {}
-        public int describeContents() { return 0; }
-        public int getExitCoordinatorKey() { return (huskProps.get("ExitCoordinatorKey") instanceof Integer ? (Integer) huskProps.get("ExitCoordinatorKey") : 0); }
-        public int getResultCode() { return (huskProps.get("ResultCode") instanceof Integer ? (Integer) huskProps.get("ResultCode") : 0); }
-        public android.content.Intent getResultData() { return (android.content.Intent) huskProps.get("ResultData"); }
-        public android.os.ResultReceiver getResultReceiver() { return (android.os.ResultReceiver) huskProps.get("ResultReceiver"); }
-        public java.util.ArrayList getSharedElementNames() { return (huskProps.get("SharedElementNames") != null ? (java.util.ArrayList) huskProps.get("SharedElementNames") : new java.util.ArrayList()); }
-        public boolean isReturning() { return (huskProps.get("Returning") instanceof Boolean ? (Boolean) huskProps.get("Returning") : false); }
-        public void setExitCoordinatorKey(int p0) { huskProps.put("ExitCoordinatorKey", Integer.valueOf(p0)); }
-        public void setResultCode(int p0) { huskProps.put("ResultCode", Integer.valueOf(p0)); }
-        public void setResultData(android.content.Intent p0) { huskProps.put("ResultData", p0); }
-        public void setResultReceiver(android.os.ResultReceiver p0) { huskProps.put("ResultReceiver", p0); }
-        public void setReturning(boolean p0) { huskProps.put("Returning", Boolean.valueOf(p0)); }
-        public void setSharedElementNames(java.util.ArrayList p0) { huskProps.put("SharedElementNames", p0); }
-        public void writeToParcel(android.os.Parcel p0, int p1) {}
+    public static abstract class SceneTransitionInfo implements android.os.Parcelable {
+        protected SceneTransitionInfo() {}
     }
     public static class SourceInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

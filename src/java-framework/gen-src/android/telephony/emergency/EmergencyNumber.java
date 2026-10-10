@@ -2,6 +2,49 @@
 package android.telephony.emergency;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class EmergencyNumber implements android.os.Parcelable, java.lang.Comparable {
-    protected EmergencyNumber() {}
+public final class EmergencyNumber implements android.os.Parcelable, java.lang.Comparable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int EMERGENCY_CALL_ROUTING_EMERGENCY = 1;
+    public static final int EMERGENCY_CALL_ROUTING_NORMAL = 2;
+    public static final int EMERGENCY_CALL_ROUTING_UNKNOWN = 0;
+    public static final int EMERGENCY_NUMBER_SOURCE_DATABASE = 16;
+    public static final int EMERGENCY_NUMBER_SOURCE_DEFAULT = 8;
+    public static final int EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG = 4;
+    public static final int EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING = 1;
+    public static final int EMERGENCY_NUMBER_SOURCE_SIM = 2;
+    public static final int EMERGENCY_NUMBER_SOURCE_TEST = 32;
+    public static final int EMERGENCY_SERVICE_CATEGORY_AIEC = 64;
+    public static final int EMERGENCY_SERVICE_CATEGORY_AMBULANCE = 2;
+    public static final int EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE = 4;
+    public static final int EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD = 8;
+    public static final int EMERGENCY_SERVICE_CATEGORY_MIEC = 32;
+    public static final int EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE = 16;
+    public static final int EMERGENCY_SERVICE_CATEGORY_POLICE = 1;
+    public static final int EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED = 0;
+    public EmergencyNumber(android.os.Parcel p0) {}
+    public EmergencyNumber(java.lang.String p0, java.lang.String p1, java.lang.String p2, int p3, java.util.List p4, int p5, int p6) {}
+    public static boolean areSameEmergencyNumbers(android.telephony.emergency.EmergencyNumber p0, android.telephony.emergency.EmergencyNumber p1, boolean p2) { return false; }
+    public static android.telephony.emergency.EmergencyNumber mergeSameEmergencyNumbers(android.telephony.emergency.EmergencyNumber p0, android.telephony.emergency.EmergencyNumber p1) { return new EmergencyNumber(); }
+    public static android.telephony.emergency.EmergencyNumber mergeSameEmergencyNumbers(android.telephony.emergency.EmergencyNumber p0, android.telephony.emergency.EmergencyNumber p1, boolean p2) { return new EmergencyNumber(); }
+    public static void mergeSameNumbersInEmergencyNumberList(java.util.List p0) {}
+    public static void mergeSameNumbersInEmergencyNumberList(java.util.List p0, boolean p1) {}
+    public static boolean validateEmergencyNumberAddress(java.lang.String p0) { return false; }
+    public int compareTo(android.telephony.emergency.EmergencyNumber p0) { return 0; }
+    public int compareTo(java.lang.Object p0) { return 0; }
+    public int describeContents() { return 0; }
+    public java.lang.String getCountryIso() { return (java.lang.String) huskProps.get("CountryIso"); }
+    public int getEmergencyCallRouting() { return (huskProps.get("EmergencyCallRouting") instanceof Integer ? (Integer) huskProps.get("EmergencyCallRouting") : 0); }
+    public int getEmergencyNumberSourceBitmask() { return (huskProps.get("EmergencyNumberSourceBitmask") instanceof Integer ? (Integer) huskProps.get("EmergencyNumberSourceBitmask") : 0); }
+    public java.util.List getEmergencyNumberSources() { return (huskProps.get("EmergencyNumberSources") != null ? (java.util.List) huskProps.get("EmergencyNumberSources") : new java.util.ArrayList()); }
+    public java.util.List getEmergencyServiceCategories() { return (huskProps.get("EmergencyServiceCategories") != null ? (java.util.List) huskProps.get("EmergencyServiceCategories") : new java.util.ArrayList()); }
+    public int getEmergencyServiceCategoryBitmask() { return (huskProps.get("EmergencyServiceCategoryBitmask") instanceof Integer ? (Integer) huskProps.get("EmergencyServiceCategoryBitmask") : 0); }
+    public int getEmergencyServiceCategoryBitmaskInternalDial() { return (huskProps.get("EmergencyServiceCategoryBitmaskInternalDial") instanceof Integer ? (Integer) huskProps.get("EmergencyServiceCategoryBitmaskInternalDial") : 0); }
+    public java.util.List getEmergencyUrns() { return (huskProps.get("EmergencyUrns") != null ? (java.util.List) huskProps.get("EmergencyUrns") : new java.util.ArrayList()); }
+    public java.lang.String getMnc() { return (java.lang.String) huskProps.get("Mnc"); }
+    public java.lang.String getNumber() { return (java.lang.String) huskProps.get("Number"); }
+    public boolean isFromSources(int p0) { return false; }
+    public boolean isInEmergencyServiceCategories(int p0) { return false; }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    EmergencyNumber() { this((android.os.Parcel) null); }
 }

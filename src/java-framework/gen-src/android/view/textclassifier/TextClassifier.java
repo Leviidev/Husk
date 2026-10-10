@@ -52,27 +52,8 @@ public interface TextClassifier {
     default android.view.textclassifier.ConversationActions suggestConversationActions(android.view.textclassifier.ConversationActions.Request p0) { return null; }
     default android.view.textclassifier.TextSelection suggestSelection(android.view.textclassifier.TextSelection.Request p0) { return null; }
     default android.view.textclassifier.TextSelection suggestSelection(java.lang.CharSequence p0, int p1, int p2, android.os.LocaleList p3) { return null; }
-    public static final class EntityConfig implements android.os.Parcelable {
-        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
-        public static android.view.textclassifier.TextClassifier.EntityConfig create(java.util.Collection p0, java.util.Collection p1, java.util.Collection p2) { return new EntityConfig(); }
-        public static android.view.textclassifier.TextClassifier.EntityConfig createWithExplicitEntityList(java.util.Collection p0) { return new EntityConfig(); }
-        public static android.view.textclassifier.TextClassifier.EntityConfig createWithHints(java.util.Collection p0) { return new EntityConfig(); }
-        public int describeContents() { return 0; }
-        public java.util.Collection getHints() { return (huskProps.get("Hints") != null ? (java.util.Collection) huskProps.get("Hints") : new java.util.ArrayList()); }
-        public java.util.Collection resolveEntityListModifications(java.util.Collection p0) { return new java.util.ArrayList(); }
-        public boolean shouldIncludeTypesFromTextClassifier() { return false; }
-        public void writeToParcel(android.os.Parcel p0, int p1) {}
+    public static abstract class EntityConfig implements android.os.Parcelable {
         protected EntityConfig() {}
-        public static final class Builder {
-            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public Builder() {}
-            public android.view.textclassifier.TextClassifier.EntityConfig build() { android.view.textclassifier.TextClassifier.EntityConfig x = new android.view.textclassifier.TextClassifier.EntityConfig(); x.huskProps.putAll(huskProps); return x; }
-            public android.view.textclassifier.TextClassifier.EntityConfig.Builder includeTypesFromTextClassifier(boolean p0) { return this; }
-            public android.view.textclassifier.TextClassifier.EntityConfig.Builder setExcludedTypes(java.util.Collection p0) { huskProps.put("ExcludedTypes", p0); return this; }
-            public android.view.textclassifier.TextClassifier.EntityConfig.Builder setHints(java.util.Collection p0) { huskProps.put("Hints", p0); return this; }
-            public android.view.textclassifier.TextClassifier.EntityConfig.Builder setIncludedTypes(java.util.Collection p0) { huskProps.put("IncludedTypes", p0); return this; }
-        }
     }
     public static final class Utils {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

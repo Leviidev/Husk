@@ -691,32 +691,55 @@ const char *tl_dvm_describe_pending(char *buf, size_t n)
 
 /* ================================================================== monitors */
 
-typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv; } mon;
+/* A Java monitor: a plain mutex with its owner and how many times the owner holds it. wait() lets go of every level (as Java's
+ * does: a thread that waits inside two synchronized blocks on the same object must not keep it locked) and takes them back. */
+typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv; _Atomic(pthread_t) owner; int count; } mon;
 
 static mon *monitor_of(jobj *o)
 {
     mon *m = o->monitor;
     if (m) return m;
     mon *n = calloc(1, sizeof(*n));
-    pthread_mutexattr_t a; pthread_mutexattr_init(&a); pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&n->mu, &a);
+    pthread_mutex_init(&n->mu, NULL);
     pthread_cond_init(&n->cv, NULL);
     pthread_mutex_lock(&g_lock);
     if (!o->monitor) o->monitor = n; else { pthread_mutex_destroy(&n->mu); free(n); }
     pthread_mutex_unlock(&g_lock);
     return o->monitor;
 }
-void dvm_monitor_enter(jobj *o) { pthread_mutex_lock(&monitor_of(o)->mu); }
-bool dvm_monitor_exit(jobj *o) { return pthread_mutex_unlock(&monitor_of(o)->mu) == 0; }
+static bool mon_mine(mon *m) { pthread_t w = atomic_load(&m->owner); return w && pthread_equal(w, pthread_self()); }
+void dvm_monitor_enter(jobj *o)
+{
+    mon *m = monitor_of(o);
+    if (mon_mine(m)) { m->count++; return; }
+    pthread_mutex_lock(&m->mu);
+    atomic_store(&m->owner, pthread_self());
+    m->count = 1;
+}
+bool dvm_monitor_exit(jobj *o)
+{
+    mon *m = monitor_of(o);
+    if (!mon_mine(m)) return false;
+    if (--m->count == 0) { atomic_store(&m->owner, (pthread_t)0); pthread_mutex_unlock(&m->mu); }
+    return true;
+}
 void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns);
 void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
 {
     mon *m = monitor_of(o);
-    if (ms <= 0 && ns <= 0) { pthread_cond_wait(&m->cv, &m->mu); return; }
-    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += ms / 1000; ts.tv_nsec += (ms % 1000) * 1000000 + ns;
-    if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-    pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+    if (!mon_mine(m)) { dvm_throw("java/lang/IllegalMonitorStateException", "object not locked by thread before wait()"); return; }
+    int held = m->count;
+    m->count = 0;
+    atomic_store(&m->owner, (pthread_t)0);
+    if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
+    else {
+        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += ms / 1000; ts.tv_nsec += (ms % 1000) * 1000000 + ns;
+        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+        pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+    }
+    atomic_store(&m->owner, pthread_self());
+    m->count = held;
 }
 void dvm_monitor_notify(jobj *o, bool all);
 void dvm_monitor_notify(jobj *o, bool all) { mon *m = monitor_of(o); if (all) pthread_cond_broadcast(&m->cv); else pthread_cond_signal(&m->cv); }
@@ -934,8 +957,12 @@ static bool call_native(dvm_method *m, jobj *self, const jvalue *params, jvalue 
     int64_t gp[8]; double fp[8]; int64_t stk[24];
     int ng = 0, nf = 0, ns = 0;
     memset(gp, 0, sizeof(gp)); memset(fp, 0, sizeof(fp)); memset(stk, 0, sizeof(stk));
-    gp[ng++] = (int64_t)(uintptr_t)tl_jni_env();
-    gp[ng++] = (int64_t)(uintptr_t)((m->flags & 8) ? m->cls->jc->mirror : self);
+    /* @CriticalNative: a static method called with its arguments alone, no JNIEnv and no class (protobuf's upb, Google's libraries) */
+    if (m->critical == 0) { bool dvm_method_annotated_build(dvm_method *, const char *); m->critical = (m->flags & 8) && dvm_method_annotated_build(m, "Ldalvik/annotation/optimization/CriticalNative;") ? 1 : -1; }
+    if (m->critical < 0) {
+        gp[ng++] = (int64_t)(uintptr_t)tl_jni_env();
+        gp[ng++] = (int64_t)(uintptr_t)((m->flags & 8) ? m->cls->jc->mirror : self);
+    }
     for (int i = 0; i < m->nparams; i++) {
         char k = m->shorty[1 + i];
         if (k == 'F' || k == 'D') {

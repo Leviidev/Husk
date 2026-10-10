@@ -36,6 +36,7 @@ public abstract class Service extends android.content.ContextWrapper implements 
     public void callOnTimeLimitExceeded(int p0, int p1) {}
     public void callOnTimeout(int p0) {}
     public android.content.ComponentName contentCaptureClientGetComponentName() { return null; }
+    public android.content.Context createServiceBaseContext(android.app.ActivityThread p0, android.app.LoadedApk p1) { return null; }
     public void detachAndCleanUp() {}
     public android.view.contentcapture.ContentCaptureManager.ContentCaptureClient getContentCaptureClient() { return null; }
     public void onTimeout(int p0, int p1) {}

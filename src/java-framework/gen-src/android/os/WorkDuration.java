@@ -2,6 +2,16 @@
 package android.os;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class WorkDuration {
-    protected WorkDuration() {}
+public final class WorkDuration {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public WorkDuration() {}
+    public WorkDuration(long p0, long p1, long p2, long p3) {}
+    public long getActualCpuDurationNanos() { return (huskProps.get("ActualCpuDurationNanos") instanceof Long ? (Long) huskProps.get("ActualCpuDurationNanos") : 0L); }
+    public long getActualGpuDurationNanos() { return (huskProps.get("ActualGpuDurationNanos") instanceof Long ? (Long) huskProps.get("ActualGpuDurationNanos") : 0L); }
+    public long getActualTotalDurationNanos() { return (huskProps.get("ActualTotalDurationNanos") instanceof Long ? (Long) huskProps.get("ActualTotalDurationNanos") : 0L); }
+    public long getWorkPeriodStartTimestampNanos() { return (huskProps.get("WorkPeriodStartTimestampNanos") instanceof Long ? (Long) huskProps.get("WorkPeriodStartTimestampNanos") : 0L); }
+    public void setActualCpuDurationNanos(long p0) { huskProps.put("ActualCpuDurationNanos", Long.valueOf(p0)); }
+    public void setActualGpuDurationNanos(long p0) { huskProps.put("ActualGpuDurationNanos", Long.valueOf(p0)); }
+    public void setActualTotalDurationNanos(long p0) { huskProps.put("ActualTotalDurationNanos", Long.valueOf(p0)); }
+    public void setWorkPeriodStartTimestampNanos(long p0) { huskProps.put("WorkPeriodStartTimestampNanos", Long.valueOf(p0)); }
 }

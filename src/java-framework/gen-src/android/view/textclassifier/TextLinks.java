@@ -2,9 +2,83 @@
 package android.view.textclassifier;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class TextLinks implements android.os.Parcelable {
+public final class TextLinks implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int APPLY_STRATEGY_IGNORE = 0;
+    public static final int APPLY_STRATEGY_REPLACE = 1;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int STATUS_DIFFERENT_TEXT = 3;
+    public static final int STATUS_LINKS_APPLIED = 0;
+    public static final int STATUS_NO_LINKS_APPLIED = 2;
+    public static final int STATUS_NO_LINKS_FOUND = 1;
+    public static final int STATUS_UNSUPPORTED_CHARACTER = 4;
+    public int apply(android.text.Spannable p0, int p1, java.util.function.Function p2) { return 0; }
+    public int describeContents() { return 0; }
+    public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+    public java.util.Collection getLinks() { return (huskProps.get("Links") != null ? (java.util.Collection) huskProps.get("Links") : new java.util.ArrayList()); }
+    public java.lang.CharSequence getText() { return (java.lang.CharSequence) huskProps.get("Text"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected TextLinks() {}
-    public static abstract class Request implements android.os.Parcelable {
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(java.lang.String p0) {}
+        public android.view.textclassifier.TextLinks.Builder addLink(int p0, int p1, java.util.Map p2) { return this; }
+        public android.view.textclassifier.TextLinks.Builder addLink(int p0, int p1, java.util.Map p2, android.os.Bundle p3) { return this; }
+        public android.view.textclassifier.TextLinks build() { android.view.textclassifier.TextLinks x = new android.view.textclassifier.TextLinks(); x.huskProps.putAll(huskProps); return x; }
+        public android.view.textclassifier.TextLinks.Builder clearTextLinks() { return this; }
+        public android.view.textclassifier.TextLinks.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+        Builder() { this((java.lang.String) null); }
+    }
+    public static final class Request implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public int describeContents() { return 0; }
+        public java.lang.String getCallingPackageName() { return (java.lang.String) huskProps.get("CallingPackageName"); }
+        public android.os.LocaleList getDefaultLocales() { return (android.os.LocaleList) huskProps.get("DefaultLocales"); }
+        public android.view.textclassifier.TextClassifier.EntityConfig getEntityConfig() { return (android.view.textclassifier.TextClassifier.EntityConfig) huskProps.get("EntityConfig"); }
+        public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+        public java.time.ZonedDateTime getReferenceTime() { return (java.time.ZonedDateTime) huskProps.get("ReferenceTime"); }
+        public android.view.textclassifier.SystemTextClassifierMetadata getSystemTextClassifierMetadata() { return (android.view.textclassifier.SystemTextClassifierMetadata) huskProps.get("SystemTextClassifierMetadata"); }
+        public java.lang.CharSequence getText() { return (java.lang.CharSequence) huskProps.get("Text"); }
+        public boolean isLegacyFallback() { return (huskProps.get("LegacyFallback") instanceof Boolean ? (Boolean) huskProps.get("LegacyFallback") : false); }
+        public void setSystemTextClassifierMetadata(android.view.textclassifier.SystemTextClassifierMetadata p0) { huskProps.put("SystemTextClassifierMetadata", p0); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
         protected Request() {}
+        public static final class Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(java.lang.CharSequence p0) {}
+            public android.view.textclassifier.TextLinks.Request build() { android.view.textclassifier.TextLinks.Request x = new android.view.textclassifier.TextLinks.Request(); x.huskProps.putAll(huskProps); return x; }
+            public android.view.textclassifier.TextLinks.Request.Builder setDefaultLocales(android.os.LocaleList p0) { huskProps.put("DefaultLocales", p0); return this; }
+            public android.view.textclassifier.TextLinks.Request.Builder setEntityConfig(android.view.textclassifier.TextClassifier.EntityConfig p0) { huskProps.put("EntityConfig", p0); return this; }
+            public android.view.textclassifier.TextLinks.Request.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+            public android.view.textclassifier.TextLinks.Request.Builder setLegacyFallback(boolean p0) { huskProps.put("LegacyFallback", Boolean.valueOf(p0)); return this; }
+            public android.view.textclassifier.TextLinks.Request.Builder setReferenceTime(java.time.ZonedDateTime p0) { huskProps.put("ReferenceTime", p0); return this; }
+            Builder() { this((java.lang.CharSequence) null); }
+        }
+    }
+    public static final class TextLink implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public int describeContents() { return 0; }
+        public float getConfidenceScore(java.lang.String p0) { return 0f; }
+        public int getEnd() { return (huskProps.get("End") instanceof Integer ? (Integer) huskProps.get("End") : 0); }
+        public java.lang.String getEntity(int p0) { return null; }
+        public int getEntityCount() { return (huskProps.get("EntityCount") instanceof Integer ? (Integer) huskProps.get("EntityCount") : 0); }
+        public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+        public int getStart() { return (huskProps.get("Start") instanceof Integer ? (Integer) huskProps.get("Start") : 0); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        protected TextLink() {}
+    }
+    public static class TextLinkSpan extends android.text.style.ClickableSpan {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static final int INVOCATION_METHOD_KEYBOARD = 1;
+        public static final int INVOCATION_METHOD_TOUCH = 0;
+        public static final int INVOCATION_METHOD_UNSPECIFIED = -1;
+        public TextLinkSpan(android.view.textclassifier.TextLinks.TextLink p0) { super(); }
+        public android.view.textclassifier.TextLinks.TextLink getTextLink() { return (android.view.textclassifier.TextLinks.TextLink) huskProps.get("TextLink"); }
+        public java.lang.String getUrl() { return (java.lang.String) huskProps.get("Url"); }
+        public void onClick(android.view.View p0) {}
+        public void onClick(android.view.View p0, int p1) {}
+        TextLinkSpan() { this((android.view.textclassifier.TextLinks.TextLink) null); }
     }
 }

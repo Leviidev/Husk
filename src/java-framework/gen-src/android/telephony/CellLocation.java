@@ -3,5 +3,12 @@ package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class CellLocation {
-    protected CellLocation() {}
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public CellLocation() {}
+    public static android.telephony.CellLocation getEmpty() { return null; }
+    public static android.telephony.CellLocation newFromBundle(android.os.Bundle p0) { return null; }
+    public static void requestLocationUpdate() {}
+    public abstract void fillInNotifierBundle(android.os.Bundle p0);
+    public abstract boolean isEmpty();
+    public abstract void setStateInvalid();
 }

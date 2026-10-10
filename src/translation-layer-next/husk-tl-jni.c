@@ -980,8 +980,10 @@ void *tl_jni_native(const char *cls, const char *name, const char *sig)
     return r;
 }
 
-static int32_t jni_MonitorEnter(void *env, jo o) { (void)env; (void)o; return 0; }
-static int32_t jni_MonitorExit(void *env, jo o) { (void)env; (void)o; return 0; }
+void dvm_monitor_enter(jobj *o);
+bool dvm_monitor_exit(jobj *o);
+static int32_t jni_MonitorEnter(void *env, jo o) { (void)env; if (o) dvm_monitor_enter((jobj *)o); return 0; }
+static int32_t jni_MonitorExit(void *env, jo o) { (void)env; if (o) dvm_monitor_exit((jobj *)o); return 0; }
 
 static jo jni_NewDirectByteBuffer(void *env, void *addr, int64_t cap)
 {

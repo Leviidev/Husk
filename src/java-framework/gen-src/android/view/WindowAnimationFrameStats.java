@@ -2,6 +2,11 @@
 package android.view;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class WindowAnimationFrameStats extends android.view.FrameStats implements android.os.Parcelable {
-    protected WindowAnimationFrameStats() { super(); }
+public final class WindowAnimationFrameStats extends android.view.FrameStats implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public WindowAnimationFrameStats() { super(); }
+    public int describeContents() { return 0; }
+    public void init(long p0, long[] p1) {}
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
 }

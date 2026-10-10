@@ -2,6 +2,67 @@
 package android.media.metrics;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class EditingEndedEvent extends android.media.metrics.Event implements android.os.Parcelable {
+public final class EditingEndedEvent extends android.media.metrics.Event implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int ERROR_CODE_AUDIO_PROCESSING_FAILED = 18;
+    public static final int ERROR_CODE_DECODER_INIT_FAILED = 11;
+    public static final int ERROR_CODE_DECODING_FAILED = 12;
+    public static final int ERROR_CODE_DECODING_FORMAT_UNSUPPORTED = 13;
+    public static final int ERROR_CODE_ENCODER_INIT_FAILED = 14;
+    public static final int ERROR_CODE_ENCODING_FAILED = 15;
+    public static final int ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED = 16;
+    public static final int ERROR_CODE_FAILED_RUNTIME_CHECK = 2;
+    public static final int ERROR_CODE_IO_BAD_HTTP_STATUS = 6;
+    public static final int ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED = 9;
+    public static final int ERROR_CODE_IO_FILE_NOT_FOUND = 7;
+    public static final int ERROR_CODE_IO_NETWORK_CONNECTION_FAILED = 4;
+    public static final int ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT = 5;
+    public static final int ERROR_CODE_IO_NO_PERMISSION = 8;
+    public static final int ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE = 10;
+    public static final int ERROR_CODE_IO_UNSPECIFIED = 3;
+    public static final int ERROR_CODE_MUXING_FAILED = 19;
+    public static final int ERROR_CODE_NONE = 1;
+    public static final int ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED = 17;
+    public static final int FINAL_STATE_CANCELED = 2;
+    public static final int FINAL_STATE_ERROR = 3;
+    public static final int FINAL_STATE_SUCCEEDED = 1;
+    public static final long OPERATION_TYPE_AUDIO_EDIT = 8L;
+    public static final long OPERATION_TYPE_AUDIO_TRANSCODE = 2L;
+    public static final long OPERATION_TYPE_AUDIO_TRANSMUX = 32L;
+    public static final long OPERATION_TYPE_PAUSED = 64L;
+    public static final long OPERATION_TYPE_RESUMED = 128L;
+    public static final long OPERATION_TYPE_VIDEO_EDIT = 4L;
+    public static final long OPERATION_TYPE_VIDEO_TRANSCODE = 1L;
+    public static final long OPERATION_TYPE_VIDEO_TRANSMUX = 16L;
+    public static final int PROGRESS_PERCENT_UNKNOWN = -1;
+    public static final int TIME_SINCE_CREATED_UNKNOWN = -1;
+    public int describeContents() { return 0; }
+    public int getErrorCode() { return (huskProps.get("ErrorCode") instanceof Integer ? (Integer) huskProps.get("ErrorCode") : 0); }
+    public java.lang.String getExporterName() { return (java.lang.String) huskProps.get("ExporterName"); }
+    public float getFinalProgressPercent() { return (huskProps.get("FinalProgressPercent") instanceof Float ? (Float) huskProps.get("FinalProgressPercent") : 0f); }
+    public int getFinalState() { return (huskProps.get("FinalState") instanceof Integer ? (Integer) huskProps.get("FinalState") : 0); }
+    public java.util.List getInputMediaItemInfos() { return (huskProps.get("InputMediaItemInfos") != null ? (java.util.List) huskProps.get("InputMediaItemInfos") : new java.util.ArrayList()); }
+    public android.os.Bundle getMetricsBundle() { return (android.os.Bundle) huskProps.get("MetricsBundle"); }
+    public java.lang.String getMuxerName() { return (java.lang.String) huskProps.get("MuxerName"); }
+    public long getOperationTypes() { return (huskProps.get("OperationTypes") instanceof Long ? (Long) huskProps.get("OperationTypes") : 0L); }
+    public android.media.metrics.MediaItemInfo getOutputMediaItemInfo() { return (android.media.metrics.MediaItemInfo) huskProps.get("OutputMediaItemInfo"); }
+    public long getTimeSinceCreatedMillis() { return (huskProps.get("TimeSinceCreatedMillis") instanceof Long ? (Long) huskProps.get("TimeSinceCreatedMillis") : 0L); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected EditingEndedEvent() { super(); }
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(int p0) {}
+        public android.media.metrics.EditingEndedEvent.Builder addInputMediaItemInfo(android.media.metrics.MediaItemInfo p0) { return this; }
+        public android.media.metrics.EditingEndedEvent.Builder addOperationType(long p0) { return this; }
+        public android.media.metrics.EditingEndedEvent build() { android.media.metrics.EditingEndedEvent x = new android.media.metrics.EditingEndedEvent(); x.huskProps.putAll(huskProps); return x; }
+        public android.media.metrics.EditingEndedEvent.Builder setErrorCode(int p0) { huskProps.put("ErrorCode", Integer.valueOf(p0)); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setExporterName(java.lang.String p0) { huskProps.put("ExporterName", p0); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setFinalProgressPercent(float p0) { huskProps.put("FinalProgressPercent", Float.valueOf(p0)); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setMetricsBundle(android.os.Bundle p0) { huskProps.put("MetricsBundle", p0); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setMuxerName(java.lang.String p0) { huskProps.put("MuxerName", p0); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setOutputMediaItemInfo(android.media.metrics.MediaItemInfo p0) { huskProps.put("OutputMediaItemInfo", p0); return this; }
+        public android.media.metrics.EditingEndedEvent.Builder setTimeSinceCreatedMillis(long p0) { huskProps.put("TimeSinceCreatedMillis", Long.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
+    }
 }

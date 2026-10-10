@@ -60,7 +60,7 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns);
 void dvm_monitor_notify(jobj *o, bool all);
 NAT(Object_notify) { UNUSED; dvm_monitor_notify(self, false); return true; }
 NAT(Object_notifyAll) { UNUSED; dvm_monitor_notify(self, true); return true; }
-NAT(Object_wait) { (void)ret; dvm_monitor_wait(self, a[0].j, a[1].i); return true; }
+NAT(Object_wait) { (void)ret; dvm_monitor_wait(self, a[0].j, a[1].i); return !tl_jni_pending(); }
 
 /* ================================================================== String */
 

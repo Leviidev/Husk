@@ -2,6 +2,275 @@
 package android.hardware;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class Camera {
+public class Camera {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final java.lang.String ACTION_NEW_PICTURE = "android.hardware.action.NEW_PICTURE";
+    public static final java.lang.String ACTION_NEW_VIDEO = "android.hardware.action.NEW_VIDEO";
+    public static final int CAMERA_ERROR_DISABLED = 3;
+    public static final int CAMERA_ERROR_EVICTED = 2;
+    public static final int CAMERA_ERROR_SERVER_DIED = 100;
+    public static final int CAMERA_ERROR_UNKNOWN = 1;
+    public static final int CAMERA_HAL_API_VERSION_1_0 = 256;
+    public static final int CAMERA_HAL_API_VERSION_3_0 = 768;
+    public static boolean checkInitErrors(int p0) { return false; }
+    public static void getCameraInfo(int p0, android.content.Context p1, android.content.res.CameraCompatibilityInfo p2, android.hardware.Camera.CameraInfo p3) {}
+    public static void getCameraInfo(int p0, android.hardware.Camera.CameraInfo p1) {}
+    public static android.hardware.Camera.Parameters getEmptyParameters() { return null; }
+    public static int getNumberOfCameras() { return 0; }
+    public static int getNumberOfCameras(android.content.Context p0) { return 0; }
+    public static android.hardware.Camera.Parameters getParametersCopy(android.hardware.Camera.Parameters p0) { return null; }
+    public static android.hardware.Camera open() { return new Camera(); }
+    public static android.hardware.Camera open(int p0) { return new Camera(); }
+    public static android.hardware.Camera open(int p0, android.content.Context p1, android.content.res.CameraCompatibilityInfo p2) { return new Camera(); }
+    public static android.hardware.Camera openLegacy(int p0, int p1) { return new Camera(); }
+    public static android.hardware.Camera openUninitialized() { return new Camera(); }
+    public static boolean shouldExposeAuxCamera() { return false; }
+    public void addCallbackBuffer(byte[] p0) {}
+    public void addRawImageCallbackBuffer(byte[] p0) {}
+    public void autoFocus(android.hardware.Camera.AutoFocusCallback p0) {}
+    public void cancelAutoFocus() {}
+    public boolean disableShutterSound() { return false; }
+    public boolean enableShutterSound(boolean p0) { return false; }
+    protected void finalize() {}
+    public int getAudioRestriction() { return (huskProps.get("AudioRestriction") instanceof Integer ? (Integer) huskProps.get("AudioRestriction") : 0); }
+    public android.hardware.Camera.Parameters getParameters() { return (android.hardware.Camera.Parameters) huskProps.get("Parameters"); }
+    public void lock() {}
+    public boolean previewEnabled() { return false; }
+    public void reconnect() {}
+    public void release() {}
+    public void setAudioRestriction(int p0) { huskProps.put("AudioRestriction", Integer.valueOf(p0)); }
+    public void setAutoFocusMoveCallback(android.hardware.Camera.AutoFocusMoveCallback p0) { huskProps.put("AutoFocusMoveCallback", p0); }
+    public void setDetailedErrorCallback(android.hardware.Camera.ErrorCallback p0) { huskProps.put("DetailedErrorCallback", p0); }
+    public void setDisplayOrientation(int p0) { huskProps.put("DisplayOrientation", Integer.valueOf(p0)); }
+    public void setErrorCallback(android.hardware.Camera.ErrorCallback p0) { huskProps.put("ErrorCallback", p0); }
+    public void setFaceDetectionListener(android.hardware.Camera.FaceDetectionListener p0) { huskProps.put("FaceDetectionListener", p0); }
+    public void setOneShotPreviewCallback(android.hardware.Camera.PreviewCallback p0) { huskProps.put("OneShotPreviewCallback", p0); }
+    public void setParameters(android.hardware.Camera.Parameters p0) { huskProps.put("Parameters", p0); }
+    public void setPreviewCallback(android.hardware.Camera.PreviewCallback p0) { huskProps.put("PreviewCallback", p0); }
+    public void setPreviewCallbackWithBuffer(android.hardware.Camera.PreviewCallback p0) { huskProps.put("PreviewCallbackWithBuffer", p0); }
+    public void setPreviewDisplay(android.view.SurfaceHolder p0) { huskProps.put("PreviewDisplay", p0); }
+    public void setPreviewSurface(android.view.Surface p0) { huskProps.put("PreviewSurface", p0); }
+    public void setPreviewTexture(android.graphics.SurfaceTexture p0) { huskProps.put("PreviewTexture", p0); }
+    public void setZoomChangeListener(android.hardware.Camera.OnZoomChangeListener p0) { huskProps.put("ZoomChangeListener", p0); }
+    public void startFaceDetection() {}
+    public void startPreview() {}
+    public void startSmoothZoom(int p0) {}
+    public void stopFaceDetection() {}
+    public void stopPreview() {}
+    public void stopSmoothZoom() {}
+    public void takePicture(android.hardware.Camera.ShutterCallback p0, android.hardware.Camera.PictureCallback p1, android.hardware.Camera.PictureCallback p2) {}
+    public void takePicture(android.hardware.Camera.ShutterCallback p0, android.hardware.Camera.PictureCallback p1, android.hardware.Camera.PictureCallback p2, android.hardware.Camera.PictureCallback p3) {}
+    public void unlock() {}
     protected Camera() {}
+    public static class Area {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public android.graphics.Rect rect;
+        public int weight;
+        public Area(android.graphics.Rect p0, int p1) {}
+        Area() { this((android.graphics.Rect) null, (int) 0); }
+    }
+    public interface AutoFocusCallback {
+        void onAutoFocus(boolean p0, android.hardware.Camera p1);
+    }
+    public interface AutoFocusMoveCallback {
+        void onAutoFocusMoving(boolean p0, android.hardware.Camera p1);
+    }
+    public static class CameraInfo {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static final int CAMERA_FACING_BACK = 0;
+        public static final int CAMERA_FACING_FRONT = 1;
+        public boolean canDisableShutterSound;
+        public int facing;
+        public int orientation;
+        public CameraInfo() {}
+    }
+    public interface ErrorCallback {
+        void onError(int p0, android.hardware.Camera p1);
+    }
+    public static class Face {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public int id;
+        public android.graphics.Point leftEye;
+        public android.graphics.Point mouth;
+        public android.graphics.Rect rect;
+        public android.graphics.Point rightEye;
+        public int score;
+        public Face() {}
+    }
+    public interface FaceDetectionListener {
+        void onFaceDetection(android.hardware.Camera.Face[] p0, android.hardware.Camera p1);
+    }
+    public interface OnZoomChangeListener {
+        void onZoomChange(int p0, boolean p1, android.hardware.Camera p2);
+    }
+    public static class Parameters {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static final java.lang.String ANTIBANDING_50HZ = "50hz";
+        public static final java.lang.String ANTIBANDING_60HZ = "60hz";
+        public static final java.lang.String ANTIBANDING_AUTO = "auto";
+        public static final java.lang.String ANTIBANDING_OFF = "off";
+        public static final java.lang.String EFFECT_AQUA = "aqua";
+        public static final java.lang.String EFFECT_BLACKBOARD = "blackboard";
+        public static final java.lang.String EFFECT_MONO = "mono";
+        public static final java.lang.String EFFECT_NEGATIVE = "negative";
+        public static final java.lang.String EFFECT_NONE = "none";
+        public static final java.lang.String EFFECT_POSTERIZE = "posterize";
+        public static final java.lang.String EFFECT_SEPIA = "sepia";
+        public static final java.lang.String EFFECT_SOLARIZE = "solarize";
+        public static final java.lang.String EFFECT_WHITEBOARD = "whiteboard";
+        public static final java.lang.String FLASH_MODE_AUTO = "auto";
+        public static final java.lang.String FLASH_MODE_OFF = "off";
+        public static final java.lang.String FLASH_MODE_ON = "on";
+        public static final java.lang.String FLASH_MODE_RED_EYE = "red-eye";
+        public static final java.lang.String FLASH_MODE_TORCH = "torch";
+        public static final int FOCUS_DISTANCE_FAR_INDEX = 2;
+        public static final int FOCUS_DISTANCE_NEAR_INDEX = 0;
+        public static final int FOCUS_DISTANCE_OPTIMAL_INDEX = 1;
+        public static final java.lang.String FOCUS_MODE_AUTO = "auto";
+        public static final java.lang.String FOCUS_MODE_CONTINUOUS_PICTURE = "continuous-picture";
+        public static final java.lang.String FOCUS_MODE_CONTINUOUS_VIDEO = "continuous-video";
+        public static final java.lang.String FOCUS_MODE_EDOF = "edof";
+        public static final java.lang.String FOCUS_MODE_FIXED = "fixed";
+        public static final java.lang.String FOCUS_MODE_INFINITY = "infinity";
+        public static final java.lang.String FOCUS_MODE_MACRO = "macro";
+        public static final int PREVIEW_FPS_MAX_INDEX = 1;
+        public static final int PREVIEW_FPS_MIN_INDEX = 0;
+        public static final java.lang.String SCENE_MODE_ACTION = "action";
+        public static final java.lang.String SCENE_MODE_AUTO = "auto";
+        public static final java.lang.String SCENE_MODE_BARCODE = "barcode";
+        public static final java.lang.String SCENE_MODE_BEACH = "beach";
+        public static final java.lang.String SCENE_MODE_CANDLELIGHT = "candlelight";
+        public static final java.lang.String SCENE_MODE_FIREWORKS = "fireworks";
+        public static final java.lang.String SCENE_MODE_HDR = "hdr";
+        public static final java.lang.String SCENE_MODE_LANDSCAPE = "landscape";
+        public static final java.lang.String SCENE_MODE_NIGHT = "night";
+        public static final java.lang.String SCENE_MODE_NIGHT_PORTRAIT = "night-portrait";
+        public static final java.lang.String SCENE_MODE_PARTY = "party";
+        public static final java.lang.String SCENE_MODE_PORTRAIT = "portrait";
+        public static final java.lang.String SCENE_MODE_SNOW = "snow";
+        public static final java.lang.String SCENE_MODE_SPORTS = "sports";
+        public static final java.lang.String SCENE_MODE_STEADYPHOTO = "steadyphoto";
+        public static final java.lang.String SCENE_MODE_SUNSET = "sunset";
+        public static final java.lang.String SCENE_MODE_THEATRE = "theatre";
+        public static final java.lang.String WHITE_BALANCE_AUTO = "auto";
+        public static final java.lang.String WHITE_BALANCE_CLOUDY_DAYLIGHT = "cloudy-daylight";
+        public static final java.lang.String WHITE_BALANCE_DAYLIGHT = "daylight";
+        public static final java.lang.String WHITE_BALANCE_FLUORESCENT = "fluorescent";
+        public static final java.lang.String WHITE_BALANCE_INCANDESCENT = "incandescent";
+        public static final java.lang.String WHITE_BALANCE_SHADE = "shade";
+        public static final java.lang.String WHITE_BALANCE_TWILIGHT = "twilight";
+        public static final java.lang.String WHITE_BALANCE_WARM_FLUORESCENT = "warm-fluorescent";
+        public void copyFrom(android.hardware.Camera.Parameters p0) {}
+        public void dump() {}
+        public java.lang.String flatten() { return null; }
+        public java.lang.String get(java.lang.String p0) { return null; }
+        public java.lang.String getAntibanding() { return (java.lang.String) huskProps.get("Antibanding"); }
+        public boolean getAutoExposureLock() { return (huskProps.get("AutoExposureLock") instanceof Boolean ? (Boolean) huskProps.get("AutoExposureLock") : false); }
+        public boolean getAutoWhiteBalanceLock() { return (huskProps.get("AutoWhiteBalanceLock") instanceof Boolean ? (Boolean) huskProps.get("AutoWhiteBalanceLock") : false); }
+        public java.lang.String getColorEffect() { return (java.lang.String) huskProps.get("ColorEffect"); }
+        public int getExposureCompensation() { return (huskProps.get("ExposureCompensation") instanceof Integer ? (Integer) huskProps.get("ExposureCompensation") : 0); }
+        public float getExposureCompensationStep() { return (huskProps.get("ExposureCompensationStep") instanceof Float ? (Float) huskProps.get("ExposureCompensationStep") : 0f); }
+        public java.lang.String getFlashMode() { return (java.lang.String) huskProps.get("FlashMode"); }
+        public float getFocalLength() { return (huskProps.get("FocalLength") instanceof Float ? (Float) huskProps.get("FocalLength") : 0f); }
+        public java.util.List getFocusAreas() { return (huskProps.get("FocusAreas") != null ? (java.util.List) huskProps.get("FocusAreas") : new java.util.ArrayList()); }
+        public void getFocusDistances(float[] p0) {}
+        public java.lang.String getFocusMode() { return (java.lang.String) huskProps.get("FocusMode"); }
+        public float getHorizontalViewAngle() { return (huskProps.get("HorizontalViewAngle") instanceof Float ? (Float) huskProps.get("HorizontalViewAngle") : 0f); }
+        public int getInt(java.lang.String p0) { return 0; }
+        public int getJpegQuality() { return (huskProps.get("JpegQuality") instanceof Integer ? (Integer) huskProps.get("JpegQuality") : 0); }
+        public int getJpegThumbnailQuality() { return (huskProps.get("JpegThumbnailQuality") instanceof Integer ? (Integer) huskProps.get("JpegThumbnailQuality") : 0); }
+        public android.hardware.Camera.Size getJpegThumbnailSize() { return (android.hardware.Camera.Size) huskProps.get("JpegThumbnailSize"); }
+        public int getMaxExposureCompensation() { return (huskProps.get("MaxExposureCompensation") instanceof Integer ? (Integer) huskProps.get("MaxExposureCompensation") : 0); }
+        public int getMaxNumDetectedFaces() { return (huskProps.get("MaxNumDetectedFaces") instanceof Integer ? (Integer) huskProps.get("MaxNumDetectedFaces") : 0); }
+        public int getMaxNumFocusAreas() { return (huskProps.get("MaxNumFocusAreas") instanceof Integer ? (Integer) huskProps.get("MaxNumFocusAreas") : 0); }
+        public int getMaxNumMeteringAreas() { return (huskProps.get("MaxNumMeteringAreas") instanceof Integer ? (Integer) huskProps.get("MaxNumMeteringAreas") : 0); }
+        public int getMaxZoom() { return (huskProps.get("MaxZoom") instanceof Integer ? (Integer) huskProps.get("MaxZoom") : 0); }
+        public java.util.List getMeteringAreas() { return (huskProps.get("MeteringAreas") != null ? (java.util.List) huskProps.get("MeteringAreas") : new java.util.ArrayList()); }
+        public int getMinExposureCompensation() { return (huskProps.get("MinExposureCompensation") instanceof Integer ? (Integer) huskProps.get("MinExposureCompensation") : 0); }
+        public int getPictureFormat() { return (huskProps.get("PictureFormat") instanceof Integer ? (Integer) huskProps.get("PictureFormat") : 0); }
+        public android.hardware.Camera.Size getPictureSize() { return (android.hardware.Camera.Size) huskProps.get("PictureSize"); }
+        public android.hardware.Camera.Size getPreferredPreviewSizeForVideo() { return (android.hardware.Camera.Size) huskProps.get("PreferredPreviewSizeForVideo"); }
+        public int getPreviewFormat() { return (huskProps.get("PreviewFormat") instanceof Integer ? (Integer) huskProps.get("PreviewFormat") : 0); }
+        public void getPreviewFpsRange(int[] p0) {}
+        public int getPreviewFrameRate() { return (huskProps.get("PreviewFrameRate") instanceof Integer ? (Integer) huskProps.get("PreviewFrameRate") : 0); }
+        public android.hardware.Camera.Size getPreviewSize() { return (android.hardware.Camera.Size) huskProps.get("PreviewSize"); }
+        public java.lang.String getSceneMode() { return (java.lang.String) huskProps.get("SceneMode"); }
+        public java.util.List getSupportedAntibanding() { return (huskProps.get("SupportedAntibanding") != null ? (java.util.List) huskProps.get("SupportedAntibanding") : new java.util.ArrayList()); }
+        public java.util.List getSupportedColorEffects() { return (huskProps.get("SupportedColorEffects") != null ? (java.util.List) huskProps.get("SupportedColorEffects") : new java.util.ArrayList()); }
+        public java.util.List getSupportedFlashModes() { return (huskProps.get("SupportedFlashModes") != null ? (java.util.List) huskProps.get("SupportedFlashModes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedFocusModes() { return (huskProps.get("SupportedFocusModes") != null ? (java.util.List) huskProps.get("SupportedFocusModes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedJpegThumbnailSizes() { return (huskProps.get("SupportedJpegThumbnailSizes") != null ? (java.util.List) huskProps.get("SupportedJpegThumbnailSizes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPictureFormats() { return (huskProps.get("SupportedPictureFormats") != null ? (java.util.List) huskProps.get("SupportedPictureFormats") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPictureSizes() { return (huskProps.get("SupportedPictureSizes") != null ? (java.util.List) huskProps.get("SupportedPictureSizes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPreviewFormats() { return (huskProps.get("SupportedPreviewFormats") != null ? (java.util.List) huskProps.get("SupportedPreviewFormats") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPreviewFpsRange() { return (huskProps.get("SupportedPreviewFpsRange") != null ? (java.util.List) huskProps.get("SupportedPreviewFpsRange") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPreviewFrameRates() { return (huskProps.get("SupportedPreviewFrameRates") != null ? (java.util.List) huskProps.get("SupportedPreviewFrameRates") : new java.util.ArrayList()); }
+        public java.util.List getSupportedPreviewSizes() { return (huskProps.get("SupportedPreviewSizes") != null ? (java.util.List) huskProps.get("SupportedPreviewSizes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedSceneModes() { return (huskProps.get("SupportedSceneModes") != null ? (java.util.List) huskProps.get("SupportedSceneModes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedVideoSizes() { return (huskProps.get("SupportedVideoSizes") != null ? (java.util.List) huskProps.get("SupportedVideoSizes") : new java.util.ArrayList()); }
+        public java.util.List getSupportedWhiteBalance() { return (huskProps.get("SupportedWhiteBalance") != null ? (java.util.List) huskProps.get("SupportedWhiteBalance") : new java.util.ArrayList()); }
+        public float getVerticalViewAngle() { return (huskProps.get("VerticalViewAngle") instanceof Float ? (Float) huskProps.get("VerticalViewAngle") : 0f); }
+        public boolean getVideoStabilization() { return (huskProps.get("VideoStabilization") instanceof Boolean ? (Boolean) huskProps.get("VideoStabilization") : false); }
+        public java.lang.String getWhiteBalance() { return (java.lang.String) huskProps.get("WhiteBalance"); }
+        public int getZoom() { return (huskProps.get("Zoom") instanceof Integer ? (Integer) huskProps.get("Zoom") : 0); }
+        public java.util.List getZoomRatios() { return (huskProps.get("ZoomRatios") != null ? (java.util.List) huskProps.get("ZoomRatios") : new java.util.ArrayList()); }
+        public boolean isAutoExposureLockSupported() { return (huskProps.get("AutoExposureLockSupported") instanceof Boolean ? (Boolean) huskProps.get("AutoExposureLockSupported") : false); }
+        public boolean isAutoWhiteBalanceLockSupported() { return (huskProps.get("AutoWhiteBalanceLockSupported") instanceof Boolean ? (Boolean) huskProps.get("AutoWhiteBalanceLockSupported") : false); }
+        public boolean isSmoothZoomSupported() { return (huskProps.get("SmoothZoomSupported") instanceof Boolean ? (Boolean) huskProps.get("SmoothZoomSupported") : false); }
+        public boolean isVideoSnapshotSupported() { return (huskProps.get("VideoSnapshotSupported") instanceof Boolean ? (Boolean) huskProps.get("VideoSnapshotSupported") : false); }
+        public boolean isVideoStabilizationSupported() { return (huskProps.get("VideoStabilizationSupported") instanceof Boolean ? (Boolean) huskProps.get("VideoStabilizationSupported") : false); }
+        public boolean isZoomSupported() { return (huskProps.get("ZoomSupported") instanceof Boolean ? (Boolean) huskProps.get("ZoomSupported") : false); }
+        public void remove(java.lang.String p0) {}
+        public void removeGpsData() {}
+        public boolean same(android.hardware.Camera.Parameters p0) { return false; }
+        public void set(java.lang.String p0, int p1) {}
+        public void set(java.lang.String p0, java.lang.String p1) {}
+        public void setAntibanding(java.lang.String p0) { huskProps.put("Antibanding", p0); }
+        public void setAutoExposureLock(boolean p0) { huskProps.put("AutoExposureLock", Boolean.valueOf(p0)); }
+        public void setAutoWhiteBalanceLock(boolean p0) { huskProps.put("AutoWhiteBalanceLock", Boolean.valueOf(p0)); }
+        public void setColorEffect(java.lang.String p0) { huskProps.put("ColorEffect", p0); }
+        public void setExposureCompensation(int p0) { huskProps.put("ExposureCompensation", Integer.valueOf(p0)); }
+        public void setFlashMode(java.lang.String p0) { huskProps.put("FlashMode", p0); }
+        public void setFocusAreas(java.util.List p0) { huskProps.put("FocusAreas", p0); }
+        public void setFocusMode(java.lang.String p0) { huskProps.put("FocusMode", p0); }
+        public void setGpsAltitude(double p0) { huskProps.put("GpsAltitude", Double.valueOf(p0)); }
+        public void setGpsLatitude(double p0) { huskProps.put("GpsLatitude", Double.valueOf(p0)); }
+        public void setGpsLongitude(double p0) { huskProps.put("GpsLongitude", Double.valueOf(p0)); }
+        public void setGpsProcessingMethod(java.lang.String p0) { huskProps.put("GpsProcessingMethod", p0); }
+        public void setGpsTimestamp(long p0) { huskProps.put("GpsTimestamp", Long.valueOf(p0)); }
+        public void setJpegQuality(int p0) { huskProps.put("JpegQuality", Integer.valueOf(p0)); }
+        public void setJpegThumbnailQuality(int p0) { huskProps.put("JpegThumbnailQuality", Integer.valueOf(p0)); }
+        public void setJpegThumbnailSize(int p0, int p1) {}
+        public void setMeteringAreas(java.util.List p0) { huskProps.put("MeteringAreas", p0); }
+        public void setPictureFormat(int p0) { huskProps.put("PictureFormat", Integer.valueOf(p0)); }
+        public void setPictureSize(int p0, int p1) {}
+        public void setPreviewFormat(int p0) { huskProps.put("PreviewFormat", Integer.valueOf(p0)); }
+        public void setPreviewFpsRange(int p0, int p1) {}
+        public void setPreviewFrameRate(int p0) { huskProps.put("PreviewFrameRate", Integer.valueOf(p0)); }
+        public void setPreviewSize(int p0, int p1) {}
+        public void setRecordingHint(boolean p0) { huskProps.put("RecordingHint", Boolean.valueOf(p0)); }
+        public void setRotation(int p0) { huskProps.put("Rotation", Integer.valueOf(p0)); }
+        public void setSceneMode(java.lang.String p0) { huskProps.put("SceneMode", p0); }
+        public void setVideoStabilization(boolean p0) { huskProps.put("VideoStabilization", Boolean.valueOf(p0)); }
+        public void setWhiteBalance(java.lang.String p0) { huskProps.put("WhiteBalance", p0); }
+        public void setZoom(int p0) { huskProps.put("Zoom", Integer.valueOf(p0)); }
+        public void unflatten(java.lang.String p0) {}
+        protected Parameters() {}
+    }
+    public interface PictureCallback {
+        void onPictureTaken(byte[] p0, android.hardware.Camera p1);
+    }
+    public interface PreviewCallback {
+        void onPreviewFrame(byte[] p0, android.hardware.Camera p1);
+    }
+    public interface ShutterCallback {
+        void onShutter();
+    }
+    public static class Size {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public int height;
+        public int width;
+        public Size(android.hardware.Camera p0, int p1, int p2) {}
+        Size() { this((android.hardware.Camera) null, (int) 0, (int) 0); }
+    }
 }

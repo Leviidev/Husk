@@ -183,6 +183,7 @@ public final class Bitmap implements android.os.Parcelable {
     public android.graphics.Gainmap getGainmap() { return (android.graphics.Gainmap) huskFill.get("Gainmap"); }
     public android.hardware.HardwareBuffer getHardwareBuffer() { return null; }
     public long getNativeInstance() { return 0L; }
+    public android.graphics.NinePatch.InsetStruct getNinePatchInsets() { return null; }
     public void getOpticalInsets(android.graphics.Rect p0) {}
     public android.os.SharedMemory getSharedMemory() { return null; }
     public boolean hasGainmap() { return false; }

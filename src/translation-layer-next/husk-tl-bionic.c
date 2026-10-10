@@ -332,6 +332,10 @@ TL_VA_STUB(tl_va_syslog, tl_vai_syslog);
 extern void tl_va_syslog(void);
 
 static void bionic_openlog(const char *ident, int option, int facility) { (void)ident; (void)option; (void)facility; }
+/* vsyslog: bionic's va_list is AAPCS64's struct, not the host's; the format is logged as it stands */
+static void bionic_vsyslog(int pri, const char *fmt, void *ap) { (void)pri; (void)ap; log_emit(4, "syslog", fmt ? fmt : ""); }
+/* __progname: the program's name, as libc keeps it for err() and syslog */
+static const char *g_progname = "app_process64";
 static void bionic_closelog(void) {}
 
 /* --------------------------------------------------- C runtime and aborts */
@@ -714,6 +718,9 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("__android_log_assert", tl_va_android_log_assert),
     TL_WRAP("syslog", tl_va_syslog),
     TL_WRAP("openlog", bionic_openlog),
+    TL_WRAP("vsyslog", bionic_vsyslog),
+    TL_DATA("__progname", &g_progname),
+    TL_DIRECT(strsep), TL_DIRECT(arc4random_uniform),
     TL_WRAP("closelog", bionic_closelog),
     TL_WRAP("abort", bionic_abort),
     TL_WRAP("exit", bionic_exit),

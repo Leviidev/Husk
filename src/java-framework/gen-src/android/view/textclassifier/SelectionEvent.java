@@ -2,6 +2,62 @@
 package android.view.textclassifier;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class SelectionEvent implements android.os.Parcelable {
+public final class SelectionEvent implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int ACTION_ABANDON = 107;
+    public static final int ACTION_COPY = 101;
+    public static final int ACTION_CUT = 103;
+    public static final int ACTION_DRAG = 106;
+    public static final int ACTION_OTHER = 108;
+    public static final int ACTION_OVERTYPE = 100;
+    public static final int ACTION_PASTE = 102;
+    public static final int ACTION_RESET = 201;
+    public static final int ACTION_SELECT_ALL = 200;
+    public static final int ACTION_SHARE = 104;
+    public static final int ACTION_SMART_SHARE = 105;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int EVENT_AUTO_SELECTION = 5;
+    public static final int EVENT_SELECTION_MODIFIED = 2;
+    public static final int EVENT_SELECTION_STARTED = 1;
+    public static final int EVENT_SMART_SELECTION_MULTI = 4;
+    public static final int EVENT_SMART_SELECTION_SINGLE = 3;
+    public static final int INVOCATION_LINK = 2;
+    public static final int INVOCATION_MANUAL = 1;
+    public static final int INVOCATION_UNKNOWN = 0;
+    public static android.view.textclassifier.SelectionEvent createSelectionActionEvent(int p0, int p1, int p2) { return new SelectionEvent(); }
+    public static android.view.textclassifier.SelectionEvent createSelectionActionEvent(int p0, int p1, int p2, android.view.textclassifier.TextClassification p3) { return new SelectionEvent(); }
+    public static android.view.textclassifier.SelectionEvent createSelectionModifiedEvent(int p0, int p1) { return new SelectionEvent(); }
+    public static android.view.textclassifier.SelectionEvent createSelectionModifiedEvent(int p0, int p1, android.view.textclassifier.TextClassification p2) { return new SelectionEvent(); }
+    public static android.view.textclassifier.SelectionEvent createSelectionModifiedEvent(int p0, int p1, android.view.textclassifier.TextSelection p2) { return new SelectionEvent(); }
+    public static android.view.textclassifier.SelectionEvent createSelectionStartedEvent(int p0, int p1) { return new SelectionEvent(); }
+    public static boolean isTerminal(int p0) { return false; }
+    public int describeContents() { return 0; }
+    public long getDurationSincePreviousEvent() { return (huskProps.get("DurationSincePreviousEvent") instanceof Long ? (Long) huskProps.get("DurationSincePreviousEvent") : 0L); }
+    public long getDurationSinceSessionStart() { return (huskProps.get("DurationSinceSessionStart") instanceof Long ? (Long) huskProps.get("DurationSinceSessionStart") : 0L); }
+    public int getEnd() { return (huskProps.get("End") instanceof Integer ? (Integer) huskProps.get("End") : 0); }
+    public java.lang.String getEntityType() { return (java.lang.String) huskProps.get("EntityType"); }
+    public int getEventIndex() { return (huskProps.get("EventIndex") instanceof Integer ? (Integer) huskProps.get("EventIndex") : 0); }
+    public long getEventTime() { return (huskProps.get("EventTime") instanceof Long ? (Long) huskProps.get("EventTime") : 0L); }
+    public int getEventType() { return (huskProps.get("EventType") instanceof Integer ? (Integer) huskProps.get("EventType") : 0); }
+    public int getInvocationMethod() { return (huskProps.get("InvocationMethod") instanceof Integer ? (Integer) huskProps.get("InvocationMethod") : 0); }
+    public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
+    public java.lang.String getResultId() { return (java.lang.String) huskProps.get("ResultId"); }
+    public android.view.textclassifier.TextClassificationSessionId getSessionId() { return (android.view.textclassifier.TextClassificationSessionId) huskProps.get("SessionId"); }
+    public int getSmartEnd() { return (huskProps.get("SmartEnd") instanceof Integer ? (Integer) huskProps.get("SmartEnd") : 0); }
+    public int getSmartStart() { return (huskProps.get("SmartStart") instanceof Integer ? (Integer) huskProps.get("SmartStart") : 0); }
+    public int getStart() { return (huskProps.get("Start") instanceof Integer ? (Integer) huskProps.get("Start") : 0); }
+    public android.view.textclassifier.SystemTextClassifierMetadata getSystemTextClassifierMetadata() { return (android.view.textclassifier.SystemTextClassifierMetadata) huskProps.get("SystemTextClassifierMetadata"); }
+    public java.lang.String getWidgetType() { return (java.lang.String) huskProps.get("WidgetType"); }
+    public java.lang.String getWidgetVersion() { return (java.lang.String) huskProps.get("WidgetVersion"); }
+    public android.view.textclassifier.SelectionEvent setEnd(int p0) { huskProps.put("End", Integer.valueOf(p0)); return this; }
+    public android.view.textclassifier.SelectionEvent setEventIndex(int p0) { huskProps.put("EventIndex", Integer.valueOf(p0)); return this; }
+    public void setEventType(int p0) { huskProps.put("EventType", Integer.valueOf(p0)); }
+    public void setInvocationMethod(int p0) { huskProps.put("InvocationMethod", Integer.valueOf(p0)); }
+    public android.view.textclassifier.SelectionEvent setSessionId(android.view.textclassifier.TextClassificationSessionId p0) { huskProps.put("SessionId", p0); return this; }
+    public android.view.textclassifier.SelectionEvent setSmartEnd(int p0) { huskProps.put("SmartEnd", Integer.valueOf(p0)); return this; }
+    public android.view.textclassifier.SelectionEvent setSmartStart(int p0) { huskProps.put("SmartStart", Integer.valueOf(p0)); return this; }
+    public android.view.textclassifier.SelectionEvent setStart(int p0) { huskProps.put("Start", Integer.valueOf(p0)); return this; }
+    public void setTextClassificationSessionContext(android.view.textclassifier.TextClassificationContext p0) { huskProps.put("TextClassificationSessionContext", p0); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected SelectionEvent() {}
 }

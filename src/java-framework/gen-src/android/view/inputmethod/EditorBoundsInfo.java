@@ -2,6 +2,19 @@
 package android.view.inputmethod;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class EditorBoundsInfo implements android.os.Parcelable {
+public final class EditorBoundsInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public int describeContents() { return 0; }
+    public android.graphics.RectF getEditorBounds() { return (android.graphics.RectF) huskProps.get("EditorBounds"); }
+    public android.graphics.RectF getHandwritingBounds() { return (android.graphics.RectF) huskProps.get("HandwritingBounds"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected EditorBoundsInfo() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder() {}
+        public android.view.inputmethod.EditorBoundsInfo build() { android.view.inputmethod.EditorBoundsInfo x = new android.view.inputmethod.EditorBoundsInfo(); x.huskProps.putAll(huskProps); return x; }
+        public android.view.inputmethod.EditorBoundsInfo.Builder setEditorBounds(android.graphics.RectF p0) { huskProps.put("EditorBounds", p0); return this; }
+        public android.view.inputmethod.EditorBoundsInfo.Builder setHandwritingBounds(android.graphics.RectF p0) { huskProps.put("HandwritingBounds", p0); return this; }
+    }
 }

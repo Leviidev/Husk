@@ -120,6 +120,11 @@ public final class Manifest {
                     if (ri >= 0) target.putInt(name, p.getAttributeResourceValue(ri, 0));
                     else if (vi >= 0) {
                         p.getAttributeTypedValue(vi, v);
+                        // a reference (android:value="@integer/google_play_services_version") is resolved, as Android's parser does
+                        if (v.type == TypedValue.TYPE_REFERENCE && v.data != 0) {
+                            try { android.content.res.Resources r = husk.AppRunner.application() != null ? husk.AppRunner.application().getResources() : android.content.res.Resources.getSystem(); r.getValue(v.data, v, true); }
+                            catch (RuntimeException e) { /* left as the id */ }
+                        }
                         if (v.type == TypedValue.TYPE_STRING) target.putString(name, String.valueOf(v.string));
                         else if (v.type == TypedValue.TYPE_INT_BOOLEAN) target.putBoolean(name, v.data != 0);
                         else if (v.type == TypedValue.TYPE_FLOAT) target.putFloat(name, v.getFloat());

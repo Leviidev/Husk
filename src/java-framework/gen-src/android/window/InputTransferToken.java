@@ -2,6 +2,13 @@
 package android.window;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class InputTransferToken implements android.os.Parcelable {
-    protected InputTransferToken() {}
+public final class InputTransferToken implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public long mNativeObject;
+    public InputTransferToken() {}
+    public InputTransferToken(android.os.IBinder p0) {}
+    public int describeContents() { return 0; }
+    public android.os.IBinder getToken() { return (android.os.IBinder) huskProps.get("Token"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
 }

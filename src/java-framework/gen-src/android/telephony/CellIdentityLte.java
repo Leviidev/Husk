@@ -2,13 +2,13 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class CellIdentityLte extends android.telephony.CellIdentity {
+public final class CellIdentityLte extends android.telephony.CellIdentity {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
-    public CellIdentityLte() { super(); }
-    public CellIdentityLte(int p0, int p1, int p2, int p3, int p4) { super(); }
-    public CellIdentityLte(int p0, int p1, int p2, int p3, int[] p4, int p5, java.lang.String p6, java.lang.String p7, java.lang.String p8, java.lang.String p9, java.util.Collection p10, android.telephony.ClosedSubscriberGroupInfo p11) { super(); }
-    protected static android.telephony.CellIdentityLte createFromParcelBody(android.os.Parcel p0) { return null; }
+    public CellIdentityLte() { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    public CellIdentityLte(int p0, int p1, int p2, int p3, int p4) { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    public CellIdentityLte(int p0, int p1, int p2, int p3, int[] p4, int p5, java.lang.String p6, java.lang.String p7, java.lang.String p8, java.lang.String p9, java.util.Collection p10, android.telephony.ClosedSubscriberGroupInfo p11) { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    protected static android.telephony.CellIdentityLte createFromParcelBody(android.os.Parcel p0) { return new CellIdentityLte(); }
     public android.telephony.gsm.GsmCellLocation asCellLocation() { return null; }
     public java.util.Set getAdditionalPlmns() { return (huskProps.get("AdditionalPlmns") != null ? (java.util.Set) huskProps.get("AdditionalPlmns") : new java.util.HashSet()); }
     public int[] getBands() { return (int[]) huskProps.get("Bands"); }

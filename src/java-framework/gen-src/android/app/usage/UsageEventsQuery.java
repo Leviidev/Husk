@@ -2,6 +2,24 @@
 package android.app.usage;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class UsageEventsQuery implements android.os.Parcelable {
+public final class UsageEventsQuery implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public int describeContents() { return 0; }
+    public long getBeginTimeMillis() { return (huskProps.get("BeginTimeMillis") instanceof Long ? (Long) huskProps.get("BeginTimeMillis") : 0L); }
+    public long getEndTimeMillis() { return (huskProps.get("EndTimeMillis") instanceof Long ? (Long) huskProps.get("EndTimeMillis") : 0L); }
+    public int[] getEventTypes() { return (int[]) huskProps.get("EventTypes"); }
+    public java.util.Set getPackageNames() { return (huskProps.get("PackageNames") != null ? (java.util.Set) huskProps.get("PackageNames") : new java.util.HashSet()); }
+    public int getUserId() { return (huskProps.get("UserId") instanceof Integer ? (Integer) huskProps.get("UserId") : 0); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected UsageEventsQuery() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(long p0, long p1) {}
+        public android.app.usage.UsageEventsQuery build() { android.app.usage.UsageEventsQuery x = new android.app.usage.UsageEventsQuery(); x.huskProps.putAll(huskProps); return x; }
+        public android.app.usage.UsageEventsQuery.Builder setEventTypes(int[] p0) { huskProps.put("EventTypes", p0); return this; }
+        public android.app.usage.UsageEventsQuery.Builder setPackageNames(java.lang.String[] p0) { huskProps.put("PackageNames", p0); return this; }
+        public android.app.usage.UsageEventsQuery.Builder setUserId(int p0) { huskProps.put("UserId", Integer.valueOf(p0)); return this; }
+        Builder() { this((long) 0L, (long) 0L); }
+    }
 }

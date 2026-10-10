@@ -3,4 +3,17 @@ package android.view;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public interface AttachedSurfaceControl {
+    default void addOnBufferTransformHintChangedListener(android.view.AttachedSurfaceControl.OnBufferTransformHintChangedListener p0) {}
+    boolean applyTransactionOnDraw(android.view.SurfaceControl.Transaction p0);
+    android.view.SurfaceControl.Transaction buildReparentTransaction(android.view.SurfaceControl p0);
+    default int getBufferTransformHint() { return 0; }
+    default android.window.InputTransferToken getInputTransferToken() { return null; }
+    default android.window.SurfaceSyncGroup getOrCreateSurfaceSyncGroup() { return null; }
+    default android.view.SurfaceControl.OnJankDataListenerRegistration registerOnJankDataListener(java.util.concurrent.Executor p0, android.view.SurfaceControl.OnJankDataListener p1) { return null; }
+    default void removeOnBufferTransformHintChangedListener(android.view.AttachedSurfaceControl.OnBufferTransformHintChangedListener p0) {}
+    default void setChildBoundingInsets(android.graphics.Rect p0) {}
+    default void setTouchableRegion(android.graphics.Region p0) {}
+    public interface OnBufferTransformHintChangedListener {
+        void onBufferTransformHintChanged(int p0);
+    }
 }

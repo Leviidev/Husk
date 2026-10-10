@@ -118,11 +118,11 @@ int main(int argc, char **argv)
 
     tl_ld_set_verbosity(getenv("TL_VERBOSE") ? atoi(getenv("TL_VERBOSE")) : 1);
     tl_jni_set_trace(getenv("TL_JNI_TRACE") ? atoi(getenv("TL_JNI_TRACE")) : 1);
-    char tmp[600] = "/tmp/husk-flutter-XXXXXX";
+    char tmp[600] = "/Volumes/GTAV/husk2/tmp/husk-flutter-XXXXXX";
     if (getenv("TL_DATA")) snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); else mkdtemp(tmp);
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
     char egl[600], gles[600]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
-    char frames[] = "/tmp/husk-flutterframes-XXXXXX"; mkdtemp(frames);
+    char frames[] = "/Volumes/GTAV/husk2/tmp/husk-flutterframes-XXXXXX"; mkdtemp(frames);
     fprintf(stderr, "frames: %s\ndata: %s\n", frames, tmp);
     int w = argc > 4 ? atoi(argv[3]) : 720, h = argc > 4 ? atoi(argv[4]) : 1560;
     tl_ga_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PKG") ? getenv("TL_PKG") : "com.example.app", .width = w, .height = h,

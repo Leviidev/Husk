@@ -2,6 +2,74 @@
 package android.view.accessibility;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class AccessibilityWindowInfo implements android.os.Parcelable {
-    protected AccessibilityWindowInfo() {}
+public final class AccessibilityWindowInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int ACTIVE_WINDOW_ID = 2147483647;
+    public static final int ANY_WINDOW_ID = -2;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int PICTURE_IN_PICTURE_ACTION_REPLACER_WINDOW_ID = -3;
+    public static final int TYPE_ACCESSIBILITY_OVERLAY = 4;
+    public static final int TYPE_APPLICATION = 1;
+    public static final int TYPE_INPUT_METHOD = 2;
+    public static final int TYPE_MAGNIFICATION_OVERLAY = 6;
+    public static final int TYPE_SPLIT_SCREEN_DIVIDER = 5;
+    public static final int TYPE_SYSTEM = 3;
+    public static final int TYPE_WINDOW_CONTROL = 7;
+    public static final int UNDEFINED_CONNECTION_ID = -1;
+    public static final int UNDEFINED_WINDOW_ID = -1;
+    public AccessibilityWindowInfo() {}
+    public AccessibilityWindowInfo(android.view.accessibility.AccessibilityWindowInfo p0) {}
+    public static android.view.accessibility.AccessibilityWindowInfo obtain() { return new AccessibilityWindowInfo(); }
+    public static android.view.accessibility.AccessibilityWindowInfo obtain(android.view.accessibility.AccessibilityWindowInfo p0) { return new AccessibilityWindowInfo(); }
+    public static void setNumInstancesInUseCounter(java.util.concurrent.atomic.AtomicInteger p0) {}
+    public static java.lang.String typeToString(int p0) { return null; }
+    public void addChild(int p0) {}
+    public int describeContents() { return 0; }
+    public int differenceFrom(android.view.accessibility.AccessibilityWindowInfo p0) { return 0; }
+    public android.view.accessibility.AccessibilityNodeInfo getAnchor() { return (android.view.accessibility.AccessibilityNodeInfo) huskProps.get("Anchor"); }
+    public void getBoundsInScreen(android.graphics.Rect p0) {}
+    public android.view.accessibility.AccessibilityWindowInfo getChild(int p0) { return this; }
+    public int getChildCount() { return (huskProps.get("ChildCount") instanceof Integer ? (Integer) huskProps.get("ChildCount") : 0); }
+    public int getDisplayId() { return (huskProps.get("DisplayId") instanceof Integer ? (Integer) huskProps.get("DisplayId") : 0); }
+    public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
+    public int getLayer() { return (huskProps.get("Layer") instanceof Integer ? (Integer) huskProps.get("Layer") : 0); }
+    public android.os.LocaleList getLocales() { return (android.os.LocaleList) huskProps.get("Locales"); }
+    public android.view.accessibility.AccessibilityWindowInfo getParent() { return (android.view.accessibility.AccessibilityWindowInfo) huskProps.get("Parent"); }
+    public void getRegionInScreen(android.graphics.Region p0) {}
+    public android.view.accessibility.AccessibilityNodeInfo getRoot() { return (android.view.accessibility.AccessibilityNodeInfo) huskProps.get("Root"); }
+    public android.view.accessibility.AccessibilityNodeInfo getRoot(int p0) { return null; }
+    public int getTaskId() { return (huskProps.get("TaskId") instanceof Integer ? (Integer) huskProps.get("TaskId") : 0); }
+    public java.lang.CharSequence getTitle() { return (java.lang.CharSequence) huskProps.get("Title"); }
+    public long getTransitionTimeMillis() { return (huskProps.get("TransitionTimeMillis") instanceof Long ? (Long) huskProps.get("TransitionTimeMillis") : 0L); }
+    public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
+    public boolean isAccessibilityFocused() { return (huskProps.get("AccessibilityFocused") instanceof Boolean ? (Boolean) huskProps.get("AccessibilityFocused") : false); }
+    public boolean isActive() { return (huskProps.get("Active") instanceof Boolean ? (Boolean) huskProps.get("Active") : false); }
+    public boolean isFocused() { return (huskProps.get("Focused") instanceof Boolean ? (Boolean) huskProps.get("Focused") : false); }
+    public boolean isInPictureInPictureMode() { return (huskProps.get("InPictureInPictureMode") instanceof Boolean ? (Boolean) huskProps.get("InPictureInPictureMode") : false); }
+    public void recycle() {}
+    public boolean refresh() { return false; }
+    public void setAccessibilityFocused(boolean p0) { huskProps.put("AccessibilityFocused", Boolean.valueOf(p0)); }
+    public void setActive(boolean p0) { huskProps.put("Active", Boolean.valueOf(p0)); }
+    public void setAnchorId(long p0) { huskProps.put("AnchorId", Long.valueOf(p0)); }
+    public void setConnectionId(int p0) { huskProps.put("ConnectionId", Integer.valueOf(p0)); }
+    public void setDisplayId(int p0) { huskProps.put("DisplayId", Integer.valueOf(p0)); }
+    public void setFocused(boolean p0) { huskProps.put("Focused", Boolean.valueOf(p0)); }
+    public void setId(int p0) { huskProps.put("Id", Integer.valueOf(p0)); }
+    public void setLayer(int p0) { huskProps.put("Layer", Integer.valueOf(p0)); }
+    public void setLocales(android.os.LocaleList p0) { huskProps.put("Locales", p0); }
+    public void setParentId(int p0) { huskProps.put("ParentId", Integer.valueOf(p0)); }
+    public void setPictureInPicture(boolean p0) { huskProps.put("PictureInPicture", Boolean.valueOf(p0)); }
+    public void setRegionInScreen(android.graphics.Region p0) { huskProps.put("RegionInScreen", p0); }
+    public void setTaskId(int p0) { huskProps.put("TaskId", Integer.valueOf(p0)); }
+    public void setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); }
+    public void setTransitionTimeMillis(long p0) { huskProps.put("TransitionTimeMillis", Long.valueOf(p0)); }
+    public void setType(int p0) { huskProps.put("Type", Integer.valueOf(p0)); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    public static final class WindowListSparseArray extends android.util.SparseArray implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public WindowListSparseArray() { super(); }
+        public int describeContents() { return 0; }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+    }
 }

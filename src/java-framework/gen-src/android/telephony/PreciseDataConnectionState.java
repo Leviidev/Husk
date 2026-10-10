@@ -2,6 +2,46 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class PreciseDataConnectionState implements android.os.Parcelable {
-    protected PreciseDataConnectionState() {}
+public final class PreciseDataConnectionState implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int NETWORK_VALIDATION_FAILURE = 4;
+    public static final int NETWORK_VALIDATION_IN_PROGRESS = 2;
+    public static final int NETWORK_VALIDATION_NOT_REQUESTED = 1;
+    public static final int NETWORK_VALIDATION_SUCCESS = 3;
+    public static int NETWORK_VALIDATION_UNSUPPORTED;
+    public PreciseDataConnectionState(int p0, int p1, int p2, java.lang.String p3, android.net.LinkProperties p4, int p5) {}
+    public static java.lang.String networkValidationStatusToString(int p0) { return null; }
+    public int describeContents() { return 0; }
+    public android.telephony.data.ApnSetting getApnSetting() { return (android.telephony.data.ApnSetting) huskProps.get("ApnSetting"); }
+    public java.lang.String getDataConnectionApn() { return (java.lang.String) huskProps.get("DataConnectionApn"); }
+    public int getDataConnectionApnTypeBitMask() { return (huskProps.get("DataConnectionApnTypeBitMask") instanceof Integer ? (Integer) huskProps.get("DataConnectionApnTypeBitMask") : 0); }
+    public int getDataConnectionFailCause() { return (huskProps.get("DataConnectionFailCause") instanceof Integer ? (Integer) huskProps.get("DataConnectionFailCause") : 0); }
+    public int getDataConnectionState() { return (huskProps.get("DataConnectionState") instanceof Integer ? (Integer) huskProps.get("DataConnectionState") : 0); }
+    public android.telephony.data.Qos getDefaultQos() { return (android.telephony.data.Qos) huskProps.get("DefaultQos"); }
+    public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
+    public int getLastCauseCode() { return (huskProps.get("LastCauseCode") instanceof Integer ? (Integer) huskProps.get("LastCauseCode") : 0); }
+    public android.net.LinkProperties getLinkProperties() { return (android.net.LinkProperties) huskProps.get("LinkProperties"); }
+    public int getNetId() { return (huskProps.get("NetId") instanceof Integer ? (Integer) huskProps.get("NetId") : 0); }
+    public int getNetworkType() { return (huskProps.get("NetworkType") instanceof Integer ? (Integer) huskProps.get("NetworkType") : 0); }
+    public int getNetworkValidationStatus() { return (huskProps.get("NetworkValidationStatus") instanceof Integer ? (Integer) huskProps.get("NetworkValidationStatus") : 0); }
+    public int getState() { return (huskProps.get("State") instanceof Integer ? (Integer) huskProps.get("State") : 0); }
+    public int getTransportType() { return (huskProps.get("TransportType") instanceof Integer ? (Integer) huskProps.get("TransportType") : 0); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PreciseDataConnectionState() { this((int) 0, (int) 0, (int) 0, (java.lang.String) null, (android.net.LinkProperties) null, (int) 0); }
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder() {}
+        public android.telephony.PreciseDataConnectionState build() { android.telephony.PreciseDataConnectionState x = new android.telephony.PreciseDataConnectionState(); x.huskProps.putAll(huskProps); return x; }
+        public android.telephony.PreciseDataConnectionState.Builder setApnSetting(android.telephony.data.ApnSetting p0) { huskProps.put("ApnSetting", p0); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setDefaultQos(android.telephony.data.Qos p0) { huskProps.put("DefaultQos", p0); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setFailCause(int p0) { huskProps.put("FailCause", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setId(int p0) { huskProps.put("Id", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setLinkProperties(android.net.LinkProperties p0) { huskProps.put("LinkProperties", p0); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setNetworkAgentId(int p0) { huskProps.put("NetworkAgentId", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setNetworkType(int p0) { huskProps.put("NetworkType", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setNetworkValidationStatus(int p0) { huskProps.put("NetworkValidationStatus", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setState(int p0) { huskProps.put("State", Integer.valueOf(p0)); return this; }
+        public android.telephony.PreciseDataConnectionState.Builder setTransportType(int p0) { huskProps.put("TransportType", Integer.valueOf(p0)); return this; }
+    }
 }

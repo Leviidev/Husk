@@ -428,12 +428,12 @@ int main(int argc, char **argv)
 
     tl_ld_set_verbosity(getenv("TL_VERBOSE") ? atoi(getenv("TL_VERBOSE")) : 1);
     tl_jni_set_trace(getenv("TL_JNI_TRACE") ? atoi(getenv("TL_JNI_TRACE")) : 1);
-    char tmp[300] = "/tmp/husk-sdl-XXXXXX";
+    char tmp[300] = "/Volumes/GTAV/husk2/tmp/husk-sdl-XXXXXX";
     if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); }     /* a data directory that outlives the run */
     else mkdtemp(tmp);
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
     char egl[600], gles[600]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
-    char frames[] = "/tmp/husk-sdlframes-XXXXXX"; mkdtemp(frames);
+    char frames[] = "/Volumes/GTAV/husk2/tmp/husk-sdlframes-XXXXXX"; mkdtemp(frames);
     fprintf(stderr, "frames: %s\ndata: %s\n", frames, tmp);
     int w = argc > 4 ? atoi(argv[3]) : 1200, h = argc > 4 ? atoi(argv[4]) : 552;
     tl_ga_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PKG") ? getenv("TL_PKG") : "com.vectorunit.cobalt.googleplay", .width = w, .height = h,

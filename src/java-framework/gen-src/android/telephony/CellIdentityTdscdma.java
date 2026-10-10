@@ -2,12 +2,12 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class CellIdentityTdscdma extends android.telephony.CellIdentity {
+public final class CellIdentityTdscdma extends android.telephony.CellIdentity {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
-    public CellIdentityTdscdma() { super(); }
-    public CellIdentityTdscdma(java.lang.String p0, java.lang.String p1, int p2, int p3, int p4, int p5, java.lang.String p6, java.lang.String p7, java.util.Collection p8, android.telephony.ClosedSubscriberGroupInfo p9) { super(); }
-    protected static android.telephony.CellIdentityTdscdma createFromParcelBody(android.os.Parcel p0) { return null; }
+    public CellIdentityTdscdma() { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    public CellIdentityTdscdma(java.lang.String p0, java.lang.String p1, int p2, int p3, int p4, int p5, java.lang.String p6, java.lang.String p7, java.util.Collection p8, android.telephony.ClosedSubscriberGroupInfo p9) { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    protected static android.telephony.CellIdentityTdscdma createFromParcelBody(android.os.Parcel p0) { return new CellIdentityTdscdma(); }
     public android.telephony.gsm.GsmCellLocation asCellLocation() { return null; }
     public int describeContents() { return 0; }
     public java.util.Set getAdditionalPlmns() { return (huskProps.get("AdditionalPlmns") != null ? (java.util.Set) huskProps.get("AdditionalPlmns") : new java.util.HashSet()); }

@@ -3,5 +3,41 @@ package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class CellIdentity implements android.os.Parcelable {
-    protected CellIdentity() {}
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int INVALID_CHANNEL_NUMBER = 2147483647;
+    public static final int MCC_LENGTH = 3;
+    public static final int MNC_MAX_LENGTH = 3;
+    public static final int MNC_MIN_LENGTH = 2;
+    protected java.lang.String mAlphaLong;
+    protected java.lang.String mAlphaShort;
+    protected java.lang.String mGlobalCellId;
+    protected java.lang.String mMccStr;
+    protected java.lang.String mMncStr;
+    protected java.lang.String mTag;
+    protected int mType;
+    protected CellIdentity(java.lang.String p0, int p1, android.os.Parcel p2) {}
+    protected CellIdentity(java.lang.String p0, int p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.String p5) {}
+    protected static int inRangeOrUnavailable(int p0, int p1, int p2) { return 0; }
+    protected static int inRangeOrUnavailable(int p0, int p1, int p2, int p3) { return 0; }
+    protected static long inRangeOrUnavailable(long p0, long p1, long p2) { return 0L; }
+    public static boolean isValidPlmn(java.lang.String p0) { return false; }
+    public abstract android.telephony.CellLocation asCellLocation();
+    public int describeContents() { return 0; }
+    public int getChannelNumber() { return (huskProps.get("ChannelNumber") instanceof Integer ? (Integer) huskProps.get("ChannelNumber") : 0); }
+    public java.lang.String getGlobalCellId() { return (java.lang.String) huskProps.get("GlobalCellId"); }
+    public java.lang.String getMccString() { return (java.lang.String) huskProps.get("MccString"); }
+    public java.lang.String getMncString() { return (java.lang.String) huskProps.get("MncString"); }
+    public java.lang.CharSequence getOperatorAlphaLong() { return (java.lang.CharSequence) huskProps.get("OperatorAlphaLong"); }
+    public java.lang.CharSequence getOperatorAlphaShort() { return (java.lang.CharSequence) huskProps.get("OperatorAlphaShort"); }
+    public java.lang.String getPlmn() { return (java.lang.String) huskProps.get("Plmn"); }
+    public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
+    public boolean isSameCell(android.telephony.CellIdentity p0) { return false; }
+    protected void log(java.lang.String p0) {}
+    public abstract android.telephony.CellIdentity sanitizeLocationInfo();
+    public void setOperatorAlphaLong(java.lang.String p0) { huskProps.put("OperatorAlphaLong", p0); }
+    public void setOperatorAlphaShort(java.lang.String p0) { huskProps.put("OperatorAlphaShort", p0); }
+    protected abstract void updateGlobalCellId();
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CellIdentity() { this((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
 }

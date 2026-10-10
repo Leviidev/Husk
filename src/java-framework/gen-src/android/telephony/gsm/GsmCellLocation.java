@@ -2,6 +2,16 @@
 package android.telephony.gsm;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class GsmCellLocation extends android.telephony.CellLocation {
-    protected GsmCellLocation() { super(); }
+public class GsmCellLocation extends android.telephony.CellLocation {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public GsmCellLocation() { super(); }
+    public GsmCellLocation(android.os.Bundle p0) { super(); }
+    public void fillInNotifierBundle(android.os.Bundle p0) {}
+    public int getCid() { return (huskProps.get("Cid") instanceof Integer ? (Integer) huskProps.get("Cid") : 0); }
+    public int getLac() { return (huskProps.get("Lac") instanceof Integer ? (Integer) huskProps.get("Lac") : 0); }
+    public int getPsc() { return (huskProps.get("Psc") instanceof Integer ? (Integer) huskProps.get("Psc") : 0); }
+    public boolean isEmpty() { return (huskProps.get("Empty") instanceof Boolean ? (Boolean) huskProps.get("Empty") : false); }
+    public void setLacAndCid(int p0, int p1) {}
+    public void setPsc(int p0) { huskProps.put("Psc", Integer.valueOf(p0)); }
+    public void setStateInvalid() {}
 }

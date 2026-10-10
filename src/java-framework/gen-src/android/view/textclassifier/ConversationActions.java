@@ -2,9 +2,61 @@
 package android.view.textclassifier;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class ConversationActions implements android.os.Parcelable {
-    protected ConversationActions() {}
-    public static abstract class Request implements android.os.Parcelable {
+public final class ConversationActions implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public ConversationActions(java.util.List p0, java.lang.String p1) {}
+    public int describeContents() { return 0; }
+    public java.util.List getConversationActions() { return (huskProps.get("ConversationActions") != null ? (java.util.List) huskProps.get("ConversationActions") : new java.util.ArrayList()); }
+    public java.lang.String getId() { return (java.lang.String) huskProps.get("Id"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ConversationActions() { this((java.util.List) null, (java.lang.String) null); }
+    public static final class Message implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public static android.app.Person PERSON_USER_OTHERS;
+        public static android.app.Person PERSON_USER_SELF;
+        public int describeContents() { return 0; }
+        public android.app.Person getAuthor() { return (android.app.Person) huskProps.get("Author"); }
+        public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+        public java.time.ZonedDateTime getReferenceTime() { return (java.time.ZonedDateTime) huskProps.get("ReferenceTime"); }
+        public java.lang.CharSequence getText() { return (java.lang.CharSequence) huskProps.get("Text"); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        protected Message() {}
+        public static final class Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(android.app.Person p0) {}
+            public android.view.textclassifier.ConversationActions.Message build() { android.view.textclassifier.ConversationActions.Message x = new android.view.textclassifier.ConversationActions.Message(); x.huskProps.putAll(huskProps); return x; }
+            public android.view.textclassifier.ConversationActions.Message.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+            public android.view.textclassifier.ConversationActions.Message.Builder setReferenceTime(java.time.ZonedDateTime p0) { huskProps.put("ReferenceTime", p0); return this; }
+            public android.view.textclassifier.ConversationActions.Message.Builder setText(java.lang.CharSequence p0) { huskProps.put("Text", p0); return this; }
+            Builder() { this((android.app.Person) null); }
+        }
+    }
+    public static final class Request implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public static final java.lang.String HINT_FOR_IN_APP = "in_app";
+        public static final java.lang.String HINT_FOR_NOTIFICATION = "notification";
+        public int describeContents() { return 0; }
+        public java.lang.String getCallingPackageName() { return (java.lang.String) huskProps.get("CallingPackageName"); }
+        public java.util.List getConversation() { return (huskProps.get("Conversation") != null ? (java.util.List) huskProps.get("Conversation") : new java.util.ArrayList()); }
+        public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+        public java.util.List getHints() { return (huskProps.get("Hints") != null ? (java.util.List) huskProps.get("Hints") : new java.util.ArrayList()); }
+        public int getMaxSuggestions() { return (huskProps.get("MaxSuggestions") instanceof Integer ? (Integer) huskProps.get("MaxSuggestions") : 0); }
+        public android.view.textclassifier.SystemTextClassifierMetadata getSystemTextClassifierMetadata() { return (android.view.textclassifier.SystemTextClassifierMetadata) huskProps.get("SystemTextClassifierMetadata"); }
+        public android.view.textclassifier.TextClassifier.EntityConfig getTypeConfig() { return (android.view.textclassifier.TextClassifier.EntityConfig) huskProps.get("TypeConfig"); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
         protected Request() {}
+        public static final class Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(java.util.List p0) {}
+            public android.view.textclassifier.ConversationActions.Request build() { android.view.textclassifier.ConversationActions.Request x = new android.view.textclassifier.ConversationActions.Request(); x.huskProps.putAll(huskProps); return x; }
+            public android.view.textclassifier.ConversationActions.Request.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+            public android.view.textclassifier.ConversationActions.Request.Builder setHints(java.util.List p0) { huskProps.put("Hints", p0); return this; }
+            public android.view.textclassifier.ConversationActions.Request.Builder setMaxSuggestions(int p0) { huskProps.put("MaxSuggestions", Integer.valueOf(p0)); return this; }
+            public android.view.textclassifier.ConversationActions.Request.Builder setTypeConfig(android.view.textclassifier.TextClassifier.EntityConfig p0) { huskProps.put("TypeConfig", p0); return this; }
+            Builder() { this((java.util.List) null); }
+        }
     }
 }

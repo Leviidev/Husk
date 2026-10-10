@@ -51,6 +51,8 @@ public final class WindowManagerImpl implements WindowManager {
     public void removeScreenRecordingCallback(java.util.function.Consumer p0) {}
     public boolean replaceContentOnDisplayWithMirror(int p0, android.view.Window p1) { return false; }
     public boolean replaceContentOnDisplayWithSc(int p0, android.view.SurfaceControl p1) { return false; }
+    public void requestAppKeyboardShortcuts(android.view.WindowManager.KeyboardShortcutsReceiver p0, int p1) {}
+    public void requestImeKeyboardShortcuts(android.view.WindowManager.KeyboardShortcutsReceiver p0, int p1) {}
     public void setDefaultToken(android.os.IBinder p0) { huskFill.put("DefaultToken", p0); }
     public void setDisplayImePolicy(int p0, int p1) {}
     public void setParentWindow(android.view.Window p0) {}

@@ -544,3 +544,12 @@ NAT(An_Field_getSignatureAnnotation)
     *ret = L(field_set(f) ? system_value(f->cls->dex, field_set(f), "Ldalvik/annotation/Signature;", "value", "[Ljava/lang/String;") : NULL);
     return !tl_jni_pending();
 }
+
+/* @CriticalNative (and @FastNative): build-time annotations ART reads to choose how it calls a native method */
+bool dvm_method_annotated_build(dvm_method *m, const char *desc);
+bool dvm_method_annotated_build(dvm_method *m, const char *desc)
+{
+    const uint8_t *set = method_set(m);
+    return set && find_item(m->cls->dex, set, desc, 0) != NULL;
+}
+

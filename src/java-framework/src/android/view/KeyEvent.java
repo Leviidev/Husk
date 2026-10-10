@@ -342,6 +342,7 @@ public class KeyEvent extends InputEvent {
     public boolean dispatch(android.view.KeyEvent.Callback p0) { return false; }
     public int getDisplayId() { return (huskFill.get("DisplayId") instanceof Integer ? (Integer) huskFill.get("DisplayId") : 0); }
     public int getId() { return 0; }
+    public boolean getKeyData(android.view.KeyCharacterMap.KeyData p0) { return false; }
     public int getKeyboardDevice() { return 0; }
     public char getMatch(char[] p0) { return '\0'; }
     public char getMatch(char[] p0, int p1) { return '\0'; }

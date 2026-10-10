@@ -2,6 +2,61 @@
 package android.service.notification;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class ZenDeviceEffects implements android.os.Parcelable {
+public final class ZenDeviceEffects implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int FIELD_BRIGHTNESS_CAP = 4096;
+    public static final int FIELD_DIM_WALLPAPER = 4;
+    public static final int FIELD_DISABLE_AUTO_BRIGHTNESS = 16;
+    public static final int FIELD_DISABLE_TAP_TO_WAKE = 32;
+    public static final int FIELD_DISABLE_TILT_TO_WAKE = 64;
+    public static final int FIELD_DISABLE_TOUCH = 128;
+    public static final int FIELD_EXTRA_EFFECTS = 1024;
+    public static final int FIELD_GRAYSCALE = 1;
+    public static final int FIELD_MAXIMIZE_DOZE = 512;
+    public static final int FIELD_MINIMIZE_RADIO_USAGE = 256;
+    public static final int FIELD_NIGHT_LIGHT = 2048;
+    public static final int FIELD_NIGHT_MODE = 8;
+    public static final int FIELD_SUPPRESS_AMBIENT_DISPLAY = 2;
+    public static java.lang.String fieldsToString(int p0) { return null; }
+    public int describeContents() { return 0; }
+    public java.lang.Float getBrightnessCap() { return (java.lang.Float) huskProps.get("BrightnessCap"); }
+    public java.util.Set getExtraEffects() { return (huskProps.get("ExtraEffects") != null ? (java.util.Set) huskProps.get("ExtraEffects") : new java.util.HashSet()); }
+    public boolean hasEffects() { return false; }
+    public boolean shouldDimWallpaper() { return false; }
+    public boolean shouldDisableAutoBrightness() { return false; }
+    public boolean shouldDisableTapToWake() { return false; }
+    public boolean shouldDisableTiltToWake() { return false; }
+    public boolean shouldDisableTouch() { return false; }
+    public boolean shouldDisplayGrayscale() { return false; }
+    public boolean shouldMaximizeDoze() { return false; }
+    public boolean shouldMinimizeRadioUsage() { return false; }
+    public boolean shouldSuppressAmbientDisplay() { return false; }
+    public boolean shouldUseNightLight() { return false; }
+    public boolean shouldUseNightMode() { return false; }
+    public void validate() {}
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected ZenDeviceEffects() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder() {}
+        public Builder(android.service.notification.ZenDeviceEffects p0) {}
+        public android.service.notification.ZenDeviceEffects.Builder add(android.service.notification.ZenDeviceEffects p0) { return this; }
+        public android.service.notification.ZenDeviceEffects.Builder addExtraEffect(java.lang.String p0) { return this; }
+        public android.service.notification.ZenDeviceEffects.Builder addExtraEffects(java.util.Set p0) { return this; }
+        public android.service.notification.ZenDeviceEffects build() { android.service.notification.ZenDeviceEffects x = new android.service.notification.ZenDeviceEffects(); x.huskProps.putAll(huskProps); return x; }
+        public android.service.notification.ZenDeviceEffects.Builder setBrightnessCap(java.lang.Float p0) { huskProps.put("BrightnessCap", p0); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setExtraEffects(java.util.Set p0) { huskProps.put("ExtraEffects", p0); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDimWallpaper(boolean p0) { huskProps.put("ShouldDimWallpaper", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDisableAutoBrightness(boolean p0) { huskProps.put("ShouldDisableAutoBrightness", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDisableTapToWake(boolean p0) { huskProps.put("ShouldDisableTapToWake", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDisableTiltToWake(boolean p0) { huskProps.put("ShouldDisableTiltToWake", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDisableTouch(boolean p0) { huskProps.put("ShouldDisableTouch", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldDisplayGrayscale(boolean p0) { huskProps.put("ShouldDisplayGrayscale", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldMaximizeDoze(boolean p0) { huskProps.put("ShouldMaximizeDoze", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldMinimizeRadioUsage(boolean p0) { huskProps.put("ShouldMinimizeRadioUsage", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldSuppressAmbientDisplay(boolean p0) { huskProps.put("ShouldSuppressAmbientDisplay", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldUseNightLight(boolean p0) { huskProps.put("ShouldUseNightLight", Boolean.valueOf(p0)); return this; }
+        public android.service.notification.ZenDeviceEffects.Builder setShouldUseNightMode(boolean p0) { huskProps.put("ShouldUseNightMode", Boolean.valueOf(p0)); return this; }
+    }
 }

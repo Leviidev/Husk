@@ -3,5 +3,112 @@ package android.view.textclassifier;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class TextClassifierEvent implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int CATEGORY_CONVERSATION_ACTIONS = 3;
+    public static final int CATEGORY_LANGUAGE_DETECTION = 4;
+    public static final int CATEGORY_LINKIFY = 2;
+    public static final int CATEGORY_SELECTION = 1;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int TYPE_ACTIONS_GENERATED = 20;
+    public static final int TYPE_ACTIONS_SHOWN = 6;
+    public static final int TYPE_AUTO_SELECTION = 5;
+    public static final int TYPE_COPY_ACTION = 9;
+    public static final int TYPE_CUT_ACTION = 11;
+    public static final int TYPE_LINKS_GENERATED = 21;
+    public static final int TYPE_LINK_CLICKED = 7;
+    public static final int TYPE_MANUAL_REPLY = 19;
+    public static final int TYPE_OTHER_ACTION = 16;
+    public static final int TYPE_OVERTYPE = 8;
+    public static final int TYPE_PASTE_ACTION = 10;
+    public static final int TYPE_READ_CLIPBOARD = 22;
+    public static final int TYPE_SELECTION_DESTROYED = 15;
+    public static final int TYPE_SELECTION_DRAG = 14;
+    public static final int TYPE_SELECTION_MODIFIED = 2;
+    public static final int TYPE_SELECTION_RESET = 18;
+    public static final int TYPE_SELECTION_STARTED = 1;
+    public static final int TYPE_SELECT_ALL = 17;
+    public static final int TYPE_SHARE_ACTION = 12;
+    public static final int TYPE_SMART_ACTION = 13;
+    public static final int TYPE_SMART_SELECTION_MULTI = 4;
+    public static final int TYPE_SMART_SELECTION_SINGLE = 3;
+    public android.view.textclassifier.TextClassificationSessionId mHiddenTempSessionId;
+    public int describeContents() { return 0; }
+    public int[] getActionIndices() { return (int[]) huskProps.get("ActionIndices"); }
+    public java.lang.String[] getEntityTypes() { return (java.lang.String[]) huskProps.get("EntityTypes"); }
+    public int getEventCategory() { return (huskProps.get("EventCategory") instanceof Integer ? (Integer) huskProps.get("EventCategory") : 0); }
+    public android.view.textclassifier.TextClassificationContext getEventContext() { return (android.view.textclassifier.TextClassificationContext) huskProps.get("EventContext"); }
+    public int getEventIndex() { return (huskProps.get("EventIndex") instanceof Integer ? (Integer) huskProps.get("EventIndex") : 0); }
+    public int getEventType() { return (huskProps.get("EventType") instanceof Integer ? (Integer) huskProps.get("EventType") : 0); }
+    public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
+    public java.lang.String getModelName() { return (java.lang.String) huskProps.get("ModelName"); }
+    public java.lang.String getResultId() { return (java.lang.String) huskProps.get("ResultId"); }
+    public float[] getScores() { return (float[]) huskProps.get("Scores"); }
+    public android.view.textclassifier.SelectionEvent toSelectionEvent() { return null; }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected TextClassifierEvent() {}
+    public static abstract class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public android.view.textclassifier.TextClassifierEvent.Builder setActionIndices(int[] p0) { huskProps.put("ActionIndices", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setEntityTypes(java.lang.String[] p0) { huskProps.put("EntityTypes", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setEventContext(android.view.textclassifier.TextClassificationContext p0) { huskProps.put("EventContext", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setEventIndex(int p0) { huskProps.put("EventIndex", Integer.valueOf(p0)); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setModelName(java.lang.String p0) { huskProps.put("ModelName", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setResultId(java.lang.String p0) { huskProps.put("ResultId", p0); return this; }
+        public android.view.textclassifier.TextClassifierEvent.Builder setScores(float[] p0) { huskProps.put("Scores", p0); return this; }
+        protected Builder() {}
+    }
+    public static final class ConversationActionsEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        protected ConversationActionsEvent() { super(); }
+        public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(int p0) { super(); }
+            public android.view.textclassifier.TextClassifierEvent.ConversationActionsEvent build() { android.view.textclassifier.TextClassifierEvent.ConversationActionsEvent x = new android.view.textclassifier.TextClassifierEvent.ConversationActionsEvent(); x.huskProps.putAll(huskProps); return x; }
+            Builder() { this((int) 0); }
+        }
+    }
+    public static final class LanguageDetectionEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        protected LanguageDetectionEvent() { super(); }
+        public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(int p0) { super(); }
+            public android.view.textclassifier.TextClassifierEvent.LanguageDetectionEvent build() { android.view.textclassifier.TextClassifierEvent.LanguageDetectionEvent x = new android.view.textclassifier.TextClassifierEvent.LanguageDetectionEvent(); x.huskProps.putAll(huskProps); return x; }
+            Builder() { this((int) 0); }
+        }
+    }
+    public static final class TextLinkifyEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        protected TextLinkifyEvent() { super(); }
+        public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(int p0) { super(); }
+            public android.view.textclassifier.TextClassifierEvent.TextLinkifyEvent build() { android.view.textclassifier.TextClassifierEvent.TextLinkifyEvent x = new android.view.textclassifier.TextClassifierEvent.TextLinkifyEvent(); x.huskProps.putAll(huskProps); return x; }
+            Builder() { this((int) 0); }
+        }
+    }
+    public static final class TextSelectionEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public int getRelativeSuggestedWordEndIndex() { return (huskProps.get("RelativeSuggestedWordEndIndex") instanceof Integer ? (Integer) huskProps.get("RelativeSuggestedWordEndIndex") : 0); }
+        public int getRelativeSuggestedWordStartIndex() { return (huskProps.get("RelativeSuggestedWordStartIndex") instanceof Integer ? (Integer) huskProps.get("RelativeSuggestedWordStartIndex") : 0); }
+        public int getRelativeWordEndIndex() { return (huskProps.get("RelativeWordEndIndex") instanceof Integer ? (Integer) huskProps.get("RelativeWordEndIndex") : 0); }
+        public int getRelativeWordStartIndex() { return (huskProps.get("RelativeWordStartIndex") instanceof Integer ? (Integer) huskProps.get("RelativeWordStartIndex") : 0); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        protected TextSelectionEvent() { super(); }
+        public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+            public Builder(int p0) { super(); }
+            public android.view.textclassifier.TextClassifierEvent.TextSelectionEvent build() { android.view.textclassifier.TextClassifierEvent.TextSelectionEvent x = new android.view.textclassifier.TextClassifierEvent.TextSelectionEvent(); x.huskProps.putAll(huskProps); return x; }
+            public android.view.textclassifier.TextClassifierEvent.TextSelectionEvent.Builder setRelativeSuggestedWordEndIndex(int p0) { huskProps.put("RelativeSuggestedWordEndIndex", Integer.valueOf(p0)); return this; }
+            public android.view.textclassifier.TextClassifierEvent.TextSelectionEvent.Builder setRelativeSuggestedWordStartIndex(int p0) { huskProps.put("RelativeSuggestedWordStartIndex", Integer.valueOf(p0)); return this; }
+            public android.view.textclassifier.TextClassifierEvent.TextSelectionEvent.Builder setRelativeWordEndIndex(int p0) { huskProps.put("RelativeWordEndIndex", Integer.valueOf(p0)); return this; }
+            public android.view.textclassifier.TextClassifierEvent.TextSelectionEvent.Builder setRelativeWordStartIndex(int p0) { huskProps.put("RelativeWordStartIndex", Integer.valueOf(p0)); return this; }
+            Builder() { this((int) 0); }
+        }
+    }
 }

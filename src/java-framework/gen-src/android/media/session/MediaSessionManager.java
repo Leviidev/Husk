@@ -68,12 +68,7 @@ public final class MediaSessionManager {
         void onDefaultRemoteSessionChanged(android.media.session.MediaSession.Token p0);
         void onVolumeChanged(android.media.session.MediaSession.Token p0, int p1);
     }
-    public static final class RemoteUserInfo {
-        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public RemoteUserInfo(java.lang.String p0, int p1, int p2) {}
-        public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
-        public int getPid() { return (huskProps.get("Pid") instanceof Integer ? (Integer) huskProps.get("Pid") : 0); }
-        public int getUid() { return (huskProps.get("Uid") instanceof Integer ? (Integer) huskProps.get("Uid") : 0); }
-        RemoteUserInfo() { this((java.lang.String) null, (int) 0, (int) 0); }
+    public static abstract class RemoteUserInfo {
+        protected RemoteUserInfo() {}
     }
 }

@@ -2,6 +2,27 @@
 package android.print;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class PrintDocumentInfo implements android.os.Parcelable {
+public final class PrintDocumentInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int CONTENT_TYPE_DOCUMENT = 0;
+    public static final int CONTENT_TYPE_PHOTO = 1;
+    public static final int CONTENT_TYPE_UNKNOWN = -1;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int PAGE_COUNT_UNKNOWN = -1;
+    public int describeContents() { return 0; }
+    public int getContentType() { return (huskProps.get("ContentType") instanceof Integer ? (Integer) huskProps.get("ContentType") : 0); }
+    public long getDataSize() { return (huskProps.get("DataSize") instanceof Long ? (Long) huskProps.get("DataSize") : 0L); }
+    public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
+    public int getPageCount() { return (huskProps.get("PageCount") instanceof Integer ? (Integer) huskProps.get("PageCount") : 0); }
+    public void setDataSize(long p0) { huskProps.put("DataSize", Long.valueOf(p0)); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected PrintDocumentInfo() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(java.lang.String p0) {}
+        public android.print.PrintDocumentInfo build() { android.print.PrintDocumentInfo x = new android.print.PrintDocumentInfo(); x.huskProps.putAll(huskProps); return x; }
+        public android.print.PrintDocumentInfo.Builder setContentType(int p0) { huskProps.put("ContentType", Integer.valueOf(p0)); return this; }
+        public android.print.PrintDocumentInfo.Builder setPageCount(int p0) { huskProps.put("PageCount", Integer.valueOf(p0)); return this; }
+        Builder() { this((java.lang.String) null); }
+    }
 }

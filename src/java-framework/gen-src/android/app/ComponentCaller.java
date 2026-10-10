@@ -2,6 +2,11 @@
 package android.app;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class ComponentCaller {
-    protected ComponentCaller() {}
+public final class ComponentCaller {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public ComponentCaller(android.os.IBinder p0, android.os.IBinder p1) {}
+    public int checkContentUriPermission(android.net.Uri p0, int p1) { return 0; }
+    public java.lang.String getPackage() { return (java.lang.String) huskProps.get("Package"); }
+    public int getUid() { return (huskProps.get("Uid") instanceof Integer ? (Integer) huskProps.get("Uid") : 0); }
+    ComponentCaller() { this((android.os.IBinder) null, (android.os.IBinder) null); }
 }

@@ -2,12 +2,12 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class CellIdentityNr extends android.telephony.CellIdentity {
+public final class CellIdentityNr extends android.telephony.CellIdentity {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
-    public CellIdentityNr() { super(); }
-    public CellIdentityNr(int p0, int p1, int p2, int[] p3, java.lang.String p4, java.lang.String p5, long p6, java.lang.String p7, java.lang.String p8, java.util.Collection p9) { super(); }
-    protected static android.telephony.CellIdentityNr createFromParcelBody(android.os.Parcel p0) { return null; }
+    public CellIdentityNr() { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    public CellIdentityNr(int p0, int p1, int p2, int[] p3, java.lang.String p4, java.lang.String p5, long p6, java.lang.String p7, java.lang.String p8, java.util.Collection p9) { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
+    protected static android.telephony.CellIdentityNr createFromParcelBody(android.os.Parcel p0) { return new CellIdentityNr(); }
     public android.telephony.CellLocation asCellLocation() { return null; }
     public java.util.Set getAdditionalPlmns() { return (huskProps.get("AdditionalPlmns") != null ? (java.util.Set) huskProps.get("AdditionalPlmns") : new java.util.HashSet()); }
     public int[] getBands() { return (int[]) huskProps.get("Bands"); }

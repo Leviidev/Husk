@@ -2,6 +2,44 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class BarringInfo implements android.os.Parcelable {
-    protected BarringInfo() {}
+public final class BarringInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int BARRING_SERVICE_TYPE_CS_FALLBACK = 5;
+    public static final int BARRING_SERVICE_TYPE_CS_SERVICE = 0;
+    public static final int BARRING_SERVICE_TYPE_CS_VOICE = 2;
+    public static final int BARRING_SERVICE_TYPE_EMERGENCY = 8;
+    public static final int BARRING_SERVICE_TYPE_MMTEL_VIDEO = 7;
+    public static final int BARRING_SERVICE_TYPE_MMTEL_VOICE = 6;
+    public static final int BARRING_SERVICE_TYPE_MO_DATA = 4;
+    public static final int BARRING_SERVICE_TYPE_MO_SIGNALLING = 3;
+    public static final int BARRING_SERVICE_TYPE_PS_SERVICE = 1;
+    public static final int BARRING_SERVICE_TYPE_SMS = 9;
+    public static android.os.Parcelable.Creator CREATOR;
+    public BarringInfo() {}
+    public BarringInfo(android.os.Parcel p0) {}
+    public BarringInfo(android.telephony.CellIdentity p0, android.util.SparseArray p1) {}
+    public android.telephony.BarringInfo createLocationInfoSanitizedCopy() { return this; }
+    public int describeContents() { return 0; }
+    public android.telephony.BarringInfo.BarringServiceInfo getBarringServiceInfo(int p0) { return null; }
+    public android.telephony.CellIdentity getCellIdentity() { return (android.telephony.CellIdentity) huskProps.get("CellIdentity"); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    public static final class BarringServiceInfo implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static final int BARRING_TYPE_CONDITIONAL = 1;
+        public static final int BARRING_TYPE_NONE = 0;
+        public static final int BARRING_TYPE_UNCONDITIONAL = 2;
+        public static final int BARRING_TYPE_UNKNOWN = -1;
+        public static android.os.Parcelable.Creator CREATOR;
+        public BarringServiceInfo(int p0) {}
+        public BarringServiceInfo(int p0, boolean p1, int p2, int p3) {}
+        public BarringServiceInfo(android.os.Parcel p0) {}
+        public int describeContents() { return 0; }
+        public int getBarringType() { return (huskProps.get("BarringType") instanceof Integer ? (Integer) huskProps.get("BarringType") : 0); }
+        public int getConditionalBarringFactor() { return (huskProps.get("ConditionalBarringFactor") instanceof Integer ? (Integer) huskProps.get("ConditionalBarringFactor") : 0); }
+        public int getConditionalBarringTimeSeconds() { return (huskProps.get("ConditionalBarringTimeSeconds") instanceof Integer ? (Integer) huskProps.get("ConditionalBarringTimeSeconds") : 0); }
+        public boolean isBarred() { return (huskProps.get("Barred") instanceof Boolean ? (Boolean) huskProps.get("Barred") : false); }
+        public boolean isConditionallyBarred() { return (huskProps.get("ConditionallyBarred") instanceof Boolean ? (Boolean) huskProps.get("ConditionallyBarred") : false); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        BarringServiceInfo() { this((int) 0); }
+    }
 }

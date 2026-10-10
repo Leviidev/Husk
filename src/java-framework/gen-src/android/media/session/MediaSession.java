@@ -101,7 +101,14 @@ public final class MediaSession {
         public void writeToParcel(android.os.Parcel p0, int p1) {}
         QueueItem() { this((android.media.MediaDescription) null, (long) 0L); }
     }
-    public static abstract class Token implements android.os.Parcelable {
-        protected Token() {}
+    public static final class Token implements android.os.Parcelable {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.os.Parcelable.Creator CREATOR;
+        public Token(int p0, android.media.session.ISessionController p1) {}
+        public int describeContents() { return 0; }
+        public android.media.session.ISessionController getBinder() { return (android.media.session.ISessionController) huskProps.get("Binder"); }
+        public int getUid() { return (huskProps.get("Uid") instanceof Integer ? (Integer) huskProps.get("Uid") : 0); }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        Token() { this((int) 0, (android.media.session.ISessionController) null); }
     }
 }

@@ -2,6 +2,28 @@
 package android.media;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class Rating implements android.os.Parcelable {
+public final class Rating implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int RATING_3_STARS = 3;
+    public static final int RATING_4_STARS = 4;
+    public static final int RATING_5_STARS = 5;
+    public static final int RATING_HEART = 1;
+    public static final int RATING_NONE = 0;
+    public static final int RATING_PERCENTAGE = 6;
+    public static final int RATING_THUMB_UP_DOWN = 2;
+    public static android.media.Rating newHeartRating(boolean p0) { return new Rating(); }
+    public static android.media.Rating newPercentageRating(float p0) { return new Rating(); }
+    public static android.media.Rating newStarRating(int p0, float p1) { return new Rating(); }
+    public static android.media.Rating newThumbRating(boolean p0) { return new Rating(); }
+    public static android.media.Rating newUnratedRating(int p0) { return new Rating(); }
+    public int describeContents() { return 0; }
+    public float getPercentRating() { return (huskProps.get("PercentRating") instanceof Float ? (Float) huskProps.get("PercentRating") : 0f); }
+    public int getRatingStyle() { return (huskProps.get("RatingStyle") instanceof Integer ? (Integer) huskProps.get("RatingStyle") : 0); }
+    public float getStarRating() { return (huskProps.get("StarRating") instanceof Float ? (Float) huskProps.get("StarRating") : 0f); }
+    public boolean hasHeart() { return false; }
+    public boolean isRated() { return (huskProps.get("Rated") instanceof Boolean ? (Boolean) huskProps.get("Rated") : false); }
+    public boolean isThumbUp() { return (huskProps.get("ThumbUp") instanceof Boolean ? (Boolean) huskProps.get("ThumbUp") : false); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected Rating() {}
 }

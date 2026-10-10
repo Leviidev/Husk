@@ -155,6 +155,14 @@ public final class ContextImpl extends Context {
             { "android.companion.CompanionDeviceManager", COMPANION_DEVICE_SERVICE }, { "android.view.translation.TranslationManager", TRANSLATION_MANAGER_SERVICE },
             { "android.media.midi.MidiManager", MIDI_SERVICE }, { "android.hardware.ConsumerIrManager", CONSUMER_IR_SERVICE },
             { "android.app.GrammaticalInflectionManager", GRAMMATICAL_INFLECTION_SERVICE }, { "android.os.PerformanceHintManager", PERFORMANCE_HINT_SERVICE },
+            { "android.accounts.AccountManager", ACCOUNT_SERVICE }, { "android.app.usage.NetworkStatsManager", NETWORK_STATS_SERVICE },
+            { "android.content.pm.LauncherApps", LAUNCHER_APPS_SERVICE }, { "android.telephony.CarrierConfigManager", CARRIER_CONFIG_SERVICE },
+            { "android.telephony.euicc.EuiccManager", EUICC_SERVICE }, { "android.content.pm.CrossProfileApps", CROSS_PROFILE_APPS_SERVICE },
+            { "android.net.VpnManager", VPN_MANAGEMENT_SERVICE }, { "android.os.BugreportManager", BUGREPORT_SERVICE },
+            { "android.app.blob.BlobStoreManager", BLOB_STORE_SERVICE }, { "android.view.displayhash.DisplayHashManager", DISPLAY_HASH_SERVICE },
+            { "android.hardware.lights.LightsManager", "lights" }, { "android.media.AudioDeviceVolumeManager", "audio_device_volume" },
+            { "android.os.SystemUpdateManager", "system_update" }, { "android.app.ambientcontext.AmbientContextManager", "ambient_context" },
+            { "android.health.connect.HealthConnectManager", "healthconnect" }, { "android.os.ProfilingManager", "profiling" },
         };
         for (String[] e : m) { try { sNames.put(Class.forName(e[0]), e[1]); } catch (Throwable t) {} }
     }

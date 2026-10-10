@@ -2,6 +2,59 @@
 package android.telephony;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class SignalStrength implements android.os.Parcelable {
-    protected SignalStrength() {}
+public class SignalStrength implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int INVALID = 2147483647;
+    public static final int NUM_SIGNAL_STRENGTH_BINS = 5;
+    public static final int SIGNAL_STRENGTH_GOOD = 3;
+    public static final int SIGNAL_STRENGTH_GREAT = 4;
+    public static final int SIGNAL_STRENGTH_MODERATE = 2;
+    public static final int SIGNAL_STRENGTH_NONE_OR_UNKNOWN = 0;
+    public static final int SIGNAL_STRENGTH_POOR = 1;
+    public SignalStrength() {}
+    public SignalStrength(android.os.Parcel p0) {}
+    public SignalStrength(android.telephony.CellSignalStrengthCdma p0, android.telephony.CellSignalStrengthGsm p1, android.telephony.CellSignalStrengthWcdma p2, android.telephony.CellSignalStrengthTdscdma p3, android.telephony.CellSignalStrengthLte p4, android.telephony.CellSignalStrengthNr p5) {}
+    public SignalStrength(android.telephony.SignalStrength p0) {}
+    protected void copyFrom(android.telephony.SignalStrength p0) {}
+    public int describeContents() { return 0; }
+    public void fillInNotifierBundle(android.os.Bundle p0) {}
+    public int getAsuLevel() { return (huskProps.get("AsuLevel") instanceof Integer ? (Integer) huskProps.get("AsuLevel") : 0); }
+    public int getCdmaAsuLevel() { return (huskProps.get("CdmaAsuLevel") instanceof Integer ? (Integer) huskProps.get("CdmaAsuLevel") : 0); }
+    public int getCdmaDbm() { return (huskProps.get("CdmaDbm") instanceof Integer ? (Integer) huskProps.get("CdmaDbm") : 0); }
+    public int getCdmaEcio() { return (huskProps.get("CdmaEcio") instanceof Integer ? (Integer) huskProps.get("CdmaEcio") : 0); }
+    public int getCdmaLevel() { return (huskProps.get("CdmaLevel") instanceof Integer ? (Integer) huskProps.get("CdmaLevel") : 0); }
+    public java.util.List getCellSignalStrengths() { return (huskProps.get("CellSignalStrengths") != null ? (java.util.List) huskProps.get("CellSignalStrengths") : new java.util.ArrayList()); }
+    public java.util.List getCellSignalStrengths(java.lang.Class p0) { return new java.util.ArrayList(); }
+    public int getDbm() { return (huskProps.get("Dbm") instanceof Integer ? (Integer) huskProps.get("Dbm") : 0); }
+    public int getEvdoAsuLevel() { return (huskProps.get("EvdoAsuLevel") instanceof Integer ? (Integer) huskProps.get("EvdoAsuLevel") : 0); }
+    public int getEvdoDbm() { return (huskProps.get("EvdoDbm") instanceof Integer ? (Integer) huskProps.get("EvdoDbm") : 0); }
+    public int getEvdoEcio() { return (huskProps.get("EvdoEcio") instanceof Integer ? (Integer) huskProps.get("EvdoEcio") : 0); }
+    public int getEvdoLevel() { return (huskProps.get("EvdoLevel") instanceof Integer ? (Integer) huskProps.get("EvdoLevel") : 0); }
+    public int getEvdoSnr() { return (huskProps.get("EvdoSnr") instanceof Integer ? (Integer) huskProps.get("EvdoSnr") : 0); }
+    public int getGsmAsuLevel() { return (huskProps.get("GsmAsuLevel") instanceof Integer ? (Integer) huskProps.get("GsmAsuLevel") : 0); }
+    public int getGsmBitErrorRate() { return (huskProps.get("GsmBitErrorRate") instanceof Integer ? (Integer) huskProps.get("GsmBitErrorRate") : 0); }
+    public int getGsmDbm() { return (huskProps.get("GsmDbm") instanceof Integer ? (Integer) huskProps.get("GsmDbm") : 0); }
+    public int getGsmLevel() { return (huskProps.get("GsmLevel") instanceof Integer ? (Integer) huskProps.get("GsmLevel") : 0); }
+    public int getGsmSignalStrength() { return (huskProps.get("GsmSignalStrength") instanceof Integer ? (Integer) huskProps.get("GsmSignalStrength") : 0); }
+    public int getLevel() { return (huskProps.get("Level") instanceof Integer ? (Integer) huskProps.get("Level") : 0); }
+    public int getLteAsuLevel() { return (huskProps.get("LteAsuLevel") instanceof Integer ? (Integer) huskProps.get("LteAsuLevel") : 0); }
+    public int getLteCqi() { return (huskProps.get("LteCqi") instanceof Integer ? (Integer) huskProps.get("LteCqi") : 0); }
+    public int getLteDbm() { return (huskProps.get("LteDbm") instanceof Integer ? (Integer) huskProps.get("LteDbm") : 0); }
+    public int getLteLevel() { return (huskProps.get("LteLevel") instanceof Integer ? (Integer) huskProps.get("LteLevel") : 0); }
+    public int getLteRsrp() { return (huskProps.get("LteRsrp") instanceof Integer ? (Integer) huskProps.get("LteRsrp") : 0); }
+    public int getLteRsrq() { return (huskProps.get("LteRsrq") instanceof Integer ? (Integer) huskProps.get("LteRsrq") : 0); }
+    public int getLteRssnr() { return (huskProps.get("LteRssnr") instanceof Integer ? (Integer) huskProps.get("LteRssnr") : 0); }
+    public int getLteSignalStrength() { return (huskProps.get("LteSignalStrength") instanceof Integer ? (Integer) huskProps.get("LteSignalStrength") : 0); }
+    public int getTdScdmaAsuLevel() { return (huskProps.get("TdScdmaAsuLevel") instanceof Integer ? (Integer) huskProps.get("TdScdmaAsuLevel") : 0); }
+    public int getTdScdmaDbm() { return (huskProps.get("TdScdmaDbm") instanceof Integer ? (Integer) huskProps.get("TdScdmaDbm") : 0); }
+    public int getTdScdmaLevel() { return (huskProps.get("TdScdmaLevel") instanceof Integer ? (Integer) huskProps.get("TdScdmaLevel") : 0); }
+    public long getTimestampMillis() { return (huskProps.get("TimestampMillis") instanceof Long ? (Long) huskProps.get("TimestampMillis") : 0L); }
+    public int getWcdmaAsuLevel() { return (huskProps.get("WcdmaAsuLevel") instanceof Integer ? (Integer) huskProps.get("WcdmaAsuLevel") : 0); }
+    public int getWcdmaDbm() { return (huskProps.get("WcdmaDbm") instanceof Integer ? (Integer) huskProps.get("WcdmaDbm") : 0); }
+    public int getWcdmaLevel() { return (huskProps.get("WcdmaLevel") instanceof Integer ? (Integer) huskProps.get("WcdmaLevel") : 0); }
+    public int getWcdmaRscp() { return (huskProps.get("WcdmaRscp") instanceof Integer ? (Integer) huskProps.get("WcdmaRscp") : 0); }
+    public boolean isGsm() { return (huskProps.get("Gsm") instanceof Boolean ? (Boolean) huskProps.get("Gsm") : false); }
+    public void updateLevel(android.os.PersistableBundle p0, android.telephony.ServiceState p1) {}
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
 }

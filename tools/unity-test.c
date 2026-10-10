@@ -368,11 +368,11 @@ int main(int argc, char **argv)
     { struct sigaction sd; memset(&sd, 0, sizeof(sd)); sd.sa_sigaction = on_dump; sd.sa_flags = SA_SIGINFO | SA_ONSTACK; sigemptyset(&sd.sa_mask); sigaction(SIGUSR2, &sd, NULL); }
     tl_ld_set_verbosity(getenv("TL_VERBOSE") ? atoi(getenv("TL_VERBOSE")) : 1);
     tl_jni_set_trace(getenv("TL_JNI_TRACE") ? atoi(getenv("TL_JNI_TRACE")) : 1);
-    char tmp[] = "/tmp/husk-unity-XXXXXX";
+    char tmp[] = "/Volumes/GTAV/husk2/tmp/husk-unity-XXXXXX";
     mkdtemp(tmp);
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
     char egl[600], gles[600]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
-    char frames[] = "/tmp/husk-frames-XXXXXX"; mkdtemp(frames);
+    char frames[] = "/Volumes/GTAV/husk2/tmp/husk-frames-XXXXXX"; mkdtemp(frames);
     fprintf(stderr, "frames: %s\n", frames);
     /* TL_SPLITS: the app's split APKs, colon-separated (a Google Play install: libraries and asset packs in their own APKs) */
     if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }

@@ -1656,6 +1656,38 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
             }
         }
     }
+    /* Bytes of an executable segment that no section claims: protectors (app shields, packers) keep their unpacking code there,
+     * out of the section headers, and it reads tpidr_el0 like any other code. Every allocated section counts as claimed, so
+     * .rodata and .eh_frame stay data. */
+    if (ncode && eh->e_shoff && eh->e_shentsize >= 64) {
+        struct { uint64_t lo, hi; } claimed[64]; int nclaimed = 0;
+        for (unsigned i = 0; i < eh->e_shnum && nclaimed < 64; i++) {
+            const uint8_t *sh = file + eh->e_shoff + (size_t)i * eh->e_shentsize;
+            uint64_t flags, addr, size; uint32_t type;
+            memcpy(&type, sh + 4, 4); memcpy(&flags, sh + 8, 8); memcpy(&addr, sh + 16, 8); memcpy(&size, sh + 32, 8);
+            if ((flags & 2 /* ALLOC */) && size) { claimed[nclaimed].lo = addr; claimed[nclaimed].hi = addr + (type == 8 /* NOBITS */ ? 0 : size); nclaimed++; }
+        }
+        for (unsigned i = 0; i < eh->e_phnum && ncode < 16; i++) {
+            const elf_phdr *p = &phs[i];
+            if (p->p_type != PT_LOAD_ || !(p->p_flags & PF_X_) || p->p_offset + p->p_filesz > flen) continue;
+            uint64_t a = p->p_vaddr, end = p->p_vaddr + p->p_filesz;
+            while (a < end && ncode < 16) {
+                /* the next claimed byte at or after a */
+                uint64_t next = end; bool inside = false;
+                for (int k = 0; k < nclaimed; k++) {
+                    if (a >= claimed[k].lo && a < claimed[k].hi) { inside = true; a = claimed[k].hi; break; }
+                    if (claimed[k].lo > a && claimed[k].lo < next) next = claimed[k].lo;
+                }
+                if (inside) continue;
+                uint64_t lo = (a + 3) & ~3ull, hi = next & ~3ull;
+                if (hi > lo && hi - lo >= 256 && lo > (uint64_t)eh->e_phoff + (uint64_t)eh->e_phnum * eh->e_phentsize + 0x1000) {   /* not the headers at the start */
+                    code[ncode].vaddr = lo; code[ncode].size = hi - lo; code[ncode].foff = p->p_offset + (lo - p->p_vaddr); ncode++;
+                    tl_log_line("ld: %s: %#llx-%#llx is executable but in no section: treated as code", name, (unsigned long long)lo, (unsigned long long)hi);
+                }
+                a = next;
+            }
+        }
+    }
     if (!ncode) {
         tl_log_line("ld: %s has no section headers; treating every executable segment as code", name);
         for (unsigned i = 0; i < eh->e_phnum && ncode < 16; i++) {

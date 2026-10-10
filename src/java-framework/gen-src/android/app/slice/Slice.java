@@ -2,6 +2,66 @@
 package android.app.slice;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class Slice implements android.os.Parcelable {
-    protected Slice() {}
+public final class Slice implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final java.lang.String EXTRA_RANGE_VALUE = "android.app.slice.extra.RANGE_VALUE";
+    public static final java.lang.String EXTRA_TOGGLE_STATE = "android.app.slice.extra.TOGGLE_STATE";
+    public static final java.lang.String HINT_ACTIONS = "actions";
+    public static final java.lang.String HINT_CALLER_NEEDED = "caller_needed";
+    public static final java.lang.String HINT_ERROR = "error";
+    public static final java.lang.String HINT_HORIZONTAL = "horizontal";
+    public static final java.lang.String HINT_KEYWORDS = "keywords";
+    public static final java.lang.String HINT_LARGE = "large";
+    public static final java.lang.String HINT_LAST_UPDATED = "last_updated";
+    public static final java.lang.String HINT_LIST = "list";
+    public static final java.lang.String HINT_LIST_ITEM = "list_item";
+    public static final java.lang.String HINT_NO_TINT = "no_tint";
+    public static final java.lang.String HINT_PARTIAL = "partial";
+    public static final java.lang.String HINT_PERMISSION_REQUEST = "permission_request";
+    public static final java.lang.String HINT_SEE_MORE = "see_more";
+    public static final java.lang.String HINT_SELECTED = "selected";
+    public static final java.lang.String HINT_SHORTCUT = "shortcut";
+    public static final java.lang.String HINT_SUMMARY = "summary";
+    public static final java.lang.String HINT_TITLE = "title";
+    public static final java.lang.String HINT_TOGGLE = "toggle";
+    public static final java.lang.String HINT_TTL = "ttl";
+    public static final java.lang.String SUBTYPE_COLOR = "color";
+    public static final java.lang.String SUBTYPE_CONTENT_DESCRIPTION = "content_description";
+    public static final java.lang.String SUBTYPE_LAYOUT_DIRECTION = "layout_direction";
+    public static final java.lang.String SUBTYPE_MAX = "max";
+    public static final java.lang.String SUBTYPE_MESSAGE = "message";
+    public static final java.lang.String SUBTYPE_MILLIS = "millis";
+    public static final java.lang.String SUBTYPE_PRIORITY = "priority";
+    public static final java.lang.String SUBTYPE_RANGE = "range";
+    public static final java.lang.String SUBTYPE_SOURCE = "source";
+    public static final java.lang.String SUBTYPE_TOGGLE = "toggle";
+    public static final java.lang.String SUBTYPE_VALUE = "value";
+    protected Slice(android.os.Parcel p0) {}
+    public int describeContents() { return 0; }
+    public java.util.List getHints() { return (huskProps.get("Hints") != null ? (java.util.List) huskProps.get("Hints") : new java.util.ArrayList()); }
+    public java.util.List getItems() { return (huskProps.get("Items") != null ? (java.util.List) huskProps.get("Items") : new java.util.ArrayList()); }
+    public android.app.slice.SliceSpec getSpec() { return (android.app.slice.SliceSpec) huskProps.get("Spec"); }
+    public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
+    public boolean hasHint(java.lang.String p0) { return false; }
+    public boolean isCallerNeeded() { return (huskProps.get("CallerNeeded") instanceof Boolean ? (Boolean) huskProps.get("CallerNeeded") : false); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Slice() { this((android.os.Parcel) null); }
+    public static class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(android.app.slice.Slice.Builder p0) {}
+        public Builder(android.net.Uri p0, android.app.slice.SliceSpec p1) {}
+        public android.app.slice.Slice.Builder addAction(android.app.PendingIntent p0, android.app.slice.Slice p1, java.lang.String p2) { return this; }
+        public android.app.slice.Slice.Builder addBundle(android.os.Bundle p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice.Builder addHints(java.util.List p0) { return this; }
+        public android.app.slice.Slice.Builder addIcon(android.graphics.drawable.Icon p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice.Builder addInt(int p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice.Builder addLong(long p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice.Builder addRemoteInput(android.app.RemoteInput p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice.Builder addSubSlice(android.app.slice.Slice p0, java.lang.String p1) { return this; }
+        public android.app.slice.Slice.Builder addText(java.lang.CharSequence p0, java.lang.String p1, java.util.List p2) { return this; }
+        public android.app.slice.Slice build() { android.app.slice.Slice x = new android.app.slice.Slice(); x.huskProps.putAll(huskProps); return x; }
+        public android.app.slice.Slice.Builder setCallerNeeded(boolean p0) { huskProps.put("CallerNeeded", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.app.slice.Slice.Builder) null); }
+    }
 }

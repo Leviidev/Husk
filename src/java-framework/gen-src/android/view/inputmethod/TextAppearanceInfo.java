@@ -2,6 +2,60 @@
 package android.view.inputmethod;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class TextAppearanceInfo implements android.os.Parcelable {
+public final class TextAppearanceInfo implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static android.os.Parcelable.Creator CREATOR;
+    public static android.view.inputmethod.TextAppearanceInfo createFromTextView(android.widget.TextView p0) { return new TextAppearanceInfo(); }
+    public int describeContents() { return 0; }
+    public java.lang.String getFontFeatureSettings() { return (java.lang.String) huskProps.get("FontFeatureSettings"); }
+    public java.lang.String getFontVariationSettings() { return (java.lang.String) huskProps.get("FontVariationSettings"); }
+    public int getHighlightTextColor() { return (huskProps.get("HighlightTextColor") instanceof Integer ? (Integer) huskProps.get("HighlightTextColor") : 0); }
+    public int getHintTextColor() { return (huskProps.get("HintTextColor") instanceof Integer ? (Integer) huskProps.get("HintTextColor") : 0); }
+    public float getLetterSpacing() { return (huskProps.get("LetterSpacing") instanceof Float ? (Float) huskProps.get("LetterSpacing") : 0f); }
+    public int getLineBreakStyle() { return (huskProps.get("LineBreakStyle") instanceof Integer ? (Integer) huskProps.get("LineBreakStyle") : 0); }
+    public int getLineBreakWordStyle() { return (huskProps.get("LineBreakWordStyle") instanceof Integer ? (Integer) huskProps.get("LineBreakWordStyle") : 0); }
+    public int getLinkTextColor() { return (huskProps.get("LinkTextColor") instanceof Integer ? (Integer) huskProps.get("LinkTextColor") : 0); }
+    public int getShadowColor() { return (huskProps.get("ShadowColor") instanceof Integer ? (Integer) huskProps.get("ShadowColor") : 0); }
+    public float getShadowDx() { return (huskProps.get("ShadowDx") instanceof Float ? (Float) huskProps.get("ShadowDx") : 0f); }
+    public float getShadowDy() { return (huskProps.get("ShadowDy") instanceof Float ? (Float) huskProps.get("ShadowDy") : 0f); }
+    public float getShadowRadius() { return (huskProps.get("ShadowRadius") instanceof Float ? (Float) huskProps.get("ShadowRadius") : 0f); }
+    public java.lang.String getSystemFontFamilyName() { return (java.lang.String) huskProps.get("SystemFontFamilyName"); }
+    public int getTextColor() { return (huskProps.get("TextColor") instanceof Integer ? (Integer) huskProps.get("TextColor") : 0); }
+    public int getTextFontWeight() { return (huskProps.get("TextFontWeight") instanceof Integer ? (Integer) huskProps.get("TextFontWeight") : 0); }
+    public android.os.LocaleList getTextLocales() { return (android.os.LocaleList) huskProps.get("TextLocales"); }
+    public float getTextScaleX() { return (huskProps.get("TextScaleX") instanceof Float ? (Float) huskProps.get("TextScaleX") : 0f); }
+    public float getTextSize() { return (huskProps.get("TextSize") instanceof Float ? (Float) huskProps.get("TextSize") : 0f); }
+    public int getTextStyle() { return (huskProps.get("TextStyle") instanceof Integer ? (Integer) huskProps.get("TextStyle") : 0); }
+    public boolean isAllCaps() { return (huskProps.get("AllCaps") instanceof Boolean ? (Boolean) huskProps.get("AllCaps") : false); }
+    public boolean isElegantTextHeight() { return (huskProps.get("ElegantTextHeight") instanceof Boolean ? (Boolean) huskProps.get("ElegantTextHeight") : false); }
+    public boolean isFallbackLineSpacing() { return (huskProps.get("FallbackLineSpacing") instanceof Boolean ? (Boolean) huskProps.get("FallbackLineSpacing") : false); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected TextAppearanceInfo() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder() {}
+        public android.view.inputmethod.TextAppearanceInfo build() { android.view.inputmethod.TextAppearanceInfo x = new android.view.inputmethod.TextAppearanceInfo(); x.huskProps.putAll(huskProps); return x; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setAllCaps(boolean p0) { huskProps.put("AllCaps", Boolean.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setElegantTextHeight(boolean p0) { huskProps.put("ElegantTextHeight", Boolean.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setFallbackLineSpacing(boolean p0) { huskProps.put("FallbackLineSpacing", Boolean.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setFontFeatureSettings(java.lang.String p0) { huskProps.put("FontFeatureSettings", p0); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setFontVariationSettings(java.lang.String p0) { huskProps.put("FontVariationSettings", p0); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setHighlightTextColor(int p0) { huskProps.put("HighlightTextColor", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setHintTextColor(int p0) { huskProps.put("HintTextColor", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setLetterSpacing(float p0) { huskProps.put("LetterSpacing", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setLineBreakStyle(int p0) { huskProps.put("LineBreakStyle", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setLineBreakWordStyle(int p0) { huskProps.put("LineBreakWordStyle", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setLinkTextColor(int p0) { huskProps.put("LinkTextColor", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setShadowColor(int p0) { huskProps.put("ShadowColor", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setShadowDx(float p0) { huskProps.put("ShadowDx", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setShadowDy(float p0) { huskProps.put("ShadowDy", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setShadowRadius(float p0) { huskProps.put("ShadowRadius", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setSystemFontFamilyName(java.lang.String p0) { huskProps.put("SystemFontFamilyName", p0); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextColor(int p0) { huskProps.put("TextColor", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextFontWeight(int p0) { huskProps.put("TextFontWeight", Integer.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextLocales(android.os.LocaleList p0) { huskProps.put("TextLocales", p0); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextScaleX(float p0) { huskProps.put("TextScaleX", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextSize(float p0) { huskProps.put("TextSize", Float.valueOf(p0)); return this; }
+        public android.view.inputmethod.TextAppearanceInfo.Builder setTextStyle(int p0) { huskProps.put("TextStyle", Integer.valueOf(p0)); return this; }
+    }
 }

@@ -2,6 +2,20 @@
 package android.telephony.cdma;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class CdmaCellLocation extends android.telephony.CellLocation {
-    protected CdmaCellLocation() { super(); }
+public class CdmaCellLocation extends android.telephony.CellLocation {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int INVALID_LAT_LONG = 2147483647;
+    public CdmaCellLocation() { super(); }
+    public CdmaCellLocation(android.os.Bundle p0) { super(); }
+    public static double convertQuartSecToDecDegrees(int p0) { return 0d; }
+    public void fillInNotifierBundle(android.os.Bundle p0) {}
+    public int getBaseStationId() { return (huskProps.get("BaseStationId") instanceof Integer ? (Integer) huskProps.get("BaseStationId") : 0); }
+    public int getBaseStationLatitude() { return (huskProps.get("BaseStationLatitude") instanceof Integer ? (Integer) huskProps.get("BaseStationLatitude") : 0); }
+    public int getBaseStationLongitude() { return (huskProps.get("BaseStationLongitude") instanceof Integer ? (Integer) huskProps.get("BaseStationLongitude") : 0); }
+    public int getNetworkId() { return (huskProps.get("NetworkId") instanceof Integer ? (Integer) huskProps.get("NetworkId") : 0); }
+    public int getSystemId() { return (huskProps.get("SystemId") instanceof Integer ? (Integer) huskProps.get("SystemId") : 0); }
+    public boolean isEmpty() { return (huskProps.get("Empty") instanceof Boolean ? (Boolean) huskProps.get("Empty") : false); }
+    public void setCellLocationData(int p0, int p1, int p2) {}
+    public void setCellLocationData(int p0, int p1, int p2, int p3, int p4) {}
+    public void setStateInvalid() {}
 }

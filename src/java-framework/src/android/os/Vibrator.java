@@ -41,6 +41,7 @@ public class Vibrator {
     public void cancel(int p0) {}
     public int getDefaultVibrationIntensity(int p0) { return 0; }
     public float getHapticChannelMaximumAmplitude() { return 0f; }
+    public android.os.VibratorInfo getInfo() { return null; }
     public boolean hasExternalControl() { return false; }
     public void performHapticFeedback(int p0, int p1, java.lang.String p2, int p3, int p4) {}
     public void performHapticFeedbackForInputDevice(int p0, int p1, int p2, java.lang.String p3, int p4, int p5) {}

@@ -3,5 +3,21 @@ package android.security.identity;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class ResultData {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int STATUS_NOT_IN_REQUEST_MESSAGE = 3;
+    public static final int STATUS_NOT_REQUESTED = 2;
+    public static final int STATUS_NO_ACCESS_CONTROL_PROFILES = 6;
+    public static final int STATUS_NO_SUCH_ENTRY = 1;
+    public static final int STATUS_OK = 0;
+    public static final int STATUS_READER_AUTHENTICATION_FAILED = 5;
+    public static final int STATUS_USER_AUTHENTICATION_FAILED = 4;
     protected ResultData() {}
+    public abstract byte[] getAuthenticatedData();
+    public abstract byte[] getEntry(java.lang.String p0, java.lang.String p1);
+    public abstract java.util.Collection getEntryNames(java.lang.String p0);
+    public abstract byte[] getMessageAuthenticationCode();
+    public abstract java.util.Collection getNamespaces();
+    public abstract java.util.Collection getRetrievedEntryNames(java.lang.String p0);
+    public abstract byte[] getStaticAuthenticationData();
+    public abstract int getStatus(java.lang.String p0, java.lang.String p1);
 }

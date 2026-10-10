@@ -2,15 +2,173 @@
 package android.print;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-public abstract class PrintAttributes implements android.os.Parcelable {
+public final class PrintAttributes implements android.os.Parcelable {
+    private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    public static final int COLOR_MODE_COLOR = 2;
+    public static final int COLOR_MODE_MONOCHROME = 1;
+    public static android.os.Parcelable.Creator CREATOR;
+    public static final int DUPLEX_MODE_LONG_EDGE = 2;
+    public static final int DUPLEX_MODE_NONE = 1;
+    public static final int DUPLEX_MODE_SHORT_EDGE = 4;
+    public android.print.PrintAttributes asLandscape() { return this; }
+    public android.print.PrintAttributes asPortrait() { return this; }
+    public void clear() {}
+    public void copyFrom(android.print.PrintAttributes p0) {}
+    public int describeContents() { return 0; }
+    public int getColorMode() { return (huskProps.get("ColorMode") instanceof Integer ? (Integer) huskProps.get("ColorMode") : 0); }
+    public int getDuplexMode() { return (huskProps.get("DuplexMode") instanceof Integer ? (Integer) huskProps.get("DuplexMode") : 0); }
+    public android.print.PrintAttributes.MediaSize getMediaSize() { return (android.print.PrintAttributes.MediaSize) huskProps.get("MediaSize"); }
+    public android.print.PrintAttributes.Margins getMinMargins() { return (android.print.PrintAttributes.Margins) huskProps.get("MinMargins"); }
+    public android.print.PrintAttributes.Resolution getResolution() { return (android.print.PrintAttributes.Resolution) huskProps.get("Resolution"); }
+    public boolean isPortrait() { return (huskProps.get("Portrait") instanceof Boolean ? (Boolean) huskProps.get("Portrait") : false); }
+    public void setColorMode(int p0) { huskProps.put("ColorMode", Integer.valueOf(p0)); }
+    public void setDuplexMode(int p0) { huskProps.put("DuplexMode", Integer.valueOf(p0)); }
+    public void setMediaSize(android.print.PrintAttributes.MediaSize p0) { huskProps.put("MediaSize", p0); }
+    public void setMinMargins(android.print.PrintAttributes.Margins p0) { huskProps.put("MinMargins", p0); }
+    public void setResolution(android.print.PrintAttributes.Resolution p0) { huskProps.put("Resolution", p0); }
+    public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected PrintAttributes() {}
-    public static abstract class Margins {
-        protected Margins() {}
+    public static final class Builder {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder() {}
+        public android.print.PrintAttributes build() { android.print.PrintAttributes x = new android.print.PrintAttributes(); x.huskProps.putAll(huskProps); return x; }
+        public android.print.PrintAttributes.Builder setColorMode(int p0) { huskProps.put("ColorMode", Integer.valueOf(p0)); return this; }
+        public android.print.PrintAttributes.Builder setDuplexMode(int p0) { huskProps.put("DuplexMode", Integer.valueOf(p0)); return this; }
+        public android.print.PrintAttributes.Builder setMediaSize(android.print.PrintAttributes.MediaSize p0) { huskProps.put("MediaSize", p0); return this; }
+        public android.print.PrintAttributes.Builder setMinMargins(android.print.PrintAttributes.Margins p0) { huskProps.put("MinMargins", p0); return this; }
+        public android.print.PrintAttributes.Builder setResolution(android.print.PrintAttributes.Resolution p0) { huskProps.put("Resolution", p0); return this; }
     }
-    public static abstract class MediaSize {
-        protected MediaSize() {}
+    public static final class Margins {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.print.PrintAttributes.Margins NO_MARGINS;
+        public Margins(int p0, int p1, int p2, int p3) {}
+        public int getBottomMils() { return (huskProps.get("BottomMils") instanceof Integer ? (Integer) huskProps.get("BottomMils") : 0); }
+        public int getLeftMils() { return (huskProps.get("LeftMils") instanceof Integer ? (Integer) huskProps.get("LeftMils") : 0); }
+        public int getRightMils() { return (huskProps.get("RightMils") instanceof Integer ? (Integer) huskProps.get("RightMils") : 0); }
+        public int getTopMils() { return (huskProps.get("TopMils") instanceof Integer ? (Integer) huskProps.get("TopMils") : 0); }
+        Margins() { this((int) 0, (int) 0, (int) 0, (int) 0); }
     }
-    public static abstract class Resolution {
-        protected Resolution() {}
+    public static final class MediaSize {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public static android.print.PrintAttributes.MediaSize ANSI_C;
+        public static android.print.PrintAttributes.MediaSize ANSI_D;
+        public static android.print.PrintAttributes.MediaSize ANSI_E;
+        public static android.print.PrintAttributes.MediaSize ANSI_F;
+        public static android.print.PrintAttributes.MediaSize ISO_A0;
+        public static android.print.PrintAttributes.MediaSize ISO_A1;
+        public static android.print.PrintAttributes.MediaSize ISO_A10;
+        public static android.print.PrintAttributes.MediaSize ISO_A2;
+        public static android.print.PrintAttributes.MediaSize ISO_A3;
+        public static android.print.PrintAttributes.MediaSize ISO_A4;
+        public static android.print.PrintAttributes.MediaSize ISO_A5;
+        public static android.print.PrintAttributes.MediaSize ISO_A6;
+        public static android.print.PrintAttributes.MediaSize ISO_A7;
+        public static android.print.PrintAttributes.MediaSize ISO_A8;
+        public static android.print.PrintAttributes.MediaSize ISO_A9;
+        public static android.print.PrintAttributes.MediaSize ISO_B0;
+        public static android.print.PrintAttributes.MediaSize ISO_B1;
+        public static android.print.PrintAttributes.MediaSize ISO_B10;
+        public static android.print.PrintAttributes.MediaSize ISO_B2;
+        public static android.print.PrintAttributes.MediaSize ISO_B3;
+        public static android.print.PrintAttributes.MediaSize ISO_B4;
+        public static android.print.PrintAttributes.MediaSize ISO_B5;
+        public static android.print.PrintAttributes.MediaSize ISO_B6;
+        public static android.print.PrintAttributes.MediaSize ISO_B7;
+        public static android.print.PrintAttributes.MediaSize ISO_B8;
+        public static android.print.PrintAttributes.MediaSize ISO_B9;
+        public static android.print.PrintAttributes.MediaSize ISO_C0;
+        public static android.print.PrintAttributes.MediaSize ISO_C1;
+        public static android.print.PrintAttributes.MediaSize ISO_C10;
+        public static android.print.PrintAttributes.MediaSize ISO_C2;
+        public static android.print.PrintAttributes.MediaSize ISO_C3;
+        public static android.print.PrintAttributes.MediaSize ISO_C4;
+        public static android.print.PrintAttributes.MediaSize ISO_C5;
+        public static android.print.PrintAttributes.MediaSize ISO_C6;
+        public static android.print.PrintAttributes.MediaSize ISO_C7;
+        public static android.print.PrintAttributes.MediaSize ISO_C8;
+        public static android.print.PrintAttributes.MediaSize ISO_C9;
+        public static android.print.PrintAttributes.MediaSize JIS_B0;
+        public static android.print.PrintAttributes.MediaSize JIS_B1;
+        public static android.print.PrintAttributes.MediaSize JIS_B10;
+        public static android.print.PrintAttributes.MediaSize JIS_B2;
+        public static android.print.PrintAttributes.MediaSize JIS_B3;
+        public static android.print.PrintAttributes.MediaSize JIS_B4;
+        public static android.print.PrintAttributes.MediaSize JIS_B5;
+        public static android.print.PrintAttributes.MediaSize JIS_B6;
+        public static android.print.PrintAttributes.MediaSize JIS_B7;
+        public static android.print.PrintAttributes.MediaSize JIS_B8;
+        public static android.print.PrintAttributes.MediaSize JIS_B9;
+        public static android.print.PrintAttributes.MediaSize JIS_EXEC;
+        public static android.print.PrintAttributes.MediaSize JPN_CHOU2;
+        public static android.print.PrintAttributes.MediaSize JPN_CHOU3;
+        public static android.print.PrintAttributes.MediaSize JPN_CHOU4;
+        public static android.print.PrintAttributes.MediaSize JPN_HAGAKI;
+        public static android.print.PrintAttributes.MediaSize JPN_KAHU;
+        public static android.print.PrintAttributes.MediaSize JPN_KAKU2;
+        public static android.print.PrintAttributes.MediaSize JPN_OE_PHOTO_L;
+        public static android.print.PrintAttributes.MediaSize JPN_OUFUKU;
+        public static android.print.PrintAttributes.MediaSize JPN_YOU4;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_A;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_B;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_C;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_D;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_E;
+        public static android.print.PrintAttributes.MediaSize NA_ARCH_E1;
+        public static android.print.PrintAttributes.MediaSize NA_FOOLSCAP;
+        public static android.print.PrintAttributes.MediaSize NA_GOVT_LETTER;
+        public static android.print.PrintAttributes.MediaSize NA_INDEX_3X5;
+        public static android.print.PrintAttributes.MediaSize NA_INDEX_4X6;
+        public static android.print.PrintAttributes.MediaSize NA_INDEX_5X8;
+        public static android.print.PrintAttributes.MediaSize NA_JUNIOR_LEGAL;
+        public static android.print.PrintAttributes.MediaSize NA_LEDGER;
+        public static android.print.PrintAttributes.MediaSize NA_LEGAL;
+        public static android.print.PrintAttributes.MediaSize NA_LETTER;
+        public static android.print.PrintAttributes.MediaSize NA_MONARCH;
+        public static android.print.PrintAttributes.MediaSize NA_QUARTO;
+        public static android.print.PrintAttributes.MediaSize NA_SUPER_B;
+        public static android.print.PrintAttributes.MediaSize NA_TABLOID;
+        public static android.print.PrintAttributes.MediaSize OM_DAI_PA_KAI;
+        public static android.print.PrintAttributes.MediaSize OM_JUURO_KU_KAI;
+        public static android.print.PrintAttributes.MediaSize OM_PA_KAI;
+        public static android.print.PrintAttributes.MediaSize PRC_1;
+        public static android.print.PrintAttributes.MediaSize PRC_10;
+        public static android.print.PrintAttributes.MediaSize PRC_16K;
+        public static android.print.PrintAttributes.MediaSize PRC_2;
+        public static android.print.PrintAttributes.MediaSize PRC_3;
+        public static android.print.PrintAttributes.MediaSize PRC_4;
+        public static android.print.PrintAttributes.MediaSize PRC_5;
+        public static android.print.PrintAttributes.MediaSize PRC_6;
+        public static android.print.PrintAttributes.MediaSize PRC_7;
+        public static android.print.PrintAttributes.MediaSize PRC_8;
+        public static android.print.PrintAttributes.MediaSize PRC_9;
+        public static android.print.PrintAttributes.MediaSize ROC_16K;
+        public static android.print.PrintAttributes.MediaSize ROC_8K;
+        public static android.print.PrintAttributes.MediaSize UNKNOWN_LANDSCAPE;
+        public static android.print.PrintAttributes.MediaSize UNKNOWN_PORTRAIT;
+        public java.lang.String mLabel;
+        public int mLabelResId;
+        public java.lang.String mPackageName;
+        public MediaSize(java.lang.String p0, java.lang.String p1, int p2, int p3) {}
+        public MediaSize(java.lang.String p0, java.lang.String p1, int p2, int p3, int p4) {}
+        public MediaSize(java.lang.String p0, java.lang.String p1, java.lang.String p2, int p3, int p4, int p5) {}
+        public static android.util.ArraySet getAllPredefinedSizes() { return null; }
+        public static android.print.PrintAttributes.MediaSize getStandardMediaSizeById(java.lang.String p0) { return new MediaSize(); }
+        public android.print.PrintAttributes.MediaSize asLandscape() { return this; }
+        public android.print.PrintAttributes.MediaSize asPortrait() { return this; }
+        public int getHeightMils() { return (huskProps.get("HeightMils") instanceof Integer ? (Integer) huskProps.get("HeightMils") : 0); }
+        public java.lang.String getId() { return (java.lang.String) huskProps.get("Id"); }
+        public java.lang.String getLabel(android.content.pm.PackageManager p0) { return null; }
+        public int getWidthMils() { return (huskProps.get("WidthMils") instanceof Integer ? (Integer) huskProps.get("WidthMils") : 0); }
+        public boolean isPortrait() { return (huskProps.get("Portrait") instanceof Boolean ? (Boolean) huskProps.get("Portrait") : false); }
+        MediaSize() { this((java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0); }
+    }
+    public static final class Resolution {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Resolution(java.lang.String p0, java.lang.String p1, int p2, int p3) {}
+        public int getHorizontalDpi() { return (huskProps.get("HorizontalDpi") instanceof Integer ? (Integer) huskProps.get("HorizontalDpi") : 0); }
+        public java.lang.String getId() { return (java.lang.String) huskProps.get("Id"); }
+        public java.lang.String getLabel() { return (java.lang.String) huskProps.get("Label"); }
+        public int getVerticalDpi() { return (huskProps.get("VerticalDpi") instanceof Integer ? (Integer) huskProps.get("VerticalDpi") : 0); }
+        Resolution() { this((java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0); }
     }
 }
