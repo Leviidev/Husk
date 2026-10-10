@@ -101,7 +101,14 @@ public abstract class Context {
     private File sub(String n) { File f = new File(getDataDir(), n); f.mkdirs(); return f; }
     public File getDatabasePath(String name) { if (name.startsWith("/")) return new File(name); File d = sub("databases"); return new File(d, name); }
     public String[] databaseList() { String[] l = sub("databases").list(); return l == null ? new String[0] : l; }
-    public boolean deleteDatabase(String name) { return getDatabasePath(name).delete(); }
+    public boolean deleteDatabase(String name) { return android.database.sqlite.SQLiteDatabase.deleteDatabase(getDatabasePath(name)); }
+    public android.database.sqlite.SQLiteDatabase openOrCreateDatabase(String name, int mode, android.database.sqlite.SQLiteDatabase.CursorFactory factory) { return openOrCreateDatabase(name, mode, factory, null); }
+    public android.database.sqlite.SQLiteDatabase openOrCreateDatabase(String name, int mode, android.database.sqlite.SQLiteDatabase.CursorFactory factory, android.database.DatabaseErrorHandler errorHandler) {
+        File f = getDatabasePath(name);
+        if (f.getParentFile() != null) f.getParentFile().mkdirs();
+        int flags = android.database.sqlite.SQLiteDatabase.CREATE_IF_NECESSARY | ((mode & MODE_ENABLE_WRITE_AHEAD_LOGGING) != 0 ? android.database.sqlite.SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING : 0);
+        return android.database.sqlite.SQLiteDatabase.openDatabase(f.getPath(), factory, flags, errorHandler);
+    }
     public File getFileStreamPath(String name) { return new File(getFilesDir(), name); }
     public java.io.FileInputStream openFileInput(String name) throws java.io.FileNotFoundException { return new java.io.FileInputStream(getFileStreamPath(name)); }
     public java.io.FileOutputStream openFileOutput(String name, int mode) throws java.io.FileNotFoundException { return new java.io.FileOutputStream(getFileStreamPath(name), (mode & MODE_APPEND) != 0); }

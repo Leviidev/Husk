@@ -28,7 +28,7 @@ public final class ViewRoot implements ViewParent {
     private boolean mLayoutRequested = true, mFirst = true, mRemoved, mHasFocus = true, mInLayout, mInsetsDirty = true;
     private View mFocused;
     private final ViewTreeObserver mObserver = new ViewTreeObserver();
-    private final android.os.IBinder mToken = new android.os.IBinder() {};
+    private final android.os.IBinder mToken = new android.os.Binder();
     private WindowInsets mWindowInsets;
     private int mSystemUi;
     private final KeyEvent.DispatcherState mKeyState = new KeyEvent.DispatcherState();
@@ -140,6 +140,31 @@ public final class ViewRoot implements ViewParent {
         drawAll(roots);
         for (ViewRoot r : roots) if (!r.mRemoved) r.mObserver.dispatchOnDraw();
     }
+    private static Boolean sDump;
+    private long mLastDump;
+    /** TL_VIEW_DUMP: the window's views, with their frames, to the log (every 3 s while it lays out). */
+    private static void dump(View v, int depth) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < depth; i++) b.append("  ");
+        b.append(v.getClass().getName()).append(' ').append(v.getLeft()).append(',').append(v.getTop()).append(' ').append(v.getWidth()).append('x').append(v.getHeight());
+        if (v.getVisibility() != View.VISIBLE) b.append(v.getVisibility() == View.GONE ? " GONE" : " INVISIBLE");
+        if (v.getId() != View.NO_ID) b.append(" #").append(Integer.toHexString(v.getId()));
+        if (v instanceof android.widget.TextView) {
+            CharSequence tx = ((android.widget.TextView) v).getText();
+            StringBuilder e = new StringBuilder();
+            for (int i = 0; tx != null && i < tx.length(); i++) { char ch = tx.charAt(i); if (ch < 32 || ch > 126) e.append(String.format("\\u%04x", (int) ch)); else e.append(ch); }
+            b.append(" \"").append(e).append('"');
+        }
+        android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+        if (lp != null) {
+            b.append(" lp=").append(lp.getClass().getSimpleName()).append('(').append(lp.width).append(',').append(lp.height).append(')');
+            for (String f : new String[] { "topToTop", "topToBottom", "bottomToBottom", "leftToLeft", "startToStart", "endToEnd", "rightToRight", "horizontalBias", "dimensionRatio" }) {
+                try { java.lang.reflect.Field fl = lp.getClass().getField(f); Object o = fl.get(lp); if (o != null && !"-1".equals(String.valueOf(o)) && !"0.5".equals(String.valueOf(o))) b.append(' ').append(f).append('=').append(o); } catch (Exception e) {}
+            }
+        }
+        android.util.Log.d("ViewDump", b.toString());
+        if (v instanceof android.view.ViewGroup) { android.view.ViewGroup g = (android.view.ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) dump(g.getChildAt(i), depth + 1); }
+    }
     private void performLayout() {
         int sw = screenW(), sh = screenH();
         if (mInsetsDirty || mFirst) {
@@ -179,6 +204,8 @@ public final class ViewRoot implements ViewParent {
             mView.layout(0, 0, w, h);
         } finally { mInLayout = false; }
         mObserver.dispatchOnGlobalLayout();
+        if (sDump == null) sDump = System.getenv("TL_VIEW_DUMP") != null;
+        if (sDump) { long now = android.os.SystemClock.uptimeMillis(); if (now - mLastDump > 3000) { mLastDump = now; dump(mView, 0); } }
         if (mFirst) {
             mFirst = false;
             if (mHasFocus) { mView.dispatchWindowFocusChanged(true); mObserver.huskWindowFocus(true); }

@@ -361,6 +361,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public final void huskDetach() { dispatchDetachedFromWindow(); }
     void dispatchAttachedToWindow(husk.ViewRoot root, int visibility) {
         mRoot = root;
+        if (mLayoutParams != null) mLayoutParams.resolveLayoutDirection(getLayoutDirection());
         mWindowAttachCount++;
         mPrivateFlags |= PFLAG_DRAWABLE_STATE_DIRTY;
         if (mFloatingObserver != null) { root.observer().merge(mFloatingObserver); mFloatingObserver = null; }
@@ -861,6 +862,8 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
         boolean force = (mPrivateFlags & PFLAG_FORCE_LAYOUT) != 0;
         boolean changed = ws != mOldWidthSpec || hs != mOldHeightSpec;
         if (force || changed) {
+            // layout params resolve start/end against the direction, as Android does before measuring (ConstraintLayout's need it)
+            if (mLayoutParams != null) mLayoutParams.resolveLayoutDirection(getLayoutDirection());
             onMeasure(ws, hs);
             mPrivateFlags |= PFLAG_LAYOUT_REQUIRED;
         }
@@ -901,6 +904,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public void setLayoutParams(ViewGroup.LayoutParams p) {
         if (p == null) throw new NullPointerException("Layout parameters cannot be null");
         mLayoutParams = p;
+        if (mRoot != null) p.resolveLayoutDirection(getLayoutDirection());
         if (mParent != null) mParent.onSetLayoutParams(this, p);
         requestLayout();
     }
@@ -1081,6 +1085,10 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public boolean isFocused() { return (mPrivateFlags & PFLAG_FOCUSED) != 0; }
     public boolean hasFocus() { return isFocused(); }
     public boolean gatherTransparentRegion(android.graphics.Region r) { return true; }
+    public final void saveAttributeDataForStyleable(android.content.Context c, int[] styleable, android.util.AttributeSet attrs, android.content.res.TypedArray t, int defStyleAttr, int defStyleRes) {}
+    public final int[] getAttributeResolutionStack(int attribute) { return new int[0]; }
+    public java.util.Map<Integer, Integer> getAttributeSourceResourceMap() { return new java.util.HashMap<>(); }
+    public final int getExplicitStyle() { return 0; }
     public boolean hasExplicitFocusable() { return hasFocusable(); }
     public boolean hasFocusable() { return mVisibility == VISIBLE && mEnabled && mFocusable; }
     public View findFocus() { return isFocused() ? this : null; }

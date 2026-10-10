@@ -212,6 +212,9 @@ def main():
         else: kw = ('abstract ' if is_abs else '') + 'class'
         if fl & 0x10 and not is_if and not is_enum and not shell: kw = 'final ' + kw
         if shell and not is_if and not is_enum and not is_ann and not is_abs: kw = 'abstract ' + kw     # it has none of its interfaces' methods
+        elif not shell and not is_if and not is_enum and not is_ann and not is_abs and sup in shells:
+            kw = kw.replace('final ', '')
+            kw = 'abstract ' + kw                                                                      # nor does what it extends
         head = '%s%s%s %s' % (mods, stat, kw, simple)
         sup_ok = sup and sup != 'Ljava/lang/Object;' and ok_type(sup) and not is_enum and not is_if
         if sup_ok: head += ' extends ' + jtype(sup)

@@ -60,6 +60,7 @@ public final class ResTable {
     /** One configuration of one type: where its entries are. */
     static final class TypeChunk {
         int off, entryCount, entriesStart, indexStart;
+        StringPool keys;                    /* the key names of the package chunk this came in (a table may split one package over several) */
         boolean sparse, offset16;
         final int[] cfg = new int[Config.N];
         int density;
@@ -99,27 +100,33 @@ public final class ResTable {
     }
 
     private void readPackage(int off, int size) {
-        Package p = new Package();
-        p.id = b.getInt(off + 8);
-        StringBuilder n = new StringBuilder();
-        for (int i = 0; i < 128; i++) { char c = b.getChar(off + 12 + 2 * i); if (c == 0) break; n.append(c); }
-        p.name = n.toString();
+        int pid = b.getInt(off + 8);
+        // a table can carry one package in several chunks (the platform's does): they are one package, each chunk with its own name pools
+        Package p = byId[pid & 255];
+        boolean fresh = p == null;
+        if (fresh) {
+            p = new Package();
+            p.id = pid;
+            StringBuilder n = new StringBuilder();
+            for (int i = 0; i < 128; i++) { char c = b.getChar(off + 12 + 2 * i); if (c == 0) break; n.append(c); }
+            p.name = n.toString();
+        }
         int hsz = b.getShort(off + 2) & 0xffff;
-        p.typeStrings = new StringPool(b, off + b.getInt(off + 268));
-        p.keyStrings = new StringPool(b, off + b.getInt(off + 276));
+        StringPool typeStrings = new StringPool(b, off + b.getInt(off + 268)), keyStrings = new StringPool(b, off + b.getInt(off + 276));
+        if (fresh) { p.typeStrings = typeStrings; p.keyStrings = keyStrings; }
         int c = off + hsz, end = off + size;
         while (c + 8 <= end) {
             int t = b.getShort(c) & 0xffff, ch = b.getShort(c + 2) & 0xffff, cs = b.getInt(c + 4);
             if (t == RES_TABLE_TYPE_SPEC) {
                 int tid = b.get(c + 8) & 255;
-                Type ty = type(p, tid);
-                ty.specCount = b.getInt(c + 12);
-                ty.specFlagsOff = c + ch;
+                Type ty = type(p, tid, typeStrings);
+                if (ty.specFlagsOff < 0 || b.getInt(c + 12) > ty.specCount) { ty.specCount = b.getInt(c + 12); ty.specFlagsOff = c + ch; }
             } else if (t == RES_TABLE_TYPE) {
                 int tid = b.get(c + 8) & 255, flags = b.get(c + 9) & 255;
-                Type ty = type(p, tid);
+                Type ty = type(p, tid, typeStrings);
                 TypeChunk tc = new TypeChunk();
                 tc.off = c;
+                tc.keys = keyStrings;
                 tc.entryCount = b.getInt(c + 12);
                 tc.entriesStart = c + b.getInt(c + 16);
                 tc.indexStart = c + ch;
@@ -138,12 +145,11 @@ public final class ResTable {
             if (cs <= 0) break;
             c += cs;
         }
-        packages.add(p);
-        byId[p.id & 255] = p;
+        if (fresh) { packages.add(p); byId[p.id & 255] = p; }
     }
-    private Type type(Package p, int tid) {
+    private Type type(Package p, int tid, StringPool typeStrings) {
         Type t = p.types[tid];
-        if (t == null) { t = p.types[tid] = new Type(); t.id = tid; t.name = p.typeStrings.get(tid - 1); }
+        if (t == null) { t = p.types[tid] = new Type(); t.id = tid; t.name = typeStrings.get(tid - 1); }
         return t;
     }
 
@@ -170,6 +176,16 @@ public final class ResTable {
         public boolean complex() { return (flags & 1) != 0; }
     }
 
+    /** Husk debugging: what the table has for an id's package and type. */
+    public String huskDescribe(int id) {
+        Package p = byId[(id >>> 24) & 255];
+        if (p == null) return "no package " + (id >>> 24) + " (" + packages.size() + " packages)";
+        Type t = p.types[(id >>> 16) & 255];
+        if (t == null) return "package " + p.name + " has no type " + ((id >>> 16) & 255);
+        StringBuilder b = new StringBuilder("type " + t.name + ", " + t.configs.size() + " configs:");
+        for (TypeChunk tc : t.configs) b.append(' ').append(tc.sparse ? "S" : "").append(tc.offset16 ? "16" : "").append('[').append(tc.entryCount).append(']').append(entryOffset(tc, id & 0xffff) >= 0 ? "has" : "-");
+        return b.toString();
+    }
     /** The entry for id best matching the device configuration, or null. */
     public Entry find(int id, Config cfg) {
         Package p = byId[(id >>> 24) & 255];
@@ -244,7 +260,7 @@ public final class ResTable {
             if (o < 0) continue;
             int fl = b.getShort(o + 2) & 0xffff;
             int key = (fl & 8) != 0 ? (b.getShort(o) & 0xffff) : b.getInt(o + 4);
-            return p.keyStrings.get(key);
+            return tc.keys.get(key);
         }
         return null;
     }
@@ -271,7 +287,7 @@ public final class ResTable {
                     else { e = i; o = entryOffset(tc, i); if (o < 0) continue; }
                     int fl = b.getShort(o + 2) & 0xffff;
                     int key = (fl & 8) != 0 ? (b.getShort(o) & 0xffff) : b.getInt(o + 4);
-                    String k = p.keyStrings.get(key);
+                    String k = tc.keys.get(key);
                     int id = (p.id << 24) | (t.id << 16) | e;
                     m.put(t.name + "/" + k, id);
                     m.put(t.name + "/" + k.replace('.', '_'), id);

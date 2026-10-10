@@ -1,9 +1,45 @@
 package android.os;
-public final class LocaleList {
-    private final java.util.Locale[] l;
-    public LocaleList(java.util.Locale... l) { this.l = l; }
-    public static LocaleList getDefault() { return new LocaleList(java.util.Locale.getDefault()); }
-    public java.util.Locale get(int i) { return l[i]; }
-    public int size() { return l.length; }
-    public boolean isEmpty() { return l.length == 0; }
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Locale;
+
+public final class LocaleList implements Parcelable {
+    private static final LocaleList sEmpty = new LocaleList();
+    private static LocaleList sDefault;
+    private final Locale[] mList;
+    public LocaleList(Locale... list) {
+        ArrayList<Locale> out = new ArrayList<>();
+        for (Locale l : list) { if (l == null) throw new NullPointerException("list[" + out.size() + "] is null"); if (!out.contains(l)) out.add(l); }
+        mList = out.toArray(new Locale[0]);
+    }
+    public Locale get(int i) { return i >= 0 && i < mList.length ? mList[i] : null; }
+    public boolean isEmpty() { return mList.length == 0; }
+    public int size() { return mList.length; }
+    public int indexOf(Locale l) { for (int i = 0; i < mList.length; i++) if (mList[i].equals(l)) return i; return -1; }
+    public String toLanguageTags() { StringBuilder b = new StringBuilder(); for (int i = 0; i < mList.length; i++) { if (i > 0) b.append(','); b.append(mList[i].toLanguageTag()); } return b.toString(); }
+    public static LocaleList getEmptyLocaleList() { return sEmpty; }
+    public static LocaleList forLanguageTags(String tags) {
+        if (tags == null || tags.isEmpty()) return sEmpty;
+        String[] t = tags.split(",");
+        Locale[] l = new Locale[t.length];
+        for (int i = 0; i < t.length; i++) l[i] = Locale.forLanguageTag(t[i]);
+        return new LocaleList(l);
+    }
+    public static LocaleList getDefault() { LocaleList d = sDefault; if (d == null || !Locale.getDefault().equals(d.get(0))) sDefault = d = new LocaleList(Locale.getDefault()); return d; }
+    public static LocaleList getAdjustedDefault() { return getDefault(); }
+    public static void setDefault(LocaleList l) { if (l == null || l.isEmpty()) throw new IllegalArgumentException("locales is empty"); sDefault = l; Locale.setDefault(l.get(0)); }
+    public static boolean isPseudoLocale(java.util.Locale l) { return false; }
+    public Locale getFirstMatch(String[] supported) {
+        if (mList.length == 0 || supported == null || supported.length == 0) return mList.length > 0 ? mList[0] : null;
+        for (Locale l : mList) for (String s : supported) { Locale sl = Locale.forLanguageTag(s); if (sl.getLanguage().equals(l.getLanguage())) return l; }
+        return mList[0];
+    }
+    public static boolean matchesLanguageAndScript(Locale supported, Locale desired) { return supported.getLanguage().equals(desired.getLanguage()) && supported.getScript().equals(desired.getScript()); }
+    @Override public boolean equals(Object o) { return o instanceof LocaleList && Arrays.equals(mList, ((LocaleList) o).mList); }
+    @Override public int hashCode() { return Arrays.hashCode(mList); }
+    @Override public String toString() { return "[" + toLanguageTags() + "]"; }
+    public int describeContents() { return 0; }
+    public void writeToParcel(Parcel p, int f) { p.writeString(toLanguageTags()); }
+    public static final Creator<LocaleList> CREATOR = new Creator<LocaleList>() { public LocaleList createFromParcel(Parcel p) { return forLanguageTags(p.readString()); } public LocaleList[] newArray(int n) { return new LocaleList[n]; } };
 }

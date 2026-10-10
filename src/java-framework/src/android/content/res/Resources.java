@@ -25,7 +25,7 @@ public class Resources {
 
     private final AssetManager mAssets;
     private final DisplayMetrics mMetrics = new DisplayMetrics();
-    private final Configuration mConfig = new Configuration();
+    private final Configuration mConfig = Configuration.huskDevice();
     private ResTable.Config mCfg;
     private final HashMap<Integer, Drawable.ConstantState> mDrawableCache = new HashMap<>();
     private final HashMap<Integer, ColorStateList> mColorCache = new HashMap<>();
@@ -380,6 +380,9 @@ public class Resources {
         }
         public void setTo(Theme o) { mAttrs.clear(); mAttrs.putAll(o.mAttrs); mApplied.clear(); mApplied.addAll(o.mApplied); mKey = o.mKey; }
         public void rebase() {}
+        @Override public String toString() {
+            String probe = System.getenv("TL_RES_PROBE");
+            if (probe != null) for (String x : probe.split(",")) { int id = (int) Long.parseLong(x.replace("0x", ""), 16); ResTable t = table(id); ResTable.Entry e = t.find(id, mCfg); android.util.Log.d("ResProbe", x + ": " + t.huskDescribe(id) + " table " + (t == sFramework ? "framework" : "app") + " entry " + (e == null ? "null" : "complex=" + e.complex() + " parent=0x" + Integer.toHexString(e.complex() ? t.bagParent(e) : 0) + " count=" + (e.complex() ? t.bagCount(e) : 0)) + " bag " + (huskBag(id) == null ? "null" : huskBag(id).n)); } StringBuilder b = new StringBuilder("Theme{"); for (int[] a : mApplied) { Bag g = huskBag(a[0]); b.append("0x").append(Integer.toHexString(a[0])).append('(').append(g == null ? "missing" : g.n + " attrs").append(") "); } return b.append(mAttrs.size()).append(" attrs}").toString(); }
         public int getChangingConfigurations() { return 0; }
         public int[] getAttributeResolutionStack(int defStyleAttr, int defStyleRes, int explicitStyleRes) { return new int[0]; }
         public int getExplicitStyle(android.util.AttributeSet set) { return set == null ? 0 : set.getStyleAttribute(); }
@@ -463,6 +466,8 @@ public class Resources {
                     if (tv == null) { v.type = TypedValue.TYPE_NULL; break; }
                     v.setTo(tv);
                 }
+                // @null: a reference to nothing, set explicitly (it hides whatever a style or the theme says)
+                if (v.type == TypedValue.TYPE_REFERENCE && v.data == 0) { v.type = TypedValue.TYPE_NULL; v.data = TypedValue.DATA_NULL_UNDEFINED; }
                 if (v.type == TypedValue.TYPE_NULL && v.data != TypedValue.DATA_NULL_EMPTY) continue;
                 // @ref: to a simple value; references to files or bags stay references (with their file path when it is a file)
                 if (v.type == TypedValue.TYPE_REFERENCE && v.data != 0) {

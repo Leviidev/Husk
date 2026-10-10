@@ -29,7 +29,8 @@ public final class Native {
     public static native String getClipboard();
     public static native void share(String text);
     public static native void setOrientation(int androidOrientation);
-    public static native int[] insets();                     // left, top, right, bottom of the screen the app must keep clear
+    public static native int[] insets();
+    public static native boolean nightMode();                // the phone is in dark mode                     // left, top, right, bottom of the screen the app must keep clear
     public static native void vibrate(long ms);
     public static native void openUrl(String url);
     public static native void exit();

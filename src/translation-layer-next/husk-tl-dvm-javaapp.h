@@ -32,6 +32,7 @@ typedef struct tl_javaapp_config {
     void (*share)(const char *utf8);
     void (*set_orientation)(int android_orientation);
     int insets[4];                   /* left, top, right, bottom: the screen's notch and home indicator, in pixels */
+    bool night_mode;                 /* the phone is in dark mode: the app's configuration says UI_MODE_NIGHT_YES */
 } tl_javaapp_config;
 
 bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an, char *application, size_t apn);

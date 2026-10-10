@@ -11,7 +11,7 @@ public final class Manifest {
     public static final class Component {
         public String name, kind, authorities, process, permission, parentActivity;
         public int theme, label, icon, screenOrientation = -1, configChanges, launchMode, windowSoftInputMode, uiOptions;
-        public boolean exported, enabled = true;
+        public boolean exported, enabled = true, grantUriPermissions;
         public Bundle metaData;
         public final ArrayList<Filter> filters = new ArrayList<>();
     }
@@ -93,6 +93,7 @@ public final class Manifest {
                     cur.exported = p.getAttributeBooleanValue(NS, "exported", false);
                     cur.enabled = p.getAttributeBooleanValue(NS, "enabled", true);
                     cur.authorities = p.getAttributeValue(NS, "authorities");
+                    cur.grantUriPermissions = p.getAttributeBooleanValue(NS, "grantUriPermissions", false);
                     cur.process = p.getAttributeValue(NS, "process");
                     cur.permission = p.getAttributeValue(NS, "permission");
                     if (cur.parentActivity == null) cur.parentActivity = full(p.getAttributeValue(NS, "parentActivityName"));

@@ -21,10 +21,11 @@ public abstract class AbstractCursor implements CrossProcessCursor {
     public byte[] getBlob(int i) { throw new UnsupportedOperationException("getBlob is not supported"); }
     public CursorWindow getWindow() { return null; }
     public int getColumnCount() { return getColumnNames().length; }
-    public void deactivate() { mDataSetObservable.notifyInvalidated(); }
+    public void deactivate() { onDeactivateOrClose(); }
+    protected void onDeactivateOrClose() { mDataSetObservable.notifyInvalidated(); }
     public boolean requery() { mDataSetObservable.notifyChanged(); return true; }
     public boolean isClosed() { return mClosed; }
-    public void close() { mClosed = true; mContentObservable.unregisterAll(); mDataSetObservable.notifyInvalidated(); }
+    public void close() { mClosed = true; mContentObservable.unregisterAll(); onDeactivateOrClose(); }
     public boolean onMove(int oldPos, int newPos) { return true; }
     public void copyStringToBuffer(int i, CharArrayBuffer b) { String s = getString(i); if (s != null) { char[] d = b.data; if (d == null || d.length < s.length()) b.data = s.toCharArray(); else s.getChars(0, s.length(), d, 0); b.sizeCopied = s.length(); } else b.sizeCopied = 0; }
     public final int getPosition() { return mPos; }

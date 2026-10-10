@@ -131,9 +131,10 @@ NAT(String_fillBytesUTF16)
     (void)ret;
     int32_t n; const uint16_t *s = chars(self, &n);
     jobj *b = a[0].l;
-    for (int32_t i = 0; i < n && (a[1].i + i) * 2 + 1 < (int32_t)b->arr.len; i++) {
-        ((uint8_t *)b->arr.data)[(a[1].i + i) * 2] = (uint8_t)(s[i] & 0xFF);
-        ((uint8_t *)b->arr.data)[(a[1].i + i) * 2 + 1] = (uint8_t)(s[i] >> 8);
+    /* the index is in bytes (ART's FillBytesUTF16): the chars go there, two bytes each, little-endian */
+    for (int32_t i = 0; i < n && a[1].i + 2 * i + 1 < (int32_t)b->arr.len; i++) {
+        ((uint8_t *)b->arr.data)[a[1].i + 2 * i] = (uint8_t)(s[i] & 0xFF);
+        ((uint8_t *)b->arr.data)[a[1].i + 2 * i + 1] = (uint8_t)(s[i] >> 8);
     }
     return true;
 }

@@ -57,29 +57,40 @@ public class Window {
     private int mDefaultSoftInput;
     private Callback mFallbackCallback;
 
-    public Window(Context c) {
-        mContext = c;
+    public Window(Context c) { mContext = c; }
+    private boolean mStyled;
+    /** The theme's window attributes: read when first needed (the decor, isFloating), so a theme the activity sets in onCreate counts. */
+    private void ensureStyle() {
+        if (mStyled) return;
+        mStyled = true;
+        Context c = mContext;
         TypedArray a = c.obtainStyledAttributes(husk.S.Window);
         mFloating = a.getBoolean(husk.S.Window_windowIsFloating, false);
         if (a.getBoolean(husk.S.Window_windowNoTitle, false)) mFeatures |= 1 << FEATURE_NO_TITLE;
-        else if (a.getBoolean(husk.S.Window_windowActionBar, false)) mFeatures |= 1 << FEATURE_ACTION_BAR;
+        else if (a.getBoolean(husk.S.Window_windowActionBar, false) && (mFeatures & (1 << FEATURE_NO_TITLE)) == 0) mFeatures |= 1 << FEATURE_ACTION_BAR;
         if (a.getBoolean(husk.S.Window_windowFullscreen, false)) mAttrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
         if (a.getBoolean(husk.S.Window_windowTranslucentStatus, false)) mAttrs.flags |= WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
         if (a.getBoolean(husk.S.Window_windowTranslucentNavigation, false)) mAttrs.flags |= WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION;
         if (a.getBoolean(husk.S.Window_windowDrawsSystemBarBackgrounds, false)) mAttrs.flags |= WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS;
-        mStatusBarColor = a.getColor(husk.S.Window_statusBarColor, 0xFF000000);
-        mNavigationBarColor = a.getColor(husk.S.Window_navigationBarColor, 0xFF000000);
-        mBackground = a.getDrawable(husk.S.Window_windowBackground);
+        if (!mStatusBarColorSet) mStatusBarColor = a.getColor(husk.S.Window_statusBarColor, 0xFF000000);
+        if (!mNavigationBarColorSet) mNavigationBarColor = a.getColor(husk.S.Window_navigationBarColor, 0xFF000000);
+        if (!mBackgroundSet) mBackground = a.getDrawable(husk.S.Window_windowBackground);
+        if (System.getenv("TL_VIEW_DUMP") != null) {
+            android.util.TypedValue tv = a.peekValue(husk.S.Window_windowBackground), r = new android.util.TypedValue();
+            boolean ok = c.getTheme().resolveAttribute(android.R.attr.windowBackground, r, false);
+            android.util.Log.d("ViewDump", "window background " + (tv == null ? "none" : "type=0x" + Integer.toHexString(tv.type) + " data=0x" + Integer.toHexString(tv.data)) + " theme(" + c.getTheme() + ") says " + (ok ? "type=0x" + Integer.toHexString(r.type) + " data=0x" + Integer.toHexString(r.data) : "nothing") + " -> " + mBackground + "; context " + c.getClass().getName());
+        }
         mDefaultSoftInput = a.getInt(husk.S.Window_windowSoftInputMode, 0);
-        mAttrs.softInputMode = mDefaultSoftInput;
+        if (!mSoftInputSet) mAttrs.softInputMode = mDefaultSoftInput;
         mAttrs.layoutInDisplayCutoutMode = a.getInt(husk.S.Window_windowLayoutInDisplayCutoutMode, 0);
         if (mFloating) {
-            mAttrs.width = WindowManager.LayoutParams.WRAP_CONTENT; mAttrs.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            mAttrs.gravity = Gravity.CENTER;
+            if (!mLayoutSet) { mAttrs.width = WindowManager.LayoutParams.WRAP_CONTENT; mAttrs.height = WindowManager.LayoutParams.WRAP_CONTENT; }
+            if (!mGravitySet) mAttrs.gravity = Gravity.CENTER;
             if (a.getBoolean(husk.S.Window_backgroundDimEnabled, true)) { mAttrs.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND; mAttrs.dimAmount = a.getFloat(husk.S.Window_backgroundDimAmount, 0.6f); }
         }
         a.recycle();
     }
+    private boolean mStatusBarColorSet, mNavigationBarColorSet, mBackgroundSet, mSoftInputSet, mLayoutSet, mGravitySet;
     public final Context getContext() { return mContext; }
     public final TypedArray getWindowStyle() { return mContext.obtainStyledAttributes(husk.S.Window); }
     public void setCallback(Callback cb) { mCallback = cb; }
@@ -89,19 +100,19 @@ public class Window {
     public void setWindowManager(WindowManager wm, android.os.IBinder token, String name) { setWindowManager(wm, token, name, false); }
     public void setWindowManager(WindowManager wm, android.os.IBinder token, String name, boolean hw) { mWindowManager = wm; mAttrs.token = token; }
     public WindowManager getWindowManager() { if (mWindowManager == null) mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE); return mWindowManager; }
-    public final WindowManager.LayoutParams getAttributes() { return mAttrs; }
+    public final WindowManager.LayoutParams getAttributes() { ensureStyle(); return mAttrs; }
     public void setAttributes(WindowManager.LayoutParams a) { mAttrs.copyFrom(a); dispatchAttrs(); }
     private void dispatchAttrs() { if (mCallback != null) mCallback.onWindowAttributesChanged(mAttrs); if (mDecor != null) { husk.ViewRoot r = husk.ViewRoot.of(mDecor); if (r != null) r.setLayoutParams(mAttrs); mDecor.requestApplyInsets(); } }
     public void addFlags(int f) { setFlags(f, f); }
     public void clearFlags(int f) { setFlags(0, f); }
     public void setFlags(int f, int mask) { mAttrs.flags = (mAttrs.flags & ~mask) | (f & mask); dispatchAttrs(); }
     public void addPrivateFlags(int f) {}
-    public void setLayout(int w, int h) { mAttrs.width = w; mAttrs.height = h; dispatchAttrs(); }
-    public void setGravity(int g) { mAttrs.gravity = g; dispatchAttrs(); }
+    public void setLayout(int w, int h) { mLayoutSet = true; mAttrs.width = w; mAttrs.height = h; dispatchAttrs(); }
+    public void setGravity(int g) { mGravitySet = true; mAttrs.gravity = g; dispatchAttrs(); }
     public void setType(int t) { mAttrs.type = t; }
     public void setFormat(int f) { mAttrs.format = f; }
     public void setWindowAnimations(int a) { mAttrs.windowAnimations = a; }
-    public void setSoftInputMode(int m) { mAttrs.softInputMode = m; }
+    public void setSoftInputMode(int m) { mSoftInputSet = true; mAttrs.softInputMode = m; }
     public void setDimAmount(float a) { mAttrs.dimAmount = a; dispatchAttrs(); }
     public void setBackgroundBlurRadius(int r) {}
     public void setElevation(float e) {}
@@ -126,7 +137,7 @@ public class Window {
     public void setFeatureDrawableResource(int f, int id) {}
     public void setFeatureDrawable(int f, Drawable d) {}
     public void setFeatureInt(int f, int v) {}
-    public boolean isFloating() { return mFloating; }
+    public boolean isFloating() { ensureStyle(); return mFloating; }
     public boolean isActive() { return mActive; }
     public void makeActive() { mActive = true; }
     public final boolean isDestroyed() { return mDestroyed; }
@@ -137,6 +148,7 @@ public class Window {
     public View getDecorView() { if (mDecor == null) installDecor(); return mDecor; }
     public View peekDecorView() { return mDecor; }
     private void installDecor() {
+        ensureStyle();
         mDecor = new husk.DecorView(mContext, this);
         mDecor.setId(View.NO_ID);
         if (mBackground != null) mDecor.setWindowBackground(mBackground);
@@ -165,12 +177,12 @@ public class Window {
     public LayoutInflater getLayoutInflater() { return LayoutInflater.from(mContext); }
     public void setTitle(CharSequence t) { mTitle = t; if (mDecor != null) mDecor.setTitle(t); }
     public void setTitleColor(int c) {}
-    public void setBackgroundDrawable(Drawable d) { mBackground = d; if (mDecor != null) mDecor.setWindowBackground(d); }
+    public void setBackgroundDrawable(Drawable d) { mBackgroundSet = true; mBackground = d; if (mDecor != null) mDecor.setWindowBackground(d); }
     public void setBackgroundDrawableResource(int id) { setBackgroundDrawable(mContext.getDrawable(id)); }
-    public void setStatusBarColor(int c) { mStatusBarColor = c; if (mDecor != null) mDecor.invalidate(); }
-    public int getStatusBarColor() { return mStatusBarColor; }
-    public void setNavigationBarColor(int c) { mNavigationBarColor = c; if (mDecor != null) mDecor.invalidate(); }
-    public int getNavigationBarColor() { return mNavigationBarColor; }
+    public void setStatusBarColor(int c) { mStatusBarColorSet = true; mStatusBarColor = c; if (mDecor != null) mDecor.invalidate(); }
+    public int getStatusBarColor() { ensureStyle(); return mStatusBarColor; }
+    public void setNavigationBarColor(int c) { mNavigationBarColorSet = true; mNavigationBarColor = c; if (mDecor != null) mDecor.invalidate(); }
+    public int getNavigationBarColor() { ensureStyle(); return mNavigationBarColor; }
     public void setNavigationBarDividerColor(int c) {}
     public void setStatusBarContrastEnforced(boolean e) {}
     public void setNavigationBarContrastEnforced(boolean e) {}

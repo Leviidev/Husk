@@ -54,6 +54,7 @@ public class TypedArray implements AutoCloseable {
         TypedValue t = v(i);
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (isInt(t)) return t.data != 0;
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getBoolean(ref(t)); } catch (Resources.NotFoundException e) { return def; } }
         if (t.type == TypedValue.TYPE_STRING) return Boolean.parseBoolean(String.valueOf(t.string));
         return def;
     }
@@ -61,6 +62,7 @@ public class TypedArray implements AutoCloseable {
         TypedValue t = v(i);
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (isInt(t)) return t.data;
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getInteger(ref(t)); } catch (Resources.NotFoundException e) { return def; } }
         if (t.type == TypedValue.TYPE_FLOAT) return (int) t.getFloat();
         if (t.type == TypedValue.TYPE_STRING) { try { return Integer.decode(String.valueOf(t.string)); } catch (NumberFormatException e) { return def; } }
         return def;
@@ -80,6 +82,7 @@ public class TypedArray implements AutoCloseable {
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (isInt(t)) return t.data;
         if (t.type == TypedValue.TYPE_STRING) { ColorStateList c = mRes.loadColorStateList(t, t.resourceId, mTheme); return c.getDefaultColor(); }
+        if (t.type == TypedValue.TYPE_REFERENCE) { int id = ref(t); if (id == 0) return def; try { return mRes.getColor(id, mTheme); } catch (Resources.NotFoundException e) { return def; } }
         throw new UnsupportedOperationException("Can't convert value at index " + i + " to color: type=0x" + Integer.toHexString(t.type));
     }
     public ColorStateList getColorStateList(int i) {
@@ -87,13 +90,17 @@ public class TypedArray implements AutoCloseable {
         if (t == null || t.type == TypedValue.TYPE_NULL) return null;
         if (isInt(t)) return ColorStateList.valueOf(t.data);
         if (t.type == TypedValue.TYPE_STRING) return mRes.loadColorStateList(t, t.resourceId, mTheme);
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getColorStateList(ref(t), mTheme); } catch (Resources.NotFoundException e) { return null; } }
         return null;
     }
+    /** The resource an unresolved reference names (its own id, or where it points). */
+    private static int ref(TypedValue t) { return t.data != 0 ? t.data : t.resourceId; }
     public float getDimension(int i, float def) {
         TypedValue t = v(i);
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (t.type == TypedValue.TYPE_DIMENSION) return TypedValue.complexToDimension(t.data, mRes.getDisplayMetrics());
         if (isInt(t)) return t.data;
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getDimension(ref(t)); } catch (Resources.NotFoundException e) { return def; } }
         throw new UnsupportedOperationException("Can't convert value at index " + i + " to dimension: type=0x" + Integer.toHexString(t.type));
     }
     public int getDimensionPixelOffset(int i, int def) {
@@ -101,6 +108,7 @@ public class TypedArray implements AutoCloseable {
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (t.type == TypedValue.TYPE_DIMENSION) return TypedValue.complexToDimensionPixelOffset(t.data, mRes.getDisplayMetrics());
         if (isInt(t)) return t.data;
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getDimensionPixelOffset(ref(t)); } catch (Resources.NotFoundException e) { return def; } }
         throw new UnsupportedOperationException("Can't convert value at index " + i + " to dimension: type=0x" + Integer.toHexString(t.type));
     }
     public int getDimensionPixelSize(int i, int def) {
@@ -108,6 +116,7 @@ public class TypedArray implements AutoCloseable {
         if (t == null || t.type == TypedValue.TYPE_NULL) return def;
         if (t.type == TypedValue.TYPE_DIMENSION) return TypedValue.complexToDimensionPixelSize(t.data, mRes.getDisplayMetrics());
         if (isInt(t)) return t.data;
+        if (t.type == TypedValue.TYPE_REFERENCE && ref(t) != 0) { try { return mRes.getDimensionPixelSize(ref(t)); } catch (Resources.NotFoundException e) { return def; } }
         throw new UnsupportedOperationException("Can't convert value at index " + i + " to dimension: type=0x" + Integer.toHexString(t.type));
     }
     public int getLayoutDimension(int i, String name) {

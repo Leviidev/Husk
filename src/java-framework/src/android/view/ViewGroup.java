@@ -66,9 +66,17 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         public int getMarginStart() { return mStart != Integer.MIN_VALUE ? mStart : leftMargin; }
         public int getMarginEnd() { return mEnd != Integer.MIN_VALUE ? mEnd : rightMargin; }
         public boolean isMarginRelative() { return mStart != Integer.MIN_VALUE || mEnd != Integer.MIN_VALUE; }
-        public void setLayoutDirection(int d) {}
-        public int getLayoutDirection() { return View.LAYOUT_DIRECTION_LTR; }
-        public boolean isLayoutRtl() { return false; }
+        private int mLayoutDirection = View.LAYOUT_DIRECTION_LTR;
+        public void setLayoutDirection(int d) { mLayoutDirection = d == View.LAYOUT_DIRECTION_RTL ? d : View.LAYOUT_DIRECTION_LTR; }
+        public int getLayoutDirection() { return mLayoutDirection; }
+        public boolean isLayoutRtl() { return mLayoutDirection == View.LAYOUT_DIRECTION_RTL; }
+        /** Start and end margins to left and right, for the direction the view lays out in. */
+        @Override public void resolveLayoutDirection(int d) {
+            setLayoutDirection(d);
+            boolean rtl = isLayoutRtl();
+            if (mStart != Integer.MIN_VALUE) { if (rtl) rightMargin = mStart; else leftMargin = mStart; }
+            if (mEnd != Integer.MIN_VALUE) { if (rtl) leftMargin = mEnd; else rightMargin = mEnd; }
+        }
     }
 
     private View[] mChildren = new View[12];

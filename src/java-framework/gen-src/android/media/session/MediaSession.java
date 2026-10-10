@@ -60,7 +60,7 @@ public final class MediaSession {
         public void onSkipToQueueItem(long p0) {}
         public void onStop() {}
     }
-    public static class CallbackStub extends android.media.session.ISessionCallback.Stub {
+    public static abstract class CallbackStub extends android.media.session.ISessionCallback.Stub {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CallbackStub(android.media.session.MediaSession p0) { super(); }
         public void onAdjustVolume(java.lang.String p0, int p1, int p2, int p3) {}

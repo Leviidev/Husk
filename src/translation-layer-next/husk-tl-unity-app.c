@@ -51,6 +51,7 @@ enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL =
 static char g_java_root[1024];
 static float g_java_density = 3.0f;
 static int g_java_insets[4];
+static bool g_java_night;
 static struct {
     void (*keyboard)(int show, int input_type, int ime_options);
     void (*set_clipboard)(const char *utf8);
@@ -349,7 +350,7 @@ static void *launch_thread(void *arg)
                 .density = g_java_density, .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL,
                 .framework_res = fwres, .show_keyboard = g_java_host.keyboard, .set_clipboard = g_java_host.set_clipboard,
                 .get_clipboard = g_java_host.get_clipboard, .share = g_java_host.share, .set_orientation = g_java_host.orientation,
-                .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] },
+                .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] }, .night_mode = g_java_night,
             };
             ok = tl_javaapp_start(&cfg);
         }
@@ -515,6 +516,7 @@ void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard
     g_java_insets[0] = left; g_java_insets[1] = top; g_java_insets[2] = right; g_java_insets[3] = bottom;
     if (java_running()) tl_javaapp_set_insets(left, top, right, bottom, keyboard);
 }
+void husk_java_set_night_mode(int night) { g_java_night = night != 0; }
 void husk_java_insert_text(const char *utf8) { if (java_running()) tl_javaapp_text(utf8); }
 void husk_java_delete_backward(void) { if (java_running()) tl_javaapp_text_delete(); }
 void husk_java_text_action(void) { if (java_running()) tl_javaapp_text_action(); }

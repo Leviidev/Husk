@@ -389,6 +389,7 @@ NAT(N_getClipboard)
 }
 NAT(N_share) { (void)self; (void)ret; const char *t = tl_jni_string(a[0].l); tl_log_line("javaapp: share %.80s", t ? t : ""); if (A.cfg.share && t) A.cfg.share(t); return true; }
 NAT(N_setOrientation) { (void)self; (void)ret; if (A.cfg.set_orientation) A.cfg.set_orientation(a[0].i); return true; }
+NAT(N_nightMode) { (void)self; (void)a; jvalue v; v.j = A.cfg.night_mode ? 1 : 0; *ret = v; return true; }
 NAT(N_insets)
 {
     (void)self; (void)a;
@@ -441,6 +442,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "share", "(Ljava/lang/String;)V", N_share },
     { "setOrientation", "(I)V", N_setOrientation },
     { "insets", "()[I", N_insets },
+    { "nightMode", "()Z", N_nightMode },
     { NULL, NULL, NULL },
 };
 
@@ -448,8 +450,10 @@ dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *
 dvm_native_fn tl_gfx_native(const char *name, const char *sig);
 dvm_native_fn tl_audio_native(const char *name, const char *sig);
 dvm_native_fn tl_sensors_native(const char *name, const char *sig);
+dvm_native_fn tl_sqlite_native(const char *name, const char *sig);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
+    if (!strcmp(cls, "husk/Sqlite")) return tl_sqlite_native(name, sig);
     if (!strcmp(cls, "husk/Sensors")) return tl_sensors_native(name, sig);
     if (!strcmp(cls, "husk/Gfx")) return tl_gfx_native(name, sig);
     if (!strcmp(cls, "husk/Audio")) return tl_audio_native(name, sig);

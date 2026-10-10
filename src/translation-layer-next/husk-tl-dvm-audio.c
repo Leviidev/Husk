@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -117,6 +118,7 @@ static void *mixer_main(void *arg)
         pthread_cond_broadcast(&M.room);
         pthread_mutex_unlock(&M.mu);
         for (int i = 0; i < BLOCK * 2; i++) out[i] = clamp16(acc[i]);
+        { static FILE *dump; static int tried; if (!tried) { tried = 1; const char *p = getenv("TL_AUDIO_DUMP"); if (p) dump = fopen(p, "wb"); } if (dump) fwrite(out, 2, BLOCK * 2, dump); }
         if (tl_cocos_audio_hook) tl_cocos_audio_hook(out, BLOCK, 2, OUT_RATE);
         else usleep(BLOCK * 1000000 / OUT_RATE);
     }

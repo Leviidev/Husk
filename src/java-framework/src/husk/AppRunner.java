@@ -58,7 +58,7 @@ public final class AppRunner {
             try {
                 ContentProvider cp = (ContentProvider) Class.forName(p.name).newInstance();
                 ProviderInfo info = new ProviderInfo();
-                info.name = p.name; info.authority = p.authorities; info.packageName = Native.packageName(); info.exported = p.exported; info.metaData = p.metaData;
+                info.name = p.name; info.authority = p.authorities; info.packageName = Native.packageName(); info.exported = p.exported; info.metaData = p.metaData; info.grantUriPermissions = p.grantUriPermissions;
                 info.applicationInfo = app.getApplicationInfo();
                 cp.attachInfo(app, info);
                 ContentResolver.register(p.authorities, cp);

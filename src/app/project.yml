@@ -89,6 +89,8 @@ targets:
           - "-lz"
           # libresolv: the phone's DNS servers, for games that resolve names themselves (Geode's c-ares).
           - "-lresolv"
+          # SQLite for Java apps' android.database.sqlite (the system's own library).
+          - "-lsqlite3"
           - "-framework"
           - "AudioToolbox"
           - "-framework"
