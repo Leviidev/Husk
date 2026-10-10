@@ -114,6 +114,15 @@ int tl_vai_printf(tl_va_frame *f)
 TL_VA_STUB(tl_va_printf, tl_vai_printf);
 extern void tl_va_printf(void);
 
+int tl_vai_asprintf(tl_va_frame *f)
+{
+    tl_va_list ap; tl_va_start(f, 2, 0, &ap);
+    int n; *(char **)f->gp[0] = format_alloc((const char *)f->gp[1], &ap, &n);
+    return n;
+}
+TL_VA_STUB(tl_va_asprintf, tl_vai_asprintf);
+extern void tl_va_asprintf(void);
+
 int tl_vai_fprintf(tl_va_frame *f)
 {
     tl_va_list ap; tl_va_start(f, 2, 0, &ap);
@@ -629,7 +638,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("fputs", b_fputs), TL_WRAP("puts", b_puts), TL_WRAP("feof", b_feof), TL_WRAP("ferror", b_ferror),
     TL_WRAP("clearerr", b_clearerr), TL_WRAP("fileno", b_fileno), TL_WRAP("setbuf", b_setbuf), TL_WRAP("setvbuf", b_setvbuf),
     TL_WRAP("remove", b_remove), TL_WRAP("rename", b_rename),
-    TL_WRAP("snprintf", tl_va_snprintf), TL_WRAP("sprintf", tl_va_sprintf), TL_WRAP("printf", tl_va_printf),
+    TL_WRAP("snprintf", tl_va_snprintf), TL_WRAP("sprintf", tl_va_sprintf), TL_WRAP("printf", tl_va_printf), TL_WRAP("asprintf", tl_va_asprintf),
     TL_WRAP("fprintf", tl_va_fprintf), TL_WRAP("sscanf", tl_va_sscanf), TL_WRAP("fscanf", tl_va_fscanf),
     TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
     TL_WRAP("sched_getcpu", b_sched_getcpu), TL_DIRECT(wcslcpy), TL_DIRECT(wcslcat), TL_DIRECT(wcscasecmp), TL_DIRECT(wcsncasecmp),

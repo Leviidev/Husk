@@ -33,7 +33,7 @@
 #define STB_VORBIS_HEADER_ONLY
 #define STB_VORBIS_NO_STDIO
 #define STB_VORBIS_NO_PUSHDATA_API
-#include "stb_vorbis.inc"
+#include "../translation-layer/stb_vorbis.inc"
 #pragma clang diagnostic pop
 
 void tl_log_line(const char *fmt, ...);

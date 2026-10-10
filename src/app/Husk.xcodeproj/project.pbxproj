@@ -30,6 +30,7 @@
 		1624D7BE5D25504F10E6D705 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = A523DB1FEA5BC026771035C7 /* Shaders.metal */; };
 		17D78A0F97F0C17E617136E3 /* libFilePickerFix.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F44A2196AA5F6271BF893660 /* libFilePickerFix.dylib */; };
 		1A97D1F8D5FAFEB3145D4AE5 /* TranslationLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD6ABD20471B2CACF60ABD4 /* TranslationLayer.swift */; };
+		1BDEF31D2AA2CF63AF42F32D /* husk-tl-dvm-gles32.c in Sources */ = {isa = PBXBuildFile; fileRef = BFE1EF1033F9F2FAA51111C7 /* husk-tl-dvm-gles32.c */; };
 		1C5BD0A437A2119F8CAFF945 /* husk-tl-codewrite.c in Sources */ = {isa = PBXBuildFile; fileRef = 6492416C2454F2656C7DB40A /* husk-tl-codewrite.c */; };
 		1D576C7E088182B888F811BB /* LICENSES-rppairing-crates.txt in Resources */ = {isa = PBXBuildFile; fileRef = D0A9148DED6969D97D56406C /* LICENSES-rppairing-crates.txt */; };
 		202973AEE5786B84A31A57A5 /* husk-tl-jni.c in Sources */ = {isa = PBXBuildFile; fileRef = A22242B8E3E7067D6EB2AB95 /* husk-tl-jni.c */; };
@@ -56,6 +57,7 @@
 		38E7D6B6947ED3CF1A82BB7D /* libqemu-aarch64-softmmu.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; };
 		395C2F3AADC9F0FDE2188950 /* husk-tl-dex.c in Sources */ = {isa = PBXBuildFile; fileRef = 7FE5D3DD79B5BEA14506FF60 /* husk-tl-dex.c */; };
 		3FFF24EF3C18B086F2D0B97C /* husk-tl-vulkan.m in Sources */ = {isa = PBXBuildFile; fileRef = 42A3D0C796971935D477F89B /* husk-tl-vulkan.m */; };
+		43C9B645209AEDA8FCDD8CB8 /* husk-tl-dvm-gles30.c in Sources */ = {isa = PBXBuildFile; fileRef = 24C5D68AB8EBD8B65BA22A9C /* husk-tl-dvm-gles30.c */; };
 		48B7AF4FFC377766FF6158A4 /* PlayDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036699CBF5693E75237EF112 /* PlayDevice.swift */; };
 		48E699E0016694F530355275 /* FilesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BF573E8CED9B238E762BA6 /* FilesTab.swift */; };
 		493E20A0B04C84895AF33F83 /* husk-tl-jni-audiotrack.c in Sources */ = {isa = PBXBuildFile; fileRef = 3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */; };
@@ -67,6 +69,7 @@
 		50A3A90912B5C9D90B87D9BF /* cacert.pem in Resources */ = {isa = PBXBuildFile; fileRef = BE31FE0E8BF0D132E6298CE9 /* cacert.pem */; };
 		50F7B80FBADEAF705EC960F8 /* husk-tl-jni-fmod.c in Sources */ = {isa = PBXBuildFile; fileRef = C575FDA8867C3A75AB2392E3 /* husk-tl-jni-fmod.c */; };
 		5231634DF5866145DDE3A298 /* husk-tl-bionic.c in Sources */ = {isa = PBXBuildFile; fileRef = E8B800E5E712B4EFFB9F5D59 /* husk-tl-bionic.c */; };
+		530FE1935C2D0C23EA98A3F1 /* husk-tl-dvm-gles31.c in Sources */ = {isa = PBXBuildFile; fileRef = 43842BBC4EAEE01CF6441B5B /* husk-tl-dvm-gles31.c */; };
 		538ED3B97F9BC9511F1386E7 /* Launcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6829A7DBA27EDCC20D8C17AD /* Launcher.swift */; };
 		56ED443ACD8A526DE9AB07B9 /* husk-tl-dvm-natives.c in Sources */ = {isa = PBXBuildFile; fileRef = 7AD4F32F70E9594D17CB047B /* husk-tl-dvm-natives.c */; };
 		5777A56AE7ED3B43B62869BF /* husk-tl-jni-gms.c in Sources */ = {isa = PBXBuildFile; fileRef = 1F4699CEF50111F7720E34F4 /* husk-tl-jni-gms.c */; };
@@ -113,10 +116,13 @@
 		9F4983AE1B8B211FB3875518 /* husk-tl-python.c in Sources */ = {isa = PBXBuildFile; fileRef = 77487CDE2CFA1499255EB794 /* husk-tl-python.c */; };
 		9FA806201E1AF87FE7581742 /* husk-tl-jni-security.c in Sources */ = {isa = PBXBuildFile; fileRef = 85D8F83C8952092997CE071C /* husk-tl-jni-security.c */; };
 		9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */ = {isa = PBXBuildFile; fileRef = 4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */; };
+		A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */ = {isa = PBXBuildFile; fileRef = 98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */; };
 		A687EB34AE28E4CBBA4136BF /* husk-tl-geode.c in Sources */ = {isa = PBXBuildFile; fileRef = 9235AEC134C86769DDF7E880 /* husk-tl-geode.c */; };
+		A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */ = {isa = PBXBuildFile; fileRef = DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */; };
 		A7FBE49898024C7B1D03E018 /* husk-tl-sound.c in Sources */ = {isa = PBXBuildFile; fileRef = 91DE2675795B851A4C47ED9E /* husk-tl-sound.c */; };
 		AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */ = {isa = PBXBuildFile; fileRef = AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */; };
 		AC5C07974C7A8658358A55C9 /* husk-tl-a64.c in Sources */ = {isa = PBXBuildFile; fileRef = 3ADCEA1477DA816D867C1EBB /* husk-tl-a64.c */; };
+		AFB5E3E73BFA43BA50428CF6 /* husk-tl-dvm-graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 3B4754DCDA6CFFE02F854C6A /* husk-tl-dvm-graphics.c */; };
 		B4CE75407A317521C77A2207 /* husk-tl-jni-loop.c in Sources */ = {isa = PBXBuildFile; fileRef = FE8922E7AB75C8C61B37986A /* husk-tl-jni-loop.c */; };
 		B5C5BB7A0CFE28C032188D75 /* husk-tl-jni-ue4.c in Sources */ = {isa = PBXBuildFile; fileRef = ED3F7E0267BE8F2AC09FF772 /* husk-tl-jni-ue4.c */; };
 		B7335D9F68CE6EAF0E3D9825 /* icon-tintedlight.png in Resources */ = {isa = PBXBuildFile; fileRef = 336AB2FDC58A5C08D55FF8F9 /* icon-tintedlight.png */; };
@@ -159,6 +165,7 @@
 		EDD9BF5E120ED2453CB023FA /* icon-default.png in Resources */ = {isa = PBXBuildFile; fileRef = 555112D0E3895EBE37A68FEB /* icon-default.png */; };
 		EF4D3972DFB4447D5FDDF0AE /* stb_vorbis.inc in Resources */ = {isa = PBXBuildFile; fileRef = 4B06A9BB292E04A841BE20D2 /* stb_vorbis.inc */; };
 		F1E2ED25F28A24BA7197C5DB /* PipeShim.c in Sources */ = {isa = PBXBuildFile; fileRef = 766F6F7816E672E83CFFE47D /* PipeShim.c */; };
+		F2653F32A929D8E8BCEE057E /* husk-tl-dvm-audio.c in Sources */ = {isa = PBXBuildFile; fileRef = F58D55D1773275160F4F4717 /* husk-tl-dvm-audio.c */; };
 		F4833815482790E167401965 /* husk-tl-ld.c in Sources */ = {isa = PBXBuildFile; fileRef = 4D54C1E4F20A020AC62C9419 /* husk-tl-ld.c */; };
 		F6880CA30640F688356229CF /* HuskMetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */; };
 		F6B3DA43CA16FAF920EF236D /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D05B2EFC533719ED2E455C24 /* AppTheme.swift */; };
@@ -242,6 +249,7 @@
 		2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-plugins.c"; sourceTree = "<group>"; };
 		23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-va.c"; sourceTree = "<group>"; };
 		242DD6EEB7DA97455CD76826 /* husk-tl-json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-json.c"; sourceTree = "<group>"; };
+		24C5D68AB8EBD8B65BA22A9C /* husk-tl-dvm-gles30.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-gles30.c"; sourceTree = "<group>"; };
 		25DB1D606431C481B06C7337 /* HuskDownloadActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskDownloadActivity.swift; sourceTree = "<group>"; };
 		25E6473CC71D3627AB9709D1 /* husk-tl-jni.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-jni.h"; sourceTree = "<group>"; };
 		272578DB0CBA40E69B87093D /* husk-tl-a64.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-a64.h"; sourceTree = "<group>"; };
@@ -264,6 +272,7 @@
 		3ACE2921134A2C3A3DC93272 /* husk-tl-jni-minecraft.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-minecraft.c"; sourceTree = "<group>"; };
 		3ADCEA1477DA816D867C1EBB /* husk-tl-a64.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-a64.c"; sourceTree = "<group>"; };
 		3B1406C4A7D0F7E50BCB365B /* libANGLE-shared.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libANGLE-shared.dylib"; path = "../../build/ios-arm64/sysroot/lib/libANGLE-shared.dylib"; sourceTree = "<group>"; };
+		3B4754DCDA6CFFE02F854C6A /* husk-tl-dvm-graphics.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-graphics.c"; sourceTree = "<group>"; };
 		3B72237F810FCE0EE433FA3D /* husk-tl-nativeactivity.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-nativeactivity.c"; sourceTree = "<group>"; };
 		3B9FC5A63D4CAA7FBDA016EB /* fishhook.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fishhook.h; sourceTree = "<group>"; };
 		3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-audiotrack.c"; sourceTree = "<group>"; };
@@ -272,6 +281,7 @@
 		42A3D0C796971935D477F89B /* husk-tl-vulkan.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-vulkan.m"; sourceTree = "<group>"; };
 		42C4CB582E3E0D917E2DBB4C /* husk-tl-bionic-str.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-str.c"; sourceTree = "<group>"; };
 		42CBC0D7ACAB400BDDFD7F9E /* husk-tl-xmem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-xmem.c"; sourceTree = "<group>"; };
+		43842BBC4EAEE01CF6441B5B /* husk-tl-dvm-gles31.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-gles31.c"; sourceTree = "<group>"; };
 		4385A14B11CBA1C3502D433D /* husk-tl-scan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-scan.c"; sourceTree = "<group>"; };
 		43C233A62FB57030C0818489 /* JITBuiltIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITBuiltIn.swift; sourceTree = "<group>"; };
 		4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter.c"; sourceTree = "<group>"; };
@@ -345,6 +355,7 @@
 		9713186CDCF6F1188BB4ABE1 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = "../../build/ios-arm64/lib/MoltenVK.xcframework"; sourceTree = "<group>"; };
 		9736391C1BCE43667293DB7B /* Geode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geode.swift; sourceTree = "<group>"; };
 		97E83F7EE31FE180D0FA3105 /* husk-tl-http.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-http.h"; sourceTree = "<group>"; };
+		98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-dvm-sensors.m"; sourceTree = "<group>"; };
 		9C0AD6C357A94EB7BA2ADF00 /* husk-tl-flutter-text.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-text.c"; sourceTree = "<group>"; };
 		9C254830956F062F72F2EF2D /* husk-tl-jni-godot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-godot.c"; sourceTree = "<group>"; };
 		9DA435135C98A8EFBDEAF79A /* husk-tl-sdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-sdl.h"; sourceTree = "<group>"; };
@@ -368,6 +379,7 @@
 		BD3B1227581E9D6E7C9DCC3E /* CrashReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReport.swift; sourceTree = "<group>"; };
 		BE31FE0E8BF0D132E6298CE9 /* cacert.pem */ = {isa = PBXFileReference; path = cacert.pem; sourceTree = "<group>"; };
 		BF6468C273AA781A48B72C0B /* husk-tl-geode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-geode.h"; sourceTree = "<group>"; };
+		BFE1EF1033F9F2FAA51111C7 /* husk-tl-dvm-gles32.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-gles32.c"; sourceTree = "<group>"; };
 		C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDetailView.swift; sourceTree = "<group>"; };
 		C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-pthread.c"; sourceTree = "<group>"; };
 		C21F6F71FA6C440F0A150CD9 /* husk-tl-flutter-text.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-flutter-text.h"; sourceTree = "<group>"; };
@@ -391,6 +403,7 @@
 		D91C1E7D6301EBCE06FEE0FE /* HuskMetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskMetalView.swift; sourceTree = "<group>"; };
 		DBD2D0288FE27F61D125C897 /* husk-tl-dvm-gles20.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-gles20.c"; sourceTree = "<group>"; };
 		DC2F367C3774A342D33D245F /* DownloadsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsWidget.swift; sourceTree = "<group>"; };
+		DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-sqlite.c"; sourceTree = "<group>"; };
 		DD3AA162B82B50B7D4B5F5C4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E29734A13FFD848BA212FAED /* husk-tl-unity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-unity.h"; sourceTree = "<group>"; };
 		E37298010F80517A3057579E /* BundleUnpacker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleUnpacker.swift; sourceTree = "<group>"; };
@@ -410,6 +423,7 @@
 		F3FEAD390092357A2CCDCB7E /* DownloadsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsTab.swift; sourceTree = "<group>"; };
 		F44A2196AA5F6271BF893660 /* libFilePickerFix.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libFilePickerFix.dylib; path = Frameworks/libFilePickerFix.dylib; sourceTree = "<group>"; };
 		F54A47159D39CB8039E9E44E /* JITCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITCard.swift; sourceTree = "<group>"; };
+		F58D55D1773275160F4F4717 /* husk-tl-dvm-audio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-audio.c"; sourceTree = "<group>"; };
 		F7FE1E9438A6B743456806DF /* husk-tl-xmem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-xmem.h"; sourceTree = "<group>"; };
 		F9236B87D1F6655D578FD19E /* husk-tl-jni-internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-jni-internal.h"; sourceTree = "<group>"; };
 		FA8F4838EC0E68E364143E79 /* AppWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWindows.swift; sourceTree = "<group>"; };
@@ -595,12 +609,19 @@
 				AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */,
 				F13D91C39BBC9C52E70E1520 /* husk-tl-dexindex.h */,
 				CD10D68F646D92E86A28E5A6 /* husk-tl-dvm-android.c */,
+				F58D55D1773275160F4F4717 /* husk-tl-dvm-audio.c */,
 				B9BADA89A8FEF9F2D794BFCF /* husk-tl-dvm-gl.h */,
 				DBD2D0288FE27F61D125C897 /* husk-tl-dvm-gles20.c */,
+				24C5D68AB8EBD8B65BA22A9C /* husk-tl-dvm-gles30.c */,
+				43842BBC4EAEE01CF6441B5B /* husk-tl-dvm-gles31.c */,
+				BFE1EF1033F9F2FAA51111C7 /* husk-tl-dvm-gles32.c */,
+				3B4754DCDA6CFFE02F854C6A /* husk-tl-dvm-graphics.c */,
 				32BB1ED991BD014DD4FFE311 /* husk-tl-dvm-internal.h */,
 				D67BAEC1C73D45640DAA22C8 /* husk-tl-dvm-javaapp.h */,
 				8BE75C276770496B7712F36A /* husk-tl-dvm-jvm.c */,
 				7AD4F32F70E9594D17CB047B /* husk-tl-dvm-natives.c */,
+				98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */,
+				DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */,
 				642A69428A8151E1B1F75CBB /* husk-tl-dvm.c */,
 				D75738ACF768F1D3A21A19C7 /* husk-tl-dvm.h */,
 				CE99D9E12CB5823C669D9CBC /* husk-tl-egl-es31.inc */,
@@ -1032,9 +1053,16 @@
 				395C2F3AADC9F0FDE2188950 /* husk-tl-dex.c in Sources */,
 				AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */,
 				01477DF8338132EF917CEB30 /* husk-tl-dvm-android.c in Sources */,
+				F2653F32A929D8E8BCEE057E /* husk-tl-dvm-audio.c in Sources */,
 				B753AC9C8B668E5C637908BE /* husk-tl-dvm-gles20.c in Sources */,
+				43C9B645209AEDA8FCDD8CB8 /* husk-tl-dvm-gles30.c in Sources */,
+				530FE1935C2D0C23EA98A3F1 /* husk-tl-dvm-gles31.c in Sources */,
+				1BDEF31D2AA2CF63AF42F32D /* husk-tl-dvm-gles32.c in Sources */,
+				AFB5E3E73BFA43BA50428CF6 /* husk-tl-dvm-graphics.c in Sources */,
 				5A16FA25E013C8B240A5E342 /* husk-tl-dvm-jvm.c in Sources */,
 				56ED443ACD8A526DE9AB07B9 /* husk-tl-dvm-natives.c in Sources */,
+				A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */,
+				A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */,
 				0571BFDC9E02848C62133B4E /* husk-tl-dvm.c in Sources */,
 				13E70642DCB1EB118EB6B9CF /* husk-tl-egl.c in Sources */,
 				9883B80CE2F3C84E5D6E0A8F /* husk-tl-elf.c in Sources */,
@@ -1174,12 +1202,15 @@
 					"$(inherited)",
 					"-lz",
 					"-lresolv",
+					"-lsqlite3",
 					"-framework",
 					AudioToolbox,
 					"-framework",
 					CoreText,
 					"-framework",
 					CoreGraphics,
+					"-framework",
+					ImageIO,
 					"-framework",
 					Security,
 					"-lhusk_rppairing",
@@ -1239,12 +1270,15 @@
 					"$(inherited)",
 					"-lz",
 					"-lresolv",
+					"-lsqlite3",
 					"-framework",
 					AudioToolbox,
 					"-framework",
 					CoreText,
 					"-framework",
 					CoreGraphics,
+					"-framework",
+					ImageIO,
 					"-framework",
 					Security,
 					"-lhusk_rppairing",

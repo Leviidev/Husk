@@ -16,6 +16,8 @@ for l in libicu libicui18n libicuuc libicu_jni libandroidicu; do [ -f "$APEX/com
 mkdir -p "$OUT/com.android.i18n/etc"; cp -R "$APEX/com.android.i18n/etc/icu" "$OUT/com.android.i18n/etc/"
 mkdir -p "$OUT/com.android.tzdata"; cp -R "$APEX/com.android.tzdata/etc" "$OUT/com.android.tzdata/"
 copy com.android.conscrypt/javalib/conscrypt.jar
+# conscrypt's natives (HTTPS for Java code): its JNI library and the BoringSSL it links
+for l in libjavacrypto libcrypto libssl; do copy com.android.conscrypt/lib64/$l.so; done
 "$R/src/java-framework/build.sh" "$OUT/husk-framework.dex"
 # the platform's resources (themes, styles, layouts, drawables), from the same system image, without what an iPhone never picks
 python3 "$R/tools/strip_framework_res.py" "${FRAMEWORK_RES:-/Volumes/GTAV/husk2/aosp/fw/framework-res.apk}" "$OUT/framework-res.apk"

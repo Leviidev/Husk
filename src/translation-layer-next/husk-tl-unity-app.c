@@ -266,6 +266,7 @@ static void *java_boot(void *arg)
     tl_jni_init();
     if (!tl_dvm_start(boot, nb)) { tl_log_line("java: the runtime did not start"); *ok = false; return NULL; }
     snprintf(v, sizeof(v), "%s/com.android.i18n/lib64", r); tl_ld_add_search_dir(v);
+    snprintf(v, sizeof(v), "%s/com.android.conscrypt/lib64", r); tl_ld_add_search_dir(v);
     snprintf(v, sizeof(v), "%s/com.android.art/lib64", r);
     if (!tl_dvm_load_natives(v)) tl_log_line("java: libcore's natives did not all load");
     *ok = true;

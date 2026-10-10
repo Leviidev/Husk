@@ -150,6 +150,7 @@ static void *run(void *p)
     tl_jni_init();
     if (!tl_dvm_start(boot, nb)) { fprintf(stderr, "dvm start failed\n"); _exit(1); }
     { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.i18n/lib64", art); tl_ld_add_search_dir(d); }
+    { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/lib64", art); tl_ld_add_search_dir(d); }
     { char d[800]; snprintf(d, sizeof(d), "%s/lib64", art); tl_dvm_load_natives(d); }
     char tmp[600] = "/tmp/husk-javaapp-XXXXXX";
     if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); } else mkdtemp(tmp);

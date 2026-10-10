@@ -2,6 +2,7 @@
 #include "husk-tl-ld.h"
 
 #include <errno.h>
+#include <libkern/OSCacheControl.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdatomic.h>
@@ -1851,6 +1852,18 @@ static bool init_locked(tl_lib *L)
     char **argv = G.argv ? G.argv : fallback_argv, **envp = G.envp ? G.envp : fallback_envp;
     int argc = 1;
     typedef void (*init_fn)(int, char **, char **);
+    /* BoringSSL's FIPS self-check hashes its own .text, which the loader has rewritten (svc,
+     * x18, tpidr sites), and aborts on the mismatch. Skip it: the code itself is unchanged. */
+    const elf_sym *fips = lib_find(L, "BORINGSSL_integrity_test");
+    if (fips && fips->st_shndx) {
+        uint8_t *x = (uint8_t *)sym_value(L, fips);
+        if (x >= L->rx) {
+            uint32_t ret = 0xd65f03c0u;
+            memcpy(L->rw + (x - L->rx), &ret, 4);
+            sys_icache_invalidate(x, 4);
+            tl_log_line("ld: %s: skipped BORINGSSL_integrity_test", L->name);
+        }
+    }
     if (L->init) ((init_fn)(L->rx + (L->init - L->base_vaddr)))(argc, argv, envp);
     if (L->init_array) {
         const uint64_t *fns = at(L, L->init_array);
