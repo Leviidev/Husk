@@ -680,6 +680,8 @@ void *tl_nwindow_native(void *window) { return window ? ((tl_nwindow *)window)->
 int tl_nwindow_width(void *window) { return window ? ((tl_nwindow *)window)->width : 0; }
 int tl_nwindow_height(void *window) { return window ? ((tl_nwindow *)window)->height : 0; }
 
+static void b_atrace_noop(void) {}
+static bool b_atrace_false(void) { return false; }
 int tl_AndroidBitmap_getInfo(void *env, void *bitmap, void *info);
 int tl_AndroidBitmap_lockPixels(void *env, void *bitmap, void **addr);
 int tl_AndroidBitmap_unlockPixels(void *env, void *bitmap);
@@ -815,6 +817,9 @@ const tl_bionic_entry tl_tab_ndk[] = {
     TL_WRAP("AAsset_getLength64", b_AAsset_getLength), TL_WRAP("AAsset_getRemainingLength", b_AAsset_getRemainingLength),
     TL_WRAP("AAsset_getRemainingLength64", b_AAsset_getRemainingLength), TL_WRAP("AAsset_getBuffer", b_AAsset_getBuffer),
     TL_WRAP("AAsset_seek", b_AAsset_seek), TL_WRAP("AAsset_seek64", b_AAsset_seek), TL_WRAP("AAsset_isAllocated", b_AAsset_isAllocated),
+    /* systrace (libandroid): nothing records traces here */
+    TL_WRAP("ATrace_beginSection", b_atrace_noop), TL_WRAP("ATrace_endSection", b_atrace_noop), TL_WRAP("ATrace_isEnabled", b_atrace_false),
+    TL_WRAP("ATrace_beginAsyncSection", b_atrace_noop), TL_WRAP("ATrace_endAsyncSection", b_atrace_noop), TL_WRAP("ATrace_setCounter", b_atrace_noop),
     /* bitmaps (libjnigraphics) */
     TL_WRAP("AndroidBitmap_getInfo", tl_AndroidBitmap_getInfo), TL_WRAP("AndroidBitmap_lockPixels", tl_AndroidBitmap_lockPixels),
     TL_WRAP("AndroidBitmap_unlockPixels", tl_AndroidBitmap_unlockPixels), TL_WRAP("AndroidBitmap_getDataSpace", tl_AndroidBitmap_getDataSpace),

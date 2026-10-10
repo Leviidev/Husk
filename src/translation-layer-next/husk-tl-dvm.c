@@ -932,6 +932,20 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
         t_overflowing = false;
         return r;
     }
+    static const char *watch;
+    if (!watch) watch = getenv("TL_DVM_CALLS") ? getenv("TL_DVM_CALLS") : "";
+    if (watch[0] && strchr(watch, '.') && !strcmp(m->name, strchr(watch, '.') + 1) && !strncmp(m->cls->name, watch, (size_t)(strchr(watch, '.') - watch))) {
+        tl_log_line("dvm: call %s.%s%s self %p", m->cls->name, m->name, m->sig, (void *)self);
+        int np = 0; const char *sh = m->shorty ? m->shorty : "";
+        for (const char *q = sh + 1; *q; q++, np++) {
+            if (*q != 'L' || !params || !params[np].l) continue;
+            jobj *saved = tl_jni_pending_object(); tl_jni_clear();
+            dvm_method *ts = dvm_find_virtual(dvm_object_class(params[np].l), "toString", "()Ljava/lang/String;");
+            jvalue sv; sv.l = NULL;
+            if (ts && dvm_call_inner(ts, params[np].l, NULL, &sv)) tl_log_line("dvm:   arg %d = %.600s", np, tl_jni_string(sv.l) ? tl_jni_string(sv.l) : "null");
+            tl_jni_clear(); if (saved) tl_jni_set_pending(saved);
+        }
+    }
     bool ok = dvm_call_inner(m, self, params, ret);
     t_depth--;
     return ok;
@@ -1276,7 +1290,10 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
     }
     dvm_method *target = r->dm;
     { static const char *w2; if (!w2) w2 = getenv("TL_DVM_RES") ? getenv("TL_DVM_RES") : "";
-      if (w2[0] && strstr(r->name, w2)) tl_log_line("dvm: resolve %s.%s%s kind %d -> dm %p (%s) hm %p", r->cls ? r->cls->name : "?", r->name, r->sig, kind, (void *)r->dm, r->dm ? r->dm->cls->name : "", (void *)r->hm); }
+      const char *dot = strchr(w2, '.');
+      bool hit = w2[0] && (dot ? (r->cls && !strcmp(r->name, dot + 1) && !strncmp(r->cls->name, w2, (size_t)(dot - w2)) && !r->cls->name[dot - w2]) : strstr(r->name, w2) != NULL);
+      if (hit) tl_log_line("dvm: resolve %s.%s%s kind %d -> dm %p (%s) hm %p, receiver %s", r->cls ? r->cls->name : "?", r->name, r->sig, kind, (void *)r->dm,
+                           r->dm ? r->dm->cls->name : "", (void *)r->hm, self ? dvm_object_class(self)->name : "-"); }
     switch (kind) {
     case 3:                                                        /* static */
         if (target && !dvm_ensure_init(target->cls)) return false;
@@ -1330,6 +1347,15 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
           char b[600]; int o = 0;
           for (int i = 0; i < r->nparams && i < 10; i++) o += snprintf(b + o, sizeof(b) - o, " %c:%llx", r->shorty[1 + i], (unsigned long long)params[i].j);
           tl_log_line("dvm: args %s.%s from %s.%s regs[%d..]:%s", target->cls->name, target->name, caller->cls->name, caller->name, areg[0], b);
+          /* TL_DVM_ARGS_STR: and what each object argument says of itself */
+          if (getenv("TL_DVM_ARGS_STR")) for (int i = 0; i < r->nparams && i < 10; i++) {
+              if (r->shorty[1 + i] != 'L' || !params[i].l) continue;
+              jobj *saved = tl_jni_pending_object(); tl_jni_clear();
+              dvm_method *ts = dvm_find_virtual(dvm_object_class(params[i].l), "toString", "()Ljava/lang/String;");
+              jvalue sv; sv.l = NULL;
+              if (ts && dvm_call(ts, params[i].l, NULL, &sv)) tl_log_line("dvm:   arg %d = %.600s", i, tl_jni_string(sv.l) ? tl_jni_string(sv.l) : "null");
+              tl_jni_clear(); if (saved) tl_jni_set_pending(saved);
+          }
       } }
     return dvm_call(target, self, params, result);
 }
