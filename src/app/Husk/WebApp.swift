@@ -112,6 +112,7 @@ final class WebAppRuntime: NSObject {
         super.init()
         handler.runtime = self
         controller.add(WeakMessageHandler(self), name: "huskBridge")
+        controller.add(WeakMessageHandler(self), name: "huskLog")
         controller.addUserScript(WKUserScript(source: bootScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         webView.uiDelegate = self
         webView.navigationDelegate = self
@@ -142,6 +143,19 @@ final class WebAppRuntime: NSObject {
     // MARK: the bridge script
 
     private func bootScript() -> String {
+        // The page's errors, in Husk's log: what a web app that shows nothing needs looked at first.
+        let errors = """
+        window.addEventListener('error', function (e) { try { window.webkit.messageHandlers.huskLog.postMessage('error: ' + e.message + ' at ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0) + ' ' + (e.error && e.error.stack || '')); } catch (x) {} });
+        window.addEventListener('unhandledrejection', function (e) { try { window.webkit.messageHandlers.huskLog.postMessage('unhandled rejection: ' + (e.reason && (e.reason.message || e.reason))); } catch (x) {} });
+        """
+        // Window properties Chromium lets a page replace and WebKit does not (assigning one throws in strict code).
+        let replaceable = """
+        ['speechSynthesis'].forEach(function (k) { try { var v = window[k]; Object.defineProperty(window, k, { value: v, writable: true, configurable: true }); } catch (x) {} });
+        """
+        return errors + replaceable + bootScriptForKind()
+    }
+
+    private func bootScriptForKind() -> String {
         switch kind {
         case .capacitor:
             let bridge = (try? String(contentsOf: assets.appendingPathComponent("native-bridge.js"), encoding: .utf8)) ?? ""
@@ -462,6 +476,7 @@ final class WebAppRuntime: NSObject {
 extension WebAppRuntime: WKScriptMessageHandler {
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         MainActor.assumeIsolated {
+            if message.name == "huskLog" { HuskLog.log("web", "\(package): \(message.body)"); return }
             if let s = message.body as? String { capacitorCall(s) }
             else if let obj = message.body as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: obj) {
                 capacitorCall(String(decoding: data, as: UTF8.self))
@@ -552,10 +567,12 @@ private final class SchemeHandler: NSObject, WKURLSchemeHandler {
             let candidate = runtime.root.appendingPathComponent(String(path.dropFirst())).standardizedFileURL
             guard candidate.path.hasPrefix(runtime.root.standardizedFileURL.path) else { return nil }
             var isDir: ObjCBool = false
-            if FileManager.default.fileExists(atPath: candidate.path, isDirectory: &isDir), isDir.boolValue {
-                return candidate.appendingPathComponent("index.html")
+            if FileManager.default.fileExists(atPath: candidate.path, isDirectory: &isDir) {
+                return isDir.boolValue ? candidate.appendingPathComponent("index.html") : candidate
             }
-            return candidate
+            // A single-page app's route (/games, /settings/about): the app's index, whose router shows the page, as Capacitor's
+            // server does on Android.
+            return candidate.pathExtension.isEmpty ? runtime.root.appendingPathComponent("index.html") : candidate
         }
         guard let file, let data = try? Data(contentsOf: file) else {
             let r = HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!
@@ -564,7 +581,8 @@ private final class SchemeHandler: NSObject, WKURLSchemeHandler {
             task.didFinish()
             return
         }
-        let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        let mime = Self.mimeTypes[file.pathExtension.lowercased()]
+            ?? UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         let headers = ["Content-Type": mime, "Content-Length": "\(data.count)", "Cache-Control": "no-cache",
                        "Access-Control-Allow-Origin": "*"]
         task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!)
@@ -573,6 +591,13 @@ private final class SchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
+
+    /// The types a page is strict about (module scripts, workers, WebAssembly), which the system's table does not all know.
+    private static let mimeTypes = [
+        "js": "text/javascript", "mjs": "text/javascript", "cjs": "text/javascript", "css": "text/css", "html": "text/html",
+        "htm": "text/html", "json": "application/json", "map": "application/json", "wasm": "application/wasm",
+        "svg": "image/svg+xml", "webmanifest": "application/manifest+json", "woff": "font/woff", "woff2": "font/woff2",
+    ]
 }
 
 /// WKUserContentController keeps its handlers strongly; this breaks the cycle with the runtime that owns the web view.
