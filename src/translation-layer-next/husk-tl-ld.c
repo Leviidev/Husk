@@ -1836,9 +1836,13 @@ static bool relocate(tl_lib *L)
 }
 
 /* Folders a library named only by its file name is also looked for in (the Java runtime's: the ART APEX's lib64). */
-static char *g_search[8];
+static char *g_search[32];
 static int g_nsearch;
-void tl_ld_add_search_dir(const char *dir) { if (g_nsearch < 8) g_search[g_nsearch++] = strdup(dir); }
+void tl_ld_add_search_dir(const char *dir)
+{
+    for (int i = 0; i < g_nsearch; i++) if (!strcmp(g_search[i], dir)) return;
+    if (g_nsearch < 32) g_search[g_nsearch++] = strdup(dir);
+}
 
 static tl_lib *load_locked(const char *name, int depth)
 {
@@ -1848,7 +1852,13 @@ static tl_lib *load_locked(const char *name, int depth)
     if (depth > 32) { tl_log_line("ld: dependency chain too deep at %s", name); return NULL; }
 
     uint8_t *file; size_t flen;
-    bool got = fetch_from_apks(base_name(name), &file, &flen) || fetch_from_file(name, &file, &flen);
+    bool got = fetch_from_apks(base_name(name), &file, &flen);
+    if (!got && fetch_from_file(name, &file, &flen)) {
+        got = true;
+        /* a library the app unpacked itself (SoLoader's Superpack, an update): what it needs is next to it */
+        char dir[1024]; snprintf(dir, sizeof(dir), "%s", name);
+        char *sl = strrchr(dir, '/'); if (sl && sl != dir) { *sl = 0; tl_ld_add_search_dir(dir); }
+    }
     for (int d = 0; !got && d < g_nsearch; d++) {
         char path[1024];
         snprintf(path, sizeof(path), "%s/%s", g_search[d], base_name(name));

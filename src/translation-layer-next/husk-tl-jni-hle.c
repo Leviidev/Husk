@@ -437,7 +437,8 @@ static void System_load(tl_jcall *c)
     const char *path = S(c->args[0].l);
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
-    if (!load_native_library(base)) {
+    struct stat st;
+    if (!load_native_library(base != path && stat(path, &st) == 0 && st.st_size > 0 ? path : base)) {
         char msg[300]; snprintf(msg, sizeof(msg), "dlopen failed: library \"%s\" not found", path);
         tl_jni_throw("java/lang/UnsatisfiedLinkError", msg);
     }

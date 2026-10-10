@@ -1256,6 +1256,22 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 122: case 123: return 0;                                                       /* sched_setaffinity / getaffinity */
     case 167: return 0;                                                                 /* prctl */
     case 160: return 0;                                                                 /* uname */
+    case 47: {                                                                          /* fallocate: growing the file (Superpack maps it at its full size, then writes) */
+        if (a1) return -95;
+        struct stat st;
+        if (fstat((int)a0, &st)) return -tl_errno_to_guest(errno);
+        if (st.st_size >= a2 + a3) return 0;
+        return ftruncate((int)a0, a2 + a3) ? -tl_errno_to_guest(errno) : 0;
+    }
+    case 48: {                                                                          /* faccessat: only AT_FDCWD */
+        if ((int)a0 != -100) return -38;
+        char buf[1024]; const char *p = tl_path_resolve((const char *)a1, buf, sizeof(buf));
+        return access(p, (int)a2) ? -tl_errno_to_guest(errno) : 0;
+    }
+    case 62: { off_t r = lseek((int)a0, (off_t)a1, (int)a2); return r < 0 ? -tl_errno_to_guest(errno) : (long)r; }
+    case 101: { int r = nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
+    case 124: sched_yield(); return 0;
+    case 132: return 0;                                                                 /* sigaltstack: accepted (guest handlers are not installed) */
     default: break;
     }
     char what[96];

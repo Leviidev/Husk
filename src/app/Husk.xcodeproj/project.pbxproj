@@ -112,6 +112,7 @@
 		8A67CA1A0D7F7D19ED445EF5 /* husk-tl-dvm-gles11.c in Sources */ = {isa = PBXBuildFile; fileRef = 69B1AB5462FFCEBD084F5605 /* husk-tl-dvm-gles11.c */; };
 		8B5DED1C7C866D7140418522 /* HuskJITMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198FA3419B26F852A2B05ED9 /* HuskJITMessages.swift */; };
 		8C743346878007F8D22CEA0A /* AppSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D08F1730303C74C1B7DE23 /* AppSource.swift */; };
+		8CA6BE4E0A271053E40DA9BA /* AppDiagnosis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9651633AB1B5F444EB71B286 /* AppDiagnosis.swift */; };
 		8DBD7C748F519C3321EC0E98 /* WebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD91E5537023860BD27A855 /* WebApp.swift */; };
 		8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */; };
 		945DD86A7A210B74B2C7FF17 /* TLScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DDBC0AF7BE5742AA867515 /* TLScreenView.swift */; };
@@ -366,6 +367,7 @@
 		92BB8B6B5EA2FAE7198451C0 /* GoogleSignInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInSheet.swift; sourceTree = "<group>"; };
 		9545A76356E04E05C3174FA8 /* husk-tl-va.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-va.h"; sourceTree = "<group>"; };
 		95865DA863ED1D2635023E54 /* husk-tl-gamemaker.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gamemaker.c"; sourceTree = "<group>"; };
+		9651633AB1B5F444EB71B286 /* AppDiagnosis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiagnosis.swift; sourceTree = "<group>"; };
 		96F492FB5CD1D4A0B2D79E12 /* Protobuf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protobuf.swift; sourceTree = "<group>"; };
 		9713186CDCF6F1188BB4ABE1 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = "../../build/ios-arm64/lib/MoltenVK.xcframework"; sourceTree = "<group>"; };
 		9736391C1BCE43667293DB7B /* Geode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geode.swift; sourceTree = "<group>"; };
@@ -482,6 +484,7 @@
 				2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */,
 				3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */,
 				C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */,
+				9651633AB1B5F444EB71B286 /* AppDiagnosis.swift */,
 				0FCF57D3D74B527852EC0327 /* AppIcon.swift */,
 				15D08F1730303C74C1B7DE23 /* AppSource.swift */,
 				D05B2EFC533719ED2E455C24 /* AppTheme.swift */,
@@ -998,6 +1001,7 @@
 				D354FA5AC96B3361B4A5A635 /* ApkMetadata.swift in Sources */,
 				42B7F8F954D9CF0C84AFD8EE /* AppClip.swift in Sources */,
 				5C20168883D258DF9715F6D9 /* AppDetailView.swift in Sources */,
+				8CA6BE4E0A271053E40DA9BA /* AppDiagnosis.swift in Sources */,
 				4EF06C9496D4D86646EFD631 /* AppIcon.swift in Sources */,
 				8C743346878007F8D22CEA0A /* AppSource.swift in Sources */,
 				F6B3DA43CA16FAF920EF236D /* AppTheme.swift in Sources */,

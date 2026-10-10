@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "husk-tl-bionic.h"
@@ -2102,7 +2103,11 @@ bool tl_jni_load_library(const char *base);
 bool tl_dvm_load_library(const char *name_or_path);
 bool tl_dvm_load_library(const char *name_or_path)
 {
+    /* a path to a library the app unpacked itself (SoLoader) loads from there; the APK's copy of the same name wins (the loader
+     * looks there first) */
     const char *slash = strrchr(name_or_path, '/');
+    struct stat st;
+    if (slash && stat(name_or_path, &st) == 0 && st.st_size > 0) return tl_jni_load_library(name_or_path);
     return tl_jni_load_library(slash ? slash + 1 : name_or_path);
 }
 

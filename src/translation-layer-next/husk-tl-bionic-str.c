@@ -334,6 +334,8 @@ static char *b___strncpy_chk2(char *d, const char *s, size_t n, size_t dl, size_
 /* ------------------------------------------------------------------ ctype */
 
 static char g_ctype[257];
+/* bionic's _ctype_ is a pointer to the table (const char *_ctype_), read through as _ctype_[c + 1] */
+static const char *g_ctype_ptr = g_ctype;
 static char **g_environ_var;
 
 __attribute__((constructor)) static void init_tables(void)
@@ -586,7 +588,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_DIRECT(iswalpha_l), TL_DIRECT(iswblank_l), TL_DIRECT(iswcntrl_l), TL_DIRECT(iswdigit_l), TL_DIRECT(iswlower_l),
     TL_DIRECT(iswprint_l), TL_DIRECT(iswpunct_l), TL_DIRECT(iswspace_l), TL_DIRECT(iswupper_l), TL_DIRECT(iswxdigit_l),
     TL_DIRECT(towlower), TL_DIRECT(towupper), TL_DIRECT(towlower_l), TL_DIRECT(towupper_l),
-    TL_DATA("_ctype_", g_ctype), TL_WRAP("__ctype_get_mb_cur_max", b___ctype_get_mb_cur_max),
+    TL_DATA("_ctype_", &g_ctype_ptr), TL_WRAP("__ctype_get_mb_cur_max", b___ctype_get_mb_cur_max),
     /* wchar.h */
     TL_WRAP("mbrtowc", b_mbrtowc), TL_WRAP("mbrlen", b_mbrlen), TL_WRAP("mbtowc", b_mbtowc), TL_WRAP("wcrtomb", b_wcrtomb),
     TL_WRAP("mbsnrtowcs", b_mbsnrtowcs), TL_WRAP("mbsrtowcs", b_mbsrtowcs), TL_WRAP("wcsnrtombs", b_wcsnrtombs),

@@ -622,6 +622,13 @@ static void *bionic_dlopen(const char *path, int flags)
     return L;
 }
 
+static void *bionic_dlsym(void *handle, const char *name);
+static void *bionic_loader_dlopen(const char *path, int flags, const void *caller) { (void)caller; return bionic_dlopen(path, flags); }
+static void *bionic_loader_android_dlopen_ext(const char *path, int flags, const void *info, const void *caller) { (void)info; (void)caller; return bionic_dlopen(path, flags); }
+static void *bionic_android_dlopen_ext(const char *path, int flags, const void *info) { (void)info; return bionic_dlopen(path, flags); }
+static void *bionic_loader_dlsym(void *handle, const char *name, const void *caller) { (void)caller; return bionic_dlsym(handle, name); }
+static void *bionic_loader_dlvsym(void *handle, const char *name, const char *ver, const void *caller) { (void)ver; (void)caller; return bionic_dlsym(handle, name); }
+
 static void *bionic_dlsym(void *handle, const char *name)
 {
     if (!name) return NULL;
@@ -775,6 +782,11 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("dlerror", bionic_dlerror),
     TL_WRAP("dladdr", bionic_dladdr),
     TL_WRAP("dl_iterate_phdr", bionic_dl_iterate_phdr),
+    /* libdl's implementation entry points, which Facebook's loader hooks look up by name to call with a caller address */
+    TL_WRAP("android_dlopen_ext", bionic_android_dlopen_ext), TL_WRAP("__loader_dlopen", bionic_loader_dlopen), TL_WRAP("__loader_android_dlopen_ext", bionic_loader_android_dlopen_ext),
+    TL_WRAP("__loader_dlsym", bionic_loader_dlsym), TL_WRAP("__loader_dlvsym", bionic_loader_dlvsym),
+    TL_WRAP("__loader_dlclose", bionic_dlclose), TL_WRAP("__loader_dlerror", bionic_dlerror), TL_WRAP("__loader_dladdr", bionic_dladdr),
+    TL_WRAP("__loader_dl_iterate_phdr", bionic_dl_iterate_phdr),
     TL_END
 };
 

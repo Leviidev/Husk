@@ -273,6 +273,25 @@ static long b_recvmsg(int fd, guest_msghdr *g, int flags)
     TL_ERRNO_END();
     return r;
 }
+/* sendmmsg / recvmmsg: Darwin has neither; one message at a time (QUIC and DNS libraries batch with them) */
+typedef struct { guest_msghdr hdr; unsigned int len; } guest_mmsghdr;
+static int b_sendmmsg(int fd, guest_mmsghdr *v, unsigned int n, int flags)
+{
+    unsigned int i = 0;
+    for (; i < n; i++) { long r = b_sendmsg(fd, &v[i].hdr, flags); if (r < 0) return i ? (int)i : -1; v[i].len = (unsigned int)r; }
+    return (int)i;
+}
+static int b_recvmmsg(int fd, guest_mmsghdr *v, unsigned int n, int flags, void *timeout)
+{
+    (void)timeout;
+    unsigned int i = 0;
+    for (; i < n; i++) {
+        long r = b_recvmsg(fd, &v[i].hdr, i ? flags | 0x40 /* MSG_DONTWAIT */ : flags);
+        if (r < 0) return i ? (int)i : -1;
+        v[i].len = (unsigned int)r;
+    }
+    return (int)i;
+}
 
 static int b_shutdown(int fd, int how) { TL_ERRNO_BEGIN(); int r = shutdown(fd, how); TL_ERRNO_END(); return r; }
 
@@ -495,7 +514,7 @@ const tl_bionic_entry tl_tab_net[] = {
     TL_WRAP("socket", b_socket), TL_WRAP("socketpair", b_socketpair), TL_WRAP("bind", b_bind), TL_WRAP("connect", b_connect),
     TL_WRAP("listen", b_listen), TL_WRAP("accept", b_accept), TL_WRAP("accept4", b_accept4), TL_WRAP("send", b_send),
     TL_WRAP("recv", b_recv), TL_WRAP("sendto", b_sendto), TL_WRAP("recvfrom", b_recvfrom), TL_WRAP("__recvfrom_chk", b___recvfrom_chk), TL_WRAP("sendmsg", b_sendmsg),
-    TL_WRAP("recvmsg", b_recvmsg), TL_WRAP("shutdown", b_shutdown), TL_WRAP("getsockname", b_getsockname),
+    TL_WRAP("recvmsg", b_recvmsg), TL_WRAP("sendmmsg", b_sendmmsg), TL_WRAP("recvmmsg", b_recvmmsg), TL_WRAP("shutdown", b_shutdown), TL_WRAP("getsockname", b_getsockname),
     TL_WRAP("getpeername", b_getpeername), TL_WRAP("setsockopt", b_setsockopt), TL_WRAP("getsockopt", b_getsockopt),
     TL_WRAP("getaddrinfo", b_getaddrinfo), TL_WRAP("android_getaddrinfofornet", b_android_getaddrinfofornet), TL_WRAP("freeaddrinfo", b_freeaddrinfo), TL_WRAP("gai_strerror", b_gai_strerror),
     TL_WRAP("getnameinfo", b_getnameinfo), TL_WRAP("gethostbyname", b_gethostbyname), TL_WRAP("gethostbyaddr", b_gethostbyaddr),
