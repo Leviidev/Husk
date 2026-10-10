@@ -21,6 +21,9 @@ bool tl_flutter_run(void);                         /* start the platform thread:
 unsigned long tl_flutter_frames(void);
 bool tl_flutter_first_frame(void);                 /* the engine has said its first frame is up (FlutterJNI.onFirstFrame) */
 
+/* The app going to the background (paused) or coming back. */
+void tl_flutter_set_paused(bool paused);
+
 /* Input: phase 0 down, 1 move, 2 up, 3 cancel; x, y in surface pixels. */
 void tl_flutter_touch(int phase, int id, float x, float y);
 

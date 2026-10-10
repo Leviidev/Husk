@@ -56,6 +56,14 @@ bool husk_godot_launch(const char *apk, const char *data_dir, void *metal_layer,
 bool husk_gta_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                      const char *angle_dylib, const char *ca_bundle);
 void husk_ue4_set_vulkan(const char *dylib);
+
+/* Flutter apps (libflutter.so): the engine and the app's Dart run natively; Impeller draws through ANGLE. */
+bool husk_flutter_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
+                         const char *angle_dylib, const char *ca_bundle);
+int  husk_flutter_is_app(const char *apk);
+void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
+void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
+void husk_native_set_system_files(const char *cacerts_dir, const char *fonts_root);
 /* Another APK of the app about to be launched (a split, an asset pack). Before the launch call; at most three. */
 void husk_native_add_package(const char *apk);
 /* The folder games see as Android's shared storage (/sdcard outside their own Android/data), or NULL for each game's own. */
@@ -64,6 +72,8 @@ void husk_native_set_shared_storage(const char *dir);
 void husk_sdl_set_safe_insets(int left, int top, int right, int bottom);
 /* Whether an SDL game's manifest asks for a portrait screen (the others are landscape). */
 int husk_sdl_apk_is_portrait(const char *apk);
+int husk_apk_orientation(const char *apk);
+int husk_apk_is_game(const char *apk);         /* the manifest files it as a game (appCategory / isGame) */      /* 1 portrait, 0 landscape, -1 the manifest does not say */
 /* Soft keyboard for an SDL game: the handler is told 1 = show, 2 = hide; typed text goes in with husk_sdl_commit_text, Backspace (67) and Enter (66) with husk_sdl_key. */
 void husk_sdl_set_keyboard_handler(void (*handler)(int action));
 void husk_sdl_commit_text(const char *utf8);

@@ -44,6 +44,7 @@
 		305642B7B63D6DC85E36D091 /* husk-tl-nativeactivity.c in Sources */ = {isa = PBXBuildFile; fileRef = 3B72237F810FCE0EE433FA3D /* husk-tl-nativeactivity.c */; };
 		308AC941024A28652B15B3F4 /* husk-tl-res.c in Sources */ = {isa = PBXBuildFile; fileRef = 7FD8DC66414547110F0E0B0E /* husk-tl-res.c */; };
 		316E012591DFEDF656D393B4 /* HuskDownloadsWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AC541CFA6D712D1A5F2E66B /* HuskDownloadsWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		318AFCE2330050A6BFE8B98A /* husk-tl-flutter-codec.c in Sources */ = {isa = PBXBuildFile; fileRef = 4711462A9432487DE6DD66EF /* husk-tl-flutter-codec.c */; };
 		340ADF13F9F0E48A5A443600 /* HuskBridgeFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */; };
 		3519D130E3ACECEB2A25D174 /* husk-tl-bionic-net.c in Sources */ = {isa = PBXBuildFile; fileRef = 7F8AFBCC1E9A402444C2D1E6 /* husk-tl-bionic-net.c */; };
 		3743DAF4A88A08B2946A4066 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB0AF32D5E40E753DDD85DA /* Theme.swift */; };
@@ -78,6 +79,7 @@
 		6F6142A042D5107E3F35FBB4 /* Showcase.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE40E8DB8AB8EBDF4EA539E /* Showcase.swift */; };
 		70AAC964808B173B7E8E395B /* husk-tl-va.c in Sources */ = {isa = PBXBuildFile; fileRef = 23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */; };
 		70AF7E999105691EB51B54FD /* JITSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83275C7FEF2DEB950028D914 /* JITSetup.swift */; };
+		7197DC98582596A2FE390FF2 /* husk-tl-bionic-sys.c in Sources */ = {isa = PBXBuildFile; fileRef = ABC0FA8EF2530487F1EE6499 /* husk-tl-bionic-sys.c */; };
 		79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771B4FD56CABC214FEED6DFE /* GuestImage.swift */; };
 		7A7A40B3B76C8BA2D7262907 /* husk-tl-egl-es31.inc in Resources */ = {isa = PBXBuildFile; fileRef = CE99D9E12CB5823C669D9CBC /* husk-tl-egl-es31.inc */; };
 		7CA02F2FB22207E86499451E /* DownloadsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2F367C3774A342D33D245F /* DownloadsWidget.swift */; };
@@ -99,6 +101,7 @@
 		9E3948EF967C2A0773C521DD /* husk-tl-jni-assetstream.c in Sources */ = {isa = PBXBuildFile; fileRef = FD6B5A72980D1EC374BFC326 /* husk-tl-jni-assetstream.c */; };
 		9E74CA82D210C2EE9E6CB09B /* DownloadsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FEAD390092357A2CCDCB7E /* DownloadsTab.swift */; };
 		9FA806201E1AF87FE7581742 /* husk-tl-jni-security.c in Sources */ = {isa = PBXBuildFile; fileRef = 85D8F83C8952092997CE071C /* husk-tl-jni-security.c */; };
+		9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */ = {isa = PBXBuildFile; fileRef = 4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */; };
 		A687EB34AE28E4CBBA4136BF /* husk-tl-geode.c in Sources */ = {isa = PBXBuildFile; fileRef = 9235AEC134C86769DDF7E880 /* husk-tl-geode.c */; };
 		A7FBE49898024C7B1D03E018 /* husk-tl-sound.c in Sources */ = {isa = PBXBuildFile; fileRef = 91DE2675795B851A4C47ED9E /* husk-tl-sound.c */; };
 		AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */ = {isa = PBXBuildFile; fileRef = AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */; };
@@ -117,6 +120,7 @@
 		BF3B75F24D911729EFB2E8A6 /* husk-tl-gtasa.c in Sources */ = {isa = PBXBuildFile; fileRef = FCBE4C5BD3BC5033100C968E /* husk-tl-gtasa.c */; };
 		C1A4C57DAA6BFD79AAE5FD88 /* JITBuiltIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C233A62FB57030C0818489 /* JITBuiltIn.swift */; };
 		C561B0A164BC213A2A56D9C9 /* husk-tl-zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 9E133BDBB6CB711003066815 /* husk-tl-zip.c */; };
+		CDA36696EE466B42197CA324 /* husk-tl-flutter-plugins.c in Sources */ = {isa = PBXBuildFile; fileRef = 2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */; };
 		CEA21B89D80905F908AEF47D /* husk-tl-bionic-str.c in Sources */ = {isa = PBXBuildFile; fileRef = 42C4CB582E3E0D917E2DBB4C /* husk-tl-bionic-str.c */; };
 		D0C1B402D90EE4224DB8422E /* husk-tl-sdl-apps.c in Sources */ = {isa = PBXBuildFile; fileRef = 2284FD76BFBDA116B1181F5F /* husk-tl-sdl-apps.c */; };
 		D1DB4D94478AB7DD95E1A24E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E4865C5FE44ADD210A4917 /* OnboardingView.swift */; };
@@ -221,6 +225,7 @@
 		1F4699CEF50111F7720E34F4 /* husk-tl-jni-gms.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-gms.c"; sourceTree = "<group>"; };
 		211CC4F06EC722E5972D7F3B /* TLUnityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TLUnityView.swift; sourceTree = "<group>"; };
 		2284FD76BFBDA116B1181F5F /* husk-tl-sdl-apps.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-sdl-apps.c"; sourceTree = "<group>"; };
+		2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-plugins.c"; sourceTree = "<group>"; };
 		23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-va.c"; sourceTree = "<group>"; };
 		242DD6EEB7DA97455CD76826 /* husk-tl-json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-json.c"; sourceTree = "<group>"; };
 		25DB1D606431C481B06C7337 /* HuskDownloadActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskDownloadActivity.swift; sourceTree = "<group>"; };
@@ -234,6 +239,7 @@
 		2E91A601F16886103BC482AB /* QemuRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QemuRunner.swift; sourceTree = "<group>"; };
 		2E95AED70FA457D447AE0DFF /* LICENSE-StikJIT-MPL-2.0.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-StikJIT-MPL-2.0.txt"; sourceTree = "<group>"; };
 		319324C01D99446B862A6278 /* TechnicalDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TechnicalDetails.swift; sourceTree = "<group>"; };
+		328C4FFE40DC336DFEBD2289 /* husk-tl-flutter-codec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-flutter-codec.h"; sourceTree = "<group>"; };
 		332A592567163CFFEA536B06 /* husk-tl-godot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-godot.h"; sourceTree = "<group>"; };
 		336AB2FDC58A5C08D55FF8F9 /* icon-tintedlight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-tintedlight.png"; sourceTree = "<group>"; };
 		3517ADBC96090BF2A656BD8B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -251,9 +257,11 @@
 		42CBC0D7ACAB400BDDFD7F9E /* husk-tl-xmem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-xmem.c"; sourceTree = "<group>"; };
 		4385A14B11CBA1C3502D433D /* husk-tl-scan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-scan.c"; sourceTree = "<group>"; };
 		43C233A62FB57030C0818489 /* JITBuiltIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITBuiltIn.swift; sourceTree = "<group>"; };
+		4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter.c"; sourceTree = "<group>"; };
 		44BAD09F39FA4184F97AB0D0 /* husk-tl-bionic-cxx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-cxx.c"; sourceTree = "<group>"; };
 		46287061DCF461334B1A8D2E /* husk-tl-gamepad.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gamepad.c"; sourceTree = "<group>"; };
 		463C342B38F6BF37752F4E72 /* husk-tl-audio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-audio.c"; sourceTree = "<group>"; };
+		4711462A9432487DE6DD66EF /* husk-tl-flutter-codec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-codec.c"; sourceTree = "<group>"; };
 		473B239012BE00391A4164ED /* husk-tl-audio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-audio.h"; sourceTree = "<group>"; };
 		48DA17A30AE793049F358717 /* DiscoverTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverTab.swift; sourceTree = "<group>"; };
 		48F68F2EBD9951E62113DE0E /* husk-tl-codewrite.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-codewrite.h"; sourceTree = "<group>"; };
@@ -283,6 +291,7 @@
 		685DEBAD91D2650A85E7BA19 /* StoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreView.swift; sourceTree = "<group>"; };
 		690B2DA647B7B75C11DDDA9F /* HuskBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HuskBridge.h; sourceTree = "<group>"; };
 		6990DECA802D2C4493C28A4A /* husk-tl-egl.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-egl.c"; sourceTree = "<group>"; };
+		6A015D18C0BBEB07C1AB42C0 /* husk-tl-flutter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-flutter.h"; sourceTree = "<group>"; };
 		6B7990E89ED6098029981E38 /* husk-tl-cocos.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-cocos.c"; sourceTree = "<group>"; };
 		6CAD18BA88F03D63EF1F5DF2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6D7C478354C0F283365422FD /* husk-tl-dex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-dex.h"; sourceTree = "<group>"; };
@@ -324,6 +333,7 @@
 		A81352103CC22A0719104C2C /* husk-tl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl.h"; sourceTree = "<group>"; };
 		AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dexindex.c"; sourceTree = "<group>"; };
 		AAE77760F5BCF4EFAEFE146D /* Downloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Downloads.swift; sourceTree = "<group>"; };
+		ABC0FA8EF2530487F1EE6499 /* husk-tl-bionic-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-sys.c"; sourceTree = "<group>"; };
 		AE14E4B61CC873501D7EAE6E /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
 		B318C3E235A47EA295C46433 /* husk-tl-nativeactivity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-nativeactivity.h"; sourceTree = "<group>"; };
 		B74F9AA42414905593B347BA /* husk-jit.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "husk-jit.js"; sourceTree = "<group>"; };
@@ -362,6 +372,7 @@
 		EA7240C2BD49C9F0CF7CB3DF /* icon-dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-dark.png"; sourceTree = "<group>"; };
 		EAB0083C1A580217DEF944CA /* husk-tl-egl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-egl.h"; sourceTree = "<group>"; };
 		ED3F7E0267BE8F2AC09FF772 /* husk-tl-jni-ue4.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-ue4.c"; sourceTree = "<group>"; };
+		EE38587B069F4AC65061C590 /* husk-tl-flutter-plugins.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-flutter-plugins.h"; sourceTree = "<group>"; };
 		EE533073FECAD5C54B677935 /* icon-tinteddark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-tinteddark.png"; sourceTree = "<group>"; };
 		EF6C1917FEC08090833D9CF0 /* JITPairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITPairing.swift; sourceTree = "<group>"; };
 		F13D91C39BBC9C52E70E1520 /* husk-tl-dexindex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-dexindex.h"; sourceTree = "<group>"; };
@@ -536,6 +547,7 @@
 				7F8AFBCC1E9A402444C2D1E6 /* husk-tl-bionic-net.c */,
 				C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */,
 				42C4CB582E3E0D917E2DBB4C /* husk-tl-bionic-str.c */,
+				ABC0FA8EF2530487F1EE6499 /* husk-tl-bionic-sys.c */,
 				E8B800E5E712B4EFFB9F5D59 /* husk-tl-bionic.c */,
 				1C045A42AF1AB4965370A87F /* husk-tl-bionic.h */,
 				9217F354B8587F75369229F8 /* husk-tl-cocos-text.c */,
@@ -548,6 +560,12 @@
 				CE99D9E12CB5823C669D9CBC /* husk-tl-egl-es31.inc */,
 				6990DECA802D2C4493C28A4A /* husk-tl-egl.c */,
 				EAB0083C1A580217DEF944CA /* husk-tl-egl.h */,
+				4711462A9432487DE6DD66EF /* husk-tl-flutter-codec.c */,
+				328C4FFE40DC336DFEBD2289 /* husk-tl-flutter-codec.h */,
+				2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */,
+				EE38587B069F4AC65061C590 /* husk-tl-flutter-plugins.h */,
+				4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */,
+				6A015D18C0BBEB07C1AB42C0 /* husk-tl-flutter.h */,
 				CFAB9C41A483CA08C1037AAC /* husk-tl-gameactivity.c */,
 				0C8178C469873F2DA90BB728 /* husk-tl-gameactivity.h */,
 				46287061DCF461334B1A8D2E /* husk-tl-gamepad.c */,
@@ -833,7 +851,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n\n# UEFI firmware for the Phase 1 guest: Debian's cloud image boots through\n# GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,\n# so the IPA's own zip squeezes it to about a megabyte -- cheaper than\n# carrying a decompressor to unpack it at runtime.\nFW=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd\"\nif [ ! -f \"$FW\" ]; then\n  bunzip2 -c \"$BIOS/edk2-aarch64-code.fd.bz2\" > \"$FW\"\nfi\n\n# These two qcow2 files are tiny sparse seeds (64 MiB and 16 GiB\n# virtual). The app copies them into Documents on first launch; the\n# pre-booted snapshot later replaces the userdata seed in place.\nQEMU_IMG=\"$(command -v qemu-img || true)\"\nif [ -z \"$QEMU_IMG\" ]; then\n  echo \"error: qemu-img is required to generate the firmware and userdata seeds\" >&2\n  exit 1\nfi\nVARS_SEED=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-efi-vars-seed.fd\"\nVDB_SEED=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-vdb-seed.qcow2\"\nrm -f \"$VARS_SEED\" \"$VDB_SEED\"\n\"$QEMU_IMG\" create -f qcow2 \"$VARS_SEED\" 64M\n\"$QEMU_IMG\" create -f qcow2 \"$VDB_SEED\" 16G\n";
+			shellScript = "set -e\nGUEST=\"$SRCROOT/../../guests/phase0\"\nif [ ! -f \"$GUEST/vmlinuz-virt\" ]; then\n  echo \"error: guest missing. Run ./scripts/fetch_phase0_guest.sh\" >&2\n  exit 1\nfi\nmkdir -p \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncp \"$GUEST/vmlinuz-virt\" \"$GUEST/initramfs-virt\" \\\n   \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n\n# QEMU loads option ROMs by name from its data directory (-L). The full\n# pc-bios tree is 24 MB and almost entirely firmware for architectures\n# we will never boot (sparc64, riscv, loongarch, x86, ppc), so ship only\n# the network boot ROMs -- 1.6 MB, and the only ones -M virt asks for.\nBIOS=\"$SRCROOT/../../third_party/build/qemu-10.0.12-utm/pc-bios\"\nDEST=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/pc-bios\"\nmkdir -p \"$DEST\"\ncp \"$BIOS\"/efi-*.rom \"$BIOS\"/pxe-*.rom \"$DEST/\" 2>/dev/null || true\n\n# UEFI firmware for the Phase 1 guest: Debian's cloud image boots through\n# GRUB under UEFI, so this is required. It is 64 MiB but almost all zeros,\n# so the IPA's own zip squeezes it to about a megabyte -- cheaper than\n# carrying a decompressor to unpack it at runtime.\nFW=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/edk2-aarch64-code.fd\"\nif [ ! -f \"$FW\" ]; then\n  bunzip2 -c \"$BIOS/edk2-aarch64-code.fd.bz2\" > \"$FW\"\nfi\n\n# These two qcow2 files are tiny sparse seeds (64 MiB and 16 GiB\n# virtual). The app copies them into Documents on first launch; the\n# pre-booted snapshot later replaces the userdata seed in place.\nQEMU_IMG=\"$(command -v qemu-img || true)\"\nif [ -z \"$QEMU_IMG\" ]; then\n  echo \"error: qemu-img is required to generate the firmware and userdata seeds\" >&2\n  exit 1\nfi\nVARS_SEED=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-efi-vars-seed.fd\"\nVDB_SEED=\"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/lineage-vdb-seed.qcow2\"\nrm -f \"$VARS_SEED\" \"$VDB_SEED\"\n\"$QEMU_IMG\" create -f qcow2 \"$VARS_SEED\" 64M\n\"$QEMU_IMG\" create -f qcow2 \"$VDB_SEED\" 16G\n\n# The parts of Android's /system that apps on the translation layer read directly: CA certificates and the system\n# fonts (scripts/build_android_system.sh makes them from the Lineage image). Flutter apps need both.\nSYS=\"$SRCROOT/../../build/android-system\"\nif [ -d \"$SYS/fonts\" ]; then\n  rsync -a --delete \"$SYS/\" \"$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/android-system/\"\nelse\n  echo \"warning: build/android-system missing (scripts/build_android_system.sh): Flutter apps will have no system fonts\" >&2\nfi\n";
 		};
 		5C79258825AC47DF0D7016EC /* Embed StikJIT */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -948,6 +966,7 @@
 				3519D130E3ACECEB2A25D174 /* husk-tl-bionic-net.c in Sources */,
 				6A8A2290222C62C81EBF2E3E /* husk-tl-bionic-pthread.c in Sources */,
 				CEA21B89D80905F908AEF47D /* husk-tl-bionic-str.c in Sources */,
+				7197DC98582596A2FE390FF2 /* husk-tl-bionic-sys.c in Sources */,
 				5231634DF5866145DDE3A298 /* husk-tl-bionic.c in Sources */,
 				2A70738EC7BE5ABEA7509E8B /* husk-tl-blit.c in Sources */,
 				E1F5B2BE674BB476433BFCEF /* husk-tl-cocos-text.c in Sources */,
@@ -957,6 +976,9 @@
 				AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */,
 				13E70642DCB1EB118EB6B9CF /* husk-tl-egl.c in Sources */,
 				9883B80CE2F3C84E5D6E0A8F /* husk-tl-elf.c in Sources */,
+				318AFCE2330050A6BFE8B98A /* husk-tl-flutter-codec.c in Sources */,
+				CDA36696EE466B42197CA324 /* husk-tl-flutter-plugins.c in Sources */,
+				9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */,
 				80F03D2EAABE3BFEA4A2785B /* husk-tl-framework.c in Sources */,
 				12F633F698047D7DED62A51D /* husk-tl-gameactivity.c in Sources */,
 				B9D7168A505DD009DE222599 /* husk-tl-gamepad.c in Sources */,

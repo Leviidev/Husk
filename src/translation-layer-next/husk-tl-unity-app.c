@@ -33,6 +33,7 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 #include "husk-tl-gameactivity.h"
 #include "husk-tl-gamepad.h"
 #include "husk-tl-sdl.h"
+#include "husk-tl-flutter.h"
 #include "husk-tl-nativeactivity.h"
 #include "husk-tl-gtasa.h"
 #include "husk-tl-vulkan.h"
@@ -40,7 +41,7 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 void tl_hle_set_ca_bundle(const char *path);
 extern int tl_log_sink_fd;
 
-enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL = 3, ENGINE_UE4 = 4, ENGINE_GTA = 5, ENGINE_GODOT = 6 };
+enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL = 3, ENGINE_UE4 = 4, ENGINE_GTA = 5, ENGINE_GODOT = 6, ENGINE_FLUTTER = 7 };
 
 static unsigned long engine_frames(void);
 
@@ -266,6 +267,15 @@ static void *launch_thread(void *arg)
         tl_log_line("sdl: starting %s (%s) as %s, %dx%d (Vulkan: %s)", A.apk, activity, A.package, A.width, A.height, A.vulkan[0] ? "yes" : "no");
         tl_audio_install();
         ok = tl_sdl_start(&cfg, activity) && tl_sdl_run();
+    } else if (A.engine == ENGINE_FLUTTER) {
+        /* Flutter apps: no Vulkan given, so Impeller takes its OpenGL ES backend through ANGLE */
+        tl_ga_config cfg = {
+            .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
+            .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL, .frame_dir = NULL, .frame_every = 0,
+        };
+        tl_log_line("flutter: starting %s as %s, %dx%d", A.apk, A.package, A.width, A.height);
+        tl_audio_install();
+        ok = tl_flutter_start(&cfg) && tl_flutter_run();
     } else if (A.engine == ENGINE_GODOT) {
         tl_godot_config cfg = {
             .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
@@ -339,7 +349,7 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
     snprintf(A.angle, sizeof(A.angle), "%s", angle_dylib);
     snprintf(A.ca, sizeof(A.ca), "%s", ca_bundle ? ca_bundle : "");
     A.layer = metal_layer; A.width = width; A.height = height;
-    if (!husk_unity_package_name(apk, A.package, sizeof(A.package))) snprintf(A.package, sizeof(A.package), "%s", engine == ENGINE_GAMEACTIVITY ? "com.mojang.minecraftpe" : engine == ENGINE_GTA ? "com.rockstargames.gtasa" : engine == ENGINE_UE4 ? "com.epicgames.ue4" : engine == ENGINE_SDL ? "com.sdl.game" : engine == ENGINE_COCOS ? "com.cocos.game" : engine == ENGINE_GODOT ? "com.godot.game" : "com.unity.game");
+    if (!husk_unity_package_name(apk, A.package, sizeof(A.package))) snprintf(A.package, sizeof(A.package), "%s", engine == ENGINE_GAMEACTIVITY ? "com.mojang.minecraftpe" : engine == ENGINE_GTA ? "com.rockstargames.gtasa" : engine == ENGINE_UE4 ? "com.epicgames.ue4" : engine == ENGINE_SDL ? "com.sdl.game" : engine == ENGINE_COCOS ? "com.cocos.game" : engine == ENGINE_GODOT ? "com.godot.game" : engine == ENGINE_FLUTTER ? "com.flutter.app" : "com.unity.game");
     pthread_attr_t at;
     pthread_attr_init(&at);
     pthread_attr_setstacksize(&at, 4u << 20);
@@ -395,6 +405,22 @@ bool husk_ue4_launch(const char *apk, const char *data_dir, void *metal_layer, i
 {
     return launch(ENGINE_UE4, apk, data_dir, metal_layer, width, height, angle_dylib, ca_bundle);
 }
+bool husk_flutter_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
+                         const char *angle_dylib, const char *ca_bundle)
+{
+    return launch(ENGINE_FLUTTER, apk, data_dir, metal_layer, width, height, angle_dylib, ca_bundle);
+}
+int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }
+void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }
+void husk_flutter_set_insets(int top, int right, int bottom, int left) { tl_flutter_set_insets(top, right, bottom, left); }
+void tl_set_cacerts_dir(const char *dir);
+void tl_set_system_fonts_dir(const char *dir);
+/* The certificates and fonts Android keeps under /system, as copies the app carries (cacerts/, and fonts/ + etc/fonts.xml). */
+void husk_native_set_system_files(const char *cacerts_dir, const char *fonts_root)
+{
+    if (cacerts_dir) tl_set_cacerts_dir(cacerts_dir);
+    if (fonts_root) tl_set_system_fonts_dir(fonts_root);
+}
 /* Where MoltenVK is: Unreal's Vulkan renderer runs on it. Before the launch call. */
 void husk_ue4_set_vulkan(const char *dylib) { snprintf(A.vulkan, sizeof(A.vulkan), "%s", dylib ? dylib : ""); }
 void tl_set_shared_storage(const char *dir);
@@ -409,6 +435,8 @@ void husk_native_add_package(const char *apk)
 }
 void husk_sdl_set_safe_insets(int left, int top, int right, int bottom) { tl_sdl_set_safe_insets(left, top, right, bottom); }
 int husk_sdl_apk_is_portrait(const char *apk) { return tl_sdl_manifest_portrait(apk) ? 1 : 0; }
+int husk_apk_orientation(const char *apk) { return tl_manifest_orientation(apk); }
+int husk_apk_is_game(const char *apk) { return tl_manifest_is_game(apk) ? 1 : 0; }
 void husk_sdl_set_keyboard_handler(void (*handler)(int action)) { tl_sdl_set_keyboard_handler(handler); }
 void husk_sdl_commit_text(const char *utf8) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_commit_text(utf8); }
 void husk_sdl_key(int keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_key(keycode, down != 0); }
@@ -453,12 +481,12 @@ int husk_unity_state(void)
 }
 static unsigned long engine_frames(void)
 {
-    return A.engine == ENGINE_GODOT ? tl_godot_frames() : A.engine == ENGINE_GTA ? tl_gta_frames() : A.engine == ENGINE_UE4 ? tl_na_frames() : A.engine == ENGINE_SDL ? tl_sdl_frames() : A.engine == ENGINE_GAMEACTIVITY ? tl_ga_frames() : A.engine == ENGINE_COCOS ? tl_cocos_frames() : tl_unity_frames();
+    return A.engine == ENGINE_FLUTTER ? tl_flutter_frames() : A.engine == ENGINE_GODOT ? tl_godot_frames() : A.engine == ENGINE_GTA ? tl_gta_frames() : A.engine == ENGINE_UE4 ? tl_na_frames() : A.engine == ENGINE_SDL ? tl_sdl_frames() : A.engine == ENGINE_GAMEACTIVITY ? tl_ga_frames() : A.engine == ENGINE_COCOS ? tl_cocos_frames() : tl_unity_frames();
 }
 unsigned long husk_unity_frames(void) { return engine_frames(); }
 void husk_unity_perf_snapshot(husk_unity_perf *out)
 {
-    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA) {
+    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA || A.engine == ENGINE_FLUTTER) {
         /* The game paces its own frames; the rate is how many it presented since the last look. */
         static unsigned long last; static struct timespec since;
         struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
@@ -476,7 +504,8 @@ void husk_unity_perf_snapshot(husk_unity_perf *out)
 void husk_unity_touch(int phase, int id, float x, float y)
 {
     if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
-    if (A.engine == ENGINE_GODOT) tl_godot_touch(phase, id, x, y);
+    if (A.engine == ENGINE_FLUTTER) tl_flutter_touch(phase, id, x, y);
+    else if (A.engine == ENGINE_GODOT) tl_godot_touch(phase, id, x, y);
     else if (A.engine == ENGINE_GTA) tl_gta_touch(phase, id, x, y);
     else if (A.engine == ENGINE_UE4) tl_na_touch(phase, id, x, y);
     else if (A.engine == ENGINE_SDL) tl_sdl_touch(phase, id, x, y);
@@ -486,7 +515,8 @@ void husk_unity_touch(int phase, int id, float x, float y)
 void husk_unity_set_paused(bool paused)
 {
     if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
-    if (A.engine == ENGINE_GODOT) { tl_godot_set_paused(paused); tl_audio_set_paused(paused); }
+    if (A.engine == ENGINE_FLUTTER) { tl_flutter_set_paused(paused); tl_audio_set_paused(paused); }
+    else if (A.engine == ENGINE_GODOT) { tl_godot_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_GTA) { tl_gta_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_UE4) { tl_na_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_SDL) { tl_sdl_set_paused(paused); tl_audio_set_paused(paused); }

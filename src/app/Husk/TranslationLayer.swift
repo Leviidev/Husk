@@ -61,6 +61,7 @@ extension TLReport {
         if engine == "Rockstar" { return .gta }
         if engine == "Godot" { return .godot }
         if engine == "NativeActivity" { return .nativeactivity }
+        if engine == "Flutter" { return .flutter }
         return nil
     }
 
@@ -70,13 +71,15 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : "Unity" }
+    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
         let flagged = libraries.filter { $0.abi == "arm64-v8a" && $0.status != "ok" }.count
         let total = libraries.filter { $0.abi == "arm64-v8a" }.count
-        var text = "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
+        var text = nativeEngine == .flutter
+            ? "A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself."
+            : "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
         if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
         else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot { text += " Husk turns the screen the way the game asks for." }
         if flagged > 0 {
@@ -138,6 +141,10 @@ struct TLApp: Identifiable {
     var lastPlayed: Date? = nil
     /// Its Android package name, once read from the APK.
     var packageName: String? = nil
+
+    /// Whether its manifest files it as a game (android:appCategory="game" or isGame): read for Flutter apps, which are apps
+    /// unless they say otherwise.
+    var isGameCategory: Bool { apks.first.map { husk_apk_is_game($0) != 0 } ?? false }
 }
 
 // MARK: - Store

@@ -27,6 +27,7 @@ extension TLApp {
         case .gta?: name = "gta-data"
         case .godot?: name = "godot-data"
         case .nativeactivity?: name = "na-data"
+        case .flutter?: name = "flutter-data"
         case .cocos?: name = "cocos-data"
         case nil: name = "classic-data"
         default: name = "unity-data"

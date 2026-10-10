@@ -179,6 +179,15 @@ targets:
           rm -f "$VARS_SEED" "$VDB_SEED"
           "$QEMU_IMG" create -f qcow2 "$VARS_SEED" 64M
           "$QEMU_IMG" create -f qcow2 "$VDB_SEED" 16G
+
+          # The parts of Android's /system that apps on the translation layer read directly: CA certificates and the system
+          # fonts (scripts/build_android_system.sh makes them from the Lineage image). Flutter apps need both.
+          SYS="$SRCROOT/../../build/android-system"
+          if [ -d "$SYS/fonts" ]; then
+            rsync -a --delete "$SYS/" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/android-system/"
+          else
+            echo "warning: build/android-system missing (scripts/build_android_system.sh): Flutter apps will have no system fonts" >&2
+          fi
         outputFiles:
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/vmlinuz-virt"
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/initramfs-virt"

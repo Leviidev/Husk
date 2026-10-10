@@ -53,6 +53,7 @@ static struct {
     int pointer_fields;                   /* longs per pointer in a pointer data packet (the engine's kPointerDataFieldCount) */
 } F = { .ratio = 3.0f, .pointer_fields = 36 };
 
+static void post_event(int kind, int phase);
 static jvalue vl(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue vi(int i) { jvalue v; v.j = 0; v.i = i; return v; }
 static jvalue vz(int z) { jvalue v; v.j = 0; v.z = z != 0; return v; }
@@ -446,7 +447,7 @@ static void send_metrics(void)
 void tl_flutter_set_insets(int top, int right, int bottom, int left)
 {
     F.inset_t = top; F.inset_r = right; F.inset_b = bottom; F.inset_l = left;
-    if (F.shell) send_metrics();
+    post_event(2, 0);
 }
 
 /* ------------------------------------------------------------------ input */
@@ -491,8 +492,27 @@ static int on_post(int fd, int events, void *data)
 {
     (void)events; (void)data;
     fl_event e;
-    while (read(fd, &e, sizeof(e)) == (ssize_t)sizeof(e)) if (F.shell && e.kind == 0) dispatch_touch(&e);
+    while (read(fd, &e, sizeof(e)) == (ssize_t)sizeof(e)) {
+        if (!F.shell) continue;
+        if (e.kind == 0) dispatch_touch(&e);
+        else if (e.kind == 1) send_string("flutter/lifecycle", e.phase ? "AppLifecycleState.paused" : "AppLifecycleState.resumed");
+        else if (e.kind == 2) send_metrics();
+    }
     return 1;
+}
+static void post_event(int kind, int phase)
+{
+    if (g_post[1] < 0) return;
+    fl_event e = { kind, phase, 0, 0, 0, 0 };
+    (void)!write(g_post[1], &e, sizeof(e));
+}
+
+/* The app leaving or coming back to the screen: Flutter's lifecycle channel, as FlutterActivity's onPause/onResume send it. */
+void tl_flutter_set_paused(bool paused)
+{
+    static atomic_int was = -1;
+    if (atomic_exchange(&was, paused ? 1 : 0) == (paused ? 1 : 0)) return;
+    post_event(1, paused ? 1 : 0);
 }
 
 void tl_flutter_touch(int phase, int id, float x, float y)

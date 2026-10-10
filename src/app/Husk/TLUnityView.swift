@@ -15,6 +15,7 @@ enum TLNativeEngine {
     case ue4       // Minecraft Dungeons and other Unreal Engine 4 games: landscape, touch and controllers, Vulkan on MoltenVK
     case godot     // A Godot 3 or 4 game: the manifest says which way up, OpenGL ES through ANGLE, multi-touch
     case nativeactivity // A game that is a NativeActivity library of its own (Open Golf): the manifest says which way up, OpenGL ES through ANGLE
+    case flutter   // A Flutter app: the engine and the app's Dart run natively, Impeller draws through ANGLE; portrait unless the manifest says
 }
 
 /// A Unity game's screen: one CAMetalLayer that the game's own GL (ANGLE over Metal) presents into.
@@ -174,13 +175,17 @@ final class TLUnityUIView: UIView, UIKeyInput {
             try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try? session.setActive(true)
         }
-        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : "unity"))")
+        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : "unity"))")
         // Splits and the asset pack are part of the app, whatever its engine; the game's libraries and data may be in any of
         // them (a Google Play install keeps a Unity game's libraries in one split and its data in an asset pack).
         for extra in extraApks.prefix(3) { husk_native_add_package(extra) }
         // Android's shared storage, one folder for every game: a game that keeps its data in a folder of its own on /sdcard finds it
         // in Husk's "Shared Storage", which can be filled from Files or Finder.
         husk_native_set_shared_storage(TranslationLayer.sharedStorage.path)
+        // The CA certificates and system fonts Android keeps under /system, as the app carries them.
+        if let sys = Bundle.main.resourcePath.map({ $0 + "/android-system" }), FileManager.default.fileExists(atPath: sys) {
+            husk_native_set_system_files(sys + "/cacerts", sys)
+        }
         let started: Bool
         switch engine {
         case .sdl:
@@ -205,6 +210,14 @@ final class TLUnityUIView: UIView, UIKeyInput {
             husk_cocos_set_geode(geode?.zip, geode?.launcher)
             if geode != nil { HuskLog.log("geode", "loading Geode into the game") }
             started = husk_cocos_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
+        case .flutter:
+            // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
+            husk_flutter_set_pixel_ratio(Float(contentScaleFactor))
+            if let inset = window?.safeAreaInsets {
+                let k = contentScaleFactor
+                husk_flutter_set_insets(Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32(inset.left * k))
+            }
+            started = husk_flutter_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .minecraft: started = husk_gameactivity_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .unity: started = husk_unity_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         }
@@ -480,6 +493,7 @@ struct TLCocosAttemptView: View {
         case .gta: return .gta
         case .godot: return .godot
         case .nativeactivity: return .nativeactivity
+        case .flutter: return .flutter
         case .cocos: return .cocos
         default: return .unity
         }
@@ -487,7 +501,7 @@ struct TLCocosAttemptView: View {
 
     private var dataDir: String {
         TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
-            .appendingPathComponent(engine == .unity ? "unity-data" : engine == .minecraft ? "minecraft-data" : engine == .sdl ? "sdl-data" : engine == .ue4 ? "ue4-data" : engine == .gta ? "gta-data" : engine == .godot ? "godot-data" : engine == .nativeactivity ? "na-data" : "cocos-data", isDirectory: true).path
+            .appendingPathComponent(engine == .unity ? "unity-data" : engine == .minecraft ? "minecraft-data" : engine == .sdl ? "sdl-data" : engine == .ue4 ? "ue4-data" : engine == .gta ? "gta-data" : engine == .godot ? "godot-data" : engine == .nativeactivity ? "na-data" : engine == .flutter ? "flutter-data" : "cocos-data", isDirectory: true).path
     }
 
     /// Which way up: what the game's settings say, and otherwise what its manifest asks. Some SDL games are portrait; every other
@@ -497,6 +511,8 @@ struct TLCocosAttemptView: View {
         case .landscape: return false
         case .portrait: return true
         case .auto:
+            // A Flutter app is a phone app: portrait, unless its manifest asks for landscape.
+            if engine == .flutter, let apk = app.apks.first { return husk_apk_orientation(apk) != 0 }
             guard engine == .sdl || engine == .nativeactivity || engine == .unity || engine == .godot, let apk = app.apks.first else { return false }
             return husk_sdl_apk_is_portrait(apk) != 0
         }

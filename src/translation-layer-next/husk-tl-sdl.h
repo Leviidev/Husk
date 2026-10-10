@@ -37,6 +37,8 @@ void tl_sdl_set_paused(bool paused);
 /* The keyboard: the handler is told (on the game's thread) 1 = show, 2 = hide. Text typed goes in with tl_sdl_commit_text, Backspace and Enter as Android key codes. */
 /* True if the manifest asks for a portrait screen. */
 bool tl_sdl_manifest_portrait(const char *apk);
+int tl_manifest_orientation(const char *apk);
+bool tl_manifest_is_game(const char *apk);   /* 1 portrait, 0 landscape, -1 unspecified */
 void tl_sdl_mouse(int phase, float x, float y);
 void tl_sdl_set_keyboard_handler(void (*handler)(int action));
 void tl_sdl_commit_text(const char *utf8);
