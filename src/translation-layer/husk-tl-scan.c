@@ -65,7 +65,7 @@ static bool is_dex(const char *name)
 
 /* Recognised by the libraries an engine always ships. */
 typedef struct engine_scan {
-    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity;
+    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor;
 } engine_scan;
 
 static void note_engine(engine_scan *s, const char *f)
@@ -96,6 +96,9 @@ static const char *engine_name(const engine_scan *s)
     if (s->il2cpp) return "Unity (IL2CPP)";
     if (s->unity) return s->mono_unity ? "Unity (Mono)" : "Unity";
     if (s->flutter) return "Flutter";
+    /* Web apps: the app is HTML and JavaScript in a WebView (Ionic is one or the other underneath). */
+    if (s->capacitor) return "Capacitor";
+    if (s->cordova) return "Cordova";
     if (s->react) return "React Native";
     if (s->dotnet) return ".NET / Xamarin";
     if (s->godot) return "Godot";
@@ -269,6 +272,8 @@ char *husk_tl_scan(const char *const *paths, int count)
             const tl_zip_entry *e = &z.entries[i];
             const char *file = NULL;
             int abi = lib_abi(e->name, &file);
+            if (!strcmp(e->name, "assets/capacitor.config.json") || !strcmp(e->name, "assets/public/index.html")) eng.capacitor = true;
+            if (!strcmp(e->name, "assets/www/cordova.js") || !strcmp(e->name, "assets/www/index.html")) eng.cordova = true;
             if (!strcmp(e->name, "AndroidManifest.xml")) {
                 manifest = true;
             } else if (is_dex(e->name)) {
@@ -331,6 +336,10 @@ char *husk_tl_scan(const char *const *paths, int count)
     } else if (!manifest && dex_count == 0) {
         verdict = "unreadable";
         snprintf(summary, sizeof(summary), "This is not an app: it has no manifest and no code.");
+    } else if (eng.capacitor || eng.cordova) {
+        verdict = "web";
+        snprintf(summary, sizeof(summary), "A %s web app: its pages and scripts run in Safari's engine, with Husk answering "
+                 "the plugins it calls.", eng.capacitor ? "Capacitor" : "Cordova");
     } else if (!any_native) {
         verdict = "java";
         snprintf(summary, sizeof(summary), "No native code. Only the Java side of the "

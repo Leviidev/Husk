@@ -105,6 +105,15 @@ void husk_tl_perf_snapshot(husk_tl_perf *out);
 
 void husk_tl_send_touch(int action, float x, float y);
 
+/*
+ * Copy every entry under `prefix` (e.g. "assets/public/") out of an APK into `out_dir`, keeping the paths below the prefix.
+ * For web apps, whose pages and scripts are served from the copy. Returns how many files were written, or -1.
+ */
+int husk_tl_extract(const char *apk, const char *prefix, const char *out_dir);
+
+/* Whether an APK has an entry by this name. */
+int husk_tl_has_entry(const char *apk, const char *name);
+
 void husk_tl_free(void *p);
 
 #ifdef __cplusplus

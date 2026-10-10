@@ -239,7 +239,7 @@ struct GamePage: View {
 
     /// Full screen, or in a window over Husk when Multitasking says so for this app.
     private func start() {
-        if app.report?.runsOnNativeRuntime == true, AppWindows.opensInWindow(app) {
+        if app.report?.runsOnNativeRuntime == true || app.report?.webKind != nil, AppWindows.opensInWindow(app) {
             AppWindows.shared.open(app)
         } else {
             AppWindows.shared.close(app)

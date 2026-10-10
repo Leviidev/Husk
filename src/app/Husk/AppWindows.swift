@@ -43,6 +43,8 @@ import UIKit
     /// Close the window; with an app given, only when it is that app's.
     func close(_ only: TLApp? = nil) {
         if let only, app?.id != only.id { return }
+        // A web app can be closed for real, as LiveContainer ends an app; a native engine stays loaded, paused.
+        if let app, app.report?.webKind != nil { WebAppRuntime.close(app) }
         withAnimation(.snappy(duration: 0.2)) { app = nil; minimized = false }
     }
 
@@ -134,12 +136,12 @@ private struct AppWindow: View {
         .shadow(color: .black.opacity(windows.maximized ? 0 : 0.35), radius: 18, y: 6)
         .position(x: f.midX, y: f.midY)
         .onAppear {
-            CrashReport.gameStarted(app)
+            if app.report?.webKind == nil { CrashReport.gameStarted(app) }
             model.start()
             UIApplication.shared.isIdleTimerDisabled = settings.keepAwake
         }
         .onDisappear {
-            CrashReport.gameEnded()
+            if app.report?.webKind == nil { CrashReport.gameEnded() }
             model.stop()
             UIApplication.shared.isIdleTimerDisabled = false
         }
@@ -150,10 +152,15 @@ private struct AppWindow: View {
             if st == Int32(HUSK_UNITY_FAILED) { GameStatusStore.shared.record(app.id, .failed) }
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in windows.close() }
+        .onReceive(NotificationCenter.default.publisher(for: WebAppRuntime.closed)) { n in
+            if (n.object as? String) == app.id { windows.close() }
+        }
     }
 
     @ViewBuilder private var content: some View {
-        if let other = blockedBy {
+        if app.report?.webKind != nil {
+            WebAppSurface(app: app)
+        } else if let other = blockedBy {
             VStack(spacing: 6) {
                 Text("Another game is already loaded").font(.subheadline.weight(.semibold))
                 Text("\(other) was started in this session. Close Husk completely and open it again to run \(app.label).")
@@ -188,8 +195,8 @@ private struct AppWindow: View {
             light(.green, windows.maximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                   windows.maximized ? "Restore" : "Maximise") { windows.toggleMaximized() }
             Spacer(minLength: 6)
-            if app.screenEngine == .flutter {
-                Button { husk_flutter_back() } label: {
+            if app.screenEngine == .flutter || app.report?.webKind != nil {
+                Button { if app.report?.webKind != nil { WebAppRuntime.runtime(for: app)?.back() } else { husk_flutter_back() } } label: {
                     Image(systemName: "chevron.backward").font(.system(size: 13, weight: .semibold)).frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)

@@ -165,7 +165,7 @@ final class TranslationLayerStore: ObservableObject {
 
     /// Which reading of an app's libraries its report came from. A newer Husk that recognises more (an engine, a kind of game) reads
     /// the apps it already holds again, so they are not left with what the old one knew.
-    nonisolated static let scanVersion = 4
+    nonisolated static let scanVersion = 5
     private var rescanning = false
 
     func reload() {
@@ -717,7 +717,9 @@ struct TLAttemptView: View {
     @ViewBuilder
     private var content: some View {
         // Every game the native runtime drives -- Unity included -- gets the same full-screen game screen.
-        if app.report?.runsOnNativeRuntime == true {
+        if app.report?.webKind != nil {
+            WebAppScreenView(app: app)
+        } else if app.report?.runsOnNativeRuntime == true {
             TLCocosAttemptView(app: app)
         } else {
             TLClassicAttemptView(app: app)

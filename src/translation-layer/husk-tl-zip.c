@@ -359,3 +359,47 @@ bool tl_zip_data(const tl_zip *z, const tl_zip_entry *e, size_t limit,
     *owned = true;
     return true;
 }
+
+/* ------------------------------------------------------------------ extraction (web apps) */
+
+static void mkdirs_for(char *path)
+{
+    for (char *p = path + 1; *p; p++) {
+        if (*p == '/') { *p = 0; mkdir(path, 0755); *p = '/'; }
+    }
+}
+
+int husk_tl_extract(const char *apk, const char *prefix, const char *out_dir)
+{
+    tl_zip z;
+    char err[160];
+    if (!tl_zip_open(&z, apk, err, sizeof(err))) return -1;
+    size_t plen = strlen(prefix);
+    int written = 0;
+    for (size_t i = 0; i < z.count; i++) {
+        const tl_zip_entry *e = &z.entries[i];
+        if (strncmp(e->name, prefix, plen) || !e->name[plen]) continue;
+        const char *rel = e->name + plen;
+        if (strstr(rel, "..") || rel[strlen(rel) - 1] == '/') continue;
+        char path[4096];
+        snprintf(path, sizeof(path), "%s/%s", out_dir, rel);
+        mkdirs_for(path);
+        const uint8_t *data; size_t len; bool owned;
+        if (!tl_zip_data(&z, e, (size_t)512 << 20, &data, &len, &owned, err, sizeof(err))) continue;
+        FILE *f = fopen(path, "wb");
+        if (f) { fwrite(data, 1, len, f); fclose(f); written++; }
+        if (owned) free((void *)data);
+    }
+    tl_zip_close(&z);
+    return written;
+}
+
+int husk_tl_has_entry(const char *apk, const char *name)
+{
+    tl_zip z;
+    char err[160];
+    if (!tl_zip_open(&z, apk, err, sizeof(err))) return 0;
+    int found = tl_zip_find(&z, name) != NULL;
+    tl_zip_close(&z);
+    return found;
+}

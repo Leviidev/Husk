@@ -6,12 +6,13 @@ extension TLReport {
     /// without (Flappy Bird is plain Java with a couple of AndroidX helper libraries) runs on Husk's own Java interpreter.
     /// Only an APK with no 64-bit code, or one Husk could not read, is out of reach.
     var canRun: Bool {
-        runsOnNativeRuntime || ["java", "native", "nativeWithWork"].contains(verdict)
+        runsOnNativeRuntime || webKind != nil || ["java", "native", "nativeWithWork"].contains(verdict)
     }
 
     /// What runs it, in words.
     var runnerName: String {
         if runsOnNativeRuntime { return nativeEngineName }
+        if let web = webKind { return "\(web.name) (web app)" }
         return canRun ? "Java (Husk's interpreter)" : "None"
     }
 }
@@ -29,7 +30,7 @@ extension TLApp {
         case .nativeactivity?: name = "na-data"
         case .flutter?: name = "flutter-data"
         case .cocos?: name = "cocos-data"
-        case nil: name = "classic-data"
+        case nil: name = report?.webKind != nil ? "web" : "classic-data"
         default: name = "unity-data"
         }
         return TranslationLayer.root.appendingPathComponent(id, isDirectory: true).appendingPathComponent(name, isDirectory: true)

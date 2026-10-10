@@ -95,8 +95,10 @@
 		853E83FF7FF5B9A7FDE5E638 /* BootScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */; };
 		8573CC8F200AA844B23AD4F9 /* libFilePickerFix.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F44A2196AA5F6271BF893660 /* libFilePickerFix.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8586F8338A93D7526FAEAD97 /* husk-tl-xmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 42CBC0D7ACAB400BDDFD7F9E /* husk-tl-xmem.c */; };
+		86173612F0474C90016B0405 /* WebAppViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146A928FB0D632B3FC9E4328 /* WebAppViews.swift */; };
 		8B5DED1C7C866D7140418522 /* HuskJITMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198FA3419B26F852A2B05ED9 /* HuskJITMessages.swift */; };
 		8C743346878007F8D22CEA0A /* AppSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D08F1730303C74C1B7DE23 /* AppSource.swift */; };
+		8DBD7C748F519C3321EC0E98 /* WebApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD91E5537023860BD27A855 /* WebApp.swift */; };
 		8E10E866080B28D4D397970A /* HuskGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F337AAF2A6860FCB03810AA6 /* HuskGLView.swift */; };
 		945DD86A7A210B74B2C7FF17 /* TLScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DDBC0AF7BE5742AA867515 /* TLScreenView.swift */; };
 		9883B80CE2F3C84E5D6E0A8F /* husk-tl-elf.c in Sources */ = {isa = PBXBuildFile; fileRef = D08FCD7F480D6E2F65F26636 /* husk-tl-elf.c */; };
@@ -216,6 +218,7 @@
 		0F570EB6EAB321272B32955C /* VirtualPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualPad.swift; sourceTree = "<group>"; };
 		0FCF57D3D74B527852EC0327 /* AppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcon.swift; sourceTree = "<group>"; };
 		100DF87CB49D35A4DA089C94 /* husk-tl-framework.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-framework.h"; sourceTree = "<group>"; };
+		146A928FB0D632B3FC9E4328 /* WebAppViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppViews.swift; sourceTree = "<group>"; };
 		14E50E2B9CCFF7B1FEF73608 /* HuskAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskAudio.swift; sourceTree = "<group>"; };
 		15D08F1730303C74C1B7DE23 /* AppSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSource.swift; sourceTree = "<group>"; };
 		182A386166343D705B52A7BF /* husk-tl-godot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-godot.c"; sourceTree = "<group>"; };
@@ -272,6 +275,7 @@
 		4B24977AD9B892864CD39481 /* husk-tl-http.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-http.m"; sourceTree = "<group>"; };
 		4B259C39CD9CC4D2A8A3D8E8 /* HuskMetalPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskMetalPresenter.swift; sourceTree = "<group>"; };
 		4BD6ABD20471B2CACF60ABD4 /* TranslationLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationLayer.swift; sourceTree = "<group>"; };
+		4BD91E5537023860BD27A855 /* WebApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebApp.swift; sourceTree = "<group>"; };
 		4D3B9FB2A68373C457706DA9 /* Husk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Husk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D54C1E4F20A020AC62C9419 /* husk-tl-ld.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-ld.c"; sourceTree = "<group>"; };
 		505B834A46F5AA7C2BBE8526 /* husk-tl-res.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-res.h"; sourceTree = "<group>"; };
@@ -480,6 +484,8 @@
 				211CC4F06EC722E5972D7F3B /* TLUnityView.swift */,
 				4BD6ABD20471B2CACF60ABD4 /* TranslationLayer.swift */,
 				0F570EB6EAB321272B32955C /* VirtualPad.swift */,
+				4BD91E5537023860BD27A855 /* WebApp.swift */,
+				146A928FB0D632B3FC9E4328 /* WebAppViews.swift */,
 				FAB8BAA1A1D0AB19EBD6F784 /* WhatsNew.swift */,
 				C4F386333533DE96E20410F7 /* Play */,
 				FA84FD81F71FF2ACDEB879A5 /* Resources */,
@@ -965,6 +971,8 @@
 				3743DAF4A88A08B2946A4066 /* Theme.swift in Sources */,
 				1A97D1F8D5FAFEB3145D4AE5 /* TranslationLayer.swift in Sources */,
 				D6E9F96BE6AF7C985488D030 /* VirtualPad.swift in Sources */,
+				8DBD7C748F519C3321EC0E98 /* WebApp.swift in Sources */,
+				86173612F0474C90016B0405 /* WebAppViews.swift in Sources */,
 				22C6845CB351341738D8B027 /* WhatsNew.swift in Sources */,
 				7EF41C59B3AF51A4E96F20E0 /* fishhook.c in Sources */,
 				AC5C07974C7A8658358A55C9 /* husk-tl-a64.c in Sources */,
