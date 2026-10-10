@@ -403,28 +403,16 @@ private struct AndroidTile: View {
     }
 }
 
-/// One square in Home's library grid: the gameplay picture when there is one, the icon otherwise.
+/// One square in Home's library grid: the app's own icon.
 private struct LibrarySquare: View {
     let item: LibraryItem
-    @ObservedObject private var showcase = ShowcaseStore.shared
 
     var body: some View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                GeometryReader { geo in
-                    if let art = item.artworkPath {
-                        PictureView(path: art, pixels: Int(geo.size.width * 3))
-                            .frame(width: geo.size.width, height: geo.size.height)
-                            .clipped()
-                    } else if item == .android {
-                        AndroidMark(size: geo.size.width)
-                    } else {
-                        AppIcon(path: item.iconPath, size: geo.size.width)
-                    }
-                }
+                GeometryReader { geo in ItemIcon(item: item, size: geo.size.width) }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(alignment: .topTrailing) { if item.runsInAndroid { AndroidBadge().padding(5) } }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
@@ -576,16 +564,21 @@ struct LibraryScreen: View {
     var body: some View {
         NavigationStack(path: $router.library) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Text("Library")
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
                         Spacer()
                         HeaderButton(systemImage: "plus") { router.addSomething() }
                             .accessibilityLabel("Add a Game or App")
                     }
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 6)
                     SearchField(text: $query, prompt: "Search games and apps")
-                    FilterChips(filter: $router.libraryFilter)
+                    Picker("Show", selection: $router.libraryFilter) {
+                        ForEach(LibraryFilter.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                     if let busy = store.busy { BusyStrip(text: busy) }
                     if let busy = host.busy { BusyStrip(text: busy) }
 
@@ -604,7 +597,7 @@ struct LibraryScreen: View {
                     }
                     if !query.isEmpty, games.isEmpty, apps.isEmpty { NoResults(query: query) }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
@@ -619,20 +612,25 @@ struct LibraryScreen: View {
     @ViewBuilder
     private func section(_ title: String, _ items: [LibraryItem], empty: String?) -> some View {
         if !items.isEmpty || empty != nil {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.system(.title3, design: .rounded).weight(.bold))
-                Text("\(items.count)").font(.subheadline).foregroundStyle(.secondary)
-            }
-            .padding(.top, 6)
-            if items.isEmpty, let empty {
-                Text(empty).font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 76, maximum: 110), spacing: 12, alignment: .top)], spacing: 20) {
-                    ForEach(items) { item in
-                        NavigationLink(value: item.route) {
-                            LauncherTile(title: item.title, iconPath: item.iconPath, item: item, caption: caption(item))
+            Tile {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(title).font(.headline)
+                        Text("\(items.count)").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    if items.isEmpty, let empty {
+                        Text(empty).font(.subheadline).foregroundStyle(.secondary)
+                    } else {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top),
+                                                 count: UIDevice.current.userInterfaceIdiom == .pad ? 8 : 4),
+                                  spacing: 18) {
+                            ForEach(items) { item in
+                                NavigationLink(value: item.route) {
+                                    LauncherTile(title: item.title, iconPath: item.iconPath, item: item, caption: caption(item), size: 60)
+                                }
+                                .buttonStyle(CardButtonStyle())
+                            }
                         }
-                        .buttonStyle(CardButtonStyle())
                     }
                 }
             }
@@ -648,28 +646,6 @@ struct LibraryScreen: View {
             if AndroidHost.shared.isReady { return "Running" }
             return guest.state == .ready ? nil : "Not installed"
         case .app: return nil
-        }
-    }
-}
-
-private struct FilterChips: View {
-    @Binding var filter: LibraryFilter
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(LibraryFilter.allCases) { f in
-                Button {
-                    withAnimation(.easeOut(duration: 0.15)) { filter = f }
-                } label: {
-                    Text(f.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(filter == f ? Color(uiColor: .systemBackground) : Color.primary)
-                        .padding(.horizontal, 16)
-                        .frame(height: 32)
-                        .background(filter == f ? Color.primary : Color(uiColor: .tertiarySystemFill), in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
         }
     }
 }
