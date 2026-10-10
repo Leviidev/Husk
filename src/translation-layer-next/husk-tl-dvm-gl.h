@@ -7,7 +7,7 @@
 
 typedef struct { const char *name, *sig; dvm_native_fn fn; } gl_native;
 extern const gl_native k_gles20[];
-extern const gl_native k_gles30[], k_gles31[], k_gles32[];
+extern const gl_native k_gles30[], k_gles31[], k_gles32[], k_gles10[], k_gles10ext[], k_gles11[], k_gles11ext[];
 
 void *gl_fn(const char *name);
 const char *gl_str(jobj *s);                    /* UTF-8; NULL for null */

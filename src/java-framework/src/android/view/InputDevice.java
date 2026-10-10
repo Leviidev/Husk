@@ -43,4 +43,5 @@ public final class InputDevice {
         public float getFuzz() { return 0f; }
         public float getResolution() { return 0f; }
     }
+    public int getControllerNumber() { return 0; }
 }

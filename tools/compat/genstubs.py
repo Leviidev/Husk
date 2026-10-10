@@ -194,8 +194,11 @@ def main():
         if '$' in c: refs.append(c[:c.rindex('$')] + ';')
         for r in refs:
             if r and r.startswith('L') and r.startswith(API) and not have(r) and r not in gen: todo.append(r)
+    JDK9 = ('Ljava/util/concurrent/Flow', 'Ljava/lang/StackWalker', 'Ljava/lang/Module', 'Ljava/lang/ModuleLayer', 'Ljava/lang/ProcessHandle',
+            'Ljava/lang/Runtime$Version', 'Ljava/lang/invoke/VarHandle', 'Ljava/net/http/', 'Ljava/lang/Record')
     def ok_type(t):
         t = base(t)
+        if t.startswith(JDK9): return False                    # libcore has them; the Java 8 the framework compiles against does not
         return t in PRIM or (t.startswith(API) and (have(t) or t in gen))
     # source per top-level class; nested ones inside their outer
     def body(c, indent, shell):
@@ -225,7 +228,8 @@ def main():
         props = not shell and not is_if and not is_ann and not is_enum
         if props: lines.append(ind + 'private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();')
         # a no-argument constructor this class will have (its own public one, or the generated protected one)
-        can_new = not is_if and not is_abs and not is_enum and (any(n == '<init>' and sig == '()V' and af & 5 for n, sig, af in meths) or not any(n == '<init>' and af & 5 for n, s2, af in meths))
+        forced_abs = not shell and not is_if and not is_enum and not is_ann and not is_abs and sup in shells
+        can_new = not is_if and not is_abs and not is_enum and not forced_abs and (any(n == '<init>' and sig == '()V' and af & 5 for n, sig, af in meths) or not any(n == '<init>' and af & 5 for n, s2, af in meths))
         if is_enum:
             consts = [n for n, ty, af, v in fields if af & 0x4000]
             lines.append(ind + (', '.join(consts) if consts else '') + ';')
@@ -240,8 +244,10 @@ def main():
                 if is_if and lit is None: lit = DEFAULT.get(ty, 'null')
                 lines.append(ind + '%s%s %s%s;' % (m, jtype(ty), n, (' = ' + lit) if lit is not None else ''))
             seen = set()
+            real_params = {(n, sig[:sig.index(')')]) for n, sig, af in meths if not af & 0x1040}
             for n, sig, af in meths:
-                if not af & 5 or af & 0x1040 or n == '<clinit>' or n.startswith(('lambda$', 'access$')): continue
+                bridge = af & 0x40 and not is_if and (n, sig[:sig.index(')')]) not in real_params
+                if not af & 5 or (af & 0x1040 and not bridge) or n == '<clinit>' or n.startswith(('lambda$', 'access$')): continue
                 if n + sig in ('equals(Ljava/lang/Object;)Z', 'hashCode()I', 'toString()Ljava/lang/String;'): continue   # keep Object's
                 ps, r = split_params(sig)
                 if not all(ok_type(x) for x in ps + [r]): continue
@@ -279,6 +285,37 @@ def main():
                     else: lines.append(ind + 'default %s %s(%s) {%s}' % (jtype(r), n, params, ret))
                 elif af & 0x400: lines.append(ind + '%sabstract %s %s(%s);' % (m, jtype(r), n, params))
                 else: lines.append(ind + '%s%s %s(%s) {%s}' % (m, jtype(r), n, params, ret))
+            # a concrete class implements what its generated superclasses and interfaces leave abstract (the platform's does, in
+            # methods that are hidden or that take types left out)
+            if not is_if and not is_abs and not forced_abs and not is_enum:
+                pk = lambda n, sg: n + sg[:sg.index(')')]       # by parameters: a covariant return is the same method
+                done = {pk(x[:x.index('(')], x[x.index('('):]) for x in seen}
+                chain, k = [], sup
+                while k and k in gen and k not in shells:
+                    chain.append(k)
+                    k = plat.info(k)[1]
+                for k in chain:
+                    for n, sg, af in plat.info(k)[4]:
+                        if not af & 0x400 and af & 5: done.add(pk(n, sg))
+                todo_if, seen_if = list(ifs_ok), set()
+                for k in chain: todo_if += [i for i in plat.info(k)[2] if ok_type(i)]
+                abstract = []
+                for k in chain: abstract += [(n, sg, af) for n, sg, af in plat.info(k)[4] if af & 0x400 and af & 5]
+                while todo_if:
+                    i = todo_if.pop()
+                    if i in seen_if or i not in gen or i in shells: continue
+                    seen_if.add(i)
+                    ifl, isup, iifs, ifields, imeths = plat.info(i)
+                    abstract += [(n, sg, af) for n, sg, af in imeths if af & 0x400 and not af & 8]
+                    todo_if += iifs
+                for n, sg, af in abstract:
+                    if pk(n, sg) in done: continue
+                    ps, r = split_params(sg)
+                    if not all(ok_type(x) for x in ps + [r]): continue
+                    done.add(pk(n, sg))
+                    params = ', '.join('%s p%d' % (jtype(t), i) for i, t in enumerate(ps))
+                    ret = '' if r == 'V' else ' return %s; ' % dflt(r)
+                    lines.append(ind + '%s%s %s(%s) {%s}' % ('public ' if af & 1 else 'protected ', jtype(r), n, params, ret))
             # a class with no public constructor still needs one its generated subclasses can call
             if not is_if and not is_enum and not any(n == '<init>' and af & 5 for n, s, af in meths):
                 lines.append(ind + 'protected %s() {%s}' % (simple, (' ' + super_call(sup) + ' ') if sup_ok else ''))
@@ -294,7 +331,7 @@ def main():
     for k in gen:
         if k in shells: continue
         kfl, ksup, kifs, kfields, kmeths = plat.info(k)
-        if kfl & 0x600 or kfl & 0x4000: continue
+        if kfl & 0x600 or kfl & 0x4000 or ksup in shells: continue
         if '$' in k[1:-1].rsplit('/', 1)[-1] and not kfl & 0x8 and any(n == '<init>' and len(split_params(sg)[0]) > 0 and split_params(sg)[0][0] == k[:k.rindex('$')] + ';' for n, sg, a in kmeths): continue
         ctors = [sg for n, sg, a in kmeths if n == '<init>' and a & 5]
         if not ctors or '()V' in ctors: newable.add(k)
@@ -303,9 +340,21 @@ def main():
         """super(...) to a constructor the superclass really has: the one with the fewest parameters"""
         cands = []
         if sup in fw: cands = [m for m in fw[sup][2] if m.startswith('<init>(')]
+        elif sup not in gen and sup.startswith(('Ljava/', 'Ljavax/')):
+            if 'core' not in ctor_cache:
+                art = '/Volumes/GTAV/husk2/root/apex/com.android.art/javalib/'
+                ctor_cache['core'] = Plat([art + 'core-oj.jar', art + 'core-libart.jar'])
+            core = ctor_cache['core']
+            if sup in core.cls:
+                cands = ['<init>' + sg for n, sg, a in core.info(sup)[4] if n == '<init>' and a & 5 and all(ok_type(t) or base(t).startswith('Ljava/') for t in split_params(sg)[0])]
+        elif sup in gen and sup not in shells:
+            # a generated class has the platform's visible constructors (or a made-up no-argument one when it has none)
+            cands = ['<init>' + sg for n, sg, a in plat.info(sup)[4] if n == '<init>' and a & 5 and all(ok_type(t) for t in split_params(sg)[0])]
+            if not cands: cands = ['<init>()V']
         elif sup in gen: cands = ['<init>()V']
         if not cands or '<init>()V' in cands: return 'super();' if cands else ''
-        best = min(cands, key=lambda m: len(split_params(m[6:])[0]))
+        # the fewest parameters; among those, not a file or a name (java.io's constructors that open files throw)
+        best = min(cands, key=lambda m: (len(split_params(m[6:])[0]), any(t in ('Ljava/io/File;', 'Ljava/lang/String;') for t in split_params(m[6:])[0])))
         ps, _ = split_params(best[6:])
         return 'super(%s);' % ', '.join('(%s) %s' % (jtype(t), DEFAULT.get(t, 'null')) for t in ps)
     # start clean: the previous run's files go (NESTED snippets too)

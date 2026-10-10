@@ -515,7 +515,7 @@ public final class ResInflate {
         ta.recycle();
         if (interp != 0) { try { a.setInterpolator(interpolator(r, r.getAnimation(interp))); } catch (Exception e) {} }
     }
-    public static Interpolator interpolator(Resources r, XmlPullParser p) {
+    public static android.view.animation.Interpolator interpolator(Resources r, XmlPullParser p) {
         try {
             toStart(p);
             AttributeSet set = as(p);

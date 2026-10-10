@@ -1422,10 +1422,10 @@ static bool G30_glVertexAttribIPointer_0(jobj *self, const jvalue *a, jvalue *re
 static bool G30_glVertexAttribIPointerBounds_0(jobj *self, const jvalue *a, jvalue *ret)
 {
     (void)self; (void)a;
-    static void (*f)(int32_t, int32_t, int32_t, int32_t, void *, int32_t);
-    if (!f) f = (void (*)(int32_t, int32_t, int32_t, int32_t, void *, int32_t))gl_fn("glVertexAttribIPointerBounds");
+    static void (*f)(int32_t, int32_t, int32_t, int32_t, void *);
+    if (!f) f = (void (*)(int32_t, int32_t, int32_t, int32_t, void *))gl_fn("glVertexAttribIPointer");
     if (!f) { ret->j = 0; return true; }
-    f(a[0].i, a[1].i, a[2].i, a[3].i, gl_buffer(a[4].l), a[5].i);
+    f(a[0].i, a[1].i, a[2].i, a[3].i, gl_buffer(a[4].l));
     return true;
 }
 static bool G30_glWaitSync_0(jobj *self, const jvalue *a, jvalue *ret)

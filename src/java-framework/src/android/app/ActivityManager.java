@@ -42,4 +42,5 @@ public class ActivityManager {
     public void setProcessStateSummary(byte[] s) {}
     public int getLockTaskModeState() { return 0; }
     public void moveTaskToFront(int id, int flags) {}
+    public android.content.pm.ConfigurationInfo getDeviceConfigurationInfo() { return android.content.pm.ConfigurationInfo.huskDevice(); }
 }

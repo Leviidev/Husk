@@ -33,18 +33,7 @@ public class SurfaceControlViewHost {
         public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
         public boolean isFocusable() { return (huskProps.get("Focusable") instanceof Boolean ? (Boolean) huskProps.get("Focusable") : false); }
     }
-    public static final class SurfacePackage implements android.os.Parcelable {
-        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
-        public SurfacePackage(android.view.SurfaceControlViewHost.SurfacePackage p0) {}
-        public int describeContents() { return 0; }
-        public android.view.accessibility.IAccessibilityEmbeddedConnection getAccessibilityEmbeddedConnection() { return (android.view.accessibility.IAccessibilityEmbeddedConnection) huskProps.get("AccessibilityEmbeddedConnection"); }
-        public android.window.InputTransferToken getInputTransferToken() { return (android.window.InputTransferToken) huskProps.get("InputTransferToken"); }
-        public android.view.ISurfaceControlViewHost getRemoteInterface() { return (android.view.ISurfaceControlViewHost) huskProps.get("RemoteInterface"); }
-        public android.view.SurfaceControl getSurfaceControl() { return (android.view.SurfaceControl) huskProps.get("SurfaceControl"); }
-        public void notifyConfigurationChanged(android.content.res.Configuration p0) {}
-        public void notifyDetachedFromWindow() {}
-        public void release() {}
-        public void writeToParcel(android.os.Parcel p0, int p1) {}
+    public static abstract class SurfacePackage implements android.os.Parcelable {
+        protected SurfacePackage() {}
     }
 }

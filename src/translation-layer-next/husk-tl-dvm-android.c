@@ -465,8 +465,10 @@ dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *
     } else if (!strcmp(cls, "android/opengl/GLES20")) {
         for (int i = 0; k_gles_special[i].name; i++) if (!strcmp(k_gles_special[i].name, name) && !strcmp(k_gles_special[i].sig, sig)) return k_gles_special[i].fn;
         for (int i = 0; k_gles20[i].name; i++) if (!strcmp(k_gles20[i].name, name) && !strcmp(k_gles20[i].sig, sig)) return k_gles20[i].fn;
-    } else if (!strncmp(cls, "android/opengl/GLES3", 20)) {
-        const gl_native *t = !strcmp(cls, "android/opengl/GLES30") ? k_gles30 : !strcmp(cls, "android/opengl/GLES31") ? k_gles31 : !strcmp(cls, "android/opengl/GLES32") ? k_gles32 : NULL;
+    } else if (!strncmp(cls, "android/opengl/GLES3", 20) || !strncmp(cls, "android/opengl/GLES1", 20)) {
+        const char *v = cls + 19;
+        const gl_native *t = !strcmp(v, "30") ? k_gles30 : !strcmp(v, "31") ? k_gles31 : !strcmp(v, "32") ? k_gles32 : !strcmp(v, "10") ? k_gles10
+                           : !strcmp(v, "10Ext") ? k_gles10ext : !strcmp(v, "11") ? k_gles11 : !strcmp(v, "11Ext") ? k_gles11ext : NULL;
         for (int i = 0; t && t[i].name; i++) if (!strcmp(t[i].name, name) && !strcmp(t[i].sig, sig)) return t[i].fn;
     }
     return NULL;
@@ -625,9 +627,16 @@ static void *gl_main(void *arg)
         bool drew = false;
         /* the app's renderer, once its GLSurfaceView is on screen */
         if (A.gl_renderer && !app) {
-            int es = A.gl_version >= 3 && es3 ? 3 : 2;
+            /* GLSurfaceView's default is OpenGL ES 1 (fixed function, through ANGLE's ES1 front end); 2 and 3 as asked */
+            int es = A.gl_version >= 3 && es3 ? 3 : A.gl_version <= 1 ? 1 : 2;
             const EGLint attr[] = { 0x3098, es, EGL_NONE };
             app = createContext(dpy, cfg, NULL, attr);
+            if (!app && es == 1) {
+                tl_log_line("javaapp: no GL ES 1 context; the app gets ES 2");
+                es = 2;
+                const EGLint attr2[] = { 0x3098, 2, EGL_NONE };
+                app = createContext(dpy, cfg, NULL, attr2);
+            }
             if (!app || !makeCurrent(dpy, surf, surf, app)) { tl_log_line("javaapp: no GL ES %d context for the app", es); A.gl_renderer = NULL; app = NULL; }
             else {
                 tl_log_line("javaapp: the app's GL ES %d context is ready", es);

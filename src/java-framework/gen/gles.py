@@ -20,6 +20,9 @@ OFFSETS = {
     'glCopyBufferSubData': [2, 3, 4], 'glFlushMappedBufferRange': [1, 2], 'glMapBufferRange': [1, 2], 'glDrawElementsIndirect': [2],
     'glDrawArraysIndirect': [1], 'glDispatchComputeIndirect': [0], 'glBindVertexBuffer': [2], 'glDrawElementsBaseVertex': [3],
     'glDrawRangeElementsBaseVertex': [5], 'glDrawElementsInstancedBaseVertex': [3],
+    # OpenGL ES 1.1's pointers into a bound buffer (GLES11, GLES11Ext)
+    'glColorPointer': [3], 'glNormalPointer': [2], 'glTexCoordPointer': [3], 'glVertexPointer': [3], 'glDrawElements': [3],
+    'glPointSizePointerOES': [2], 'glMatrixIndexPointerOES': [3], 'glWeightPointerOES': [3],
 }
 d = None
 for dx in dexes(jar):
@@ -77,6 +80,13 @@ for i, (n, ty) in enumerate(fields):
 for n, sig in natives:
     ps, r = params(sig)
     L.append('    public static native %s %s(%s);' % (jtype(r), n, ', '.join('%s p%d' % (jtype(t), i) for i, t in enumerate(ps))))
+# the platform's Java wrappers over its "...Bounds" natives (GLES10.glVertexPointer(size, type, stride, Buffer) and the like)
+names = {n for n, sig in natives}
+for n, sig in natives:
+    ps, r = params(sig)
+    if n.endswith('Bounds') and n[:-6] not in names and len(ps) >= 2 and ps[-1] == 'I' and ps[-2] == 'Ljava/nio/Buffer;':
+        args = ', '.join('p%d' % i for i in range(len(ps) - 1))
+        L.append('    public static void %s(%s) { %s(%s, p%d.remaining()); }' % (n[:-6], ', '.join('%s p%d' % (jtype(t), i) for i, t in enumerate(ps[:-1])), n, args, len(ps) - 2))
 if any('$DebugProc;' in sig for n, sig in natives):
     L.append('    public interface DebugProc { void onMessage(int source, int type, int id, int severity, String message); }')
 L.append('}')
@@ -112,13 +122,16 @@ for n, sig in natives:
         elif t == 'Z': ctypes.append('uint8_t'); args.append('a[%d].z' % slot)
         else: ctypes.append('int32_t'); args.append('a[%d].i' % slot)
         i += 1; slot += 1
+    cname = n
+    if n.endswith('Bounds') and len(ps) >= 2 and ps[-1] == 'I' and ps[-2] == 'Ljava/nio/Buffer;':
+        cname = n[:-6]; ctypes.pop(); args.pop()           # the platform's bounds check: the GL function has no such argument
     rt = {'V': 'void', 'I': 'int32_t', 'J': 'int64_t', 'Z': 'uint8_t', 'F': 'float', 'Ljava/lang/String;': 'const char *'}[r]
     proto = '%s (*)(%s)' % (rt, ', '.join(ctypes) or 'void')
     C.append('static bool %s(jobj *self, const jvalue *a, jvalue *ret)' % fn)
     C.append('{')
     C.append('    (void)self; (void)a;')
     C.append('    static %s;' % proto.replace('(*)', '(*f)'))
-    C.append('    if (!f) f = (%s)gl_fn("%s");' % (proto, n))
+    C.append('    if (!f) f = (%s)gl_fn("%s");' % (proto, cname))
     C.append('    if (!f) { ret->j = 0; return true; }')
     call = 'f(%s)' % ', '.join(args)
     if r == 'V': C.append('    %s;' % call)

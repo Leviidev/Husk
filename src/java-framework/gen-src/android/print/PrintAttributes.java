@@ -4,4 +4,13 @@ package android.print;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class PrintAttributes implements android.os.Parcelable {
     protected PrintAttributes() {}
+    public static abstract class Margins {
+        protected Margins() {}
+    }
+    public static abstract class MediaSize {
+        protected MediaSize() {}
+    }
+    public static abstract class Resolution {
+        protected Resolution() {}
+    }
 }
