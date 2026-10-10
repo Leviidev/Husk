@@ -28,7 +28,7 @@ public abstract class SQLiteProgram extends SQLiteClosable {
         } finally { db.release(); }
         if (bindArgs != null && bindArgs.length > mNumParameters) throw new IllegalArgumentException("Too many bind arguments.  " + bindArgs.length + " arguments were provided but the statement needs " + mNumParameters + " arguments.");
         mBindArgs = mNumParameters != 0 ? new Object[mNumParameters] : null;
-        if (bindArgs != null) System.arraycopy(bindArgs, 0, mBindArgs, 0, bindArgs.length);
+        if (bindArgs != null && bindArgs.length != 0) System.arraycopy(bindArgs, 0, mBindArgs, 0, bindArgs.length);
     }
     final SQLiteDatabase getDatabase() { return mDatabase; }
     final String getSql() { return mSql; }

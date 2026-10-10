@@ -24,9 +24,10 @@ public class ContentResolver {
         if (authorities == null) return;
         synchronized (sProviders) { for (String a : authorities.split(";")) sProviders.put(a.trim(), p); }
     }
-    private static ContentProvider provider(Uri u) { if (u == null || !SCHEME_CONTENT.equals(u.getScheme())) return null; synchronized (sProviders) { return sProviders.get(u.getAuthority()); } }
+    private static ContentProvider provider(Uri u) { if (u == null || !SCHEME_CONTENT.equals(u.getScheme())) return null; return byAuthority(u.getAuthority()); }
+    private static ContentProvider byAuthority(String a) { ContentProvider p; synchronized (sProviders) { p = sProviders.get(a); } return p != null ? p : husk.GmsProviders.forAuthority(a); }
     public final ContentProviderClient acquireContentProviderClient(Uri u) { ContentProvider p = provider(u); return p == null ? null : new ContentProviderClient(p); }
-    public final ContentProviderClient acquireContentProviderClient(String a) { ContentProvider p; synchronized (sProviders) { p = sProviders.get(a); } return p == null ? null : new ContentProviderClient(p); }
+    public final ContentProviderClient acquireContentProviderClient(String a) { ContentProvider p = byAuthority(a); return p == null ? null : new ContentProviderClient(p); }
     public final ContentProviderClient acquireUnstableContentProviderClient(Uri u) { return acquireContentProviderClient(u); }
     public final ContentProviderClient acquireUnstableContentProviderClient(String a) { return acquireContentProviderClient(a); }
     public final Cursor query(Uri u, String[] proj, String sel, String[] args, String sort) { ContentProvider p = provider(u); return p == null ? systemEmpty(u, proj) : p.query(u, proj, sel, args, sort); }
