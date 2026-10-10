@@ -149,6 +149,7 @@ private struct AppWindow: View {
         .onChange(of: model.state) { st in
             if st == Int32(HUSK_UNITY_FAILED) { GameStatusStore.shared.record(app.id, .failed) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in windows.close() }
     }
 
     @ViewBuilder private var content: some View {
@@ -187,6 +188,13 @@ private struct AppWindow: View {
             light(.green, windows.maximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                   windows.maximized ? "Restore" : "Maximise") { windows.toggleMaximized() }
             Spacer(minLength: 6)
+            if app.screenEngine == .flutter {
+                Button { husk_flutter_back() } label: {
+                    Image(systemName: "chevron.backward").font(.system(size: 13, weight: .semibold)).frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back")
+            }
             ItemIcon(item: .game(app), size: 18)
             Text(app.label).font(.footnote.weight(.semibold)).lineLimit(1)
             Spacer(minLength: 6)

@@ -98,6 +98,19 @@ final class TLUnityUIView: UIView, UIKeyInput {
         } else if engine == .minecraft {
             TLUnityUIView.cocosView = self
             TLUnityUIView.installGameActivityKeyboardHandler()
+        } else if engine == .flutter {
+            TLUnityUIView.cocosView = self
+            TLUnityUIView.installFlutterHandlers()
+            // Android's back gesture: a swipe in from the left edge.
+            let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
+            back.edges = .left
+            addGestureRecognizer(back)
+            // The keyboard covers the bottom of the app: Flutter is told, and moves the focused field above it.
+            for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                    self?.keyboardMoved(note)
+                }
+            }
         }
         // The GPU is not the app's while it is in the background: stop drawing, and carry on when it returns.
         NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
@@ -109,6 +122,18 @@ final class TLUnityUIView: UIView, UIKeyInput {
     }
 
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
+
+    @objc private func edgeSwiped(_ g: UIScreenEdgePanGestureRecognizer) {
+        if g.state == .ended, g.translation(in: self).x > 60 { husk_flutter_back() }
+    }
+
+    private func keyboardMoved(_ note: Notification) {
+        guard let window, let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let hiding = note.name == UIResponder.keyboardWillHideNotification
+        let mine = convert(bounds, to: window)
+        let covered = hiding ? 0 : max(0, mine.maxY - window.convert(end, from: nil).minY)
+        husk_flutter_set_keyboard_inset(Int32((covered * contentScaleFactor).rounded()))
+    }
 
     deinit { statsTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
 
@@ -237,7 +262,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     /// A game asks for the keyboard when its text field is tapped. The keyboard belongs to this view; what it types goes
     /// to the game, and a strip above the keyboard shows the text, because in landscape the keyboard covers the game's field.
-    override var canBecomeFirstResponder: Bool { engine == .cocos || engine == .sdl || engine == .minecraft }
+    override var canBecomeFirstResponder: Bool { engine == .cocos || engine == .sdl || engine == .minecraft || engine == .flutter }
     var hasText: Bool { true }
     var autocorrectionType: UITextAutocorrectionType = .no
     var autocapitalizationType: UITextAutocapitalizationType = .none
@@ -248,6 +273,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     var keyboardType: UIKeyboardType = .default
     var keyboardAppearance: UIKeyboardAppearance = .dark
     var returnKeyType: UIReturnKeyType = .done
+    var isSecureTextEntry = false
 
     private var typed = ""
     private lazy var typedLabel: UILabel = {
@@ -276,6 +302,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override var inputAccessoryView: UIView? { engine == .cocos || engine == .sdl || engine == .minecraft ? keyboardBar : nil }
 
     func insertText(_ text: String) {
+        if engine == .flutter {
+            // Flutter's field draws the text itself: no strip over the keyboard, and Return is the field's action.
+            if text == "\n", !husk_flutter_text_multiline() { husk_flutter_text_action() } else { husk_flutter_insert_text(text) }
+            return
+        }
         if text == "\n" { finishTyping(); return }
         typed += text
         typedLabel.text = typed
@@ -283,6 +314,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     }
 
     func deleteBackward() {
+        if engine == .flutter { husk_flutter_delete_backward(); return }
         if !typed.isEmpty { typed.removeLast() }
         typedLabel.text = typed
         if engine == .sdl { husk_sdl_key(67, 1); husk_sdl_key(67, 0) }   // KEYCODE_DEL
@@ -299,6 +331,35 @@ final class TLUnityUIView: UIView, UIKeyInput {
         else { husk_cocos_insert_text("\n") }
         resignFirstResponder()
     }
+
+    /// A Flutter app's text fields ask for the keyboard (on its platform thread), and the app may close itself from its first screen.
+    static func installFlutterHandlers() {
+        husk_flutter_set_keyboard_handler { show, kind in
+            DispatchQueue.main.async {
+                guard let view = TLUnityUIView.cocosView, view.engine == .flutter else { return }
+                if show != 0 {
+                    switch kind & 0xF {
+                    case 1: view.keyboardType = .numbersAndPunctuation
+                    case 2: view.keyboardType = .emailAddress
+                    case 3: view.keyboardType = .URL
+                    default: view.keyboardType = .default
+                    }
+                    view.isSecureTextEntry = kind & 0x20 != 0
+                    view.returnKeyType = kind & 0x10 != 0 ? .default : .done
+                    view.autocapitalizationType = kind & 0xF == 0 && kind & 0x20 == 0 ? .sentences : .none
+                    if view.isFirstResponder { view.reloadInputViews() } else { view.becomeFirstResponder() }
+                } else {
+                    view.resignFirstResponder()
+                }
+            }
+        }
+        husk_flutter_set_close_handler {
+            DispatchQueue.main.async { NotificationCenter.default.post(name: TLUnityUIView.appClosedItself, object: nil) }
+        }
+    }
+
+    /// A Flutter app closed itself (back on its first screen): whatever shows it closes.
+    static let appClosedItself = Notification.Name("husk.tl.appClosedItself")
 
     /// The game's own requests, from its GL thread: 0 toggles, 1 shows, 2 hides.
     static func installKeyboardHandler() {
@@ -619,6 +680,7 @@ struct TLCocosAttemptView: View {
             UIApplication.shared.isIdleTimerDisabled = false
             HuskOrientation.set(HuskOrientation.standard)
         }
+        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in dismiss() }
     }
 
     /// While the pad is being edited: what to do with the control picked, in a small panel in the middle of the screen.
@@ -661,6 +723,12 @@ struct TLCocosAttemptView: View {
                 Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
             }
             .tint(.white)
+            if engine == .flutter {
+                Button { husk_flutter_back() } label: {
+                    Label("Back", systemImage: "chevron.backward").font(.system(size: 13, weight: .semibold))
+                }
+                .tint(.white)
+            }
             Circle().fill(model.statusColor).frame(width: 7, height: 7)
             Text(model.state == Int32(HUSK_UNITY_RUNNING) ? app.label : model.statusText)
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85)).lineLimit(1)

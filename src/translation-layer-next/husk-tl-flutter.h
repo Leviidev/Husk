@@ -33,6 +33,15 @@ void tl_flutter_set_pixel_ratio(float ratio);
 void tl_flutter_set_insets(int top, int right, int bottom, int left);
 /* The view's new size in pixels (a window being resized): any time after tl_flutter_run. */
 void tl_flutter_resize(int width, int height);
+/* The keyboard: typed text, backspace, Return; and how much of the view it covers (pixels from the bottom). */
+void tl_flutter_key_insert(const char *utf8);
+void tl_flutter_key_delete(void);
+void tl_flutter_key_action(void);
+void tl_flutter_set_keyboard_inset(int bottom);
+/* Android's back button. */
+void tl_flutter_back(void);
+/* Called when the app closes itself (back on its first screen). */
+void tl_flutter_set_close_handler(void (*fn)(void));
 
 #ifdef __cplusplus
 }

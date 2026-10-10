@@ -26,6 +26,7 @@
 #include "husk-tl-egl.h"
 #include "husk-tl-flutter-codec.h"
 #include "husk-tl-flutter-plugins.h"
+#include "husk-tl-flutter-text.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
@@ -50,6 +51,7 @@ static struct {
     atomic_bool first_frame;
     float ratio;
     int inset_t, inset_r, inset_b, inset_l;
+    int kb_bottom;                  /* how much of the view the keyboard covers, in pixels: the view's bottom inset */
     int pointer_fields;                   /* longs per pointer in a pointer data packet (the engine's kPointerDataFieldCount) */
 } F = { .ratio = 3.0f, .pointer_fields = 36 };
 
@@ -184,6 +186,10 @@ static void reply(int id, const void *data, size_t len)
 }
 static void reply_json(int id, const char *json) { reply(id, json, strlen(json)); }
 
+/* What to do when the app closes itself (SystemNavigator.pop: back on its first screen). */
+static void (*g_close)(void);
+void tl_flutter_set_close_handler(void (*fn)(void)) { g_close = fn; }
+
 /* A message from Dart on a channel: answered here, or with an empty reply. */
 static void on_message(const char *channel, const uint8_t *d, size_t len, int id)
 {
@@ -193,11 +199,21 @@ static void on_message(const char *channel, const uint8_t *d, size_t len, int id
         if (trace()) tl_log_line("flutter: platform %s", m);
         if (!strcmp(m, "Clipboard.hasStrings")) reply_json(id, "[{\"value\":false}]");
         else if (!strcmp(m, "Clipboard.getData")) reply_json(id, "[null]");
-        else if (!strcmp(m, "SystemNavigator.pop")) { tl_log_line("flutter: the app asked to close"); reply_json(id, "[null]"); }
+        else if (!strcmp(m, "SystemNavigator.pop")) {
+            tl_log_line("flutter: the app asked to close");
+            reply_json(id, "[null]");
+            if (g_close) g_close();
+        }
         else reply_json(id, "[null]");                 /* system chrome, orientations, sounds, haptics: done (or not needed) */
         return;
     }
-    if (!strcmp(channel, "flutter/textinput") || !strcmp(channel, "flutter/navigation") || !strcmp(channel, "flutter/mousecursor")
+    if (!strcmp(channel, "flutter/textinput")) {
+        json_method(d, len, m, sizeof(m));
+        if (trace()) tl_log_line("flutter: textinput %s", m);
+        reply_json(id, tl_flutter_text_message(m, d, len));
+        return;
+    }
+    if (!strcmp(channel, "flutter/navigation") || !strcmp(channel, "flutter/mousecursor")
         || !strcmp(channel, "flutter/scribe") || !strcmp(channel, "flutter/spellcheck")) {
         if (json_method(d, len, m, sizeof(m)) && trace()) tl_log_line("flutter: %s %s", channel, m);
         reply_json(id, "[null]");
@@ -433,6 +449,7 @@ static void send_metrics(void)
             case 0: v = F.cfg.width; break;  case 1: v = F.cfg.height; break;
             case 2: v = F.inset_t; break;    case 3: v = F.inset_r; break;
             case 4: v = F.inset_b; break;    case 5: v = F.inset_l; break;
+            case 8: v = F.kb_bottom; break;                            /* view insets: the keyboard */
             case 14: v = (int)(8 * F.ratio); break;                    /* physical touch slop */
             default: v = 0;
             }
@@ -460,6 +477,21 @@ void tl_flutter_resize(int width, int height)
     tl_nwindow_resize(width, height);
     post_event(3, 0);
 }
+
+/* The keyboard: its edits, and how much of the view it covers. */
+void tl_flutter_key_insert(const char *utf8) { tl_flutter_text_insert(utf8); post_event(4, 0); }
+void tl_flutter_key_delete(void) { tl_flutter_text_delete(); post_event(4, 0); }
+void tl_flutter_key_action(void) { tl_flutter_text_action(); post_event(4, 0); }
+void tl_flutter_set_keyboard_inset(int bottom)
+{
+    if (bottom < 0) bottom = 0;
+    if (bottom == F.kb_bottom) return;
+    F.kb_bottom = bottom;
+    post_event(2, 0);
+}
+
+/* Android's back button: the navigator pops a route, or the app closes itself (SystemNavigator.pop). */
+void tl_flutter_back(void) { post_event(5, 0); }
 
 void tl_flutter_set_insets(int top, int right, int bottom, int left)
 {
@@ -515,6 +547,8 @@ static int on_post(int fd, int events, void *data)
         else if (e.kind == 1) send_string("flutter/lifecycle", e.phase ? "AppLifecycleState.paused" : "AppLifecycleState.resumed");
         else if (e.kind == 2) send_metrics();
         else if (e.kind == 3) resize_surface();
+        else if (e.kind == 4) tl_flutter_text_drain(send_string);
+        else if (e.kind == 5) send_string("flutter/navigation", "{\"method\":\"popRoute\",\"args\":null}");
     }
     return 1;
 }

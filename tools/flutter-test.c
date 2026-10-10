@@ -6,6 +6,8 @@
  *
  * Environment: TL_PKG (package name), TL_DATA (keep the data dir), TL_FRAMES (every Nth frame to a BMP, -1 every frame),
  * TL_RATIO (device pixel ratio, default 2), TL_FLUTTER_ARGS (one extra engine switch), TL_FLUTTER_TRACE=1, TL_VERBOSE.
+ * TL_TAPS="sec:x:y,..." taps; TL_TYPE="sec:text|sec:text" types (\n = Return, \b = backspace); TL_BACK="sec,..." presses back;
+ * TL_RESIZE="sec:w:h" resizes the view, as a window being resized does.
  */
 #include <dlfcn.h>
 #include <pthread.h>
@@ -18,6 +20,7 @@
 #include <unistd.h>
 
 #include "husk-tl-flutter.h"
+#include "husk-tl-flutter-text.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
 
@@ -60,6 +63,48 @@ static void probe_cb(uint64_t *r)
     fprintf(stderr, "probe: x0=%#llx x1=%#llx x2=%#llx x3=%#llx x4=%#llx x5=%#llx x8=%#llx x19=%#llx x20=%#llx x21=%#llx x22=%#llx\n", r[0], r[1], r[2], r[3], r[4], r[5], r[8], r[19], r[20], r[21], r[22]);
 }
 
+static void keyboard_cb(int show, int kind) { fprintf(stderr, "harness: keyboard %s (kind %#x)\n", show ? "shown" : "hidden", kind); }
+
+/* TL_TYPE, TL_BACK and TL_RESIZE, run at their seconds. */
+static void script_tick(int ms)
+{
+    static char type[2000], back[200], resize[200];
+    static bool loaded;
+    if (!loaded) {
+        loaded = true;
+        if (getenv("TL_TYPE")) snprintf(type, sizeof(type), "%s", getenv("TL_TYPE"));
+        if (getenv("TL_BACK")) snprintf(back, sizeof(back), "%s", getenv("TL_BACK"));
+        if (getenv("TL_RESIZE")) snprintf(resize, sizeof(resize), "%s", getenv("TL_RESIZE"));
+    }
+    char copy[2000];
+    snprintf(copy, sizeof(copy), "%s", type);
+    for (char *save = copy, *tok; (tok = strsep(&save, "|"));) {
+        double t; int off = 0;
+        if (sscanf(tok, "%lf:%n", &t, &off) != 1 || !off || (int)(t * 1000) != ms) continue;
+        fprintf(stderr, "harness: type \"%s\"\n", tok + off);
+        for (const char *p = tok + off; *p; p++) {
+            if (p[0] == '\\' && p[1] == 'n') { tl_flutter_key_action(); p++; }
+            else if (p[0] == '\\' && p[1] == 'b') { tl_flutter_key_delete(); p++; }
+            else {
+                /* one character: a whole UTF-8 sequence */
+                int n = (*p & 0x80) == 0 ? 1 : (*p & 0xE0) == 0xC0 ? 2 : (*p & 0xF0) == 0xE0 ? 3 : 4;
+                char one[5] = { 0 };
+                memcpy(one, p, (size_t)n);
+                tl_flutter_key_insert(one);
+                p += n - 1;
+            }
+        }
+    }
+    snprintf(copy, sizeof(copy), "%s", back);
+    for (char *save = copy, *tok; (tok = strsep(&save, ","));)
+        if (*tok && (int)(atof(tok) * 1000) == ms) { fprintf(stderr, "harness: back\n"); tl_flutter_back(); }
+    snprintf(copy, sizeof(copy), "%s", resize);
+    for (char *save = copy, *tok; (tok = strsep(&save, ","));) {
+        double t; int w, h;
+        if (sscanf(tok, "%lf:%d:%d", &t, &w, &h) == 3 && (int)(t * 1000) == ms) { fprintf(stderr, "harness: resize %dx%d\n", w, h); tl_flutter_resize(w, h); }
+    }
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) { fprintf(stderr, "usage: %s <apk> [seconds] [width height]\n", argv[0]); return 2; }
@@ -94,6 +139,7 @@ int main(int argc, char **argv)
         char pr[400]; snprintf(pr, sizeof(pr), "%s", getenv("TL_PROBE"));
         for (char *save = pr, *tok; (tok = strsep(&save, ","));) if (fl && !tl_ld_probe(fl, strtoull(tok, NULL, 16), probe_cb)) fprintf(stderr, "probe at %s failed\n", tok);
     }
+    tl_flutter_text_set_keyboard_handler(keyboard_cb);
     if (!tl_flutter_run()) { fprintf(stderr, "flutter: run failed\n"); return 1; }
     int secs = argc > 2 ? atoi(argv[2]) : 10;
     /* TL_TAPS="sec:x:y,sec:x:y": a tap (down, then up 80 ms later) at those seconds, in surface pixels */
@@ -107,6 +153,7 @@ int main(int argc, char **argv)
             tl_flutter_touch(0, 1, tx[next], ty[next]); usleep(80000); tl_flutter_touch(2, 1, tx[next], ty[next]);
             next++;
         }
+        script_tick(ms);
     }
     fprintf(stderr, "flutter: %lu frames in %d s, first frame %s\n", tl_flutter_frames(), secs, tl_flutter_first_frame() ? "yes" : "no");
     return 0;

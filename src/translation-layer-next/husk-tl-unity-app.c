@@ -34,6 +34,7 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 #include "husk-tl-gamepad.h"
 #include "husk-tl-sdl.h"
 #include "husk-tl-flutter.h"
+#include "husk-tl-flutter-text.h"
 #include "husk-tl-nativeactivity.h"
 #include "husk-tl-gtasa.h"
 #include "husk-tl-vulkan.h"
@@ -414,6 +415,14 @@ int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0
 void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }
 void husk_flutter_set_insets(int top, int right, int bottom, int left) { tl_flutter_set_insets(top, right, bottom, left); }
 void husk_flutter_resize(int width, int height) { if (A.engine == ENGINE_FLUTTER) tl_flutter_resize(width, height); }
+void husk_flutter_insert_text(const char *utf8) { tl_flutter_key_insert(utf8); }
+void husk_flutter_delete_backward(void) { tl_flutter_key_delete(); }
+void husk_flutter_text_action(void) { tl_flutter_key_action(); }
+bool husk_flutter_text_multiline(void) { return tl_flutter_text_multiline(); }
+void husk_flutter_set_keyboard_inset(int bottom) { tl_flutter_set_keyboard_inset(bottom); }
+void husk_flutter_back(void) { if (A.engine == ENGINE_FLUTTER) tl_flutter_back(); }
+void husk_flutter_set_keyboard_handler(void (*fn)(int show, int kind)) { tl_flutter_text_set_keyboard_handler(fn); }
+void husk_flutter_set_close_handler(void (*fn)(void)) { tl_flutter_set_close_handler(fn); }
 void tl_set_cacerts_dir(const char *dir);
 void tl_set_system_fonts_dir(const char *dir);
 /* The certificates and fonts Android keeps under /system, as copies the app carries (cacerts/, and fonts/ + etc/fonts.xml). */

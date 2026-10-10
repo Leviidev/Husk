@@ -91,6 +91,7 @@
 		80F03D2EAABE3BFEA4A2785B /* husk-tl-framework.c in Sources */ = {isa = PBXBuildFile; fileRef = D50A30F186B58956276C9B24 /* husk-tl-framework.c */; };
 		81557CC939994CE6350E1C81 /* HuskKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392BE39CE162757FDA225452 /* HuskKeyboard.swift */; };
 		818D7D89195D77AA70E27DCF /* husk-tl-jni-hle.c in Sources */ = {isa = PBXBuildFile; fileRef = 54E1C79EFAAEBBC6992A36A6 /* husk-tl-jni-hle.c */; };
+		82938DC4F4DEC353D57A59B9 /* husk-tl-flutter-text.c in Sources */ = {isa = PBXBuildFile; fileRef = 9C0AD6C357A94EB7BA2ADF00 /* husk-tl-flutter-text.c */; };
 		853E83FF7FF5B9A7FDE5E638 /* BootScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */; };
 		8573CC8F200AA844B23AD4F9 /* libFilePickerFix.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F44A2196AA5F6271BF893660 /* libFilePickerFix.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8586F8338A93D7526FAEAD97 /* husk-tl-xmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 42CBC0D7ACAB400BDDFD7F9E /* husk-tl-xmem.c */; };
@@ -323,6 +324,7 @@
 		9713186CDCF6F1188BB4ABE1 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = "../../build/ios-arm64/lib/MoltenVK.xcframework"; sourceTree = "<group>"; };
 		9736391C1BCE43667293DB7B /* Geode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geode.swift; sourceTree = "<group>"; };
 		97E83F7EE31FE180D0FA3105 /* husk-tl-http.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-http.h"; sourceTree = "<group>"; };
+		9C0AD6C357A94EB7BA2ADF00 /* husk-tl-flutter-text.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-text.c"; sourceTree = "<group>"; };
 		9C254830956F062F72F2EF2D /* husk-tl-jni-godot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-godot.c"; sourceTree = "<group>"; };
 		9DA435135C98A8EFBDEAF79A /* husk-tl-sdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-sdl.h"; sourceTree = "<group>"; };
 		9E133BDBB6CB711003066815 /* husk-tl-zip.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-zip.c"; sourceTree = "<group>"; };
@@ -346,6 +348,7 @@
 		BF6468C273AA781A48B72C0B /* husk-tl-geode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-geode.h"; sourceTree = "<group>"; };
 		C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDetailView.swift; sourceTree = "<group>"; };
 		C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-pthread.c"; sourceTree = "<group>"; };
+		C21F6F71FA6C440F0A150CD9 /* husk-tl-flutter-text.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-flutter-text.h"; sourceTree = "<group>"; };
 		C48A155D03D70E7DC8411ED5 /* husk-tl-sdl.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-sdl.c"; sourceTree = "<group>"; };
 		C48A9F257449472675C4201A /* HuskJITHelper.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HuskJITHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C575FDA8867C3A75AB2392E3 /* husk-tl-jni-fmod.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-fmod.c"; sourceTree = "<group>"; };
@@ -567,6 +570,8 @@
 				328C4FFE40DC336DFEBD2289 /* husk-tl-flutter-codec.h */,
 				2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */,
 				EE38587B069F4AC65061C590 /* husk-tl-flutter-plugins.h */,
+				9C0AD6C357A94EB7BA2ADF00 /* husk-tl-flutter-text.c */,
+				C21F6F71FA6C440F0A150CD9 /* husk-tl-flutter-text.h */,
 				4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */,
 				6A015D18C0BBEB07C1AB42C0 /* husk-tl-flutter.h */,
 				CFAB9C41A483CA08C1037AAC /* husk-tl-gameactivity.c */,
@@ -982,6 +987,7 @@
 				9883B80CE2F3C84E5D6E0A8F /* husk-tl-elf.c in Sources */,
 				318AFCE2330050A6BFE8B98A /* husk-tl-flutter-codec.c in Sources */,
 				CDA36696EE466B42197CA324 /* husk-tl-flutter-plugins.c in Sources */,
+				82938DC4F4DEC353D57A59B9 /* husk-tl-flutter-text.c in Sources */,
 				9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */,
 				80F03D2EAABE3BFEA4A2785B /* husk-tl-framework.c in Sources */,
 				12F633F698047D7DED62A51D /* husk-tl-gameactivity.c in Sources */,

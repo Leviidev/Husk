@@ -64,6 +64,16 @@ int  husk_flutter_is_app(const char *apk);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
 void husk_flutter_resize(int width, int height);                     /* the view's new size in pixels, after the launch */
+/* The keyboard for a Flutter app's text fields: the app asks for it (show 1 with the kind, or 0 to hide; on its own thread), and
+ * what is typed goes back. The kind is 0 text, 1 number, 2 email, 3 URL, plus 0x10 multi-line and 0x20 secure. */
+void husk_flutter_set_keyboard_handler(void (*fn)(int show, int kind));
+void husk_flutter_insert_text(const char *utf8);
+void husk_flutter_delete_backward(void);
+void husk_flutter_text_action(void);                                  /* Return */
+bool husk_flutter_text_multiline(void);
+void husk_flutter_set_keyboard_inset(int bottom);                     /* pixels of the view the keyboard covers */
+void husk_flutter_back(void);                                         /* Android's back button */
+void husk_flutter_set_close_handler(void (*fn)(void));                /* the app closed itself */
 void husk_native_set_system_files(const char *cacerts_dir, const char *fonts_root);
 /* Another APK of the app about to be launched (a split, an asset pack). Before the launch call; at most three. */
 void husk_native_add_package(const char *apk);
