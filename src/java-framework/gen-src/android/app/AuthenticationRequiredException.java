@@ -10,4 +10,5 @@ public final class AuthenticationRequiredException extends java.lang.SecurityExc
     public int describeContents() { return 0; }
     public android.app.PendingIntent getUserAction() { return (android.app.PendingIntent) huskProps.get("UserAction"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AuthenticationRequiredException() { this((android.os.Parcel) null); }
 }

@@ -83,8 +83,7 @@ public final class AppRunner {
         if (prev != null && prev.isResumedHusk()) prev.huskPause();
         sStack.add(a);
         a.huskCreate(null);
-        a.huskStart();
-        a.huskResume();
+        if (!a.isFinishing()) { a.huskStart(); a.huskResume(); }
         if (prev != null && !a.isFinishing()) {
             final Activity p = prev;
             // the one below stops once the new one covers it (a translucent or floating window leaves it visible)

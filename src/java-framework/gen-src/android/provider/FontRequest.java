@@ -11,4 +11,5 @@ public final class FontRequest {
     public java.lang.String getProviderAuthority() { return (java.lang.String) huskProps.get("ProviderAuthority"); }
     public java.lang.String getProviderPackage() { return (java.lang.String) huskProps.get("ProviderPackage"); }
     public java.lang.String getQuery() { return (java.lang.String) huskProps.get("Query"); }
+    FontRequest() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
 }

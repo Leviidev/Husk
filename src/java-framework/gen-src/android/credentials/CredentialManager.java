@@ -26,6 +26,7 @@ public final class CredentialManager {
     public void registerCredentialDescription(android.credentials.RegisterCredentialDescriptionRequest p0) {}
     public void setEnabledProviders(java.util.List p0, java.util.List p1, int p2, java.util.concurrent.Executor p3, android.os.OutcomeReceiver p4) {}
     public void unregisterCredentialDescription(android.credentials.UnregisterCredentialDescriptionRequest p0) {}
+    CredentialManager() { this((android.content.Context) null, (android.credentials.ICredentialManager) null); }
     public static abstract class GetCredentialTransportPendingUseCase extends android.credentials.IGetCredentialCallback.Stub {
         protected GetCredentialTransportPendingUseCase() { super(); }
     }

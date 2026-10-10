@@ -34,4 +34,5 @@ public final class TvRecordingInfo implements android.os.Parcelable {
     public void setDescription(java.lang.String p0) { huskProps.put("Description", p0); }
     public void setName(java.lang.String p0) { huskProps.put("Name", p0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TvRecordingInfo() { this((java.lang.String) null, (long) 0L, (long) 0L, (int) 0, (java.lang.String) null, (java.lang.String) null, (long) 0L, (long) 0L, (android.net.Uri) null, (android.net.Uri) null, (java.util.List) null, (android.net.Uri) null, (long) 0L, (long) 0L); }
 }

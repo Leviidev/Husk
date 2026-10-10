@@ -42,6 +42,7 @@ public abstract class BackupAgent extends android.content.ContextWrapper {
     public static class IncludeExcludeRules {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public IncludeExcludeRules(java.util.Map p0, java.util.Set p1) {}
-        public static android.app.backup.BackupAgent.IncludeExcludeRules emptyRules() { return null; }
+        public static android.app.backup.BackupAgent.IncludeExcludeRules emptyRules() { return new IncludeExcludeRules(); }
+        IncludeExcludeRules() { this((java.util.Map) null, (java.util.Set) null); }
     }
 }

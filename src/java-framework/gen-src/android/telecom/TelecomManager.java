@@ -117,7 +117,7 @@ public class TelecomManager {
     public static final int TTY_MODE_VCO = 3;
     public static final long VERY_SHORT_CALL_TIME_MS = 3000L;
     public TelecomManager(android.content.Context p0) {}
-    public static android.telecom.TelecomManager from(android.content.Context p0) { return null; }
+    public static android.telecom.TelecomManager from(android.content.Context p0) { return new TelecomManager(); }
     public void acceptHandover(android.net.Uri p0, int p1, android.telecom.PhoneAccountHandle p2) {}
     public void acceptRingingCall() {}
     public void acceptRingingCall(int p0) {}
@@ -187,4 +187,5 @@ public class TelecomManager {
     public void silenceRinger() {}
     public void startConference(java.util.List p0, android.os.Bundle p1) {}
     public void unregisterPhoneAccount(android.telecom.PhoneAccountHandle p0) {}
+    TelecomManager() { this((android.content.Context) null); }
 }

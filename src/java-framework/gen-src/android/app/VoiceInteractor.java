@@ -21,23 +21,27 @@ public final class VoiceInteractor {
         public AbortVoiceRequest(android.app.VoiceInteractor.Prompt p0, android.os.Bundle p1) { super(); }
         public AbortVoiceRequest(java.lang.CharSequence p0, android.os.Bundle p1) { super(); }
         public void onAbortResult(android.os.Bundle p0) {}
+        AbortVoiceRequest() { this((android.app.VoiceInteractor.Prompt) null, (android.os.Bundle) null); }
     }
     public static class CommandRequest extends android.app.VoiceInteractor.Request {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CommandRequest(java.lang.String p0, android.os.Bundle p1) { super(); }
         public void onCommandResult(boolean p0, android.os.Bundle p1) {}
+        CommandRequest() { this((java.lang.String) null, (android.os.Bundle) null); }
     }
     public static class CompleteVoiceRequest extends android.app.VoiceInteractor.Request {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CompleteVoiceRequest(android.app.VoiceInteractor.Prompt p0, android.os.Bundle p1) { super(); }
         public CompleteVoiceRequest(java.lang.CharSequence p0, android.os.Bundle p1) { super(); }
         public void onCompleteResult(android.os.Bundle p0) {}
+        CompleteVoiceRequest() { this((android.app.VoiceInteractor.Prompt) null, (android.os.Bundle) null); }
     }
     public static class ConfirmationRequest extends android.app.VoiceInteractor.Request {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ConfirmationRequest(android.app.VoiceInteractor.Prompt p0, android.os.Bundle p1) { super(); }
         public ConfirmationRequest(java.lang.CharSequence p0, android.os.Bundle p1) { super(); }
         public void onConfirmationResult(boolean p0, android.os.Bundle p1) {}
+        ConfirmationRequest() { this((android.app.VoiceInteractor.Prompt) null, (android.os.Bundle) null); }
     }
     public static abstract class PickOptionRequest extends android.app.VoiceInteractor.Request {
         protected PickOptionRequest() { super(); }
@@ -55,6 +59,7 @@ public final class VoiceInteractor {
         public java.lang.CharSequence getVisualPrompt() { return (java.lang.CharSequence) huskProps.get("VisualPrompt"); }
         public java.lang.CharSequence getVoicePromptAt(int p0) { return null; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        Prompt() { this((java.lang.CharSequence) null); }
     }
     public static abstract class Request {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

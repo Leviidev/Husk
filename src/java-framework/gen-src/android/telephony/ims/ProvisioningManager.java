@@ -89,7 +89,7 @@ public class ProvisioningManager {
     public static final int VIDEO_QUALITY_HIGH = 1;
     public static int VIDEO_QUALITY_LOW;
     public ProvisioningManager(int p0) {}
-    public static android.telephony.ims.ProvisioningManager createForSubscriptionId(int p0) { return null; }
+    public static android.telephony.ims.ProvisioningManager createForSubscriptionId(int p0) { return new ProvisioningManager(); }
     public int getProvisioningIntValue(int p0) { return 0; }
     public boolean getProvisioningStatusForCapability(int p0, int p1) { return false; }
     public java.lang.String getProvisioningStringValue(int p0) { return null; }
@@ -112,6 +112,7 @@ public class ProvisioningManager {
     public void unregisterFeatureProvisioningChangedCallback(android.telephony.ims.ProvisioningManager.FeatureProvisioningCallback p0) {}
     public void unregisterProvisioningChangedCallback(android.telephony.ims.ProvisioningManager.Callback p0) {}
     public void unregisterRcsProvisioningCallback(android.telephony.ims.ProvisioningManager.RcsProvisioningCallback p0) {}
+    ProvisioningManager() { this((int) 0); }
     public static class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}

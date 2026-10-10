@@ -17,6 +17,7 @@ public class ZoomButtonsController implements android.view.View.OnTouchListener 
     public void setZoomInEnabled(boolean p0) { huskProps.put("ZoomInEnabled", Boolean.valueOf(p0)); }
     public void setZoomOutEnabled(boolean p0) { huskProps.put("ZoomOutEnabled", Boolean.valueOf(p0)); }
     public void setZoomSpeed(long p0) { huskProps.put("ZoomSpeed", Long.valueOf(p0)); }
+    ZoomButtonsController() { this((android.view.View) null); }
     public interface OnZoomListener {
         void onVisibilityChanged(boolean p0);
         void onZoom(boolean p0);

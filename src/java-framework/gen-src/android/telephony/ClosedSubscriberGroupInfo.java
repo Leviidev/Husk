@@ -6,10 +6,11 @@ public final class ClosedSubscriberGroupInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public ClosedSubscriberGroupInfo(boolean p0, java.lang.String p1, int p2) {}
-    protected static android.telephony.ClosedSubscriberGroupInfo createFromParcelBody(android.os.Parcel p0) { return null; }
+    protected static android.telephony.ClosedSubscriberGroupInfo createFromParcelBody(android.os.Parcel p0) { return new ClosedSubscriberGroupInfo(); }
     public int describeContents() { return 0; }
     public int getCsgIdentity() { return (huskProps.get("CsgIdentity") instanceof Integer ? (Integer) huskProps.get("CsgIdentity") : 0); }
     public boolean getCsgIndicator() { return (huskProps.get("CsgIndicator") instanceof Boolean ? (Boolean) huskProps.get("CsgIndicator") : false); }
     public java.lang.String getHomeNodebName() { return (java.lang.String) huskProps.get("HomeNodebName"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ClosedSubscriberGroupInfo() { this((boolean) false, (java.lang.String) null, (int) 0); }
 }

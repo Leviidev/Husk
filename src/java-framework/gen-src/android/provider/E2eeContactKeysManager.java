@@ -27,6 +27,7 @@ public final class E2eeContactKeysManager {
     public boolean updateE2eeSelfKeyRemoteVerificationState(java.lang.String p0, java.lang.String p1, java.lang.String p2, int p3) { return false; }
     public void updateOrInsertE2eeContactKey(java.lang.String p0, java.lang.String p1, java.lang.String p2, byte[] p3) {}
     public boolean updateOrInsertE2eeSelfKey(java.lang.String p0, java.lang.String p1, byte[] p2) { return false; }
+    E2eeContactKeysManager() { this((android.content.Context) null); }
     public static abstract class E2eeBaseKey {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         protected java.lang.String mAccountId;
@@ -42,6 +43,7 @@ public final class E2eeContactKeysManager {
         public java.lang.String getOwnerPackageName() { return (java.lang.String) huskProps.get("OwnerPackageName"); }
         public int getRemoteVerificationState() { return (huskProps.get("RemoteVerificationState") instanceof Integer ? (Integer) huskProps.get("RemoteVerificationState") : 0); }
         public long getTimeUpdated() { return (huskProps.get("TimeUpdated") instanceof Long ? (Long) huskProps.get("TimeUpdated") : 0L); }
+        E2eeBaseKey() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (long) 0L, (byte[]) null, (int) 0); }
     }
     public static final class E2eeContactKey extends android.provider.E2eeContactKeysManager.E2eeBaseKey implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -59,6 +61,7 @@ public final class E2eeContactKeysManager {
         public int getRemoteVerificationState() { return (huskProps.get("RemoteVerificationState") instanceof Integer ? (Integer) huskProps.get("RemoteVerificationState") : 0); }
         public long getTimeUpdated() { return (huskProps.get("TimeUpdated") instanceof Long ? (Long) huskProps.get("TimeUpdated") : 0L); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        E2eeContactKey() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (long) 0L, (byte[]) null, (int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
     }
     public static final class E2eeContactKeys {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -103,5 +106,6 @@ public final class E2eeContactKeysManager {
         public int getRemoteVerificationState() { return (huskProps.get("RemoteVerificationState") instanceof Integer ? (Integer) huskProps.get("RemoteVerificationState") : 0); }
         public long getTimeUpdated() { return (huskProps.get("TimeUpdated") instanceof Long ? (Long) huskProps.get("TimeUpdated") : 0L); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        E2eeSelfKey() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (long) 0L, (byte[]) null, (int) 0); }
     }
 }

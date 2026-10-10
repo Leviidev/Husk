@@ -8,4 +8,5 @@ public final class InvalidForegroundServiceTypeException extends android.app.For
     public InvalidForegroundServiceTypeException(java.lang.String p0) { super(p0); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    InvalidForegroundServiceTypeException() { this((java.lang.String) null); }
 }

@@ -10,4 +10,5 @@ public final class ContentCaptureSessionId implements android.os.Parcelable {
     public void dump(java.io.PrintWriter p0) {}
     public int getValue() { return (huskProps.get("Value") instanceof Integer ? (Integer) huskProps.get("Value") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ContentCaptureSessionId() { this((int) 0); }
 }

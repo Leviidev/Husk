@@ -6,4 +6,5 @@ public class InvalidRequestMessageException extends android.security.identity.Id
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public InvalidRequestMessageException(java.lang.String p0) { super(p0); }
     public InvalidRequestMessageException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    InvalidRequestMessageException() { this((java.lang.String) null); }
 }

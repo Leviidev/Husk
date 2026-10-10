@@ -20,6 +20,7 @@ public class CallLog {
         public static int ERROR_UNKNOWN;
         public CallComposerLoggingException(int p0) { super(); }
         public int getErrorCode() { return (huskProps.get("ErrorCode") instanceof Integer ? (Integer) huskProps.get("ErrorCode") : 0); }
+        CallComposerLoggingException() { this((int) 0); }
     }
     public static class Calls implements android.provider.BaseColumns {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

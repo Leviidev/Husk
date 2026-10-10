@@ -34,5 +34,6 @@ public final class ContentInfo implements android.os.Parcelable {
         public android.view.ContentInfo.Builder setInputContentInfo(android.view.inputmethod.InputContentInfo p0) { huskProps.put("InputContentInfo", p0); return this; }
         public android.view.ContentInfo.Builder setLinkUri(android.net.Uri p0) { huskProps.put("LinkUri", p0); return this; }
         public android.view.ContentInfo.Builder setSource(int p0) { huskProps.put("Source", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.view.ContentInfo) null); }
     }
 }

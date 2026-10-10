@@ -15,4 +15,5 @@ public class YuvImage {
     public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
     public byte[] getYuvData() { return (byte[]) huskProps.get("YuvData"); }
     public int getYuvFormat() { return (huskProps.get("YuvFormat") instanceof Integer ? (Integer) huskProps.get("YuvFormat") : 0); }
+    YuvImage() { this((byte[]) null, (int) 0, (int) 0, (int) 0, (int[]) null); }
 }

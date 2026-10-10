@@ -38,6 +38,7 @@ public class TvAdView extends android.view.ViewGroup {
     public void setZOrderOnTop(boolean p0) { huskProps.put("ZOrderOnTop", Boolean.valueOf(p0)); }
     public void startAdService() {}
     public void stopAdService() {}
+    TvAdView() { this((android.content.Context) null); }
     public interface OnUnhandledInputEventListener {
         boolean onUnhandledInputEvent(android.view.InputEvent p0);
     }

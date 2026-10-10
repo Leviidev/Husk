@@ -25,4 +25,5 @@ public class ExtractEditText extends android.widget.EditText {
     protected void setSpan_internal(java.lang.Object p0, int p1, int p2, int p3) {}
     public void startInternalChanges() {}
     protected void viewClicked(android.view.inputmethod.InputMethodManager p0) {}
+    ExtractEditText() { this((android.content.Context) null); }
 }

@@ -16,6 +16,7 @@ public abstract class AsyncQueryHandler extends android.os.Handler {
     public void startInsert(int p0, java.lang.Object p1, android.net.Uri p2, android.content.ContentValues p3) {}
     public void startQuery(int p0, java.lang.Object p1, android.net.Uri p2, java.lang.String[] p3, java.lang.String p4, java.lang.String[] p5, java.lang.String p6) {}
     public void startUpdate(int p0, java.lang.Object p1, android.net.Uri p2, android.content.ContentValues p3, java.lang.String p4, java.lang.String[] p5) {}
+    AsyncQueryHandler() { this((android.content.ContentResolver) null); }
     public static final class WorkerArgs {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public java.lang.Object cookie;
@@ -33,5 +34,6 @@ public abstract class AsyncQueryHandler extends android.os.Handler {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public WorkerHandler(android.content.AsyncQueryHandler p0, android.os.Looper p1) { super(); }
         public void handleMessage(android.os.Message p0) {}
+        WorkerHandler() { this((android.content.AsyncQueryHandler) null, (android.os.Looper) null); }
     }
 }

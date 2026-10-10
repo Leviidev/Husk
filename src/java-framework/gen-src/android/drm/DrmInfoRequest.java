@@ -17,4 +17,5 @@ public class DrmInfoRequest {
     public java.util.Iterator iterator() { return null; }
     public java.util.Iterator keyIterator() { return null; }
     public void put(java.lang.String p0, java.lang.Object p1) {}
+    DrmInfoRequest() { this((int) 0, (java.lang.String) null); }
 }

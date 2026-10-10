@@ -17,6 +17,7 @@ public final class Font {
     public android.graphics.fonts.FontStyle getStyle() { return (android.graphics.fonts.FontStyle) huskProps.get("Style"); }
     public int getTtcIndex() { return (huskProps.get("TtcIndex") instanceof Integer ? (Integer) huskProps.get("TtcIndex") : 0); }
     public boolean paramEquals(android.graphics.fonts.Font p0) { return false; }
+    Font() { this((long) 0L); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.res.AssetManager p0, java.lang.String p1) {}
@@ -30,11 +31,12 @@ public final class Font {
         public Builder(java.nio.ByteBuffer p0) {}
         public Builder(java.nio.ByteBuffer p0, java.io.File p1, java.lang.String p2) {}
         public static java.nio.ByteBuffer createBuffer(android.content.res.AssetManager p0, java.lang.String p1, boolean p2, int p3) { return null; }
-        public android.graphics.fonts.Font build() { return null; }
+        public android.graphics.fonts.Font build() { return new android.graphics.fonts.Font(); }
         public android.graphics.fonts.Font.Builder setFontVariationSettings(java.lang.String p0) { huskProps.put("FontVariationSettings", p0); return this; }
         public android.graphics.fonts.Font.Builder setFontVariationSettings(android.graphics.fonts.FontVariationAxis[] p0) { huskProps.put("FontVariationSettings", p0); return this; }
         public android.graphics.fonts.Font.Builder setSlant(int p0) { huskProps.put("Slant", Integer.valueOf(p0)); return this; }
         public android.graphics.fonts.Font.Builder setTtcIndex(int p0) { huskProps.put("TtcIndex", Integer.valueOf(p0)); return this; }
         public android.graphics.fonts.Font.Builder setWeight(int p0) { huskProps.put("Weight", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.graphics.fonts.Font) null); }
     }
 }

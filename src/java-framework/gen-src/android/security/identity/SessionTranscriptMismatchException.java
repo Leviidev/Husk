@@ -6,4 +6,5 @@ public class SessionTranscriptMismatchException extends android.security.identit
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public SessionTranscriptMismatchException(java.lang.String p0) { super(p0); }
     public SessionTranscriptMismatchException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    SessionTranscriptMismatchException() { this((java.lang.String) null); }
 }

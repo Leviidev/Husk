@@ -10,4 +10,5 @@ public final class ControlButton implements android.os.Parcelable {
     public java.lang.CharSequence getActionDescription() { return (java.lang.CharSequence) huskProps.get("ActionDescription"); }
     public boolean isChecked() { return (huskProps.get("Checked") instanceof Boolean ? (Boolean) huskProps.get("Checked") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ControlButton() { this((boolean) false, (java.lang.CharSequence) null); }
 }

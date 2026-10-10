@@ -16,4 +16,5 @@ public final class PhoneAccountSuggestion implements android.os.Parcelable {
     public int getReason() { return (huskProps.get("Reason") instanceof Integer ? (Integer) huskProps.get("Reason") : 0); }
     public boolean shouldAutoSelect() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PhoneAccountSuggestion() { this((android.telecom.PhoneAccountHandle) null, (int) 0, (boolean) false); }
 }

@@ -11,10 +11,11 @@ public final class LightState implements android.os.Parcelable {
     public int getColor() { return (huskProps.get("Color") instanceof Integer ? (Integer) huskProps.get("Color") : 0); }
     public int getPlayerId() { return (huskProps.get("PlayerId") instanceof Integer ? (Integer) huskProps.get("PlayerId") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    LightState() { this((int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.hardware.lights.LightState build() { return null; }
+        public android.hardware.lights.LightState build() { return new android.hardware.lights.LightState(); }
         public android.hardware.lights.LightState.Builder setColor(int p0) { huskProps.put("Color", Integer.valueOf(p0)); return this; }
         public android.hardware.lights.LightState.Builder setPlayerId(int p0) { huskProps.put("PlayerId", Integer.valueOf(p0)); return this; }
     }

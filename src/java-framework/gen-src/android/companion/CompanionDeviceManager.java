@@ -38,6 +38,7 @@ public final class CompanionDeviceManager {
     public void addOnTransportsChangedListener(java.util.concurrent.Executor p0, java.util.function.Consumer p1) {}
     public void associate(android.companion.AssociationRequest p0, android.companion.CompanionDeviceManager.Callback p1, android.os.Handler p2) {}
     public void associate(android.companion.AssociationRequest p0, java.util.concurrent.Executor p1, android.companion.CompanionDeviceManager.Callback p2) {}
+    public void associate(java.lang.String p0, android.net.MacAddress p1, byte[] p2) {}
     public void attachSystemDataTransport(int p0, java.io.InputStream p1, java.io.OutputStream p2) {}
     public android.content.IntentSender buildAssociationCancellationIntent() { return null; }
     public android.content.IntentSender buildPermissionTransferUserConsentIntent(int p0) { return null; }
@@ -60,6 +61,7 @@ public final class CompanionDeviceManager {
     public android.companion.datatransfer.PermissionSyncRequest getPermissionSyncRequest(int p0) { return null; }
     public boolean hasNotificationAccess(android.content.ComponentName p0) { return false; }
     public boolean isCompanionApplicationBound() { return (huskProps.get("CompanionApplicationBound") instanceof Boolean ? (Boolean) huskProps.get("CompanionApplicationBound") : false); }
+    public boolean isDeviceAssociatedForWifiConnection(java.lang.String p0, android.net.MacAddress p1, android.os.UserHandle p2) { return false; }
     public boolean isPermissionTransferUserConsented(int p0) { return false; }
     public void notifyActionResult(int p0, android.companion.ActionResult p1) {}
     public void notifyDeviceAppeared(int p0) {}
@@ -86,6 +88,7 @@ public final class CompanionDeviceManager {
     public void startSystemDataTransfer(int p0, java.util.concurrent.Executor p1, android.os.OutcomeReceiver p2) {}
     public void stopObservingDevicePresence(android.companion.ObservingDevicePresenceRequest p0) {}
     public void stopObservingDevicePresence(java.lang.String p0) {}
+    CompanionDeviceManager() { this((android.companion.ICompanionDeviceManager) null, (android.content.Context) null); }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}

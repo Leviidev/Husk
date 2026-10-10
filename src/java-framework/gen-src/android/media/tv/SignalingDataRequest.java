@@ -41,4 +41,5 @@ public final class SignalingDataRequest extends android.media.tv.BroadcastInfoRe
     public int getGroup() { return (huskProps.get("Group") instanceof Integer ? (Integer) huskProps.get("Group") : 0); }
     public java.util.List getSignalingDataTypes() { return (huskProps.get("SignalingDataTypes") != null ? (java.util.List) huskProps.get("SignalingDataTypes") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SignalingDataRequest() { this((int) 0, (int) 0, (int) 0, (java.util.List) null); }
 }

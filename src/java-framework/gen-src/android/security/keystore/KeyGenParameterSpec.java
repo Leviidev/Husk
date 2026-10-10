@@ -43,11 +43,12 @@ public final class KeyGenParameterSpec implements java.security.spec.AlgorithmPa
     public boolean isUserAuthenticationValidWhileOnBody() { return (huskProps.get("UserAuthenticationValidWhileOnBody") instanceof Boolean ? (Boolean) huskProps.get("UserAuthenticationValidWhileOnBody") : false); }
     public boolean isUserConfirmationRequired() { return (huskProps.get("UserConfirmationRequired") instanceof Boolean ? (Boolean) huskProps.get("UserConfirmationRequired") : false); }
     public boolean isUserPresenceRequired() { return (huskProps.get("UserPresenceRequired") instanceof Boolean ? (Boolean) huskProps.get("UserPresenceRequired") : false); }
+    KeyGenParameterSpec() { this((java.lang.String) null, (int) 0, (int) 0, (java.security.spec.AlgorithmParameterSpec) null, (javax.security.auth.x500.X500Principal) null, (java.math.BigInteger) null, (java.util.Date) null, (java.util.Date) null, (java.util.Date) null, (java.util.Date) null, (java.util.Date) null, (int) 0, (java.lang.String[]) null, (java.util.Set) null, (java.lang.String[]) null, (java.lang.String[]) null, (java.lang.String[]) null, (boolean) false, (boolean) false, (int) 0, (int) 0, (boolean) false, (byte[]) null, (boolean) false, (int[]) null, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (int) 0, (java.lang.String) null, (long) 0L); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.security.keystore.KeyGenParameterSpec p0) {}
         public Builder(java.lang.String p0, int p1) {}
-        public android.security.keystore.KeyGenParameterSpec build() { return null; }
+        public android.security.keystore.KeyGenParameterSpec build() { return new android.security.keystore.KeyGenParameterSpec(); }
         public android.security.keystore.KeyGenParameterSpec.Builder setAlgorithmParameterSpec(java.security.spec.AlgorithmParameterSpec p0) { huskProps.put("AlgorithmParameterSpec", p0); return this; }
         public android.security.keystore.KeyGenParameterSpec.Builder setAttestKeyAlias(java.lang.String p0) { huskProps.put("AttestKeyAlias", p0); return this; }
         public android.security.keystore.KeyGenParameterSpec.Builder setAttestationChallenge(byte[] p0) { huskProps.put("AttestationChallenge", p0); return this; }
@@ -83,5 +84,6 @@ public final class KeyGenParameterSpec implements java.security.spec.AlgorithmPa
         public android.security.keystore.KeyGenParameterSpec.Builder setUserAuthenticationValidityDurationSeconds(int p0) { huskProps.put("UserAuthenticationValidityDurationSeconds", Integer.valueOf(p0)); return this; }
         public android.security.keystore.KeyGenParameterSpec.Builder setUserConfirmationRequired(boolean p0) { huskProps.put("UserConfirmationRequired", Boolean.valueOf(p0)); return this; }
         public android.security.keystore.KeyGenParameterSpec.Builder setUserPresenceRequired(boolean p0) { huskProps.put("UserPresenceRequired", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.security.keystore.KeyGenParameterSpec) null); }
     }
 }

@@ -33,4 +33,5 @@ public final class RecommendedStreamConfigurationMap {
     public java.util.Set getValidOutputFormatsForInput(int p0) { return new java.util.HashSet(); }
     public boolean isOutputSupportedFor(int p0) { return false; }
     public boolean isOutputSupportedFor(android.view.Surface p0) { return false; }
+    RecommendedStreamConfigurationMap() { this((android.hardware.camera2.params.StreamConfigurationMap) null, (int) 0, (boolean) false); }
 }

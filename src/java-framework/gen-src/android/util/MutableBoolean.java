@@ -6,4 +6,5 @@ public final class MutableBoolean {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public boolean value;
     public MutableBoolean(boolean p0) {}
+    MutableBoolean() { this((boolean) false); }
 }

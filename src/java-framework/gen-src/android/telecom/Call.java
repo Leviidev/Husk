@@ -131,5 +131,6 @@ public final class Call {
         public java.lang.String readImmediately() { return null; }
         public void setRttMode(int p0) { huskProps.put("RttMode", Integer.valueOf(p0)); }
         public void write(java.lang.String p0) {}
+        RttCall() { this((java.lang.String) null, (java.io.InputStreamReader) null, (java.io.OutputStreamWriter) null, (int) 0, (android.telecom.InCallAdapter) null); }
     }
 }

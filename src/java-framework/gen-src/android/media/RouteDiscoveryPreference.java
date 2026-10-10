@@ -27,5 +27,6 @@ public final class RouteDiscoveryPreference implements android.os.Parcelable {
         public android.media.RouteDiscoveryPreference.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.media.RouteDiscoveryPreference.Builder setPreferredFeatures(java.util.List p0) { huskProps.put("PreferredFeatures", p0); return this; }
         public android.media.RouteDiscoveryPreference.Builder setShouldPerformActiveScan(boolean p0) { huskProps.put("ShouldPerformActiveScan", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.media.RouteDiscoveryPreference) null); }
     }
 }

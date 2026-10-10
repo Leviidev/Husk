@@ -15,4 +15,5 @@ public class NetworkScan {
     public NetworkScan(int p0, int p1) {}
     public void stop() {}
     public void stopScan() {}
+    NetworkScan() { this((int) 0, (int) 0); }
 }

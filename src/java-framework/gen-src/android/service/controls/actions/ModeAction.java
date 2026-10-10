@@ -8,4 +8,5 @@ public final class ModeAction extends android.service.controls.actions.ControlAc
     public ModeAction(java.lang.String p0, int p1, java.lang.String p2) { super(); }
     public int getActionType() { return (huskProps.get("ActionType") instanceof Integer ? (Integer) huskProps.get("ActionType") : 0); }
     public int getNewMode() { return (huskProps.get("NewMode") instanceof Integer ? (Integer) huskProps.get("NewMode") : 0); }
+    ModeAction() { this((java.lang.String) null, (int) 0); }
 }

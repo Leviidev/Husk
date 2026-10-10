@@ -29,9 +29,22 @@ public class ContentResolver {
     public final ContentProviderClient acquireContentProviderClient(String a) { ContentProvider p; synchronized (sProviders) { p = sProviders.get(a); } return p == null ? null : new ContentProviderClient(p); }
     public final ContentProviderClient acquireUnstableContentProviderClient(Uri u) { return acquireContentProviderClient(u); }
     public final ContentProviderClient acquireUnstableContentProviderClient(String a) { return acquireContentProviderClient(a); }
-    public final Cursor query(Uri u, String[] proj, String sel, String[] args, String sort) { ContentProvider p = provider(u); return p == null ? null : p.query(u, proj, sel, args, sort); }
+    public final Cursor query(Uri u, String[] proj, String sel, String[] args, String sort) { ContentProvider p = provider(u); return p == null ? systemEmpty(u, proj) : p.query(u, proj, sel, args, sort); }
+    /** The phone's own providers (media, contacts, calendar...): there is no such data here, so an empty answer, as a phone
+     *  with none would give; an authority nobody has gives null, as on Android. */
+    private static Cursor systemEmpty(Uri u, String[] proj) {
+        String a = u == null ? null : u.getAuthority();
+        if (a == null) return null;
+        switch (a) {
+        case "media": case "com.android.contacts": case "contacts": case "com.android.calendar": case "call_log": case "sms": case "mms":
+        case "mms-sms": case "downloads": case "user_dictionary": case "com.android.externalstorage.documents": case "com.android.providers.media.documents":
+        case "com.android.providers.downloads.documents": case "telephony": case "icc":
+            return new android.database.MatrixCursor(proj != null ? proj : new String[] { "_id" });
+        default: return null;
+        }
+    }
     public final Cursor query(Uri u, String[] proj, String sel, String[] args, String sort, android.os.CancellationSignal c) { return query(u, proj, sel, args, sort); }
-    public final Cursor query(Uri u, String[] proj, Bundle args, android.os.CancellationSignal c) { ContentProvider p = provider(u); return p == null ? null : p.query(u, proj, args, c); }
+    public final Cursor query(Uri u, String[] proj, Bundle args, android.os.CancellationSignal c) { ContentProvider p = provider(u); return p == null ? systemEmpty(u, proj) : p.query(u, proj, args, c); }
     public final String getType(Uri u) {
         ContentProvider p = provider(u);
         if (p != null) return p.getType(u);

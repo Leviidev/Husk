@@ -13,4 +13,5 @@ public final class CredentialEntry implements android.os.Parcelable {
     public android.app.slice.Slice getSlice() { return (android.app.slice.Slice) huskProps.get("Slice"); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CredentialEntry() { this((android.service.credentials.BeginGetCredentialOption) null, (android.app.slice.Slice) null); }
 }

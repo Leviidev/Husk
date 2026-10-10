@@ -18,6 +18,7 @@ public class TvRecordingClient {
     public void stopRecording() {}
     public void tune(java.lang.String p0, android.net.Uri p1) {}
     public void tune(java.lang.String p0, android.net.Uri p1, android.os.Bundle p2) {}
+    TvRecordingClient() { this((android.content.Context) null, (java.lang.String) null, (android.media.tv.TvRecordingClient.RecordingCallback) null, (android.os.Handler) null); }
     public static abstract class RecordingCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public RecordingCallback() {}

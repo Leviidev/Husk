@@ -51,6 +51,7 @@ public class FingerprintManager implements android.hardware.biometrics.Biometric
     public void scheduleWatchdog() {}
     public void setIgnoreDisplayTouches(long p0, int p1, boolean p2) {}
     public void setUdfpsOverlayController(android.hardware.fingerprint.IUdfpsOverlayController p0) { huskProps.put("UdfpsOverlayController", p0); }
+    FingerprintManager() { this((android.content.Context) null, (android.hardware.fingerprint.IFingerprintService) null); }
     public static abstract class AuthenticationCallback extends android.hardware.biometrics.BiometricAuthenticator.AuthenticationCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public AuthenticationCallback() { super(); }
@@ -69,6 +70,7 @@ public class FingerprintManager implements android.hardware.biometrics.Biometric
         public android.hardware.fingerprint.Fingerprint getFingerprint() { return (android.hardware.fingerprint.Fingerprint) huskProps.get("Fingerprint"); }
         public int getUserId() { return (huskProps.get("UserId") instanceof Integer ? (Integer) huskProps.get("UserId") : 0); }
         public boolean isStrongBiometric() { return (huskProps.get("StrongBiometric") instanceof Boolean ? (Boolean) huskProps.get("StrongBiometric") : false); }
+        AuthenticationResult() { this((android.hardware.fingerprint.FingerprintManager.CryptoObject) null, (android.hardware.fingerprint.Fingerprint) null, (int) 0, (boolean) false); }
     }
     public static abstract class CryptoObject extends android.hardware.biometrics.CryptoObject {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -81,6 +83,7 @@ public class FingerprintManager implements android.hardware.biometrics.Biometric
         public javax.crypto.Mac getMac() { return (javax.crypto.Mac) huskProps.get("Mac"); }
         public android.security.identity.PresentationSession getPresentationSession() { return (android.security.identity.PresentationSession) huskProps.get("PresentationSession"); }
         public java.security.Signature getSignature() { return (java.security.Signature) huskProps.get("Signature"); }
+        CryptoObject() { this((java.security.Signature) null); }
     }
     public static abstract class EnrollmentCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

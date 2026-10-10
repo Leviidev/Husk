@@ -65,6 +65,7 @@ public class TvInteractiveAppView extends android.view.ViewGroup {
     public void setZOrderOnTop(boolean p0) { huskProps.put("ZOrderOnTop", Boolean.valueOf(p0)); }
     public void startInteractiveApp() {}
     public void stopInteractiveApp() {}
+    TvInteractiveAppView() { this((android.content.Context) null); }
     public interface OnUnhandledInputEventListener {
         boolean onUnhandledInputEvent(android.view.InputEvent p0);
     }

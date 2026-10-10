@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class ContentUriWithoutPermissionViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ContentUriWithoutPermissionViolation(android.net.Uri p0, java.lang.String p1) { super(); }
+    ContentUriWithoutPermissionViolation() { this((android.net.Uri) null, (java.lang.String) null); }
 }

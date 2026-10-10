@@ -7,4 +7,5 @@ public final class CommandAction extends android.service.controls.actions.Contro
     public CommandAction(java.lang.String p0) { super(); }
     public CommandAction(java.lang.String p0, java.lang.String p1) { super(); }
     public int getActionType() { return (huskProps.get("ActionType") instanceof Integer ? (Integer) huskProps.get("ActionType") : 0); }
+    CommandAction() { this((java.lang.String) null); }
 }

@@ -22,4 +22,5 @@ public class MultiSelectListPreference extends android.preference.DialogPreferen
     public void setEntryValues(int p0) { huskProps.put("EntryValues", Integer.valueOf(p0)); }
     public void setEntryValues(java.lang.CharSequence[] p0) { huskProps.put("EntryValues", p0); }
     public void setValues(java.util.Set p0) { huskProps.put("Values", p0); }
+    MultiSelectListPreference() { this((android.content.Context) null); }
 }

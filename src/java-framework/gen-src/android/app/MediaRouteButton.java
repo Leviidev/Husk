@@ -23,4 +23,5 @@ public class MediaRouteButton extends android.view.View {
     public void setVisibility(int p0) { huskProps.put("Visibility", Integer.valueOf(p0)); }
     public void showDialog() {}
     public boolean verifyDrawable(android.graphics.drawable.Drawable p0) { return false; }
+    MediaRouteButton() { this((android.content.Context) null); }
 }

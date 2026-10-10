@@ -101,11 +101,13 @@ public class Preference implements java.lang.Comparable {
     public boolean shouldCommit() { return false; }
     public boolean shouldDisableDependents() { return false; }
     protected boolean shouldPersist() { return false; }
+    Preference() { this((android.content.Context) null); }
     public static class BaseSavedState extends android.view.AbsSavedState {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
         public BaseSavedState(android.os.Parcel p0) { super(p0); }
         public BaseSavedState(android.os.Parcelable p0) { super(p0); }
+        BaseSavedState() { this((android.os.Parcel) null); }
     }
     public interface OnPreferenceChangeListener {
         boolean onPreferenceChange(android.preference.Preference p0, java.lang.Object p1);

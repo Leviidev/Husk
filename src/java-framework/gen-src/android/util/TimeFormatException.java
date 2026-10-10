@@ -5,4 +5,5 @@ package android.util;
 public class TimeFormatException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public TimeFormatException(java.lang.String p0) { super(); }
+    TimeFormatException() { this((java.lang.String) null); }
 }

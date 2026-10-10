@@ -8,4 +8,5 @@ public final class BlackLevelPattern {
     public BlackLevelPattern(int[] p0) {}
     public void copyTo(int[] p0, int p1) {}
     public int getOffsetForIndex(int p0, int p1) { return 0; }
+    BlackLevelPattern() { this((int[]) null); }
 }

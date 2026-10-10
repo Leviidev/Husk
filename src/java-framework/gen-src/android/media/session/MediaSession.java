@@ -35,6 +35,7 @@ public final class MediaSession {
     public void setQueueTitle(java.lang.CharSequence p0) { huskProps.put("QueueTitle", p0); }
     public void setRatingType(int p0) { huskProps.put("RatingType", Integer.valueOf(p0)); }
     public void setSessionActivity(android.app.PendingIntent p0) { huskProps.put("SessionActivity", p0); }
+    MediaSession() { this((android.content.Context) null, (java.lang.String) null); }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}
@@ -87,6 +88,7 @@ public final class MediaSession {
         public void onSetVolumeTo(java.lang.String p0, int p1, int p2, int p3) {}
         public void onSkipToTrack(java.lang.String p0, int p1, int p2, long p3) {}
         public void onStop(java.lang.String p0, int p1, int p2) {}
+        CallbackStub() { this((android.media.session.MediaSession) null); }
     }
     public static final class QueueItem implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -97,6 +99,7 @@ public final class MediaSession {
         public android.media.MediaDescription getDescription() { return (android.media.MediaDescription) huskProps.get("Description"); }
         public long getQueueId() { return (huskProps.get("QueueId") instanceof Long ? (Long) huskProps.get("QueueId") : 0L); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        QueueItem() { this((android.media.MediaDescription) null, (long) 0L); }
     }
     public static abstract class Token implements android.os.Parcelable {
         protected Token() {}

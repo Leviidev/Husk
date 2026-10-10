@@ -28,5 +28,6 @@ public final class PerformanceHintManager {
         public void setPreferPowerEfficiency(boolean p0) { huskProps.put("PreferPowerEfficiency", Boolean.valueOf(p0)); }
         public void setThreads(int[] p0) { huskProps.put("Threads", p0); }
         public void updateTargetWorkDuration(long p0) {}
+        Session() { this((long) 0L); }
     }
 }

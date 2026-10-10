@@ -9,6 +9,7 @@ public final class MultiResolutionStreamConfigurationMap {
     public java.util.Collection getInputInfo(int p0) { return new java.util.ArrayList(); }
     public int[] getOutputFormats() { return (int[]) huskProps.get("OutputFormats"); }
     public java.util.Collection getOutputInfo(int p0) { return new java.util.ArrayList(); }
+    MultiResolutionStreamConfigurationMap() { this((java.util.Map) null); }
     public static class SizeComparator implements java.util.Comparator {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public SizeComparator() {}

@@ -72,4 +72,5 @@ public final class OutputConfiguration implements android.os.Parcelable {
     public void setTimestampBase(int p0) { huskProps.put("TimestampBase", Integer.valueOf(p0)); }
     public void updateCachedSurfaceSize() {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    OutputConfiguration() { this((android.hardware.camera2.params.OutputConfiguration) null); }
 }

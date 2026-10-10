@@ -17,4 +17,5 @@ public class UsbInterface implements android.os.Parcelable {
     public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
     public void setEndpoints(android.os.Parcelable[] p0) { huskProps.put("Endpoints", p0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UsbInterface() { this((int) 0, (int) 0, (java.lang.String) null, (int) 0, (int) 0, (int) 0); }
 }

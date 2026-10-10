@@ -34,5 +34,6 @@ public final class CallAttributes implements android.os.Parcelable {
         public android.telecom.CallAttributes.Builder setCallCapabilities(int p0) { huskProps.put("CallCapabilities", Integer.valueOf(p0)); return this; }
         public android.telecom.CallAttributes.Builder setCallType(int p0) { huskProps.put("CallType", Integer.valueOf(p0)); return this; }
         public android.telecom.CallAttributes.Builder setLogExcluded(boolean p0) { huskProps.put("LogExcluded", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.telecom.PhoneAccountHandle) null, (int) 0, (java.lang.CharSequence) null, (android.net.Uri) null); }
     }
 }

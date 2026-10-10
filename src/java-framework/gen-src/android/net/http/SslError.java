@@ -15,10 +15,11 @@ public class SslError {
     public SslError(int p0, android.net.http.SslCertificate p1, java.lang.String p2) {}
     public SslError(int p0, java.security.cert.X509Certificate p1) {}
     public SslError(int p0, java.security.cert.X509Certificate p1, java.lang.String p2) {}
-    public static android.net.http.SslError SslErrorFromChromiumErrorCode(int p0, android.net.http.SslCertificate p1, java.lang.String p2) { return null; }
+    public static android.net.http.SslError SslErrorFromChromiumErrorCode(int p0, android.net.http.SslCertificate p1, java.lang.String p2) { return new SslError(); }
     public boolean addError(int p0) { return false; }
     public android.net.http.SslCertificate getCertificate() { return (android.net.http.SslCertificate) huskProps.get("Certificate"); }
     public int getPrimaryError() { return (huskProps.get("PrimaryError") instanceof Integer ? (Integer) huskProps.get("PrimaryError") : 0); }
     public java.lang.String getUrl() { return (java.lang.String) huskProps.get("Url"); }
     public boolean hasError(int p0) { return false; }
+    SslError() { this((int) 0, (android.net.http.SslCertificate) null); }
 }

@@ -31,5 +31,6 @@ public abstract class CameraExtensionSession implements java.lang.AutoCloseable 
         public StillCaptureLatency(long p0, long p1) {}
         public long getCaptureLatency() { return (huskProps.get("CaptureLatency") instanceof Long ? (Long) huskProps.get("CaptureLatency") : 0L); }
         public long getProcessingLatency() { return (huskProps.get("ProcessingLatency") instanceof Long ? (Long) huskProps.get("ProcessingLatency") : 0L); }
+        StillCaptureLatency() { this((long) 0L, (long) 0L); }
     }
 }

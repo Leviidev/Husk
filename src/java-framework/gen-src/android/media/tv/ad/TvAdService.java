@@ -46,5 +46,6 @@ public abstract class TvAdService extends android.app.Service {
         public void requestTrackInfoList() {}
         public void sendTvAdSessionData(java.lang.String p0, android.os.Bundle p1) {}
         public void setMediaViewEnabled(boolean p0) { huskProps.put("MediaViewEnabled", Boolean.valueOf(p0)); }
+        Session() { this((android.content.Context) null); }
     }
 }

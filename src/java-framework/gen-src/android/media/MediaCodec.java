@@ -139,6 +139,7 @@ public final class MediaCodec {
         public int getErrorContext() { return (huskProps.get("ErrorContext") instanceof Integer ? (Integer) huskProps.get("ErrorContext") : 0); }
         public int getOemError() { return (huskProps.get("OemError") instanceof Integer ? (Integer) huskProps.get("OemError") : 0); }
         public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
+        CryptoException() { this((int) 0, (java.lang.String) null); }
     }
     public static final class CryptoInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -158,6 +159,7 @@ public final class MediaCodec {
             public int getEncryptBlocks() { return (huskProps.get("EncryptBlocks") instanceof Integer ? (Integer) huskProps.get("EncryptBlocks") : 0); }
             public int getSkipBlocks() { return (huskProps.get("SkipBlocks") instanceof Integer ? (Integer) huskProps.get("SkipBlocks") : 0); }
             public void set(int p0, int p1) {}
+            Pattern() { this((int) 0, (int) 0); }
         }
     }
     public static final class GlobalResourceInfo {
@@ -205,6 +207,7 @@ public final class MediaCodec {
         public int getTransform() { return (huskProps.get("Transform") instanceof Integer ? (Integer) huskProps.get("Transform") : 0); }
         public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
         public void setCropRect(android.graphics.Rect p0) { huskProps.put("CropRect", p0); }
+        MediaImage() { this((java.nio.ByteBuffer) null, (java.nio.ByteBuffer) null, (boolean) false, (long) 0L, (int) 0, (int) 0, (android.graphics.Rect) null); }
     }
     public static final class MetricsConstants {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

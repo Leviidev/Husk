@@ -9,4 +9,5 @@ public final class MessagePdu implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public java.util.List getPdus() { return (huskProps.get("Pdus") != null ? (java.util.List) huskProps.get("Pdus") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    MessagePdu() { this((java.util.List) null); }
 }

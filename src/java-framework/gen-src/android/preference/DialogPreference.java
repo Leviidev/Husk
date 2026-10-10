@@ -37,4 +37,5 @@ public abstract class DialogPreference extends android.preference.Preference imp
     public void setPositiveButtonText(int p0) { huskProps.put("PositiveButtonText", Integer.valueOf(p0)); }
     public void setPositiveButtonText(java.lang.CharSequence p0) { huskProps.put("PositiveButtonText", p0); }
     protected void showDialog(android.os.Bundle p0) {}
+    DialogPreference() { this((android.content.Context) null); }
 }

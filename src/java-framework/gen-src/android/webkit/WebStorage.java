@@ -18,6 +18,7 @@ public class WebStorage {
         public java.lang.String getOrigin() { return (java.lang.String) huskProps.get("Origin"); }
         public long getQuota() { return (huskProps.get("Quota") instanceof Long ? (Long) huskProps.get("Quota") : 0L); }
         public long getUsage() { return (huskProps.get("Usage") instanceof Long ? (Long) huskProps.get("Usage") : 0L); }
+        Origin() { this((java.lang.String) null, (long) 0L, (long) 0L); }
     }
     public interface QuotaUpdater {
         void updateQuota(long p0);

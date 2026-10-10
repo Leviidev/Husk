@@ -27,4 +27,5 @@ public final class FillRequest implements android.os.Parcelable {
     public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
     public android.view.inputmethod.InlineSuggestionsRequest getInlineSuggestionsRequest() { return (android.view.inputmethod.InlineSuggestionsRequest) huskProps.get("InlineSuggestionsRequest"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FillRequest() { this((int) 0, (java.util.List) null, (java.util.List) null, (android.os.Bundle) null, (int) 0, (android.view.inputmethod.InlineSuggestionsRequest) null, (android.content.IntentSender) null); }
 }

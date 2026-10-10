@@ -199,6 +199,7 @@ public abstract class Connection extends android.telecom.Conferenceable {
     public void queryLocationForEmergency(long p0, java.lang.String p1, java.util.concurrent.Executor p2, android.os.OutcomeReceiver p3) {}
     public void removeExtras(java.util.List p0) {}
     public void removeExtras(java.lang.String[] p0) {}
+    public void requestBluetoothAudio(android.bluetooth.BluetoothDevice p0) {}
     public void requestCallEndpointChange(android.telecom.CallEndpoint p0, java.util.concurrent.Executor p1, android.os.OutcomeReceiver p2) {}
     public void resetConference() {}
     public void resetConnectionTime() {}
@@ -253,6 +254,7 @@ public abstract class Connection extends android.telecom.Conferenceable {
         public boolean isBlocked() { return (huskProps.get("Blocked") instanceof Boolean ? (Boolean) huskProps.get("Blocked") : false); }
         public boolean isInContacts() { return (huskProps.get("InContacts") instanceof Boolean ? (Boolean) huskProps.get("InContacts") : false); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        CallFilteringCompletionInfo() { this((android.os.Parcel) null); }
     }
     public static final class RttModifyStatus {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

@@ -28,6 +28,7 @@ public class VideoProfile implements android.os.Parcelable {
     public int getQuality() { return (huskProps.get("Quality") instanceof Integer ? (Integer) huskProps.get("Quality") : 0); }
     public int getVideoState() { return (huskProps.get("VideoState") instanceof Integer ? (Integer) huskProps.get("VideoState") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VideoProfile() { this((int) 0); }
     public static final class CameraCapabilities implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
@@ -39,5 +40,6 @@ public class VideoProfile implements android.os.Parcelable {
         public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
         public boolean isZoomSupported() { return (huskProps.get("ZoomSupported") instanceof Boolean ? (Boolean) huskProps.get("ZoomSupported") : false); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        CameraCapabilities() { this((int) 0, (int) 0); }
     }
 }

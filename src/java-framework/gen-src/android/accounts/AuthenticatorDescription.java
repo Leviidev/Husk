@@ -14,7 +14,8 @@ public class AuthenticatorDescription implements android.os.Parcelable {
     public java.lang.String type;
     public AuthenticatorDescription(java.lang.String p0, java.lang.String p1, int p2, int p3, int p4, int p5) {}
     public AuthenticatorDescription(java.lang.String p0, java.lang.String p1, int p2, int p3, int p4, int p5, boolean p6) {}
-    public static android.accounts.AuthenticatorDescription newKey(java.lang.String p0) { return null; }
+    public static android.accounts.AuthenticatorDescription newKey(java.lang.String p0) { return new AuthenticatorDescription(); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AuthenticatorDescription() { this((java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0, (int) 0, (int) 0); }
 }

@@ -9,4 +9,5 @@ public abstract class ResourceCursorTreeAdapter extends android.widget.CursorTre
     public ResourceCursorTreeAdapter(android.content.Context p0, android.database.Cursor p1, int p2, int p3, int p4, int p5) { super((android.database.Cursor) null, (android.content.Context) null); }
     public android.view.View newChildView(android.content.Context p0, android.database.Cursor p1, boolean p2, android.view.ViewGroup p3) { return null; }
     public android.view.View newGroupView(android.content.Context p0, android.database.Cursor p1, boolean p2, android.view.ViewGroup p3) { return null; }
+    ResourceCursorTreeAdapter() { this((android.content.Context) null, (android.database.Cursor) null, (int) 0, (int) 0); }
 }

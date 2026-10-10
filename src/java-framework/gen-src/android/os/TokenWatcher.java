@@ -13,4 +13,5 @@ public abstract class TokenWatcher {
     public boolean isAcquired() { return (huskProps.get("Acquired") instanceof Boolean ? (Boolean) huskProps.get("Acquired") : false); }
     public void release(android.os.IBinder p0) {}
     public abstract void released();
+    TokenWatcher() { this((android.os.Handler) null, (java.lang.String) null); }
 }

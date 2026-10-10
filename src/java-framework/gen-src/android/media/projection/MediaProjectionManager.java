@@ -21,6 +21,7 @@ public final class MediaProjectionManager {
     public android.media.projection.MediaProjection getMediaProjection(int p0, android.content.Intent p1) { return null; }
     public void removeCallback(android.media.projection.MediaProjectionManager.Callback p0) {}
     public void stopActiveProjection(int p0) {}
+    MediaProjectionManager() { this((android.content.Context) null); }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}

@@ -10,4 +10,5 @@ public final class GetWalletCardsResponse implements android.os.Parcelable {
     public int getSelectedIndex() { return (huskProps.get("SelectedIndex") instanceof Integer ? (Integer) huskProps.get("SelectedIndex") : 0); }
     public java.util.List getWalletCards() { return (huskProps.get("WalletCards") != null ? (java.util.List) huskProps.get("WalletCards") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GetWalletCardsResponse() { this((java.util.List) null, (int) 0); }
 }

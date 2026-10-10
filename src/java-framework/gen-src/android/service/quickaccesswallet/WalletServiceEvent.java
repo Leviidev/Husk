@@ -11,4 +11,5 @@ public final class WalletServiceEvent implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public int getEventType() { return (huskProps.get("EventType") instanceof Integer ? (Integer) huskProps.get("EventType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    WalletServiceEvent() { this((int) 0); }
 }

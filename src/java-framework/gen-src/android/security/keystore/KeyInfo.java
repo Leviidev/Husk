@@ -28,4 +28,5 @@ public class KeyInfo implements java.security.spec.KeySpec {
     public boolean isUserAuthenticationRequirementEnforcedBySecureHardware() { return (huskProps.get("UserAuthenticationRequirementEnforcedBySecureHardware") instanceof Boolean ? (Boolean) huskProps.get("UserAuthenticationRequirementEnforcedBySecureHardware") : false); }
     public boolean isUserAuthenticationValidWhileOnBody() { return (huskProps.get("UserAuthenticationValidWhileOnBody") instanceof Boolean ? (Boolean) huskProps.get("UserAuthenticationValidWhileOnBody") : false); }
     public boolean isUserConfirmationRequired() { return (huskProps.get("UserConfirmationRequired") instanceof Boolean ? (Boolean) huskProps.get("UserConfirmationRequired") : false); }
+    KeyInfo() { this((java.lang.String) null, (boolean) false, (int) 0, (int) 0, (java.util.Date) null, (java.util.Date) null, (java.util.Date) null, (int) 0, (java.lang.String[]) null, (java.lang.String[]) null, (java.lang.String[]) null, (java.lang.String[]) null, (boolean) false, (int) 0, (int) 0, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (int) 0, (int) 0); }
 }

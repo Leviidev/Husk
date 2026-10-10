@@ -11,4 +11,5 @@ public final class Credential implements android.os.Parcelable {
     public android.os.Bundle getData() { return (android.os.Bundle) huskProps.get("Data"); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Credential() { this((java.lang.String) null, (android.os.Bundle) null); }
 }

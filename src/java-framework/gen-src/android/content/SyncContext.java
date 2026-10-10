@@ -8,4 +8,5 @@ public class SyncContext {
     public android.os.IBinder getSyncContextBinder() { return (android.os.IBinder) huskProps.get("SyncContextBinder"); }
     public void onFinished(android.content.SyncResult p0) {}
     public void setStatusText(java.lang.String p0) { huskProps.put("StatusText", p0); }
+    SyncContext() { this((android.content.ISyncContext) null); }
 }

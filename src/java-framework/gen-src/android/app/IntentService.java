@@ -12,4 +12,5 @@ public abstract class IntentService extends android.app.Service {
     public void onStart(android.content.Intent p0, int p1) {}
     public int onStartCommand(android.content.Intent p0, int p1, int p2) { return 0; }
     public void setIntentRedelivery(boolean p0) { huskProps.put("IntentRedelivery", Boolean.valueOf(p0)); }
+    IntentService() { this((java.lang.String) null); }
 }

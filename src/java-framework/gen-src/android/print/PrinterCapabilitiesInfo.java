@@ -26,5 +26,6 @@ public final class PrinterCapabilitiesInfo implements android.os.Parcelable {
         public android.print.PrinterCapabilitiesInfo.Builder setColorModes(int p0, int p1) { return this; }
         public android.print.PrinterCapabilitiesInfo.Builder setDuplexModes(int p0, int p1) { return this; }
         public android.print.PrinterCapabilitiesInfo.Builder setMinMargins(android.print.PrintAttributes.Margins p0) { huskProps.put("MinMargins", p0); return this; }
+        Builder() { this((android.print.PrinterId) null); }
     }
 }

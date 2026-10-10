@@ -11,4 +11,5 @@ public final class VisibleActivityInfo implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public android.service.voice.VoiceInteractionSession.ActivityId getActivityId() { return (android.service.voice.VoiceInteractionSession.ActivityId) huskProps.get("ActivityId"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VisibleActivityInfo() { this((int) 0, (android.os.IBinder) null); }
 }

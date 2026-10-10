@@ -16,4 +16,5 @@ public final class SynthesisRequest {
     public java.lang.String getText() { return (java.lang.String) huskProps.get("Text"); }
     public java.lang.String getVariant() { return (java.lang.String) huskProps.get("Variant"); }
     public java.lang.String getVoiceName() { return (java.lang.String) huskProps.get("VoiceName"); }
+    SynthesisRequest() { this((java.lang.CharSequence) null, (android.os.Bundle) null); }
 }

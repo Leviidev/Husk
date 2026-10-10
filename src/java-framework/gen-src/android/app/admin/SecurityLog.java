@@ -79,5 +79,6 @@ public class SecurityLog {
         public android.app.admin.SecurityLog.SecurityEvent redact(int p0) { return this; }
         public void setId(long p0) { huskProps.put("Id", Long.valueOf(p0)); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        SecurityEvent() { this((long) 0L, (byte[]) null); }
     }
 }

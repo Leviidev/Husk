@@ -16,11 +16,13 @@ public final class DirectAction implements android.os.Parcelable {
     public int getTaskId() { return (huskProps.get("TaskId") instanceof Integer ? (Integer) huskProps.get("TaskId") : 0); }
     public void setSource(int p0, android.os.IBinder p1) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DirectAction() { this((android.app.DirectAction) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.app.DirectAction build() { return null; }
+        public android.app.DirectAction build() { return new android.app.DirectAction(); }
         public android.app.DirectAction.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.app.DirectAction.Builder setLocusId(android.content.LocusId p0) { huskProps.put("LocusId", p0); return this; }
+        Builder() { this((java.lang.String) null); }
     }
 }

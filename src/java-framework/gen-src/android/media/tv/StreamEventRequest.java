@@ -10,4 +10,5 @@ public final class StreamEventRequest extends android.media.tv.BroadcastInfoRequ
     public java.lang.String getEventName() { return (java.lang.String) huskProps.get("EventName"); }
     public android.net.Uri getTargetUri() { return (android.net.Uri) huskProps.get("TargetUri"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    StreamEventRequest() { this((int) 0, (int) 0, (android.net.Uri) null, (java.lang.String) null); }
 }

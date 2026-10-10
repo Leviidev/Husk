@@ -22,4 +22,5 @@ public class SliceManager {
     public void pinSlice(android.net.Uri p0, java.util.Set p1) {}
     public void revokeSlicePermission(java.lang.String p0, android.net.Uri p1) {}
     public void unpinSlice(android.net.Uri p0) {}
+    SliceManager() { this((android.content.Context) null, (android.os.Handler) null); }
 }

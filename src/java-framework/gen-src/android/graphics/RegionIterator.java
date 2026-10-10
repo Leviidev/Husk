@@ -7,4 +7,5 @@ public class RegionIterator {
     public RegionIterator(android.graphics.Region p0) {}
     protected void finalize() {}
     public boolean next(android.graphics.Rect p0) { return false; }
+    RegionIterator() { this((android.graphics.Region) null); }
 }

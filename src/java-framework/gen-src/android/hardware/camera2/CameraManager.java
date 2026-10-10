@@ -48,6 +48,7 @@ public final class CameraManager {
     public void turnOnTorchWithStrengthLevel(java.lang.String p0, int p1) {}
     public void unregisterAvailabilityCallback(android.hardware.camera2.CameraManager.AvailabilityCallback p0) {}
     public void unregisterTorchCallback(android.hardware.camera2.CameraManager.TorchCallback p0) {}
+    CameraManager() { this((android.content.Context) null); }
     public static abstract class AvailabilityCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public AvailabilityCallback() {}

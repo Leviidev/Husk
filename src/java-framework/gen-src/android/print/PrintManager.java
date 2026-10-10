@@ -30,6 +30,7 @@ public final class PrintManager {
     public void removePrintServiceRecommendationsChangeListener(android.print.PrintManager.PrintServiceRecommendationsChangeListener p0) {}
     public void removePrintServicesChangeListener(android.print.PrintManager.PrintServicesChangeListener p0) {}
     public void setPrintServiceEnabled(android.content.ComponentName p0, boolean p1) {}
+    PrintManager() { this((android.content.Context) null, (android.print.IPrintManager) null, (int) 0, (int) 0); }
     public static abstract class PrintDocumentAdapterDelegate extends android.print.IPrintDocumentAdapter.Stub implements android.app.Application.ActivityLifecycleCallbacks {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public PrintDocumentAdapterDelegate(android.app.Activity p0, android.print.PrintDocumentAdapter p1) { super(); }
@@ -45,6 +46,7 @@ public final class PrintManager {
         public void setObserver(android.print.IPrintDocumentAdapterObserver p0) { huskProps.put("Observer", p0); }
         public void start() {}
         public void write(android.print.PageRange[] p0, android.os.ParcelFileDescriptor p1, android.print.IWriteResultCallback p2, int p3) {}
+        PrintDocumentAdapterDelegate() { this((android.app.Activity) null, (android.print.PrintDocumentAdapter) null); }
     }
     public interface PrintJobStateChangeListener {
         void onPrintJobStateChanged(android.print.PrintJobId p0);
@@ -55,6 +57,7 @@ public final class PrintManager {
         public void destroy() {}
         public android.print.PrintManager.PrintJobStateChangeListener getListener() { return (android.print.PrintManager.PrintJobStateChangeListener) huskProps.get("Listener"); }
         public void onPrintJobStateChanged(android.print.PrintJobId p0) {}
+        PrintJobStateChangeListenerWrapper() { this((android.print.PrintManager.PrintJobStateChangeListener) null, (android.os.Handler) null); }
     }
     public interface PrintServiceRecommendationsChangeListener {
         void onPrintServiceRecommendationsChanged();
@@ -64,6 +67,7 @@ public final class PrintManager {
         public PrintServiceRecommendationsChangeListenerWrapper(android.print.PrintManager.PrintServiceRecommendationsChangeListener p0, android.os.Handler p1) { super(); }
         public void destroy() {}
         public void onRecommendationsChanged() {}
+        PrintServiceRecommendationsChangeListenerWrapper() { this((android.print.PrintManager.PrintServiceRecommendationsChangeListener) null, (android.os.Handler) null); }
     }
     public interface PrintServicesChangeListener {
         void onPrintServicesChanged();
@@ -73,5 +77,6 @@ public final class PrintManager {
         public PrintServicesChangeListenerWrapper(android.print.PrintManager.PrintServicesChangeListener p0, android.os.Handler p1) { super(); }
         public void destroy() {}
         public void onPrintServicesChanged() {}
+        PrintServicesChangeListenerWrapper() { this((android.print.PrintManager.PrintServicesChangeListener) null, (android.os.Handler) null); }
     }
 }

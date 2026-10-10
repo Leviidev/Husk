@@ -150,6 +150,7 @@ static void *run(void *p)
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.i18n/javalib/core-icu4j.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.conscrypt/javalib/conscrypt.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex"); boot[nb] = paths[nb]; nb++;
+    snprintf(paths[nb], sizeof(paths[nb]), "/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar"); boot[nb] = paths[nb]; nb++;
     { char v[800];
       snprintf(v, sizeof(v), "%s", art); setenv("ANDROID_ART_ROOT", v, 0);
       snprintf(v, sizeof(v), "%s/../com.android.i18n", art); setenv("ANDROID_I18N_ROOT", v, 0);

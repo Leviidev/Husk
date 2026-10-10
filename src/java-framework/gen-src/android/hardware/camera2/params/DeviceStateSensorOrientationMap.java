@@ -8,10 +8,11 @@ public final class DeviceStateSensorOrientationMap {
     public static long NORMAL;
     public DeviceStateSensorOrientationMap(long[] p0) {}
     public int getSensorOrientation(long p0) { return 0; }
+    DeviceStateSensorOrientationMap() { this((long[]) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.hardware.camera2.params.DeviceStateSensorOrientationMap.Builder addOrientationForState(long p0, long p1) { return this; }
-        public android.hardware.camera2.params.DeviceStateSensorOrientationMap build() { return null; }
+        public android.hardware.camera2.params.DeviceStateSensorOrientationMap build() { return new android.hardware.camera2.params.DeviceStateSensorOrientationMap(); }
     }
 }

@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class IntentReceiverLeakedViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public IntentReceiverLeakedViolation(java.lang.Throwable p0) { super(); }
+    IntentReceiverLeakedViolation() { this((java.lang.Throwable) null); }
 }

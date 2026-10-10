@@ -44,10 +44,12 @@ public class AppWidgetHostView extends android.widget.FrameLayout implements and
     public void updateAppWidgetSize(android.os.Bundle p0, int p1, int p2, int p3, int p4) {}
     public void updateAppWidgetSize(android.os.Bundle p0, int p1, int p2, int p3, int p4, boolean p5) {}
     public void updateAppWidgetSize(android.os.Bundle p0, java.util.List p1) {}
+    AppWidgetHostView() { this((android.content.Context) null); }
     public static class AdapterChildHostView extends android.appwidget.AppWidgetHostView {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public AdapterChildHostView(android.content.Context p0) { super(p0); }
         public boolean isVisibilityTrackingPermitted() { return (huskProps.get("VisibilityTrackingPermitted") instanceof Boolean ? (Boolean) huskProps.get("VisibilityTrackingPermitted") : false); }
+        AdapterChildHostView() { this((android.content.Context) null); }
     }
     public static class InteractionLogger implements android.widget.RemoteViews.InteractionHandler {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

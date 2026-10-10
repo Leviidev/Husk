@@ -23,4 +23,5 @@ public class AdapterViewFlipper extends android.widget.AdapterViewAnimator {
     public void showPrevious() {}
     public void startFlipping() {}
     public void stopFlipping() {}
+    AdapterViewFlipper() { this((android.content.Context) null); }
 }

@@ -531,6 +531,7 @@ public final class MediaCodecInfo {
             public int getMaxFrameRate() { return (huskProps.get("MaxFrameRate") instanceof Integer ? (Integer) huskProps.get("MaxFrameRate") : 0); }
             public long getMaxMacroBlockRate() { return (huskProps.get("MaxMacroBlockRate") instanceof Long ? (Long) huskProps.get("MaxMacroBlockRate") : 0L); }
             public int getMaxMacroBlocks() { return (huskProps.get("MaxMacroBlocks") instanceof Integer ? (Integer) huskProps.get("MaxMacroBlocks") : 0); }
+            PerformancePoint() { this((android.media.MediaCodecInfo.VideoCapabilities.PerformancePoint) null, (android.util.Size) null); }
         }
     }
 }

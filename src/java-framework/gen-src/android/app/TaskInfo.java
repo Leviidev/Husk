@@ -76,4 +76,5 @@ public class TaskInfo {
     public boolean isVisible() { return (huskProps.get("Visible") instanceof Boolean ? (Boolean) huskProps.get("Visible") : false); }
     public boolean shouldDockBigOverlays() { return false; }
     public void writeTaskToParcel(android.os.Parcel p0, int p1) {}
+    TaskInfo() { this((android.os.Parcel) null); }
 }

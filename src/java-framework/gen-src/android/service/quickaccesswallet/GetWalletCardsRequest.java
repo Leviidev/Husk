@@ -12,4 +12,5 @@ public final class GetWalletCardsRequest implements android.os.Parcelable {
     public int getIconSizePx() { return (huskProps.get("IconSizePx") instanceof Integer ? (Integer) huskProps.get("IconSizePx") : 0); }
     public int getMaxCards() { return (huskProps.get("MaxCards") instanceof Integer ? (Integer) huskProps.get("MaxCards") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GetWalletCardsRequest() { this((int) 0, (int) 0, (int) 0, (int) 0); }
 }

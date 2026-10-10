@@ -13,4 +13,5 @@ public final class TextClassificationManager {
     public android.view.textclassifier.TextClassifier getTextClassifier(int p0) { return null; }
     public void setTextClassificationSessionFactory(android.view.textclassifier.TextClassificationSessionFactory p0) { huskProps.put("TextClassificationSessionFactory", p0); }
     public void setTextClassifier(android.view.textclassifier.TextClassifier p0) { huskProps.put("TextClassifier", p0); }
+    TextClassificationManager() { this((android.content.Context) null); }
 }

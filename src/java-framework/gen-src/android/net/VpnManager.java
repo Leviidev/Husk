@@ -53,4 +53,5 @@ public class VpnManager {
     public java.lang.String startProvisionedVpnProfileSession() { return null; }
     public void stopProvisionedVpnProfile() {}
     public boolean updateLockdownVpn() { return false; }
+    VpnManager() { this((android.content.Context) null, (android.net.IVpnManager) null); }
 }

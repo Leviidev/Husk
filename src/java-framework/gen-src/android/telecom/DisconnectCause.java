@@ -37,10 +37,11 @@ public final class DisconnectCause implements android.os.Parcelable {
     public int getTelephonyPreciseDisconnectCause() { return (huskProps.get("TelephonyPreciseDisconnectCause") instanceof Integer ? (Integer) huskProps.get("TelephonyPreciseDisconnectCause") : 0); }
     public int getTone() { return (huskProps.get("Tone") instanceof Integer ? (Integer) huskProps.get("Tone") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DisconnectCause() { this((int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telecom.DisconnectCause build() { return null; }
+        public android.telecom.DisconnectCause build() { return new android.telecom.DisconnectCause(); }
         public android.telecom.DisconnectCause.Builder setDescription(java.lang.CharSequence p0) { huskProps.put("Description", p0); return this; }
         public android.telecom.DisconnectCause.Builder setImsReasonInfo(android.telephony.ims.ImsReasonInfo p0) { huskProps.put("ImsReasonInfo", p0); return this; }
         public android.telecom.DisconnectCause.Builder setLabel(java.lang.CharSequence p0) { huskProps.put("Label", p0); return this; }
@@ -48,5 +49,6 @@ public final class DisconnectCause implements android.os.Parcelable {
         public android.telecom.DisconnectCause.Builder setTelephonyDisconnectCause(int p0) { huskProps.put("TelephonyDisconnectCause", Integer.valueOf(p0)); return this; }
         public android.telecom.DisconnectCause.Builder setTelephonyPreciseDisconnectCause(int p0) { huskProps.put("TelephonyPreciseDisconnectCause", Integer.valueOf(p0)); return this; }
         public android.telecom.DisconnectCause.Builder setTone(int p0) { huskProps.put("Tone", Integer.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
     }
 }

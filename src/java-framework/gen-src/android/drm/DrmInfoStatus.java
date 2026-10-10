@@ -11,4 +11,5 @@ public class DrmInfoStatus {
     public java.lang.String mimeType;
     public int statusCode;
     public DrmInfoStatus(int p0, int p1, android.drm.ProcessedData p2, java.lang.String p3) {}
+    DrmInfoStatus() { this((int) 0, (int) 0, (android.drm.ProcessedData) null, (java.lang.String) null); }
 }

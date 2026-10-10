@@ -7,4 +7,5 @@ public final class TimedMetaData {
     public TimedMetaData(long p0, byte[] p1) {}
     public byte[] getMetaData() { return (byte[]) huskProps.get("MetaData"); }
     public long getTimestamp() { return (huskProps.get("Timestamp") instanceof Long ? (Long) huskProps.get("Timestamp") : 0L); }
+    TimedMetaData() { this((long) 0L, (byte[]) null); }
 }

@@ -16,4 +16,5 @@ public final class RggbChannelVector {
     public float getGreenEven() { return (huskProps.get("GreenEven") instanceof Float ? (Float) huskProps.get("GreenEven") : 0f); }
     public float getGreenOdd() { return (huskProps.get("GreenOdd") instanceof Float ? (Float) huskProps.get("GreenOdd") : 0f); }
     public float getRed() { return (huskProps.get("Red") instanceof Float ? (Float) huskProps.get("Red") : 0f); }
+    RggbChannelVector() { this((float) 0f, (float) 0f, (float) 0f, (float) 0f); }
 }

@@ -14,4 +14,5 @@ public class FullBackupDataOutput {
     public long getQuota() { return (huskProps.get("Quota") instanceof Long ? (Long) huskProps.get("Quota") : 0L); }
     public long getSize() { return (huskProps.get("Size") instanceof Long ? (Long) huskProps.get("Size") : 0L); }
     public int getTransportFlags() { return (huskProps.get("TransportFlags") instanceof Integer ? (Integer) huskProps.get("TransportFlags") : 0); }
+    FullBackupDataOutput() { this((long) 0L); }
 }

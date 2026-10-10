@@ -9,6 +9,7 @@ public final class CursorJoiner implements java.util.Iterator, java.lang.Iterabl
     public java.util.Iterator iterator() { return null; }
     public android.database.CursorJoiner.Result next() { return null; }
     public void remove() {}
+    CursorJoiner() { this((android.database.Cursor) null, (java.lang.String[]) null, (android.database.Cursor) null, (java.lang.String[]) null); }
     public enum Result {
         BOTH, LEFT, RIGHT;
     }

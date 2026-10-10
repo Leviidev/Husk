@@ -26,4 +26,5 @@ public class CursorLoader extends android.content.AsyncTaskLoader {
     public void setSelectionArgs(java.lang.String[] p0) { huskProps.put("SelectionArgs", p0); }
     public void setSortOrder(java.lang.String p0) { huskProps.put("SortOrder", p0); }
     public void setUri(android.net.Uri p0) { huskProps.put("Uri", p0); }
+    CursorLoader() { this((android.content.Context) null); }
 }

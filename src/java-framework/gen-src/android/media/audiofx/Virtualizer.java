@@ -24,6 +24,7 @@ public class Virtualizer extends android.media.audiofx.AudioEffect {
     public void setParameterListener(android.media.audiofx.Virtualizer.OnParameterChangeListener p0) { huskProps.put("ParameterListener", p0); }
     public void setProperties(android.media.audiofx.Virtualizer.Settings p0) { huskProps.put("Properties", p0); }
     public void setStrength(short p0) { huskProps.put("Strength", Short.valueOf(p0)); }
+    Virtualizer() { this((int) 0, (int) 0); }
     public interface OnParameterChangeListener {
         void onParameterChange(android.media.audiofx.Virtualizer p0, int p1, int p2, short p3);
     }

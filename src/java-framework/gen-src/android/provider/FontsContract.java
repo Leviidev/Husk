@@ -35,6 +35,7 @@ public class FontsContract {
         public FontFamilyResult(int p0, android.provider.FontsContract.FontInfo[] p1) {}
         public android.provider.FontsContract.FontInfo[] getFonts() { return (android.provider.FontsContract.FontInfo[]) huskProps.get("Fonts"); }
         public int getStatusCode() { return (huskProps.get("StatusCode") instanceof Integer ? (Integer) huskProps.get("StatusCode") : 0); }
+        FontFamilyResult() { this((int) 0, (android.provider.FontsContract.FontInfo[]) null); }
     }
     public static class FontInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -45,6 +46,7 @@ public class FontsContract {
         public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
         public int getWeight() { return (huskProps.get("Weight") instanceof Integer ? (Integer) huskProps.get("Weight") : 0); }
         public boolean isItalic() { return (huskProps.get("Italic") instanceof Boolean ? (Boolean) huskProps.get("Italic") : false); }
+        FontInfo() { this((android.net.Uri) null, (int) 0, (android.graphics.fonts.FontVariationAxis[]) null, (int) 0, (boolean) false, (int) 0); }
     }
     public static class FontRequestCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

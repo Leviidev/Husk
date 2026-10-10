@@ -9,4 +9,5 @@ public class SecurityStateManager {
     public static final java.lang.String KEY_VENDOR_SPL = "vendor_spl";
     public SecurityStateManager(android.os.ISecurityStateManager p0) {}
     public android.os.Bundle getGlobalSecurityState() { return (android.os.Bundle) huskProps.get("GlobalSecurityState"); }
+    SecurityStateManager() { this((android.os.ISecurityStateManager) null); }
 }

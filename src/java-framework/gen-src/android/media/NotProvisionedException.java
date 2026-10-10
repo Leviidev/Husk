@@ -6,4 +6,5 @@ public final class NotProvisionedException extends android.media.MediaDrmExcepti
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public NotProvisionedException(java.lang.String p0) { super(p0); }
     public NotProvisionedException(java.lang.String p0, int p1, int p2, int p3) { super(p0, p1, p2, p3); }
+    NotProvisionedException() { this((java.lang.String) null); }
 }

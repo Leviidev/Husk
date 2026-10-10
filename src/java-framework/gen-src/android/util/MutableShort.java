@@ -6,4 +6,5 @@ public final class MutableShort {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public short value;
     public MutableShort(short p0) {}
+    MutableShort() { this((short) (short) 0); }
 }

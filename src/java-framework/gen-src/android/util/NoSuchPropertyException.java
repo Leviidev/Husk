@@ -5,4 +5,5 @@ package android.util;
 public class NoSuchPropertyException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public NoSuchPropertyException(java.lang.String p0) { super(); }
+    NoSuchPropertyException() { this((java.lang.String) null); }
 }

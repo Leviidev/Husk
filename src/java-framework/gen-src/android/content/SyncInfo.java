@@ -11,7 +11,8 @@ public class SyncInfo implements android.os.Parcelable {
     public long startTime;
     public SyncInfo(int p0, android.accounts.Account p1, java.lang.String p2, long p3) {}
     public SyncInfo(android.content.SyncInfo p0) {}
-    public static android.content.SyncInfo createAccountRedacted(int p0, java.lang.String p1, long p2) { return null; }
+    public static android.content.SyncInfo createAccountRedacted(int p0, java.lang.String p1, long p2) { return new SyncInfo(); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SyncInfo() { this((android.content.SyncInfo) null); }
 }

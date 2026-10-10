@@ -11,4 +11,5 @@ public final class SaveRequest implements android.os.Parcelable {
     public java.util.List getDatasetIds() { return (huskProps.get("DatasetIds") != null ? (java.util.List) huskProps.get("DatasetIds") : new java.util.ArrayList()); }
     public java.util.List getFillContexts() { return (huskProps.get("FillContexts") != null ? (java.util.List) huskProps.get("FillContexts") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SaveRequest() { this((java.util.ArrayList) null, (android.os.Bundle) null, (java.util.ArrayList) null); }
 }

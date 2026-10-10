@@ -6,4 +6,5 @@ public class InstanceCountViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public InstanceCountViolation(java.lang.Class p0, long p1, int p2) { super(); }
     public long getNumberOfInstances() { return (huskProps.get("NumberOfInstances") instanceof Long ? (Long) huskProps.get("NumberOfInstances") : 0L); }
+    InstanceCountViolation() { this((java.lang.Class) null, (long) 0L, (int) 0); }
 }

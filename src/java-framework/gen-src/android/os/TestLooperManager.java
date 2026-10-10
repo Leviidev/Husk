@@ -16,4 +16,5 @@ public class TestLooperManager {
     public android.os.Message poll() { return null; }
     public void recycle(android.os.Message p0) {}
     public void release() {}
+    TestLooperManager() { this((android.os.Looper) null); }
 }

@@ -75,6 +75,7 @@ public class DownloadManager {
     public int resumeDownload(long p0) { return 0; }
     public void setAccessAllDownloads(boolean p0) { huskProps.put("AccessAllDownloads", Boolean.valueOf(p0)); }
     public void setAccessFilename(boolean p0) { huskProps.put("AccessFilename", Boolean.valueOf(p0)); }
+    DownloadManager() { this((android.content.Context) null); }
     public static class Query {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int ORDER_ASCENDING = 1;
@@ -112,5 +113,6 @@ public class DownloadManager {
         public android.app.DownloadManager.Request setShowRunningNotification(boolean p0) { huskProps.put("ShowRunningNotification", Boolean.valueOf(p0)); return this; }
         public android.app.DownloadManager.Request setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
         public android.app.DownloadManager.Request setVisibleInDownloadsUi(boolean p0) { huskProps.put("VisibleInDownloadsUi", Boolean.valueOf(p0)); return this; }
+        Request() { this((android.net.Uri) null); }
     }
 }

@@ -26,6 +26,7 @@ public class GridLayoutAnimationController extends android.view.animation.Layout
     public void setDirectionPriority(int p0) { huskProps.put("DirectionPriority", Integer.valueOf(p0)); }
     public void setRowDelay(float p0) { huskProps.put("RowDelay", Float.valueOf(p0)); }
     public boolean willOverlap() { return false; }
+    GridLayoutAnimationController() { this((android.view.animation.Animation) null); }
     public static class AnimationParameters extends android.view.animation.LayoutAnimationController.AnimationParameters {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int column;

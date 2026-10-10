@@ -9,4 +9,5 @@ public class DateSorter {
     public long getBoundary(int p0) { return 0L; }
     public int getIndex(long p0) { return 0; }
     public java.lang.String getLabel(int p0) { return null; }
+    DateSorter() { this((android.content.Context) null); }
 }

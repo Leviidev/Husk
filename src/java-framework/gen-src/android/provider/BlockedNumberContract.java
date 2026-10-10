@@ -72,6 +72,7 @@ public class BlockedNumberContract {
             public boolean isSuppressed;
             public long untilTimestampMillis;
             public BlockSuppressionStatus(boolean p0, long p1) {}
+            BlockSuppressionStatus() { this((boolean) false, (long) 0L); }
         }
     }
 }

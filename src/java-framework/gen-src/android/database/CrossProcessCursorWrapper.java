@@ -8,4 +8,5 @@ public class CrossProcessCursorWrapper extends android.database.CursorWrapper im
     public void fillWindow(int p0, android.database.CursorWindow p1) {}
     public android.database.CursorWindow getWindow() { return (android.database.CursorWindow) huskProps.get("Window"); }
     public boolean onMove(int p0, int p1) { return false; }
+    CrossProcessCursorWrapper() { this((android.database.Cursor) null); }
 }

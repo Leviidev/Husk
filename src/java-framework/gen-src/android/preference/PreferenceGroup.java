@@ -24,4 +24,5 @@ public abstract class PreferenceGroup extends android.preference.Preference impl
     public void removeAll() {}
     public boolean removePreference(android.preference.Preference p0) { return false; }
     public void setOrderingAsAdded(boolean p0) { huskProps.put("OrderingAsAdded", Boolean.valueOf(p0)); }
+    PreferenceGroup() { this((android.content.Context) null, (android.util.AttributeSet) null); }
 }

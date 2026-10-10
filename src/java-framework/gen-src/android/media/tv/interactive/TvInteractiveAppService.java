@@ -130,5 +130,6 @@ public abstract class TvInteractiveAppService extends android.app.Service {
         public void setMediaViewEnabled(boolean p0) { huskProps.put("MediaViewEnabled", Boolean.valueOf(p0)); }
         public void setTvRecordingInfo(java.lang.String p0, android.media.tv.TvRecordingInfo p1) {}
         public void setVideoBounds(android.graphics.Rect p0) { huskProps.put("VideoBounds", p0); }
+        Session() { this((android.content.Context) null); }
     }
 }

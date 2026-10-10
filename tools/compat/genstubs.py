@@ -146,6 +146,10 @@ def unbox(t, e):
     if t in EMPTY: return '(%s != null ? (%s) %s : %s)' % (e, jtype(t), e, EMPTY[t])
     return '(%s) %s' % (jtype(t), e)
 
+# the platform: framework.jar and the mainline modules' framework jars (MediaStore, connectivity, Wi-Fi, Bluetooth...)
+import glob as _glob
+PLATFORM = ','.join(['/Volumes/GTAV/husk2/aosp/fw/framework.jar'] + sorted(_glob.glob('/Volumes/GTAV/husk2/modules/jars/framework-*.jar')) + ['/Volumes/GTAV/husk2/modules/jars/android.net.ipsec.ike.jar'])
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
@@ -157,7 +161,7 @@ def main():
     want = ['L' + a.replace('.', '/') + ';' if not a.startswith('L') else a for a in names]
     fw = {}
     for d in dexes(opts.get('fw', '/Volumes/GTAV/husk2/java/husk-framework.dex')): fw.update(d.classes())
-    plat = Plat(opts.get('platform', '/Volumes/GTAV/husk2/aosp/fw/framework.jar').split(','))
+    plat = Plat(opts.get('platform', PLATFORM).split(','))
     # Husk's own classes: the sources in src/ (not the dex, which may be older); a nested one when its outer file declares it
     src_dir = opts.get('src', os.path.join(os.path.dirname(os.path.abspath(out_dir)), 'src'))
     src_cache = {}
@@ -229,7 +233,10 @@ def main():
         if props: lines.append(ind + 'private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();')
         # a no-argument constructor this class will have (its own public one, or the generated protected one)
         forced_abs = not shell and not is_if and not is_enum and not is_ann and not is_abs and sup in shells
-        can_new = not is_if and not is_abs and not is_enum and not forced_abs and (any(n == '<init>' and sig == '()V' and af & 5 for n, sig, af in meths) or not any(n == '<init>' and af & 5 for n, s2, af in meths))
+        # (constructors that are written: visible, with types that exist -- one taking a hidden type is left out, and then the
+        # class has the protected no-argument one written for it)
+        emitted_ctors = [s2 for n, s2, af in meths if n == '<init>' and af & 5 and all(ok_type(x) for x in split_params(s2)[0])]
+        can_new = not is_if and not is_abs and not is_enum and not forced_abs
         if is_enum:
             consts = [n for n, ty, af, v in fields if af & 0x4000]
             lines.append(ind + (', '.join(consts) if consts else '') + ';')
@@ -330,9 +337,15 @@ def main():
                     params = ', '.join('%s p%d' % (jtype(t), i) for i, t in enumerate(ps))
                     ret = '' if r == 'V' else ' return %s; ' % dflt(r)
                     lines.append(ind + '%s%s %s(%s) {%s}' % ('public ' if af & 1 else 'protected ', jtype(r), n, params, ret))
-            # a class with no public constructor still needs one its generated subclasses can call
+            # a class with no public constructor still needs one its generated subclasses can call; and one with only
+            # constructors taking arguments gets a hidden no-argument one, so its factories and builders can make it
             if not is_if and not is_enum and not any(n == '<init>' and af & 5 for n, s, af in meths):
                 lines.append(ind + 'protected %s() {%s}' % (simple, (' ' + super_call(sup) + ' ') if sup_ok else ''))
+            elif not is_if and not is_enum and emitted_ctors and '()V' not in emitted_ctors:
+                # through one of its own constructors: that one already reaches a superclass constructor it can call
+                best = min(emitted_ctors, key=lambda sg: len(split_params(sg)[0]))
+                args = ', '.join('(%s) %s' % (jtype(t), DEFAULT.get(t, 'null')) for t in split_params(best)[0])
+                lines.append(ind + '%s() { this(%s); }' % (simple, args))
         elif shell and not is_if and not is_enum and not is_ann:
             lines.append(ind + 'protected %s() {%s}' % (simple, (' ' + super_call(sup) + ' ') if sup_ok else ''))
         for k in sorted(gen):
@@ -347,8 +360,7 @@ def main():
         kfl, ksup, kifs, kfields, kmeths = plat.info(k)
         if kfl & 0x600 or kfl & 0x4000 or ksup in shells: continue
         if '$' in k[1:-1].rsplit('/', 1)[-1] and not kfl & 0x8 and any(n == '<init>' and len(split_params(sg)[0]) > 0 and split_params(sg)[0][0] == k[:k.rindex('$')] + ';' for n, sg, a in kmeths): continue
-        ctors = [sg for n, sg, a in kmeths if n == '<init>' and a & 5]
-        if not ctors or '()V' in ctors: newable.add(k)
+        newable.add(k)                                         # every concrete generated class has a no-argument constructor
     ctor_cache = {}
     def super_call(sup):
         """super(...) to a constructor the superclass really has: the one with the fewest parameters"""

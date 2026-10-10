@@ -25,4 +25,5 @@ public final class SessionConfiguration implements android.os.Parcelable {
     public void setSessionParameters(android.hardware.camera2.CaptureRequest p0) { huskProps.put("SessionParameters", p0); }
     public void setStateCallback(java.util.concurrent.Executor p0, android.hardware.camera2.CameraCaptureSession.StateCallback p1) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SessionConfiguration() { this((int) 0, (java.util.List) null); }
 }

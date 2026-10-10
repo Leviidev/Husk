@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class IncorrectContextUseViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public IncorrectContextUseViolation(java.lang.String p0, java.lang.Throwable p1) { super(); }
+    IncorrectContextUseViolation() { this((java.lang.String) null, (java.lang.Throwable) null); }
 }

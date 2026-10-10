@@ -10,8 +10,8 @@ public final class InlineSuggestionInfo implements android.os.Parcelable {
     public static final java.lang.String TYPE_ACTION = "android:autofill:action";
     public static final java.lang.String TYPE_SUGGESTION = "android:autofill:suggestion";
     public InlineSuggestionInfo(android.widget.inline.InlinePresentationSpec p0, java.lang.String p1, java.lang.String[] p2, java.lang.String p3, boolean p4, android.view.inputmethod.InlineSuggestion p5) {}
-    public static android.view.inputmethod.InlineSuggestionInfo newInlineSuggestionInfo(android.widget.inline.InlinePresentationSpec p0, java.lang.String p1, java.lang.String[] p2, java.lang.String p3, boolean p4) { return null; }
-    public static android.view.inputmethod.InlineSuggestionInfo newInlineSuggestionInfo(android.widget.inline.InlinePresentationSpec p0, java.lang.String p1, java.lang.String[] p2, java.lang.String p3, boolean p4, android.view.inputmethod.InlineSuggestion p5) { return null; }
+    public static android.view.inputmethod.InlineSuggestionInfo newInlineSuggestionInfo(android.widget.inline.InlinePresentationSpec p0, java.lang.String p1, java.lang.String[] p2, java.lang.String p3, boolean p4) { return new InlineSuggestionInfo(); }
+    public static android.view.inputmethod.InlineSuggestionInfo newInlineSuggestionInfo(android.widget.inline.InlinePresentationSpec p0, java.lang.String p1, java.lang.String[] p2, java.lang.String p3, boolean p4, android.view.inputmethod.InlineSuggestion p5) { return new InlineSuggestionInfo(); }
     public int describeContents() { return 0; }
     public java.lang.String[] getAutofillHints() { return (java.lang.String[]) huskProps.get("AutofillHints"); }
     public android.widget.inline.InlinePresentationSpec getInlinePresentationSpec() { return (android.widget.inline.InlinePresentationSpec) huskProps.get("InlinePresentationSpec"); }
@@ -20,4 +20,5 @@ public final class InlineSuggestionInfo implements android.os.Parcelable {
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public boolean isPinned() { return (huskProps.get("Pinned") instanceof Boolean ? (Boolean) huskProps.get("Pinned") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    InlineSuggestionInfo() { this((android.widget.inline.InlinePresentationSpec) null, (java.lang.String) null, (java.lang.String[]) null, (java.lang.String) null, (boolean) false, (android.view.inputmethod.InlineSuggestion) null); }
 }

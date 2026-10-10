@@ -8,4 +8,5 @@ public final class BackgroundServiceStartNotAllowedException extends android.app
     public BackgroundServiceStartNotAllowedException(java.lang.String p0) { super(); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    BackgroundServiceStartNotAllowedException() { this((java.lang.String) null); }
 }

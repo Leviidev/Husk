@@ -13,12 +13,14 @@ public final class TableResponse extends android.media.tv.BroadcastInfoResponse 
     public android.net.Uri getTableUri() { return (android.net.Uri) huskProps.get("TableUri"); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TableResponse() { this((int) 0, (int) 0, (int) 0, (android.net.Uri) null, (int) 0, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, int p2, int p3, int p4) {}
-        public android.media.tv.TableResponse build() { return null; }
+        public android.media.tv.TableResponse build() { return new android.media.tv.TableResponse(); }
         public android.media.tv.TableResponse.Builder setTableByteArray(byte[] p0) { huskProps.put("TableByteArray", p0); return this; }
         public android.media.tv.TableResponse.Builder setTableSharedMemory(android.os.SharedMemory p0) { huskProps.put("TableSharedMemory", p0); return this; }
         public android.media.tv.TableResponse.Builder setTableUri(android.net.Uri p0) { huskProps.put("TableUri", p0); return this; }
+        Builder() { this((int) 0, (int) 0, (int) 0, (int) 0, (int) 0); }
     }
 }

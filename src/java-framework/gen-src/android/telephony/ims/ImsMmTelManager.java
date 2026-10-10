@@ -10,7 +10,7 @@ public class ImsMmTelManager implements android.telephony.ims.RegistrationManage
     public static final int WIFI_MODE_WIFI_PREFERRED = 2;
     public ImsMmTelManager(int p0, android.telephony.BinderCacheManager p1) {}
     public ImsMmTelManager(android.content.Context p0, int p1, android.telephony.BinderCacheManager p2) {}
-    public static android.telephony.ims.ImsMmTelManager createForSubscriptionId(int p0) { return null; }
+    public static android.telephony.ims.ImsMmTelManager createForSubscriptionId(int p0) { return new ImsMmTelManager(); }
     public static java.lang.String wifiCallingModeToString(int p0) { return null; }
     public void getFeatureState(java.util.concurrent.Executor p0, java.util.function.Consumer p1) {}
     public void getRegistrationState(java.util.concurrent.Executor p0, java.util.function.Consumer p1) {}
@@ -45,6 +45,7 @@ public class ImsMmTelManager implements android.telephony.ims.RegistrationManage
     public void unregisterImsRegistrationCallback(android.telephony.ims.RegistrationManager.RegistrationCallback p0) {}
     public void unregisterImsStateCallback(android.telephony.ims.ImsStateCallback p0) {}
     public void unregisterMmTelCapabilityCallback(android.telephony.ims.ImsMmTelManager.CapabilityCallback p0) {}
+    ImsMmTelManager() { this((int) 0, (android.telephony.BinderCacheManager) null); }
     public static class CapabilityCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CapabilityCallback() {}

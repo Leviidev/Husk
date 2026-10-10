@@ -8,4 +8,5 @@ public final class SSLSessionCache {
     public SSLSessionCache(java.io.File p0) {}
     public SSLSessionCache(java.lang.Object p0) {}
     public static void install(android.net.SSLSessionCache p0, javax.net.ssl.SSLContext p1) {}
+    SSLSessionCache() { this((android.content.Context) null); }
 }

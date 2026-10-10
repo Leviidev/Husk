@@ -31,6 +31,7 @@ public class SlidingDrawer extends android.view.ViewGroup {
     public void setOnDrawerScrollListener(android.widget.SlidingDrawer.OnDrawerScrollListener p0) { huskProps.put("OnDrawerScrollListener", p0); }
     public void toggle() {}
     public void unlock() {}
+    SlidingDrawer() { this((android.content.Context) null, (android.util.AttributeSet) null); }
     public interface OnDrawerCloseListener {
         void onDrawerClosed();
     }

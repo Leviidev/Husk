@@ -6,4 +6,5 @@ public final class MutableDouble {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public double value;
     public MutableDouble(double p0) {}
+    MutableDouble() { this((double) 0d); }
 }

@@ -22,10 +22,11 @@ public final class ConnectionRequest implements android.os.Parcelable {
     public boolean isRequestingRtt() { return (huskProps.get("RequestingRtt") instanceof Boolean ? (Boolean) huskProps.get("RequestingRtt") : false); }
     public boolean shouldShowIncomingCallUi() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ConnectionRequest() { this((android.telecom.PhoneAccountHandle) null, (android.net.Uri) null, (android.os.Bundle) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telecom.ConnectionRequest build() { return null; }
+        public android.telecom.ConnectionRequest build() { return new android.telecom.ConnectionRequest(); }
         public android.telecom.ConnectionRequest.Builder setAccountHandle(android.telecom.PhoneAccountHandle p0) { huskProps.put("AccountHandle", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setAddress(android.net.Uri p0) { huskProps.put("Address", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

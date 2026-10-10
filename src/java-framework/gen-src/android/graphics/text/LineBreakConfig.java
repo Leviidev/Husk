@@ -21,7 +21,7 @@ public final class LineBreakConfig implements android.os.Parcelable {
     public static final int LINE_BREAK_WORD_STYLE_UNSPECIFIED = -1;
     public static android.graphics.text.LineBreakConfig NONE;
     public LineBreakConfig(int p0, int p1, int p2) {}
-    public static android.graphics.text.LineBreakConfig getLineBreakConfig(int p0, int p1) { return null; }
+    public static android.graphics.text.LineBreakConfig getLineBreakConfig(int p0, int p1) { return new LineBreakConfig(); }
     public static int getResolvedHyphenation(android.graphics.text.LineBreakConfig p0) { return 0; }
     public static int getResolvedLineBreakStyle(android.graphics.text.LineBreakConfig p0) { return 0; }
     public static int getResolvedLineBreakWordStyle(android.graphics.text.LineBreakConfig p0) { return 0; }
@@ -31,10 +31,11 @@ public final class LineBreakConfig implements android.os.Parcelable {
     public int getLineBreakWordStyle() { return (huskProps.get("LineBreakWordStyle") instanceof Integer ? (Integer) huskProps.get("LineBreakWordStyle") : 0); }
     public android.graphics.text.LineBreakConfig merge(android.graphics.text.LineBreakConfig p0) { return this; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    LineBreakConfig() { this((int) 0, (int) 0, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.graphics.text.LineBreakConfig build() { return null; }
+        public android.graphics.text.LineBreakConfig build() { return new android.graphics.text.LineBreakConfig(); }
         public android.graphics.text.LineBreakConfig.Builder merge(android.graphics.text.LineBreakConfig p0) { return this; }
         public android.graphics.text.LineBreakConfig.Builder reset(android.graphics.text.LineBreakConfig p0) { return this; }
         public android.graphics.text.LineBreakConfig.Builder setHyphenation(int p0) { huskProps.put("Hyphenation", Integer.valueOf(p0)); return this; }

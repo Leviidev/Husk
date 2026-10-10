@@ -113,4 +113,5 @@ public class ToneGenerator {
     public boolean startTone(int p0) { return false; }
     public boolean startTone(int p0, int p1) { return false; }
     public void stopTone() {}
+    ToneGenerator() { this((int) 0, (int) 0); }
 }

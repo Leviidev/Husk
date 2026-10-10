@@ -12,4 +12,5 @@ public final class FieldClassification implements android.os.Parcelable {
     public java.util.Set getGroupHints() { return (huskProps.get("GroupHints") != null ? (java.util.Set) huskProps.get("GroupHints") : new java.util.HashSet()); }
     public java.util.Set getHints() { return (huskProps.get("Hints") != null ? (java.util.Set) huskProps.get("Hints") : new java.util.HashSet()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FieldClassification() { this((android.view.autofill.AutofillId) null, (java.util.Set) null); }
 }

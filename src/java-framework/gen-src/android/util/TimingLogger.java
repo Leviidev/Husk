@@ -9,4 +9,5 @@ public class TimingLogger {
     public void dumpToLog() {}
     public void reset() {}
     public void reset(java.lang.String p0, java.lang.String p1) {}
+    TimingLogger() { this((java.lang.String) null, (java.lang.String) null); }
 }

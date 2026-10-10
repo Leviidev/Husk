@@ -64,6 +64,7 @@ public class LauncherApps {
     public void unregisterCallback(android.content.pm.LauncherApps.Callback p0) {}
     public void unregisterPackageInstallerSessionCallback(android.content.pm.PackageInstaller.SessionCallback p0) {}
     public void unregisterShortcutChangeCallback(android.content.pm.LauncherApps.ShortcutChangeCallback p0) {}
+    LauncherApps() { this((android.content.Context) null); }
     public static final class AppUsageLimit implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
@@ -72,6 +73,7 @@ public class LauncherApps {
         public long getTotalUsageLimit() { return (huskProps.get("TotalUsageLimit") instanceof Long ? (Long) huskProps.get("TotalUsageLimit") : 0L); }
         public long getUsageRemaining() { return (huskProps.get("UsageRemaining") instanceof Long ? (Long) huskProps.get("UsageRemaining") : 0L); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        AppUsageLimit() { this((long) 0L, (long) 0L); }
     }
     public static class ArchiveCompatibilityParams {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -111,6 +113,7 @@ public class LauncherApps {
         public android.content.pm.ShortcutInfo getShortcutInfo() { return (android.content.pm.ShortcutInfo) huskProps.get("ShortcutInfo"); }
         public boolean isValid() { return (huskProps.get("Valid") instanceof Boolean ? (Boolean) huskProps.get("Valid") : false); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        PinItemRequest() { this((android.content.pm.IPinItemRequest) null, (int) 0); }
     }
     public interface ShortcutChangeCallback {
         default void onShortcutsAddedOrUpdated(java.lang.String p0, java.util.List p1, android.os.UserHandle p2) {}

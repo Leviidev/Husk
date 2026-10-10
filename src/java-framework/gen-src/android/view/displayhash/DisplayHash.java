@@ -13,4 +13,5 @@ public final class DisplayHash implements android.os.Parcelable {
     public byte[] getImageHash() { return (byte[]) huskProps.get("ImageHash"); }
     public long getTimeMillis() { return (huskProps.get("TimeMillis") instanceof Long ? (Long) huskProps.get("TimeMillis") : 0L); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DisplayHash() { this((long) 0L, (android.graphics.Rect) null, (java.lang.String) null, (byte[]) null, (byte[]) null); }
 }

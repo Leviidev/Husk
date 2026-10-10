@@ -14,4 +14,5 @@ public final class UiccPortInfo implements android.os.Parcelable {
     public int getPortIndex() { return (huskProps.get("PortIndex") instanceof Integer ? (Integer) huskProps.get("PortIndex") : 0); }
     public boolean isActive() { return (huskProps.get("Active") instanceof Boolean ? (Boolean) huskProps.get("Active") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UiccPortInfo() { this((java.lang.String) null, (int) 0, (int) 0, (boolean) false); }
 }

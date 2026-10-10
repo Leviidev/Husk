@@ -43,6 +43,7 @@ public final class TvInteractiveAppManager {
     public void sendAppLinkCommand(java.lang.String p0, android.os.Bundle p1) {}
     public void unregisterAppLinkInfo(java.lang.String p0, android.media.tv.interactive.AppLinkInfo p1) {}
     public void unregisterCallback(android.media.tv.interactive.TvInteractiveAppManager.TvInteractiveAppCallback p0) {}
+    TvInteractiveAppManager() { this((android.media.tv.interactive.ITvInteractiveAppManager) null, (int) 0); }
     public static abstract class Session {
         protected Session() {}
     }

@@ -6,4 +6,5 @@ public final class MutableLong {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public long value;
     public MutableLong(long p0) {}
+    MutableLong() { this((long) 0L); }
 }

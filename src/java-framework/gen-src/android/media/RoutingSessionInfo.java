@@ -64,5 +64,6 @@ public final class RoutingSessionInfo implements android.os.Parcelable {
         public android.media.RoutingSessionInfo.Builder setVolume(int p0) { huskProps.put("Volume", Integer.valueOf(p0)); return this; }
         public android.media.RoutingSessionInfo.Builder setVolumeHandling(int p0) { huskProps.put("VolumeHandling", Integer.valueOf(p0)); return this; }
         public android.media.RoutingSessionInfo.Builder setVolumeMax(int p0) { huskProps.put("VolumeMax", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.media.RoutingSessionInfo) null); }
     }
 }

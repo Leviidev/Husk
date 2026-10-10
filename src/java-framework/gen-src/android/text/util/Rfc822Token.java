@@ -14,4 +14,5 @@ public class Rfc822Token {
     public void setAddress(java.lang.String p0) { huskProps.put("Address", p0); }
     public void setComment(java.lang.String p0) { huskProps.put("Comment", p0); }
     public void setName(java.lang.String p0) { huskProps.put("Name", p0); }
+    Rfc822Token() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
 }

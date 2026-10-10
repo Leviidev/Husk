@@ -9,4 +9,5 @@ public class Base64OutputStream extends java.io.FilterOutputStream {
     public void close() {}
     public void write(int p0) {}
     public void write(byte[] p0, int p1, int p2) {}
+    Base64OutputStream() { this((java.io.OutputStream) null, (int) 0); }
 }

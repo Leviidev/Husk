@@ -7,6 +7,7 @@ public class FaceDetector {
     public FaceDetector(int p0, int p1, int p2) {}
     protected void finalize() {}
     public int findFaces(android.graphics.Bitmap p0, android.media.FaceDetector.Face[] p1) { return 0; }
+    FaceDetector() { this((int) 0, (int) 0, (int) 0); }
     public static class Face {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final float CONFIDENCE_THRESHOLD = 0.4000000059604645f;

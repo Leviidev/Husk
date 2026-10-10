@@ -6,4 +6,5 @@ public final class LeakedClosableViolation extends android.os.strictmode.Violati
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public LeakedClosableViolation(java.lang.String p0) { super(); }
     public LeakedClosableViolation(java.lang.String p0, java.lang.Throwable p1) { super(); }
+    LeakedClosableViolation() { this((java.lang.String) null); }
 }

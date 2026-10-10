@@ -26,4 +26,5 @@ public final class WallpaperInfo implements android.os.Parcelable {
     public boolean supportsAmbientMode() { return false; }
     public boolean supportsMultipleDisplays() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    WallpaperInfo() { this((android.content.Context) null, (android.content.pm.ResolveInfo) null); }
 }

@@ -13,4 +13,5 @@ public final class AsyncNotedAppOp implements android.os.Parcelable {
     public java.lang.String getOp() { return (java.lang.String) huskProps.get("Op"); }
     public long getTime() { return (huskProps.get("Time") instanceof Long ? (Long) huskProps.get("Time") : 0L); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AsyncNotedAppOp() { this((int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (long) 0L); }
 }

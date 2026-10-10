@@ -13,4 +13,5 @@ public class GestureStroke {
     public android.gesture.OrientedBoundingBox computeOrientedBoundingBox() { return null; }
     public android.graphics.Path getPath() { return (android.graphics.Path) huskProps.get("Path"); }
     public android.graphics.Path toPath(float p0, float p1, int p2) { return null; }
+    GestureStroke() { this((java.util.ArrayList) null); }
 }

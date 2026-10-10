@@ -26,12 +26,14 @@ public class SurfaceControlViewHost {
     public void setView(android.view.View p0, android.view.SurfaceControlViewHost.LayoutParams p1) {}
     public void setView(android.view.View p0, android.view.WindowManager.LayoutParams p1) {}
     public boolean transferTouchGestureToHost() { return false; }
+    SurfaceControlViewHost() { this((android.content.Context) null, (android.view.Display) null, (android.os.IBinder) null); }
     public static class LayoutParams {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public LayoutParams(int p0, int p1, boolean p2) {}
         public int getHeight() { return (huskProps.get("Height") instanceof Integer ? (Integer) huskProps.get("Height") : 0); }
         public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
         public boolean isFocusable() { return (huskProps.get("Focusable") instanceof Boolean ? (Boolean) huskProps.get("Focusable") : false); }
+        LayoutParams() { this((int) 0, (int) 0, (boolean) false); }
     }
     public static abstract class SurfacePackage implements android.os.Parcelable {
         protected SurfacePackage() {}

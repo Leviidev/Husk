@@ -5,4 +5,5 @@ package android.graphics;
 public class EmbossMaskFilter extends android.graphics.MaskFilter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public EmbossMaskFilter(float[] p0, float p1, float p2, float p3) { super(); }
+    EmbossMaskFilter() { this((float[]) null, (float) 0f, (float) 0f, (float) 0f); }
 }

@@ -29,4 +29,5 @@ public final class MtpDevice {
     public boolean sendObject(int p0, long p1, android.os.ParcelFileDescriptor p2) { return false; }
     public android.mtp.MtpObjectInfo sendObjectInfo(android.mtp.MtpObjectInfo p0) { return null; }
     public int setDevicePropertyInitVersion(java.lang.String p0) { return 0; }
+    MtpDevice() { this((android.hardware.usb.UsbDevice) null); }
 }

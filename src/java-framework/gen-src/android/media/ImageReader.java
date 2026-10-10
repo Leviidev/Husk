@@ -36,6 +36,7 @@ public class ImageReader implements java.lang.AutoCloseable {
         public android.media.ImageReader.Builder setImageFormat(int p0) { huskProps.put("ImageFormat", Integer.valueOf(p0)); return this; }
         public android.media.ImageReader.Builder setMaxImages(int p0) { huskProps.put("MaxImages", Integer.valueOf(p0)); return this; }
         public android.media.ImageReader.Builder setUsage(long p0) { huskProps.put("Usage", Long.valueOf(p0)); return this; }
+        Builder() { this((int) 0, (int) 0); }
     }
     public static class ImagePlane extends android.media.Image.Plane {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

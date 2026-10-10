@@ -39,6 +39,7 @@ public class AnalogClock extends android.view.View {
     public void setSecondHandTintBlendMode(android.graphics.BlendMode p0) { huskProps.put("SecondHandTintBlendMode", p0); }
     public void setSecondHandTintList(android.content.res.ColorStateList p0) { huskProps.put("SecondHandTintList", p0); }
     public void setTimeZone(java.lang.String p0) { huskProps.put("TimeZone", p0); }
+    AnalogClock() { this((android.content.Context) null); }
     public static final class InspectionCompanion implements android.view.inspector.InspectionCompanion {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public InspectionCompanion() {}

@@ -17,5 +17,6 @@ public abstract class SegmentFinder {
         public int nextStartBoundary(int p0) { return 0; }
         public int previousEndBoundary(int p0) { return 0; }
         public int previousStartBoundary(int p0) { return 0; }
+        PrescribedSegmentFinder() { this((int[]) null); }
     }
 }

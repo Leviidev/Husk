@@ -863,6 +863,7 @@ public class DevicePolicyManager {
     public void wipeData(int p0) {}
     public void wipeData(int p0, java.lang.CharSequence p1) {}
     public void wipeDevice(int p0) {}
+    DevicePolicyManager() { this((android.content.Context) null, (android.app.admin.IDevicePolicyManager) null); }
     public static abstract class InstallSystemUpdateCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int UPDATE_ERROR_BATTERY_LOW = 5;

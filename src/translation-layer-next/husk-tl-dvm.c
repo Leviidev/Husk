@@ -1141,6 +1141,12 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
         break;
     case 1: {                                                      /* super: from the caller's superclass */
         dvm_class *sc = caller->cls->super;
+        dvm_class *rc = dvm_class_of(r->cls);
+        if (rc && (rc->flags & 0x200)) {
+            /* Interface.super.m(): that interface's default method (or one it inherits) */
+            target = dvm_find_method(rc, r->name, r->sig, false);
+            if (target && !(target->flags & 0x400)) break;
+        }
         target = sc ? dvm_find_method(sc, r->name, r->sig, false) : NULL;
         if (target && (target->flags & 0x400)) target = dvm_find_virtual(sc->jc, r->name, r->sig);
         if (!target && !r->hm) {

@@ -38,6 +38,7 @@ public class PrecomputedText implements android.text.Spannable {
         public android.text.MeasuredParagraph measured;
         public int paragraphEnd;
         public ParagraphInfo(int p0, android.text.MeasuredParagraph p1) {}
+        ParagraphInfo() { this((int) 0, (android.text.MeasuredParagraph) null); }
     }
     public static final class Params {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -51,15 +52,17 @@ public class PrecomputedText implements android.text.Spannable {
         public android.graphics.text.LineBreakConfig getLineBreakConfig() { return (android.graphics.text.LineBreakConfig) huskProps.get("LineBreakConfig"); }
         public android.text.TextDirectionHeuristic getTextDirection() { return (android.text.TextDirectionHeuristic) huskProps.get("TextDirection"); }
         public android.text.TextPaint getTextPaint() { return (android.text.TextPaint) huskProps.get("TextPaint"); }
+        Params() { this((android.text.TextPaint) null, (android.graphics.text.LineBreakConfig) null, (android.text.TextDirectionHeuristic) null, (int) 0, (int) 0); }
         public static class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(android.text.PrecomputedText.Params p0) {}
             public Builder(android.text.TextPaint p0) {}
-            public android.text.PrecomputedText.Params build() { return null; }
+            public android.text.PrecomputedText.Params build() { return new android.text.PrecomputedText.Params(); }
             public android.text.PrecomputedText.Params.Builder setBreakStrategy(int p0) { huskProps.put("BreakStrategy", Integer.valueOf(p0)); return this; }
             public android.text.PrecomputedText.Params.Builder setHyphenationFrequency(int p0) { huskProps.put("HyphenationFrequency", Integer.valueOf(p0)); return this; }
             public android.text.PrecomputedText.Params.Builder setLineBreakConfig(android.graphics.text.LineBreakConfig p0) { huskProps.put("LineBreakConfig", p0); return this; }
             public android.text.PrecomputedText.Params.Builder setTextDirection(android.text.TextDirectionHeuristic p0) { huskProps.put("TextDirection", p0); return this; }
+            Builder() { this((android.text.PrecomputedText.Params) null); }
         }
     }
 }

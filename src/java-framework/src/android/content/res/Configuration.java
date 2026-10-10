@@ -231,6 +231,7 @@ public final class Configuration implements Parcelable, Comparable<Configuration
     public static android.content.res.Configuration generateDelta(android.content.res.Configuration p0, android.content.res.Configuration p1) { return null; }
     public static java.lang.String getUiModeTypeString(int p0) { return null; }
     public static java.lang.String localesToResourceQualifier(android.os.LocaleList p0) { return null; }
+    public static void readXmlAttrs(org.xmlpull.v1.XmlPullParser p0, android.content.res.Configuration p1) {}
     public static int reduceScreenLayout(int p0, int p1, int p2) { return 0; }
     public static int resetScreenLayout(int p0) { return 0; }
     public static java.lang.String resourceQualifierString(android.content.res.Configuration p0) { return null; }

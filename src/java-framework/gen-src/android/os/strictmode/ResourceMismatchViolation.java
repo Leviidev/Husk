@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class ResourceMismatchViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ResourceMismatchViolation(java.lang.Object p0) { super(); }
+    ResourceMismatchViolation() { this((java.lang.Object) null); }
 }

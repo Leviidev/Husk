@@ -6,4 +6,5 @@ public class AccessControlProfileId {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public AccessControlProfileId(int p0) {}
     public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
+    AccessControlProfileId() { this((int) 0); }
 }

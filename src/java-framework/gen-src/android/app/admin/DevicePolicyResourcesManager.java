@@ -17,4 +17,5 @@ public class DevicePolicyResourcesManager {
     public void resetStrings(java.util.Set p0) {}
     public void setDrawables(java.util.Set p0) { huskProps.put("Drawables", p0); }
     public void setStrings(java.util.Set p0) { huskProps.put("Strings", p0); }
+    DevicePolicyResourcesManager() { this((android.content.Context) null, (android.app.admin.IDevicePolicyManager) null); }
 }

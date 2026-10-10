@@ -10,4 +10,5 @@ public class LocalServerSocket implements java.io.Closeable {
     public void close() {}
     public java.io.FileDescriptor getFileDescriptor() { return (java.io.FileDescriptor) huskProps.get("FileDescriptor"); }
     public android.net.LocalSocketAddress getLocalSocketAddress() { return (android.net.LocalSocketAddress) huskProps.get("LocalSocketAddress"); }
+    LocalServerSocket() { this((java.io.FileDescriptor) null); }
 }

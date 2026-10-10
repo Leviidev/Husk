@@ -30,5 +30,6 @@ public final class WalletCard implements android.os.Parcelable {
         public android.service.quickaccesswallet.WalletCard.Builder setCardLabel(java.lang.CharSequence p0) { huskProps.put("CardLabel", p0); return this; }
         public android.service.quickaccesswallet.WalletCard.Builder setCardLocations(java.util.List p0) { huskProps.put("CardLocations", p0); return this; }
         public android.service.quickaccesswallet.WalletCard.Builder setNonPaymentCardSecondaryImage(android.graphics.drawable.Icon p0) { huskProps.put("NonPaymentCardSecondaryImage", p0); return this; }
+        Builder() { this((java.lang.String) null, (android.graphics.drawable.Icon) null, (java.lang.CharSequence) null, (android.app.PendingIntent) null); }
     }
 }

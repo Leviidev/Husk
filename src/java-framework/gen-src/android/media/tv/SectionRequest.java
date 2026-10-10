@@ -11,4 +11,5 @@ public final class SectionRequest extends android.media.tv.BroadcastInfoRequest 
     public int getTsPid() { return (huskProps.get("TsPid") instanceof Integer ? (Integer) huskProps.get("TsPid") : 0); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SectionRequest() { this((int) 0, (int) 0, (int) 0, (int) 0, (int) 0); }
 }

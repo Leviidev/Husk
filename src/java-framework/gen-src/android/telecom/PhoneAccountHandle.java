@@ -13,4 +13,5 @@ public final class PhoneAccountHandle implements android.os.Parcelable {
     public java.lang.String getId() { return (java.lang.String) huskProps.get("Id"); }
     public android.os.UserHandle getUserHandle() { return (android.os.UserHandle) huskProps.get("UserHandle"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PhoneAccountHandle() { this((android.content.ComponentName) null, (java.lang.String) null); }
 }

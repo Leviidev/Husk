@@ -58,11 +58,14 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     private interface Step { void on(Application.ActivityLifecycleCallbacks c); }
     private void each(Step s) { for (Application.ActivityLifecycleCallbacks c : callbacks()) s.on(c); }
     public final void huskCreate(Bundle state) {
+        // as Activity.attach: the activity is its inflater's private factory, after any the app sets (FragmentActivity makes
+        // <fragment> and FragmentContainerView there)
+        getLayoutInflater().setPrivateFactory(this);
         each(c -> c.onActivityPreCreated(this, state));
         mCalled = false;
         onCreate(state);
         if (!mCalled) throw new SuperNotCalledException("Activity " + getClass().getName() + " did not call through to super.onCreate()");
-        onPostCreate(state);
+        if (!mFinished) onPostCreate(state);            /* as ActivityThread: an activity that finished in onCreate goes no further */
         each(c -> c.onActivityPostCreated(this, state));
     }
     public final void huskStart() {
@@ -86,9 +89,11 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
         each(c -> c.onActivityPostPaused(this));
     }
     public final void huskStop() {
-        each(c -> c.onActivityPreStopped(this));
-        mStarted = false; onStop();
-        each(c -> c.onActivityPostStopped(this));
+        if (mStarted) {                                  /* one that finished in onCreate never started, and does not stop */
+            each(c -> c.onActivityPreStopped(this));
+            mStarted = false; onStop();
+            each(c -> c.onActivityPostStopped(this));
+        }
         if (mWindow != null && mWindow.peekDecorView() != null) { husk.ViewRoot r = husk.ViewRoot.of(mWindow.peekDecorView()); if (r != null) r.remove(); }
     }
     public final void huskDestroy() {

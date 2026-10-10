@@ -14,6 +14,7 @@ public final class MediaProjection {
     public void stop() {}
     public void stop(int p0) {}
     public void unregisterCallback(android.media.projection.MediaProjection.Callback p0) {}
+    MediaProjection() { this((android.content.Context) null, (android.media.projection.IMediaProjection) null); }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}

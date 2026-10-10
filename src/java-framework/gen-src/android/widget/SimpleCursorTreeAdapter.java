@@ -13,6 +13,7 @@ public abstract class SimpleCursorTreeAdapter extends android.widget.ResourceCur
     public void setViewBinder(android.widget.SimpleCursorTreeAdapter.ViewBinder p0) { huskProps.put("ViewBinder", p0); }
     protected void setViewImage(android.widget.ImageView p0, java.lang.String p1) {}
     public void setViewText(android.widget.TextView p0, java.lang.String p1) {}
+    SimpleCursorTreeAdapter() { this((android.content.Context) null, (android.database.Cursor) null, (int) 0, (java.lang.String[]) null, (int[]) null, (int) 0, (java.lang.String[]) null, (int[]) null); }
     public interface ViewBinder {
         boolean setViewValue(android.view.View p0, android.database.Cursor p1, int p2);
     }

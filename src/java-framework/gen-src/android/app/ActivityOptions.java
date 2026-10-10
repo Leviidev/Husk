@@ -195,6 +195,7 @@ public abstract class ActivityOptions extends android.app.ComponentOptions {
     public android.app.ActivityOptions setWindowingLayer(int p0) { huskProps.put("WindowingLayer", Integer.valueOf(p0)); return this; }
     public android.os.Bundle toBundle() { return null; }
     public void update(android.app.ActivityOptions p0) {}
+    ActivityOptions() { this((android.os.Bundle) null); }
     public static abstract class LaunchCookie implements android.os.Parcelable {
         protected LaunchCookie() {}
     }

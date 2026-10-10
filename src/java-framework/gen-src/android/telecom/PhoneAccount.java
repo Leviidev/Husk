@@ -88,5 +88,6 @@ public final class PhoneAccount implements android.os.Parcelable {
         public android.telecom.PhoneAccount.Builder setSubscriptionAddress(android.net.Uri p0) { huskProps.put("SubscriptionAddress", p0); return this; }
         public android.telecom.PhoneAccount.Builder setSupportedAudioRoutes(int p0) { huskProps.put("SupportedAudioRoutes", Integer.valueOf(p0)); return this; }
         public android.telecom.PhoneAccount.Builder setSupportedUriSchemes(java.util.List p0) { huskProps.put("SupportedUriSchemes", p0); return this; }
+        Builder() { this((android.telecom.PhoneAccount) null); }
     }
 }

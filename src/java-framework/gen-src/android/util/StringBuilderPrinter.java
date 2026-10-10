@@ -6,4 +6,5 @@ public class StringBuilderPrinter implements android.util.Printer {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public StringBuilderPrinter(java.lang.StringBuilder p0) {}
     public void println(java.lang.String p0) {}
+    StringBuilderPrinter() { this((java.lang.StringBuilder) null); }
 }

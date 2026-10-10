@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class NonSdkApiUsedViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public NonSdkApiUsedViolation(java.lang.String p0) { super(); }
+    NonSdkApiUsedViolation() { this((java.lang.String) null); }
 }

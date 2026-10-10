@@ -11,4 +11,5 @@ public final class ChangedPackages implements android.os.Parcelable {
     public java.util.List getPackageNames() { return (huskProps.get("PackageNames") != null ? (java.util.List) huskProps.get("PackageNames") : new java.util.ArrayList()); }
     public int getSequenceNumber() { return (huskProps.get("SequenceNumber") instanceof Integer ? (Integer) huskProps.get("SequenceNumber") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ChangedPackages() { this((android.os.Parcel) null); }
 }

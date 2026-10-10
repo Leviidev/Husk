@@ -13,4 +13,5 @@ public final class PowerMonitor implements android.os.Parcelable {
     public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PowerMonitor() { this((int) 0, (int) 0, (java.lang.String) null); }
 }

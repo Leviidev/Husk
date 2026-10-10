@@ -16,6 +16,7 @@ public class Interpolator {
     public void setRepeatMirror(float p0, boolean p1) {}
     public android.graphics.Interpolator.Result timeToValues(int p0, float[] p1) { return null; }
     public android.graphics.Interpolator.Result timeToValues(float[] p0) { return null; }
+    Interpolator() { this((int) 0); }
     public enum Result {
         FREEZE_END, FREEZE_START, NORMAL;
     }

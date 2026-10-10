@@ -13,4 +13,5 @@ public class ImsManager {
     public android.telephony.ims.ImsRcsManager getImsRcsManager(int p0) { return null; }
     public android.telephony.ims.ProvisioningManager getProvisioningManager(int p0) { return null; }
     public android.telephony.ims.SipDelegateManager getSipDelegateManager(int p0) { return null; }
+    ImsManager() { this((android.content.Context) null); }
 }

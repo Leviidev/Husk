@@ -251,12 +251,14 @@ static void *java_boot(void *arg)
     bool *ok = arg;
     const char *r = g_java_root;
     static const char *const jars[] = { "core-oj", "core-libart", "okhttp", "bouncycastle", "apache-xml" };
-    static char paths[9][1200];
-    const char *boot[9]; int nb = 0;
+    static char paths[10][1200];
+    const char *boot[10]; int nb = 0;
     for (int i = 0; i < 5; i++) { snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.art/javalib/%s.jar", r, jars[i]); boot[nb] = paths[nb]; nb++; }
     snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.i18n/javalib/core-icu4j.jar", r); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.conscrypt/javalib/conscrypt.jar", r); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/husk-framework.dex", r); boot[nb] = paths[nb]; nb++;
+    /* Apache HttpClient, which Android gives apps that target 27 or lower (or ask for it in their manifest) */
+    snprintf(paths[nb], sizeof(paths[nb]), "%s/org.apache.http.legacy.jar", r); boot[nb] = paths[nb]; nb++;
     char v[1200];
     snprintf(v, sizeof(v), "%s/com.android.art", r); setenv("ANDROID_ART_ROOT", v, 1);
     snprintf(v, sizeof(v), "%s/com.android.i18n", r); setenv("ANDROID_I18N_ROOT", v, 1);

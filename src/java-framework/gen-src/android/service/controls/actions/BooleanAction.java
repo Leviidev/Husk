@@ -8,4 +8,5 @@ public final class BooleanAction extends android.service.controls.actions.Contro
     public BooleanAction(java.lang.String p0, boolean p1, java.lang.String p2) { super(); }
     public int getActionType() { return (huskProps.get("ActionType") instanceof Integer ? (Integer) huskProps.get("ActionType") : 0); }
     public boolean getNewState() { return (huskProps.get("NewState") instanceof Boolean ? (Boolean) huskProps.get("NewState") : false); }
+    BooleanAction() { this((java.lang.String) null, (boolean) false); }
 }

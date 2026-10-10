@@ -17,4 +17,5 @@ public class UsbConfiguration implements android.os.Parcelable {
     public boolean isSelfPowered() { return (huskProps.get("SelfPowered") instanceof Boolean ? (Boolean) huskProps.get("SelfPowered") : false); }
     public void setInterfaces(android.os.Parcelable[] p0) { huskProps.put("Interfaces", p0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UsbConfiguration() { this((int) 0, (java.lang.String) null, (int) 0, (int) 0); }
 }

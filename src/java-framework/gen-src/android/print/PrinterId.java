@@ -10,4 +10,5 @@ public final class PrinterId implements android.os.Parcelable {
     public java.lang.String getLocalId() { return (java.lang.String) huskProps.get("LocalId"); }
     public android.content.ComponentName getServiceName() { return (android.content.ComponentName) huskProps.get("ServiceName"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PrinterId() { this((android.content.ComponentName) null, (java.lang.String) null); }
 }

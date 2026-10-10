@@ -46,10 +46,12 @@ public class Gallery extends android.widget.AbsSpinner implements android.view.G
     public boolean showContextMenu(float p0, float p1) { return false; }
     public boolean showContextMenuForChild(android.view.View p0) { return false; }
     public boolean showContextMenuForChild(android.view.View p0, float p1, float p2) { return false; }
+    Gallery() { this((android.content.Context) null); }
     public static class LayoutParams extends android.view.ViewGroup.LayoutParams {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public LayoutParams(int p0, int p1) { super(p0, p1); }
         public LayoutParams(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
         public LayoutParams(android.view.ViewGroup.LayoutParams p0) { super(p0); }
+        LayoutParams() { this((android.view.ViewGroup.LayoutParams) null); }
     }
 }

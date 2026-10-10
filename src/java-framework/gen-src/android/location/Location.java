@@ -82,4 +82,5 @@ public class Location implements android.os.Parcelable {
     public void setTime(long p0) { huskProps.put("Time", Long.valueOf(p0)); }
     public void setVerticalAccuracyMeters(float p0) { huskProps.put("VerticalAccuracyMeters", Float.valueOf(p0)); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Location() { this((android.location.Location) null); }
 }

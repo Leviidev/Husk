@@ -18,4 +18,5 @@ public final class TvInteractiveAppServiceInfo implements android.os.Parcelable 
     public android.content.pm.ServiceInfo getServiceInfo() { return (android.content.pm.ServiceInfo) huskProps.get("ServiceInfo"); }
     public int getSupportedTypes() { return (huskProps.get("SupportedTypes") instanceof Integer ? (Integer) huskProps.get("SupportedTypes") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TvInteractiveAppServiceInfo() { this((android.content.Context) null, (android.content.ComponentName) null); }
 }

@@ -9,4 +9,5 @@ public final class EuiccInfo implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public java.lang.String getOsVersion() { return (java.lang.String) huskProps.get("OsVersion"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    EuiccInfo() { this((java.lang.String) null); }
 }

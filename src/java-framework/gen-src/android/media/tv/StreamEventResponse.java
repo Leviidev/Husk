@@ -11,4 +11,5 @@ public final class StreamEventResponse extends android.media.tv.BroadcastInfoRes
     public int getEventId() { return (huskProps.get("EventId") instanceof Integer ? (Integer) huskProps.get("EventId") : 0); }
     public long getNptMillis() { return (huskProps.get("NptMillis") instanceof Long ? (Long) huskProps.get("NptMillis") : 0L); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    StreamEventResponse() { this((int) 0, (int) 0, (int) 0, (int) 0, (long) 0L, (byte[]) null); }
 }

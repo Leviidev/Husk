@@ -35,4 +35,5 @@ public final class SliceItem implements android.os.Parcelable {
     public boolean hasHint(java.lang.String p0) { return false; }
     public boolean hasHints(java.lang.String[] p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SliceItem() { this((android.os.Parcel) null); }
 }

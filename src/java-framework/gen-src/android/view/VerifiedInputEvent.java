@@ -15,4 +15,5 @@ public abstract class VerifiedInputEvent implements android.os.Parcelable {
     public long getEventTimeNanos() { return (huskProps.get("EventTimeNanos") instanceof Long ? (Long) huskProps.get("EventTimeNanos") : 0L); }
     public int getSource() { return (huskProps.get("Source") instanceof Integer ? (Integer) huskProps.get("Source") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VerifiedInputEvent() { this((android.os.Parcel) null, (int) 0); }
 }

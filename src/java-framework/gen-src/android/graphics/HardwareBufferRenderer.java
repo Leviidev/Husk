@@ -11,6 +11,7 @@ public class HardwareBufferRenderer implements java.lang.AutoCloseable {
     public void setContentRoot(android.graphics.RenderNode p0) { huskProps.put("ContentRoot", p0); }
     public void setLightSourceAlpha(float p0, float p1) {}
     public void setLightSourceGeometry(float p0, float p1, float p2, float p3) {}
+    HardwareBufferRenderer() { this((android.hardware.HardwareBuffer) null); }
     public static final class RenderRequest {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public void draw(java.util.concurrent.Executor p0, java.util.function.Consumer p1) {}

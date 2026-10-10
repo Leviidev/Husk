@@ -12,4 +12,5 @@ public final class ColorSpaceProfiles {
     public java.util.Set getSupportedColorSpacesForDynamicRange(int p0, long p1) { return new java.util.HashSet(); }
     public java.util.Set getSupportedDynamicRangeProfiles(android.graphics.ColorSpace.Named p0, int p1) { return new java.util.HashSet(); }
     public java.util.Set getSupportedImageFormatsForColorSpace(android.graphics.ColorSpace.Named p0) { return new java.util.HashSet(); }
+    ColorSpaceProfiles() { this((long[]) null); }
 }

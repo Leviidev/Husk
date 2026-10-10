@@ -10,4 +10,5 @@ public final class GetWalletCardsError implements android.os.Parcelable {
     public android.graphics.drawable.Icon getIcon() { return (android.graphics.drawable.Icon) huskProps.get("Icon"); }
     public java.lang.CharSequence getMessage() { return (java.lang.CharSequence) huskProps.get("Message"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GetWalletCardsError() { this((android.graphics.drawable.Icon) null, (java.lang.CharSequence) null); }
 }

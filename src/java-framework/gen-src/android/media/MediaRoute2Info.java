@@ -120,5 +120,6 @@ public final class MediaRoute2Info implements android.os.Parcelable {
         public android.media.MediaRoute2Info.Builder setVolume(int p0) { huskProps.put("Volume", Integer.valueOf(p0)); return this; }
         public android.media.MediaRoute2Info.Builder setVolumeHandling(int p0) { huskProps.put("VolumeHandling", Integer.valueOf(p0)); return this; }
         public android.media.MediaRoute2Info.Builder setVolumeMax(int p0) { huskProps.put("VolumeMax", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.media.MediaRoute2Info) null); }
     }
 }

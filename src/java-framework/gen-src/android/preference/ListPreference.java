@@ -27,4 +27,5 @@ public class ListPreference extends android.preference.DialogPreference {
     public void setSummary(java.lang.CharSequence p0) { huskProps.put("Summary", p0); }
     public void setValue(java.lang.String p0) { huskProps.put("Value", p0); }
     public void setValueIndex(int p0) { huskProps.put("ValueIndex", Integer.valueOf(p0)); }
+    ListPreference() { this((android.content.Context) null); }
 }

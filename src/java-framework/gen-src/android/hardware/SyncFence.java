@@ -9,9 +9,9 @@ public final class SyncFence implements java.lang.AutoCloseable, android.os.Parc
     public static final long SIGNAL_TIME_PENDING = 9223372036854775807L;
     public SyncFence(long p0) {}
     public SyncFence(android.hardware.SyncFence p0) {}
-    public static android.hardware.SyncFence adopt(int p0) { return null; }
-    public static android.hardware.SyncFence create(android.os.ParcelFileDescriptor p0) { return null; }
-    public static android.hardware.SyncFence createEmpty() { return null; }
+    public static android.hardware.SyncFence adopt(int p0) { return new SyncFence(); }
+    public static android.hardware.SyncFence create(android.os.ParcelFileDescriptor p0) { return new SyncFence(); }
+    public static android.hardware.SyncFence createEmpty() { return new SyncFence(); }
     public boolean await(java.time.Duration p0) { return false; }
     public boolean awaitForever() { return false; }
     public void close() {}
@@ -22,4 +22,5 @@ public final class SyncFence implements java.lang.AutoCloseable, android.os.Parc
     public long getSignalTime() { return (huskProps.get("SignalTime") instanceof Long ? (Long) huskProps.get("SignalTime") : 0L); }
     public boolean isValid() { return (huskProps.get("Valid") instanceof Boolean ? (Boolean) huskProps.get("Valid") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SyncFence() { this((long) 0L); }
 }

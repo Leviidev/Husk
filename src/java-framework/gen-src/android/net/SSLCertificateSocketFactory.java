@@ -28,4 +28,5 @@ public class SSLCertificateSocketFactory extends javax.net.ssl.SSLSocketFactory 
     public void setSoWriteTimeout(java.net.Socket p0, int p1) {}
     public void setTrustManagers(javax.net.ssl.TrustManager[] p0) { huskProps.put("TrustManagers", p0); }
     public void setUseSessionTickets(java.net.Socket p0, boolean p1) {}
+    SSLCertificateSocketFactory() { this((int) 0); }
 }

@@ -6,4 +6,5 @@ public class AlreadyPersonalizedException extends android.security.identity.Iden
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public AlreadyPersonalizedException(java.lang.String p0) { super(p0); }
     public AlreadyPersonalizedException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    AlreadyPersonalizedException() { this((java.lang.String) null); }
 }

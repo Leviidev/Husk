@@ -7,11 +7,13 @@ public final class BluetoothDeviceFilter implements android.companion.DeviceFilt
     public static android.os.Parcelable.Creator CREATOR;
     public int describeContents() { return 0; }
     public java.lang.String getAddress() { return (java.lang.String) huskProps.get("Address"); }
+    public java.lang.String getDeviceDisplayName(android.bluetooth.BluetoothDevice p0) { return null; }
     public java.lang.String getDeviceDisplayName(android.os.Parcelable p0) { return null; }
     public int getMediumType() { return (huskProps.get("MediumType") instanceof Integer ? (Integer) huskProps.get("MediumType") : 0); }
     public java.util.regex.Pattern getNamePattern() { return (java.util.regex.Pattern) huskProps.get("NamePattern"); }
     public java.util.List getServiceUuidMasks() { return (huskProps.get("ServiceUuidMasks") != null ? (java.util.List) huskProps.get("ServiceUuidMasks") : new java.util.ArrayList()); }
     public java.util.List getServiceUuids() { return (huskProps.get("ServiceUuids") != null ? (java.util.List) huskProps.get("ServiceUuids") : new java.util.ArrayList()); }
+    public boolean matches(android.bluetooth.BluetoothDevice p0) { return false; }
     public boolean matches(android.os.Parcelable p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected BluetoothDeviceFilter() {}

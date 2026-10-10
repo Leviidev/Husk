@@ -12,4 +12,5 @@ public class MediaRouteActionProvider extends android.view.ActionProvider {
     public boolean overridesItemVisibility() { return false; }
     public void setExtendedSettingsClickListener(android.view.View.OnClickListener p0) { huskProps.put("ExtendedSettingsClickListener", p0); }
     public void setRouteTypes(int p0) { huskProps.put("RouteTypes", Integer.valueOf(p0)); }
+    MediaRouteActionProvider() { this((android.content.Context) null); }
 }

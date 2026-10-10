@@ -14,6 +14,7 @@ public final class PeopleManager {
     public boolean isConversation(java.lang.String p0, java.lang.String p1) { return false; }
     public void registerConversationListener(java.lang.String p0, int p1, java.lang.String p2, android.app.people.PeopleManager.ConversationListener p3, java.util.concurrent.Executor p4) {}
     public void unregisterConversationListener(android.app.people.PeopleManager.ConversationListener p0) {}
+    PeopleManager() { this((android.content.Context) null); }
     public interface ConversationListener {
         default void onConversationUpdate(android.app.people.ConversationChannel p0) {}
     }

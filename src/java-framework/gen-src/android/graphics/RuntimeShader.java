@@ -25,4 +25,5 @@ public class RuntimeShader extends android.graphics.Shader {
     public void setIntUniform(java.lang.String p0, int p1, int p2, int p3, int p4) {}
     public void setIntUniform(java.lang.String p0, int[] p1) {}
     public void setWorkingColorSpace(android.graphics.ColorSpace p0) { huskProps.put("WorkingColorSpace", p0); }
+    RuntimeShader() { this((java.lang.String) null); }
 }

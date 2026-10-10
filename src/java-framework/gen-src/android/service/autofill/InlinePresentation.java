@@ -6,11 +6,12 @@ public final class InlinePresentation implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public InlinePresentation(android.app.slice.Slice p0, android.widget.inline.InlinePresentationSpec p1, boolean p2) {}
-    public static android.service.autofill.InlinePresentation createTooltipPresentation(android.app.slice.Slice p0, android.widget.inline.InlinePresentationSpec p1) { return null; }
+    public static android.service.autofill.InlinePresentation createTooltipPresentation(android.app.slice.Slice p0, android.widget.inline.InlinePresentationSpec p1) { return new InlinePresentation(); }
     public int describeContents() { return 0; }
     public java.lang.String[] getAutofillHints() { return (java.lang.String[]) huskProps.get("AutofillHints"); }
     public android.widget.inline.InlinePresentationSpec getInlinePresentationSpec() { return (android.widget.inline.InlinePresentationSpec) huskProps.get("InlinePresentationSpec"); }
     public android.app.slice.Slice getSlice() { return (android.app.slice.Slice) huskProps.get("Slice"); }
     public boolean isPinned() { return (huskProps.get("Pinned") instanceof Boolean ? (Boolean) huskProps.get("Pinned") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    InlinePresentation() { this((android.app.slice.Slice) null, (android.widget.inline.InlinePresentationSpec) null, (boolean) false); }
 }

@@ -11,4 +11,5 @@ public final class InputConfiguration {
     public int getHeight() { return (huskProps.get("Height") instanceof Integer ? (Integer) huskProps.get("Height") : 0); }
     public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
     public boolean isMultiResolution() { return (huskProps.get("MultiResolution") instanceof Boolean ? (Boolean) huskProps.get("MultiResolution") : false); }
+    InputConfiguration() { this((java.util.Collection) null, (int) 0); }
 }

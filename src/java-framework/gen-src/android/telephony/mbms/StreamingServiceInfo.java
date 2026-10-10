@@ -8,4 +8,5 @@ public final class StreamingServiceInfo extends android.telephony.mbms.ServiceIn
     public StreamingServiceInfo(java.util.Map p0, java.lang.String p1, java.util.List p2, java.lang.String p3, java.util.Date p4, java.util.Date p5) { super(p0, p1, p2, p3, p4, p5); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    StreamingServiceInfo() { this((java.util.Map) null, (java.lang.String) null, (java.util.List) null, (java.lang.String) null, (java.util.Date) null, (java.util.Date) null); }
 }

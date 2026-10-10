@@ -9,4 +9,5 @@ public class X509TrustManagerExtensions {
     public java.util.List checkServerTrusted(java.security.cert.X509Certificate[] p0, byte[] p1, byte[] p2, java.lang.String p3, java.lang.String p4) { return new java.util.ArrayList(); }
     public boolean isSameTrustConfiguration(java.lang.String p0, java.lang.String p1) { return false; }
     public boolean isUserAddedCertificate(java.security.cert.X509Certificate p0) { return false; }
+    X509TrustManagerExtensions() { this((javax.net.ssl.X509TrustManager) null); }
 }

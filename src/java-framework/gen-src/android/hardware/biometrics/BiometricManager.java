@@ -44,6 +44,7 @@ public class BiometricManager {
     public void setIdentityCheckTestStatus(android.hardware.biometrics.IdentityCheckStatus p0) { huskProps.put("IdentityCheckTestStatus", p0); }
     public void unregisterAuthenticationStateListener(android.hardware.biometrics.AuthenticationStateListener p0) {}
     public void unregisterIdentityCheckStateListener(android.hardware.biometrics.IIdentityCheckStateListener p0) {}
+    BiometricManager() { this((android.content.Context) null, (android.hardware.biometrics.IAuthService) null); }
     public interface Authenticators {
         int BIOMETRIC_CONVENIENCE = 4095;
         int BIOMETRIC_MAX_STRENGTH = 1;

@@ -13,6 +13,7 @@ public class WindowId implements android.os.Parcelable {
     public void registerFocusObserver(android.view.WindowId.FocusObserver p0) {}
     public void unregisterFocusObserver(android.view.WindowId.FocusObserver p0) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    WindowId() { this((android.os.IBinder) null); }
     public static abstract class FocusObserver {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public FocusObserver() {}

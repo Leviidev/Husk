@@ -15,4 +15,5 @@ public final class TextInfo implements android.os.Parcelable {
     public int getSequence() { return (huskProps.get("Sequence") instanceof Integer ? (Integer) huskProps.get("Sequence") : 0); }
     public java.lang.String getText() { return (java.lang.String) huskProps.get("Text"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TextInfo() { this((android.os.Parcel) null); }
 }

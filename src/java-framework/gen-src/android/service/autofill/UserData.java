@@ -30,5 +30,6 @@ public final class UserData implements android.service.autofill.FieldClassificat
         public android.service.autofill.UserData build() { return new android.service.autofill.UserData(); }
         public android.service.autofill.UserData.Builder setFieldClassificationAlgorithm(java.lang.String p0, android.os.Bundle p1) { return this; }
         public android.service.autofill.UserData.Builder setFieldClassificationAlgorithmForCategory(java.lang.String p0, java.lang.String p1, android.os.Bundle p2) { return this; }
+        Builder() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
     }
 }

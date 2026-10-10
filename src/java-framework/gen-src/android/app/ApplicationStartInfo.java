@@ -79,4 +79,5 @@ public final class ApplicationStartInfo implements android.os.Parcelable {
     public void setStartupState(int p0) { huskProps.put("StartupState", Integer.valueOf(p0)); }
     public boolean wasForceStopped() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ApplicationStartInfo() { this((long) 0L); }
 }

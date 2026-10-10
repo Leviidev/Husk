@@ -194,6 +194,7 @@ public abstract class AccessibilityService extends android.app.Service {
         public void onSystemActionsChanged() {}
         public void onTouchStateChanged(int p0, int p1) {}
         public void unbindInput() {}
+        IAccessibilityServiceClientWrapper() { this((android.content.Context) null, (android.os.Looper) null, (android.accessibilityservice.AccessibilityService.Callbacks) null); }
     }
     public static final class MagnificationController {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -223,6 +224,7 @@ public abstract class AccessibilityService extends android.app.Service {
         public android.graphics.ColorSpace getColorSpace() { return (android.graphics.ColorSpace) huskProps.get("ColorSpace"); }
         public android.hardware.HardwareBuffer getHardwareBuffer() { return (android.hardware.HardwareBuffer) huskProps.get("HardwareBuffer"); }
         public long getTimestamp() { return (huskProps.get("Timestamp") instanceof Long ? (Long) huskProps.get("Timestamp") : 0L); }
+        ScreenshotResult() { this((android.hardware.HardwareBuffer) null, (android.graphics.ColorSpace) null, (long) 0L); }
     }
     public static final class SoftKeyboardController {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

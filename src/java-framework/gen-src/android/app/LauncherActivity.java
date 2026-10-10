@@ -21,6 +21,7 @@ public abstract class LauncherActivity extends android.app.ListActivity {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public IconResizer(android.app.LauncherActivity p0) {}
         public android.graphics.drawable.Drawable createIconThumbnail(android.graphics.drawable.Drawable p0) { return null; }
+        IconResizer() { this((android.app.LauncherActivity) null); }
     }
     public static class ListItem {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

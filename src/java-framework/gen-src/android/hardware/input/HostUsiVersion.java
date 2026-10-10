@@ -11,4 +11,5 @@ public final class HostUsiVersion implements android.os.Parcelable {
     public int getMinorVersion() { return (huskProps.get("MinorVersion") instanceof Integer ? (Integer) huskProps.get("MinorVersion") : 0); }
     public boolean isValid() { return (huskProps.get("Valid") instanceof Boolean ? (Boolean) huskProps.get("Valid") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    HostUsiVersion() { this((int) 0, (int) 0); }
 }

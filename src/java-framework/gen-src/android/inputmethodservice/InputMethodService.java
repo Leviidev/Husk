@@ -142,6 +142,7 @@ public class InputMethodService extends android.inputmethodservice.AbstractInput
         public void startStylusHandwriting(int p0, android.view.InputChannel p1, java.util.List p2) {}
         public void unbindInput() {}
         public void updateEditorToolType(int p0) {}
+        InputMethodImpl() { this((android.inputmethodservice.InputMethodService) null); }
     }
     public static abstract class InputMethodSessionImpl extends android.inputmethodservice.AbstractInputMethodService.AbstractInputMethodSessionImpl {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -156,6 +157,7 @@ public class InputMethodService extends android.inputmethodservice.AbstractInput
         public void updateExtractedText(int p0, android.view.inputmethod.ExtractedText p1) {}
         public void updateSelection(int p0, int p1, int p2, int p3, int p4, int p5) {}
         public void viewClicked(boolean p0) {}
+        InputMethodSessionImpl() { this((android.inputmethodservice.InputMethodService) null); }
     }
     public static final class Insets {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

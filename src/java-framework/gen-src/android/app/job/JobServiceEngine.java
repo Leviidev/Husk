@@ -15,4 +15,5 @@ public abstract class JobServiceEngine {
     public void setNotification(android.app.job.JobParameters p0, int p1, android.app.Notification p2, int p3) {}
     public void updateEstimatedNetworkBytes(android.app.job.JobParameters p0, android.app.job.JobWorkItem p1, long p2, long p3) {}
     public void updateTransferredNetworkBytes(android.app.job.JobParameters p0, android.app.job.JobWorkItem p1, long p2, long p3) {}
+    JobServiceEngine() { this((android.app.Service) null); }
 }

@@ -51,11 +51,12 @@ public class SubscriptionInfo implements android.os.Parcelable {
     public boolean isOpportunistic() { return (huskProps.get("Opportunistic") instanceof Boolean ? (Boolean) huskProps.get("Opportunistic") : false); }
     public boolean isSatelliteESOSSupported() { return (huskProps.get("SatelliteESOSSupported") instanceof Boolean ? (Boolean) huskProps.get("SatelliteESOSSupported") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SubscriptionInfo() { this((int) 0, (java.lang.String) null, (int) 0, (java.lang.CharSequence) null, (java.lang.CharSequence) null, (int) 0, (int) 0, (java.lang.String) null, (int) 0, (android.graphics.Bitmap) null, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (boolean) false, (android.telephony.UiccAccessRule[]) null, (java.lang.String) null); }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.telephony.SubscriptionInfo p0) {}
-        public android.telephony.SubscriptionInfo build() { return null; }
+        public android.telephony.SubscriptionInfo build() { return new android.telephony.SubscriptionInfo(); }
         public android.telephony.SubscriptionInfo.Builder setCardId(int p0) { huskProps.put("CardId", Integer.valueOf(p0)); return this; }
         public android.telephony.SubscriptionInfo.Builder setCardString(java.lang.String p0) { huskProps.put("CardString", p0); return this; }
         public android.telephony.SubscriptionInfo.Builder setCarrierConfigAccessRules(android.telephony.UiccAccessRule[] p0) { huskProps.put("CarrierConfigAccessRules", p0); return this; }

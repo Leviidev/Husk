@@ -22,4 +22,5 @@ public class RingtonePreference extends android.preference.Preference implements
     public void setRingtoneType(int p0) { huskProps.put("RingtoneType", Integer.valueOf(p0)); }
     public void setShowDefault(boolean p0) { huskProps.put("ShowDefault", Boolean.valueOf(p0)); }
     public void setShowSilent(boolean p0) { huskProps.put("ShowSilent", Boolean.valueOf(p0)); }
+    RingtonePreference() { this((android.content.Context) null); }
 }

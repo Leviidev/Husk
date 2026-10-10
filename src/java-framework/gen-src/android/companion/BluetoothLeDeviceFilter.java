@@ -7,6 +7,7 @@ public final class BluetoothLeDeviceFilter implements android.companion.DeviceFi
     public static android.os.Parcelable.Creator CREATOR;
     public static int getRenamePrefixLengthLimit() { return 0; }
     public int describeContents() { return 0; }
+    public java.lang.String getDeviceDisplayName(android.bluetooth.le.ScanResult p0) { return null; }
     public java.lang.String getDeviceDisplayName(android.os.Parcelable p0) { return null; }
     public int getMediumType() { return (huskProps.get("MediumType") instanceof Integer ? (Integer) huskProps.get("MediumType") : 0); }
     public java.util.regex.Pattern getNamePattern() { return (java.util.regex.Pattern) huskProps.get("NamePattern"); }
@@ -16,7 +17,9 @@ public final class BluetoothLeDeviceFilter implements android.companion.DeviceFi
     public int getRenameBytesLength() { return (huskProps.get("RenameBytesLength") instanceof Integer ? (Integer) huskProps.get("RenameBytesLength") : 0); }
     public java.lang.String getRenamePrefix() { return (java.lang.String) huskProps.get("RenamePrefix"); }
     public java.lang.String getRenameSuffix() { return (java.lang.String) huskProps.get("RenameSuffix"); }
+    public android.bluetooth.le.ScanFilter getScanFilter() { return (android.bluetooth.le.ScanFilter) huskProps.get("ScanFilter"); }
     public boolean isRenameBytesReverseOrder() { return (huskProps.get("RenameBytesReverseOrder") instanceof Boolean ? (Boolean) huskProps.get("RenameBytesReverseOrder") : false); }
+    public boolean matches(android.bluetooth.le.ScanResult p0) { return false; }
     public boolean matches(android.os.Parcelable p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected BluetoothLeDeviceFilter() {}
@@ -28,5 +31,6 @@ public final class BluetoothLeDeviceFilter implements android.companion.DeviceFi
         public android.companion.BluetoothLeDeviceFilter.Builder setRawDataFilter(byte[] p0, byte[] p1) { return this; }
         public android.companion.BluetoothLeDeviceFilter.Builder setRenameFromBytes(java.lang.String p0, java.lang.String p1, int p2, int p3, java.nio.ByteOrder p4) { return this; }
         public android.companion.BluetoothLeDeviceFilter.Builder setRenameFromName(java.lang.String p0, java.lang.String p1, int p2, int p3) { return this; }
+        public android.companion.BluetoothLeDeviceFilter.Builder setScanFilter(android.bluetooth.le.ScanFilter p0) { huskProps.put("ScanFilter", p0); return this; }
     }
 }

@@ -46,6 +46,8 @@ public final class ShortcutInfo implements android.os.Parcelable {
     public static final int SURFACE_LAUNCHER = 1;
     public static final int VERSION_CODE_UNKNOWN = -1;
     public ShortcutInfo(int p0, java.lang.String p1, java.lang.String p2, android.content.ComponentName p3, android.graphics.drawable.Icon p4, java.lang.CharSequence p5, int p6, java.lang.String p7, java.lang.CharSequence p8, int p9, java.lang.String p10, java.lang.CharSequence p11, int p12, java.lang.String p13, java.util.Set p14, android.content.Intent[] p15, int p16, android.os.PersistableBundle p17, long p18, int p19, int p20, java.lang.String p21, java.lang.String p22, java.lang.String p23, int p24, android.app.Person[] p25, android.content.LocusId p26, java.lang.String p27, java.util.Map p28) {}
+    public static android.content.pm.ShortcutInfo createFromGenericDocument(int p0, android.app.appsearch.GenericDocument p1) { return new ShortcutInfo(); }
+    public static android.content.pm.ShortcutInfo createFromGenericDocument(android.content.Context p0, android.app.appsearch.GenericDocument p1) { return new ShortcutInfo(); }
     public static java.lang.String getDisabledReasonDebugString(int p0) { return null; }
     public static java.lang.String getDisabledReasonForRestoreIssue(android.content.Context p0, int p1) { return null; }
     public static java.lang.IllegalArgumentException getInvalidIconException() { return null; }
@@ -63,7 +65,7 @@ public final class ShortcutInfo implements android.os.Parcelable {
     public void clearIcon() {}
     public void clearIconPendingSave() {}
     public void clearImplicitRankAndRankChangedFlag() {}
-    public android.content.pm.ShortcutInfo clone(int p0) { return this; }
+    public android.content.pm.ShortcutInfo clone(int p0) { return new android.content.pm.ShortcutInfo(); }
     public void copyNonNullFieldsFrom(android.content.pm.ShortcutInfo p0) {}
     public int describeContents() { return 0; }
     public void enforceMandatoryFields(boolean p0) {}
@@ -171,12 +173,13 @@ public final class ShortcutInfo implements android.os.Parcelable {
     public void updateTimestamp() {}
     public boolean usesQuota() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ShortcutInfo() { this((int) 0, (java.lang.String) null, (java.lang.String) null, (android.content.ComponentName) null, (android.graphics.drawable.Icon) null, (java.lang.CharSequence) null, (int) 0, (java.lang.String) null, (java.lang.CharSequence) null, (int) 0, (java.lang.String) null, (java.lang.CharSequence) null, (int) 0, (java.lang.String) null, (java.util.Set) null, (android.content.Intent[]) null, (int) 0, (android.os.PersistableBundle) null, (long) 0L, (int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (int) 0, (android.app.Person[]) null, (android.content.LocusId) null, (java.lang.String) null, (java.util.Map) null); }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0) {}
         public Builder(android.content.Context p0, java.lang.String p1) {}
         public android.content.pm.ShortcutInfo.Builder addCapabilityBinding(android.content.pm.Capability p0, android.content.pm.CapabilityParams p1) { return this; }
-        public android.content.pm.ShortcutInfo build() { return null; }
+        public android.content.pm.ShortcutInfo build() { return new android.content.pm.ShortcutInfo(); }
         public android.content.pm.ShortcutInfo.Builder setActivity(android.content.ComponentName p0) { huskProps.put("Activity", p0); return this; }
         public android.content.pm.ShortcutInfo.Builder setCategories(java.util.Set p0) { huskProps.put("Categories", p0); return this; }
         public android.content.pm.ShortcutInfo.Builder setDisabledMessage(java.lang.CharSequence p0) { huskProps.put("DisabledMessage", p0); return this; }
@@ -201,5 +204,6 @@ public final class ShortcutInfo implements android.os.Parcelable {
         public android.content.pm.ShortcutInfo.Builder setTextResId(int p0) { huskProps.put("TextResId", Integer.valueOf(p0)); return this; }
         public android.content.pm.ShortcutInfo.Builder setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
         public android.content.pm.ShortcutInfo.Builder setTitleResId(int p0) { huskProps.put("TitleResId", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.content.Context) null); }
     }
 }

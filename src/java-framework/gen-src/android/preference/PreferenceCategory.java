@@ -11,4 +11,5 @@ public class PreferenceCategory extends android.preference.PreferenceGroup {
     public boolean isEnabled() { return (huskProps.get("Enabled") instanceof Boolean ? (Boolean) huskProps.get("Enabled") : false); }
     public boolean onPrepareAddPreference(android.preference.Preference p0) { return false; }
     public boolean shouldDisableDependents() { return false; }
+    PreferenceCategory() { this((android.content.Context) null); }
 }

@@ -15,4 +15,5 @@ public class ZoomButton extends android.widget.ImageButton implements android.vi
     public boolean onTouchEvent(android.view.MotionEvent p0) { return false; }
     public void setEnabled(boolean p0) { huskProps.put("Enabled", Boolean.valueOf(p0)); }
     public void setZoomSpeed(long p0) { huskProps.put("ZoomSpeed", Long.valueOf(p0)); }
+    ZoomButton() { this((android.content.Context) null); }
 }

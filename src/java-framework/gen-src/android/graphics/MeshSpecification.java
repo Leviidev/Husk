@@ -23,11 +23,13 @@ public class MeshSpecification {
         public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
         public int getOffset() { return (huskProps.get("Offset") instanceof Integer ? (Integer) huskProps.get("Offset") : 0); }
         public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
+        Attribute() { this((int) 0, (int) 0, (java.lang.String) null); }
     }
     public static class Varying {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Varying(int p0, java.lang.String p1) {}
         public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
         public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
+        Varying() { this((int) 0, (java.lang.String) null); }
     }
 }

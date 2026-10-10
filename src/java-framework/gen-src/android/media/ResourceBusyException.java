@@ -6,4 +6,5 @@ public final class ResourceBusyException extends android.media.MediaDrmException
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ResourceBusyException(java.lang.String p0) { super(p0); }
     public ResourceBusyException(java.lang.String p0, int p1, int p2, int p3) { super(p0, p1, p2, p3); }
+    ResourceBusyException() { this((java.lang.String) null); }
 }

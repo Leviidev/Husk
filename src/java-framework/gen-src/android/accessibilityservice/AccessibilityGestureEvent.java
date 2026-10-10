@@ -15,4 +15,5 @@ public final class AccessibilityGestureEvent implements android.os.Parcelable {
     public java.util.List getMotionEvents() { return (huskProps.get("MotionEvents") != null ? (java.util.List) huskProps.get("MotionEvents") : new java.util.ArrayList()); }
     public void recycle() {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AccessibilityGestureEvent() { this((int) 0, (int) 0); }
 }

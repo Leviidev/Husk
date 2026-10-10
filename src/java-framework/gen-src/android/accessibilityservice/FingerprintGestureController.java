@@ -14,6 +14,7 @@ public final class FingerprintGestureController {
     public void onGestureDetectionActiveChanged(boolean p0) {}
     public void registerFingerprintGestureCallback(android.accessibilityservice.FingerprintGestureController.FingerprintGestureCallback p0, android.os.Handler p1) {}
     public void unregisterFingerprintGestureCallback(android.accessibilityservice.FingerprintGestureController.FingerprintGestureCallback p0) {}
+    FingerprintGestureController() { this((android.accessibilityservice.IAccessibilityServiceConnection) null); }
     public static abstract class FingerprintGestureCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public FingerprintGestureCallback() {}

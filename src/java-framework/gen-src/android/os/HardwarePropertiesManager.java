@@ -17,4 +17,5 @@ public class HardwarePropertiesManager {
     public android.os.CpuUsageInfo[] getCpuUsages() { return (android.os.CpuUsageInfo[]) huskProps.get("CpuUsages"); }
     public float[] getDeviceTemperatures(int p0, int p1) { return null; }
     public float[] getFanSpeeds() { return (float[]) huskProps.get("FanSpeeds"); }
+    HardwarePropertiesManager() { this((android.content.Context) null, (android.os.IHardwarePropertiesManager) null); }
 }

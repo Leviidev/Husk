@@ -19,4 +19,5 @@ public final class DsmccResponse extends android.media.tv.BroadcastInfoResponse 
     public int[] getStreamEventIds() { return (int[]) huskProps.get("StreamEventIds"); }
     public java.lang.String[] getStreamEventNames() { return (java.lang.String[]) huskProps.get("StreamEventNames"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DsmccResponse() { this((int) 0, (int) 0, (int) 0, (android.os.ParcelFileDescriptor) null); }
 }

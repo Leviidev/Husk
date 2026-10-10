@@ -10,4 +10,5 @@ public final class Attribution implements android.os.Parcelable {
     public int getLabel() { return (huskProps.get("Label") instanceof Integer ? (Integer) huskProps.get("Label") : 0); }
     public java.lang.String getTag() { return (java.lang.String) huskProps.get("Tag"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Attribution() { this((java.lang.String) null, (int) 0); }
 }

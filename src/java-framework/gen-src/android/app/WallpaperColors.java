@@ -12,9 +12,9 @@ public final class WallpaperColors implements android.os.Parcelable {
     public WallpaperColors(android.graphics.Color p0, android.graphics.Color p1, android.graphics.Color p2, int p3) {}
     public WallpaperColors(android.os.Parcel p0) {}
     public WallpaperColors(java.util.Map p0, int p1) {}
-    public static android.app.WallpaperColors fromBitmap(android.graphics.Bitmap p0) { return null; }
-    public static android.app.WallpaperColors fromBitmap(android.graphics.Bitmap p0, float p1) { return null; }
-    public static android.app.WallpaperColors fromDrawable(android.graphics.drawable.Drawable p0) { return null; }
+    public static android.app.WallpaperColors fromBitmap(android.graphics.Bitmap p0) { return new WallpaperColors(); }
+    public static android.app.WallpaperColors fromBitmap(android.graphics.Bitmap p0, float p1) { return new WallpaperColors(); }
+    public static android.app.WallpaperColors fromDrawable(android.graphics.drawable.Drawable p0) { return new WallpaperColors(); }
     public int describeContents() { return 0; }
     public java.util.Map getAllColors() { return (huskProps.get("AllColors") != null ? (java.util.Map) huskProps.get("AllColors") : new java.util.HashMap()); }
     public int getColorHints() { return (huskProps.get("ColorHints") instanceof Integer ? (Integer) huskProps.get("ColorHints") : 0); }
@@ -23,4 +23,5 @@ public final class WallpaperColors implements android.os.Parcelable {
     public android.graphics.Color getSecondaryColor() { return (android.graphics.Color) huskProps.get("SecondaryColor"); }
     public android.graphics.Color getTertiaryColor() { return (android.graphics.Color) huskProps.get("TertiaryColor"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    WallpaperColors() { this((android.os.Parcel) null); }
 }

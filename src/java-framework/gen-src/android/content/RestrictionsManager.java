@@ -43,4 +43,5 @@ public class RestrictionsManager {
     public boolean hasRestrictionsProvider() { return false; }
     public void notifyPermissionResponse(java.lang.String p0, android.os.PersistableBundle p1) {}
     public void requestPermission(java.lang.String p0, java.lang.String p1, android.os.PersistableBundle p2) {}
+    RestrictionsManager() { this((android.content.Context) null, (android.content.IRestrictionsManager) null); }
 }

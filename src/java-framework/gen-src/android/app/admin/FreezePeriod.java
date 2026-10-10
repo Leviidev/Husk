@@ -8,4 +8,5 @@ public class FreezePeriod {
     public static int distanceWithoutLeapYear(java.time.LocalDate p0, java.time.LocalDate p1) { return 0; }
     public java.time.MonthDay getEnd() { return (java.time.MonthDay) huskProps.get("End"); }
     public java.time.MonthDay getStart() { return (java.time.MonthDay) huskProps.get("Start"); }
+    FreezePeriod() { this((java.time.MonthDay) null, (java.time.MonthDay) null); }
 }

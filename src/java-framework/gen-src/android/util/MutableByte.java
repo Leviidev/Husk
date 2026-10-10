@@ -6,4 +6,5 @@ public final class MutableByte {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public byte value;
     public MutableByte(byte p0) {}
+    MutableByte() { this((byte) (byte) 0); }
 }

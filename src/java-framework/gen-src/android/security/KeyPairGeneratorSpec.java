@@ -16,10 +16,11 @@ public final class KeyPairGeneratorSpec implements java.security.spec.AlgorithmP
     public java.util.Date getStartDate() { return (java.util.Date) huskProps.get("StartDate"); }
     public javax.security.auth.x500.X500Principal getSubjectDN() { return (javax.security.auth.x500.X500Principal) huskProps.get("SubjectDN"); }
     public boolean isEncryptionRequired() { return (huskProps.get("EncryptionRequired") instanceof Boolean ? (Boolean) huskProps.get("EncryptionRequired") : false); }
+    KeyPairGeneratorSpec() { this((android.content.Context) null, (java.lang.String) null, (java.lang.String) null, (int) 0, (java.security.spec.AlgorithmParameterSpec) null, (javax.security.auth.x500.X500Principal) null, (java.math.BigInteger) null, (java.util.Date) null, (java.util.Date) null, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.Context p0) {}
-        public android.security.KeyPairGeneratorSpec build() { return null; }
+        public android.security.KeyPairGeneratorSpec build() { return new android.security.KeyPairGeneratorSpec(); }
         public android.security.KeyPairGeneratorSpec.Builder setAlgorithmParameterSpec(java.security.spec.AlgorithmParameterSpec p0) { huskProps.put("AlgorithmParameterSpec", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setAlias(java.lang.String p0) { huskProps.put("Alias", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setEncryptionRequired() { return this; }
@@ -29,5 +30,6 @@ public final class KeyPairGeneratorSpec implements java.security.spec.AlgorithmP
         public android.security.KeyPairGeneratorSpec.Builder setSerialNumber(java.math.BigInteger p0) { huskProps.put("SerialNumber", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setStartDate(java.util.Date p0) { huskProps.put("StartDate", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setSubject(javax.security.auth.x500.X500Principal p0) { huskProps.put("Subject", p0); return this; }
+        Builder() { this((android.content.Context) null); }
     }
 }

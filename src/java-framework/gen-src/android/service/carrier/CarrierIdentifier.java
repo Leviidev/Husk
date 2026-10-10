@@ -20,6 +20,7 @@ public class CarrierIdentifier implements android.os.Parcelable {
     public java.lang.String getSpn() { return (java.lang.String) huskProps.get("Spn"); }
     public void readFromParcel(android.os.Parcel p0) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CarrierIdentifier() { this((android.os.Parcel) null); }
     public interface MatchType {
         int ALL = 0;
         int GID1 = 3;

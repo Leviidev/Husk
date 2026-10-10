@@ -73,6 +73,7 @@ public final class ContentCaptureManager {
     public void setFlushViewTreeAppearingEventDisabled(boolean p0) { huskProps.put("FlushViewTreeAppearingEventDisabled", Boolean.valueOf(p0)); }
     public void shareData(android.view.contentcapture.DataShareRequest p0, java.util.concurrent.Executor p1, android.view.contentcapture.DataShareWriteAdapter p2) {}
     public void updateWindowAttributes(android.view.WindowManager.LayoutParams p0) {}
+    ContentCaptureManager() { this((android.content.Context) null, (android.view.contentcapture.IContentCaptureManager) null, (android.content.ContentCaptureOptions) null); }
     public interface ContentCaptureClient {
         android.content.ComponentName contentCaptureClientGetComponentName();
     }
@@ -81,5 +82,6 @@ public final class ContentCaptureManager {
         public StrippedContext(android.content.Context p0) {}
         public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
         public int getUserId() { return (huskProps.get("UserId") instanceof Integer ? (Integer) huskProps.get("UserId") : 0); }
+        StrippedContext() { this((android.content.Context) null); }
     }
 }

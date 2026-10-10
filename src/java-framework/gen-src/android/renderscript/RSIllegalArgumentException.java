@@ -5,4 +5,5 @@ package android.renderscript;
 public class RSIllegalArgumentException extends android.renderscript.RSRuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public RSIllegalArgumentException(java.lang.String p0) { super(p0); }
+    RSIllegalArgumentException() { this((java.lang.String) null); }
 }

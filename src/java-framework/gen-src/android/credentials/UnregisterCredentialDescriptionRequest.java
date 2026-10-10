@@ -10,4 +10,5 @@ public final class UnregisterCredentialDescriptionRequest implements android.os.
     public int describeContents() { return 0; }
     public java.util.Set getCredentialDescriptions() { return (huskProps.get("CredentialDescriptions") != null ? (java.util.Set) huskProps.get("CredentialDescriptions") : new java.util.HashSet()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UnregisterCredentialDescriptionRequest() { this((android.credentials.CredentialDescription) null); }
 }

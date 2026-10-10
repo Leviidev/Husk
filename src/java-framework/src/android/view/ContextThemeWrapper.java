@@ -29,7 +29,7 @@ public class ContextThemeWrapper extends android.content.ContextWrapper {
         return mResources;
     }
     @Override public void setTheme(int resid) { if (mThemeResource != resid) { mThemeResource = resid; initializeTheme(); } }
-    public int getThemeResId() { return mThemeResource; }
+    @Override public int getThemeResId() { return mThemeResource; }
     @Override public Resources.Theme getTheme() {
         if (mTheme != null) return mTheme;
         if (mThemeResource == 0) mThemeResource = husk.ContextImpl.defaultTheme();

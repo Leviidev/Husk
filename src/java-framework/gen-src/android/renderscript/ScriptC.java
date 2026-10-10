@@ -8,4 +8,5 @@ public class ScriptC extends android.renderscript.Script {
     protected ScriptC(long p0, android.renderscript.RenderScript p1) { super(); }
     protected ScriptC(android.renderscript.RenderScript p0, android.content.res.Resources p1, int p2) { super(); }
     protected ScriptC(android.renderscript.RenderScript p0, java.lang.String p1, byte[] p2, byte[] p3) { super(); }
+    ScriptC() { this((int) 0, (android.renderscript.RenderScript) null); }
 }

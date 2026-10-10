@@ -9,4 +9,5 @@ public abstract class RegexValidator extends android.service.autofill.InternalVa
     public int describeContents() { return 0; }
     public boolean isValid(android.service.autofill.ValueFinder p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RegexValidator() { this((android.view.autofill.AutofillId) null, (java.util.regex.Pattern) null); }
 }

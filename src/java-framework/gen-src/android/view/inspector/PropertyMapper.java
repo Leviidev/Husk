@@ -20,5 +20,6 @@ public interface PropertyMapper {
     public static class PropertyConflictException extends java.lang.RuntimeException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public PropertyConflictException(java.lang.String p0, java.lang.String p1, java.lang.String p2) { super(); }
+        PropertyConflictException() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
     }
 }

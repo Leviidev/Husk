@@ -8,4 +8,5 @@ public abstract class SharedPreferencesBackupHelper extends android.app.backup.F
     public void performBackup(android.os.ParcelFileDescriptor p0, android.app.backup.BackupDataOutput p1, android.os.ParcelFileDescriptor p2) {}
     public void restoreEntity(android.app.backup.BackupDataInputStream p0) {}
     public void writeNewStateDescription(android.os.ParcelFileDescriptor p0) {}
+    SharedPreferencesBackupHelper() { this((android.content.Context) null, (java.lang.String[]) null); }
 }

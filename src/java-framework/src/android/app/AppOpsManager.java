@@ -506,6 +506,8 @@ public class AppOpsManager {
     public void setUidMode(int p0, int p1, int p2) {}
     public void setUidMode(java.lang.String p0, int p1, int p2) {}
     public void setUserRestriction(int p0, boolean p1, android.os.IBinder p2) {}
+    public void setUserRestriction(int p0, boolean p1, android.os.IBinder p2, android.os.PackageTagsList p3) {}
+    public void setUserRestrictionForUser(int p0, boolean p1, android.os.IBinder p2, android.os.PackageTagsList p3, int p4) {}
     public int startOp(int p0) { return 0; }
     public int startOp(int p0, int p1, java.lang.String p2) { return 0; }
     public int startOp(int p0, int p1, java.lang.String p2, boolean p3) { return 0; }

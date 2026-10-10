@@ -52,4 +52,5 @@ public class AdaptiveIconDrawable extends android.graphics.drawable.Drawable imp
     public void setTintList(android.content.res.ColorStateList p0) { huskProps.put("TintList", p0); }
     public boolean setVisible(boolean p0, boolean p1) { return false; }
     public void unscheduleDrawable(android.graphics.drawable.Drawable p0, java.lang.Runnable p1) {}
+    AdaptiveIconDrawable() { this((android.graphics.drawable.Drawable) null, (android.graphics.drawable.Drawable) null); }
 }

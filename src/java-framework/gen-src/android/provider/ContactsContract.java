@@ -936,6 +936,7 @@ public final class ContactsContract {
         public int getEfType() { return (huskProps.get("EfType") instanceof Integer ? (Integer) huskProps.get("EfType") : 0); }
         public int getSimSlotIndex() { return (huskProps.get("SimSlotIndex") instanceof Integer ? (Integer) huskProps.get("SimSlotIndex") : 0); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        SimAccount() { this((java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0); }
     }
     public static final class SimContacts {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

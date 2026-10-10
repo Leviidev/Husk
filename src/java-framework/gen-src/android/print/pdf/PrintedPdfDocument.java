@@ -9,4 +9,5 @@ public class PrintedPdfDocument extends android.graphics.pdf.PdfDocument {
     public int getPageHeight() { return (huskProps.get("PageHeight") instanceof Integer ? (Integer) huskProps.get("PageHeight") : 0); }
     public int getPageWidth() { return (huskProps.get("PageWidth") instanceof Integer ? (Integer) huskProps.get("PageWidth") : 0); }
     public android.graphics.pdf.PdfDocument.Page startPage(int p0) { return null; }
+    PrintedPdfDocument() { this((android.content.Context) null, (android.print.PrintAttributes) null); }
 }

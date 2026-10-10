@@ -10,10 +10,11 @@ public final class TrafficDescriptor implements android.os.Parcelable {
     public java.lang.String getDataNetworkName() { return (java.lang.String) huskProps.get("DataNetworkName"); }
     public byte[] getOsAppId() { return (byte[]) huskProps.get("OsAppId"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TrafficDescriptor() { this((java.lang.String) null, (byte[]) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.telephony.data.TrafficDescriptor build() { return null; }
+        public android.telephony.data.TrafficDescriptor build() { return new android.telephony.data.TrafficDescriptor(); }
         public android.telephony.data.TrafficDescriptor.Builder setDataNetworkName(java.lang.String p0) { huskProps.put("DataNetworkName", p0); return this; }
         public android.telephony.data.TrafficDescriptor.Builder setOsAppId(byte[] p0) { huskProps.put("OsAppId", p0); return this; }
     }
@@ -27,5 +28,6 @@ public final class TrafficDescriptor implements android.os.Parcelable {
         public byte[] getBytes() { return (byte[]) huskProps.get("Bytes"); }
         public int getDifferentiator() { return (huskProps.get("Differentiator") instanceof Integer ? (Integer) huskProps.get("Differentiator") : 0); }
         public java.util.UUID getOsId() { return (java.util.UUID) huskProps.get("OsId"); }
+        OsAppId() { this((byte[]) null); }
     }
 }

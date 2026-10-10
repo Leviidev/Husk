@@ -9,4 +9,5 @@ public class WordSegmentFinder extends android.text.SegmentFinder {
     public int nextStartBoundary(int p0) { return 0; }
     public int previousEndBoundary(int p0) { return 0; }
     public int previousStartBoundary(int p0) { return 0; }
+    WordSegmentFinder() { this((java.lang.CharSequence) null, (android.text.method.WordIterator) null); }
 }

@@ -6,4 +6,5 @@ public final class MutableInt {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public int value;
     public MutableInt(int p0) {}
+    MutableInt() { this((int) 0); }
 }

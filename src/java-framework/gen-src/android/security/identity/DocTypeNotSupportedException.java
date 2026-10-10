@@ -6,4 +6,5 @@ public class DocTypeNotSupportedException extends android.security.identity.Iden
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public DocTypeNotSupportedException(java.lang.String p0) { super(p0); }
     public DocTypeNotSupportedException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    DocTypeNotSupportedException() { this((java.lang.String) null); }
 }

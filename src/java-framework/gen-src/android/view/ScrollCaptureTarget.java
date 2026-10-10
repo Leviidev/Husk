@@ -13,4 +13,5 @@ public final class ScrollCaptureTarget {
     public android.graphics.Rect getScrollBounds() { return (android.graphics.Rect) huskProps.get("ScrollBounds"); }
     public void setScrollBounds(android.graphics.Rect p0) { huskProps.put("ScrollBounds", p0); }
     public void updatePositionInWindow() {}
+    ScrollCaptureTarget() { this((android.view.View) null, (android.graphics.Rect) null, (android.graphics.Point) null, (android.view.ScrollCaptureCallback) null); }
 }

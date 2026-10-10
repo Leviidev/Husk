@@ -16,4 +16,5 @@ public final class VerifiedMotionEvent extends android.view.VerifiedInputEvent i
     public float getRawX() { return (huskProps.get("RawX") instanceof Float ? (Float) huskProps.get("RawX") : 0f); }
     public float getRawY() { return (huskProps.get("RawY") instanceof Float ? (Float) huskProps.get("RawY") : 0f); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VerifiedMotionEvent() { this((int) 0, (long) 0L, (int) 0, (int) 0, (float) 0f, (float) 0f, (int) 0, (long) 0L, (int) 0, (int) 0, (int) 0); }
 }

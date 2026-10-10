@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class CredentialProtectedWhileLockedViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CredentialProtectedWhileLockedViolation(java.lang.String p0) { super(); }
+    CredentialProtectedWhileLockedViolation() { this((java.lang.String) null); }
 }

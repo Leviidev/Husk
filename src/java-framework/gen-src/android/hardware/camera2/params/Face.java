@@ -15,11 +15,12 @@ public final class Face {
     public android.graphics.Point getMouthPosition() { return (android.graphics.Point) huskProps.get("MouthPosition"); }
     public android.graphics.Point getRightEyePosition() { return (android.graphics.Point) huskProps.get("RightEyePosition"); }
     public int getScore() { return (huskProps.get("Score") instanceof Integer ? (Integer) huskProps.get("Score") : 0); }
+    Face() { this((android.graphics.Rect) null, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.params.Face p0) {}
-        public android.hardware.camera2.params.Face build() { return null; }
+        public android.hardware.camera2.params.Face build() { return new android.hardware.camera2.params.Face(); }
         public android.hardware.camera2.params.Face.Builder setBounds(android.graphics.Rect p0) { huskProps.put("Bounds", p0); return this; }
         public android.hardware.camera2.params.Face.Builder setId(int p0) { huskProps.put("Id", Integer.valueOf(p0)); return this; }
         public android.hardware.camera2.params.Face.Builder setLeftEyePosition(android.graphics.Point p0) { huskProps.put("LeftEyePosition", p0); return this; }

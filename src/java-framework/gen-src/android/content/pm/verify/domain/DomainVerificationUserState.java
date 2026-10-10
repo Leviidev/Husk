@@ -17,4 +17,5 @@ public final class DomainVerificationUserState implements android.os.Parcelable 
     public android.os.UserHandle getUser() { return (android.os.UserHandle) huskProps.get("User"); }
     public boolean isLinkHandlingAllowed() { return (huskProps.get("LinkHandlingAllowed") instanceof Boolean ? (Boolean) huskProps.get("LinkHandlingAllowed") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DomainVerificationUserState() { this((java.util.UUID) null, (java.lang.String) null, (android.os.UserHandle) null, (boolean) false, (java.util.Map) null); }
 }

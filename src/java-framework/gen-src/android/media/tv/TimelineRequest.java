@@ -11,4 +11,5 @@ public final class TimelineRequest extends android.media.tv.BroadcastInfoRequest
     public int getIntervalMillis() { return (huskProps.get("IntervalMillis") instanceof Integer ? (Integer) huskProps.get("IntervalMillis") : 0); }
     public java.lang.String getSelector() { return (java.lang.String) huskProps.get("Selector"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TimelineRequest() { this((int) 0, (int) 0, (int) 0); }
 }

@@ -42,6 +42,7 @@ public class DrmManagerClient implements java.lang.AutoCloseable {
     public void setOnErrorListener(android.drm.DrmManagerClient.OnErrorListener p0) { huskProps.put("OnErrorListener", p0); }
     public void setOnEventListener(android.drm.DrmManagerClient.OnEventListener p0) { huskProps.put("OnEventListener", p0); }
     public void setOnInfoListener(android.drm.DrmManagerClient.OnInfoListener p0) { huskProps.put("OnInfoListener", p0); }
+    DrmManagerClient() { this((android.content.Context) null); }
     public interface OnErrorListener {
         void onError(android.drm.DrmManagerClient p0, android.drm.DrmErrorEvent p1);
     }

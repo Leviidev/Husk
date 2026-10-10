@@ -24,7 +24,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
         public static android.media.VolumeShaper.Configuration SCURVE_RAMP;
         public static android.media.VolumeShaper.Configuration SINE_RAMP;
         public Configuration(int p0) {}
-        public static android.media.VolumeShaper.Configuration fromParcelable(android.media.VolumeShaperConfiguration p0) { return null; }
+        public static android.media.VolumeShaper.Configuration fromParcelable(android.media.VolumeShaperConfiguration p0) { return new Configuration(); }
         public static int getMaximumCurvePoints() { return 0; }
         public int describeContents() { return 0; }
         public long getDuration() { return (huskProps.get("Duration") instanceof Long ? (Long) huskProps.get("Duration") : 0L); }
@@ -36,11 +36,12 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
         public float[] getVolumes() { return (float[]) huskProps.get("Volumes"); }
         public android.media.VolumeShaperConfiguration toParcelable() { return null; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        Configuration() { this((int) 0); }
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
             public Builder(android.media.VolumeShaper.Configuration p0) {}
-            public android.media.VolumeShaper.Configuration build() { return null; }
+            public android.media.VolumeShaper.Configuration build() { return new android.media.VolumeShaper.Configuration(); }
             public android.media.VolumeShaper.Configuration.Builder invertVolumes() { return this; }
             public android.media.VolumeShaper.Configuration.Builder reflectTimes() { return this; }
             public android.media.VolumeShaper.Configuration.Builder scaleToEndVolume(float p0) { return this; }

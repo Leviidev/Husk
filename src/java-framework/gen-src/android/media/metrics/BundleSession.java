@@ -9,4 +9,5 @@ public final class BundleSession implements java.lang.AutoCloseable {
     public void close() {}
     public android.media.metrics.LogSessionId getSessionId() { return (android.media.metrics.LogSessionId) huskProps.get("SessionId"); }
     public void reportBundleMetrics(android.os.PersistableBundle p0) {}
+    BundleSession() { this((java.lang.String) null, (android.media.metrics.MediaMetricsManager) null); }
 }

@@ -23,6 +23,7 @@ public abstract class AbstractInputMethodService extends android.window.WindowPr
         public void createSession(android.view.inputmethod.InputMethod.SessionCallback p0) {}
         public void revokeSession(android.view.inputmethod.InputMethodSession p0) {}
         public void setSessionEnabled(android.view.inputmethod.InputMethodSession p0, boolean p1) {}
+        AbstractInputMethodImpl() { this((android.inputmethodservice.AbstractInputMethodService) null); }
     }
     public static abstract class AbstractInputMethodSessionImpl implements android.view.inputmethod.InputMethodSession {
         protected AbstractInputMethodSessionImpl() {}

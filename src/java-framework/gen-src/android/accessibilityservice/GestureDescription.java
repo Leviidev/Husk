@@ -27,6 +27,7 @@ public final class GestureDescription {
         public GestureStep(android.os.Parcel p0) {}
         public int describeContents() { return 0; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        GestureStep() { this((android.os.Parcel) null); }
     }
     public static class MotionEventGenerator {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -44,6 +45,7 @@ public final class GestureDescription {
         public android.graphics.Path getPath() { return (android.graphics.Path) huskProps.get("Path"); }
         public long getStartTime() { return (huskProps.get("StartTime") instanceof Long ? (Long) huskProps.get("StartTime") : 0L); }
         public boolean willContinue() { return false; }
+        StrokeDescription() { this((android.graphics.Path) null, (long) 0L, (long) 0L); }
     }
     public static class TouchPoint implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

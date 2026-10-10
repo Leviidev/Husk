@@ -15,4 +15,5 @@ public class AlphabetIndexer extends android.database.DataSetObserver implements
     public void onChanged() {}
     public void onInvalidated() {}
     public void setCursor(android.database.Cursor p0) { huskProps.put("Cursor", p0); }
+    AlphabetIndexer() { this((android.database.Cursor) null, (int) 0, (java.lang.CharSequence) null); }
 }

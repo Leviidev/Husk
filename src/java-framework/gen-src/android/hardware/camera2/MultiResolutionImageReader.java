@@ -15,4 +15,5 @@ public class MultiResolutionImageReader implements java.lang.AutoCloseable {
     public android.view.Surface getSurface() { return (android.view.Surface) huskProps.get("Surface"); }
     public android.view.Surface getSurface(android.util.Size p0, java.lang.String p1) { return null; }
     public void setOnImageAvailableListener(android.media.ImageReader.OnImageAvailableListener p0, java.util.concurrent.Executor p1) {}
+    MultiResolutionImageReader() { this((java.util.Collection) null, (int) 0, (int) 0); }
 }

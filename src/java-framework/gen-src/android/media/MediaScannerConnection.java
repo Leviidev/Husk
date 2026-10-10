@@ -12,6 +12,7 @@ public class MediaScannerConnection implements android.content.ServiceConnection
     public void onServiceConnected(android.content.ComponentName p0, android.os.IBinder p1) {}
     public void onServiceDisconnected(android.content.ComponentName p0) {}
     public void scanFile(java.lang.String p0, java.lang.String p1) {}
+    MediaScannerConnection() { this((android.content.Context) null, (android.media.MediaScannerConnection.MediaScannerConnectionClient) null); }
     public interface MediaScannerConnectionClient extends android.media.MediaScannerConnection.OnScanCompletedListener {
         void onMediaScannerConnected();
     }

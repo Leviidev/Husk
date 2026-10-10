@@ -12,6 +12,7 @@ public final class Ikev2VpnProfile extends android.net.PlatformVpnProfile {
     public static boolean hasAeadAlgorithms(java.util.List p0) { return false; }
     public static boolean hasNormalModeAlgorithms(java.util.List p0) { return false; }
     public java.util.List getAllowedAlgorithms() { return (huskProps.get("AllowedAlgorithms") != null ? (java.util.List) huskProps.get("AllowedAlgorithms") : new java.util.ArrayList()); }
+    public android.net.ipsec.ike.IkeTunnelConnectionParams getIkeTunnelConnectionParams() { return (android.net.ipsec.ike.IkeTunnelConnectionParams) huskProps.get("IkeTunnelConnectionParams"); }
     public int getMaxMtu() { return (huskProps.get("MaxMtu") instanceof Integer ? (Integer) huskProps.get("MaxMtu") : 0); }
     public java.lang.String getPassword() { return (java.lang.String) huskProps.get("Password"); }
     public byte[] getPresharedKey() { return (byte[]) huskProps.get("PresharedKey"); }
@@ -30,6 +31,7 @@ public final class Ikev2VpnProfile extends android.net.PlatformVpnProfile {
     protected Ikev2VpnProfile() { super(); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public Builder(android.net.ipsec.ike.IkeTunnelConnectionParams p0) {}
         public Builder(java.lang.String p0, java.lang.String p1) {}
         public android.net.Ikev2VpnProfile build() { return new android.net.Ikev2VpnProfile(); }
         public android.net.Ikev2VpnProfile.Builder restrictToTestNetworks() { return this; }
@@ -45,5 +47,6 @@ public final class Ikev2VpnProfile extends android.net.PlatformVpnProfile {
         public android.net.Ikev2VpnProfile.Builder setMetered(boolean p0) { huskProps.put("Metered", Boolean.valueOf(p0)); return this; }
         public android.net.Ikev2VpnProfile.Builder setProxy(android.net.ProxyInfo p0) { huskProps.put("Proxy", p0); return this; }
         public android.net.Ikev2VpnProfile.Builder setRequiresInternetValidation(boolean p0) { huskProps.put("RequiresInternetValidation", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.net.ipsec.ike.IkeTunnelConnectionParams) null); }
     }
 }

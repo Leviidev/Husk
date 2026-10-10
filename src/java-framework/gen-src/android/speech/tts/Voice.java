@@ -24,4 +24,5 @@ public class Voice implements android.os.Parcelable {
     public int getQuality() { return (huskProps.get("Quality") instanceof Integer ? (Integer) huskProps.get("Quality") : 0); }
     public boolean isNetworkConnectionRequired() { return (huskProps.get("NetworkConnectionRequired") instanceof Boolean ? (Boolean) huskProps.get("NetworkConnectionRequired") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Voice() { this((java.lang.String) null, (java.util.Locale) null, (int) 0, (int) 0, (boolean) false, (java.util.Set) null); }
 }

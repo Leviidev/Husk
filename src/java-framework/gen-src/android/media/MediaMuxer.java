@@ -14,6 +14,7 @@ public final class MediaMuxer {
     public void start() {}
     public void stop() {}
     public void writeSampleData(int p0, java.nio.ByteBuffer p1, android.media.MediaCodec.BufferInfo p2) {}
+    MediaMuxer() { this((java.io.FileDescriptor) null, (int) 0); }
     public static final class OutputFormat {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int MUXER_OUTPUT_3GPP = 2;

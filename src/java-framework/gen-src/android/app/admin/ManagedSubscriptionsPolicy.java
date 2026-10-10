@@ -11,4 +11,5 @@ public final class ManagedSubscriptionsPolicy implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public int getPolicyType() { return (huskProps.get("PolicyType") instanceof Integer ? (Integer) huskProps.get("PolicyType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ManagedSubscriptionsPolicy() { this((int) 0); }
 }

@@ -15,4 +15,5 @@ public abstract class WebSyncManager implements java.lang.Runnable {
     public void startSync() {}
     public void stopSync() {}
     public void sync() {}
+    WebSyncManager() { this((android.content.Context) null, (java.lang.String) null); }
 }

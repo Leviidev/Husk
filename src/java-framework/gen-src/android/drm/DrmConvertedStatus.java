@@ -11,4 +11,5 @@ public class DrmConvertedStatus {
     public int offset;
     public int statusCode;
     public DrmConvertedStatus(int p0, byte[] p1, int p2) {}
+    DrmConvertedStatus() { this((int) 0, (byte[]) null, (int) 0); }
 }

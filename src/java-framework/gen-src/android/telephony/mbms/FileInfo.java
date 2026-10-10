@@ -10,4 +10,5 @@ public final class FileInfo implements android.os.Parcelable {
     public java.lang.String getMimeType() { return (java.lang.String) huskProps.get("MimeType"); }
     public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FileInfo() { this((android.net.Uri) null, (java.lang.String) null); }
 }

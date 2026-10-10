@@ -40,4 +40,5 @@ public class KeyStoreException extends java.lang.Exception {
     public boolean isSystemError() { return (huskProps.get("SystemError") instanceof Boolean ? (Boolean) huskProps.get("SystemError") : false); }
     public boolean isTransientFailure() { return (huskProps.get("TransientFailure") instanceof Boolean ? (Boolean) huskProps.get("TransientFailure") : false); }
     public boolean requiresUserAuthentication() { return false; }
+    KeyStoreException() { this((int) 0, (java.lang.String) null); }
 }

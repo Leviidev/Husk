@@ -9,7 +9,7 @@ public final class CursorAnchorInfo implements android.os.Parcelable {
     public static final int FLAG_HAS_VISIBLE_REGION = 1;
     public static final int FLAG_IS_RTL = 4;
     public CursorAnchorInfo(android.os.Parcel p0) {}
-    public static android.view.inputmethod.CursorAnchorInfo createForAdditionalParentMatrix(android.view.inputmethod.CursorAnchorInfo p0, android.graphics.Matrix p1) { return null; }
+    public static android.view.inputmethod.CursorAnchorInfo createForAdditionalParentMatrix(android.view.inputmethod.CursorAnchorInfo p0, android.graphics.Matrix p1) { return new CursorAnchorInfo(); }
     public int describeContents() { return 0; }
     public android.graphics.RectF getCharacterBounds(int p0) { return null; }
     public int getCharacterBoundsFlags(int p0) { return 0; }
@@ -27,12 +27,13 @@ public final class CursorAnchorInfo implements android.os.Parcelable {
     public android.view.inputmethod.TextAppearanceInfo getTextAppearanceInfo() { return (android.view.inputmethod.TextAppearanceInfo) huskProps.get("TextAppearanceInfo"); }
     public java.util.List getVisibleLineBounds() { return (huskProps.get("VisibleLineBounds") != null ? (java.util.List) huskProps.get("VisibleLineBounds") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CursorAnchorInfo() { this((android.os.Parcel) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.view.inputmethod.CursorAnchorInfo.Builder addCharacterBounds(int p0, float p1, float p2, float p3, float p4, int p5) { return this; }
         public android.view.inputmethod.CursorAnchorInfo.Builder addVisibleLineBounds(float p0, float p1, float p2, float p3) { return this; }
-        public android.view.inputmethod.CursorAnchorInfo build() { return null; }
+        public android.view.inputmethod.CursorAnchorInfo build() { return new android.view.inputmethod.CursorAnchorInfo(); }
         public android.view.inputmethod.CursorAnchorInfo.Builder clearVisibleLineBounds() { return this; }
         public void reset() {}
         public android.view.inputmethod.CursorAnchorInfo.Builder setComposingText(int p0, java.lang.CharSequence p1) { return this; }

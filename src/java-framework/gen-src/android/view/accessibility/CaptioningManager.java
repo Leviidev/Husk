@@ -18,6 +18,7 @@ public class CaptioningManager {
     public void removeCaptioningChangeListener(android.view.accessibility.CaptioningManager.CaptioningChangeListener p0) {}
     public void setSystemAudioCaptioningEnabled(boolean p0) { huskProps.put("SystemAudioCaptioningEnabled", Boolean.valueOf(p0)); }
     public void setSystemAudioCaptioningUiEnabled(boolean p0) { huskProps.put("SystemAudioCaptioningUiEnabled", Boolean.valueOf(p0)); }
+    CaptioningManager() { this((android.content.Context) null); }
     public static final class CaptionStyle {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int COLOR_UNSPECIFIED = 16777215;

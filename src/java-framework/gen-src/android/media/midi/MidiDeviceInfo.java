@@ -37,6 +37,7 @@ public final class MidiDeviceInfo implements android.os.Parcelable {
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public boolean isPrivate() { return (huskProps.get("Private") instanceof Boolean ? (Boolean) huskProps.get("Private") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    MidiDeviceInfo() { this((int) 0, (int) 0, (int) 0, (int) 0, (java.lang.String[]) null, (java.lang.String[]) null, (android.os.Bundle) null, (boolean) false, (int) 0); }
     public static final class PortInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int TYPE_INPUT = 1;

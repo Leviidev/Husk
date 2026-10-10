@@ -29,6 +29,7 @@ public class Equalizer extends android.media.audiofx.AudioEffect {
     public void setParameterListener(android.media.audiofx.Equalizer.OnParameterChangeListener p0) { huskProps.put("ParameterListener", p0); }
     public void setProperties(android.media.audiofx.Equalizer.Settings p0) { huskProps.put("Properties", p0); }
     public void usePreset(short p0) {}
+    Equalizer() { this((int) 0, (int) 0); }
     public interface OnParameterChangeListener {
         void onParameterChange(android.media.audiofx.Equalizer p0, int p1, int p2, int p3, int p4);
     }

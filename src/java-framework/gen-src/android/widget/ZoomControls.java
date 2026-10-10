@@ -16,4 +16,5 @@ public class ZoomControls extends android.widget.LinearLayout {
     public void setOnZoomOutClickListener(android.view.View.OnClickListener p0) { huskProps.put("OnZoomOutClickListener", p0); }
     public void setZoomSpeed(long p0) { huskProps.put("ZoomSpeed", Long.valueOf(p0)); }
     public void show() {}
+    ZoomControls() { this((android.content.Context) null); }
 }

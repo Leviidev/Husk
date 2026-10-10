@@ -9,4 +9,5 @@ public final class SavedDatasetsInfo {
     public SavedDatasetsInfo(java.lang.String p0, int p1) {}
     public int getCount() { return (huskProps.get("Count") instanceof Integer ? (Integer) huskProps.get("Count") : 0); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
+    SavedDatasetsInfo() { this((java.lang.String) null, (int) 0); }
 }

@@ -9,4 +9,5 @@ public abstract class LuhnChecksumValidator extends android.service.autofill.Int
     public int describeContents() { return 0; }
     public boolean isValid(android.service.autofill.ValueFinder p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    LuhnChecksumValidator() { this((android.view.autofill.AutofillId[]) null); }
 }

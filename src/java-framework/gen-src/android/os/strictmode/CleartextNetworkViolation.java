@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class CleartextNetworkViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CleartextNetworkViolation(java.lang.String p0) { super(); }
+    CleartextNetworkViolation() { this((java.lang.String) null); }
 }

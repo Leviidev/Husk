@@ -19,4 +19,5 @@ public final class SpellCheckerSubtype implements android.os.Parcelable {
     public java.util.Locale getLocaleObject() { return (java.util.Locale) huskProps.get("LocaleObject"); }
     public int getNameResId() { return (huskProps.get("NameResId") instanceof Integer ? (Integer) huskProps.get("NameResId") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SpellCheckerSubtype() { this((int) 0, (java.lang.String) null, (java.lang.String) null); }
 }

@@ -15,6 +15,7 @@ public final class SEService {
     public java.lang.String getVersion() { return (java.lang.String) huskProps.get("Version"); }
     public boolean isConnected() { return (huskProps.get("Connected") instanceof Boolean ? (Boolean) huskProps.get("Connected") : false); }
     public void shutdown() {}
+    SEService() { this((android.content.Context) null, (java.util.concurrent.Executor) null, (android.se.omapi.SEService.OnConnectedListener) null); }
     public interface OnConnectedListener {
         void onConnected();
     }

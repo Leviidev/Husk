@@ -32,5 +32,6 @@ public final class RecognitionPart implements android.os.Parcelable {
         public android.speech.RecognitionPart.Builder setFormattedText(java.lang.String p0) { huskProps.put("FormattedText", p0); return this; }
         public android.speech.RecognitionPart.Builder setRawText(java.lang.String p0) { huskProps.put("RawText", p0); return this; }
         public android.speech.RecognitionPart.Builder setTimestampMillis(long p0) { huskProps.put("TimestampMillis", Long.valueOf(p0)); return this; }
+        Builder() { this((java.lang.String) null); }
     }
 }

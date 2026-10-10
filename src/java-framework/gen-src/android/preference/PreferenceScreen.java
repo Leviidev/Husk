@@ -16,4 +16,5 @@ public final class PreferenceScreen extends android.preference.PreferenceGroup i
     public void onRestoreInstanceState(android.os.Parcelable p0) {}
     public android.os.Parcelable onSaveInstanceState() { return null; }
     public void setDialogFitsSystemWindows(boolean p0) { huskProps.put("DialogFitsSystemWindows", Boolean.valueOf(p0)); }
+    PreferenceScreen() { this((android.content.Context) null, (android.util.AttributeSet) null); }
 }

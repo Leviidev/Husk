@@ -5,4 +5,5 @@ package android.database;
 public class CursorWindowAllocationException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CursorWindowAllocationException(java.lang.String p0) { super(); }
+    CursorWindowAllocationException() { this((java.lang.String) null); }
 }

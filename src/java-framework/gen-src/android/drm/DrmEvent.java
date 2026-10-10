@@ -14,4 +14,5 @@ public class DrmEvent {
     public java.lang.String getMessage() { return (java.lang.String) huskProps.get("Message"); }
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public int getUniqueId() { return (huskProps.get("UniqueId") instanceof Integer ? (Integer) huskProps.get("UniqueId") : 0); }
+    DrmEvent() { this((int) 0, (int) 0, (java.lang.String) null); }
 }

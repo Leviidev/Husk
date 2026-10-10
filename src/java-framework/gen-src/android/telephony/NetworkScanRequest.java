@@ -27,4 +27,5 @@ public final class NetworkScanRequest implements android.os.Parcelable {
     public int getSearchPeriodicity() { return (huskProps.get("SearchPeriodicity") instanceof Integer ? (Integer) huskProps.get("SearchPeriodicity") : 0); }
     public android.telephony.RadioAccessSpecifier[] getSpecifiers() { return (android.telephony.RadioAccessSpecifier[]) huskProps.get("Specifiers"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    NetworkScanRequest() { this((int) 0, (android.telephony.RadioAccessSpecifier[]) null, (int) 0, (int) 0, (boolean) false, (int) 0, (java.util.ArrayList) null); }
 }

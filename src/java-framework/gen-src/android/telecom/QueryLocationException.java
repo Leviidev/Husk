@@ -18,4 +18,5 @@ public final class QueryLocationException extends java.lang.RuntimeException imp
     public int describeContents() { return 0; }
     public int getCode() { return (huskProps.get("Code") instanceof Integer ? (Integer) huskProps.get("Code") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    QueryLocationException() { this((java.lang.String) null); }
 }

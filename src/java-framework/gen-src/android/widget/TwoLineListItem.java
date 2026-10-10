@@ -12,4 +12,5 @@ public class TwoLineListItem extends android.widget.RelativeLayout {
     public android.widget.TextView getText1() { return (android.widget.TextView) huskProps.get("Text1"); }
     public android.widget.TextView getText2() { return (android.widget.TextView) huskProps.get("Text2"); }
     public void onFinishInflate() {}
+    TwoLineListItem() { this((android.content.Context) null); }
 }

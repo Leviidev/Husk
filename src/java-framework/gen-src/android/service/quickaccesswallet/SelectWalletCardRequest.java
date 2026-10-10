@@ -9,4 +9,5 @@ public final class SelectWalletCardRequest implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public java.lang.String getCardId() { return (java.lang.String) huskProps.get("CardId"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SelectWalletCardRequest() { this((java.lang.String) null); }
 }

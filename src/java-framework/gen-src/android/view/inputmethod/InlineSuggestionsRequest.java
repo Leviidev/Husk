@@ -34,5 +34,6 @@ public final class InlineSuggestionsRequest implements android.os.Parcelable {
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setInlineTooltipPresentationSpec(android.widget.inline.InlinePresentationSpec p0) { huskProps.put("InlineTooltipPresentationSpec", p0); return this; }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setMaxSuggestionCount(int p0) { huskProps.put("MaxSuggestionCount", Integer.valueOf(p0)); return this; }
         public android.view.inputmethod.InlineSuggestionsRequest.Builder setSupportedLocales(android.os.LocaleList p0) { huskProps.put("SupportedLocales", p0); return this; }
+        Builder() { this((java.util.List) null); }
     }
 }

@@ -13,4 +13,5 @@ public final class UrspRule implements android.os.Parcelable {
     public java.util.List getRouteSelectionDescriptor() { return (huskProps.get("RouteSelectionDescriptor") != null ? (java.util.List) huskProps.get("RouteSelectionDescriptor") : new java.util.ArrayList()); }
     public java.util.List getTrafficDescriptors() { return (huskProps.get("TrafficDescriptors") != null ? (java.util.List) huskProps.get("TrafficDescriptors") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UrspRule() { this((int) 0, (java.util.List) null, (java.util.List) null); }
 }

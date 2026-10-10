@@ -21,5 +21,6 @@ public final class ViewTranslationResponse implements android.os.Parcelable {
         public Builder(android.view.autofill.AutofillId p0) { super(); }
         public android.view.translation.ViewTranslationResponse build() { return new android.view.translation.ViewTranslationResponse(); }
         public android.view.translation.ViewTranslationResponse.Builder setValue(java.lang.String p0, android.view.translation.TranslationResponseValue p1) { return this; }
+        Builder() { this((android.view.autofill.AutofillId) null); }
     }
 }

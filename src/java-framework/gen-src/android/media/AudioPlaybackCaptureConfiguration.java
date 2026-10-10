@@ -18,5 +18,6 @@ public final class AudioPlaybackCaptureConfiguration {
         public android.media.AudioPlaybackCaptureConfiguration build() { return new android.media.AudioPlaybackCaptureConfiguration(); }
         public android.media.AudioPlaybackCaptureConfiguration.Builder excludeUid(int p0) { return this; }
         public android.media.AudioPlaybackCaptureConfiguration.Builder excludeUsage(int p0) { return this; }
+        Builder() { this((android.media.projection.MediaProjection) null); }
     }
 }

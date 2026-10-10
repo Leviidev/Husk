@@ -13,7 +13,7 @@ public class LocaleConfig implements android.os.Parcelable {
     public LocaleConfig(android.content.Context p0) {}
     public LocaleConfig(android.content.pm.ApplicationInfo p0, android.content.res.Resources p1) {}
     public LocaleConfig(android.os.LocaleList p0) {}
-    public static android.app.LocaleConfig fromContextIgnoringOverride(android.content.Context p0) { return null; }
+    public static android.app.LocaleConfig fromContextIgnoringOverride(android.content.Context p0) { return new LocaleConfig(); }
     public boolean containsLocale(java.util.Locale p0) { return false; }
     public int describeContents() { return 0; }
     public java.util.Locale getDefaultLocale() { return (java.util.Locale) huskProps.get("DefaultLocale"); }
@@ -21,4 +21,5 @@ public class LocaleConfig implements android.os.Parcelable {
     public android.os.LocaleList getSupportedLocales() { return (android.os.LocaleList) huskProps.get("SupportedLocales"); }
     public boolean isSameLocaleConfig(android.app.LocaleConfig p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    LocaleConfig() { this((android.content.Context) null); }
 }

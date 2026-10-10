@@ -37,5 +37,6 @@ public final class ConversationStatus implements android.os.Parcelable {
         public android.app.people.ConversationStatus.Builder setEndTimeMillis(long p0) { huskProps.put("EndTimeMillis", Long.valueOf(p0)); return this; }
         public android.app.people.ConversationStatus.Builder setIcon(android.graphics.drawable.Icon p0) { huskProps.put("Icon", p0); return this; }
         public android.app.people.ConversationStatus.Builder setStartTimeMillis(long p0) { huskProps.put("StartTimeMillis", Long.valueOf(p0)); return this; }
+        Builder() { this((java.lang.String) null, (int) 0); }
     }
 }

@@ -15,7 +15,7 @@ public final class AttributionSource implements android.os.Parcelable {
     public AttributionSource(int p0, java.lang.String p1, java.lang.String p2, java.util.Set p3, android.content.AttributionSource p4) {}
     public AttributionSource(android.content.AttributionSource p0, android.content.AttributionSource p1) {}
     public AttributionSource(android.content.AttributionSourceState p0) {}
-    public static android.content.AttributionSource myAttributionSource() { return null; }
+    public static android.content.AttributionSource myAttributionSource() { return new AttributionSource(); }
     public android.content.AttributionSource.ScopedParcelState asScopedParcelState() { return null; }
     public android.content.AttributionSourceState asState() { return null; }
     public boolean checkCallingUid() { return false; }
@@ -44,11 +44,12 @@ public final class AttributionSource implements android.os.Parcelable {
     public android.content.AttributionSource withPid(int p0) { return this; }
     public android.content.AttributionSource withToken(android.os.IBinder p0) { return this; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AttributionSource() { this((android.content.AttributionSourceState) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
         public Builder(android.content.AttributionSource p0) {}
-        public android.content.AttributionSource build() { return null; }
+        public android.content.AttributionSource build() { return new android.content.AttributionSource(); }
         public android.content.AttributionSource.Builder setAttributionTag(java.lang.String p0) { huskProps.put("AttributionTag", p0); return this; }
         public android.content.AttributionSource.Builder setDeviceId(int p0) { huskProps.put("DeviceId", Integer.valueOf(p0)); return this; }
         public android.content.AttributionSource.Builder setNext(android.content.AttributionSource p0) { huskProps.put("Next", p0); return this; }
@@ -56,11 +57,13 @@ public final class AttributionSource implements android.os.Parcelable {
         public android.content.AttributionSource.Builder setPackageName(java.lang.String p0) { huskProps.put("PackageName", p0); return this; }
         public android.content.AttributionSource.Builder setPid(int p0) { huskProps.put("Pid", Integer.valueOf(p0)); return this; }
         public android.content.AttributionSource.Builder setRenouncedPermissions(java.util.Set p0) { huskProps.put("RenouncedPermissions", p0); return this; }
+        Builder() { this((int) 0); }
     }
     public static class ScopedParcelState implements java.lang.AutoCloseable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ScopedParcelState(android.content.AttributionSource p0) {}
         public void close() {}
         public android.os.Parcel getParcel() { return (android.os.Parcel) huskProps.get("Parcel"); }
+        ScopedParcelState() { this((android.content.AttributionSource) null); }
     }
 }

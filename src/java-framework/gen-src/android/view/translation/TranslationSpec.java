@@ -11,4 +11,5 @@ public final class TranslationSpec implements android.os.Parcelable {
     public int getDataFormat() { return (huskProps.get("DataFormat") instanceof Integer ? (Integer) huskProps.get("DataFormat") : 0); }
     public java.lang.String getLanguage() { return (java.lang.String) huskProps.get("Language"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TranslationSpec() { this((java.lang.String) null, (int) 0); }
 }

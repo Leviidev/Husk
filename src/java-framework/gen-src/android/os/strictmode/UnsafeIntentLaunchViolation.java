@@ -7,4 +7,5 @@ public final class UnsafeIntentLaunchViolation extends android.os.strictmode.Vio
     public UnsafeIntentLaunchViolation(android.content.Intent p0) { super(); }
     public UnsafeIntentLaunchViolation(android.content.Intent p0, java.lang.String p1) { super(); }
     public android.content.Intent getIntent() { return (android.content.Intent) huskProps.get("Intent"); }
+    UnsafeIntentLaunchViolation() { this((android.content.Intent) null); }
 }

@@ -11,4 +11,5 @@ public class BackupDataInput {
     public int readEntityData(byte[] p0, int p1, int p2) { return 0; }
     public boolean readNextHeader() { return false; }
     public void skipEntityData() {}
+    BackupDataInput() { this((java.io.FileDescriptor) null); }
 }

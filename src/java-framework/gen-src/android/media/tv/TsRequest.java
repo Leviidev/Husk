@@ -9,4 +9,5 @@ public final class TsRequest extends android.media.tv.BroadcastInfoRequest imple
     public int describeContents() { return 0; }
     public int getTsPid() { return (huskProps.get("TsPid") instanceof Integer ? (Integer) huskProps.get("TsPid") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TsRequest() { this((int) 0, (int) 0, (int) 0); }
 }

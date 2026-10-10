@@ -8,4 +8,5 @@ public final class StartForegroundCalledOnStoppedServiceException extends java.l
     public StartForegroundCalledOnStoppedServiceException(java.lang.String p0) { super(); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    StartForegroundCalledOnStoppedServiceException() { this((java.lang.String) null); }
 }

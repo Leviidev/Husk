@@ -17,4 +17,5 @@ public final class VirtualDevice implements android.os.Parcelable {
     public boolean hasCustomCameraSupport() { return false; }
     public boolean hasCustomSensorSupport() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VirtualDevice() { this((android.companion.virtual.IVirtualDevice) null, (int) 0, (java.lang.String) null, (java.lang.String) null); }
 }

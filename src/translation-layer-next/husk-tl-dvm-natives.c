@@ -935,7 +935,7 @@ NAT(Class_getDeclaredField)
         for (int i = 0; i < cnt; i++) if (!strcmp(list[i].name, n)) { *ret = L(make_field(&list[i])); return true; }
     }
     *ret = L(NULL);
-    return true;
+    return dvm_throw("java/lang/NoSuchFieldException", "No field %s in class %s", n, self->klass.jc->name);     /* as ART's native */
 }
 NAT(Class_getDeclaredFields)
 {

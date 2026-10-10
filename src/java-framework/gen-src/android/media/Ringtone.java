@@ -31,4 +31,5 @@ public class Ringtone {
     public void setVolume(float p0) { huskProps.put("Volume", Float.valueOf(p0)); }
     public void setVolumeShaperConfig(android.media.VolumeShaper.Configuration p0) { huskProps.put("VolumeShaperConfig", p0); }
     public void stop() {}
+    Ringtone() { this((android.content.Context) null, (boolean) false); }
 }

@@ -16,4 +16,5 @@ public class Translator {
     public void requestUiTranslate(android.view.translation.TranslationRequest p0, java.util.concurrent.Executor p1, java.util.function.Consumer p2) {}
     public void translate(android.view.translation.TranslationRequest p0, android.os.CancellationSignal p1, java.util.concurrent.Executor p2, java.util.function.Consumer p3) {}
     public void translate(android.view.translation.TranslationRequest p0, java.util.concurrent.Executor p1, java.util.function.Consumer p2) {}
+    Translator() { this((android.content.Context) null, (android.view.translation.TranslationContext) null, (int) 0, (android.view.translation.TranslationManager) null, (android.os.Handler) null, (android.view.translation.ITranslationManager) null); }
 }

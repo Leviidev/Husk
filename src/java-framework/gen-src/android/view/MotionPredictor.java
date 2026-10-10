@@ -9,4 +9,5 @@ public final class MotionPredictor {
     public boolean isPredictionAvailable(int p0, int p1) { return false; }
     public android.view.MotionEvent predict(long p0) { return null; }
     public void record(android.view.MotionEvent p0) {}
+    MotionPredictor() { this((android.content.Context) null); }
 }

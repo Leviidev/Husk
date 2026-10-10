@@ -5,4 +5,5 @@ package android.renderscript;
 public class RSInvalidStateException extends android.renderscript.RSRuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public RSInvalidStateException(java.lang.String p0) { super(p0); }
+    RSInvalidStateException() { this((java.lang.String) null); }
 }

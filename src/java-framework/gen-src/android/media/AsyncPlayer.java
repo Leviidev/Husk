@@ -9,4 +9,5 @@ public class AsyncPlayer {
     public void play(android.content.Context p0, android.net.Uri p1, boolean p2, android.media.AudioAttributes p3) {}
     public void setUsesWakeLock(android.content.Context p0) { huskProps.put("UsesWakeLock", p0); }
     public void stop() {}
+    AsyncPlayer() { this((java.lang.String) null); }
 }

@@ -22,6 +22,7 @@ public final class SurfaceSyncGroup {
     public void markSyncReady() {}
     public void setAddedToSyncListener(java.lang.Runnable p0) { huskProps.put("AddedToSyncListener", p0); }
     public void toggleTimeout(boolean p0) {}
+    SurfaceSyncGroup() { this((java.lang.String) null); }
     public interface SurfaceViewFrameCallback {
         void onFrameStarted();
     }

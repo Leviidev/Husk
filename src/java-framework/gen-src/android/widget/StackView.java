@@ -20,4 +20,5 @@ public class StackView extends android.widget.AdapterViewAnimator {
     public boolean performAccessibilityActionInternal(int p0, android.os.Bundle p1) { return false; }
     public void showNext() {}
     public void showPrevious() {}
+    StackView() { this((android.content.Context) null); }
 }

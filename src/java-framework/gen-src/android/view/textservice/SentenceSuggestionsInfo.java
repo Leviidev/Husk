@@ -13,4 +13,5 @@ public final class SentenceSuggestionsInfo implements android.os.Parcelable {
     public int getSuggestionsCount() { return (huskProps.get("SuggestionsCount") instanceof Integer ? (Integer) huskProps.get("SuggestionsCount") : 0); }
     public android.view.textservice.SuggestionsInfo getSuggestionsInfoAt(int p0) { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SentenceSuggestionsInfo() { this((android.os.Parcel) null); }
 }

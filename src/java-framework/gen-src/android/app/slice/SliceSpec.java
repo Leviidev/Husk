@@ -12,4 +12,5 @@ public final class SliceSpec implements android.os.Parcelable {
     public int getRevision() { return (huskProps.get("Revision") instanceof Integer ? (Integer) huskProps.get("Revision") : 0); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SliceSpec() { this((android.os.Parcel) null); }
 }

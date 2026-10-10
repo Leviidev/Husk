@@ -26,10 +26,11 @@ public final class DeviceProductInfo implements android.os.Parcelable {
     public java.lang.String getProductId() { return (java.lang.String) huskProps.get("ProductId"); }
     public int getVideoInputType() { return (huskProps.get("VideoInputType") instanceof Integer ? (Integer) huskProps.get("VideoInputType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DeviceProductInfo() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1) {}
-        public android.hardware.display.DeviceProductInfo build() { return null; }
+        public android.hardware.display.DeviceProductInfo build() { return new android.hardware.display.DeviceProductInfo(); }
         public android.hardware.display.DeviceProductInfo.Builder setConnectionToSinkType(int p0) { huskProps.put("ConnectionToSinkType", Integer.valueOf(p0)); return this; }
         public android.hardware.display.DeviceProductInfo.Builder setEdidStructureMetadata(int p0, int p1) { return this; }
         public android.hardware.display.DeviceProductInfo.Builder setManufactureDate(int p0, int p1) { return this; }
@@ -38,6 +39,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
         public android.hardware.display.DeviceProductInfo.Builder setName(java.lang.String p0) { huskProps.put("Name", p0); return this; }
         public android.hardware.display.DeviceProductInfo.Builder setProductId(java.lang.String p0) { huskProps.put("ProductId", p0); return this; }
         public android.hardware.display.DeviceProductInfo.Builder setVideoInputType(int p0) { huskProps.put("VideoInputType", Integer.valueOf(p0)); return this; }
+        Builder() { this((java.lang.String) null, (java.lang.String) null); }
     }
     public static final class EdidStructureMetadata implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -47,6 +49,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
         public int getRevision() { return (huskProps.get("Revision") instanceof Integer ? (Integer) huskProps.get("Revision") : 0); }
         public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        EdidStructureMetadata() { this((int) 0, (int) 0); }
     }
     public static class ManufactureDate implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -57,5 +60,6 @@ public final class DeviceProductInfo implements android.os.Parcelable {
         public java.lang.Integer getWeek() { return (java.lang.Integer) huskProps.get("Week"); }
         public java.lang.Integer getYear() { return (java.lang.Integer) huskProps.get("Year"); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        ManufactureDate() { this((android.os.Parcel) null); }
     }
 }

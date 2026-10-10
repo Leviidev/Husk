@@ -14,4 +14,5 @@ public class SearchRecentSuggestions {
     public void clearHistory() {}
     public void saveRecentQuery(java.lang.String p0, java.lang.String p1) {}
     protected void truncateHistory(android.content.ContentResolver p0, int p1) {}
+    SearchRecentSuggestions() { this((android.content.Context) null, (java.lang.String) null, (int) 0); }
 }

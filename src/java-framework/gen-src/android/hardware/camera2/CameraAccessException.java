@@ -16,4 +16,5 @@ public class CameraAccessException extends android.util.AndroidException {
     public CameraAccessException(int p0, java.lang.Throwable p1) { super(); }
     public static java.lang.String getDefaultMessage(int p0) { return null; }
     public int getReason() { return (huskProps.get("Reason") instanceof Integer ? (Integer) huskProps.get("Reason") : 0); }
+    CameraAccessException() { this((int) 0); }
 }

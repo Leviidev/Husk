@@ -20,4 +20,5 @@ public class PersistentDataBlockManager {
     public void setOemUnlockEnabled(boolean p0) { huskProps.put("OemUnlockEnabled", Boolean.valueOf(p0)); }
     public void wipe() {}
     public int write(byte[] p0) { return 0; }
+    PersistentDataBlockManager() { this((android.service.persistentdata.IPersistentDataBlockService) null); }
 }

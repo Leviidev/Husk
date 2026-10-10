@@ -6,4 +6,5 @@ public class MutableContextWrapper extends android.content.ContextWrapper {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public MutableContextWrapper(android.content.Context p0) { super(p0); }
     public void setBaseContext(android.content.Context p0) { huskProps.put("BaseContext", p0); }
+    MutableContextWrapper() { this((android.content.Context) null); }
 }

@@ -9,4 +9,5 @@ public final class Capability {
     public android.util.Size getMaxStreamingSize() { return (android.util.Size) huskProps.get("MaxStreamingSize"); }
     public int getMode() { return (huskProps.get("Mode") instanceof Integer ? (Integer) huskProps.get("Mode") : 0); }
     public android.util.Range getZoomRatioRange() { return (android.util.Range) huskProps.get("ZoomRatioRange"); }
+    Capability() { this((int) 0, (android.util.Size) null, (android.util.Range) null); }
 }

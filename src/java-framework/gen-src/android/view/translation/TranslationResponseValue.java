@@ -28,5 +28,6 @@ public final class TranslationResponseValue implements android.os.Parcelable {
         public android.view.translation.TranslationResponseValue.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.view.translation.TranslationResponseValue.Builder setText(java.lang.CharSequence p0) { huskProps.put("Text", p0); return this; }
         public android.view.translation.TranslationResponseValue.Builder setTransliteration(java.lang.CharSequence p0) { huskProps.put("Transliteration", p0); return this; }
+        Builder() { this((int) 0); }
     }
 }

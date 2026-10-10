@@ -19,11 +19,11 @@ public class SmsMessage {
     public static int[] calculateLength(java.lang.CharSequence p0, boolean p1, int p2) { return null; }
     public static int[] calculateLength(java.lang.String p0, boolean p1) { return null; }
     public static int[] calculateLength(java.lang.String p0, boolean p1, int p2) { return null; }
-    public static android.telephony.SmsMessage createFromEfRecord(int p0, byte[] p1) { return null; }
-    public static android.telephony.SmsMessage createFromEfRecord(int p0, byte[] p1, int p2) { return null; }
-    public static android.telephony.SmsMessage createFromNativeSmsSubmitPdu(byte[] p0, boolean p1) { return null; }
-    public static android.telephony.SmsMessage createFromPdu(byte[] p0) { return null; }
-    public static android.telephony.SmsMessage createFromPdu(byte[] p0, java.lang.String p1) { return null; }
+    public static android.telephony.SmsMessage createFromEfRecord(int p0, byte[] p1) { return new SmsMessage(); }
+    public static android.telephony.SmsMessage createFromEfRecord(int p0, byte[] p1, int p2) { return new SmsMessage(); }
+    public static android.telephony.SmsMessage createFromNativeSmsSubmitPdu(byte[] p0, boolean p1) { return new SmsMessage(); }
+    public static android.telephony.SmsMessage createFromPdu(byte[] p0) { return new SmsMessage(); }
+    public static android.telephony.SmsMessage createFromPdu(byte[] p0, java.lang.String p1) { return new SmsMessage(); }
     public static java.util.ArrayList fragmentText(java.lang.String p0) { return new java.util.ArrayList(); }
     public static java.util.ArrayList fragmentText(java.lang.String p0, int p1) { return new java.util.ArrayList(); }
     public static android.telephony.SmsMessage.SubmitPdu getSmsPdu(int p0, int p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, long p5) { return null; }

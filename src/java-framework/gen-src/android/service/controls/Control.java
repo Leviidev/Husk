@@ -44,6 +44,7 @@ public final class Control implements android.os.Parcelable {
         public android.service.controls.Control.StatefulBuilder setSubtitle(java.lang.CharSequence p0) { huskProps.put("Subtitle", p0); return this; }
         public android.service.controls.Control.StatefulBuilder setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
         public android.service.controls.Control.StatefulBuilder setZone(java.lang.CharSequence p0) { huskProps.put("Zone", p0); return this; }
+        StatefulBuilder() { this((android.service.controls.Control) null); }
     }
     public static final class StatelessBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -59,5 +60,6 @@ public final class Control implements android.os.Parcelable {
         public android.service.controls.Control.StatelessBuilder setSubtitle(java.lang.CharSequence p0) { huskProps.put("Subtitle", p0); return this; }
         public android.service.controls.Control.StatelessBuilder setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
         public android.service.controls.Control.StatelessBuilder setZone(java.lang.CharSequence p0) { huskProps.put("Zone", p0); return this; }
+        StatelessBuilder() { this((android.service.controls.Control) null); }
     }
 }

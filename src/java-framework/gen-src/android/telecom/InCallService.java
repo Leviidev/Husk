@@ -27,6 +27,7 @@ public abstract class InCallService extends android.app.Service {
     public void onPhoneDestroyed(android.telecom.Phone p0) {}
     public void onSilenceRinger() {}
     public boolean onUnbind(android.content.Intent p0) { return false; }
+    public void requestBluetoothAudio(android.bluetooth.BluetoothDevice p0) {}
     public void requestCallEndpointChange(android.telecom.CallEndpoint p0, java.util.concurrent.Executor p1, android.os.OutcomeReceiver p2) {}
     public void setAudioRoute(int p0) { huskProps.put("AudioRoute", Integer.valueOf(p0)); }
     public void setMuted(boolean p0) { huskProps.put("Muted", Boolean.valueOf(p0)); }

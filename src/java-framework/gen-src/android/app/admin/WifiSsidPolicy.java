@@ -12,4 +12,5 @@ public final class WifiSsidPolicy implements android.os.Parcelable {
     public int getPolicyType() { return (huskProps.get("PolicyType") instanceof Integer ? (Integer) huskProps.get("PolicyType") : 0); }
     public java.util.Set getSsids() { return (huskProps.get("Ssids") != null ? (java.util.Set) huskProps.get("Ssids") : new java.util.HashSet()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    WifiSsidPolicy() { this((int) 0, (java.util.Set) null); }
 }

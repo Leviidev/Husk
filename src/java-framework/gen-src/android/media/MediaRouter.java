@@ -40,6 +40,7 @@ public class MediaRouter {
     public void selectRoute(int p0, android.media.MediaRouter.RouteInfo p1) {}
     public void selectRouteInt(int p0, android.media.MediaRouter.RouteInfo p1, boolean p2) {}
     public void setRouterGroupId(java.lang.String p0) { huskProps.put("RouterGroupId", p0); }
+    MediaRouter() { this((android.content.Context) null); }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Callback() {}
@@ -126,6 +127,7 @@ public class MediaRouter {
         public void select() {}
         public void setTag(java.lang.Object p0) { huskProps.put("Tag", p0); }
         public boolean updatePresentationDisplay() { return false; }
+        RouteInfo() { this((android.media.MediaRouter.RouteCategory) null); }
     }
     public static class SimpleCallback extends android.media.MediaRouter.Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

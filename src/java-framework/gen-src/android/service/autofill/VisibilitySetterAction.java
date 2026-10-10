@@ -14,5 +14,6 @@ public abstract class VisibilitySetterAction extends android.service.autofill.In
         public Builder(int p0, int p1) {}
         public android.service.autofill.VisibilitySetterAction build() { return null; }
         public android.service.autofill.VisibilitySetterAction.Builder setVisibility(int p0, int p1) { return this; }
+        Builder() { this((int) 0, (int) 0); }
     }
 }

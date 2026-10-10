@@ -71,6 +71,7 @@ public final class UiAutomation {
     public android.graphics.Bitmap takeScreenshot(int p0) { return null; }
     public android.graphics.Bitmap takeScreenshot(android.view.Window p0) { return null; }
     public void waitForIdle(long p0, long p1) {}
+    UiAutomation() { this((android.content.Context) null, (android.app.IUiAutomationConnection) null); }
     public interface AccessibilityEventFilter {
         boolean accept(android.view.accessibility.AccessibilityEvent p0);
     }

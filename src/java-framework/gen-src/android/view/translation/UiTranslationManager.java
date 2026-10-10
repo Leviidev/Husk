@@ -22,4 +22,5 @@ public final class UiTranslationManager {
     public void startTranslation(android.view.translation.TranslationSpec p0, android.view.translation.TranslationSpec p1, java.util.List p2, android.app.assist.ActivityId p3) {}
     public void startTranslation(android.view.translation.TranslationSpec p0, android.view.translation.TranslationSpec p1, java.util.List p2, android.app.assist.ActivityId p3, android.view.translation.UiTranslationSpec p4) {}
     public void unregisterUiTranslationStateCallback(android.view.translation.UiTranslationStateCallback p0) {}
+    UiTranslationManager() { this((android.content.Context) null, (android.view.translation.ITranslationManager) null); }
 }

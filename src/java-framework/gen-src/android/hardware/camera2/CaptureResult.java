@@ -143,11 +143,12 @@ public class CaptureResult extends android.hardware.camera2.CameraMetadata {
     public java.lang.Object getProtected(java.lang.Object p0) { return null; }
     public android.hardware.camera2.CaptureRequest getRequest() { return (android.hardware.camera2.CaptureRequest) huskProps.get("Request"); }
     public int getSequenceId() { return (huskProps.get("SequenceId") instanceof Integer ? (Integer) huskProps.get("SequenceId") : 0); }
+    CaptureResult() { this((android.hardware.camera2.impl.CameraMetadataNative) null, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.CaptureResult p0) {}
-        public android.hardware.camera2.CaptureResult build() { return null; }
+        public android.hardware.camera2.CaptureResult build() { return new android.hardware.camera2.CaptureResult(); }
         public android.hardware.camera2.CaptureResult.Builder set(android.hardware.camera2.CaptureResult.Key p0, java.lang.Object p1) { return this; }
     }
     public static final class Key {
@@ -159,5 +160,6 @@ public class CaptureResult extends android.hardware.camera2.CameraMetadata {
         public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
         public android.hardware.camera2.impl.CameraMetadataNative.Key getNativeKey() { return (android.hardware.camera2.impl.CameraMetadataNative.Key) huskProps.get("NativeKey"); }
         public long getVendorId() { return (huskProps.get("VendorId") instanceof Long ? (Long) huskProps.get("VendorId") : 0L); }
+        Key() { this((java.lang.String) null, (android.hardware.camera2.utils.TypeReference) null); }
     }
 }

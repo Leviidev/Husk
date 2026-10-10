@@ -12,4 +12,5 @@ public final class ImsException extends java.lang.Exception {
     public ImsException(java.lang.String p0, int p1) { super(); }
     public ImsException(java.lang.String p0, int p1, java.lang.Throwable p2) { super(); }
     public int getCode() { return (huskProps.get("Code") instanceof Integer ? (Integer) huskProps.get("Code") : 0); }
+    ImsException() { this((java.lang.String) null); }
 }

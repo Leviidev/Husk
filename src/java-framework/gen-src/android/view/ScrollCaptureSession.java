@@ -8,4 +8,5 @@ public class ScrollCaptureSession {
     public android.graphics.Point getPositionInWindow() { return (android.graphics.Point) huskProps.get("PositionInWindow"); }
     public android.graphics.Rect getScrollBounds() { return (android.graphics.Rect) huskProps.get("ScrollBounds"); }
     public android.view.Surface getSurface() { return (android.view.Surface) huskProps.get("Surface"); }
+    ScrollCaptureSession() { this((android.view.Surface) null, (android.graphics.Rect) null, (android.graphics.Point) null); }
 }

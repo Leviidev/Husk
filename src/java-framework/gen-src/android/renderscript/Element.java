@@ -91,6 +91,7 @@ public class Element extends android.renderscript.BaseObj {
         public android.renderscript.Element.Builder add(android.renderscript.Element p0, java.lang.String p1) { return this; }
         public android.renderscript.Element.Builder add(android.renderscript.Element p0, java.lang.String p1, int p2) { return this; }
         public android.renderscript.Element create() { return new android.renderscript.Element(); }
+        Builder() { this((android.renderscript.RenderScript) null); }
     }
     public enum DataKind {
         PIXEL_A, PIXEL_DEPTH, PIXEL_L, PIXEL_LA, PIXEL_RGB, PIXEL_RGBA, PIXEL_YUV, USER;

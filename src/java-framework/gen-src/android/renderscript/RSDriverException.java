@@ -5,4 +5,5 @@ package android.renderscript;
 public class RSDriverException extends android.renderscript.RSRuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public RSDriverException(java.lang.String p0) { super(p0); }
+    RSDriverException() { this((java.lang.String) null); }
 }

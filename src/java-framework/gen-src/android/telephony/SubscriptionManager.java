@@ -151,7 +151,7 @@ public class SubscriptionManager {
     public static void clearCaches() {}
     public static void disableCaching() {}
     public static java.lang.String displayNameSourceToString(int p0) { return null; }
-    public static android.telephony.SubscriptionManager from(android.content.Context p0) { return null; }
+    public static android.telephony.SubscriptionManager from(android.content.Context p0) { return new SubscriptionManager(); }
     public static int getActiveDataSubscriptionId() { return 0; }
     public static int getAllServiceCapabilityBitmasks() { return 0; }
     public static boolean getBooleanSubscriptionProperty(int p0, java.lang.String p1, boolean p2, android.content.Context p3) { return false; }
@@ -267,6 +267,7 @@ public class SubscriptionManager {
     public void setTransferStatus(int p0, int p1) {}
     public void setUiccApplicationsEnabled(int p0, boolean p1) {}
     public void switchToSubscription(int p0, android.app.PendingIntent p1) {}
+    SubscriptionManager() { this((android.content.Context) null); }
     public static class OnOpportunisticSubscriptionsChangedListener {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public OnOpportunisticSubscriptionsChangedListener() {}

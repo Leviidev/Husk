@@ -53,5 +53,6 @@ public final class TrackChangeEvent extends android.media.metrics.Event implemen
         public android.media.metrics.TrackChangeEvent.Builder setTrackState(int p0) { huskProps.put("TrackState", Integer.valueOf(p0)); return this; }
         public android.media.metrics.TrackChangeEvent.Builder setVideoFrameRate(float p0) { huskProps.put("VideoFrameRate", Float.valueOf(p0)); return this; }
         public android.media.metrics.TrackChangeEvent.Builder setWidth(int p0) { huskProps.put("Width", Integer.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
     }
 }

@@ -21,4 +21,5 @@ public final class JsonWriter implements java.io.Closeable {
     public android.util.JsonWriter value(java.lang.Number p0) { return this; }
     public android.util.JsonWriter value(java.lang.String p0) { return this; }
     public android.util.JsonWriter value(boolean p0) { return this; }
+    JsonWriter() { this((java.io.Writer) null); }
 }

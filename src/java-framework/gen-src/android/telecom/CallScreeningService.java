@@ -27,5 +27,6 @@ public abstract class CallScreeningService extends android.app.Service {
         public boolean shouldSkipNotification() { return false; }
         public android.telecom.CallScreeningService.CallResponse toCallResponse() { return null; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        ParcelableCallResponse() { this((android.os.Parcel) null); }
     }
 }

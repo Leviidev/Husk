@@ -12,4 +12,5 @@ public final class PolicyUpdateResult {
     public static int RESULT_POLICY_SET;
     public PolicyUpdateResult(int p0) {}
     public int getResultCode() { return (huskProps.get("ResultCode") instanceof Integer ? (Integer) huskProps.get("ResultCode") : 0); }
+    PolicyUpdateResult() { this((int) 0); }
 }

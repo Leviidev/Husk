@@ -9,4 +9,5 @@ public final class ColorSpaceTransform {
     public void copyElements(int[] p0, int p1) {}
     public void copyElements(android.util.Rational[] p0, int p1) {}
     public android.util.Rational getElement(int p0, int p1) { return null; }
+    ColorSpaceTransform() { this((int[]) null); }
 }

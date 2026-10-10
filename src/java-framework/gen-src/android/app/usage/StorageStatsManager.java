@@ -26,4 +26,5 @@ public class StorageStatsManager {
     public android.app.usage.StorageStats queryStatsForUid(java.util.UUID p0, int p1) { return null; }
     public android.app.usage.StorageStats queryStatsForUser(java.lang.String p0, android.os.UserHandle p1) { return null; }
     public android.app.usage.StorageStats queryStatsForUser(java.util.UUID p0, android.os.UserHandle p1) { return null; }
+    StorageStatsManager() { this((android.content.Context) null, (android.app.usage.IStorageStatsManager) null); }
 }

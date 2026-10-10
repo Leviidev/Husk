@@ -21,6 +21,7 @@ public class ImsRcsManager {
     public void removeOnAvailabilityChangedListener(android.telephony.ims.ImsRcsManager.OnAvailabilityChangedListener p0) {}
     public void unregisterImsRegistrationCallback(android.telephony.ims.RegistrationManager.RegistrationCallback p0) {}
     public void unregisterImsStateCallback(android.telephony.ims.ImsStateCallback p0) {}
+    ImsRcsManager() { this((android.content.Context) null, (int) 0, (android.telephony.BinderCacheManager) null, (android.telephony.BinderCacheManager) null); }
     public interface OnAvailabilityChangedListener {
         void onAvailabilityChanged(int p0);
     }

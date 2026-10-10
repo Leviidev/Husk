@@ -12,5 +12,6 @@ public final class KeyStoreParameter implements java.security.KeyStore.Protectio
         public Builder(android.content.Context p0) {}
         public android.security.KeyStoreParameter build() { return new android.security.KeyStoreParameter(); }
         public android.security.KeyStoreParameter.Builder setEncryptionRequired(boolean p0) { huskProps.put("EncryptionRequired", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.content.Context) null); }
     }
 }

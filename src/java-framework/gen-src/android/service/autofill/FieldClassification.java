@@ -6,10 +6,12 @@ public final class FieldClassification {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public FieldClassification(java.util.ArrayList p0) {}
     public java.util.List getMatches() { return (huskProps.get("Matches") != null ? (java.util.List) huskProps.get("Matches") : new java.util.ArrayList()); }
+    FieldClassification() { this((java.util.ArrayList) null); }
     public static final class Match {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Match(java.lang.String p0, float p1) {}
         public java.lang.String getCategoryId() { return (java.lang.String) huskProps.get("CategoryId"); }
         public float getScore() { return (huskProps.get("Score") instanceof Float ? (Float) huskProps.get("Score") : 0f); }
+        Match() { this((java.lang.String) null, (float) 0f); }
     }
 }

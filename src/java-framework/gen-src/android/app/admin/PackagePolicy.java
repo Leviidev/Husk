@@ -15,4 +15,5 @@ public final class PackagePolicy implements android.os.Parcelable {
     public int getPolicyType() { return (huskProps.get("PolicyType") instanceof Integer ? (Integer) huskProps.get("PolicyType") : 0); }
     public boolean isPackageAllowed(java.lang.String p0, java.util.Set p1) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PackagePolicy() { this((int) 0); }
 }

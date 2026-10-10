@@ -8,21 +8,26 @@ public class MediaCasException extends java.lang.Exception {
     public static final class DeniedByServerException extends android.media.MediaCasException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public DeniedByServerException(java.lang.String p0) { super(); }
+        DeniedByServerException() { this((java.lang.String) null); }
     }
     public static final class InsufficientResourceException extends android.media.MediaCasException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public InsufficientResourceException(java.lang.String p0) { super(); }
+        InsufficientResourceException() { this((java.lang.String) null); }
     }
     public static final class NotProvisionedException extends android.media.MediaCasException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public NotProvisionedException(java.lang.String p0) { super(); }
+        NotProvisionedException() { this((java.lang.String) null); }
     }
     public static final class ResourceBusyException extends android.media.MediaCasException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ResourceBusyException(java.lang.String p0) { super(); }
+        ResourceBusyException() { this((java.lang.String) null); }
     }
     public static final class UnsupportedCasException extends android.media.MediaCasException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public UnsupportedCasException(java.lang.String p0) { super(); }
+        UnsupportedCasException() { this((java.lang.String) null); }
     }
 }

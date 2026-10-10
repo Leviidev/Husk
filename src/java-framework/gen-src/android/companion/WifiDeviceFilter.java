@@ -6,9 +6,13 @@ public final class WifiDeviceFilter implements android.companion.DeviceFilter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public int describeContents() { return 0; }
+    public android.net.MacAddress getBssid() { return (android.net.MacAddress) huskProps.get("Bssid"); }
+    public android.net.MacAddress getBssidMask() { return (android.net.MacAddress) huskProps.get("BssidMask"); }
+    public java.lang.String getDeviceDisplayName(android.net.wifi.ScanResult p0) { return null; }
     public java.lang.String getDeviceDisplayName(android.os.Parcelable p0) { return null; }
     public int getMediumType() { return (huskProps.get("MediumType") instanceof Integer ? (Integer) huskProps.get("MediumType") : 0); }
     public java.util.regex.Pattern getNamePattern() { return (java.util.regex.Pattern) huskProps.get("NamePattern"); }
+    public boolean matches(android.net.wifi.ScanResult p0) { return false; }
     public boolean matches(android.os.Parcelable p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected WifiDeviceFilter() {}
@@ -16,6 +20,8 @@ public final class WifiDeviceFilter implements android.companion.DeviceFilter {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.companion.WifiDeviceFilter build() { return new android.companion.WifiDeviceFilter(); }
+        public android.companion.WifiDeviceFilter.Builder setBssid(android.net.MacAddress p0) { huskProps.put("Bssid", p0); return this; }
+        public android.companion.WifiDeviceFilter.Builder setBssidMask(android.net.MacAddress p0) { huskProps.put("BssidMask", p0); return this; }
         public android.companion.WifiDeviceFilter.Builder setNamePattern(java.util.regex.Pattern p0) { huskProps.put("NamePattern", p0); return this; }
     }
 }

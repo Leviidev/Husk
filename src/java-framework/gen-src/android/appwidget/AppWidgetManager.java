@@ -38,7 +38,7 @@ public class AppWidgetManager {
     public static final java.lang.String OPTION_APPWIDGET_MIN_WIDTH = "appWidgetMinWidth";
     public static final java.lang.String OPTION_APPWIDGET_RESTORE_COMPLETED = "appWidgetRestoreCompleted";
     public static final java.lang.String OPTION_APPWIDGET_SIZES = "appWidgetSizes";
-    public static android.appwidget.AppWidgetManager getInstance(android.content.Context p0) { return null; }
+    public static android.appwidget.AppWidgetManager getInstance(android.content.Context p0) { return new AppWidgetManager(); }
     public void bindAppWidgetId(int p0, android.content.ComponentName p1) {}
     public void bindAppWidgetId(int p0, android.content.ComponentName p1, android.os.Bundle p2) {}
     public boolean bindAppWidgetIdIfAllowed(int p0, android.content.ComponentName p1) { return false; }
@@ -80,5 +80,6 @@ public class AppWidgetManager {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ServiceCollectionCache(android.content.Context p0, long p1) {}
         public void connectAndConsume(android.content.Intent p0, java.util.function.Consumer p1) {}
+        ServiceCollectionCache() { this((android.content.Context) null, (long) 0L); }
     }
 }

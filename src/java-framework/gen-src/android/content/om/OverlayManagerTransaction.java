@@ -41,5 +41,6 @@ public final class OverlayManagerTransaction implements android.os.Parcelable {
         public Request(int p0, android.content.om.OverlayIdentifier p1, int p2, android.os.Bundle p3, java.util.List p4) {}
         public Request(int p0, android.content.om.OverlayIdentifier p1, int p2, java.util.List p3) {}
         public java.lang.String typeToString() { return null; }
+        Request() { this((int) 0, (android.content.om.OverlayIdentifier) null, (int) 0); }
     }
 }

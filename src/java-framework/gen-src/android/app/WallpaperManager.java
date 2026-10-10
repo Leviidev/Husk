@@ -137,6 +137,7 @@ public class WallpaperManager {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ColorManagementProxy(android.content.Context p0) {}
         public java.util.Set getSupportedColorSpaces() { return (huskProps.get("SupportedColorSpaces") != null ? (java.util.Set) huskProps.get("SupportedColorSpaces") : new java.util.HashSet()); }
+        ColorManagementProxy() { this((android.content.Context) null); }
     }
     public interface LocalWallpaperColorConsumer {
         void onColorsChanged(android.graphics.RectF p0, android.app.WallpaperColors p1);

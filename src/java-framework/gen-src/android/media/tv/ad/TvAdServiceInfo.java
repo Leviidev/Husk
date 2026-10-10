@@ -12,4 +12,5 @@ public final class TvAdServiceInfo implements android.os.Parcelable {
     public android.content.pm.ServiceInfo getServiceInfo() { return (android.content.pm.ServiceInfo) huskProps.get("ServiceInfo"); }
     public java.util.List getSupportedTypes() { return (huskProps.get("SupportedTypes") != null ? (java.util.List) huskProps.get("SupportedTypes") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TvAdServiceInfo() { this((android.content.Context) null, (android.content.ComponentName) null); }
 }

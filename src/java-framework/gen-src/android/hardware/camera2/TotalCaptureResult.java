@@ -11,4 +11,5 @@ public final class TotalCaptureResult extends android.hardware.camera2.CaptureRe
     public java.util.Map getPhysicalCameraResults() { return (huskProps.get("PhysicalCameraResults") != null ? (java.util.Map) huskProps.get("PhysicalCameraResults") : new java.util.HashMap()); }
     public java.util.Map getPhysicalCameraTotalResults() { return (huskProps.get("PhysicalCameraTotalResults") != null ? (java.util.Map) huskProps.get("PhysicalCameraTotalResults") : new java.util.HashMap()); }
     public int getSessionId() { return (huskProps.get("SessionId") instanceof Integer ? (Integer) huskProps.get("SessionId") : 0); }
+    TotalCaptureResult() { this((android.hardware.camera2.impl.CameraMetadataNative) null, (int) 0); }
 }

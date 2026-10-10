@@ -13,4 +13,5 @@ public class CaptureFailure {
     public android.hardware.camera2.CaptureRequest getRequest() { return (android.hardware.camera2.CaptureRequest) huskProps.get("Request"); }
     public int getSequenceId() { return (huskProps.get("SequenceId") instanceof Integer ? (Integer) huskProps.get("SequenceId") : 0); }
     public boolean wasImageCaptured() { return false; }
+    CaptureFailure() { this((android.hardware.camera2.CaptureRequest) null, (int) 0, (boolean) false, (int) 0, (long) 0L, (java.lang.String) null); }
 }

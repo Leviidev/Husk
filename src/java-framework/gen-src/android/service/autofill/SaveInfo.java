@@ -53,5 +53,6 @@ public final class SaveInfo implements android.os.Parcelable {
         public android.service.autofill.SaveInfo.Builder setPositiveAction(int p0) { huskProps.put("PositiveAction", Integer.valueOf(p0)); return this; }
         public android.service.autofill.SaveInfo.Builder setTriggerId(android.view.autofill.AutofillId p0) { huskProps.put("TriggerId", p0); return this; }
         public android.service.autofill.SaveInfo.Builder setValidator(android.service.autofill.Validator p0) { huskProps.put("Validator", p0); return this; }
+        Builder() { this((int) 0); }
     }
 }

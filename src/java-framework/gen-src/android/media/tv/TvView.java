@@ -56,6 +56,7 @@ public class TvView extends android.view.ViewGroup {
     public void tune(java.lang.String p0, android.net.Uri p1) {}
     public void tune(java.lang.String p0, android.net.Uri p1, android.os.Bundle p2) {}
     public void unblockContent(android.media.tv.TvContentRating p0) {}
+    TvView() { this((android.content.Context) null); }
     public interface OnUnhandledInputEventListener {
         boolean onUnhandledInputEvent(android.view.InputEvent p0);
     }

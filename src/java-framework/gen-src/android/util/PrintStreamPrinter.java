@@ -6,4 +6,5 @@ public class PrintStreamPrinter implements android.util.Printer {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public PrintStreamPrinter(java.io.PrintStream p0) {}
     public void println(java.lang.String p0) {}
+    PrintStreamPrinter() { this((java.io.PrintStream) null); }
 }

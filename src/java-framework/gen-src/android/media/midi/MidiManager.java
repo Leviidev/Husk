@@ -14,10 +14,12 @@ public final class MidiManager {
     public android.media.midi.MidiDeviceServer createDeviceServer(android.media.midi.MidiReceiver[] p0, int p1, java.lang.String[] p2, java.lang.String[] p3, android.os.Bundle p4, int p5, int p6, android.media.midi.MidiDeviceServer.Callback p7) { return null; }
     public android.media.midi.MidiDeviceInfo[] getDevices() { return (android.media.midi.MidiDeviceInfo[]) huskProps.get("Devices"); }
     public java.util.Set getDevicesForTransport(int p0) { return new java.util.HashSet(); }
+    public void openBluetoothDevice(android.bluetooth.BluetoothDevice p0, android.media.midi.MidiManager.OnDeviceOpenedListener p1, android.os.Handler p2) {}
     public void openDevice(android.media.midi.MidiDeviceInfo p0, android.media.midi.MidiManager.OnDeviceOpenedListener p1, android.os.Handler p2) {}
     public void registerDeviceCallback(int p0, java.util.concurrent.Executor p1, android.media.midi.MidiManager.DeviceCallback p2) {}
     public void registerDeviceCallback(android.media.midi.MidiManager.DeviceCallback p0, android.os.Handler p1) {}
     public void unregisterDeviceCallback(android.media.midi.MidiManager.DeviceCallback p0) {}
+    MidiManager() { this((android.media.midi.IMidiManager) null); }
     public static class DeviceCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public DeviceCallback() {}

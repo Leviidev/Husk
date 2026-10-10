@@ -34,5 +34,6 @@ public final class ConversationAction implements android.os.Parcelable {
         public android.view.textclassifier.ConversationAction.Builder setConfidenceScore(float p0) { huskProps.put("ConfidenceScore", Float.valueOf(p0)); return this; }
         public android.view.textclassifier.ConversationAction.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
         public android.view.textclassifier.ConversationAction.Builder setTextReply(java.lang.CharSequence p0) { huskProps.put("TextReply", p0); return this; }
+        Builder() { this((java.lang.String) null); }
     }
 }

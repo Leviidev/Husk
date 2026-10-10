@@ -610,7 +610,9 @@ public class Intent implements Cloneable, android.os.Parcelable {
     public static boolean isAccessUriMode(int p0) { return false; }
     public static void maybeMarkAsMissingCreatorToken(java.lang.Object p0) {}
     public static java.lang.String normalizeMimeType(java.lang.String p0) { return null; }
+    public static android.content.Intent parseIntent(android.content.res.Resources p0, org.xmlpull.v1.XmlPullParser p1, android.util.AttributeSet p2) { return null; }
     public static void printIntentArgsHelp(java.io.PrintWriter p0, java.lang.String p1) {}
+    public static android.content.Intent restoreFromXml(org.xmlpull.v1.XmlPullParser p0) { return null; }
     public android.content.Intent addExtendedFlags(int p0) { return this; }
     public boolean canStripForHistory() { return false; }
     public void checkCreatorToken() {}
@@ -654,6 +656,7 @@ public class Intent implements Cloneable, android.os.Parcelable {
     public void removeExtendedFlags(int p0) {}
     public void removeLaunchSecurityProtection() {}
     public android.content.ComponentName resolveSystemService(android.content.pm.PackageManager p0, int p1) { return null; }
+    public void saveToXml(org.xmlpull.v1.XmlSerializer p0) {}
     public void setAllowFds(boolean p0) {}
     public void setCreatorToken(android.os.IBinder p0) { huskFill.put("CreatorToken", p0); }
     public void setDefusable(boolean p0) {}

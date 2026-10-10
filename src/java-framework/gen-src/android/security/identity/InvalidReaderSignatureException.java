@@ -6,4 +6,5 @@ public class InvalidReaderSignatureException extends android.security.identity.I
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public InvalidReaderSignatureException(java.lang.String p0) { super(p0); }
     public InvalidReaderSignatureException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    InvalidReaderSignatureException() { this((java.lang.String) null); }
 }

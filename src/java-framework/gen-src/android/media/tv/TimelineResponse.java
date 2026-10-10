@@ -13,4 +13,5 @@ public final class TimelineResponse extends android.media.tv.BroadcastInfoRespon
     public int getUnitsPerTick() { return (huskProps.get("UnitsPerTick") instanceof Integer ? (Integer) huskProps.get("UnitsPerTick") : 0); }
     public long getWallClock() { return (huskProps.get("WallClock") instanceof Long ? (Long) huskProps.get("WallClock") : 0L); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TimelineResponse() { this((int) 0, (int) 0, (int) 0, (java.lang.String) null, (int) 0, (int) 0, (long) 0L, (long) 0L); }
 }

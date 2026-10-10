@@ -10,4 +10,5 @@ public final class MediaCrypto {
     public void release() {}
     public boolean requiresSecureDecoderComponent(java.lang.String p0) { return false; }
     public void setMediaDrmSession(byte[] p0) { huskProps.put("MediaDrmSession", p0); }
+    MediaCrypto() { this((java.util.UUID) null, (byte[]) null); }
 }

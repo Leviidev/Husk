@@ -11,4 +11,5 @@ public class ContentQueryMap extends java.util.Observable {
     public android.content.ContentValues getValues(java.lang.String p0) { return null; }
     public void requery() {}
     public void setKeepUpdated(boolean p0) { huskProps.put("KeepUpdated", Boolean.valueOf(p0)); }
+    ContentQueryMap() { this((android.database.Cursor) null, (java.lang.String) null, (boolean) false, (android.os.Handler) null); }
 }

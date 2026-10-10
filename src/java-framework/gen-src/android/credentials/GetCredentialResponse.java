@@ -10,4 +10,5 @@ public final class GetCredentialResponse implements android.os.Parcelable {
     public android.view.autofill.AutofillId getAutofillId() { return (android.view.autofill.AutofillId) huskProps.get("AutofillId"); }
     public android.credentials.Credential getCredential() { return (android.credentials.Credential) huskProps.get("Credential"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GetCredentialResponse() { this((android.credentials.Credential) null); }
 }

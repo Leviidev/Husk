@@ -19,6 +19,8 @@ import java.io.File;
  * The methods here that are not abstract on Android are written in terms of the ones a wrapper overrides.
  */
 public abstract class Context {
+    /** @hide Android has it on every Context (libraries read it by reflection): the theme resource the context was given. */
+    public int getThemeResId() { return 0; }
     public static final int MODE_PRIVATE = 0, MODE_APPEND = 0x8000, MODE_WORLD_READABLE = 1, MODE_WORLD_WRITEABLE = 2, MODE_MULTI_PROCESS = 4,
         MODE_ENABLE_WRITE_AHEAD_LOGGING = 8, MODE_NO_LOCALIZED_COLLATORS = 16;
     public static final int BIND_AUTO_CREATE = 1, BIND_DEBUG_UNBIND = 2, BIND_NOT_FOREGROUND = 4, BIND_ABOVE_CLIENT = 8, BIND_IMPORTANT = 64,

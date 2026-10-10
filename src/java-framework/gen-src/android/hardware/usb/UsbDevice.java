@@ -35,5 +35,6 @@ public class UsbDevice implements android.os.Parcelable {
         public java.lang.String serialNumber;
         public Builder(java.lang.String p0, int p1, int p2, int p3, int p4, int p5, java.lang.String p6, java.lang.String p7, java.lang.String p8, android.hardware.usb.UsbConfiguration[] p9, java.lang.String p10, boolean p11, boolean p12, boolean p13, boolean p14, boolean p15) {}
         public android.hardware.usb.UsbDevice build(android.hardware.usb.IUsbSerialReader p0) { return new android.hardware.usb.UsbDevice(); }
+        Builder() { this((java.lang.String) null, (int) 0, (int) 0, (int) 0, (int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (android.hardware.usb.UsbConfiguration[]) null, (java.lang.String) null, (boolean) false, (boolean) false, (boolean) false, (boolean) false, (boolean) false); }
     }
 }

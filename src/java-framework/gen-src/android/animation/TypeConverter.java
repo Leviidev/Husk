@@ -6,4 +6,5 @@ public abstract class TypeConverter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public TypeConverter(java.lang.Class p0, java.lang.Class p1) {}
     public abstract java.lang.Object convert(java.lang.Object p0);
+    TypeConverter() { this((java.lang.Class) null, (java.lang.Class) null); }
 }

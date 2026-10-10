@@ -215,11 +215,12 @@ public final class CameraCharacteristics extends android.hardware.camera2.Camera
     protected java.lang.Object getProtected(android.hardware.camera2.CameraCharacteristics.Key p0) { return null; }
     public java.lang.Object getProtected(java.lang.Object p0) { return null; }
     public android.hardware.camera2.params.RecommendedStreamConfigurationMap getRecommendedStreamConfigurationMap(int p0) { return null; }
+    CameraCharacteristics() { this((android.hardware.camera2.impl.CameraMetadataNative) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.hardware.camera2.CameraCharacteristics p0) {}
-        public android.hardware.camera2.CameraCharacteristics build() { return null; }
+        public android.hardware.camera2.CameraCharacteristics build() { return new android.hardware.camera2.CameraCharacteristics(); }
         public android.hardware.camera2.CameraCharacteristics.Builder set(android.hardware.camera2.CameraCharacteristics.Key p0, java.lang.Object p1) { return this; }
         public android.hardware.camera2.CameraCharacteristics.Builder setAvailableCaptureRequestKeys(java.util.List p0) { huskProps.put("AvailableCaptureRequestKeys", p0); return this; }
         public android.hardware.camera2.CameraCharacteristics.Builder setAvailableCaptureResultKeys(java.util.List p0) { huskProps.put("AvailableCaptureResultKeys", p0); return this; }
@@ -235,5 +236,6 @@ public final class CameraCharacteristics extends android.hardware.camera2.Camera
         public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
         public android.hardware.camera2.impl.CameraMetadataNative.Key getNativeKey() { return (android.hardware.camera2.impl.CameraMetadataNative.Key) huskProps.get("NativeKey"); }
         public long getVendorId() { return (huskProps.get("VendorId") instanceof Long ? (Long) huskProps.get("VendorId") : 0L); }
+        Key() { this((java.lang.String) null, (android.hardware.camera2.utils.TypeReference) null); }
     }
 }

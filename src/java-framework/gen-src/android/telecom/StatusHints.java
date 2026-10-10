@@ -19,4 +19,5 @@ public final class StatusHints implements android.os.Parcelable {
     public android.content.ComponentName getPackageName() { return (android.content.ComponentName) huskProps.get("PackageName"); }
     public void setIcon(android.graphics.drawable.Icon p0) { huskProps.put("Icon", p0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    StatusHints() { this((android.graphics.drawable.Icon) null); }
 }

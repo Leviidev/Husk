@@ -16,4 +16,5 @@ public class AudioProfile implements android.os.Parcelable {
     public int getFormat() { return (huskProps.get("Format") instanceof Integer ? (Integer) huskProps.get("Format") : 0); }
     public int[] getSampleRates() { return (int[]) huskProps.get("SampleRates"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AudioProfile() { this((int) 0, (int[]) null, (int[]) null, (int[]) null, (int) 0); }
 }

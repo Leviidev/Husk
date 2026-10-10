@@ -13,4 +13,5 @@ public final class MediaCodecList {
     public java.lang.String findDecoderForFormat(android.media.MediaFormat p0) { return null; }
     public java.lang.String findEncoderForFormat(android.media.MediaFormat p0) { return null; }
     public android.media.MediaCodecInfo[] getCodecInfos() { return (android.media.MediaCodecInfo[]) huskProps.get("CodecInfos"); }
+    MediaCodecList() { this((int) 0); }
 }

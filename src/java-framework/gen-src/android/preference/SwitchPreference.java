@@ -15,4 +15,5 @@ public class SwitchPreference extends android.preference.TwoStatePreference {
     public void setSwitchTextOff(java.lang.CharSequence p0) { huskProps.put("SwitchTextOff", p0); }
     public void setSwitchTextOn(int p0) { huskProps.put("SwitchTextOn", Integer.valueOf(p0)); }
     public void setSwitchTextOn(java.lang.CharSequence p0) { huskProps.put("SwitchTextOn", p0); }
+    SwitchPreference() { this((android.content.Context) null); }
 }

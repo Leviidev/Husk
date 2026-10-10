@@ -16,4 +16,5 @@ public final class AdResponse implements android.os.Parcelable {
     public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
     public int getResponseType() { return (huskProps.get("ResponseType") instanceof Integer ? (Integer) huskProps.get("ResponseType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AdResponse() { this((int) 0, (int) 0, (long) 0L); }
 }

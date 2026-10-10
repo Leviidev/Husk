@@ -26,5 +26,6 @@ public final class TranslationContext implements android.os.Parcelable {
         public android.view.translation.TranslationContext build() { return new android.view.translation.TranslationContext(); }
         public android.view.translation.TranslationContext.Builder setActivityId(android.app.assist.ActivityId p0) { huskProps.put("ActivityId", p0); return this; }
         public android.view.translation.TranslationContext.Builder setTranslationFlags(int p0) { huskProps.put("TranslationFlags", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.view.translation.TranslationSpec) null, (android.view.translation.TranslationSpec) null); }
     }
 }

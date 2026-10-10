@@ -21,4 +21,5 @@ public final class TableRequest extends android.media.tv.BroadcastInfoRequest im
     public int getTableName() { return (huskProps.get("TableName") instanceof Integer ? (Integer) huskProps.get("TableName") : 0); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TableRequest() { this((int) 0, (int) 0, (int) 0, (int) 0, (int) 0); }
 }

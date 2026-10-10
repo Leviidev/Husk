@@ -7,4 +7,5 @@ public class RootElement extends android.sax.Element {
     public RootElement(java.lang.String p0) { super(); }
     public RootElement(java.lang.String p0, java.lang.String p1) { super(); }
     public org.xml.sax.ContentHandler getContentHandler() { return (org.xml.sax.ContentHandler) huskProps.get("ContentHandler"); }
+    RootElement() { this((java.lang.String) null); }
 }

@@ -13,4 +13,5 @@ public final class ChooserTarget implements android.os.Parcelable {
     public float getScore() { return (huskProps.get("Score") instanceof Float ? (Float) huskProps.get("Score") : 0f); }
     public java.lang.CharSequence getTitle() { return (java.lang.CharSequence) huskProps.get("Title"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ChooserTarget() { this((java.lang.CharSequence) null, (android.graphics.drawable.Icon) null, (float) 0f, (android.content.ComponentName) null, (android.os.Bundle) null); }
 }

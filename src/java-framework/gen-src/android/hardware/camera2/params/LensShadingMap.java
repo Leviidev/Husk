@@ -12,4 +12,5 @@ public final class LensShadingMap {
     public int getGainFactorCount() { return (huskProps.get("GainFactorCount") instanceof Integer ? (Integer) huskProps.get("GainFactorCount") : 0); }
     public android.hardware.camera2.params.RggbChannelVector getGainFactorVector(int p0, int p1) { return null; }
     public int getRowCount() { return (huskProps.get("RowCount") instanceof Integer ? (Integer) huskProps.get("RowCount") : 0); }
+    LensShadingMap() { this((float[]) null, (int) 0, (int) 0); }
 }

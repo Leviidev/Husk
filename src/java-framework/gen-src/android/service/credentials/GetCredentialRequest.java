@@ -10,4 +10,5 @@ public final class GetCredentialRequest implements android.os.Parcelable {
     public android.service.credentials.CallingAppInfo getCallingAppInfo() { return (android.service.credentials.CallingAppInfo) huskProps.get("CallingAppInfo"); }
     public java.util.List getCredentialOptions() { return (huskProps.get("CredentialOptions") != null ? (java.util.List) huskProps.get("CredentialOptions") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GetCredentialRequest() { this((android.service.credentials.CallingAppInfo) null, (java.util.List) null); }
 }

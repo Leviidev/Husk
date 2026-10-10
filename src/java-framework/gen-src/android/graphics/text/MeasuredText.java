@@ -27,5 +27,6 @@ public class MeasuredText {
         public android.graphics.text.MeasuredText.Builder setComputeHyphenation(int p0) { huskProps.put("ComputeHyphenation", Integer.valueOf(p0)); return this; }
         public android.graphics.text.MeasuredText.Builder setComputeHyphenation(boolean p0) { huskProps.put("ComputeHyphenation", Boolean.valueOf(p0)); return this; }
         public android.graphics.text.MeasuredText.Builder setComputeLayout(boolean p0) { huskProps.put("ComputeLayout", Boolean.valueOf(p0)); return this; }
+        Builder() { this((android.graphics.text.MeasuredText) null); }
     }
 }

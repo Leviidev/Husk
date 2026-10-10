@@ -43,7 +43,7 @@ public final class AudioPlaybackConfiguration implements android.os.Parcelable {
     public static final int PLAYER_UPID_INVALID = -1;
     public static android.media.AudioPlaybackConfiguration.PlayerDeathMonitor sPlayerDeathMonitor;
     public AudioPlaybackConfiguration(android.media.PlayerBase.PlayerIdCard p0, int p1, int p2, int p3) {}
-    public static android.media.AudioPlaybackConfiguration anonymizedCopy(android.media.AudioPlaybackConfiguration p0) { return null; }
+    public static android.media.AudioPlaybackConfiguration anonymizedCopy(android.media.AudioPlaybackConfiguration p0) { return new AudioPlaybackConfiguration(); }
     public static java.lang.String playerStateToString(int p0) { return null; }
     public static java.lang.String toLogFriendlyPlayerState(int p0) { return null; }
     public static java.lang.String toLogFriendlyPlayerType(int p0) { return null; }
@@ -72,12 +72,14 @@ public final class AudioPlaybackConfiguration implements android.os.Parcelable {
     public boolean isMuted() { return (huskProps.get("Muted") instanceof Boolean ? (Boolean) huskProps.get("Muted") : false); }
     public boolean isSpatialized() { return (huskProps.get("Spatialized") instanceof Boolean ? (Boolean) huskProps.get("Spatialized") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AudioPlaybackConfiguration() { this((android.media.PlayerBase.PlayerIdCard) null, (int) 0, (int) 0, (int) 0); }
     public static final class FormatInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
         public FormatInfo(boolean p0, int p1, int p2) {}
         public int describeContents() { return 0; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        FormatInfo() { this((boolean) false, (int) 0, (int) 0); }
     }
     public interface PlayerDeathMonitor {
         void playerDeath(int p0);

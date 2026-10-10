@@ -185,6 +185,7 @@ public class AssistStructure implements android.os.Parcelable {
         public int describeContents() { return 0; }
         public android.app.assist.AssistStructure.ViewNode getViewNode() { return (android.app.assist.AssistStructure.ViewNode) huskProps.get("ViewNode"); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        ViewNodeParcelable() { this((android.app.assist.AssistStructure.ViewNode) null); }
     }
     public static class WindowNode {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

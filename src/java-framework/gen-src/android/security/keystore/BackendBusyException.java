@@ -8,4 +8,5 @@ public class BackendBusyException extends java.security.ProviderException {
     public BackendBusyException(long p0, java.lang.String p1) { super(); }
     public BackendBusyException(long p0, java.lang.String p1, java.lang.Throwable p2) { super(); }
     public long getBackOffHintMillis() { return (huskProps.get("BackOffHintMillis") instanceof Long ? (Long) huskProps.get("BackOffHintMillis") : 0L); }
+    BackendBusyException() { this((long) 0L); }
 }

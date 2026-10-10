@@ -37,6 +37,7 @@ public class Keyboard {
     protected void setKeyWidth(int p0) { huskProps.put("KeyWidth", Integer.valueOf(p0)); }
     public boolean setShifted(boolean p0) { return false; }
     protected void setVerticalGap(int p0) { huskProps.put("VerticalGap", Integer.valueOf(p0)); }
+    Keyboard() { this((android.content.Context) null, (int) 0); }
     public static class Key {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int[] codes;
@@ -64,6 +65,7 @@ public class Keyboard {
         public void onPressed() {}
         public void onReleased(boolean p0) {}
         public int squaredDistanceFrom(int p0, int p1) { return 0; }
+        Key() { this((android.inputmethodservice.Keyboard.Row) null); }
     }
     public static class Row {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -75,5 +77,6 @@ public class Keyboard {
         public int verticalGap;
         public Row(android.content.res.Resources p0, android.inputmethodservice.Keyboard p1, android.content.res.XmlResourceParser p2) {}
         public Row(android.inputmethodservice.Keyboard p0) {}
+        Row() { this((android.inputmethodservice.Keyboard) null); }
     }
 }

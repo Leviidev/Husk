@@ -5,4 +5,5 @@ package android.app;
 public abstract class ForegroundServiceTypeException extends android.app.ServiceStartNotAllowedException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ForegroundServiceTypeException(java.lang.String p0) { super(); }
+    ForegroundServiceTypeException() { this((java.lang.String) null); }
 }

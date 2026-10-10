@@ -12,4 +12,5 @@ public final class PlaybackSession implements java.lang.AutoCloseable {
     public void reportPlaybackMetrics(android.media.metrics.PlaybackMetrics p0) {}
     public void reportPlaybackStateEvent(android.media.metrics.PlaybackStateEvent p0) {}
     public void reportTrackChangeEvent(android.media.metrics.TrackChangeEvent p0) {}
+    PlaybackSession() { this((java.lang.String) null, (android.media.metrics.MediaMetricsManager) null); }
 }

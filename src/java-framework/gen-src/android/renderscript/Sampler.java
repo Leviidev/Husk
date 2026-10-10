@@ -28,6 +28,7 @@ public class Sampler extends android.renderscript.BaseObj {
         public void setMinification(android.renderscript.Sampler.Value p0) { huskProps.put("Minification", p0); }
         public void setWrapS(android.renderscript.Sampler.Value p0) { huskProps.put("WrapS", p0); }
         public void setWrapT(android.renderscript.Sampler.Value p0) { huskProps.put("WrapT", p0); }
+        Builder() { this((android.renderscript.RenderScript) null); }
     }
     public enum Value {
         CLAMP, LINEAR, LINEAR_MIP_LINEAR, LINEAR_MIP_NEAREST, MIRRORED_REPEAT, NEAREST, WRAP;

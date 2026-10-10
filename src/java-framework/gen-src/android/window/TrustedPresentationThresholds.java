@@ -11,4 +11,5 @@ public final class TrustedPresentationThresholds implements android.os.Parcelabl
     public float getMinFractionRendered() { return (huskProps.get("MinFractionRendered") instanceof Float ? (Float) huskProps.get("MinFractionRendered") : 0f); }
     public int getStabilityRequirementMillis() { return (huskProps.get("StabilityRequirementMillis") instanceof Integer ? (Integer) huskProps.get("StabilityRequirementMillis") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TrustedPresentationThresholds() { this((float) 0f, (float) 0f, (int) 0); }
 }

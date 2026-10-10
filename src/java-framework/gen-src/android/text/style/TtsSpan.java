@@ -95,13 +95,15 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public void writeToParcelInternal(android.os.Parcel p0, int p1) {}
+    TtsSpan() { this((android.os.Parcel) null); }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0) {}
-        public android.text.style.TtsSpan build() { return null; }
+        public android.text.style.TtsSpan build() { return new android.text.style.TtsSpan(); }
         public android.text.style.TtsSpan.Builder setIntArgument(java.lang.String p0, int p1) { return this; }
         public android.text.style.TtsSpan.Builder setLongArgument(java.lang.String p0, long p1) { return this; }
         public android.text.style.TtsSpan.Builder setStringArgument(java.lang.String p0, java.lang.String p1) { return this; }
+        Builder() { this((java.lang.String) null); }
     }
     public static class CardinalBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -205,6 +207,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
         public android.text.style.TtsSpan.SemioticClassBuilder setCase(java.lang.String p0) { huskProps.put("Case", p0); return this; }
         public android.text.style.TtsSpan.SemioticClassBuilder setGender(java.lang.String p0) { huskProps.put("Gender", p0); return this; }
         public android.text.style.TtsSpan.SemioticClassBuilder setMultiplicity(java.lang.String p0) { huskProps.put("Multiplicity", p0); return this; }
+        SemioticClassBuilder() { this((java.lang.String) null); }
     }
     public static class TelephoneBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

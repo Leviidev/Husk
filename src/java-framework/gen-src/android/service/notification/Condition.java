@@ -35,9 +35,10 @@ public final class Condition implements android.os.Parcelable {
     public static java.lang.String relevanceToString(int p0) { return null; }
     public static java.lang.String sourceToString(int p0) { return null; }
     public static java.lang.String stateToString(int p0) { return null; }
-    public android.service.notification.Condition copy() { return this; }
+    public android.service.notification.Condition copy() { return new android.service.notification.Condition(); }
     public int describeContents() { return 0; }
     public void dumpDebug(android.util.proto.ProtoOutputStream p0, long p1) {}
     public void validate() {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Condition() { this((android.os.Parcel) null); }
 }

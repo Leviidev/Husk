@@ -16,4 +16,5 @@ public final class MediaDescrambler implements java.lang.AutoCloseable {
     public boolean isAidlHal() { return (huskProps.get("AidlHal") instanceof Boolean ? (Boolean) huskProps.get("AidlHal") : false); }
     public boolean requiresSecureDecoderComponent(java.lang.String p0) { return false; }
     public void setMediaCasSession(android.media.MediaCas.Session p0) { huskProps.put("MediaCasSession", p0); }
+    MediaDescrambler() { this((int) 0); }
 }

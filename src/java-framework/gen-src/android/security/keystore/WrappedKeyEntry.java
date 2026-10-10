@@ -9,4 +9,5 @@ public class WrappedKeyEntry implements java.security.KeyStore.Entry {
     public java.lang.String getTransformation() { return (java.lang.String) huskProps.get("Transformation"); }
     public byte[] getWrappedKeyBytes() { return (byte[]) huskProps.get("WrappedKeyBytes"); }
     public java.lang.String getWrappingKeyAlias() { return (java.lang.String) huskProps.get("WrappingKeyAlias"); }
+    WrappedKeyEntry() { this((byte[]) null, (java.lang.String) null, (java.lang.String) null, (java.security.spec.AlgorithmParameterSpec) null); }
 }

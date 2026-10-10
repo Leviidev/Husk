@@ -9,4 +9,5 @@ public final class PromptContentItemBulletedText implements android.hardware.bio
     public int describeContents() { return 0; }
     public java.lang.String getText() { return (java.lang.String) huskProps.get("Text"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PromptContentItemBulletedText() { this((java.lang.String) null); }
 }

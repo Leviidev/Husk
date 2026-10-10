@@ -8,17 +8,20 @@ public final class TimedText {
     public TimedText(java.lang.String p0, android.graphics.Rect p1) {}
     public android.graphics.Rect getBounds() { return (android.graphics.Rect) huskProps.get("Bounds"); }
     public java.lang.String getText() { return (java.lang.String) huskProps.get("Text"); }
+    TimedText() { this((android.os.Parcel) null); }
     public static final class CharPos {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int endChar;
         public int startChar;
         public CharPos(int p0, int p1) {}
+        CharPos() { this((int) 0, (int) 0); }
     }
     public static final class Font {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int ID;
         public java.lang.String name;
         public Font(int p0, java.lang.String p1) {}
+        Font() { this((int) 0, (java.lang.String) null); }
     }
     public static final class HyperText {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -27,12 +30,14 @@ public final class TimedText {
         public int endChar;
         public int startChar;
         public HyperText(int p0, int p1, java.lang.String p2, java.lang.String p3) {}
+        HyperText() { this((int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null); }
     }
     public static final class Justification {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int horizontalJustification;
         public int verticalJustification;
         public Justification(int p0, int p1) {}
+        Justification() { this((int) 0, (int) 0); }
     }
     public static final class Karaoke {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -41,6 +46,7 @@ public final class TimedText {
         public int startChar;
         public int startTimeMs;
         public Karaoke(int p0, int p1, int p2, int p3) {}
+        Karaoke() { this((int) 0, (int) 0, (int) 0, (int) 0); }
     }
     public static final class Style {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -53,5 +59,6 @@ public final class TimedText {
         public boolean isUnderlined;
         public int startChar;
         public Style(int p0, int p1, int p2, boolean p3, boolean p4, boolean p5, int p6, int p7) {}
+        Style() { this((int) 0, (int) 0, (int) 0, (boolean) false, (boolean) false, (boolean) false, (int) 0, (int) 0); }
     }
 }

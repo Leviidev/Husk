@@ -21,4 +21,5 @@ public final class TemperatureControlTemplate extends android.service.controls.t
     public int getModes() { return (huskProps.get("Modes") instanceof Integer ? (Integer) huskProps.get("Modes") : 0); }
     public android.service.controls.templates.ControlTemplate getTemplate() { return (android.service.controls.templates.ControlTemplate) huskProps.get("Template"); }
     public int getTemplateType() { return (huskProps.get("TemplateType") instanceof Integer ? (Integer) huskProps.get("TemplateType") : 0); }
+    TemperatureControlTemplate() { this((java.lang.String) null, (android.service.controls.templates.ControlTemplate) null, (int) 0, (int) 0, (int) 0); }
 }

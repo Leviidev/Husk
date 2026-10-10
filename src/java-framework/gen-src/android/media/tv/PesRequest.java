@@ -10,4 +10,5 @@ public final class PesRequest extends android.media.tv.BroadcastInfoRequest impl
     public int getStreamId() { return (huskProps.get("StreamId") instanceof Integer ? (Integer) huskProps.get("StreamId") : 0); }
     public int getTsPid() { return (huskProps.get("TsPid") instanceof Integer ? (Integer) huskProps.get("TsPid") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PesRequest() { this((int) 0, (int) 0, (int) 0, (int) 0); }
 }

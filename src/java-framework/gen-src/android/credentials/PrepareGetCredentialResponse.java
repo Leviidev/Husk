@@ -9,6 +9,7 @@ public final class PrepareGetCredentialResponse {
     public boolean hasAuthenticationResults() { return false; }
     public boolean hasCredentialResults(java.lang.String p0) { return false; }
     public boolean hasRemoteResults() { return false; }
+    PrepareGetCredentialResponse() { this((android.credentials.PrepareGetCredentialResponseInternal) null, (android.credentials.CredentialManager.GetCredentialTransportPendingUseCase) null); }
     public interface GetPendingCredentialInternalCallback {
         void onError(java.lang.String p0, java.lang.String p1);
         void onPendingIntent(android.app.PendingIntent p0);

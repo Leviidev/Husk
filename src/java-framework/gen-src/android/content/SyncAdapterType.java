@@ -11,7 +11,7 @@ public class SyncAdapterType implements android.os.Parcelable {
     public SyncAdapterType(android.os.Parcel p0) {}
     public SyncAdapterType(java.lang.String p0, java.lang.String p1, boolean p2, boolean p3) {}
     public SyncAdapterType(java.lang.String p0, java.lang.String p1, boolean p2, boolean p3, boolean p4, boolean p5, java.lang.String p6, java.lang.String p7) {}
-    public static android.content.SyncAdapterType newKey(java.lang.String p0, java.lang.String p1) { return null; }
+    public static android.content.SyncAdapterType newKey(java.lang.String p0, java.lang.String p1) { return new SyncAdapterType(); }
     public boolean allowParallelSyncs() { return false; }
     public int describeContents() { return 0; }
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
@@ -20,4 +20,5 @@ public class SyncAdapterType implements android.os.Parcelable {
     public boolean isUserVisible() { return (huskProps.get("UserVisible") instanceof Boolean ? (Boolean) huskProps.get("UserVisible") : false); }
     public boolean supportsUploading() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SyncAdapterType() { this((android.os.Parcel) null); }
 }

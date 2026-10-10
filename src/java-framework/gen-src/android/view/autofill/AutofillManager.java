@@ -134,6 +134,7 @@ public final class AutofillManager {
     public boolean showAutofillDialog(android.view.View p0) { return false; }
     public boolean showAutofillDialog(android.view.View p0, int p1) { return false; }
     public void unregisterCallback(android.view.autofill.AutofillManager.AutofillCallback p0) {}
+    AutofillManager() { this((android.content.Context) null, (android.view.autofill.IAutoFillManager) null); }
     public static abstract class AutofillCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int EVENT_INPUT_HIDDEN = 2;

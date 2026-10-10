@@ -16,4 +16,5 @@ public final class VpnProfileState implements android.os.Parcelable {
     public boolean isAlwaysOn() { return (huskProps.get("AlwaysOn") instanceof Boolean ? (Boolean) huskProps.get("AlwaysOn") : false); }
     public boolean isLockdownEnabled() { return (huskProps.get("LockdownEnabled") instanceof Boolean ? (Boolean) huskProps.get("LockdownEnabled") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VpnProfileState() { this((int) 0, (java.lang.String) null, (boolean) false, (boolean) false); }
 }

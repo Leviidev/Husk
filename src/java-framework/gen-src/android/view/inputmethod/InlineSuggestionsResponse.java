@@ -6,8 +6,9 @@ public final class InlineSuggestionsResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public InlineSuggestionsResponse(java.util.List p0) {}
-    public static android.view.inputmethod.InlineSuggestionsResponse newInlineSuggestionsResponse(java.util.List p0) { return null; }
+    public static android.view.inputmethod.InlineSuggestionsResponse newInlineSuggestionsResponse(java.util.List p0) { return new InlineSuggestionsResponse(); }
     public int describeContents() { return 0; }
     public java.util.List getInlineSuggestions() { return (huskProps.get("InlineSuggestions") != null ? (java.util.List) huskProps.get("InlineSuggestions") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    InlineSuggestionsResponse() { this((java.util.List) null); }
 }

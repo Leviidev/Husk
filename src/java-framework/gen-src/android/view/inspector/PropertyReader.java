@@ -23,5 +23,6 @@ public interface PropertyReader {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public PropertyTypeMismatchException(int p0, java.lang.String p1, java.lang.String p2) { super(); }
         public PropertyTypeMismatchException(int p0, java.lang.String p1, java.lang.String p2, java.lang.String p3) { super(); }
+        PropertyTypeMismatchException() { this((int) 0, (java.lang.String) null, (java.lang.String) null); }
     }
 }

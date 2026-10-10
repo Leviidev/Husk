@@ -23,4 +23,5 @@ public final class RouteSelectionDescriptor implements android.os.Parcelable {
     public java.util.List getSliceInfo() { return (huskProps.get("SliceInfo") != null ? (java.util.List) huskProps.get("SliceInfo") : new java.util.ArrayList()); }
     public int getSscMode() { return (huskProps.get("SscMode") instanceof Integer ? (Integer) huskProps.get("SscMode") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RouteSelectionDescriptor() { this((int) 0, (int) 0, (int) 0, (java.util.List) null, (java.util.List) null); }
 }

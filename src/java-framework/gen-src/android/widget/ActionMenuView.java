@@ -33,6 +33,7 @@ public class ActionMenuView extends android.widget.LinearLayout {
     public void setPopupTheme(int p0) { huskProps.put("PopupTheme", Integer.valueOf(p0)); }
     public void setPresenter(android.widget.ActionMenuPresenter p0) { huskProps.put("Presenter", p0); }
     public boolean showOverflowMenu() { return false; }
+    ActionMenuView() { this((android.content.Context) null); }
     public interface ActionMenuChildView {
         boolean needsDividerAfter();
         boolean needsDividerBefore();
@@ -51,6 +52,7 @@ public class ActionMenuView extends android.widget.LinearLayout {
         public LayoutParams(android.view.ViewGroup.LayoutParams p0) { super(p0); }
         public LayoutParams(android.widget.ActionMenuView.LayoutParams p0) { super((android.view.ViewGroup.MarginLayoutParams) null); }
         protected void encodeProperties(android.view.ViewHierarchyEncoder p0) {}
+        LayoutParams() { this((android.view.ViewGroup.LayoutParams) null); }
     }
     public interface OnMenuItemClickListener {
         boolean onMenuItemClick(android.view.MenuItem p0);

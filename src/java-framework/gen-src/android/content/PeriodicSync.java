@@ -16,4 +16,5 @@ public class PeriodicSync implements android.os.Parcelable {
     public static boolean syncExtrasEquals(android.os.Bundle p0, android.os.Bundle p1) { return false; }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PeriodicSync() { this((android.content.PeriodicSync) null); }
 }

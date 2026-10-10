@@ -38,5 +38,6 @@ public final class TextBoundsInfo implements android.os.Parcelable {
         public android.view.inputmethod.TextBoundsInfo.Builder setMatrix(android.graphics.Matrix p0) { huskProps.put("Matrix", p0); return this; }
         public android.view.inputmethod.TextBoundsInfo.Builder setStartAndEnd(int p0, int p1) { return this; }
         public android.view.inputmethod.TextBoundsInfo.Builder setWordSegmentFinder(android.text.SegmentFinder p0) { huskProps.put("WordSegmentFinder", p0); return this; }
+        Builder() { this((int) 0, (int) 0); }
     }
 }

@@ -6,4 +6,5 @@ public class NoAuthenticationKeyAvailableException extends android.security.iden
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public NoAuthenticationKeyAvailableException(java.lang.String p0) { super(p0); }
     public NoAuthenticationKeyAvailableException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    NoAuthenticationKeyAvailableException() { this((java.lang.String) null); }
 }

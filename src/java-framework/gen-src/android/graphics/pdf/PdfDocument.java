@@ -26,6 +26,7 @@ public class PdfDocument {
             public Builder(int p0, int p1, int p2) {}
             public android.graphics.pdf.PdfDocument.PageInfo create() { return new android.graphics.pdf.PdfDocument.PageInfo(); }
             public android.graphics.pdf.PdfDocument.PageInfo.Builder setContentRect(android.graphics.Rect p0) { huskProps.put("ContentRect", p0); return this; }
+            Builder() { this((int) 0, (int) 0, (int) 0); }
         }
     }
 }

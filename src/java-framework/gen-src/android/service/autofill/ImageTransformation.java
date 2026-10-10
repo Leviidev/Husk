@@ -16,5 +16,6 @@ public abstract class ImageTransformation extends android.service.autofill.Inter
         public android.service.autofill.ImageTransformation.Builder addOption(java.util.regex.Pattern p0, int p1) { return this; }
         public android.service.autofill.ImageTransformation.Builder addOption(java.util.regex.Pattern p0, int p1, java.lang.CharSequence p2) { return this; }
         public android.service.autofill.ImageTransformation build() { return null; }
+        Builder() { this((android.view.autofill.AutofillId) null, (java.util.regex.Pattern) null, (int) 0); }
     }
 }

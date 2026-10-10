@@ -19,10 +19,11 @@ public class FabricatedOverlay {
     public void setResourceValue(java.lang.String p0, android.content.res.AssetFileDescriptor p1, java.lang.String p2) {}
     public void setResourceValue(java.lang.String p0, android.os.ParcelFileDescriptor p1, java.lang.String p2) {}
     public void setTargetOverlayable(java.lang.String p0) { huskProps.put("TargetOverlayable", p0); }
+    FabricatedOverlay() { this((android.os.FabricatedOverlayInternal) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, java.lang.String p1, java.lang.String p2) {}
-        public android.content.om.FabricatedOverlay build() { return null; }
+        public android.content.om.FabricatedOverlay build() { return new android.content.om.FabricatedOverlay(); }
         public android.content.om.FabricatedOverlay.Builder setResourceValue(java.lang.String p0, int p1, int p2) { return this; }
         public android.content.om.FabricatedOverlay.Builder setResourceValue(java.lang.String p0, int p1, int p2, java.lang.String p3) { return this; }
         public android.content.om.FabricatedOverlay.Builder setResourceValue(java.lang.String p0, int p1, java.lang.String p2) { return this; }
@@ -30,5 +31,6 @@ public class FabricatedOverlay {
         public android.content.om.FabricatedOverlay.Builder setResourceValue(java.lang.String p0, android.content.res.AssetFileDescriptor p1, java.lang.String p2) { return this; }
         public android.content.om.FabricatedOverlay.Builder setResourceValue(java.lang.String p0, android.os.ParcelFileDescriptor p1, java.lang.String p2) { return this; }
         public android.content.om.FabricatedOverlay.Builder setTargetOverlayable(java.lang.String p0) { huskProps.put("TargetOverlayable", p0); return this; }
+        Builder() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
     }
 }

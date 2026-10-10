@@ -78,17 +78,20 @@ public abstract class CarrierMessagingService extends android.app.Service {
         public SendMmsResult(int p0, byte[] p1) {}
         public byte[] getSendConfPdu() { return (byte[]) huskProps.get("SendConfPdu"); }
         public int getSendStatus() { return (huskProps.get("SendStatus") instanceof Integer ? (Integer) huskProps.get("SendStatus") : 0); }
+        SendMmsResult() { this((int) 0, (byte[]) null); }
     }
     public static final class SendMultipartSmsResult {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public SendMultipartSmsResult(int p0, int[] p1) {}
         public int[] getMessageRefs() { return (int[]) huskProps.get("MessageRefs"); }
         public int getSendStatus() { return (huskProps.get("SendStatus") instanceof Integer ? (Integer) huskProps.get("SendStatus") : 0); }
+        SendMultipartSmsResult() { this((int) 0, (int[]) null); }
     }
     public static final class SendSmsResult {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public SendSmsResult(int p0, int p1) {}
         public int getMessageRef() { return (huskProps.get("MessageRef") instanceof Integer ? (Integer) huskProps.get("MessageRef") : 0); }
         public int getSendStatus() { return (huskProps.get("SendStatus") instanceof Integer ? (Integer) huskProps.get("SendStatus") : 0); }
+        SendSmsResult() { this((int) 0, (int) 0); }
     }
 }

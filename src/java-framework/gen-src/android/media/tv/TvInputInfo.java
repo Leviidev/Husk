@@ -60,6 +60,7 @@ public final class TvInputInfo implements android.os.Parcelable {
         public android.media.tv.TvInputInfo.Builder setParentId(java.lang.String p0) { huskProps.put("ParentId", p0); return this; }
         public android.media.tv.TvInputInfo.Builder setTunerCount(int p0) { huskProps.put("TunerCount", Integer.valueOf(p0)); return this; }
         public android.media.tv.TvInputInfo.Builder setTvInputHardwareInfo(android.media.tv.TvInputHardwareInfo p0) { huskProps.put("TvInputHardwareInfo", p0); return this; }
+        Builder() { this((android.content.Context) null, (android.content.ComponentName) null); }
     }
     public static final class TvInputSettings {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

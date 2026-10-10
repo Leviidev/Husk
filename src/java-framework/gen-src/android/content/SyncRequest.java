@@ -16,10 +16,11 @@ public class SyncRequest implements android.os.Parcelable {
     public boolean isPeriodic() { return (huskProps.get("Periodic") instanceof Boolean ? (Boolean) huskProps.get("Periodic") : false); }
     public boolean isScheduledAsExpeditedJob() { return (huskProps.get("ScheduledAsExpeditedJob") instanceof Boolean ? (Boolean) huskProps.get("ScheduledAsExpeditedJob") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SyncRequest() { this((android.content.SyncRequest.Builder) null); }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.content.SyncRequest build() { return null; }
+        public android.content.SyncRequest build() { return new android.content.SyncRequest(); }
         public android.content.SyncRequest.Builder setDisallowMetered(boolean p0) { huskProps.put("DisallowMetered", Boolean.valueOf(p0)); return this; }
         public android.content.SyncRequest.Builder setExpedited(boolean p0) { huskProps.put("Expedited", Boolean.valueOf(p0)); return this; }
         public android.content.SyncRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }

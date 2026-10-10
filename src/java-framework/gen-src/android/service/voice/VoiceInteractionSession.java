@@ -74,6 +74,7 @@ public class VoiceInteractionSession implements android.view.KeyEvent.Callback, 
     public void startAssistantActivity(android.content.Intent p0, android.os.Bundle p1) {}
     public void startVoiceActivity(android.content.Intent p0) {}
     public void unregisterVisibleActivityCallback(android.service.voice.VoiceInteractionSession.VisibleActivityCallback p0) {}
+    VoiceInteractionSession() { this((android.content.Context) null); }
     public static final class AbortVoiceRequest extends android.service.voice.VoiceInteractionSession.Request {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public java.lang.CharSequence getMessage() { return (java.lang.CharSequence) huskProps.get("Message"); }

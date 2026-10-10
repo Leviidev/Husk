@@ -124,6 +124,7 @@ public final class CaptureRequest extends android.hardware.camera2.CameraMetadat
         public void setPartOfCHSRequestList(boolean p0) { huskProps.put("PartOfCHSRequestList", Boolean.valueOf(p0)); }
         public android.hardware.camera2.CaptureRequest.Builder setPhysicalCameraKey(android.hardware.camera2.CaptureRequest.Key p0, java.lang.Object p1, java.lang.String p2) { return this; }
         public void setTag(java.lang.Object p0) { huskProps.put("Tag", p0); }
+        Builder() { this((android.hardware.camera2.impl.CameraMetadataNative) null, (boolean) false, (int) 0, (java.lang.String) null, (java.util.Set) null); }
     }
     public static final class Key {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -133,5 +134,6 @@ public final class CaptureRequest extends android.hardware.camera2.CameraMetadat
         public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
         public android.hardware.camera2.impl.CameraMetadataNative.Key getNativeKey() { return (android.hardware.camera2.impl.CameraMetadataNative.Key) huskProps.get("NativeKey"); }
         public long getVendorId() { return (huskProps.get("VendorId") instanceof Long ? (Long) huskProps.get("VendorId") : 0L); }
+        Key() { this((java.lang.String) null, (android.hardware.camera2.utils.TypeReference) null); }
     }
 }

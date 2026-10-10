@@ -12,6 +12,7 @@ public class ShareActionProvider extends android.view.ActionProvider {
     public void setOnShareTargetSelectedListener(android.widget.ShareActionProvider.OnShareTargetSelectedListener p0) { huskProps.put("OnShareTargetSelectedListener", p0); }
     public void setShareHistoryFileName(java.lang.String p0) { huskProps.put("ShareHistoryFileName", p0); }
     public void setShareIntent(android.content.Intent p0) { huskProps.put("ShareIntent", p0); }
+    ShareActionProvider() { this((android.content.Context) null); }
     public interface OnShareTargetSelectedListener {
         boolean onShareTargetSelected(android.widget.ShareActionProvider p0, android.content.Intent p1);
     }

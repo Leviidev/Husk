@@ -19,4 +19,5 @@ public final class MeteringRectangle {
     public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
     public int getX() { return (huskProps.get("X") instanceof Integer ? (Integer) huskProps.get("X") : 0); }
     public int getY() { return (huskProps.get("Y") instanceof Integer ? (Integer) huskProps.get("Y") : 0); }
+    MeteringRectangle() { this((android.graphics.Rect) null, (int) 0); }
 }

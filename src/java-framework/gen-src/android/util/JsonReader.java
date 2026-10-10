@@ -22,4 +22,5 @@ public final class JsonReader implements java.io.Closeable {
     public android.util.JsonToken peek() { return null; }
     public void setLenient(boolean p0) { huskProps.put("Lenient", Boolean.valueOf(p0)); }
     public void skipValue() {}
+    JsonReader() { this((java.io.Reader) null); }
 }

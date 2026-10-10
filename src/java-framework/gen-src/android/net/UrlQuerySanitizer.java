@@ -63,12 +63,14 @@ public class UrlQuerySanitizer {
         public static final int URL_LEGAL = 404;
         public IllegalCharacterValueSanitizer(int p0) {}
         public java.lang.String sanitize(java.lang.String p0) { return null; }
+        IllegalCharacterValueSanitizer() { this((int) 0); }
     }
     public static class ParameterValuePair {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public java.lang.String mParameter;
         public java.lang.String mValue;
         public ParameterValuePair(android.net.UrlQuerySanitizer p0, java.lang.String p1, java.lang.String p2) {}
+        ParameterValuePair() { this((android.net.UrlQuerySanitizer) null, (java.lang.String) null, (java.lang.String) null); }
     }
     public interface ValueSanitizer {
         java.lang.String sanitize(java.lang.String p0);

@@ -9,4 +9,5 @@ public class DigitalClock extends android.widget.TextView {
     public java.lang.CharSequence getAccessibilityClassName() { return (java.lang.CharSequence) huskProps.get("AccessibilityClassName"); }
     public void onAttachedToWindow() {}
     public void onDetachedFromWindow() {}
+    DigitalClock() { this((android.content.Context) null); }
 }

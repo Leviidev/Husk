@@ -11,4 +11,5 @@ public class GrammaticalInflectionManager {
     public int peekSystemGrammaticalGenderByUserId(int p0) { return 0; }
     public void setRequestedApplicationGrammaticalGender(int p0) { huskProps.put("RequestedApplicationGrammaticalGender", Integer.valueOf(p0)); }
     public void setSystemWideGrammaticalGender(int p0) { huskProps.put("SystemWideGrammaticalGender", Integer.valueOf(p0)); }
+    GrammaticalInflectionManager() { this((android.content.Context) null, (android.app.IGrammaticalInflectionManager) null); }
 }

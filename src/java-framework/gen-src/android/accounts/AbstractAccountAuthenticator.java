@@ -21,4 +21,5 @@ public abstract class AbstractAccountAuthenticator {
     public android.os.Bundle startAddAccountSession(android.accounts.AccountAuthenticatorResponse p0, java.lang.String p1, java.lang.String p2, java.lang.String[] p3, android.os.Bundle p4) { return null; }
     public android.os.Bundle startUpdateCredentialsSession(android.accounts.AccountAuthenticatorResponse p0, android.accounts.Account p1, java.lang.String p2, android.os.Bundle p3) { return null; }
     public abstract android.os.Bundle updateCredentials(android.accounts.AccountAuthenticatorResponse p0, android.accounts.Account p1, java.lang.String p2, android.os.Bundle p3);
+    AbstractAccountAuthenticator() { this((android.content.Context) null); }
 }

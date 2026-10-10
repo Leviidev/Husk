@@ -22,4 +22,5 @@ public final class AdRequest implements android.os.Parcelable {
     public long getStopTimeMillis() { return (huskProps.get("StopTimeMillis") instanceof Long ? (Long) huskProps.get("StopTimeMillis") : 0L); }
     public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AdRequest() { this((int) 0, (int) 0, (android.net.Uri) null, (long) 0L, (long) 0L, (long) 0L, (android.os.Bundle) null); }
 }

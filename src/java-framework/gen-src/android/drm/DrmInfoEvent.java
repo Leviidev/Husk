@@ -12,4 +12,5 @@ public class DrmInfoEvent extends android.drm.DrmEvent {
     public static final int TYPE_WAIT_FOR_RIGHTS = 4;
     public DrmInfoEvent(int p0, int p1, java.lang.String p2) { super(p0, p1, p2); }
     public DrmInfoEvent(int p0, int p1, java.lang.String p2, java.util.HashMap p3) { super(p0, p1, p2, p3); }
+    DrmInfoEvent() { this((int) 0, (int) 0, (java.lang.String) null); }
 }

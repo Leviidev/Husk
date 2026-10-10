@@ -12,4 +12,5 @@ public abstract class OrientationListener implements android.hardware.SensorList
     public void onAccuracyChanged(int p0, int p1) {}
     public abstract void onOrientationChanged(int p0);
     public void onSensorChanged(int p0, float[] p1) {}
+    OrientationListener() { this((android.content.Context) null); }
 }

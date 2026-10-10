@@ -11,4 +11,5 @@ public final class DataShareRequest implements android.os.Parcelable {
     public java.lang.String getMimeType() { return (java.lang.String) huskProps.get("MimeType"); }
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DataShareRequest() { this((android.content.LocusId) null, (java.lang.String) null); }
 }

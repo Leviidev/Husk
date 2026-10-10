@@ -33,5 +33,6 @@ public class DropBoxManager {
         public java.lang.String getText(int p0) { return null; }
         public long getTimeMillis() { return (huskProps.get("TimeMillis") instanceof Long ? (Long) huskProps.get("TimeMillis") : 0L); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        Entry() { this((java.lang.String) null, (long) 0L); }
     }
 }

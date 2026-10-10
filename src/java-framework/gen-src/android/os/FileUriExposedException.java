@@ -5,4 +5,5 @@ package android.os;
 public class FileUriExposedException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public FileUriExposedException(java.lang.String p0) { super(); }
+    FileUriExposedException() { this((java.lang.String) null); }
 }

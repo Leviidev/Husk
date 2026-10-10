@@ -15,12 +15,15 @@ public final class CallAudioState implements android.os.Parcelable {
     public CallAudioState(android.telecom.AudioState p0) {}
     public CallAudioState(android.telecom.CallAudioState p0) {}
     public CallAudioState(boolean p0, int p1, int p2) {}
+    public CallAudioState(boolean p0, int p1, int p2, android.bluetooth.BluetoothDevice p3, java.util.Collection p4) {}
     public static java.lang.String audioRouteToString(int p0) { return null; }
     public int describeContents() { return 0; }
+    public android.bluetooth.BluetoothDevice getActiveBluetoothDevice() { return (android.bluetooth.BluetoothDevice) huskProps.get("ActiveBluetoothDevice"); }
     public int getRawSupportedRouteMask() { return (huskProps.get("RawSupportedRouteMask") instanceof Integer ? (Integer) huskProps.get("RawSupportedRouteMask") : 0); }
     public int getRoute() { return (huskProps.get("Route") instanceof Integer ? (Integer) huskProps.get("Route") : 0); }
     public java.util.Collection getSupportedBluetoothDevices() { return (huskProps.get("SupportedBluetoothDevices") != null ? (java.util.Collection) huskProps.get("SupportedBluetoothDevices") : new java.util.ArrayList()); }
     public int getSupportedRouteMask() { return (huskProps.get("SupportedRouteMask") instanceof Integer ? (Integer) huskProps.get("SupportedRouteMask") : 0); }
     public boolean isMuted() { return (huskProps.get("Muted") instanceof Boolean ? (Boolean) huskProps.get("Muted") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CallAudioState() { this((android.telecom.AudioState) null); }
 }

@@ -50,11 +50,12 @@ public final class PlaybackMetrics implements android.os.Parcelable {
     public int getVideoFramesDropped() { return (huskProps.get("VideoFramesDropped") instanceof Integer ? (Integer) huskProps.get("VideoFramesDropped") : 0); }
     public int getVideoFramesPlayed() { return (huskProps.get("VideoFramesPlayed") instanceof Integer ? (Integer) huskProps.get("VideoFramesPlayed") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PlaybackMetrics() { this((long) 0L, (int) 0, (int) 0, (int) 0, (int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (long[]) null, (int) 0, (int) 0, (int) 0, (long) 0L, (long) 0L, (long) 0L, (byte[]) null, (android.os.Bundle) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.media.metrics.PlaybackMetrics.Builder addExperimentId(long p0) { return this; }
-        public android.media.metrics.PlaybackMetrics build() { return null; }
+        public android.media.metrics.PlaybackMetrics build() { return new android.media.metrics.PlaybackMetrics(); }
         public android.media.metrics.PlaybackMetrics.Builder setAudioUnderrunCount(int p0) { huskProps.put("AudioUnderrunCount", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackMetrics.Builder setContentType(int p0) { huskProps.put("ContentType", Integer.valueOf(p0)); return this; }
         public android.media.metrics.PlaybackMetrics.Builder setDrmSessionId(byte[] p0) { huskProps.put("DrmSessionId", p0); return this; }

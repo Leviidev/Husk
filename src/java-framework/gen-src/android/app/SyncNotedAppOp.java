@@ -14,4 +14,5 @@ public final class SyncNotedAppOp implements android.os.Parcelable {
     public int getOpMode() { return (huskProps.get("OpMode") instanceof Integer ? (Integer) huskProps.get("OpMode") : 0); }
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SyncNotedAppOp() { this((int) 0, (java.lang.String) null); }
 }

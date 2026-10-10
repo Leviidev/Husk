@@ -39,6 +39,7 @@ public final class TvAdManager {
     public void registerCallback(java.util.concurrent.Executor p0, android.media.tv.ad.TvAdManager.TvAdServiceCallback p1) {}
     public void sendAppLinkCommand(java.lang.String p0, android.os.Bundle p1) {}
     public void unregisterCallback(android.media.tv.ad.TvAdManager.TvAdServiceCallback p0) {}
+    TvAdManager() { this((android.media.tv.ad.ITvAdManager) null, (int) 0); }
     public static abstract class Session {
         protected Session() {}
     }

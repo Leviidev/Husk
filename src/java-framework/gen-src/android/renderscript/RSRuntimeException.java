@@ -5,4 +5,5 @@ package android.renderscript;
 public class RSRuntimeException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public RSRuntimeException(java.lang.String p0) { super(); }
+    RSRuntimeException() { this((java.lang.String) null); }
 }

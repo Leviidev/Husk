@@ -11,4 +11,5 @@ public final class CredentialDescription implements android.os.Parcelable {
     public java.util.Set getSupportedElementKeys() { return (huskProps.get("SupportedElementKeys") != null ? (java.util.Set) huskProps.get("SupportedElementKeys") : new java.util.HashSet()); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CredentialDescription() { this((java.lang.String) null, (java.util.Set) null, (java.util.List) null); }
 }

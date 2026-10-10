@@ -13,11 +13,13 @@ public final class ViewTranslationRequest implements android.os.Parcelable {
     public java.util.Set getKeys() { return (huskProps.get("Keys") != null ? (java.util.Set) huskProps.get("Keys") : new java.util.HashSet()); }
     public android.view.translation.TranslationRequestValue getValue(java.lang.String p0) { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ViewTranslationRequest() { this((android.view.autofill.AutofillId) null, (java.util.Map) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.autofill.AutofillId p0) {}
         public Builder(android.view.autofill.AutofillId p0, long p1) {}
-        public android.view.translation.ViewTranslationRequest build() { return null; }
+        public android.view.translation.ViewTranslationRequest build() { return new android.view.translation.ViewTranslationRequest(); }
         public android.view.translation.ViewTranslationRequest.Builder setValue(java.lang.String p0, android.view.translation.TranslationRequestValue p1) { return this; }
+        Builder() { this((android.view.autofill.AutofillId) null); }
     }
 }

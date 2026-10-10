@@ -19,4 +19,5 @@ public final class TranslationCapability implements android.os.Parcelable {
     public android.view.translation.TranslationSpec getTargetSpec() { return (android.view.translation.TranslationSpec) huskProps.get("TargetSpec"); }
     public boolean isUiTranslationEnabled() { return (huskProps.get("UiTranslationEnabled") instanceof Boolean ? (Boolean) huskProps.get("UiTranslationEnabled") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TranslationCapability() { this((int) 0, (android.view.translation.TranslationSpec) null, (android.view.translation.TranslationSpec) null, (boolean) false, (int) 0); }
 }

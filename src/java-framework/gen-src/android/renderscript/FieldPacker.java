@@ -86,4 +86,5 @@ public class FieldPacker {
     public android.renderscript.Short3 subShort3() { return null; }
     public android.renderscript.Short4 subShort4() { return null; }
     public void subalign(int p0) {}
+    FieldPacker() { this((int) 0); }
 }

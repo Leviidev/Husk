@@ -38,6 +38,7 @@ public class Visualizer {
     public int setMeasurementMode(int p0) { return 0; }
     public int setScalingMode(int p0) { return 0; }
     public int setServerDiedListener(android.media.audiofx.Visualizer.OnServerDiedListener p0) { return 0; }
+    Visualizer() { this((int) 0); }
     public static final class MeasurementPeakRms {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int mPeak;

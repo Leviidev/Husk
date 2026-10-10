@@ -21,4 +21,5 @@ public final class TranslationManager {
     public void removeOnDeviceTranslationCapabilityUpdateListener(int p0, int p1, android.app.PendingIntent p2) {}
     public void removeOnDeviceTranslationCapabilityUpdateListener(java.util.function.Consumer p0) {}
     public void removeTranslationCapabilityUpdateListener(int p0, int p1, android.app.PendingIntent p2) {}
+    TranslationManager() { this((android.content.Context) null, (android.view.translation.ITranslationManager) null); }
 }

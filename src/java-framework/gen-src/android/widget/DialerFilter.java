@@ -28,4 +28,5 @@ public class DialerFilter extends android.widget.RelativeLayout {
     public void setFilterWatcher(android.text.TextWatcher p0) { huskProps.put("FilterWatcher", p0); }
     public void setLettersWatcher(android.text.TextWatcher p0) { huskProps.put("LettersWatcher", p0); }
     public void setMode(int p0) { huskProps.put("Mode", Integer.valueOf(p0)); }
+    DialerFilter() { this((android.content.Context) null); }
 }

@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class ServiceConnectionLeakedViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ServiceConnectionLeakedViolation(java.lang.Throwable p0) { super(); }
+    ServiceConnectionLeakedViolation() { this((java.lang.Throwable) null); }
 }

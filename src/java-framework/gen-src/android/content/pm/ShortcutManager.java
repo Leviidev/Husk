@@ -41,6 +41,7 @@ public class ShortcutManager {
     public boolean requestPinShortcut(android.content.pm.ShortcutInfo p0, android.content.IntentSender p1) { return false; }
     public boolean setDynamicShortcuts(java.util.List p0) { return false; }
     public boolean updateShortcuts(java.util.List p0) { return false; }
+    ShortcutManager() { this((android.content.Context) null); }
     public static final class ShareShortcutInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
@@ -49,5 +50,6 @@ public class ShortcutManager {
         public android.content.pm.ShortcutInfo getShortcutInfo() { return (android.content.pm.ShortcutInfo) huskProps.get("ShortcutInfo"); }
         public android.content.ComponentName getTargetComponent() { return (android.content.ComponentName) huskProps.get("TargetComponent"); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        ShareShortcutInfo() { this((android.content.pm.ShortcutInfo) null, (android.content.ComponentName) null); }
     }
 }

@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class FileUriExposedViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public FileUriExposedViolation(java.lang.String p0) { super(); }
+    FileUriExposedViolation() { this((java.lang.String) null); }
 }

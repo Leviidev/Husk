@@ -21,5 +21,6 @@ public final class InlinePresentationSpec implements android.os.Parcelable {
         public Builder(android.util.Size p0, android.util.Size p1) { super(); }
         public android.widget.inline.InlinePresentationSpec build() { return new android.widget.inline.InlinePresentationSpec(); }
         public android.widget.inline.InlinePresentationSpec.Builder setStyle(android.os.Bundle p0) { huskProps.put("Style", p0); return this; }
+        Builder() { this((android.util.Size) null, (android.util.Size) null); }
     }
 }

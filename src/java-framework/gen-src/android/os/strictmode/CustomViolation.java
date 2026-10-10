@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class CustomViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CustomViolation(java.lang.String p0) { super(); }
+    CustomViolation() { this((java.lang.String) null); }
 }

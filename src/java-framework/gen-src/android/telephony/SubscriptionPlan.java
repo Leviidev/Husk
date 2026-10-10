@@ -34,11 +34,11 @@ public final class SubscriptionPlan implements android.os.Parcelable {
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.time.ZonedDateTime p0, java.time.ZonedDateTime p1, java.time.Period p2) {}
-        public static android.telephony.SubscriptionPlan.Builder createNonrecurring(java.time.ZonedDateTime p0, java.time.ZonedDateTime p1) { return null; }
-        public static android.telephony.SubscriptionPlan.Builder createRecurring(java.time.ZonedDateTime p0, java.time.Period p1) { return null; }
-        public static android.telephony.SubscriptionPlan.Builder createRecurringDaily(java.time.ZonedDateTime p0) { return null; }
-        public static android.telephony.SubscriptionPlan.Builder createRecurringMonthly(java.time.ZonedDateTime p0) { return null; }
-        public static android.telephony.SubscriptionPlan.Builder createRecurringWeekly(java.time.ZonedDateTime p0) { return null; }
+        public static android.telephony.SubscriptionPlan.Builder createNonrecurring(java.time.ZonedDateTime p0, java.time.ZonedDateTime p1) { return new Builder(); }
+        public static android.telephony.SubscriptionPlan.Builder createRecurring(java.time.ZonedDateTime p0, java.time.Period p1) { return new Builder(); }
+        public static android.telephony.SubscriptionPlan.Builder createRecurringDaily(java.time.ZonedDateTime p0) { return new Builder(); }
+        public static android.telephony.SubscriptionPlan.Builder createRecurringMonthly(java.time.ZonedDateTime p0) { return new Builder(); }
+        public static android.telephony.SubscriptionPlan.Builder createRecurringWeekly(java.time.ZonedDateTime p0) { return new Builder(); }
         public android.telephony.SubscriptionPlan build() { return new android.telephony.SubscriptionPlan(); }
         public android.telephony.SubscriptionPlan.Builder resetNetworkTypes() { return this; }
         public android.telephony.SubscriptionPlan.Builder setDataLimit(long p0, int p1) { return this; }
@@ -47,5 +47,6 @@ public final class SubscriptionPlan implements android.os.Parcelable {
         public android.telephony.SubscriptionPlan.Builder setSubscriptionStatus(int p0) { huskProps.put("SubscriptionStatus", Integer.valueOf(p0)); return this; }
         public android.telephony.SubscriptionPlan.Builder setSummary(java.lang.CharSequence p0) { huskProps.put("Summary", p0); return this; }
         public android.telephony.SubscriptionPlan.Builder setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
+        Builder() { this((java.time.ZonedDateTime) null, (java.time.ZonedDateTime) null, (java.time.Period) null); }
     }
 }

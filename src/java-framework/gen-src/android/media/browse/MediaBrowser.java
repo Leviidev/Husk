@@ -19,6 +19,7 @@ public final class MediaBrowser {
     public void subscribe(java.lang.String p0, android.os.Bundle p1, android.media.browse.MediaBrowser.SubscriptionCallback p2) {}
     public void unsubscribe(java.lang.String p0) {}
     public void unsubscribe(java.lang.String p0, android.media.browse.MediaBrowser.SubscriptionCallback p1) {}
+    MediaBrowser() { this((android.content.Context) null, (android.content.ComponentName) null, (android.media.browse.MediaBrowser.ConnectionCallback) null, (android.os.Bundle) null); }
     public static class ConnectionCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public ConnectionCallback() {}
@@ -46,6 +47,7 @@ public final class MediaBrowser {
         public boolean isBrowsable() { return (huskProps.get("Browsable") instanceof Boolean ? (Boolean) huskProps.get("Browsable") : false); }
         public boolean isPlayable() { return (huskProps.get("Playable") instanceof Boolean ? (Boolean) huskProps.get("Playable") : false); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        MediaItem() { this((android.media.MediaDescription) null, (int) 0); }
     }
     public static abstract class SubscriptionCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

@@ -55,4 +55,5 @@ public class BackupManager {
     public void setFrameworkSchedulingEnabled(boolean p0) { huskProps.put("FrameworkSchedulingEnabled", Boolean.valueOf(p0)); }
     public void updateTransportAttributes(android.content.ComponentName p0, java.lang.String p1, android.content.Intent p2, java.lang.String p3, android.content.Intent p4, java.lang.CharSequence p5) {}
     public void updateTransportAttributes(android.content.ComponentName p0, java.lang.String p1, android.content.Intent p2, java.lang.String p3, android.content.Intent p4, java.lang.String p5) {}
+    BackupManager() { this((android.content.Context) null); }
 }

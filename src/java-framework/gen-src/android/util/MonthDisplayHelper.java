@@ -19,4 +19,5 @@ public class MonthDisplayHelper {
     public boolean isWithinCurrentMonth(int p0, int p1) { return false; }
     public void nextMonth() {}
     public void previousMonth() {}
+    MonthDisplayHelper() { this((int) 0, (int) 0); }
 }

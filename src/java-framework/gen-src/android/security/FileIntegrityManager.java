@@ -9,4 +9,5 @@ public final class FileIntegrityManager {
     public boolean isApkVeritySupported() { return (huskProps.get("ApkVeritySupported") instanceof Boolean ? (Boolean) huskProps.get("ApkVeritySupported") : false); }
     public boolean isAppSourceCertificateTrusted(java.security.cert.X509Certificate p0) { return false; }
     public void setupFsVerity(java.io.File p0) { huskProps.put("upFsVerity", p0); }
+    FileIntegrityManager() { this((android.content.Context) null, (android.security.IFileIntegrityService) null); }
 }

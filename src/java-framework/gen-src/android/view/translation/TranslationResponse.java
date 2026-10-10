@@ -33,5 +33,6 @@ public final class TranslationResponse implements android.os.Parcelable {
         public android.view.translation.TranslationResponse.Builder setTranslationStatus(int p0) { huskProps.put("TranslationStatus", Integer.valueOf(p0)); return this; }
         public android.view.translation.TranslationResponse.Builder setViewTranslationResponse(int p0, android.view.translation.ViewTranslationResponse p1) { return this; }
         public android.view.translation.TranslationResponse.Builder setViewTranslationResponses(android.util.SparseArray p0) { huskProps.put("ViewTranslationResponses", p0); return this; }
+        Builder() { this((int) 0); }
     }
 }

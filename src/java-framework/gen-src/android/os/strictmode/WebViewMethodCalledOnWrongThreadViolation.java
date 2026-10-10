@@ -5,4 +5,5 @@ package android.os.strictmode;
 public final class WebViewMethodCalledOnWrongThreadViolation extends android.os.strictmode.Violation {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public WebViewMethodCalledOnWrongThreadViolation(java.lang.Throwable p0) { super(); }
+    WebViewMethodCalledOnWrongThreadViolation() { this((java.lang.Throwable) null); }
 }

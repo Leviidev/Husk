@@ -69,5 +69,6 @@ public final class PrintJobInfo implements android.os.Parcelable {
         public void setPages(android.print.PageRange[] p0) { huskProps.put("Pages", p0); }
         public void setProgress(float p0) { huskProps.put("Progress", Float.valueOf(p0)); }
         public void setStatus(java.lang.CharSequence p0) { huskProps.put("Status", p0); }
+        Builder() { this((android.print.PrintJobInfo) null); }
     }
 }

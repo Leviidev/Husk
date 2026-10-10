@@ -41,6 +41,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
     public void setPreEqBandByChannelIndex(int p0, int p1, android.media.audiofx.DynamicsProcessing.EqBand p2) {}
     public void setPreEqByChannelIndex(int p0, android.media.audiofx.DynamicsProcessing.Eq p1) {}
     public void setProperties(android.media.audiofx.DynamicsProcessing.Settings p0) { huskProps.put("Properties", p0); }
+    DynamicsProcessing() { this((int) 0); }
     public static class BandBase {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public BandBase(boolean p0, float p1) {}
@@ -48,11 +49,13 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public boolean isEnabled() { return (huskProps.get("Enabled") instanceof Boolean ? (Boolean) huskProps.get("Enabled") : false); }
         public void setCutoffFrequency(float p0) { huskProps.put("CutoffFrequency", Float.valueOf(p0)); }
         public void setEnabled(boolean p0) { huskProps.put("Enabled", Boolean.valueOf(p0)); }
+        BandBase() { this((boolean) false, (float) 0f); }
     }
     public static class BandStage extends android.media.audiofx.DynamicsProcessing.Stage {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public BandStage(boolean p0, boolean p1, int p2) { super((boolean) false, (boolean) false); }
         public int getBandCount() { return (huskProps.get("BandCount") instanceof Integer ? (Integer) huskProps.get("BandCount") : 0); }
+        BandStage() { this((boolean) false, (boolean) false, (int) 0); }
     }
     public static final class Channel {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -74,6 +77,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public void setPostEqBand(int p0, android.media.audiofx.DynamicsProcessing.EqBand p1) {}
         public void setPreEq(android.media.audiofx.DynamicsProcessing.Eq p0) { huskProps.put("PreEq", p0); }
         public void setPreEqBand(int p0, android.media.audiofx.DynamicsProcessing.EqBand p1) {}
+        Channel() { this((android.media.audiofx.DynamicsProcessing.Channel) null); }
     }
     public static final class Config {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -116,10 +120,11 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public void setPreEqBandAllChannelsTo(int p0, android.media.audiofx.DynamicsProcessing.EqBand p1) {}
         public void setPreEqBandByChannelIndex(int p0, int p1, android.media.audiofx.DynamicsProcessing.EqBand p2) {}
         public void setPreEqByChannelIndex(int p0, android.media.audiofx.DynamicsProcessing.Eq p1) {}
+        Config() { this((android.media.audiofx.DynamicsProcessing.Config) null); }
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(int p0, int p1, boolean p2, int p3, boolean p4, int p5, boolean p6, int p7, boolean p8) {}
-            public android.media.audiofx.DynamicsProcessing.Config build() { return null; }
+            public android.media.audiofx.DynamicsProcessing.Config build() { return new android.media.audiofx.DynamicsProcessing.Config(); }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setAllChannelsTo(android.media.audiofx.DynamicsProcessing.Channel p0) { huskProps.put("AllChannelsTo", p0); return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setChannelTo(int p0, android.media.audiofx.DynamicsProcessing.Channel p1) { return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setInputGainAllChannelsTo(float p0) { huskProps.put("InputGainAllChannelsTo", Float.valueOf(p0)); return this; }
@@ -133,6 +138,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
             public android.media.audiofx.DynamicsProcessing.Config.Builder setPreEqAllChannelsTo(android.media.audiofx.DynamicsProcessing.Eq p0) { huskProps.put("PreEqAllChannelsTo", p0); return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setPreEqByChannelIndex(int p0, android.media.audiofx.DynamicsProcessing.Eq p1) { return this; }
             public android.media.audiofx.DynamicsProcessing.Config.Builder setPreferredFrameDuration(float p0) { huskProps.put("PreferredFrameDuration", Float.valueOf(p0)); return this; }
+            Builder() { this((int) 0, (int) 0, (boolean) false, (int) 0, (boolean) false, (int) 0, (boolean) false, (int) 0, (boolean) false); }
         }
     }
     public static final class Eq extends android.media.audiofx.DynamicsProcessing.BandStage {
@@ -141,6 +147,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public Eq(boolean p0, boolean p1, int p2) { super(p0, p1, p2); }
         public android.media.audiofx.DynamicsProcessing.EqBand getBand(int p0) { return null; }
         public void setBand(int p0, android.media.audiofx.DynamicsProcessing.EqBand p1) {}
+        Eq() { this((android.media.audiofx.DynamicsProcessing.Eq) null); }
     }
     public static final class EqBand extends android.media.audiofx.DynamicsProcessing.BandBase {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -148,6 +155,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public EqBand(boolean p0, float p1, float p2) { super((boolean) false, (float) 0f); }
         public float getGain() { return (huskProps.get("Gain") instanceof Float ? (Float) huskProps.get("Gain") : 0f); }
         public void setGain(float p0) { huskProps.put("Gain", Float.valueOf(p0)); }
+        EqBand() { this((android.media.audiofx.DynamicsProcessing.EqBand) null); }
     }
     public static final class Limiter extends android.media.audiofx.DynamicsProcessing.Stage {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -165,6 +173,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public void setRatio(float p0) { huskProps.put("Ratio", Float.valueOf(p0)); }
         public void setReleaseTime(float p0) { huskProps.put("ReleaseTime", Float.valueOf(p0)); }
         public void setThreshold(float p0) { huskProps.put("Threshold", Float.valueOf(p0)); }
+        Limiter() { this((android.media.audiofx.DynamicsProcessing.Limiter) null); }
     }
     public static final class Mbc extends android.media.audiofx.DynamicsProcessing.BandStage {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -172,6 +181,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public Mbc(boolean p0, boolean p1, int p2) { super(p0, p1, p2); }
         public android.media.audiofx.DynamicsProcessing.MbcBand getBand(int p0) { return null; }
         public void setBand(int p0, android.media.audiofx.DynamicsProcessing.MbcBand p1) {}
+        Mbc() { this((android.media.audiofx.DynamicsProcessing.Mbc) null); }
     }
     public static final class MbcBand extends android.media.audiofx.DynamicsProcessing.BandBase {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -195,6 +205,7 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public void setRatio(float p0) { huskProps.put("Ratio", Float.valueOf(p0)); }
         public void setReleaseTime(float p0) { huskProps.put("ReleaseTime", Float.valueOf(p0)); }
         public void setThreshold(float p0) { huskProps.put("Threshold", Float.valueOf(p0)); }
+        MbcBand() { this((android.media.audiofx.DynamicsProcessing.MbcBand) null); }
     }
     public interface OnParameterChangeListener {
         void onParameterChange(android.media.audiofx.DynamicsProcessing p0, int p1, int p2);
@@ -212,5 +223,6 @@ public final class DynamicsProcessing extends android.media.audiofx.AudioEffect 
         public boolean isEnabled() { return (huskProps.get("Enabled") instanceof Boolean ? (Boolean) huskProps.get("Enabled") : false); }
         public boolean isInUse() { return (huskProps.get("InUse") instanceof Boolean ? (Boolean) huskProps.get("InUse") : false); }
         public void setEnabled(boolean p0) { huskProps.put("Enabled", Boolean.valueOf(p0)); }
+        Stage() { this((boolean) false, (boolean) false); }
     }
 }

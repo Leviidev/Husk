@@ -12,6 +12,7 @@ public final class FillEventHistory implements android.os.Parcelable {
     public java.util.List getEvents() { return (huskProps.get("Events") != null ? (java.util.List) huskProps.get("Events") : new java.util.ArrayList()); }
     public int getSessionId() { return (huskProps.get("SessionId") instanceof Integer ? (Integer) huskProps.get("SessionId") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FillEventHistory() { this((int) 0, (android.os.Bundle) null); }
     public static final class Event {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int NO_SAVE_UI_REASON_DATASET_MATCH = 6;
@@ -50,5 +51,6 @@ public final class FillEventHistory implements android.os.Parcelable {
         public java.util.Set getShownDatasetIds() { return (huskProps.get("ShownDatasetIds") != null ? (java.util.Set) huskProps.get("ShownDatasetIds") : new java.util.HashSet()); }
         public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
         public int getUiType() { return (huskProps.get("UiType") instanceof Integer ? (Integer) huskProps.get("UiType") : 0); }
+        Event() { this((int) 0, (java.lang.String) null, (android.os.Bundle) null, (java.util.List) null, (android.util.ArraySet) null, (java.util.ArrayList) null, (java.util.ArrayList) null, (java.util.ArrayList) null, (java.util.ArrayList) null, (android.view.autofill.AutofillId[]) null, (android.service.autofill.FieldClassification[]) null, (android.view.autofill.AutofillId) null); }
     }
 }

@@ -13,4 +13,5 @@ public final class TargetUser {
     public static android.app.admin.TargetUser UNKNOWN_USER;
     public static final int UNKNOWN_USER_ID = -3;
     public TargetUser(int p0) {}
+    TargetUser() { this((int) 0); }
 }

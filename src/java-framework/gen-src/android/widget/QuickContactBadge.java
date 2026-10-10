@@ -25,4 +25,5 @@ public class QuickContactBadge extends android.widget.ImageView implements andro
     public void setMode(int p0) { huskProps.put("Mode", Integer.valueOf(p0)); }
     public void setOverlay(android.graphics.drawable.Drawable p0) { huskProps.put("Overlay", p0); }
     public void setPrioritizedMimeType(java.lang.String p0) { huskProps.put("PrioritizedMimeType", p0); }
+    QuickContactBadge() { this((android.content.Context) null); }
 }

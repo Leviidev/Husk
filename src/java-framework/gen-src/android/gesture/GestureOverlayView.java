@@ -58,6 +58,7 @@ public class GestureOverlayView extends android.widget.FrameLayout {
     public void setGestureVisible(boolean p0) { huskProps.put("GestureVisible", Boolean.valueOf(p0)); }
     public void setOrientation(int p0) { huskProps.put("Orientation", Integer.valueOf(p0)); }
     public void setUncertainGestureColor(int p0) { huskProps.put("UncertainGestureColor", Integer.valueOf(p0)); }
+    GestureOverlayView() { this((android.content.Context) null); }
     public interface OnGestureListener {
         void onGesture(android.gesture.GestureOverlayView p0, android.view.MotionEvent p1);
         void onGestureCancelled(android.gesture.GestureOverlayView p0, android.view.MotionEvent p1);

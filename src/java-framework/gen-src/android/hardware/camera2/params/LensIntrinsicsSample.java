@@ -7,4 +7,5 @@ public final class LensIntrinsicsSample {
     public LensIntrinsicsSample(long p0, float[] p1) {}
     public float[] getLensIntrinsics() { return (float[]) huskProps.get("LensIntrinsics"); }
     public long getTimestampNanos() { return (huskProps.get("TimestampNanos") instanceof Long ? (Long) huskProps.get("TimestampNanos") : 0L); }
+    LensIntrinsicsSample() { this((long) 0L, (float[]) null); }
 }

@@ -10,4 +10,5 @@ public final class ConnectEvent extends android.app.admin.NetworkEvent implement
     public java.net.InetAddress getInetAddress() { return (java.net.InetAddress) huskProps.get("InetAddress"); }
     public int getPort() { return (huskProps.get("Port") instanceof Integer ? (Integer) huskProps.get("Port") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ConnectEvent() { this((java.lang.String) null, (int) 0, (java.lang.String) null, (long) 0L); }
 }

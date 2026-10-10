@@ -5,4 +5,5 @@ package android.util;
 public final class MalformedJsonException extends java.io.IOException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public MalformedJsonException(java.lang.String p0) { super(); }
+    MalformedJsonException() { this((java.lang.String) null); }
 }

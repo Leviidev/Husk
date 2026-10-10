@@ -28,4 +28,5 @@ public class HealthStats {
     public boolean hasStats(int p0) { return false; }
     public boolean hasTimer(int p0) { return false; }
     public boolean hasTimers(int p0) { return false; }
+    HealthStats() { this((android.os.Parcel) null); }
 }

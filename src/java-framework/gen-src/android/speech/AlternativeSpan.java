@@ -11,4 +11,5 @@ public final class AlternativeSpan implements android.os.Parcelable {
     public int getEndPosition() { return (huskProps.get("EndPosition") instanceof Integer ? (Integer) huskProps.get("EndPosition") : 0); }
     public int getStartPosition() { return (huskProps.get("StartPosition") instanceof Integer ? (Integer) huskProps.get("StartPosition") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AlternativeSpan() { this((int) 0, (int) 0, (java.util.List) null); }
 }

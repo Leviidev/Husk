@@ -13,6 +13,7 @@ public final class RecoverableSecurityException extends java.lang.SecurityExcept
     public void showAsDialog(android.app.Activity p0) {}
     public void showAsNotification(android.content.Context p0, java.lang.String p1) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RecoverableSecurityException() { this((android.os.Parcel) null); }
     public static abstract class LocalDialog extends android.app.DialogFragment {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public LocalDialog() { super(); }

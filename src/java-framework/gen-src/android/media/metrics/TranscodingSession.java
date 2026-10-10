@@ -7,4 +7,5 @@ public final class TranscodingSession implements java.lang.AutoCloseable {
     public TranscodingSession(java.lang.String p0, android.media.metrics.MediaMetricsManager p1) {}
     public void close() {}
     public android.media.metrics.LogSessionId getSessionId() { return (android.media.metrics.LogSessionId) huskProps.get("SessionId"); }
+    TranscodingSession() { this((java.lang.String) null, (android.media.metrics.MediaMetricsManager) null); }
 }

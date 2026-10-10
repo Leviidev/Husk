@@ -15,5 +15,6 @@ public abstract class DrmInitData {
         public java.lang.String mimeType;
         public java.util.UUID uuid;
         public SchemeInitData(java.util.UUID p0, java.lang.String p1, byte[] p2) {}
+        SchemeInitData() { this((java.util.UUID) null, (java.lang.String) null, (byte[]) null); }
     }
 }

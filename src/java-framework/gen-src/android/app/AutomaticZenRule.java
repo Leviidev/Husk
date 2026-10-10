@@ -53,6 +53,7 @@ public final class AutomaticZenRule implements android.os.Parcelable {
     public void setZenPolicy(android.service.notification.ZenPolicy p0) { huskProps.put("ZenPolicy", p0); }
     public void validate() {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AutomaticZenRule() { this((android.os.Parcel) null); }
     public static final class AzrWithId implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
@@ -61,12 +62,13 @@ public final class AutomaticZenRule implements android.os.Parcelable {
         public AzrWithId(java.lang.String p0, android.app.AutomaticZenRule p1) {}
         public int describeContents() { return 0; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        AzrWithId() { this((java.lang.String) null, (android.app.AutomaticZenRule) null); }
     }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.app.AutomaticZenRule p0) {}
         public Builder(java.lang.String p0, android.net.Uri p1) {}
-        public android.app.AutomaticZenRule build() { return null; }
+        public android.app.AutomaticZenRule build() { return new android.app.AutomaticZenRule(); }
         public android.app.AutomaticZenRule.Builder setConditionId(android.net.Uri p0) { huskProps.put("ConditionId", p0); return this; }
         public android.app.AutomaticZenRule.Builder setConfigurationActivity(android.content.ComponentName p0) { huskProps.put("ConfigurationActivity", p0); return this; }
         public android.app.AutomaticZenRule.Builder setCreationTime(long p0) { huskProps.put("CreationTime", Long.valueOf(p0)); return this; }
@@ -81,5 +83,6 @@ public final class AutomaticZenRule implements android.os.Parcelable {
         public android.app.AutomaticZenRule.Builder setTriggerDescription(java.lang.String p0) { huskProps.put("TriggerDescription", p0); return this; }
         public android.app.AutomaticZenRule.Builder setType(int p0) { huskProps.put("Type", Integer.valueOf(p0)); return this; }
         public android.app.AutomaticZenRule.Builder setZenPolicy(android.service.notification.ZenPolicy p0) { huskProps.put("ZenPolicy", p0); return this; }
+        Builder() { this((android.app.AutomaticZenRule) null); }
     }
 }

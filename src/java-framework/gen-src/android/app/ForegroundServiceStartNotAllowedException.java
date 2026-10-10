@@ -8,4 +8,5 @@ public final class ForegroundServiceStartNotAllowedException extends android.app
     public ForegroundServiceStartNotAllowedException(java.lang.String p0) { super(); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ForegroundServiceStartNotAllowedException() { this((java.lang.String) null); }
 }

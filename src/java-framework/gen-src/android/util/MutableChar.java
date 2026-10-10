@@ -6,4 +6,5 @@ public final class MutableChar {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public char value;
     public MutableChar(char p0) {}
+    MutableChar() { this((char) '\0'); }
 }

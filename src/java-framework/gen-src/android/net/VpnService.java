@@ -28,12 +28,14 @@ public class VpnService extends android.app.Service {
         public android.net.VpnService.Builder addDisallowedApplication(java.lang.String p0) { return this; }
         public android.net.VpnService.Builder addDnsServer(java.lang.String p0) { return this; }
         public android.net.VpnService.Builder addDnsServer(java.net.InetAddress p0) { return this; }
+        public android.net.VpnService.Builder addRoute(android.net.IpPrefix p0) { return this; }
         public android.net.VpnService.Builder addRoute(java.lang.String p0, int p1) { return this; }
         public android.net.VpnService.Builder addRoute(java.net.InetAddress p0, int p1) { return this; }
         public android.net.VpnService.Builder addSearchDomain(java.lang.String p0) { return this; }
         public android.net.VpnService.Builder allowBypass() { return this; }
         public android.net.VpnService.Builder allowFamily(int p0) { return this; }
         public android.os.ParcelFileDescriptor establish() { return null; }
+        public android.net.VpnService.Builder excludeRoute(android.net.IpPrefix p0) { return this; }
         public java.util.List routes() { return new java.util.ArrayList(); }
         public android.net.VpnService.Builder setBlocking(boolean p0) { huskProps.put("Blocking", Boolean.valueOf(p0)); return this; }
         public android.net.VpnService.Builder setConfigureIntent(android.app.PendingIntent p0) { huskProps.put("ConfigureIntent", p0); return this; }
@@ -42,5 +44,6 @@ public class VpnService extends android.app.Service {
         public android.net.VpnService.Builder setMtu(int p0) { huskProps.put("Mtu", Integer.valueOf(p0)); return this; }
         public android.net.VpnService.Builder setSession(java.lang.String p0) { huskProps.put("Session", p0); return this; }
         public android.net.VpnService.Builder setUnderlyingNetworks(android.net.Network[] p0) { huskProps.put("UnderlyingNetworks", p0); return this; }
+        Builder() { this((android.net.VpnService) null); }
     }
 }

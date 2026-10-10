@@ -16,4 +16,5 @@ public abstract class AsyncTaskLoader extends android.content.Loader {
     protected java.lang.Object onLoadInBackground() { return null; }
     public void setUpdateThrottle(long p0) { huskProps.put("UpdateThrottle", Long.valueOf(p0)); }
     public void waitForLoader() {}
+    AsyncTaskLoader() { this((android.content.Context) null); }
 }

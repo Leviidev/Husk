@@ -11,4 +11,5 @@ public final class DnsEvent extends android.app.admin.NetworkEvent implements an
     public java.util.List getInetAddresses() { return (huskProps.get("InetAddresses") != null ? (java.util.List) huskProps.get("InetAddresses") : new java.util.ArrayList()); }
     public int getTotalResolvedAddressCount() { return (huskProps.get("TotalResolvedAddressCount") instanceof Integer ? (Integer) huskProps.get("TotalResolvedAddressCount") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DnsEvent() { this((java.lang.String) null, (java.lang.String[]) null, (int) 0, (java.lang.String) null, (long) 0L); }
 }

@@ -18,4 +18,5 @@ public class GroupCall implements java.lang.AutoCloseable {
     public android.telephony.mbms.InternalGroupCallCallback getCallback() { return (android.telephony.mbms.InternalGroupCallCallback) huskProps.get("Callback"); }
     public long getTmgi() { return (huskProps.get("Tmgi") instanceof Long ? (Long) huskProps.get("Tmgi") : 0L); }
     public void updateGroupCall(java.util.List p0, java.util.List p1) {}
+    GroupCall() { this((int) 0, (android.telephony.mbms.vendor.IMbmsGroupCallService) null, (android.telephony.MbmsGroupCallSession) null, (long) 0L, (android.telephony.mbms.InternalGroupCallCallback) null); }
 }

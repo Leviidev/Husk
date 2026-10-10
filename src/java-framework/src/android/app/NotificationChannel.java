@@ -72,6 +72,8 @@ public final class NotificationChannel implements android.os.Parcelable {
     public boolean isSoundRestored() { return false; }
     public boolean isUserVisibleTaskShown() { return (huskFill.get("UserVisibleTaskShown") instanceof Boolean ? (Boolean) huskFill.get("UserVisibleTaskShown") : false); }
     public void lockFields(int p0) {}
+    public void populateFromXml(org.xmlpull.v1.XmlPullParser p0) {}
+    public void populateFromXmlForRestore(org.xmlpull.v1.XmlPullParser p0, boolean p1, android.content.Context p2) {}
     public android.net.Uri restoreSoundUri(android.content.Context p0, android.net.Uri p1, boolean p2, int p3) { return null; }
     public void setAllowBubbles(int p0) { huskFill.put("AllowBubbles", Integer.valueOf(p0)); }
     public void setDeleted(boolean p0) { huskFill.put("Deleted", Boolean.valueOf(p0)); }
@@ -87,5 +89,7 @@ public final class NotificationChannel implements android.os.Parcelable {
     public boolean shouldShowLights() { return false; }
     public org.json.JSONObject toJson() { return null; }
     public void unlockFields(int p0) {}
+    public void writeXml(org.xmlpull.v1.XmlSerializer p0) {}
+    public void writeXmlForBackup(org.xmlpull.v1.XmlSerializer p0, android.content.Context p1) {}
     // ---- end of generated members
 }

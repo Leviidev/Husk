@@ -60,6 +60,7 @@ public final class ImageDecoder implements java.lang.AutoCloseable {
         public android.graphics.ImageDecoder createImageDecoder(boolean p0) { return null; }
         public int getDensity() { return (huskProps.get("Density") instanceof Integer ? (Integer) huskProps.get("Density") : 0); }
         public android.content.res.Resources getResources() { return (android.content.res.Resources) huskProps.get("Resources"); }
+        AssetInputStreamSource() { this((android.content.res.AssetManager.AssetInputStream) null, (android.content.res.Resources) null, (android.util.TypedValue) null); }
     }
     public static final class DecodeException extends java.io.IOException {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

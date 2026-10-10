@@ -8,4 +8,5 @@ public final class MissingForegroundServiceTypeException extends android.app.For
     public MissingForegroundServiceTypeException(java.lang.String p0) { super(p0); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    MissingForegroundServiceTypeException() { this((java.lang.String) null); }
 }

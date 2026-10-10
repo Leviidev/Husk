@@ -29,6 +29,7 @@ public class TabHost extends android.widget.FrameLayout implements android.view.
     public void setOnTabChangedListener(android.widget.TabHost.OnTabChangeListener p0) { huskProps.put("OnTabChangedListener", p0); }
     public void setup() {}
     public void setup(android.app.LocalActivityManager p0) { huskProps.put("up", p0); }
+    TabHost() { this((android.content.Context) null); }
     public interface OnTabChangeListener {
         void onTabChanged(java.lang.String p0);
     }

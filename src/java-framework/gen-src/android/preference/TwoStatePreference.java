@@ -24,4 +24,5 @@ public abstract class TwoStatePreference extends android.preference.Preference {
     public void setSummaryOn(int p0) { huskProps.put("SummaryOn", Integer.valueOf(p0)); }
     public void setSummaryOn(java.lang.CharSequence p0) { huskProps.put("SummaryOn", p0); }
     public boolean shouldDisableDependents() { return false; }
+    TwoStatePreference() { this((android.content.Context) null); }
 }

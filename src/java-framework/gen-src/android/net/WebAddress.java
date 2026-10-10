@@ -15,4 +15,5 @@ public class WebAddress {
     public void setPath(java.lang.String p0) { huskProps.put("Path", p0); }
     public void setPort(int p0) { huskProps.put("Port", Integer.valueOf(p0)); }
     public void setScheme(java.lang.String p0) { huskProps.put("Scheme", p0); }
+    WebAddress() { this((java.lang.String) null); }
 }

@@ -187,4 +187,5 @@ public class ExifInterface {
     public boolean isThumbnailCompressed() { return (huskProps.get("ThumbnailCompressed") instanceof Boolean ? (Boolean) huskProps.get("ThumbnailCompressed") : false); }
     public void saveAttributes() {}
     public void setAttribute(java.lang.String p0, java.lang.String p1) {}
+    ExifInterface() { this((java.io.File) null); }
 }

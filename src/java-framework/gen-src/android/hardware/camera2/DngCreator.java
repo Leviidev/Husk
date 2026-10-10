@@ -16,4 +16,5 @@ public final class DngCreator implements java.lang.AutoCloseable {
     public void writeByteBuffer(java.io.OutputStream p0, android.util.Size p1, java.nio.ByteBuffer p2, long p3) {}
     public void writeImage(java.io.OutputStream p0, android.media.Image p1) {}
     public void writeInputStream(java.io.OutputStream p0, android.util.Size p1, java.io.InputStream p2, long p3) {}
+    DngCreator() { this((android.hardware.camera2.CameraCharacteristics) null, (android.hardware.camera2.CaptureResult) null); }
 }

@@ -6,4 +6,5 @@ public class UnknownAuthenticationKeyException extends android.security.identity
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public UnknownAuthenticationKeyException(java.lang.String p0) { super(p0); }
     public UnknownAuthenticationKeyException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    UnknownAuthenticationKeyException() { this((java.lang.String) null); }
 }

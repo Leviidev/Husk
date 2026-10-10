@@ -8,4 +8,5 @@ public abstract class AccessibilityRequestPreparer {
     public AccessibilityRequestPreparer(android.view.View p0, int p1) {}
     public android.view.View getView() { return (android.view.View) huskProps.get("View"); }
     public abstract void onPrepareExtraData(int p0, java.lang.String p1, android.os.Bundle p2, android.os.Message p3);
+    AccessibilityRequestPreparer() { this((android.view.View) null, (int) 0); }
 }

@@ -12,4 +12,5 @@ public final class FillContext implements android.os.Parcelable {
     public int getRequestId() { return (huskProps.get("RequestId") instanceof Integer ? (Integer) huskProps.get("RequestId") : 0); }
     public android.app.assist.AssistStructure getStructure() { return (android.app.assist.AssistStructure) huskProps.get("Structure"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FillContext() { this((int) 0, (android.app.assist.AssistStructure) null, (android.view.autofill.AutofillId) null); }
 }

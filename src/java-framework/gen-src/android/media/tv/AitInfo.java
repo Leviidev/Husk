@@ -10,4 +10,5 @@ public final class AitInfo implements android.os.Parcelable {
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AitInfo() { this((int) 0, (int) 0); }
 }

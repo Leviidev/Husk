@@ -129,6 +129,7 @@ public final class TvInputManager {
     public void setParentalControlsEnabled(boolean p0) { huskProps.put("ParentalControlsEnabled", Boolean.valueOf(p0)); }
     public void unregisterCallback(android.media.tv.TvInputManager.TvInputCallback p0) {}
     public void updateTvInputInfo(android.media.tv.TvInputInfo p0) {}
+    TvInputManager() { this((android.media.tv.ITvInputManager) null, (int) 0); }
     public static final class Hardware {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public boolean dispatchKeyEventToHdmi(android.view.KeyEvent p0) { return false; }

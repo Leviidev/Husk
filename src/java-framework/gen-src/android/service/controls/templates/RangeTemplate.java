@@ -11,4 +11,5 @@ public final class RangeTemplate extends android.service.controls.templates.Cont
     public float getMinValue() { return (huskProps.get("MinValue") instanceof Float ? (Float) huskProps.get("MinValue") : 0f); }
     public float getStepValue() { return (huskProps.get("StepValue") instanceof Float ? (Float) huskProps.get("StepValue") : 0f); }
     public int getTemplateType() { return (huskProps.get("TemplateType") instanceof Integer ? (Integer) huskProps.get("TemplateType") : 0); }
+    RangeTemplate() { this((java.lang.String) null, (float) 0f, (float) 0f, (float) 0f, (float) 0f, (java.lang.CharSequence) null); }
 }

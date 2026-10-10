@@ -7,7 +7,7 @@ public final class AudioRecordingConfiguration implements android.os.Parcelable 
     public static android.os.Parcelable.Creator CREATOR;
     public AudioRecordingConfiguration(int p0, int p1, int p2, android.media.AudioFormat p3, android.media.AudioFormat p4, int p5, java.lang.String p6) {}
     public AudioRecordingConfiguration(int p0, int p1, int p2, android.media.AudioFormat p3, android.media.AudioFormat p4, int p5, java.lang.String p6, int p7, boolean p8, int p9, android.media.audiofx.AudioEffect.Descriptor[] p10, android.media.audiofx.AudioEffect.Descriptor[] p11) {}
-    public static android.media.AudioRecordingConfiguration anonymizedCopy(android.media.AudioRecordingConfiguration p0) { return null; }
+    public static android.media.AudioRecordingConfiguration anonymizedCopy(android.media.AudioRecordingConfiguration p0) { return new AudioRecordingConfiguration(); }
     public static java.lang.String toLogFriendlyString(android.media.AudioRecordingConfiguration p0) { return null; }
     public int describeContents() { return 0; }
     public void dump(java.io.PrintWriter p0) {}
@@ -24,4 +24,5 @@ public final class AudioRecordingConfiguration implements android.os.Parcelable 
     public android.media.AudioFormat getFormat() { return (android.media.AudioFormat) huskProps.get("Format"); }
     public boolean isClientSilenced() { return (huskProps.get("ClientSilenced") instanceof Boolean ? (Boolean) huskProps.get("ClientSilenced") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AudioRecordingConfiguration() { this((int) 0, (int) 0, (int) 0, (android.media.AudioFormat) null, (android.media.AudioFormat) null, (int) 0, (java.lang.String) null); }
 }

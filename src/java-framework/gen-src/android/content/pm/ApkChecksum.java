@@ -16,4 +16,5 @@ public final class ApkChecksum implements android.os.Parcelable {
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public byte[] getValue() { return (byte[]) huskProps.get("Value"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ApkChecksum() { this((java.lang.String) null, (int) 0, (byte[]) null); }
 }

@@ -21,4 +21,5 @@ public class Mesh {
     public void setIntUniform(java.lang.String p0, int p1, int p2, int p3) {}
     public void setIntUniform(java.lang.String p0, int p1, int p2, int p3, int p4) {}
     public void setIntUniform(java.lang.String p0, int[] p1) {}
+    Mesh() { this((android.graphics.MeshSpecification) null, (int) 0, (java.nio.Buffer) null, (int) 0, (android.graphics.RectF) null); }
 }

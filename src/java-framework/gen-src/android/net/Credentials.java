@@ -8,4 +8,5 @@ public class Credentials {
     public int getGid() { return (huskProps.get("Gid") instanceof Integer ? (Integer) huskProps.get("Gid") : 0); }
     public int getPid() { return (huskProps.get("Pid") instanceof Integer ? (Integer) huskProps.get("Pid") : 0); }
     public int getUid() { return (huskProps.get("Uid") instanceof Integer ? (Integer) huskProps.get("Uid") : 0); }
+    Credentials() { this((int) 0, (int) 0, (int) 0); }
 }

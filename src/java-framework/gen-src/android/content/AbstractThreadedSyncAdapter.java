@@ -14,4 +14,5 @@ public abstract class AbstractThreadedSyncAdapter {
     public void onSyncCanceled() {}
     public void onSyncCanceled(java.lang.Thread p0) {}
     public boolean onUnsyncableAccount() { return false; }
+    AbstractThreadedSyncAdapter() { this((android.content.Context) null, (boolean) false); }
 }

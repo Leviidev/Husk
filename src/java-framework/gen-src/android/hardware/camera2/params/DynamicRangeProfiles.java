@@ -22,4 +22,5 @@ public final class DynamicRangeProfiles {
     public java.util.Set getProfileCaptureRequestConstraints(long p0) { return new java.util.HashSet(); }
     public java.util.Set getSupportedProfiles() { return (huskProps.get("SupportedProfiles") != null ? (java.util.Set) huskProps.get("SupportedProfiles") : new java.util.HashSet()); }
     public boolean isExtraLatencyPresent(long p0) { return false; }
+    DynamicRangeProfiles() { this((long[]) null); }
 }

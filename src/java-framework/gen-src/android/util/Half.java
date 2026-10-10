@@ -51,9 +51,9 @@ public final class Half extends java.lang.Number implements java.lang.Comparable
     public static java.lang.String toHexString(short p0) { return null; }
     public static java.lang.String toString(short p0) { return null; }
     public static short trunc(short p0) { return (short) 0; }
-    public static android.util.Half valueOf(float p0) { return null; }
-    public static android.util.Half valueOf(java.lang.String p0) { return null; }
-    public static android.util.Half valueOf(short p0) { return null; }
+    public static android.util.Half valueOf(float p0) { return new Half(); }
+    public static android.util.Half valueOf(java.lang.String p0) { return new Half(); }
+    public static android.util.Half valueOf(short p0) { return new Half(); }
     public byte byteValue() { return (byte) 0; }
     public int compareTo(android.util.Half p0) { return 0; }
     public int compareTo(java.lang.Object p0) { return 0; }
@@ -64,4 +64,5 @@ public final class Half extends java.lang.Number implements java.lang.Comparable
     public boolean isNaN() { return (huskProps.get("NaN") instanceof Boolean ? (Boolean) huskProps.get("NaN") : false); }
     public long longValue() { return 0L; }
     public short shortValue() { return (short) 0; }
+    Half() { this((double) 0d); }
 }

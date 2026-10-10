@@ -32,4 +32,5 @@ public final class Gainmap implements android.os.Parcelable {
     public void setRatioMax(float p0, float p1, float p2) {}
     public void setRatioMin(float p0, float p1, float p2) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Gainmap() { this((android.graphics.Bitmap) null); }
 }

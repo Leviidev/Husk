@@ -9,4 +9,5 @@ public final class RemoteEntry implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public android.app.slice.Slice getSlice() { return (android.app.slice.Slice) huskProps.get("Slice"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RemoteEntry() { this((android.app.slice.Slice) null); }
 }

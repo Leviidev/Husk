@@ -20,4 +20,5 @@ public final class PositionedGlyphs {
     public float getOffsetY() { return (huskProps.get("OffsetY") instanceof Float ? (Float) huskProps.get("OffsetY") : 0f); }
     public float getWeightOverride(int p0) { return 0f; }
     public int glyphCount() { return 0; }
+    PositionedGlyphs() { this((long) 0L, (float) 0f, (float) 0f); }
 }

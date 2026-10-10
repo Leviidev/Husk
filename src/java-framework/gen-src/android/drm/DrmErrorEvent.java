@@ -14,4 +14,5 @@ public class DrmErrorEvent extends android.drm.DrmEvent {
     public static final int TYPE_RIGHTS_RENEWAL_NOT_ALLOWED = 2002;
     public DrmErrorEvent(int p0, int p1, java.lang.String p2) { super(p0, p1, p2); }
     public DrmErrorEvent(int p0, int p1, java.lang.String p2, java.util.HashMap p3) { super(p0, p1, p2, p3); }
+    DrmErrorEvent() { this((int) 0, (int) 0, (java.lang.String) null); }
 }

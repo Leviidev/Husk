@@ -34,4 +34,5 @@ public abstract class CursorTreeAdapter extends android.widget.BaseExpandableLis
     public void setChildrenCursor(int p0, android.database.Cursor p1) {}
     public void setFilterQueryProvider(android.widget.FilterQueryProvider p0) { huskProps.put("FilterQueryProvider", p0); }
     public void setGroupCursor(android.database.Cursor p0) { huskProps.put("GroupCursor", p0); }
+    CursorTreeAdapter() { this((android.database.Cursor) null, (android.content.Context) null); }
 }

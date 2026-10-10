@@ -11,4 +11,5 @@ public final class UnsafeStateException extends java.lang.IllegalStateException 
     public int getOperation() { return (huskProps.get("Operation") instanceof Integer ? (Integer) huskProps.get("Operation") : 0); }
     public java.util.List getReasons() { return (huskProps.get("Reasons") != null ? (java.util.List) huskProps.get("Reasons") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UnsafeStateException() { this((int) 0, (int) 0); }
 }

@@ -111,6 +111,7 @@ public class UsbManager {
     public void setScreenUnlockedFunctions(long p0) { huskProps.put("ScreenUnlockedFunctions", Long.valueOf(p0)); }
     public void setUsbDeviceConnectionHandler(android.content.ComponentName p0) { huskProps.put("UsbDeviceConnectionHandler", p0); }
     public void unregisterDisplayPortAltModeInfoListener(android.hardware.usb.UsbManager.DisplayPortAltModeInfoListener p0) {}
+    UsbManager() { this((android.content.Context) null, (android.hardware.usb.IUsbManager) null); }
     public interface DisplayPortAltModeInfoListener {
         void onDisplayPortAltModeInfoChanged(java.lang.String p0, android.hardware.usb.DisplayPortAltModeInfo p1);
     }

@@ -10,4 +10,5 @@ public final class ThumbnailTemplate extends android.service.controls.templates.
     public android.graphics.drawable.Icon getThumbnail() { return (android.graphics.drawable.Icon) huskProps.get("Thumbnail"); }
     public boolean isActive() { return (huskProps.get("Active") instanceof Boolean ? (Boolean) huskProps.get("Active") : false); }
     public void prepareTemplateForBinder(android.content.Context p0) {}
+    ThumbnailTemplate() { this((java.lang.String) null, (boolean) false, (android.graphics.drawable.Icon) null, (java.lang.CharSequence) null); }
 }

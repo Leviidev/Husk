@@ -9,4 +9,5 @@ public class GraphemeClusterSegmentFinder extends android.text.SegmentFinder {
     public int nextStartBoundary(int p0) { return 0; }
     public int previousEndBoundary(int p0) { return 0; }
     public int previousStartBoundary(int p0) { return 0; }
+    GraphemeClusterSegmentFinder() { this((java.lang.CharSequence) null, (android.text.TextPaint) null); }
 }

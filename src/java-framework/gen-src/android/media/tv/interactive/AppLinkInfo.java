@@ -10,4 +10,5 @@ public final class AppLinkInfo implements android.os.Parcelable {
     public android.content.ComponentName getComponentName() { return (android.content.ComponentName) huskProps.get("ComponentName"); }
     public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AppLinkInfo() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
 }

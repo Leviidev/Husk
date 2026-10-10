@@ -17,4 +17,5 @@ public final class SignalingDataInfo implements android.os.Parcelable {
     public java.lang.String getTable() { return (java.lang.String) huskProps.get("Table"); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SignalingDataInfo() { this((java.lang.String) null, (java.lang.String) null, (int) 0, (int) 0); }
 }

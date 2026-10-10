@@ -55,4 +55,5 @@ public class RingtoneManager {
     public void setStopPreviousRingtone(boolean p0) { huskProps.put("StopPreviousRingtone", Boolean.valueOf(p0)); }
     public void setType(int p0) { huskProps.put("Type", Integer.valueOf(p0)); }
     public void stopPreviousRingtone() {}
+    RingtoneManager() { this((android.app.Activity) null); }
 }

@@ -26,6 +26,7 @@ public class BlobStoreManager {
     public void releaseAllLeases() {}
     public void releaseLease(android.app.blob.BlobHandle p0) {}
     public void waitForIdle(long p0) {}
+    BlobStoreManager() { this((android.content.Context) null, (android.app.blob.IBlobStoreManager) null); }
     public static class Session implements java.io.Closeable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public void abandon() {}

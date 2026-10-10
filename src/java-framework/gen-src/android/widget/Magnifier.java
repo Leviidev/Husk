@@ -29,10 +29,11 @@ public final class Magnifier {
     public void show(float p0, float p1) {}
     public void show(float p0, float p1, float p2, float p3) {}
     public void update() {}
+    Magnifier() { this((android.view.View) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.view.View p0) {}
-        public android.widget.Magnifier build() { return null; }
+        public android.widget.Magnifier build() { return new android.widget.Magnifier(); }
         public android.widget.Magnifier.Builder setClippingEnabled(boolean p0) { huskProps.put("ClippingEnabled", Boolean.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setCornerRadius(float p0) { huskProps.put("CornerRadius", Float.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setDefaultSourceToMagnifierOffset(int p0, int p1) { return this; }
@@ -41,6 +42,7 @@ public final class Magnifier {
         public android.widget.Magnifier.Builder setOverlay(android.graphics.drawable.Drawable p0) { huskProps.put("Overlay", p0); return this; }
         public android.widget.Magnifier.Builder setSize(int p0, int p1) { return this; }
         public android.widget.Magnifier.Builder setSourceBounds(int p0, int p1, int p2, int p3) { return this; }
+        Builder() { this((android.view.View) null); }
     }
     public interface Callback {
         void onOperationComplete();

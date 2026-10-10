@@ -12,4 +12,5 @@ public final class CallingAppInfo implements android.os.Parcelable {
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
     public android.content.pm.SigningInfo getSigningInfo() { return (android.content.pm.SigningInfo) huskProps.get("SigningInfo"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CallingAppInfo() { this((java.lang.String) null, (android.content.pm.SigningInfo) null); }
 }

@@ -55,6 +55,7 @@ public final class RouteListingPreference implements android.os.Parcelable {
             public android.media.RouteListingPreference.Item.Builder setFlags(int p0) { huskProps.put("Flags", Integer.valueOf(p0)); return this; }
             public android.media.RouteListingPreference.Item.Builder setSelectionBehavior(int p0) { huskProps.put("SelectionBehavior", Integer.valueOf(p0)); return this; }
             public android.media.RouteListingPreference.Item.Builder setSubText(int p0) { huskProps.put("SubText", Integer.valueOf(p0)); return this; }
+            Builder() { this((java.lang.String) null); }
         }
     }
 }

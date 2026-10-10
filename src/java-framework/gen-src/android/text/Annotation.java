@@ -13,4 +13,5 @@ public class Annotation implements android.text.ParcelableSpan {
     public java.lang.String getValue() { return (java.lang.String) huskProps.get("Value"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public void writeToParcelInternal(android.os.Parcel p0, int p1) {}
+    Annotation() { this((android.os.Parcel) null); }
 }

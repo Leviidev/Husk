@@ -11,6 +11,7 @@ public final class BugreportManager {
     public void retrieveBugreport(java.lang.String p0, android.os.ParcelFileDescriptor p1, java.util.concurrent.Executor p2, android.os.BugreportManager.BugreportCallback p3) {}
     public void startBugreport(android.os.ParcelFileDescriptor p0, android.os.ParcelFileDescriptor p1, android.os.BugreportParams p2, java.util.concurrent.Executor p3, android.os.BugreportManager.BugreportCallback p4) {}
     public void startConnectivityBugreport(android.os.ParcelFileDescriptor p0, java.util.concurrent.Executor p1, android.os.BugreportManager.BugreportCallback p2) {}
+    BugreportManager() { this((android.content.Context) null, (android.os.IDumpstate) null); }
     public static abstract class BugreportCallback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int BUGREPORT_ERROR_ANOTHER_REPORT_IN_PROGRESS = 5;

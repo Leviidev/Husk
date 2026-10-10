@@ -33,4 +33,5 @@ public class TabWidget extends android.widget.LinearLayout implements android.vi
     public void setRightStripDrawable(int p0) { huskProps.put("RightStripDrawable", Integer.valueOf(p0)); }
     public void setRightStripDrawable(android.graphics.drawable.Drawable p0) { huskProps.put("RightStripDrawable", p0); }
     public void setStripEnabled(boolean p0) { huskProps.put("StripEnabled", Boolean.valueOf(p0)); }
+    TabWidget() { this((android.content.Context) null); }
 }

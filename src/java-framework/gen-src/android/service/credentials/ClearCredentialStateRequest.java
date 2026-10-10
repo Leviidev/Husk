@@ -10,4 +10,5 @@ public final class ClearCredentialStateRequest implements android.os.Parcelable 
     public android.service.credentials.CallingAppInfo getCallingAppInfo() { return (android.service.credentials.CallingAppInfo) huskProps.get("CallingAppInfo"); }
     public android.os.Bundle getData() { return (android.os.Bundle) huskProps.get("Data"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ClearCredentialStateRequest() { this((android.service.credentials.CallingAppInfo) null, (android.os.Bundle) null); }
 }

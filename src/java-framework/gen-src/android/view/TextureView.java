@@ -39,6 +39,7 @@ public class TextureView extends android.view.View {
     public void setTransform(android.graphics.Matrix p0) { huskProps.put("Transform", p0); }
     public void unlockCanvasAndPost(android.graphics.Canvas p0) {}
     protected void votePreferredFrameRate() {}
+    TextureView() { this((android.content.Context) null); }
     public interface SurfaceTextureListener {
         void onSurfaceTextureAvailable(android.graphics.SurfaceTexture p0, int p1, int p2);
         boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture p0);

@@ -33,5 +33,6 @@ public final class PrinterInfo implements android.os.Parcelable {
         public android.print.PrinterInfo.Builder setInfoIntent(android.app.PendingIntent p0) { huskProps.put("InfoIntent", p0); return this; }
         public android.print.PrinterInfo.Builder setName(java.lang.String p0) { huskProps.put("Name", p0); return this; }
         public android.print.PrinterInfo.Builder setStatus(int p0) { huskProps.put("Status", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.print.PrinterInfo) null); }
     }
 }

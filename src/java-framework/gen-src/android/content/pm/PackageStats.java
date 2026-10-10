@@ -27,4 +27,5 @@ public class PackageStats implements android.os.Parcelable {
     public PackageStats(java.lang.String p0, int p1) {}
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PackageStats() { this((android.content.pm.PackageStats) null); }
 }

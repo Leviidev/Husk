@@ -30,6 +30,7 @@ public class ImageWriter implements java.lang.AutoCloseable {
         public android.media.ImageWriter.Builder setMaxImages(int p0) { huskProps.put("MaxImages", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setUsage(long p0) { huskProps.put("Usage", Long.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setWidthAndHeight(int p0, int p1) { return this; }
+        Builder() { this((android.view.Surface) null); }
     }
     public interface OnImageReleasedListener {
         void onImageReleased(android.media.ImageWriter p0);

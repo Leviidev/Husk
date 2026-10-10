@@ -10,4 +10,5 @@ public class ClearCredentialStateException extends java.lang.Exception {
     public ClearCredentialStateException(java.lang.String p0, java.lang.String p1, java.lang.Throwable p2) { super(); }
     public ClearCredentialStateException(java.lang.String p0, java.lang.Throwable p1) { super(); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
+    ClearCredentialStateException() { this((java.lang.String) null); }
 }

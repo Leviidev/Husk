@@ -13,12 +13,14 @@ public final class WindowInsetsAnimation {
     public int getTypeMask() { return (huskProps.get("TypeMask") instanceof Integer ? (Integer) huskProps.get("TypeMask") : 0); }
     public void setAlpha(float p0) { huskProps.put("Alpha", Float.valueOf(p0)); }
     public void setFraction(float p0) { huskProps.put("Fraction", Float.valueOf(p0)); }
+    WindowInsetsAnimation() { this((int) 0, (android.view.animation.Interpolator) null, (long) 0L); }
     public static final class Bounds {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Bounds(android.graphics.Insets p0, android.graphics.Insets p1) {}
         public android.graphics.Insets getLowerBound() { return (android.graphics.Insets) huskProps.get("LowerBound"); }
         public android.graphics.Insets getUpperBound() { return (android.graphics.Insets) huskProps.get("UpperBound"); }
         public android.view.WindowInsetsAnimation.Bounds inset(android.graphics.Insets p0) { return this; }
+        Bounds() { this((android.graphics.Insets) null, (android.graphics.Insets) null); }
     }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -30,5 +32,6 @@ public final class WindowInsetsAnimation {
         public void onPrepare(android.view.WindowInsetsAnimation p0) {}
         public abstract android.view.WindowInsets onProgress(android.view.WindowInsets p0, java.util.List p1);
         public android.view.WindowInsetsAnimation.Bounds onStart(android.view.WindowInsetsAnimation p0, android.view.WindowInsetsAnimation.Bounds p1) { return null; }
+        Callback() { this((int) 0); }
     }
 }

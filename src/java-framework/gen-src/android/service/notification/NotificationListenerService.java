@@ -138,6 +138,7 @@ public abstract class NotificationListenerService extends android.app.Service {
         public void onPanelRevealed(int p0) {}
         public void onStatusBarIconsBehaviorChanged(boolean p0, long p1) {}
         public void onSuggestedReplySent(java.lang.String p0, java.lang.CharSequence p1, int p2) {}
+        NotificationListenerWrapper() { this((android.service.notification.NotificationListenerService) null); }
     }
     public static class Ranking {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -195,5 +196,6 @@ public abstract class NotificationListenerService extends android.app.Service {
         public boolean getRanking(java.lang.String p0, android.service.notification.NotificationListenerService.Ranking p1) { return false; }
         public android.service.notification.NotificationListenerService.Ranking getRawRankingObject(java.lang.String p0) { return null; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        RankingMap() { this((android.service.notification.NotificationListenerService.Ranking[]) null); }
     }
 }

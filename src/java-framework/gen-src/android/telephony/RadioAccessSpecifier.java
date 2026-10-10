@@ -11,4 +11,5 @@ public final class RadioAccessSpecifier implements android.os.Parcelable {
     public int[] getChannels() { return (int[]) huskProps.get("Channels"); }
     public int getRadioAccessNetwork() { return (huskProps.get("RadioAccessNetwork") instanceof Integer ? (Integer) huskProps.get("RadioAccessNetwork") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RadioAccessSpecifier() { this((int) 0, (int[]) null, (int[]) null); }
 }

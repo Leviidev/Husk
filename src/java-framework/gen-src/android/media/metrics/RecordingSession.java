@@ -7,4 +7,5 @@ public final class RecordingSession implements java.lang.AutoCloseable {
     public RecordingSession(java.lang.String p0, android.media.metrics.MediaMetricsManager p1) {}
     public void close() {}
     public android.media.metrics.LogSessionId getSessionId() { return (android.media.metrics.LogSessionId) huskProps.get("SessionId"); }
+    RecordingSession() { this((java.lang.String) null, (android.media.metrics.MediaMetricsManager) null); }
 }

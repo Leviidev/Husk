@@ -21,6 +21,7 @@ public final class UsageEvents implements android.os.Parcelable {
     public boolean hasNextEvent() { return false; }
     public void resetToStart() {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UsageEvents() { this((android.os.Parcel) null); }
     public static final class Event {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int ACTIVITY_DESTROYED = 24;

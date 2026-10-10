@@ -14,10 +14,11 @@ public final class Checksum implements android.os.Parcelable {
     public static final int TYPE_WHOLE_SHA256 = 8;
     public static final int TYPE_WHOLE_SHA512 = 16;
     public Checksum(int p0, byte[] p1) {}
-    public static android.content.pm.Checksum readFromStream(java.io.DataInputStream p0) { return null; }
+    public static android.content.pm.Checksum readFromStream(java.io.DataInputStream p0) { return new Checksum(); }
     public static void writeToStream(java.io.DataOutputStream p0, android.content.pm.Checksum p1) {}
     public int describeContents() { return 0; }
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public byte[] getValue() { return (byte[]) huskProps.get("Value"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Checksum() { this((int) 0, (byte[]) null); }
 }

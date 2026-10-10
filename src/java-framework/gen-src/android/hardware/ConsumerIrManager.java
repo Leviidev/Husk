@@ -8,10 +8,12 @@ public final class ConsumerIrManager {
     public android.hardware.ConsumerIrManager.CarrierFrequencyRange[] getCarrierFrequencies() { return (android.hardware.ConsumerIrManager.CarrierFrequencyRange[]) huskProps.get("CarrierFrequencies"); }
     public boolean hasIrEmitter() { return false; }
     public void transmit(int p0, int[] p1) {}
+    ConsumerIrManager() { this((android.content.Context) null); }
     public static final class CarrierFrequencyRange {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CarrierFrequencyRange(android.hardware.ConsumerIrManager p0, int p1, int p2) {}
         public int getMaxFrequency() { return (huskProps.get("MaxFrequency") instanceof Integer ? (Integer) huskProps.get("MaxFrequency") : 0); }
         public int getMinFrequency() { return (huskProps.get("MinFrequency") instanceof Integer ? (Integer) huskProps.get("MinFrequency") : 0); }
+        CarrierFrequencyRange() { this((android.hardware.ConsumerIrManager) null, (int) 0, (int) 0); }
     }
 }

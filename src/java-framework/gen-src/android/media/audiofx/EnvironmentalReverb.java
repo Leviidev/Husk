@@ -38,6 +38,7 @@ public class EnvironmentalReverb extends android.media.audiofx.AudioEffect {
     public void setReverbLevel(short p0) { huskProps.put("ReverbLevel", Short.valueOf(p0)); }
     public void setRoomHFLevel(short p0) { huskProps.put("RoomHFLevel", Short.valueOf(p0)); }
     public void setRoomLevel(short p0) { huskProps.put("RoomLevel", Short.valueOf(p0)); }
+    EnvironmentalReverb() { this((int) 0, (int) 0); }
     public interface OnParameterChangeListener {
         void onParameterChange(android.media.audiofx.EnvironmentalReverb p0, int p1, int p2, int p3);
     }

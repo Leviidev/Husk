@@ -8,4 +8,5 @@ public class MultiResolutionStreamInfo {
     public int getHeight() { return (huskProps.get("Height") instanceof Integer ? (Integer) huskProps.get("Height") : 0); }
     public java.lang.String getPhysicalCameraId() { return (java.lang.String) huskProps.get("PhysicalCameraId"); }
     public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
+    MultiResolutionStreamInfo() { this((int) 0, (int) 0, (java.lang.String) null); }
 }

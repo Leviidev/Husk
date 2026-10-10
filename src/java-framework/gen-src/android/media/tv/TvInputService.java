@@ -35,6 +35,7 @@ public abstract class TvInputService extends android.app.Service {
         public void onHardwareVideoAvailable() {}
         public void onHardwareVideoUnavailable(int p0) {}
         public boolean onSetSurface(android.view.Surface p0) { return false; }
+        HardwareSession() { this((android.content.Context) null); }
     }
     public static abstract class RecordingSession {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -52,6 +53,7 @@ public abstract class TvInputService extends android.app.Service {
         public abstract void onStopRecording();
         public abstract void onTune(android.net.Uri p0);
         public void onTune(android.net.Uri p0, android.os.Bundle p1) {}
+        RecordingSession() { this((android.content.Context) null); }
     }
     public static abstract class Session implements android.view.KeyEvent.Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -121,5 +123,6 @@ public abstract class TvInputService extends android.app.Service {
         public void onUnblockContent(android.media.tv.TvContentRating p0) {}
         public void sendTvInputSessionData(java.lang.String p0, android.os.Bundle p1) {}
         public void setOverlayViewEnabled(boolean p0) { huskProps.put("OverlayViewEnabled", Boolean.valueOf(p0)); }
+        Session() { this((android.content.Context) null); }
     }
 }

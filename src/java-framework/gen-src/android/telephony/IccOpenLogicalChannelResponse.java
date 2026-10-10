@@ -16,4 +16,5 @@ public class IccOpenLogicalChannelResponse implements android.os.Parcelable {
     public byte[] getSelectResponse() { return (byte[]) huskProps.get("SelectResponse"); }
     public int getStatus() { return (huskProps.get("Status") instanceof Integer ? (Integer) huskProps.get("Status") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    IccOpenLogicalChannelResponse() { this((int) 0, (int) 0, (byte[]) null); }
 }

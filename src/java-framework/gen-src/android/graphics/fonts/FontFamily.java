@@ -10,6 +10,7 @@ public final class FontFamily {
     public long getNativePtr() { return (huskProps.get("NativePtr") instanceof Long ? (Long) huskProps.get("NativePtr") : 0L); }
     public int getSize() { return (huskProps.get("Size") instanceof Integer ? (Integer) huskProps.get("Size") : 0); }
     public int getVariant() { return (huskProps.get("Variant") instanceof Integer ? (Integer) huskProps.get("Variant") : 0); }
+    FontFamily() { this((long) 0L); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final int VARIABLE_FONT_FAMILY_TYPE_NONE = 0;
@@ -20,8 +21,9 @@ public final class FontFamily {
         public Builder(android.graphics.fonts.Font p0) {}
         public static int analyzeAndResolveVariableType(java.util.ArrayList p0) { return 0; }
         public android.graphics.fonts.FontFamily.Builder addFont(android.graphics.fonts.Font p0) { return this; }
-        public android.graphics.fonts.FontFamily build() { return null; }
-        public android.graphics.fonts.FontFamily build(java.lang.String p0, int p1, boolean p2, boolean p3, int p4) { return null; }
+        public android.graphics.fonts.FontFamily build() { return new android.graphics.fonts.FontFamily(); }
+        public android.graphics.fonts.FontFamily build(java.lang.String p0, int p1, boolean p2, boolean p3, int p4) { return new android.graphics.fonts.FontFamily(); }
         public android.graphics.fonts.FontFamily buildVariableFamily() { return null; }
+        Builder() { this((android.graphics.fonts.Font) null); }
     }
 }

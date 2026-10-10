@@ -13,4 +13,5 @@ public class CreateCredentialException extends java.lang.Exception {
     public CreateCredentialException(java.lang.String p0, java.lang.String p1, java.lang.Throwable p2) { super(); }
     public CreateCredentialException(java.lang.String p0, java.lang.Throwable p1) { super(); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
+    CreateCredentialException() { this((java.lang.String) null); }
 }

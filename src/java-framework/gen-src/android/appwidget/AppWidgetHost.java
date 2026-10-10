@@ -27,6 +27,7 @@ public class AppWidgetHost {
     public void startAppWidgetConfigureActivityForResult(android.app.Activity p0, int p1, int p2, int p3, android.os.Bundle p4) {}
     public void startListening() {}
     public void stopListening() {}
+    AppWidgetHost() { this((android.content.Context) null, (int) 0); }
     public interface AppWidgetHostListener {
     }
 }

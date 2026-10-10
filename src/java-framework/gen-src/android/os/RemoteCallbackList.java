@@ -36,6 +36,7 @@ public class RemoteCallbackList {
         public android.os.RemoteCallbackList.Builder setExecutor(java.util.concurrent.Executor p0) { huskProps.put("Executor", p0); return this; }
         public android.os.RemoteCallbackList.Builder setInterfaceDiedCallback(android.os.RemoteCallbackList.Builder.InterfaceDiedCallback p0) { huskProps.put("InterfaceDiedCallback", p0); return this; }
         public android.os.RemoteCallbackList.Builder setMaxQueueSize(int p0) { huskProps.put("MaxQueueSize", Integer.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
         public interface InterfaceDiedCallback {
             void onInterfaceDied(android.os.RemoteCallbackList p0, android.os.IInterface p1, java.lang.Object p2);
         }

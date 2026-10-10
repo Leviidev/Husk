@@ -13,4 +13,5 @@ public final class FontVariationAxis {
     public int getOpenTypeTagValue() { return (huskProps.get("OpenTypeTagValue") instanceof Integer ? (Integer) huskProps.get("OpenTypeTagValue") : 0); }
     public float getStyleValue() { return (huskProps.get("StyleValue") instanceof Float ? (Float) huskProps.get("StyleValue") : 0f); }
     public java.lang.String getTag() { return (java.lang.String) huskProps.get("Tag"); }
+    FontVariationAxis() { this((java.lang.String) null, (float) 0f); }
 }

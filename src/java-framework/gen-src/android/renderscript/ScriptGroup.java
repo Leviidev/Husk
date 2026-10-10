@@ -13,6 +13,7 @@ public final class ScriptGroup extends android.renderscript.BaseObj {
     public static final class Binding {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Binding(android.renderscript.Script.FieldID p0, java.lang.Object p1) {}
+        Binding() { this((android.renderscript.Script.FieldID) null, (java.lang.Object) null); }
     }
     public static final class Builder2 {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -21,6 +22,7 @@ public final class ScriptGroup extends android.renderscript.BaseObj {
         public android.renderscript.ScriptGroup.Closure addInvoke(android.renderscript.Script.InvokeID p0, java.lang.Object[] p1) { return null; }
         public android.renderscript.ScriptGroup.Closure addKernel(android.renderscript.Script.KernelID p0, android.renderscript.Type p1, java.lang.Object[] p2) { return null; }
         public android.renderscript.ScriptGroup create(java.lang.String p0, android.renderscript.ScriptGroup.Future[] p1) { return new android.renderscript.ScriptGroup(); }
+        Builder2() { this((android.renderscript.RenderScript) null); }
     }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -29,6 +31,7 @@ public final class ScriptGroup extends android.renderscript.BaseObj {
         public android.renderscript.ScriptGroup.Builder addConnection(android.renderscript.Type p0, android.renderscript.Script.KernelID p1, android.renderscript.Script.KernelID p2) { return this; }
         public android.renderscript.ScriptGroup.Builder addKernel(android.renderscript.Script.KernelID p0) { return this; }
         public android.renderscript.ScriptGroup create() { return new android.renderscript.ScriptGroup(); }
+        Builder() { this((android.renderscript.RenderScript) null); }
     }
     public static final class Closure extends android.renderscript.BaseObj {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

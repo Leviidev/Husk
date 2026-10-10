@@ -57,5 +57,6 @@ public final class KeyProtection implements java.security.KeyStore.ProtectionPar
         public android.security.keystore.KeyProtection.Builder setUserAuthenticationValidityDurationSeconds(int p0) { huskProps.put("UserAuthenticationValidityDurationSeconds", Integer.valueOf(p0)); return this; }
         public android.security.keystore.KeyProtection.Builder setUserConfirmationRequired(boolean p0) { huskProps.put("UserConfirmationRequired", Boolean.valueOf(p0)); return this; }
         public android.security.keystore.KeyProtection.Builder setUserPresenceRequired(boolean p0) { huskProps.put("UserPresenceRequired", Boolean.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
     }
 }

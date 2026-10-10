@@ -11,4 +11,5 @@ public class DrawableMarginSpan implements android.text.style.LeadingMarginSpan,
     public android.graphics.drawable.Drawable getDrawable() { return (android.graphics.drawable.Drawable) huskProps.get("Drawable"); }
     public int getLeadingMargin(boolean p0) { return 0; }
     public int getPadding() { return (huskProps.get("Padding") instanceof Integer ? (Integer) huskProps.get("Padding") : 0); }
+    DrawableMarginSpan() { this((android.graphics.drawable.Drawable) null); }
 }

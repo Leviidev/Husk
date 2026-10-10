@@ -19,4 +19,5 @@ public final class UiccCardInfo implements android.os.Parcelable {
     public boolean isRemovable() { return (huskProps.get("Removable") instanceof Boolean ? (Boolean) huskProps.get("Removable") : false); }
     public void setIccIdAccessRestricted(boolean p0) { huskProps.put("IccIdAccessRestricted", Boolean.valueOf(p0)); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UiccCardInfo() { this((boolean) false, (int) 0, (java.lang.String) null, (int) 0, (boolean) false, (boolean) false, (java.util.List) null); }
 }

@@ -15,8 +15,10 @@ public final class PersistableBundle extends BaseBundle implements Parcelable, C
     public static android.os.PersistableBundle forPair(java.lang.String p0, java.lang.String p1) { return null; }
     public static boolean isValidType(java.lang.Object p0) { return false; }
     public static android.os.PersistableBundle readFromStream(java.io.InputStream p0) { return null; }
+    public static android.os.PersistableBundle restoreFromXml(org.xmlpull.v1.XmlPullParser p0) { return null; }
     public void dumpDebug(android.util.proto.ProtoOutputStream p0, long p1) {}
     public boolean isBundleContentsWithinLengthLimit(int p0) { return false; }
+    public void saveToXml(org.xmlpull.v1.XmlSerializer p0) {}
     public java.lang.String toShortString() { return null; }
     public void writeToStream(java.io.OutputStream p0) {}
     // ---- end of generated members

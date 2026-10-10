@@ -7,9 +7,10 @@ public final class OverlayIdentifier implements android.os.Parcelable {
     public static android.os.Parcelable.Creator CREATOR;
     public OverlayIdentifier(java.lang.String p0) {}
     public OverlayIdentifier(java.lang.String p0, java.lang.String p1) {}
-    public static android.content.om.OverlayIdentifier fromString(java.lang.String p0) { return null; }
+    public static android.content.om.OverlayIdentifier fromString(java.lang.String p0) { return new OverlayIdentifier(); }
     public int describeContents() { return 0; }
     public java.lang.String getOverlayName() { return (java.lang.String) huskProps.get("OverlayName"); }
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    OverlayIdentifier() { this((java.lang.String) null); }
 }

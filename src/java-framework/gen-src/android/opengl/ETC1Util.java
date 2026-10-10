@@ -17,5 +17,6 @@ public class ETC1Util {
         public java.nio.ByteBuffer getData() { return (java.nio.ByteBuffer) huskProps.get("Data"); }
         public int getHeight() { return (huskProps.get("Height") instanceof Integer ? (Integer) huskProps.get("Height") : 0); }
         public int getWidth() { return (huskProps.get("Width") instanceof Integer ? (Integer) huskProps.get("Width") : 0); }
+        ETC1Texture() { this((int) 0, (int) 0, (java.nio.ByteBuffer) null); }
     }
 }

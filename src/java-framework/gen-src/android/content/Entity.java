@@ -8,10 +8,12 @@ public final class Entity {
     public void addSubValue(android.net.Uri p0, android.content.ContentValues p1) {}
     public android.content.ContentValues getEntityValues() { return (android.content.ContentValues) huskProps.get("EntityValues"); }
     public java.util.ArrayList getSubValues() { return (huskProps.get("SubValues") != null ? (java.util.ArrayList) huskProps.get("SubValues") : new java.util.ArrayList()); }
+    Entity() { this((android.content.ContentValues) null); }
     public static class NamedContentValues {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public android.net.Uri uri;
         public android.content.ContentValues values;
         public NamedContentValues(android.net.Uri p0, android.content.ContentValues p1) {}
+        NamedContentValues() { this((android.net.Uri) null, (android.content.ContentValues) null); }
     }
 }

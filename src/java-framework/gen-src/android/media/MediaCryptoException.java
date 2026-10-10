@@ -9,4 +9,5 @@ public final class MediaCryptoException extends java.lang.Exception implements a
     public int getErrorContext() { return (huskProps.get("ErrorContext") instanceof Integer ? (Integer) huskProps.get("ErrorContext") : 0); }
     public int getOemError() { return (huskProps.get("OemError") instanceof Integer ? (Integer) huskProps.get("OemError") : 0); }
     public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
+    MediaCryptoException() { this((java.lang.String) null); }
 }

@@ -46,4 +46,5 @@ public final class OverlayInfo implements android.content.om.CriticalOverlayInfo
     public boolean isEnabled() { return (huskProps.get("Enabled") instanceof Boolean ? (Boolean) huskProps.get("Enabled") : false); }
     public boolean isFabricated() { return (huskProps.get("Fabricated") instanceof Boolean ? (Boolean) huskProps.get("Fabricated") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    OverlayInfo() { this((android.os.Parcel) null); }
 }

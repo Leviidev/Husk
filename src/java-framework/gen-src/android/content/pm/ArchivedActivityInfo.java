@@ -16,4 +16,5 @@ public final class ArchivedActivityInfo {
     public android.content.pm.ArchivedActivityInfo setIcon(android.graphics.drawable.Drawable p0) { huskProps.put("Icon", p0); return this; }
     public android.content.pm.ArchivedActivityInfo setLabel(java.lang.CharSequence p0) { huskProps.put("Label", p0); return this; }
     public android.content.pm.ArchivedActivityInfo setMonochromeIcon(android.graphics.drawable.Drawable p0) { huskProps.put("MonochromeIcon", p0); return this; }
+    ArchivedActivityInfo() { this((java.lang.CharSequence) null, (android.content.ComponentName) null); }
 }

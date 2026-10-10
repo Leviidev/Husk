@@ -37,6 +37,7 @@ public class KeyboardView extends android.view.View implements android.view.View
     protected void swipeLeft() {}
     protected void swipeRight() {}
     protected void swipeUp() {}
+    KeyboardView() { this((android.content.Context) null, (android.util.AttributeSet) null); }
     public interface OnKeyboardActionListener {
         void onKey(int p0, int[] p1);
         void onPress(int p0);

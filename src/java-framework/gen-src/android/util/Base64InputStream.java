@@ -14,4 +14,5 @@ public class Base64InputStream extends java.io.FilterInputStream {
     public int read(byte[] p0, int p1, int p2) { return 0; }
     public void reset() {}
     public long skip(long p0) { return 0L; }
+    Base64InputStream() { this((java.io.InputStream) null, (int) 0); }
 }

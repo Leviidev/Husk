@@ -18,13 +18,14 @@ public class TracingConfig {
     public java.util.List getCustomIncludedCategories() { return (huskProps.get("CustomIncludedCategories") != null ? (java.util.List) huskProps.get("CustomIncludedCategories") : new java.util.ArrayList()); }
     public int getPredefinedCategories() { return (huskProps.get("PredefinedCategories") instanceof Integer ? (Integer) huskProps.get("PredefinedCategories") : 0); }
     public int getTracingMode() { return (huskProps.get("TracingMode") instanceof Integer ? (Integer) huskProps.get("TracingMode") : 0); }
+    TracingConfig() { this((int) 0, (java.util.List) null, (int) 0); }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.webkit.TracingConfig.Builder addCategories(java.util.Collection p0) { return this; }
         public android.webkit.TracingConfig.Builder addCategories(int[] p0) { return this; }
         public android.webkit.TracingConfig.Builder addCategories(java.lang.String[] p0) { return this; }
-        public android.webkit.TracingConfig build() { return null; }
+        public android.webkit.TracingConfig build() { return new android.webkit.TracingConfig(); }
         public android.webkit.TracingConfig.Builder setTracingMode(int p0) { huskProps.put("TracingMode", Integer.valueOf(p0)); return this; }
     }
 }

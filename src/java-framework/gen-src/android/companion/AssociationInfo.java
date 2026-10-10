@@ -11,6 +11,7 @@ public final class AssociationInfo implements android.os.Parcelable {
     public android.companion.AssociatedDevice getAssociatedDevice() { return (android.companion.AssociatedDevice) huskProps.get("AssociatedDevice"); }
     public android.graphics.drawable.Icon getDeviceIcon() { return (android.graphics.drawable.Icon) huskProps.get("DeviceIcon"); }
     public android.companion.DeviceId getDeviceId() { return (android.companion.DeviceId) huskProps.get("DeviceId"); }
+    public android.net.MacAddress getDeviceMacAddress() { return (android.net.MacAddress) huskProps.get("DeviceMacAddress"); }
     public java.lang.String getDeviceMacAddressAsString() { return (java.lang.String) huskProps.get("DeviceMacAddressAsString"); }
     public java.lang.String getDeviceProfile() { return (java.lang.String) huskProps.get("DeviceProfile"); }
     public java.lang.CharSequence getDisplayName() { return (java.lang.CharSequence) huskProps.get("DisplayName"); }
@@ -44,6 +45,7 @@ public final class AssociationInfo implements android.os.Parcelable {
         public android.companion.AssociationInfo.Builder setAssociatedDevice(android.companion.AssociatedDevice p0) { huskProps.put("AssociatedDevice", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceIcon(android.graphics.drawable.Icon p0) { huskProps.put("DeviceIcon", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceId(android.companion.DeviceId p0) { huskProps.put("DeviceId", p0); return this; }
+        public android.companion.AssociationInfo.Builder setDeviceMacAddress(android.net.MacAddress p0) { huskProps.put("DeviceMacAddress", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceProfile(java.lang.String p0) { huskProps.put("DeviceProfile", p0); return this; }
         public android.companion.AssociationInfo.Builder setDisplayName(java.lang.CharSequence p0) { huskProps.put("DisplayName", p0); return this; }
         public android.companion.AssociationInfo.Builder setLastTimeConnected(long p0) { huskProps.put("LastTimeConnected", Long.valueOf(p0)); return this; }
@@ -56,5 +58,6 @@ public final class AssociationInfo implements android.os.Parcelable {
         public android.companion.AssociationInfo.Builder setSystemDataSyncFlags(int p0) { huskProps.put("SystemDataSyncFlags", Integer.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setTimeApproved(long p0) { huskProps.put("TimeApproved", Long.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setTransportFlags(int p0) { huskProps.put("TransportFlags", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.companion.AssociationInfo) null); }
     }
 }

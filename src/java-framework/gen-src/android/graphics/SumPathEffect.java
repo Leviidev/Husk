@@ -5,4 +5,5 @@ package android.graphics;
 public class SumPathEffect extends android.graphics.PathEffect {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public SumPathEffect(android.graphics.PathEffect p0, android.graphics.PathEffect p1) { super(); }
+    SumPathEffect() { this((android.graphics.PathEffect) null, (android.graphics.PathEffect) null); }
 }

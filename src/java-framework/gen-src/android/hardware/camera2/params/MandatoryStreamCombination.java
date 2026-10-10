@@ -8,6 +8,7 @@ public final class MandatoryStreamCombination {
     public java.lang.CharSequence getDescription() { return (java.lang.CharSequence) huskProps.get("Description"); }
     public java.util.List getStreamsInformation() { return (huskProps.get("StreamsInformation") != null ? (java.util.List) huskProps.get("StreamsInformation") : new java.util.ArrayList()); }
     public boolean isReprocessable() { return (huskProps.get("Reprocessable") instanceof Boolean ? (Boolean) huskProps.get("Reprocessable") : false); }
+    MandatoryStreamCombination() { this((java.util.List) null, (java.lang.String) null, (boolean) false); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1, android.util.Size p2, java.util.List p3, android.hardware.camera2.params.StreamConfigurationMap p4, android.hardware.camera2.params.StreamConfigurationMap p5, boolean p6, boolean p7) {}
@@ -20,6 +21,7 @@ public final class MandatoryStreamCombination {
         public java.util.List getAvailableMandatoryPreviewStabilizedStreamCombinations() { return (huskProps.get("AvailableMandatoryPreviewStabilizedStreamCombinations") != null ? (java.util.List) huskProps.get("AvailableMandatoryPreviewStabilizedStreamCombinations") : new java.util.ArrayList()); }
         public java.util.List getAvailableMandatoryStreamCombinations() { return (huskProps.get("AvailableMandatoryStreamCombinations") != null ? (java.util.List) huskProps.get("AvailableMandatoryStreamCombinations") : new java.util.ArrayList()); }
         public java.util.List getAvailableMandatoryStreamUseCaseCombinations() { return (huskProps.get("AvailableMandatoryStreamUseCaseCombinations") != null ? (java.util.List) huskProps.get("AvailableMandatoryStreamUseCaseCombinations") : new java.util.ArrayList()); }
+        Builder() { this((int) 0, (int) 0, (android.util.Size) null, (java.util.List) null, (android.hardware.camera2.params.StreamConfigurationMap) null, (android.hardware.camera2.params.StreamConfigurationMap) null, (boolean) false, (boolean) false); }
         public static class SizeComparator implements java.util.Comparator {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public SizeComparator() {}
@@ -42,5 +44,6 @@ public final class MandatoryStreamCombination {
         public boolean isInput() { return (huskProps.get("Input") instanceof Boolean ? (Boolean) huskProps.get("Input") : false); }
         public boolean isMaximumSize() { return (huskProps.get("MaximumSize") instanceof Boolean ? (Boolean) huskProps.get("MaximumSize") : false); }
         public boolean isUltraHighResolution() { return (huskProps.get("UltraHighResolution") instanceof Boolean ? (Boolean) huskProps.get("UltraHighResolution") : false); }
+        MandatoryStreamInformation() { this((java.util.List) null, (int) 0, (boolean) false); }
     }
 }

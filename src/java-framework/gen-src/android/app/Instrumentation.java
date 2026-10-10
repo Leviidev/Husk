@@ -110,5 +110,6 @@ public class Instrumentation {
         public ActivityResult(int p0, android.content.Intent p1) {}
         public int getResultCode() { return (huskProps.get("ResultCode") instanceof Integer ? (Integer) huskProps.get("ResultCode") : 0); }
         public android.content.Intent getResultData() { return (android.content.Intent) huskProps.get("ResultData"); }
+        ActivityResult() { this((int) 0, (android.content.Intent) null); }
     }
 }

@@ -19,6 +19,8 @@ copy com.android.conscrypt/javalib/conscrypt.jar
 # conscrypt's natives (HTTPS for Java code): its JNI library and the BoringSSL it links
 for l in libjavacrypto libcrypto libssl; do copy com.android.conscrypt/lib64/$l.so; done
 "$R/src/java-framework/build.sh" "$OUT/husk-framework.dex"
+# Apache HttpClient (org.apache.http.legacy), the platform's own, from /system/framework of the same image
+cp "${HTTP_LEGACY:-/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar}" "$OUT/org.apache.http.legacy.jar"
 # the platform's resources (themes, styles, layouts, drawables), from the same system image, without what an iPhone never picks
 python3 "$R/tools/strip_framework_res.py" "${FRAMEWORK_RES:-/Volumes/GTAV/husk2/aosp/fw/framework-res.apk}" "$OUT/framework-res.apk"
 du -sh "$OUT"

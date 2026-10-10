@@ -14,4 +14,5 @@ public class Presentation extends android.app.Dialog {
     public void onStart() {}
     public void onStop() {}
     public void show() {}
+    Presentation() { this((android.content.Context) null, (android.view.Display) null); }
 }

@@ -10,4 +10,5 @@ public final class ToggleRangeTemplate extends android.service.controls.template
     public android.service.controls.templates.RangeTemplate getRange() { return (android.service.controls.templates.RangeTemplate) huskProps.get("Range"); }
     public int getTemplateType() { return (huskProps.get("TemplateType") instanceof Integer ? (Integer) huskProps.get("TemplateType") : 0); }
     public boolean isChecked() { return (huskProps.get("Checked") instanceof Boolean ? (Boolean) huskProps.get("Checked") : false); }
+    ToggleRangeTemplate() { this((java.lang.String) null, (android.service.controls.templates.ControlButton) null, (android.service.controls.templates.RangeTemplate) null); }
 }

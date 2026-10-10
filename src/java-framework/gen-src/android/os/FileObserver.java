@@ -27,4 +27,5 @@ public abstract class FileObserver {
     public abstract void onEvent(int p0, java.lang.String p1);
     public void startWatching() {}
     public void stopWatching() {}
+    FileObserver() { this((java.io.File) null); }
 }

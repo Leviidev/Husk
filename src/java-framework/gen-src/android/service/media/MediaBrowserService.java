@@ -29,6 +29,7 @@ public abstract class MediaBrowserService extends android.app.Service {
         public BrowserRoot(java.lang.String p0, android.os.Bundle p1) {}
         public android.os.Bundle getExtras() { return (android.os.Bundle) huskProps.get("Extras"); }
         public java.lang.String getRootId() { return (java.lang.String) huskProps.get("RootId"); }
+        BrowserRoot() { this((java.lang.String) null, (android.os.Bundle) null); }
     }
     public static class Result {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

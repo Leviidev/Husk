@@ -9,4 +9,5 @@ public abstract class TextValueSanitizer extends android.service.autofill.Intern
     public int describeContents() { return 0; }
     public android.view.autofill.AutofillValue sanitize(android.view.autofill.AutofillValue p0) { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TextValueSanitizer() { this((java.util.regex.Pattern) null, (java.lang.String) null); }
 }

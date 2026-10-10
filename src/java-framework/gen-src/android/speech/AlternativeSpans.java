@@ -9,4 +9,5 @@ public final class AlternativeSpans implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public java.util.List getSpans() { return (huskProps.get("Spans") != null ? (java.util.List) huskProps.get("Spans") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AlternativeSpans() { this((java.util.List) null); }
 }

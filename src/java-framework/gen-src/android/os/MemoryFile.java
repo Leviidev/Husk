@@ -15,4 +15,5 @@ public class MemoryFile {
     public int length() { return 0; }
     public int readBytes(byte[] p0, int p1, int p2, int p3) { return 0; }
     public void writeBytes(byte[] p0, int p1, int p2, int p3) {}
+    MemoryFile() { this((java.lang.String) null, (int) 0); }
 }

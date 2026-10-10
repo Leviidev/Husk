@@ -14,4 +14,5 @@ public final class CommandRequest extends android.media.tv.BroadcastInfoRequest 
     public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
     public java.lang.String getNamespace() { return (java.lang.String) huskProps.get("Namespace"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CommandRequest() { this((int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null); }
 }

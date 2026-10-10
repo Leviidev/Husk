@@ -40,4 +40,5 @@ public abstract class AdapterViewAnimator extends android.widget.AdapterView imp
     public void setSelection(int p0) { huskProps.put("Selection", Integer.valueOf(p0)); }
     public void showNext() {}
     public void showPrevious() {}
+    AdapterViewAnimator() { this((android.content.Context) null); }
 }

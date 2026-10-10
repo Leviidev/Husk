@@ -29,6 +29,7 @@ public class Type extends android.renderscript.BaseObj {
         public android.renderscript.Type.Builder setY(int p0) { huskProps.put("Y", Integer.valueOf(p0)); return this; }
         public android.renderscript.Type.Builder setYuvFormat(int p0) { huskProps.put("YuvFormat", Integer.valueOf(p0)); return this; }
         public android.renderscript.Type.Builder setZ(int p0) { huskProps.put("Z", Integer.valueOf(p0)); return this; }
+        Builder() { this((android.renderscript.RenderScript) null, (android.renderscript.Element) null); }
     }
     public enum CubemapFace {
         NEGATIVE_X, NEGATIVE_Y, NEGATIVE_Z, POSITIVE_X, POSITIVE_Y, POSITIVE_Z, POSITVE_X, POSITVE_Y, POSITVE_Z;

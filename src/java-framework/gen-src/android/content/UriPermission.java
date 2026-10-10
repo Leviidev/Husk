@@ -14,4 +14,5 @@ public final class UriPermission implements android.os.Parcelable {
     public boolean isReadPermission() { return (huskProps.get("ReadPermission") instanceof Boolean ? (Boolean) huskProps.get("ReadPermission") : false); }
     public boolean isWritePermission() { return (huskProps.get("WritePermission") instanceof Boolean ? (Boolean) huskProps.get("WritePermission") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UriPermission() { this((android.os.Parcel) null); }
 }

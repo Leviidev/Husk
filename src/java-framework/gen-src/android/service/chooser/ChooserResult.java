@@ -16,4 +16,5 @@ public final class ChooserResult implements android.os.Parcelable {
     public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
     public boolean isShortcut() { return (huskProps.get("Shortcut") instanceof Boolean ? (Boolean) huskProps.get("Shortcut") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ChooserResult() { this((int) 0, (android.content.ComponentName) null, (boolean) false); }
 }

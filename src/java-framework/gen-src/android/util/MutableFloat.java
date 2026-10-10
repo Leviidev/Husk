@@ -6,4 +6,5 @@ public final class MutableFloat {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public float value;
     public MutableFloat(float p0) {}
+    MutableFloat() { this((float) 0f); }
 }

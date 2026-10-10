@@ -8,4 +8,5 @@ public abstract class EGLObjectHandle {
     protected EGLObjectHandle(long p0) {}
     public int getHandle() { return (huskProps.get("Handle") instanceof Integer ? (Integer) huskProps.get("Handle") : 0); }
     public long getNativeHandle() { return (huskProps.get("NativeHandle") instanceof Long ? (Long) huskProps.get("NativeHandle") : 0L); }
+    EGLObjectHandle() { this((int) 0); }
 }

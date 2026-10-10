@@ -18,4 +18,5 @@ public class LocalActivityManager {
     public void removeAllActivities() {}
     public android.os.Bundle saveInstanceState() { return null; }
     public android.view.Window startActivity(java.lang.String p0, android.content.Intent p1) { return null; }
+    LocalActivityManager() { this((android.app.Activity) null, (boolean) false); }
 }

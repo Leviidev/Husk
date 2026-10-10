@@ -19,4 +19,5 @@ public final class SpellCheckerInfo implements android.os.Parcelable {
     public android.graphics.drawable.Drawable loadIcon(android.content.pm.PackageManager p0) { return null; }
     public java.lang.CharSequence loadLabel(android.content.pm.PackageManager p0) { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SpellCheckerInfo() { this((android.os.Parcel) null); }
 }

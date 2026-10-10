@@ -88,4 +88,5 @@ public abstract class Conference extends android.telecom.Conferenceable {
     public void setTelecomCallId(java.lang.String p0) { huskProps.put("TelecomCallId", p0); }
     public void setVideoProvider(android.telecom.Connection p0, android.telecom.Connection.VideoProvider p1) {}
     public void setVideoState(android.telecom.Connection p0, int p1) {}
+    Conference() { this((android.telecom.PhoneAccountHandle) null); }
 }

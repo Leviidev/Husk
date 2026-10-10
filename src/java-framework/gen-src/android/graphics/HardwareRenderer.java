@@ -104,6 +104,7 @@ public class HardwareRenderer {
         protected CopyRequest(android.graphics.Rect p0, android.graphics.Bitmap p1) {}
         public long getDestinationBitmap(int p0, int p1) { return 0L; }
         public abstract void onCopyFinished(int p0);
+        CopyRequest() { this((android.graphics.Rect) null, (android.graphics.Bitmap) null); }
     }
     public interface FrameCommitCallback {
         void onFrameCommit(boolean p0);

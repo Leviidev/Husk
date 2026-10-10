@@ -12,4 +12,5 @@ public class GatewayInfo implements android.os.Parcelable {
     public android.net.Uri getOriginalAddress() { return (android.net.Uri) huskProps.get("OriginalAddress"); }
     public boolean isEmpty() { return (huskProps.get("Empty") instanceof Boolean ? (Boolean) huskProps.get("Empty") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GatewayInfo() { this((java.lang.String) null, (android.net.Uri) null, (android.net.Uri) null); }
 }

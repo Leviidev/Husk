@@ -12,5 +12,6 @@ public class AccessControlProfile {
         public android.security.identity.AccessControlProfile.Builder setReaderCertificate(java.security.cert.X509Certificate p0) { huskProps.put("ReaderCertificate", p0); return this; }
         public android.security.identity.AccessControlProfile.Builder setUserAuthenticationRequired(boolean p0) { huskProps.put("UserAuthenticationRequired", Boolean.valueOf(p0)); return this; }
         public android.security.identity.AccessControlProfile.Builder setUserAuthenticationTimeout(long p0) { huskProps.put("UserAuthenticationTimeout", Long.valueOf(p0)); return this; }
+        Builder() { this((android.security.identity.AccessControlProfileId) null); }
     }
 }

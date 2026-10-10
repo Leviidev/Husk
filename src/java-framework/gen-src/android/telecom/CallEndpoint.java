@@ -22,4 +22,5 @@ public final class CallEndpoint implements android.os.Parcelable {
     public int getEndpointType() { return (huskProps.get("EndpointType") instanceof Integer ? (Integer) huskProps.get("EndpointType") : 0); }
     public android.os.ParcelUuid getIdentifier() { return (android.os.ParcelUuid) huskProps.get("Identifier"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CallEndpoint() { this((android.telecom.CallEndpoint) null); }
 }

@@ -10,4 +10,5 @@ public final class SubtitleData {
     public long getDurationUs() { return (huskProps.get("DurationUs") instanceof Long ? (Long) huskProps.get("DurationUs") : 0L); }
     public long getStartTimeUs() { return (huskProps.get("StartTimeUs") instanceof Long ? (Long) huskProps.get("StartTimeUs") : 0L); }
     public int getTrackIndex() { return (huskProps.get("TrackIndex") instanceof Integer ? (Integer) huskProps.get("TrackIndex") : 0); }
+    SubtitleData() { this((android.os.Parcel) null); }
 }

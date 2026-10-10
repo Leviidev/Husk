@@ -27,6 +27,7 @@ public final class VirtualDeviceManager {
     public void requestComputerControlSession(android.companion.virtual.computercontrol.ComputerControlSessionParams p0, java.util.concurrent.Executor p1, android.companion.virtual.computercontrol.ComputerControlSession.Callback p2) {}
     public void unregisterAutomatedPackageListener(android.companion.virtual.computercontrol.AutomatedPackageListener p0) {}
     public void unregisterVirtualDeviceListener(android.companion.virtual.VirtualDeviceManager.VirtualDeviceListener p0) {}
+    VirtualDeviceManager() { this((android.companion.virtual.IVirtualDeviceManager) null, (android.content.Context) null); }
     public interface ActivityListener {
         default void onActivityLaunchBlocked(int p0, android.content.ComponentName p1, android.os.UserHandle p2, android.content.IntentSender p3) {}
         void onDisplayEmpty(int p0);
@@ -81,6 +82,7 @@ public final class VirtualDeviceManager {
         public void setShowPointerIcon(boolean p0) { huskProps.put("ShowPointerIcon", Boolean.valueOf(p0)); }
         public void unregisterIntentInterceptor(android.companion.virtual.VirtualDeviceManager.IntentInterceptorCallback p0) {}
         public void wakeUp() {}
+        VirtualDevice() { this((android.content.Context) null, (android.companion.virtual.IVirtualDevice) null); }
     }
     public interface VirtualDeviceListener {
         default void onVirtualDeviceClosed(int p0) {}

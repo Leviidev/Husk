@@ -14,5 +14,6 @@ public class ConfirmationPrompt {
         public android.security.ConfirmationPrompt build() { return new android.security.ConfirmationPrompt(); }
         public android.security.ConfirmationPrompt.Builder setExtraData(byte[] p0) { huskProps.put("ExtraData", p0); return this; }
         public android.security.ConfirmationPrompt.Builder setPromptText(java.lang.CharSequence p0) { huskProps.put("PromptText", p0); return this; }
+        Builder() { this((android.content.Context) null); }
     }
 }

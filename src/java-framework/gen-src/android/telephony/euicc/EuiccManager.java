@@ -107,4 +107,5 @@ public class EuiccManager {
     public void switchToSubscription(int p0, int p1, android.app.PendingIntent p2) {}
     public void switchToSubscription(int p0, android.app.PendingIntent p1) {}
     public void updateSubscriptionNickname(int p0, java.lang.String p1, android.app.PendingIntent p2) {}
+    EuiccManager() { this((android.content.Context) null); }
 }

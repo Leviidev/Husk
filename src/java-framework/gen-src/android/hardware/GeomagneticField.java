@@ -12,4 +12,5 @@ public class GeomagneticField {
     public float getX() { return (huskProps.get("X") instanceof Float ? (Float) huskProps.get("X") : 0f); }
     public float getY() { return (huskProps.get("Y") instanceof Float ? (Float) huskProps.get("Y") : 0f); }
     public float getZ() { return (huskProps.get("Z") instanceof Float ? (Float) huskProps.get("Z") : 0f); }
+    GeomagneticField() { this((float) 0f, (float) 0f, (float) 0f, (long) 0L); }
 }

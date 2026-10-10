@@ -13,4 +13,5 @@ public final class InputBinding implements android.os.Parcelable {
     public int getPid() { return (huskProps.get("Pid") instanceof Integer ? (Integer) huskProps.get("Pid") : 0); }
     public int getUid() { return (huskProps.get("Uid") instanceof Integer ? (Integer) huskProps.get("Uid") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    InputBinding() { this((android.view.inputmethod.InputConnection) null, (android.view.inputmethod.InputBinding) null); }
 }

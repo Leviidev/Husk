@@ -28,4 +28,5 @@ public final class Light implements android.os.Parcelable {
     public boolean hasBrightnessControl() { return false; }
     public boolean hasRgbControl() { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    Light() { this((int) 0, (int) 0, (int) 0); }
 }

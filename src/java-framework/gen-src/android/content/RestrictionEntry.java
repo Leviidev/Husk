@@ -20,8 +20,8 @@ public class RestrictionEntry implements android.os.Parcelable {
     public RestrictionEntry(java.lang.String p0, java.lang.String p1) {}
     public RestrictionEntry(java.lang.String p0, boolean p1) {}
     public RestrictionEntry(java.lang.String p0, java.lang.String[] p1) {}
-    public static android.content.RestrictionEntry createBundleArrayEntry(java.lang.String p0, android.content.RestrictionEntry[] p1) { return null; }
-    public static android.content.RestrictionEntry createBundleEntry(java.lang.String p0, android.content.RestrictionEntry[] p1) { return null; }
+    public static android.content.RestrictionEntry createBundleArrayEntry(java.lang.String p0, android.content.RestrictionEntry[] p1) { return new RestrictionEntry(); }
+    public static android.content.RestrictionEntry createBundleEntry(java.lang.String p0, android.content.RestrictionEntry[] p1) { return new RestrictionEntry(); }
     public int describeContents() { return 0; }
     public java.lang.String[] getAllSelectedStrings() { return (java.lang.String[]) huskProps.get("AllSelectedStrings"); }
     public java.lang.String[] getChoiceEntries() { return (java.lang.String[]) huskProps.get("ChoiceEntries"); }
@@ -47,4 +47,5 @@ public class RestrictionEntry implements android.os.Parcelable {
     public void setTitle(java.lang.String p0) { huskProps.put("Title", p0); }
     public void setType(int p0) { huskProps.put("Type", Integer.valueOf(p0)); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    RestrictionEntry() { this((android.os.Parcel) null); }
 }

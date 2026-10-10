@@ -48,6 +48,7 @@ public class Spatializer {
     public void setHeadTrackerEnabled(boolean p0, android.media.AudioDeviceAttributes p1) {}
     public void setOnHeadToSoundstagePoseUpdatedListener(java.util.concurrent.Executor p0, android.media.Spatializer.OnHeadToSoundstagePoseUpdatedListener p1) {}
     public void setOnSpatializerOutputChangedListener(java.util.concurrent.Executor p0, android.media.Spatializer.OnSpatializerOutputChangedListener p1) {}
+    Spatializer() { this((android.media.AudioManager) null); }
     public interface OnHeadToSoundstagePoseUpdatedListener {
         void onHeadToSoundstagePoseUpdated(android.media.Spatializer p0, float[] p1);
     }

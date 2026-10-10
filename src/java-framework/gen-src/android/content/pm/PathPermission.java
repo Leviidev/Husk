@@ -10,4 +10,5 @@ public class PathPermission extends android.os.PatternMatcher {
     public java.lang.String getReadPermission() { return (java.lang.String) huskProps.get("ReadPermission"); }
     public java.lang.String getWritePermission() { return (java.lang.String) huskProps.get("WritePermission"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PathPermission() { this((android.os.Parcel) null); }
 }

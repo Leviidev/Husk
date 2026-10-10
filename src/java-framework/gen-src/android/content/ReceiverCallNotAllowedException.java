@@ -5,4 +5,5 @@ package android.content;
 public class ReceiverCallNotAllowedException extends android.util.AndroidRuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public ReceiverCallNotAllowedException(java.lang.String p0) { super(p0); }
+    ReceiverCallNotAllowedException() { this((java.lang.String) null); }
 }

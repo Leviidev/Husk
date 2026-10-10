@@ -11,6 +11,7 @@ public class InputMethod {
     public void onFinishInput() {}
     public void onStartInput(android.view.inputmethod.EditorInfo p0, boolean p1) {}
     public void onUpdateSelection(int p0, int p1, int p2, int p3, int p4, int p5) {}
+    InputMethod() { this((android.accessibilityservice.AccessibilityService) null); }
     public static final class AccessibilityInputConnection {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public void clearMetaKeyStates(int p0) {}

@@ -27,5 +27,6 @@ public final class SipDetails implements android.os.Parcelable {
         public android.telephony.ims.SipDetails.Builder setCallId(java.lang.String p0) { huskProps.put("CallId", p0); return this; }
         public android.telephony.ims.SipDetails.Builder setSipResponseCode(int p0, java.lang.String p1) { return this; }
         public android.telephony.ims.SipDetails.Builder setSipResponseReasonHeader(int p0, java.lang.String p1) { return this; }
+        Builder() { this((int) 0); }
     }
 }

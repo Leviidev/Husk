@@ -14,4 +14,5 @@ public final class ExtensionSessionConfiguration {
     public android.hardware.camera2.CameraExtensionSession.StateCallback getStateCallback() { return (android.hardware.camera2.CameraExtensionSession.StateCallback) huskProps.get("StateCallback"); }
     public void setColorSpace(android.graphics.ColorSpace.Named p0) { huskProps.put("ColorSpace", p0); }
     public void setPostviewOutputConfiguration(android.hardware.camera2.params.OutputConfiguration p0) { huskProps.put("PostviewOutputConfiguration", p0); }
+    ExtensionSessionConfiguration() { this((int) 0, (java.util.List) null, (java.util.concurrent.Executor) null, (android.hardware.camera2.CameraExtensionSession.StateCallback) null); }
 }

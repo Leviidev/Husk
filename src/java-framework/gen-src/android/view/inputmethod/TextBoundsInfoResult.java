@@ -12,4 +12,5 @@ public final class TextBoundsInfoResult {
     public TextBoundsInfoResult(int p0, android.view.inputmethod.TextBoundsInfo p1) {}
     public int getResultCode() { return (huskProps.get("ResultCode") instanceof Integer ? (Integer) huskProps.get("ResultCode") : 0); }
     public android.view.inputmethod.TextBoundsInfo getTextBoundsInfo() { return (android.view.inputmethod.TextBoundsInfo) huskProps.get("TextBoundsInfo"); }
+    TextBoundsInfoResult() { this((int) 0); }
 }

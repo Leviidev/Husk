@@ -11,4 +11,5 @@ public abstract class OrientationEventListener {
     public void disable() {}
     public void enable() {}
     public abstract void onOrientationChanged(int p0);
+    OrientationEventListener() { this((android.content.Context) null); }
 }

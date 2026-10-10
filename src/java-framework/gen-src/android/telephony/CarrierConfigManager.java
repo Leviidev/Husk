@@ -617,6 +617,7 @@ public class CarrierConfigManager {
     public void registerCarrierConfigChangeListener(java.util.concurrent.Executor p0, android.telephony.CarrierConfigManager.CarrierConfigChangeListener p1) {}
     public void unregisterCarrierConfigChangeListener(android.telephony.CarrierConfigManager.CarrierConfigChangeListener p0) {}
     public void updateConfigForPhoneId(int p0, java.lang.String p1) {}
+    CarrierConfigManager() { this((android.content.Context) null); }
     public static final class Apn {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String KEY_PREFIX = "apn.";

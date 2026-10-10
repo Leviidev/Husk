@@ -14,4 +14,5 @@ public final class TonemapCurve {
     public void copyColorCurve(int p0, float[] p1, int p2) {}
     public android.graphics.PointF getPoint(int p0, int p1) { return null; }
     public int getPointCount(int p0) { return 0; }
+    TonemapCurve() { this((float[]) null, (float[]) null, (float[]) null); }
 }

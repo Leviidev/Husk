@@ -11,4 +11,5 @@ public final class SectionResponse extends android.media.tv.BroadcastInfoRespons
     public int getSessionId() { return (huskProps.get("SessionId") instanceof Integer ? (Integer) huskProps.get("SessionId") : 0); }
     public int getVersion() { return (huskProps.get("Version") instanceof Integer ? (Integer) huskProps.get("Version") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SectionResponse() { this((int) 0, (int) 0, (int) 0, (int) 0, (int) 0, (android.os.Bundle) null); }
 }

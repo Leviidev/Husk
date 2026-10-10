@@ -7,4 +7,5 @@ public final class LogSessionId {
     public static android.media.metrics.LogSessionId LOG_SESSION_ID_NONE;
     public LogSessionId(java.lang.String p0) {}
     public java.lang.String getStringId() { return (java.lang.String) huskProps.get("StringId"); }
+    LogSessionId() { this((java.lang.String) null); }
 }

@@ -11,4 +11,5 @@ public final class BeginGetCredentialOption implements android.os.Parcelable {
     public java.lang.String getId() { return (java.lang.String) huskProps.get("Id"); }
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    BeginGetCredentialOption() { this((java.lang.String) null, (java.lang.String) null, (android.os.Bundle) null); }
 }

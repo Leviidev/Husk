@@ -5,4 +5,5 @@ package android.util;
 public class Base64DataException extends java.io.IOException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public Base64DataException(java.lang.String p0) { super(); }
+    Base64DataException() { this((java.lang.String) null); }
 }

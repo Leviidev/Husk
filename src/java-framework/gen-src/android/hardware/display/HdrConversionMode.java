@@ -15,4 +15,5 @@ public final class HdrConversionMode implements android.os.Parcelable {
     public int getConversionMode() { return (huskProps.get("ConversionMode") instanceof Integer ? (Integer) huskProps.get("ConversionMode") : 0); }
     public int getPreferredHdrOutputType() { return (huskProps.get("PreferredHdrOutputType") instanceof Integer ? (Integer) huskProps.get("PreferredHdrOutputType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    HdrConversionMode() { this((int) 0); }
 }

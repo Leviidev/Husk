@@ -9,4 +9,5 @@ public final class FileServiceInfo extends android.telephony.mbms.ServiceInfo im
     public int describeContents() { return 0; }
     public java.util.List getFiles() { return (huskProps.get("Files") != null ? (java.util.List) huskProps.get("Files") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    FileServiceInfo() { this((java.util.Map) null, (java.lang.String) null, (java.util.List) null, (java.lang.String) null, (java.util.Date) null, (java.util.Date) null, (java.util.List) null); }
 }

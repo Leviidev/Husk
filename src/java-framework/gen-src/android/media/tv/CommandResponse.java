@@ -12,4 +12,5 @@ public final class CommandResponse extends android.media.tv.BroadcastInfoRespons
     public java.lang.String getResponse() { return (java.lang.String) huskProps.get("Response"); }
     public java.lang.String getResponseType() { return (java.lang.String) huskProps.get("ResponseType"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CommandResponse() { this((int) 0, (int) 0, (int) 0, (java.lang.String) null, (java.lang.String) null); }
 }

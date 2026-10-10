@@ -16,11 +16,13 @@ public final class RemoteController {
     public boolean setArtworkConfiguration(int p0, int p1) { return false; }
     public boolean setArtworkConfiguration(boolean p0, int p1, int p2) { return false; }
     public boolean setSynchronizationMode(int p0) { return false; }
+    RemoteController() { this((android.content.Context) null, (android.media.RemoteController.OnClientUpdateListener) null); }
     public static class MetadataEditor extends android.media.MediaMetadataEditor {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         protected MetadataEditor(android.media.RemoteController p0) { super(); }
         protected MetadataEditor(android.media.RemoteController p0, android.os.Bundle p1, long p2) { super(); }
         public void apply() {}
+        MetadataEditor() { this((android.media.RemoteController) null); }
     }
     public interface OnClientUpdateListener {
         void onClientChange(boolean p0);

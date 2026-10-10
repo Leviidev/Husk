@@ -21,4 +21,5 @@ public class StreamingService implements java.lang.AutoCloseable {
     public android.telephony.mbms.InternalStreamingServiceCallback getCallback() { return (android.telephony.mbms.InternalStreamingServiceCallback) huskProps.get("Callback"); }
     public android.telephony.mbms.StreamingServiceInfo getInfo() { return (android.telephony.mbms.StreamingServiceInfo) huskProps.get("Info"); }
     public android.net.Uri getPlaybackUri() { return (android.net.Uri) huskProps.get("PlaybackUri"); }
+    StreamingService() { this((int) 0, (android.telephony.mbms.vendor.IMbmsStreamingService) null, (android.telephony.MbmsStreamingSession) null, (android.telephony.mbms.StreamingServiceInfo) null, (android.telephony.mbms.InternalStreamingServiceCallback) null); }
 }

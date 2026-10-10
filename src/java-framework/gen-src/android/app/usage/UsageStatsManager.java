@@ -101,4 +101,5 @@ public final class UsageStatsManager {
     public void unregisterAppUsageObserver(int p0) {}
     public void unregisterUsageSessionObserver(int p0) {}
     public void whitelistAppTemporarily(java.lang.String p0, long p1, android.os.UserHandle p2) {}
+    UsageStatsManager() { this((android.content.Context) null, (android.app.usage.IUsageStatsManager) null); }
 }

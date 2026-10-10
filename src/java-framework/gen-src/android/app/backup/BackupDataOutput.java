@@ -13,4 +13,5 @@ public class BackupDataOutput {
     public void setKeyPrefix(java.lang.String p0) { huskProps.put("KeyPrefix", p0); }
     public int writeEntityData(byte[] p0, int p1) { return 0; }
     public int writeEntityHeader(java.lang.String p0, int p1) { return 0; }
+    BackupDataOutput() { this((java.io.FileDescriptor) null); }
 }

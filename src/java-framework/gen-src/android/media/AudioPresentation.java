@@ -42,5 +42,6 @@ public final class AudioPresentation implements android.os.Parcelable {
         public android.media.AudioPresentation.Builder setLabels(java.util.Map p0) { huskProps.put("Labels", p0); return this; }
         public android.media.AudioPresentation.Builder setMasteringIndication(int p0) { huskProps.put("MasteringIndication", Integer.valueOf(p0)); return this; }
         public android.media.AudioPresentation.Builder setProgramId(int p0) { huskProps.put("ProgramId", Integer.valueOf(p0)); return this; }
+        Builder() { this((int) 0); }
     }
 }

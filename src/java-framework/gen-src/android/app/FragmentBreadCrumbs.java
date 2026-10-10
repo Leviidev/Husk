@@ -16,6 +16,7 @@ public class FragmentBreadCrumbs extends android.view.ViewGroup implements andro
     public void setOnBreadCrumbClickListener(android.app.FragmentBreadCrumbs.OnBreadCrumbClickListener p0) { huskProps.put("OnBreadCrumbClickListener", p0); }
     public void setParentTitle(java.lang.CharSequence p0, java.lang.CharSequence p1, android.view.View.OnClickListener p2) {}
     public void setTitle(java.lang.CharSequence p0, java.lang.CharSequence p1) {}
+    FragmentBreadCrumbs() { this((android.content.Context) null); }
     public interface OnBreadCrumbClickListener {
         boolean onBreadCrumbClick(android.app.FragmentManager.BackStackEntry p0, int p1);
     }

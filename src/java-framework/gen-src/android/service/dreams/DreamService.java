@@ -86,6 +86,7 @@ public class DreamService extends android.app.Service implements android.view.Wi
         public DreamActivityCallbacks(android.os.IBinder p0, java.lang.ref.WeakReference p1) { super(); }
         public void onActivityCreated(android.service.dreams.DreamActivity p0) {}
         public void onActivityDestroyed() {}
+        DreamActivityCallbacks() { this((android.os.IBinder) null, (java.lang.ref.WeakReference) null); }
     }
     public static final class DreamMetadata {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -94,6 +95,7 @@ public class DreamService extends android.app.Service implements android.view.Wi
         public android.content.ComponentName settingsActivity;
         public boolean showComplications;
         public DreamMetadata(android.content.ComponentName p0, android.graphics.drawable.Drawable p1, boolean p2, int p3) {}
+        DreamMetadata() { this((android.content.ComponentName) null, (android.graphics.drawable.Drawable) null, (boolean) false, (int) 0); }
     }
     public interface Injector {
         android.service.dreams.DreamOverlayConnectionHandler createOverlayConnection(android.content.ComponentName p0, java.lang.Runnable p1);

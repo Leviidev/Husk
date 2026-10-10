@@ -17,6 +17,7 @@ public class InlineContentView extends android.view.ViewGroup {
     public void setClipBounds(android.graphics.Rect p0) { huskProps.put("ClipBounds", p0); }
     public void setSurfaceControlCallback(android.widget.inline.InlineContentView.SurfaceControlCallback p0) { huskProps.put("SurfaceControlCallback", p0); }
     public boolean setZOrderedOnTop(boolean p0) { return false; }
+    InlineContentView() { this((android.content.Context) null); }
     public interface SurfaceControlCallback {
         void onCreated(android.view.SurfaceControl p0);
         void onDestroyed(android.view.SurfaceControl p0);

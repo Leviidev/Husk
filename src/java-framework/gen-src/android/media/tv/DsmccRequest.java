@@ -9,4 +9,5 @@ public final class DsmccRequest extends android.media.tv.BroadcastInfoRequest im
     public int describeContents() { return 0; }
     public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DsmccRequest() { this((int) 0, (int) 0, (android.net.Uri) null); }
 }

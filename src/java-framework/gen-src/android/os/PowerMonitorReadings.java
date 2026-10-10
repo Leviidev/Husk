@@ -11,4 +11,5 @@ public final class PowerMonitorReadings {
     public long getConsumedEnergy(android.os.PowerMonitor p0) { return 0L; }
     public int getGranularity() { return (huskProps.get("Granularity") instanceof Integer ? (Integer) huskProps.get("Granularity") : 0); }
     public long getTimestampMillis(android.os.PowerMonitor p0) { return 0L; }
+    PowerMonitorReadings() { this((android.os.PowerMonitor[]) null, (long[]) null, (long[]) null, (int) 0); }
 }

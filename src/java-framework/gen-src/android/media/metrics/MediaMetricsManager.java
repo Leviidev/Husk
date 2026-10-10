@@ -19,4 +19,5 @@ public final class MediaMetricsManager {
     public void reportPlaybackMetrics(java.lang.String p0, android.media.metrics.PlaybackMetrics p1) {}
     public void reportPlaybackStateEvent(java.lang.String p0, android.media.metrics.PlaybackStateEvent p1) {}
     public void reportTrackChangeEvent(java.lang.String p0, android.media.metrics.TrackChangeEvent p1) {}
+    MediaMetricsManager() { this((android.media.metrics.IMediaMetricsManager) null, (int) 0); }
 }

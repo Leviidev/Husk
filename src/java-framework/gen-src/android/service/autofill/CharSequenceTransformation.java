@@ -14,5 +14,6 @@ public abstract class CharSequenceTransformation extends android.service.autofil
         public Builder(android.view.autofill.AutofillId p0, java.util.regex.Pattern p1, java.lang.String p2) {}
         public android.service.autofill.CharSequenceTransformation.Builder addField(android.view.autofill.AutofillId p0, java.util.regex.Pattern p1, java.lang.String p2) { return this; }
         public android.service.autofill.CharSequenceTransformation build() { return null; }
+        Builder() { this((android.view.autofill.AutofillId) null, (java.util.regex.Pattern) null, (java.lang.String) null); }
     }
 }

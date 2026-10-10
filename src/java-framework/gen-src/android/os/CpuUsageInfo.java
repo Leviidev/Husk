@@ -10,4 +10,5 @@ public final class CpuUsageInfo implements android.os.Parcelable {
     public long getActive() { return (huskProps.get("Active") instanceof Long ? (Long) huskProps.get("Active") : 0L); }
     public long getTotal() { return (huskProps.get("Total") instanceof Long ? (Long) huskProps.get("Total") : 0L); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CpuUsageInfo() { this((long) 0L, (long) 0L); }
 }

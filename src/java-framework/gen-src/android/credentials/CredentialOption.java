@@ -14,12 +14,14 @@ public final class CredentialOption implements android.os.Parcelable {
     public java.lang.String getType() { return (java.lang.String) huskProps.get("Type"); }
     public boolean isSystemProviderRequired() { return (huskProps.get("SystemProviderRequired") instanceof Boolean ? (Boolean) huskProps.get("SystemProviderRequired") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    CredentialOption() { this((java.lang.String) null, (android.os.Bundle) null, (android.os.Bundle) null, (boolean) false); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(java.lang.String p0, android.os.Bundle p1, android.os.Bundle p2) {}
         public android.credentials.CredentialOption.Builder addAllowedProvider(android.content.ComponentName p0) { return this; }
-        public android.credentials.CredentialOption build() { return null; }
+        public android.credentials.CredentialOption build() { return new android.credentials.CredentialOption(); }
         public android.credentials.CredentialOption.Builder setAllowedProviders(java.util.Set p0) { huskProps.put("AllowedProviders", p0); return this; }
         public android.credentials.CredentialOption.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); return this; }
+        Builder() { this((java.lang.String) null, (android.os.Bundle) null, (android.os.Bundle) null); }
     }
 }

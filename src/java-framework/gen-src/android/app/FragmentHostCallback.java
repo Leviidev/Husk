@@ -20,4 +20,5 @@ public abstract class FragmentHostCallback extends android.app.FragmentContainer
     public void onStartActivityFromFragment(android.app.Fragment p0, android.content.Intent p1, int p2, android.os.Bundle p3) {}
     public void onStartIntentSenderFromFragment(android.app.Fragment p0, android.content.IntentSender p1, int p2, android.content.Intent p3, int p4, int p5, int p6, android.os.Bundle p7) {}
     public boolean onUseFragmentManagerInflaterFactory() { return false; }
+    FragmentHostCallback() { this((android.content.Context) null, (android.os.Handler) null, (int) 0); }
 }

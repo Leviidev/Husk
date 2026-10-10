@@ -54,6 +54,7 @@ public class BiometricPrompt implements android.hardware.biometrics.BiometricAut
         public AuthenticationResult(android.hardware.biometrics.BiometricPrompt.CryptoObject p0, int p1) { super(); }
         public int getAuthenticationType() { return (huskProps.get("AuthenticationType") instanceof Integer ? (Integer) huskProps.get("AuthenticationType") : 0); }
         public android.hardware.biometrics.BiometricPrompt.CryptoObject getCryptoObject() { return (android.hardware.biometrics.BiometricPrompt.CryptoObject) huskProps.get("CryptoObject"); }
+        AuthenticationResult() { this((android.hardware.biometrics.BiometricPrompt.CryptoObject) null, (int) 0); }
     }
     public static class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -84,6 +85,7 @@ public class BiometricPrompt implements android.hardware.biometrics.BiometricAut
         public android.hardware.biometrics.BiometricPrompt.Builder setTitle(java.lang.CharSequence p0) { huskProps.put("Title", p0); return this; }
         public android.hardware.biometrics.BiometricPrompt.Builder setUseDefaultSubtitle() { return this; }
         public android.hardware.biometrics.BiometricPrompt.Builder setUseDefaultTitle() { return this; }
+        Builder() { this((android.content.Context) null); }
     }
     public static abstract class CryptoObject extends android.hardware.biometrics.CryptoObject {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -101,5 +103,6 @@ public class BiometricPrompt implements android.hardware.biometrics.BiometricAut
         public long getOperationHandle() { return (huskProps.get("OperationHandle") instanceof Long ? (Long) huskProps.get("OperationHandle") : 0L); }
         public android.security.identity.PresentationSession getPresentationSession() { return (android.security.identity.PresentationSession) huskProps.get("PresentationSession"); }
         public java.security.Signature getSignature() { return (java.security.Signature) huskProps.get("Signature"); }
+        CryptoObject() { this((long) 0L); }
     }
 }

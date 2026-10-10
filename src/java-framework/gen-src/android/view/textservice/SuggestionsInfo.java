@@ -21,4 +21,5 @@ public final class SuggestionsInfo implements android.os.Parcelable {
     public int getSuggestionsCount() { return (huskProps.get("SuggestionsCount") instanceof Integer ? (Integer) huskProps.get("SuggestionsCount") : 0); }
     public void setCookieAndSequence(int p0, int p1) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SuggestionsInfo() { this((android.os.Parcel) null); }
 }

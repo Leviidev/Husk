@@ -349,6 +349,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
         public java.lang.CharSequence getLabel() { return (java.lang.CharSequence) huskProps.get("Label"); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        AccessibilityAction() { this((int) 0, (java.lang.CharSequence) null); }
     }
     public static final class CollectionInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -359,19 +360,20 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public CollectionInfo(int p0, int p1, boolean p2) {}
         public CollectionInfo(int p0, int p1, boolean p2, int p3) {}
         public CollectionInfo(int p0, int p1, boolean p2, int p3, int p4, int p5) {}
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(int p0, int p1, boolean p2) { return null; }
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(int p0, int p1, boolean p2, int p3) { return null; }
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(android.view.accessibility.AccessibilityNodeInfo.CollectionInfo p0) { return null; }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(int p0, int p1, boolean p2) { return new CollectionInfo(); }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(int p0, int p1, boolean p2, int p3) { return new CollectionInfo(); }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionInfo obtain(android.view.accessibility.AccessibilityNodeInfo.CollectionInfo p0) { return new CollectionInfo(); }
         public int getColumnCount() { return (huskProps.get("ColumnCount") instanceof Integer ? (Integer) huskProps.get("ColumnCount") : 0); }
         public int getImportantForAccessibilityItemCount() { return (huskProps.get("ImportantForAccessibilityItemCount") instanceof Integer ? (Integer) huskProps.get("ImportantForAccessibilityItemCount") : 0); }
         public int getItemCount() { return (huskProps.get("ItemCount") instanceof Integer ? (Integer) huskProps.get("ItemCount") : 0); }
         public int getRowCount() { return (huskProps.get("RowCount") instanceof Integer ? (Integer) huskProps.get("RowCount") : 0); }
         public int getSelectionMode() { return (huskProps.get("SelectionMode") instanceof Integer ? (Integer) huskProps.get("SelectionMode") : 0); }
         public boolean isHierarchical() { return (huskProps.get("Hierarchical") instanceof Boolean ? (Boolean) huskProps.get("Hierarchical") : false); }
+        CollectionInfo() { this((int) 0, (int) 0, (boolean) false); }
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo build() { return null; }
+            public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo build() { return new android.view.accessibility.AccessibilityNodeInfo.CollectionInfo(); }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setColumnCount(int p0) { huskProps.put("ColumnCount", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setHierarchical(boolean p0) { huskProps.put("Hierarchical", Boolean.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionInfo.Builder setImportantForAccessibilityItemCount(int p0) { huskProps.put("ImportantForAccessibilityItemCount", Integer.valueOf(p0)); return this; }
@@ -390,10 +392,10 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public CollectionItemInfo(int p0, int p1, int p2, int p3, boolean p4, boolean p5) {}
         public CollectionItemInfo(java.lang.String p0, int p1, int p2, java.lang.String p3, int p4, int p5, boolean p6, boolean p7) {}
         public CollectionItemInfo(java.lang.String p0, int p1, int p2, java.lang.String p3, int p4, int p5, boolean p6, boolean p7, int p8) {}
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(int p0, int p1, int p2, int p3, boolean p4) { return null; }
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(int p0, int p1, int p2, int p3, boolean p4, boolean p5) { return null; }
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo p0) { return null; }
-        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(java.lang.String p0, int p1, int p2, java.lang.String p3, int p4, int p5, boolean p6, boolean p7) { return null; }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(int p0, int p1, int p2, int p3, boolean p4) { return new CollectionItemInfo(); }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(int p0, int p1, int p2, int p3, boolean p4, boolean p5) { return new CollectionItemInfo(); }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo p0) { return new CollectionItemInfo(); }
+        public static android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo obtain(java.lang.String p0, int p1, int p2, java.lang.String p3, int p4, int p5, boolean p6, boolean p7) { return new CollectionItemInfo(); }
         public int getColumnIndex() { return (huskProps.get("ColumnIndex") instanceof Integer ? (Integer) huskProps.get("ColumnIndex") : 0); }
         public int getColumnSpan() { return (huskProps.get("ColumnSpan") instanceof Integer ? (Integer) huskProps.get("ColumnSpan") : 0); }
         public java.lang.String getColumnTitle() { return (java.lang.String) huskProps.get("ColumnTitle"); }
@@ -403,10 +405,11 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public int getSortDirection() { return (huskProps.get("SortDirection") instanceof Integer ? (Integer) huskProps.get("SortDirection") : 0); }
         public boolean isHeading() { return (huskProps.get("Heading") instanceof Boolean ? (Boolean) huskProps.get("Heading") : false); }
         public boolean isSelected() { return (huskProps.get("Selected") instanceof Boolean ? (Boolean) huskProps.get("Selected") : false); }
+        CollectionItemInfo() { this((int) 0, (int) 0, (int) 0, (int) 0, (boolean) false); }
         public static final class Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder() {}
-            public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo build() { return null; }
+            public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo build() { return new android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo(); }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnIndex(int p0) { huskProps.put("ColumnIndex", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnSpan(int p0) { huskProps.put("ColumnSpan", Integer.valueOf(p0)); return this; }
             public android.view.accessibility.AccessibilityNodeInfo.CollectionItemInfo.Builder setColumnTitle(java.lang.String p0) { huskProps.put("ColumnTitle", p0); return this; }
@@ -437,11 +440,12 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public static final int RANGE_TYPE_INT = 0;
         public static final int RANGE_TYPE_PERCENT = 2;
         public RangeInfo(int p0, float p1, float p2, float p3) {}
-        public static android.view.accessibility.AccessibilityNodeInfo.RangeInfo obtain(int p0, float p1, float p2, float p3) { return null; }
+        public static android.view.accessibility.AccessibilityNodeInfo.RangeInfo obtain(int p0, float p1, float p2, float p3) { return new RangeInfo(); }
         public float getCurrent() { return (huskProps.get("Current") instanceof Float ? (Float) huskProps.get("Current") : 0f); }
         public float getMax() { return (huskProps.get("Max") instanceof Float ? (Float) huskProps.get("Max") : 0f); }
         public float getMin() { return (huskProps.get("Min") instanceof Float ? (Float) huskProps.get("Min") : 0f); }
         public int getType() { return (huskProps.get("Type") instanceof Integer ? (Integer) huskProps.get("Type") : 0); }
+        RangeInfo() { this((int) 0, (float) 0f, (float) 0f, (float) 0f); }
     }
     public static final class Selection implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -451,6 +455,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public android.view.accessibility.AccessibilityNodeInfo.SelectionPosition getEnd() { return (android.view.accessibility.AccessibilityNodeInfo.SelectionPosition) huskProps.get("End"); }
         public android.view.accessibility.AccessibilityNodeInfo.SelectionPosition getStart() { return (android.view.accessibility.AccessibilityNodeInfo.SelectionPosition) huskProps.get("Start"); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        Selection() { this((android.view.accessibility.AccessibilityNodeInfo.SelectionPosition) null, (android.view.accessibility.AccessibilityNodeInfo.SelectionPosition) null); }
     }
     public static final class SelectionPosition implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -462,6 +467,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public android.view.accessibility.AccessibilityNodeInfo getNode() { return (android.view.accessibility.AccessibilityNodeInfo) huskProps.get("Node"); }
         public int getOffset() { return (huskProps.get("Offset") instanceof Integer ? (Integer) huskProps.get("Offset") : 0); }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        SelectionPosition() { this((android.view.View) null, (int) 0); }
     }
     public static final class TouchDelegateInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -473,5 +479,6 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public int getRegionCount() { return (huskProps.get("RegionCount") instanceof Integer ? (Integer) huskProps.get("RegionCount") : 0); }
         public android.view.accessibility.AccessibilityNodeInfo getTargetForRegion(android.graphics.Region p0) { return null; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}
+        TouchDelegateInfo() { this((java.util.Map) null); }
     }
 }

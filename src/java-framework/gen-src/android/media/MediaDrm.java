@@ -98,6 +98,7 @@ public final class MediaDrm implements java.lang.AutoCloseable {
     public void setPropertyByteArray(java.lang.String p0, byte[] p1) {}
     public void setPropertyString(java.lang.String p0, java.lang.String p1) {}
     public byte[] signRSA(byte[] p0, java.lang.String p1, byte[] p2, byte[] p3) { return null; }
+    MediaDrm() { this((java.util.UUID) null); }
     public static final class Certificate {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public byte[] getContent() { return (byte[]) huskProps.get("Content"); }
@@ -197,6 +198,7 @@ public final class MediaDrm implements java.lang.AutoCloseable {
         public int getOemError() { return (huskProps.get("OemError") instanceof Integer ? (Integer) huskProps.get("OemError") : 0); }
         public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
         public boolean isTransient() { return (huskProps.get("Transient") instanceof Boolean ? (Boolean) huskProps.get("Transient") : false); }
+        MediaDrmStateException() { this((int) 0, (java.lang.String) null); }
     }
     public static final class MetricsConstants {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -254,6 +256,7 @@ public final class MediaDrm implements java.lang.AutoCloseable {
         public PlaybackComponent(android.media.MediaDrm p0, byte[] p1) {}
         public android.media.metrics.LogSessionId getLogSessionId() { return (android.media.metrics.LogSessionId) huskProps.get("LogSessionId"); }
         public void setLogSessionId(android.media.metrics.LogSessionId p0) { huskProps.put("LogSessionId", p0); }
+        PlaybackComponent() { this((android.media.MediaDrm) null, (byte[]) null); }
     }
     public static final class ProvisionRequest {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -272,5 +275,6 @@ public final class MediaDrm implements java.lang.AutoCloseable {
         public int getOemError() { return (huskProps.get("OemError") instanceof Integer ? (Integer) huskProps.get("OemError") : 0); }
         public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
         public boolean isTransient() { return (huskProps.get("Transient") instanceof Boolean ? (Boolean) huskProps.get("Transient") : false); }
+        SessionException() { this((int) 0, (java.lang.String) null); }
     }
 }

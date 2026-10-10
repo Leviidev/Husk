@@ -9,4 +9,5 @@ public class MediaDrmException extends java.lang.Exception implements android.me
     public int getErrorContext() { return (huskProps.get("ErrorContext") instanceof Integer ? (Integer) huskProps.get("ErrorContext") : 0); }
     public int getOemError() { return (huskProps.get("OemError") instanceof Integer ? (Integer) huskProps.get("OemError") : 0); }
     public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
+    MediaDrmException() { this((java.lang.String) null); }
 }

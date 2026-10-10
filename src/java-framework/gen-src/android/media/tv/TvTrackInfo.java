@@ -49,5 +49,6 @@ public final class TvTrackInfo implements android.os.Parcelable {
         public android.media.tv.TvTrackInfo.Builder setVideoHeight(int p0) { huskProps.put("VideoHeight", Integer.valueOf(p0)); return this; }
         public android.media.tv.TvTrackInfo.Builder setVideoPixelAspectRatio(float p0) { huskProps.put("VideoPixelAspectRatio", Float.valueOf(p0)); return this; }
         public android.media.tv.TvTrackInfo.Builder setVideoWidth(int p0) { huskProps.put("VideoWidth", Integer.valueOf(p0)); return this; }
+        Builder() { this((int) 0, (java.lang.String) null); }
     }
 }

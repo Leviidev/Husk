@@ -10,10 +10,11 @@ public final class PictureInPictureUiState implements android.os.Parcelable {
     public boolean isStashed() { return (huskProps.get("Stashed") instanceof Boolean ? (Boolean) huskProps.get("Stashed") : false); }
     public boolean isTransitioningToPip() { return (huskProps.get("TransitioningToPip") instanceof Boolean ? (Boolean) huskProps.get("TransitioningToPip") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    PictureInPictureUiState() { this((boolean) false); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
-        public android.app.PictureInPictureUiState build() { return null; }
+        public android.app.PictureInPictureUiState build() { return new android.app.PictureInPictureUiState(); }
         public android.app.PictureInPictureUiState.Builder setStashed(boolean p0) { huskProps.put("Stashed", Boolean.valueOf(p0)); return this; }
         public android.app.PictureInPictureUiState.Builder setTransitioningToPip(boolean p0) { huskProps.put("TransitioningToPip", Boolean.valueOf(p0)); return this; }
     }

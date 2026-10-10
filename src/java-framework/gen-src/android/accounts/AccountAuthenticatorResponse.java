@@ -12,4 +12,5 @@ public class AccountAuthenticatorResponse implements android.os.Parcelable {
     public void onRequestContinued() {}
     public void onResult(android.os.Bundle p0) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AccountAuthenticatorResponse() { this((android.accounts.IAccountAuthenticatorResponse) null); }
 }

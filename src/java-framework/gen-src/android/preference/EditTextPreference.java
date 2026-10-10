@@ -20,4 +20,5 @@ public class EditTextPreference extends android.preference.DialogPreference {
     public void setText(java.lang.String p0) { huskProps.put("Text", p0); }
     public boolean shouldDisableDependents() { return false; }
     public void showDialog(android.os.Bundle p0) {}
+    EditTextPreference() { this((android.content.Context) null); }
 }

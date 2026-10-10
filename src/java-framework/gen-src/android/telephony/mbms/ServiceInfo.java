@@ -14,4 +14,5 @@ public class ServiceInfo {
     public java.util.Date getSessionEndTime() { return (java.util.Date) huskProps.get("SessionEndTime"); }
     public java.util.Date getSessionStartTime() { return (java.util.Date) huskProps.get("SessionStartTime"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ServiceInfo() { this((android.os.Parcel) null); }
 }

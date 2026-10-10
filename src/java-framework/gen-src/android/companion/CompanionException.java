@@ -5,4 +5,5 @@ package android.companion;
 public class CompanionException extends java.lang.RuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CompanionException(java.lang.String p0) { super(); }
+    CompanionException() { this((java.lang.String) null); }
 }

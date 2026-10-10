@@ -64,5 +64,6 @@ public abstract class WallpaperService extends android.app.Service {
         public boolean shouldWaitForEngineShown() { return false; }
         public boolean shouldZoomOutWallpaper() { return false; }
         public boolean supportsLocalColorExtraction() { return false; }
+        Engine() { this((android.service.wallpaper.WallpaperService) null); }
     }
 }

@@ -136,6 +136,7 @@ public class IntentFilter implements android.os.Parcelable {
     public java.util.Iterator mimeGroupsIterator() { return null; }
     public boolean needsVerification() { return false; }
     public java.util.Iterator pathsIterator() { return null; }
+    public void readFromXml(org.xmlpull.v1.XmlPullParser p0) {}
     public int safeCountActions() { return 0; }
     public java.util.Iterator schemeSpecificPartsIterator() { return null; }
     public java.util.Iterator schemesIterator() { return null; }
@@ -146,5 +147,6 @@ public class IntentFilter implements android.os.Parcelable {
     public void setVisibilityToInstantApp(int p0) { huskFill.put("VisibilityToInstantApp", Integer.valueOf(p0)); }
     public java.lang.String toLongString() { return null; }
     public java.util.Iterator typesIterator() { return null; }
+    public void writeToXml(org.xmlpull.v1.XmlSerializer p0) {}
     // ---- end of generated members
 }

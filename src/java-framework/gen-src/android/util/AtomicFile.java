@@ -20,4 +20,5 @@ public class AtomicFile {
     public java.io.FileOutputStream startWrite(long p0) { return null; }
     public void truncate() {}
     public void write(java.util.function.Consumer p0) {}
+    AtomicFile() { this((java.io.File) null); }
 }

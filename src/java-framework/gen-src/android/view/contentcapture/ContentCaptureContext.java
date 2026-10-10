@@ -11,7 +11,7 @@ public final class ContentCaptureContext implements android.os.Parcelable {
     public static final int FLAG_RECONNECTED = 4;
     public ContentCaptureContext(android.view.contentcapture.ContentCaptureContext p0, int p1) {}
     public ContentCaptureContext(android.view.contentcapture.ContentCaptureContext p0, android.app.assist.ActivityId p1, android.content.ComponentName p2, int p3, android.os.IBinder p4, int p5) {}
-    public static android.view.contentcapture.ContentCaptureContext forLocusId(java.lang.String p0) { return null; }
+    public static android.view.contentcapture.ContentCaptureContext forLocusId(java.lang.String p0) { return new ContentCaptureContext(); }
     public int describeContents() { return 0; }
     public void dump(java.io.PrintWriter p0) {}
     public android.content.ComponentName getActivityComponent() { return (android.content.ComponentName) huskProps.get("ActivityComponent"); }
@@ -25,10 +25,12 @@ public final class ContentCaptureContext implements android.os.Parcelable {
     public android.os.IBinder getWindowToken() { return (android.os.IBinder) huskProps.get("WindowToken"); }
     public void setParentSessionId(int p0) { huskProps.put("ParentSessionId", Integer.valueOf(p0)); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ContentCaptureContext() { this((android.view.contentcapture.ContentCaptureContext) null, (int) 0); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(android.content.LocusId p0) {}
-        public android.view.contentcapture.ContentCaptureContext build() { return null; }
+        public android.view.contentcapture.ContentCaptureContext build() { return new android.view.contentcapture.ContentCaptureContext(); }
         public android.view.contentcapture.ContentCaptureContext.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
+        Builder() { this((android.content.LocusId) null); }
     }
 }

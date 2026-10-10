@@ -9,4 +9,5 @@ public final class TsResponse extends android.media.tv.BroadcastInfoResponse imp
     public int describeContents() { return 0; }
     public java.lang.String getSharedFilterToken() { return (java.lang.String) huskProps.get("SharedFilterToken"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TsResponse() { this((int) 0, (int) 0, (int) 0, (java.lang.String) null); }
 }

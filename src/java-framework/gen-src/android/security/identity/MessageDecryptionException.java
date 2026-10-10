@@ -6,4 +6,5 @@ public class MessageDecryptionException extends android.security.identity.Identi
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public MessageDecryptionException(java.lang.String p0) { super(p0); }
     public MessageDecryptionException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    MessageDecryptionException() { this((java.lang.String) null); }
 }

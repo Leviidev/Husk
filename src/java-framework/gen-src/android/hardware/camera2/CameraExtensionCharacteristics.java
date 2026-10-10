@@ -32,4 +32,5 @@ public final class CameraExtensionCharacteristics {
     public java.util.List getSupportedExtensions() { return (huskProps.get("SupportedExtensions") != null ? (java.util.List) huskProps.get("SupportedExtensions") : new java.util.ArrayList()); }
     public boolean isCaptureProcessProgressAvailable(int p0) { return false; }
     public boolean isPostviewAvailable(int p0) { return false; }
+    CameraExtensionCharacteristics() { this((android.content.Context) null, (java.lang.String) null, (java.util.Map) null); }
 }

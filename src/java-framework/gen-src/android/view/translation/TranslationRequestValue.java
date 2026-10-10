@@ -6,8 +6,9 @@ public final class TranslationRequestValue implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public TranslationRequestValue(java.lang.CharSequence p0) {}
-    public static android.view.translation.TranslationRequestValue forText(java.lang.CharSequence p0) { return null; }
+    public static android.view.translation.TranslationRequestValue forText(java.lang.CharSequence p0) { return new TranslationRequestValue(); }
     public int describeContents() { return 0; }
     public java.lang.CharSequence getText() { return (java.lang.CharSequence) huskProps.get("Text"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    TranslationRequestValue() { this((java.lang.CharSequence) null); }
 }

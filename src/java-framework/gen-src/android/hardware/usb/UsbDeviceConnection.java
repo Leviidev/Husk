@@ -22,4 +22,5 @@ public class UsbDeviceConnection {
     public boolean resetDevice() { return false; }
     public boolean setConfiguration(android.hardware.usb.UsbConfiguration p0) { return false; }
     public boolean setInterface(android.hardware.usb.UsbInterface p0) { return false; }
+    UsbDeviceConnection() { this((android.hardware.usb.UsbDevice) null); }
 }

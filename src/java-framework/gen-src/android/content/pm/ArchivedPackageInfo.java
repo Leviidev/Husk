@@ -24,4 +24,5 @@ public final class ArchivedPackageInfo {
     public android.content.pm.ArchivedPackageInfo setUserDataFragile(java.lang.String p0) { huskProps.put("UserDataFragile", p0); return this; }
     public android.content.pm.ArchivedPackageInfo setVersionCode(int p0) { huskProps.put("VersionCode", Integer.valueOf(p0)); return this; }
     public android.content.pm.ArchivedPackageInfo setVersionCodeMajor(int p0) { huskProps.put("VersionCodeMajor", Integer.valueOf(p0)); return this; }
+    ArchivedPackageInfo() { this((android.content.pm.ArchivedPackageParcel) null); }
 }

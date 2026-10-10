@@ -5,4 +5,5 @@ package android.media;
 public final class UnsupportedSchemeException extends android.media.MediaDrmException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public UnsupportedSchemeException(java.lang.String p0) { super(p0); }
+    UnsupportedSchemeException() { this((java.lang.String) null); }
 }

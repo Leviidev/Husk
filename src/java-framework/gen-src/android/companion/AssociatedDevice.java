@@ -7,5 +7,9 @@ public final class AssociatedDevice implements android.os.Parcelable {
     public static android.os.Parcelable.Creator CREATOR;
     public AssociatedDevice(android.os.Parcelable p0) {}
     public int describeContents() { return 0; }
+    public android.bluetooth.le.ScanResult getBleDevice() { return (android.bluetooth.le.ScanResult) huskProps.get("BleDevice"); }
+    public android.bluetooth.BluetoothDevice getBluetoothDevice() { return (android.bluetooth.BluetoothDevice) huskProps.get("BluetoothDevice"); }
+    public android.net.wifi.ScanResult getWifiDevice() { return (android.net.wifi.ScanResult) huskProps.get("WifiDevice"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AssociatedDevice() { this((android.os.Parcelable) null); }
 }

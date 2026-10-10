@@ -9,6 +9,7 @@ import android.os.Looper;
 import java.io.File;
 
 public class ContextWrapper extends Context {
+    /** @hide */ @Override public int getThemeResId() { return b().getThemeResId(); }
     Context mBase;
     public ContextWrapper(Context base) { mBase = base; }
     protected void attachBaseContext(Context base) {

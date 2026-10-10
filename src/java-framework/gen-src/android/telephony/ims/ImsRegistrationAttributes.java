@@ -22,14 +22,16 @@ public final class ImsRegistrationAttributes implements android.os.Parcelable {
     public android.telephony.ims.SipDetails getSipDetails() { return (android.telephony.ims.SipDetails) huskProps.get("SipDetails"); }
     public int getTransportType() { return (huskProps.get("TransportType") instanceof Integer ? (Integer) huskProps.get("TransportType") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ImsRegistrationAttributes() { this((android.os.Parcel) null); }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0) {}
-        public android.telephony.ims.ImsRegistrationAttributes build() { return null; }
+        public android.telephony.ims.ImsRegistrationAttributes build() { return new android.telephony.ims.ImsRegistrationAttributes(); }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFeatureTags(java.util.Set p0) { huskProps.put("FeatureTags", p0); return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFlagRegistrationTypeEmergency() { return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setFlagVirtualRegistrationForEmergencyCall() { return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setPcscfAddress(java.lang.String p0) { huskProps.put("PcscfAddress", p0); return this; }
         public android.telephony.ims.ImsRegistrationAttributes.Builder setSipDetails(android.telephony.ims.SipDetails p0) { huskProps.put("SipDetails", p0); return this; }
+        Builder() { this((int) 0); }
     }
 }

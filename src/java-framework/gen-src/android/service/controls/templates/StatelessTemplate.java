@@ -6,4 +6,5 @@ public final class StatelessTemplate extends android.service.controls.templates.
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public StatelessTemplate(java.lang.String p0) { super(); }
     public int getTemplateType() { return (huskProps.get("TemplateType") instanceof Integer ? (Integer) huskProps.get("TemplateType") : 0); }
+    StatelessTemplate() { this((java.lang.String) null); }
 }

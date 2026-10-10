@@ -20,4 +20,5 @@ public final class DomainVerificationManager {
     public int setDomainVerificationStatus(java.util.UUID p0, java.util.Set p1, int p2) { return 0; }
     public int setDomainVerificationUserSelection(java.util.UUID p0, java.util.Set p1, boolean p2) { return 0; }
     public void setUriRelativeFilterGroups(java.lang.String p0, java.util.Map p1) {}
+    DomainVerificationManager() { this((android.content.Context) null, (android.content.pm.verify.domain.IDomainVerificationManager) null); }
 }

@@ -6,7 +6,7 @@ public final class AdBuffer implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public AdBuffer(int p0, java.lang.String p1, android.os.SharedMemory p2, int p3, int p4, long p5, int p6) {}
-    public static android.media.tv.AdBuffer dupAdBuffer(android.media.tv.AdBuffer p0) { return null; }
+    public static android.media.tv.AdBuffer dupAdBuffer(android.media.tv.AdBuffer p0) { return new AdBuffer(); }
     public int describeContents() { return 0; }
     public int getFlags() { return (huskProps.get("Flags") instanceof Integer ? (Integer) huskProps.get("Flags") : 0); }
     public int getId() { return (huskProps.get("Id") instanceof Integer ? (Integer) huskProps.get("Id") : 0); }
@@ -16,4 +16,5 @@ public final class AdBuffer implements android.os.Parcelable {
     public long getPresentationTimeUs() { return (huskProps.get("PresentationTimeUs") instanceof Long ? (Long) huskProps.get("PresentationTimeUs") : 0L); }
     public android.os.SharedMemory getSharedMemory() { return (android.os.SharedMemory) huskProps.get("SharedMemory"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AdBuffer() { this((int) 0, (java.lang.String) null, (android.os.SharedMemory) null, (int) 0, (int) 0, (long) 0L, (int) 0); }
 }

@@ -64,5 +64,6 @@ public final class KeyChain {
         protected KeyChainConnection(android.content.Context p0, android.content.ServiceConnection p1, android.security.IKeyChainService p2) {}
         public void close() {}
         public android.security.IKeyChainService getService() { return (android.security.IKeyChainService) huskProps.get("Service"); }
+        KeyChainConnection() { this((android.content.Context) null, (android.content.ServiceConnection) null, (android.security.IKeyChainService) null); }
     }
 }

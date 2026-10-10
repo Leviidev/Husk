@@ -10,4 +10,5 @@ public final class ParcelableColorSpace implements android.os.Parcelable {
     public int describeContents() { return 0; }
     public android.graphics.ColorSpace getColorSpace() { return (android.graphics.ColorSpace) huskProps.get("ColorSpace"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ParcelableColorSpace() { this((android.graphics.ColorSpace) null); }
 }

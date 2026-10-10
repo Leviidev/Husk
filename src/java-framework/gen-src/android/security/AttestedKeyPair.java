@@ -8,4 +8,5 @@ public final class AttestedKeyPair {
     public AttestedKeyPair(java.security.KeyPair p0, java.security.cert.Certificate[] p1) {}
     public java.util.List getAttestationRecord() { return (huskProps.get("AttestationRecord") != null ? (java.util.List) huskProps.get("AttestationRecord") : new java.util.ArrayList()); }
     public java.security.KeyPair getKeyPair() { return (java.security.KeyPair) huskProps.get("KeyPair"); }
+    AttestedKeyPair() { this((java.security.KeyPair) null, (java.util.List) null); }
 }

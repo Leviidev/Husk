@@ -103,13 +103,17 @@ def strip_section(text, nested):
     j_end = text.find('\n', j); j_end = len(text) if j_end < 0 else j_end + 1
     return text[:line_start] + text[j_end:]
 
+# the platform: framework.jar and the mainline modules' framework jars (MediaStore, connectivity, Wi-Fi, Bluetooth...)
+import glob as _glob
+PLATFORM = ','.join(['/Volumes/GTAV/husk2/aosp/fw/framework.jar'] + sorted(_glob.glob('/Volumes/GTAV/husk2/modules/jars/framework-*.jar')) + ['/Volumes/GTAV/husk2/modules/jars/android.net.ipsec.ike.jar'])
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opts = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
     src = args[0]
     fw = {}
     for d in dexes(opts.get('fw', '/Volumes/GTAV/husk2/java/husk-framework.dex')): fw.update(d.classes())
-    plat = Plat(opts.get('platform', '/Volumes/GTAV/husk2/aosp/fw/framework.jar').split(','))
+    plat = Plat(opts.get('platform', PLATFORM).split(','))
     only = set('L%s;' % o for o in opts['only'].split(',')) if 'only' in opts else None
     art = '/Volumes/GTAV/husk2/root/apex/com.android.art/javalib/'
     core = Plat([art + 'core-oj.jar', art + 'core-libart.jar'])       # libcore: what Husk's classes inherit from java.*
@@ -119,6 +123,7 @@ def main():
         if t in PRIM: return True
         if t.startswith(JDK9): return False
         if t.startswith(('Ljava/', 'Ljavax/')) and not t.startswith('Ljavax/microedition/'): return True
+        if t.startswith('Lorg/xmlpull/v1/'): return True                         # libcore's, with stubs to compile against
         return t in fw
     # what earlier runs added does not count as Husk's own: read back from the generated sections
     PR = {'int': 'I', 'long': 'J', 'float': 'F', 'double': 'D', 'boolean': 'Z', 'byte': 'B', 'char': 'C', 'short': 'S', 'void': 'V'}

@@ -67,6 +67,7 @@ public class TextToSpeech {
     public int synthesizeToFile(java.lang.CharSequence p0, android.os.Bundle p1, android.os.ParcelFileDescriptor p2, java.lang.String p3) { return 0; }
     public int synthesizeToFile(java.lang.CharSequence p0, android.os.Bundle p1, java.io.File p2, java.lang.String p3) { return 0; }
     public int synthesizeToFile(java.lang.String p0, java.util.HashMap p1, java.lang.String p2) { return 0; }
+    TextToSpeech() { this((android.content.Context) null, (android.speech.tts.TextToSpeech.OnInitListener) null); }
     public static class Engine {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String ACTION_CHECK_TTS_DATA = "android.speech.tts.engine.CHECK_TTS_DATA";
@@ -114,6 +115,7 @@ public class TextToSpeech {
         public static final java.lang.String SERVICE_META_DATA = "android.speech.tts";
         public static int USE_DEFAULTS;
         public Engine(android.speech.tts.TextToSpeech p0) {}
+        Engine() { this((android.speech.tts.TextToSpeech) null); }
     }
     public static class EngineInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

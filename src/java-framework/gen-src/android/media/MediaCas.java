@@ -45,6 +45,7 @@ public final class MediaCas implements java.lang.AutoCloseable {
     public void setPrivateData(byte[] p0) { huskProps.put("PrivateData", p0); }
     public void setResourceOwnershipRetention(boolean p0) { huskProps.put("ResourceOwnershipRetention", Boolean.valueOf(p0)); }
     public boolean updateResourcePriority(int p0, int p1) { return false; }
+    MediaCas() { this((int) 0); }
     public interface EventListener {
         void onEvent(android.media.MediaCas p0, int p1, int p2, byte[] p3);
         default void onPluginStatusUpdate(android.media.MediaCas p0, int p1, int p2) {}

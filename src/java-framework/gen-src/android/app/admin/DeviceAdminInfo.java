@@ -36,6 +36,7 @@ public final class DeviceAdminInfo implements android.os.Parcelable {
     public boolean supportsTransferOwnership() { return false; }
     public boolean usesPolicy(int p0) { return false; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    DeviceAdminInfo() { this((android.content.Context) null, (android.content.pm.ActivityInfo) null); }
     public static class PolicyInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public int description;
@@ -46,5 +47,6 @@ public final class DeviceAdminInfo implements android.os.Parcelable {
         public java.lang.String tag;
         public PolicyInfo(int p0, java.lang.String p1, int p2, int p3) {}
         public PolicyInfo(int p0, java.lang.String p1, int p2, int p3, int p4, int p5) {}
+        PolicyInfo() { this((int) 0, (java.lang.String) null, (int) 0, (int) 0); }
     }
 }

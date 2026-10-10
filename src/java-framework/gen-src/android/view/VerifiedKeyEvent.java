@@ -16,4 +16,5 @@ public final class VerifiedKeyEvent extends android.view.VerifiedInputEvent impl
     public int getRepeatCount() { return (huskProps.get("RepeatCount") instanceof Integer ? (Integer) huskProps.get("RepeatCount") : 0); }
     public int getScanCode() { return (huskProps.get("ScanCode") instanceof Integer ? (Integer) huskProps.get("ScanCode") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    VerifiedKeyEvent() { this((int) 0, (long) 0L, (int) 0, (int) 0, (int) 0, (long) 0L, (int) 0, (int) 0, (int) 0, (int) 0, (int) 0); }
 }

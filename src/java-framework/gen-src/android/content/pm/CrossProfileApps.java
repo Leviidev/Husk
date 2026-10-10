@@ -25,4 +25,5 @@ public class CrossProfileApps {
     public void startActivity(android.content.Intent p0, android.os.UserHandle p1, android.app.Activity p2, android.os.Bundle p3) {}
     public void startMainActivity(android.content.ComponentName p0, android.os.UserHandle p1) {}
     public void startMainActivity(android.content.ComponentName p0, android.os.UserHandle p1, android.app.Activity p2, android.os.Bundle p3) {}
+    CrossProfileApps() { this((android.content.Context) null, (android.content.pm.ICrossProfileApps) null); }
 }

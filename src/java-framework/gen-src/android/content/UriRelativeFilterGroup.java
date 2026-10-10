@@ -20,4 +20,5 @@ public final class UriRelativeFilterGroup {
     public android.content.UriRelativeFilterGroupParcel toParcel() { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public void writeToXml(org.xmlpull.v1.XmlSerializer p0) {}
+    UriRelativeFilterGroup() { this((int) 0); }
 }

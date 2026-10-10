@@ -12,4 +12,5 @@ public final class ContentCaptureCondition implements android.os.Parcelable {
     public int getFlags() { return (huskProps.get("Flags") instanceof Integer ? (Integer) huskProps.get("Flags") : 0); }
     public android.content.LocusId getLocusId() { return (android.content.LocusId) huskProps.get("LocusId"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    ContentCaptureCondition() { this((android.content.LocusId) null, (int) 0); }
 }

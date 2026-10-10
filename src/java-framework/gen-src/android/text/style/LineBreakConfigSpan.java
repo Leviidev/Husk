@@ -6,12 +6,13 @@ public final class LineBreakConfigSpan implements android.text.ParcelableSpan {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
     public LineBreakConfigSpan(android.graphics.text.LineBreakConfig p0) {}
-    public static android.text.style.LineBreakConfigSpan createNoBreakSpan() { return null; }
-    public static android.text.style.LineBreakConfigSpan createNoHyphenationSpan() { return null; }
+    public static android.text.style.LineBreakConfigSpan createNoBreakSpan() { return new LineBreakConfigSpan(); }
+    public static android.text.style.LineBreakConfigSpan createNoHyphenationSpan() { return new LineBreakConfigSpan(); }
     public int describeContents() { return 0; }
     public android.graphics.text.LineBreakConfig getLineBreakConfig() { return (android.graphics.text.LineBreakConfig) huskProps.get("LineBreakConfig"); }
     public int getSpanTypeId() { return (huskProps.get("SpanTypeId") instanceof Integer ? (Integer) huskProps.get("SpanTypeId") : 0); }
     public int getSpanTypeIdInternal() { return (huskProps.get("SpanTypeIdInternal") instanceof Integer ? (Integer) huskProps.get("SpanTypeIdInternal") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public void writeToParcelInternal(android.os.Parcel p0, int p1) {}
+    LineBreakConfigSpan() { this((android.graphics.text.LineBreakConfig) null); }
 }

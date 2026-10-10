@@ -6,4 +6,5 @@ public class IdentityCredentialException extends java.lang.Exception {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public IdentityCredentialException(java.lang.String p0) { super(); }
     public IdentityCredentialException(java.lang.String p0, java.lang.Throwable p1) { super(); }
+    IdentityCredentialException() { this((java.lang.String) null); }
 }

@@ -5,4 +5,5 @@ package android.media;
 public class MediaDrmResetException extends java.lang.IllegalStateException implements android.media.MediaDrmThrowable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public MediaDrmResetException(java.lang.String p0) { super(); }
+    MediaDrmResetException() { this((java.lang.String) null); }
 }

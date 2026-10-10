@@ -8,4 +8,5 @@ public class SliceMetrics {
     public void logHidden() {}
     public void logTouch(int p0, android.net.Uri p1) {}
     public void logVisible() {}
+    SliceMetrics() { this((android.content.Context) null, (android.net.Uri) null); }
 }

@@ -61,5 +61,6 @@ public class RcsUceAdapter {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public PublishStateCallbackAdapter(java.util.concurrent.Executor p0, android.telephony.ims.RcsUceAdapter.OnPublishStateChangedListener p1) {}
         public android.telephony.ims.aidl.IRcsUcePublishStateCallback getBinder() { return (android.telephony.ims.aidl.IRcsUcePublishStateCallback) huskProps.get("Binder"); }
+        PublishStateCallbackAdapter() { this((java.util.concurrent.Executor) null, (android.telephony.ims.RcsUceAdapter.OnPublishStateChangedListener) null); }
     }
 }

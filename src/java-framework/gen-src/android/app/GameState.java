@@ -18,4 +18,5 @@ public final class GameState implements android.os.Parcelable {
     public int getQuality() { return (huskProps.get("Quality") instanceof Integer ? (Integer) huskProps.get("Quality") : 0); }
     public boolean isLoading() { return (huskProps.get("Loading") instanceof Boolean ? (Boolean) huskProps.get("Loading") : false); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    GameState() { this((boolean) false, (int) 0); }
 }

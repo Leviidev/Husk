@@ -8,4 +8,5 @@ public final class ToggleTemplate extends android.service.controls.templates.Con
     public java.lang.CharSequence getContentDescription() { return (java.lang.CharSequence) huskProps.get("ContentDescription"); }
     public int getTemplateType() { return (huskProps.get("TemplateType") instanceof Integer ? (Integer) huskProps.get("TemplateType") : 0); }
     public boolean isChecked() { return (huskProps.get("Checked") instanceof Boolean ? (Boolean) huskProps.get("Checked") : false); }
+    ToggleTemplate() { this((java.lang.String) null, (android.service.controls.templates.ControlButton) null); }
 }

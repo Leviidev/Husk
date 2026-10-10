@@ -14,6 +14,7 @@ public class SpellCheckerSession {
     public void getSuggestions(android.view.textservice.TextInfo p0, int p1) {}
     public void getSuggestions(android.view.textservice.TextInfo[] p0, int p1, boolean p2) {}
     public boolean isSessionDisconnected() { return (huskProps.get("SessionDisconnected") instanceof Boolean ? (Boolean) huskProps.get("SessionDisconnected") : false); }
+    SpellCheckerSession() { this((android.view.textservice.SpellCheckerInfo) null, (android.view.textservice.TextServicesManager) null, (android.view.textservice.SpellCheckerSession.SpellCheckerSessionListener) null, (java.util.concurrent.Executor) null); }
     public interface SpellCheckerSessionListener {
         void onGetSentenceSuggestions(android.view.textservice.SentenceSuggestionsInfo[] p0);
         void onGetSuggestions(android.view.textservice.SuggestionsInfo[] p0);

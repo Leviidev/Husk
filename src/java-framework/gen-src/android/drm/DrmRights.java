@@ -13,4 +13,5 @@ public class DrmRights {
     public byte[] getData() { return (byte[]) huskProps.get("Data"); }
     public java.lang.String getMimeType() { return (java.lang.String) huskProps.get("MimeType"); }
     public java.lang.String getSubscriptionId() { return (java.lang.String) huskProps.get("SubscriptionId"); }
+    DrmRights() { this((android.drm.ProcessedData) null, (java.lang.String) null); }
 }

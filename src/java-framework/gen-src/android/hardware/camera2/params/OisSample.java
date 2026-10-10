@@ -8,4 +8,5 @@ public final class OisSample {
     public long getTimestamp() { return (huskProps.get("Timestamp") instanceof Long ? (Long) huskProps.get("Timestamp") : 0L); }
     public float getXshift() { return (huskProps.get("Xshift") instanceof Float ? (Float) huskProps.get("Xshift") : 0f); }
     public float getYshift() { return (huskProps.get("Yshift") instanceof Float ? (Float) huskProps.get("Yshift") : 0f); }
+    OisSample() { this((long) 0L, (float) 0f, (float) 0f); }
 }

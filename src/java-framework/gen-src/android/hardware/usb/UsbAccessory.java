@@ -21,4 +21,5 @@ public class UsbAccessory implements android.os.Parcelable {
     public java.lang.String getUri() { return (java.lang.String) huskProps.get("Uri"); }
     public java.lang.String getVersion() { return (java.lang.String) huskProps.get("Version"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    UsbAccessory() { this((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (android.hardware.usb.IUsbSerialReader) null); }
 }

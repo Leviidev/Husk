@@ -9,4 +9,5 @@ public class GesturePoint {
     public float y;
     public GesturePoint(float p0, float p1, long p2) {}
     public java.lang.Object clone() { return null; }
+    GesturePoint() { this((float) 0f, (float) 0f, (long) 0L); }
 }

@@ -15,4 +15,5 @@ public class AudioDescriptor implements android.os.Parcelable {
     public int getEncapsulationType() { return (huskProps.get("EncapsulationType") instanceof Integer ? (Integer) huskProps.get("EncapsulationType") : 0); }
     public int getStandard() { return (huskProps.get("Standard") instanceof Integer ? (Integer) huskProps.get("Standard") : 0); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    AudioDescriptor() { this((int) 0, (int) 0, (byte[]) null); }
 }

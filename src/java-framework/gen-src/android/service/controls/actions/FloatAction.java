@@ -8,4 +8,5 @@ public final class FloatAction extends android.service.controls.actions.ControlA
     public FloatAction(java.lang.String p0, float p1, java.lang.String p2) { super(); }
     public int getActionType() { return (huskProps.get("ActionType") instanceof Integer ? (Integer) huskProps.get("ActionType") : 0); }
     public float getNewValue() { return (huskProps.get("NewValue") instanceof Float ? (Float) huskProps.get("NewValue") : 0f); }
+    FloatAction() { this((java.lang.String) null, (float) 0f); }
 }

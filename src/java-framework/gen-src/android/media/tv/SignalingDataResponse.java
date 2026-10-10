@@ -10,4 +10,5 @@ public final class SignalingDataResponse extends android.media.tv.BroadcastInfoR
     public java.util.List getSignalingDataInfoList() { return (huskProps.get("SignalingDataInfoList") != null ? (java.util.List) huskProps.get("SignalingDataInfoList") : new java.util.ArrayList()); }
     public java.util.List getSignalingDataTypes() { return (huskProps.get("SignalingDataTypes") != null ? (java.util.List) huskProps.get("SignalingDataTypes") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
+    SignalingDataResponse() { this((int) 0, (int) 0, (int) 0, (java.util.List) null, (java.util.List) null); }
 }

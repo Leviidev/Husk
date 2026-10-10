@@ -16,4 +16,5 @@ public class OverlayManager {
     public void invalidateCachesForOverlay(java.lang.String p0, android.os.UserHandle p1) {}
     public void setEnabled(java.lang.String p0, boolean p1, android.os.UserHandle p2) {}
     public void setEnabledExclusiveInCategory(java.lang.String p0, android.os.UserHandle p1) {}
+    OverlayManager() { this((android.content.Context) null); }
 }

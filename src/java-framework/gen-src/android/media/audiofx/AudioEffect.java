@@ -90,6 +90,7 @@ public class AudioEffect {
     public int setParameter(int[] p0, int[] p1) { return 0; }
     public int setParameter(int[] p0, short[] p1) { return 0; }
     public void setParameterListener(android.media.audiofx.AudioEffect.OnParameterChangeListener p0) { huskProps.put("ParameterListener", p0); }
+    AudioEffect() { this((java.util.UUID) null, (android.media.AudioDeviceAttributes) null); }
     public static class Descriptor {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public java.lang.String connectMode;
@@ -106,6 +107,7 @@ public class AudioEffect {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public NativeEventHandler(android.media.audiofx.AudioEffect p0, android.media.audiofx.AudioEffect p1, android.os.Looper p2) { super(); }
         public void handleMessage(android.os.Message p0) {}
+        NativeEventHandler() { this((android.media.audiofx.AudioEffect) null, (android.media.audiofx.AudioEffect) null, (android.os.Looper) null); }
     }
     public interface OnControlStatusChangeListener {
         void onControlStatusChange(android.media.audiofx.AudioEffect p0, boolean p1);
