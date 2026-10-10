@@ -691,7 +691,7 @@ static jo new_object(jo cls, void *mid, int how, const jvalue *a, tl_va_list *ap
         if (how == 1) args_from_va(m, ap, args);
         const jvalue *use = how == 1 ? args : a;
         /* new String(...) through JNI: ART makes it with StringFactory, as bytecode does. */
-        if (!strcmp(cls->klass.jc->name, "java/lang/String") && !strcmp(m->name, "<init>")) {
+        if (cls->klass.jc->dvm && !strcmp(cls->klass.jc->name, "java/lang/String") && !strcmp(m->name, "<init>")) {
             bool dvm_string_init(const char *sig, const jvalue *p, jvalue *ret);
             jvalue r = {0};
             tl_jni_unref(o);

@@ -628,6 +628,10 @@ void *tl_nwindow_native(void *window) { return window ? ((tl_nwindow *)window)->
 int tl_nwindow_width(void *window) { return window ? ((tl_nwindow *)window)->width : 0; }
 int tl_nwindow_height(void *window) { return window ? ((tl_nwindow *)window)->height : 0; }
 
+int tl_AndroidBitmap_getInfo(void *env, void *bitmap, void *info);
+int tl_AndroidBitmap_lockPixels(void *env, void *bitmap, void **addr);
+int tl_AndroidBitmap_unlockPixels(void *env, void *bitmap);
+int32_t tl_AndroidBitmap_getDataSpace(void *env, void *bitmap);
 static void *b_ANativeWindow_fromSurface(void *env, void *surface) { (void)env; (void)surface; atomic_fetch_add(&g_window.refs, 1); return &g_window; }
 static void b_ANativeWindow_acquire(tl_nwindow *w) { if (w) atomic_fetch_add(&w->refs, 1); }
 static void b_ANativeWindow_release(tl_nwindow *w) { if (w) atomic_fetch_sub(&w->refs, 1); }
@@ -741,6 +745,9 @@ const tl_bionic_entry tl_tab_ndk[] = {
     TL_WRAP("AAsset_getLength64", b_AAsset_getLength), TL_WRAP("AAsset_getRemainingLength", b_AAsset_getRemainingLength),
     TL_WRAP("AAsset_getRemainingLength64", b_AAsset_getRemainingLength), TL_WRAP("AAsset_getBuffer", b_AAsset_getBuffer),
     TL_WRAP("AAsset_seek", b_AAsset_seek), TL_WRAP("AAsset_seek64", b_AAsset_seek), TL_WRAP("AAsset_isAllocated", b_AAsset_isAllocated),
+    /* bitmaps (libjnigraphics) */
+    TL_WRAP("AndroidBitmap_getInfo", tl_AndroidBitmap_getInfo), TL_WRAP("AndroidBitmap_lockPixels", tl_AndroidBitmap_lockPixels),
+    TL_WRAP("AndroidBitmap_unlockPixels", tl_AndroidBitmap_unlockPixels), TL_WRAP("AndroidBitmap_getDataSpace", tl_AndroidBitmap_getDataSpace),
     /* windows */
     TL_WRAP("ANativeWindow_fromSurface", b_ANativeWindow_fromSurface), TL_WRAP("ANativeWindow_acquire", b_ANativeWindow_acquire),
     TL_WRAP("ANativeWindow_release", b_ANativeWindow_release), TL_WRAP("ANativeWindow_getWidth", b_ANativeWindow_getWidth),
