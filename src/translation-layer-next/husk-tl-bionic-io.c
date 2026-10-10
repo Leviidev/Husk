@@ -1335,6 +1335,12 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 101: { int r = nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
     case 124: sched_yield(); return 0;
     case 132: return 0;                                                                 /* sigaltstack: accepted (guest handlers are not installed) */
+    /* memory and file status by raw system call (packers and protectors avoid libc): through the same shims as the calls */
+    case 222: { void *r = b_mmap((void *)a0, (size_t)a1, (int)a2, (int)a3, (int)a4, a5); return r == (void *)-1 ? -*tl_guest_errno_ptr() : (long)r; }
+    case 215: { int r = b_munmap((void *)a0, (size_t)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
+    case 226: { int r = b_mprotect((void *)a0, (size_t)a1, (int)a2); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
+    case 79:  { int r = b_fstatat((int)a0, (const char *)a1, (guest_stat *)a2, (int)a3); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
+    case 80:  { int r = b_fstat((int)a0, (guest_stat *)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     default: break;
     }
     char what[96];
