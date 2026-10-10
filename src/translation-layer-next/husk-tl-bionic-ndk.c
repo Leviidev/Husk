@@ -411,7 +411,7 @@ static void *aa_pump(void *arg)
     aa_stream *s = arg;
     pthread_setname_np("aaudio-pump");
     int n = s->burst;
-    /* room for the whole buffer capacity, as Android's is: Unity writes more than one burst's worth past the frames it is asked for */
+    /* sized for the app's format (Unity asks for float: a 16-bit buffer was half what it wrote) and the full buffer capacity, as Android's is */
     size_t frame_bytes = (size_t)s->channels * (s->format == AA_FORMAT_FLOAT ? 4 : 2), cap = (size_t)(n > AA_BURST * 8 ? n : AA_BURST * 8);
     uint8_t *buf = calloc(cap, frame_bytes);
     while (atomic_load(&s->run)) {
