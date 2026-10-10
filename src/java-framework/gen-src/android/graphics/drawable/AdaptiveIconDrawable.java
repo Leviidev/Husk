@@ -37,9 +37,9 @@ public class AdaptiveIconDrawable extends android.graphics.drawable.Drawable imp
     public boolean isStateful() { return (huskProps.get("Stateful") instanceof Boolean ? (Boolean) huskProps.get("Stateful") : false); }
     public void jumpToCurrentState() {}
     public android.graphics.drawable.Drawable mutate() { return null; }
-    protected void onBoundsChange(android.graphics.Rect p0) {}
-    protected boolean onLevelChange(int p0) { return false; }
-    protected boolean onStateChange(int[] p0) { return false; }
+    public void onBoundsChange(android.graphics.Rect p0) {}
+    public boolean onLevelChange(int p0) { return false; }
+    public boolean onStateChange(int[] p0) { return false; }
     public void scheduleDrawable(android.graphics.drawable.Drawable p0, java.lang.Runnable p1, long p2) {}
     public void setAlpha(int p0) { huskProps.put("Alpha", Integer.valueOf(p0)); }
     public void setAutoMirrored(boolean p0) { huskProps.put("AutoMirrored", Boolean.valueOf(p0)); }

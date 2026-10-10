@@ -94,12 +94,12 @@ public final class CaptureRequest extends android.hardware.camera2.CameraMetadat
     public int describeContents() { return 0; }
     protected void finalize() {}
     public java.lang.Object get(android.hardware.camera2.CaptureRequest.Key p0) { return null; }
-    protected java.lang.Class getKeyClass() { return (java.lang.Class) huskProps.get("KeyClass"); }
+    public java.lang.Class getKeyClass() { return (java.lang.Class) huskProps.get("KeyClass"); }
     public java.util.List getKeys() { return (huskProps.get("Keys") != null ? (java.util.List) huskProps.get("Keys") : new java.util.ArrayList()); }
     public java.lang.String getLogicalCameraId() { return (java.lang.String) huskProps.get("LogicalCameraId"); }
     public android.hardware.camera2.impl.CameraMetadataNative getNativeCopy() { return (android.hardware.camera2.impl.CameraMetadataNative) huskProps.get("NativeCopy"); }
     protected java.lang.Object getProtected(android.hardware.camera2.CaptureRequest.Key p0) { return null; }
-    protected java.lang.Object getProtected(java.lang.Object p0) { return null; }
+    public java.lang.Object getProtected(java.lang.Object p0) { return null; }
     public int getReprocessableSessionId() { return (huskProps.get("ReprocessableSessionId") instanceof Integer ? (Integer) huskProps.get("ReprocessableSessionId") : 0); }
     public int getRequestType() { return (huskProps.get("RequestType") instanceof Integer ? (Integer) huskProps.get("RequestType") : 0); }
     public int[] getStreamIds() { return (int[]) huskProps.get("StreamIds"); }

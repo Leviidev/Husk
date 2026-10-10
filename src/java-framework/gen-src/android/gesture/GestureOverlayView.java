@@ -8,10 +8,10 @@ public class GestureOverlayView extends android.widget.FrameLayout {
     public static final int GESTURE_STROKE_TYPE_SINGLE = 0;
     public static final int ORIENTATION_HORIZONTAL = 0;
     public static final int ORIENTATION_VERTICAL = 1;
-    public GestureOverlayView(android.content.Context p0) { super((android.content.Context) null); }
-    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public GestureOverlayView(android.content.Context p0) { super(p0); }
+    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public GestureOverlayView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     public void addOnGestureListener(android.gesture.GestureOverlayView.OnGestureListener p0) {}
     public void addOnGesturePerformedListener(android.gesture.GestureOverlayView.OnGesturePerformedListener p0) {}
     public void addOnGesturingListener(android.gesture.GestureOverlayView.OnGesturingListener p0) {}
@@ -38,7 +38,7 @@ public class GestureOverlayView extends android.widget.FrameLayout {
     public boolean isFadeEnabled() { return (huskProps.get("FadeEnabled") instanceof Boolean ? (Boolean) huskProps.get("FadeEnabled") : false); }
     public boolean isGestureVisible() { return (huskProps.get("GestureVisible") instanceof Boolean ? (Boolean) huskProps.get("GestureVisible") : false); }
     public boolean isGesturing() { return (huskProps.get("Gesturing") instanceof Boolean ? (Boolean) huskProps.get("Gesturing") : false); }
-    protected void onDetachedFromWindow() {}
+    public void onDetachedFromWindow() {}
     public void removeAllOnGestureListeners() {}
     public void removeAllOnGesturePerformedListeners() {}
     public void removeAllOnGesturingListeners() {}

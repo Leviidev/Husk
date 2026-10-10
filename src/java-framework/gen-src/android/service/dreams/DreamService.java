@@ -25,7 +25,7 @@ public class DreamService extends android.app.Service implements android.view.Wi
     public boolean dispatchPopulateAccessibilityEvent(android.view.accessibility.AccessibilityEvent p0) { return false; }
     public boolean dispatchTouchEvent(android.view.MotionEvent p0) { return false; }
     public boolean dispatchTrackballEvent(android.view.MotionEvent p0) { return false; }
-    protected void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
+    public void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
     protected void dumpOnHandler(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
     public android.view.View findViewById(int p0) { return null; }
     public void finish() {}

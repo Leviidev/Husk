@@ -4,9 +4,9 @@ package android.widget;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class ActionMenuView extends android.widget.LinearLayout {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public ActionMenuView(android.content.Context p0) { super((android.content.Context) null); }
-    public ActionMenuView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    protected boolean checkLayoutParams(android.view.ViewGroup.LayoutParams p0) { return false; }
+    public ActionMenuView(android.content.Context p0) { super(p0); }
+    public ActionMenuView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public boolean checkLayoutParams(android.view.ViewGroup.LayoutParams p0) { return false; }
     public void dismissPopupMenus() {}
     public boolean dispatchPopulateAccessibilityEventInternal(android.view.accessibility.AccessibilityEvent p0) { return false; }
     protected android.widget.ActionMenuView.LayoutParams generateDefaultLayoutParams() { return null; }
@@ -17,15 +17,15 @@ public class ActionMenuView extends android.widget.LinearLayout {
     public android.graphics.drawable.Drawable getOverflowIcon() { return (android.graphics.drawable.Drawable) huskProps.get("OverflowIcon"); }
     public int getPopupTheme() { return (huskProps.get("PopupTheme") instanceof Integer ? (Integer) huskProps.get("PopupTheme") : 0); }
     public int getWindowAnimations() { return (huskProps.get("WindowAnimations") instanceof Integer ? (Integer) huskProps.get("WindowAnimations") : 0); }
-    protected boolean hasDividerBeforeChildAt(int p0) { return false; }
+    public boolean hasDividerBeforeChildAt(int p0) { return false; }
     public boolean hideOverflowMenu() { return false; }
     public boolean isOverflowMenuShowPending() { return (huskProps.get("OverflowMenuShowPending") instanceof Boolean ? (Boolean) huskProps.get("OverflowMenuShowPending") : false); }
     public boolean isOverflowMenuShowing() { return (huskProps.get("OverflowMenuShowing") instanceof Boolean ? (Boolean) huskProps.get("OverflowMenuShowing") : false); }
     public boolean isOverflowReserved() { return (huskProps.get("OverflowReserved") instanceof Boolean ? (Boolean) huskProps.get("OverflowReserved") : false); }
     public void onConfigurationChanged(android.content.res.Configuration p0) {}
     public void onDetachedFromWindow() {}
-    protected void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
-    protected void onMeasure(int p0, int p1) {}
+    public void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
+    public void onMeasure(int p0, int p1) {}
     public void setExpandedActionViewsExclusive(boolean p0) { huskProps.put("ExpandedActionViewsExclusive", Boolean.valueOf(p0)); }
     public void setOnMenuItemClickListener(android.widget.ActionMenuView.OnMenuItemClickListener p0) { huskProps.put("OnMenuItemClickListener", p0); }
     public void setOverflowIcon(android.graphics.drawable.Drawable p0) { huskProps.put("OverflowIcon", p0); }
@@ -45,11 +45,11 @@ public class ActionMenuView extends android.widget.LinearLayout {
         public int extraPixels;
         public boolean isOverflowButton;
         public boolean preventEdgeOffset;
-        public LayoutParams(int p0, int p1) { super((android.view.ViewGroup.LayoutParams) null); }
-        public LayoutParams(int p0, int p1, boolean p2) { super((android.view.ViewGroup.LayoutParams) null); }
-        public LayoutParams(android.content.Context p0, android.util.AttributeSet p1) { super((android.view.ViewGroup.LayoutParams) null); }
-        public LayoutParams(android.view.ViewGroup.LayoutParams p0) { super((android.view.ViewGroup.LayoutParams) null); }
-        public LayoutParams(android.widget.ActionMenuView.LayoutParams p0) { super((android.view.ViewGroup.LayoutParams) null); }
+        public LayoutParams(int p0, int p1) { super(p0, p1); }
+        public LayoutParams(int p0, int p1, boolean p2) { super((android.view.ViewGroup.MarginLayoutParams) null); }
+        public LayoutParams(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+        public LayoutParams(android.view.ViewGroup.LayoutParams p0) { super(p0); }
+        public LayoutParams(android.widget.ActionMenuView.LayoutParams p0) { super((android.view.ViewGroup.MarginLayoutParams) null); }
         protected void encodeProperties(android.view.ViewHierarchyEncoder p0) {}
     }
     public interface OnMenuItemClickListener {

@@ -1,2 +1,3 @@
 package android.graphics;
-public class PathEffect {}
+public class PathEffect {
+}

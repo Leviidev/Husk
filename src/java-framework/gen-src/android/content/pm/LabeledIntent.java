@@ -7,7 +7,7 @@ public class LabeledIntent extends android.content.Intent {
     public static android.os.Parcelable.Creator CREATOR;
     public LabeledIntent(android.content.Intent p0, java.lang.String p1, int p2, int p3) { super(); }
     public LabeledIntent(android.content.Intent p0, java.lang.String p1, java.lang.CharSequence p2, int p3) { super(); }
-    protected LabeledIntent(android.os.Parcel p0) { super(); }
+    protected LabeledIntent(android.os.Parcel p0) { super(p0); }
     public LabeledIntent(java.lang.String p0, int p1, int p2) { super(); }
     public LabeledIntent(java.lang.String p0, java.lang.CharSequence p1, int p2) { super(); }
     public int getIconResource() { return (huskProps.get("IconResource") instanceof Integer ? (Integer) huskProps.get("IconResource") : 0); }

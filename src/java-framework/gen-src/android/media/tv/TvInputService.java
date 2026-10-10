@@ -30,7 +30,7 @@ public abstract class TvInputService extends android.app.Service {
     public void onHdmiDeviceUpdated(android.hardware.hdmi.HdmiDeviceInfo p0) {}
     public static abstract class HardwareSession extends android.media.tv.TvInputService.Session {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public HardwareSession(android.content.Context p0) { super((android.content.Context) null); }
+        public HardwareSession(android.content.Context p0) { super(p0); }
         public abstract java.lang.String getHardwareInputId();
         public void onHardwareVideoAvailable() {}
         public void onHardwareVideoUnavailable(int p0) {}

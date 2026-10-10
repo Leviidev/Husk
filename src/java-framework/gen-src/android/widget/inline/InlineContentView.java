@@ -4,14 +4,14 @@ package android.widget.inline;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class InlineContentView extends android.view.ViewGroup {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public InlineContentView(android.content.Context p0) { super((android.content.Context) null); }
-    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public InlineContentView(android.content.Context p0) { super(p0); }
+    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public InlineContentView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     public android.view.SurfaceControl getSurfaceControl() { return (android.view.SurfaceControl) huskProps.get("SurfaceControl"); }
     public boolean isZOrderedOnTop() { return (huskProps.get("ZOrderedOnTop") instanceof Boolean ? (Boolean) huskProps.get("ZOrderedOnTop") : false); }
-    protected void onAttachedToWindow() {}
-    protected void onDetachedFromWindow() {}
+    public void onAttachedToWindow() {}
+    public void onDetachedFromWindow() {}
     public void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
     public void setChildSurfacePackageUpdater(android.widget.inline.InlineContentView.SurfacePackageUpdater p0) { huskProps.put("ChildSurfacePackageUpdater", p0); }
     public void setClipBounds(android.graphics.Rect p0) { huskProps.put("ClipBounds", p0); }

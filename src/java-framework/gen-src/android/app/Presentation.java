@@ -11,7 +11,7 @@ public class Presentation extends android.app.Dialog {
     public android.content.res.Resources getResources() { return (android.content.res.Resources) huskProps.get("Resources"); }
     public void onDisplayChanged() {}
     public void onDisplayRemoved() {}
-    protected void onStart() {}
-    protected void onStop() {}
+    public void onStart() {}
+    public void onStop() {}
     public void show() {}
 }

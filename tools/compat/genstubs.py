@@ -257,6 +257,16 @@ def main():
                 seen.add(key)
                 params = ', '.join('%s p%d' % (jtype(t), i) for i, t in enumerate(ps))
                 m = 'public ' if af & 1 else 'protected '
+                # an override of a method Husk's own superclass declares (perhaps public where the platform has protected): public
+                if not af & 1 and not af & 8 and n != '<init>':
+                    k, guard = sup, 0
+                    while k and guard < 64:
+                        guard += 1
+                        if k in fw:
+                            if key in fw[k][2]: m = 'public '; break
+                            k = fw[k][0]
+                        elif k in gen and k in plat.cls: k = plat.info(k)[1]           # through generated classes to Husk's
+                        else: break
                 if af & 8: m += 'static '
                 if af & 0x20 and not is_if: m += 'synchronized '
                 if n == '<init>':
@@ -264,6 +274,10 @@ def main():
                     call = ''
                     if sup_ok:
                         call = ' ' + super_call(sup) + ' '
+                        # the superclass has a constructor taking the same: the arguments go to it
+                        sup_ctors = set(fw[sup][2]) if sup in fw and sup not in gen else {'<init>' + sg for nn, sg, aa in plat.info(sup)[4] if nn == '<init>' and aa & 5} if sup in gen and sup not in shells else set()
+                        if ps and '<init>' + sig in sup_ctors:
+                            call = ' super(%s); ' % ', '.join('p%d' % i for i in range(len(ps)))
                     lines.append(ind + '%s%s(%s) {%s}' % (m, simple, params, call))
                     continue
                 ret = '' if r == 'V' else ' return %s; ' % dflt(r)
@@ -339,7 +353,7 @@ def main():
     def super_call(sup):
         """super(...) to a constructor the superclass really has: the one with the fewest parameters"""
         cands = []
-        if sup in fw: cands = [m for m in fw[sup][2] if m.startswith('<init>(')]
+        if sup in fw and sup not in gen: cands = [m for m in fw[sup][2] if m.startswith('<init>(')]
         elif sup not in gen and sup.startswith(('Ljava/', 'Ljavax/')):
             if 'core' not in ctor_cache:
                 art = '/Volumes/GTAV/husk2/root/apex/com.android.art/javalib/'
@@ -350,6 +364,10 @@ def main():
         elif sup in gen and sup not in shells:
             # a generated class has the platform's visible constructors (or a made-up no-argument one when it has none)
             cands = ['<init>' + sg for n, sg, a in plat.info(sup)[4] if n == '<init>' and a & 5 and all(ok_type(t) for t in split_params(sg)[0])]
+            if '$' in sup:                                      # an inner class's outer instance: the generated nested class is static
+                outer = sup[:sup.rindex('$')] + ';'
+                inner = [m for m in cands if not m.startswith('<init>(' + outer)]
+                if inner or not cands: cands = inner
             if not cands: cands = ['<init>()V']
         elif sup in gen: cands = ['<init>()V']
         if not cands or '<init>()V' in cands: return 'super();' if cands else ''

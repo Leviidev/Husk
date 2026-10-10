@@ -6,6 +6,6 @@ public class CharacterPickerDialog extends android.app.Dialog implements android
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public CharacterPickerDialog(android.content.Context p0, android.view.View p1, android.text.Editable p2, java.lang.String p3, boolean p4) { super((android.content.Context) null); }
     public void onClick(android.view.View p0) {}
-    protected void onCreate(android.os.Bundle p0) {}
+    public void onCreate(android.os.Bundle p0) {}
     public void onItemClick(android.widget.AdapterView p0, android.view.View p1, int p2, long p3) {}
 }

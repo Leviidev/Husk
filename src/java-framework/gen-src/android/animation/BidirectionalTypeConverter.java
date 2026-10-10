@@ -4,7 +4,7 @@ package android.animation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class BidirectionalTypeConverter extends android.animation.TypeConverter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public BidirectionalTypeConverter(java.lang.Class p0, java.lang.Class p1) { super((java.lang.Class) null, (java.lang.Class) null); }
+    public BidirectionalTypeConverter(java.lang.Class p0, java.lang.Class p1) { super(p0, p1); }
     public abstract java.lang.Object convertBack(java.lang.Object p0);
     public android.animation.BidirectionalTypeConverter invert() { return this; }
 }

@@ -5,7 +5,7 @@ package android.accounts;
 public class AuthenticatorException extends android.accounts.AccountsException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public AuthenticatorException() { super(); }
-    public AuthenticatorException(java.lang.String p0) { super(); }
-    public AuthenticatorException(java.lang.String p0, java.lang.Throwable p1) { super(); }
-    public AuthenticatorException(java.lang.Throwable p0) { super(); }
+    public AuthenticatorException(java.lang.String p0) { super(p0); }
+    public AuthenticatorException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    public AuthenticatorException(java.lang.Throwable p0) { super(p0); }
 }

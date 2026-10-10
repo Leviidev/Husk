@@ -5,7 +5,7 @@ package android.content.pm;
 public class PathPermission extends android.os.PatternMatcher {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
-    public PathPermission(android.os.Parcel p0) { super((android.os.Parcel) null); }
+    public PathPermission(android.os.Parcel p0) { super(p0); }
     public PathPermission(java.lang.String p0, int p1, java.lang.String p2, java.lang.String p3) { super((android.os.Parcel) null); }
     public java.lang.String getReadPermission() { return (java.lang.String) huskProps.get("ReadPermission"); }
     public java.lang.String getWritePermission() { return (java.lang.String) huskProps.get("WritePermission"); }

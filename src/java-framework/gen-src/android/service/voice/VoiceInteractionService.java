@@ -18,7 +18,7 @@ public class VoiceInteractionService extends android.app.Service {
     public android.service.voice.HotwordDetector createHotwordDetector(android.os.PersistableBundle p0, android.os.SharedMemory p1, java.util.concurrent.Executor p2, android.service.voice.HotwordDetector.Callback p3) { return null; }
     public android.media.voice.KeyphraseModelManager createKeyphraseModelManager() { return null; }
     public android.service.voice.VisualQueryDetector createVisualQueryDetector(android.os.PersistableBundle p0, android.os.SharedMemory p1, java.util.concurrent.Executor p2, android.service.voice.VisualQueryDetector.Callback p3) { return null; }
-    protected void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
+    public void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
     public int getDisabledShowContext() { return (huskProps.get("DisabledShowContext") instanceof Integer ? (Integer) huskProps.get("DisabledShowContext") : 0); }
     protected android.hardware.soundtrigger.KeyphraseEnrollmentInfo getKeyphraseEnrollmentInfo() { return (android.hardware.soundtrigger.KeyphraseEnrollmentInfo) huskProps.get("KeyphraseEnrollmentInfo"); }
     public boolean isKeyphraseAndLocaleSupportedForHotword(java.lang.String p0, java.util.Locale p1) { return false; }

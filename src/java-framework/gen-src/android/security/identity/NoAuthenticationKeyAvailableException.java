@@ -4,6 +4,6 @@ package android.security.identity;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class NoAuthenticationKeyAvailableException extends android.security.identity.IdentityCredentialException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public NoAuthenticationKeyAvailableException(java.lang.String p0) { super((java.lang.String) null); }
-    public NoAuthenticationKeyAvailableException(java.lang.String p0, java.lang.Throwable p1) { super((java.lang.String) null); }
+    public NoAuthenticationKeyAvailableException(java.lang.String p0) { super(p0); }
+    public NoAuthenticationKeyAvailableException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
 }

@@ -4,10 +4,10 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class TextureView extends android.view.View {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public TextureView(android.content.Context p0) { super((android.content.Context) null); }
-    public TextureView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public TextureView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public TextureView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public TextureView(android.content.Context p0) { super(p0); }
+    public TextureView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public TextureView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public TextureView(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     public void buildLayer() {}
     protected int calculateFrameRateCategory() { return 0; }
     protected void destroyHardwareResources() {}
@@ -24,11 +24,11 @@ public class TextureView extends android.view.View {
     public boolean isOpaque() { return (huskProps.get("Opaque") instanceof Boolean ? (Boolean) huskProps.get("Opaque") : false); }
     public android.graphics.Canvas lockCanvas() { return null; }
     public android.graphics.Canvas lockCanvas(android.graphics.Rect p0) { return null; }
-    protected void onAttachedToWindow() {}
+    public void onAttachedToWindow() {}
     protected void onDetachedFromWindowInternal() {}
-    protected void onDraw(android.graphics.Canvas p0) {}
-    protected void onSizeChanged(int p0, int p1, int p2, int p3) {}
-    protected void onVisibilityChanged(android.view.View p0, int p1) {}
+    public void onDraw(android.graphics.Canvas p0) {}
+    public void onSizeChanged(int p0, int p1, int p2, int p3) {}
+    public void onVisibilityChanged(android.view.View p0, int p1) {}
     public void setBackgroundDrawable(android.graphics.drawable.Drawable p0) { huskProps.put("BackgroundDrawable", p0); }
     public void setForeground(android.graphics.drawable.Drawable p0) { huskProps.put("Foreground", p0); }
     public void setLayerPaint(android.graphics.Paint p0) { huskProps.put("LayerPaint", p0); }

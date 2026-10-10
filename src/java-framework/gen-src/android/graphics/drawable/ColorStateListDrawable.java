@@ -22,8 +22,8 @@ public class ColorStateListDrawable extends android.graphics.drawable.Drawable i
     public void invalidateDrawable(android.graphics.drawable.Drawable p0) {}
     public boolean isStateful() { return (huskProps.get("Stateful") instanceof Boolean ? (Boolean) huskProps.get("Stateful") : false); }
     public android.graphics.drawable.Drawable mutate() { return null; }
-    protected void onBoundsChange(android.graphics.Rect p0) {}
-    protected boolean onStateChange(int[] p0) { return false; }
+    public void onBoundsChange(android.graphics.Rect p0) {}
+    public boolean onStateChange(int[] p0) { return false; }
     public void scheduleDrawable(android.graphics.drawable.Drawable p0, java.lang.Runnable p1, long p2) {}
     public void setAlpha(int p0) { huskProps.put("Alpha", Integer.valueOf(p0)); }
     public void setColorFilter(android.graphics.ColorFilter p0) { huskProps.put("ColorFilter", p0); }

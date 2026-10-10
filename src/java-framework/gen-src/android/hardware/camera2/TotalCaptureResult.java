@@ -4,7 +4,7 @@ package android.hardware.camera2;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TotalCaptureResult extends android.hardware.camera2.CaptureResult {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public TotalCaptureResult(android.hardware.camera2.impl.CameraMetadataNative p0, int p1) { super((android.hardware.camera2.impl.CameraMetadataNative) null, (int) 0); }
+    public TotalCaptureResult(android.hardware.camera2.impl.CameraMetadataNative p0, int p1) { super(p0, p1); }
     public TotalCaptureResult(java.lang.String p0, android.hardware.camera2.impl.CameraMetadataNative p1, android.hardware.camera2.CaptureRequest p2, int p3, long p4, java.util.List p5, int p6, android.hardware.camera2.impl.PhysicalCaptureResultInfo[] p7) { super((android.hardware.camera2.impl.CameraMetadataNative) null, (int) 0); }
     public TotalCaptureResult(java.lang.String p0, android.hardware.camera2.impl.CameraMetadataNative p1, android.hardware.camera2.CaptureRequest p2, android.hardware.camera2.impl.CaptureResultExtras p3, java.util.List p4, int p5, android.hardware.camera2.impl.PhysicalCaptureResultInfo[] p6) { super((android.hardware.camera2.impl.CameraMetadataNative) null, (int) 0); }
     public java.util.List getPartialResults() { return (huskProps.get("PartialResults") != null ? (java.util.List) huskProps.get("PartialResults") : new java.util.ArrayList()); }

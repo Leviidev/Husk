@@ -8,17 +8,17 @@ public class NativeActivity extends android.app.Activity implements android.view
     public static final java.lang.String META_DATA_LIB_NAME = "android.app.lib_name";
     public NativeActivity() { super(); }
     public void onConfigurationChanged(android.content.res.Configuration p0) {}
-    protected void onCreate(android.os.Bundle p0) {}
-    protected void onDestroy() {}
+    public void onCreate(android.os.Bundle p0) {}
+    public void onDestroy() {}
     public void onGlobalLayout() {}
     public void onInputQueueCreated(android.view.InputQueue p0) {}
     public void onInputQueueDestroyed(android.view.InputQueue p0) {}
     public void onLowMemory() {}
-    protected void onPause() {}
-    protected void onResume() {}
-    protected void onSaveInstanceState(android.os.Bundle p0) {}
-    protected void onStart() {}
-    protected void onStop() {}
+    public void onPause() {}
+    public void onResume() {}
+    public void onSaveInstanceState(android.os.Bundle p0) {}
+    public void onStart() {}
+    public void onStop() {}
     public void onWindowFocusChanged(boolean p0) {}
     public void surfaceChanged(android.view.SurfaceHolder p0, int p1, int p2, int p3) {}
     public void surfaceCreated(android.view.SurfaceHolder p0) {}

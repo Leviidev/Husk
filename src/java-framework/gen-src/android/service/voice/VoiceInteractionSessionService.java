@@ -5,7 +5,7 @@ package android.service.voice;
 public abstract class VoiceInteractionSessionService extends android.app.Service {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public VoiceInteractionSessionService() { super(); }
-    protected void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
+    public void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
     public android.os.IBinder onBind(android.content.Intent p0) { return null; }
     public void onConfigurationChanged(android.content.res.Configuration p0) {}
     public void onCreate() {}

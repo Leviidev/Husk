@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class MediaRouteActionProvider extends android.view.ActionProvider {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public MediaRouteActionProvider(android.content.Context p0) { super((android.content.Context) null); }
+    public MediaRouteActionProvider(android.content.Context p0) { super(p0); }
     public boolean isVisible() { return (huskProps.get("Visible") instanceof Boolean ? (Boolean) huskProps.get("Visible") : false); }
     public android.view.View onCreateActionView() { return null; }
     public android.view.View onCreateActionView(android.view.MenuItem p0) { return null; }

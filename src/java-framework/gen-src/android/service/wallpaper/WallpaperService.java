@@ -8,7 +8,7 @@ public abstract class WallpaperService extends android.app.Service {
     public static final java.lang.String SERVICE_META_DATA = "android.service.wallpaper";
     public static final long WEAROS_WALLPAPER_HANDLES_SCALING = 272527315L;
     public WallpaperService() { super(); }
-    protected void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
+    public void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
     public android.os.IBinder onBind(android.content.Intent p0) { return null; }
     public void onCreate() {}
     public abstract android.service.wallpaper.WallpaperService.Engine onCreateEngine();

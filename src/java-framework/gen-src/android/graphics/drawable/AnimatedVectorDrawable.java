@@ -26,10 +26,10 @@ public class AnimatedVectorDrawable extends android.graphics.drawable.Drawable i
     public boolean isRunning() { return (huskProps.get("Running") instanceof Boolean ? (Boolean) huskProps.get("Running") : false); }
     public boolean isStateful() { return (huskProps.get("Stateful") instanceof Boolean ? (Boolean) huskProps.get("Stateful") : false); }
     public android.graphics.drawable.Drawable mutate() { return null; }
-    protected void onBoundsChange(android.graphics.Rect p0) {}
+    public void onBoundsChange(android.graphics.Rect p0) {}
     public boolean onLayoutDirectionChanged(int p0) { return false; }
-    protected boolean onLevelChange(int p0) { return false; }
-    protected boolean onStateChange(int[] p0) { return false; }
+    public boolean onLevelChange(int p0) { return false; }
+    public boolean onStateChange(int[] p0) { return false; }
     public void registerAnimationCallback(android.graphics.drawable.Animatable2.AnimationCallback p0) {}
     public void reset() {}
     public void reverse() {}

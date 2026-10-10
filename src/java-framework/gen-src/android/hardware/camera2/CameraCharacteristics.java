@@ -207,13 +207,13 @@ public final class CameraCharacteristics extends android.hardware.camera2.Camera
     public java.util.List getAvailablePhysicalCameraRequestKeys() { return (huskProps.get("AvailablePhysicalCameraRequestKeys") != null ? (java.util.List) huskProps.get("AvailablePhysicalCameraRequestKeys") : new java.util.ArrayList()); }
     public java.util.List getAvailableSessionCharacteristicsKeys() { return (huskProps.get("AvailableSessionCharacteristicsKeys") != null ? (java.util.List) huskProps.get("AvailableSessionCharacteristicsKeys") : new java.util.ArrayList()); }
     public java.util.List getAvailableSessionKeys() { return (huskProps.get("AvailableSessionKeys") != null ? (java.util.List) huskProps.get("AvailableSessionKeys") : new java.util.ArrayList()); }
-    protected java.lang.Class getKeyClass() { return (java.lang.Class) huskProps.get("KeyClass"); }
+    public java.lang.Class getKeyClass() { return (java.lang.Class) huskProps.get("KeyClass"); }
     public java.util.List getKeys() { return (huskProps.get("Keys") != null ? (java.util.List) huskProps.get("Keys") : new java.util.ArrayList()); }
     public java.util.List getKeysNeedingPermission() { return (huskProps.get("KeysNeedingPermission") != null ? (java.util.List) huskProps.get("KeysNeedingPermission") : new java.util.ArrayList()); }
     public android.hardware.camera2.impl.CameraMetadataNative getNativeCopy() { return (android.hardware.camera2.impl.CameraMetadataNative) huskProps.get("NativeCopy"); }
     public java.util.Set getPhysicalCameraIds() { return (huskProps.get("PhysicalCameraIds") != null ? (java.util.Set) huskProps.get("PhysicalCameraIds") : new java.util.HashSet()); }
     protected java.lang.Object getProtected(android.hardware.camera2.CameraCharacteristics.Key p0) { return null; }
-    protected java.lang.Object getProtected(java.lang.Object p0) { return null; }
+    public java.lang.Object getProtected(java.lang.Object p0) { return null; }
     public android.hardware.camera2.params.RecommendedStreamConfigurationMap getRecommendedStreamConfigurationMap(int p0) { return null; }
     public static final class Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

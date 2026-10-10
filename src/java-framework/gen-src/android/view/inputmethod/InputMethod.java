@@ -31,6 +31,5 @@ public interface InputMethod {
     void unbindInput();
     default void updateEditorToolType(int p0) {}
     public interface SessionCallback {
-        void sessionCreated(android.view.inputmethod.InputMethodSession p0);
     }
 }

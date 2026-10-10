@@ -25,6 +25,7 @@ public final class ViewRoot implements ViewParent {
     final View mView;
     WindowManager.LayoutParams mLp;
     private int mX, mY, mW, mH;
+    private boolean mDumpTimer;
     private boolean mLayoutRequested = true, mFirst = true, mRemoved, mHasFocus = true, mInLayout, mInsetsDirty = true;
     private View mFocused;
     private final ViewTreeObserver mObserver = new ViewTreeObserver();
@@ -207,7 +208,16 @@ public final class ViewRoot implements ViewParent {
         } finally { mInLayout = false; }
         mObserver.dispatchOnGlobalLayout();
         if (sDump == null) sDump = System.getenv("TL_VIEW_DUMP") != null;
-        if (sDump) { long now = android.os.SystemClock.uptimeMillis(); if (now - mLastDump > 3000) { mLastDump = now; dump(mView, 0); } }
+        if (sDump) {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - mLastDump > 3000) { mLastDump = now; dump(mView, 0); }
+            if (!mDumpTimer) {                  /* and again every 4 s, laid out again or not: a window that never relayouts shows why */
+                mDumpTimer = true;
+                final Runnable[] again = new Runnable[1];
+                again[0] = () -> { if (mRemoved) return; android.util.Log.d("ViewDump", "---- " + mView.getClass().getName() + " (timer; layout requested " + mView.isLayoutRequested() + ")"); dump(mView, 0); mainHandler().postDelayed(again[0], 4000); };
+                mainHandler().postDelayed(again[0], 4000);
+            }
+        }
         if (mFirst) {
             mFirst = false;
             if (mHasFocus) { mView.dispatchWindowFocusChanged(true); mObserver.huskWindowFocus(true); }

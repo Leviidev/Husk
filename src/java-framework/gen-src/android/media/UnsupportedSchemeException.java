@@ -4,5 +4,5 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UnsupportedSchemeException extends android.media.MediaDrmException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public UnsupportedSchemeException(java.lang.String p0) { super((java.lang.String) null); }
+    public UnsupportedSchemeException(java.lang.String p0) { super(p0); }
 }

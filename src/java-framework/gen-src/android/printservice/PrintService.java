@@ -12,7 +12,7 @@ public abstract class PrintService extends android.app.Service {
     public static final java.lang.String SERVICE_INTERFACE = "android.printservice.PrintService";
     public static final java.lang.String SERVICE_META_DATA = "android.printservice";
     public PrintService() { super(); }
-    protected void attachBaseContext(android.content.Context p0) {}
+    public void attachBaseContext(android.content.Context p0) {}
     public android.print.PrinterId generatePrinterId(java.lang.String p0) { return null; }
     public java.util.List getActivePrintJobs() { return (huskProps.get("ActivePrintJobs") != null ? (java.util.List) huskProps.get("ActivePrintJobs") : new java.util.ArrayList()); }
     public android.os.IBinder onBind(android.content.Intent p0) { return null; }

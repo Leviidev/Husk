@@ -4,4 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class MediaMetadata implements android.os.Parcelable {
     protected MediaMetadata() {}
+    public static abstract class Builder {
+        protected Builder() {}
+    }
 }

@@ -4,16 +4,16 @@ package android.appwidget;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class AppWidgetHostView extends android.widget.FrameLayout implements android.appwidget.AppWidgetHost.AppWidgetHostListener {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public AppWidgetHostView(android.content.Context p0) { super((android.content.Context) null); }
+    public AppWidgetHostView(android.content.Context p0) { super(p0); }
     public AppWidgetHostView(android.content.Context p0, int p1, int p2) { super((android.content.Context) null); }
     public AppWidgetHostView(android.content.Context p0, android.widget.RemoteViews.InteractionHandler p1) { super((android.content.Context) null); }
     public static android.graphics.Rect getDefaultPaddingForWidget(android.content.Context p0, android.content.ComponentName p1, android.graphics.Rect p2) { return null; }
     protected void applyRemoteViews(android.widget.RemoteViews p0, boolean p1) {}
     public android.appwidget.AppWidgetEvent collectWidgetEvent() { return null; }
     public android.app.ActivityOptions createSharedElementActivityOptions(int[] p0, java.lang.String[] p1, android.content.Intent p2) { return null; }
-    protected void dispatchDraw(android.graphics.Canvas p0) {}
-    protected void dispatchRestoreInstanceState(android.util.SparseArray p0) {}
-    protected void dispatchSaveInstanceState(android.util.SparseArray p0) {}
+    public void dispatchDraw(android.graphics.Canvas p0) {}
+    public void dispatchRestoreInstanceState(android.util.SparseArray p0) {}
+    public void dispatchSaveInstanceState(android.util.SparseArray p0) {}
     public android.widget.FrameLayout.LayoutParams generateLayoutParams(android.content.Context p0, android.util.AttributeSet p1) { return null; }
     public int getAppWidgetId() { return (huskProps.get("AppWidgetId") instanceof Integer ? (Integer) huskProps.get("AppWidgetId") : 0); }
     public android.appwidget.AppWidgetProviderInfo getAppWidgetInfo() { return (android.appwidget.AppWidgetProviderInfo) huskProps.get("AppWidgetInfo"); }
@@ -23,7 +23,7 @@ public class AppWidgetHostView extends android.widget.FrameLayout implements and
     protected boolean isVisibilityTrackingPermitted() { return (huskProps.get("VisibilityTrackingPermitted") instanceof Boolean ? (Boolean) huskProps.get("VisibilityTrackingPermitted") : false); }
     protected void onDefaultViewClicked(android.view.View p0) {}
     public void onInitializeAccessibilityNodeInfoInternal(android.view.accessibility.AccessibilityNodeInfo p0) {}
-    protected void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
+    public void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
     public void onUpdateProviderInfo(android.appwidget.AppWidgetProviderInfo p0) {}
     public void onViewDataChanged(int p0) {}
     public void onVisibilityAggregated(boolean p0) {}
@@ -46,8 +46,8 @@ public class AppWidgetHostView extends android.widget.FrameLayout implements and
     public void updateAppWidgetSize(android.os.Bundle p0, java.util.List p1) {}
     public static class AdapterChildHostView extends android.appwidget.AppWidgetHostView {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public AdapterChildHostView(android.content.Context p0) { super((android.content.Context) null); }
-        protected boolean isVisibilityTrackingPermitted() { return (huskProps.get("VisibilityTrackingPermitted") instanceof Boolean ? (Boolean) huskProps.get("VisibilityTrackingPermitted") : false); }
+        public AdapterChildHostView(android.content.Context p0) { super(p0); }
+        public boolean isVisibilityTrackingPermitted() { return (huskProps.get("VisibilityTrackingPermitted") instanceof Boolean ? (Boolean) huskProps.get("VisibilityTrackingPermitted") : false); }
     }
     public static class InteractionLogger implements android.widget.RemoteViews.InteractionHandler {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

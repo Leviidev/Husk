@@ -1,2 +1,3 @@
 package android.graphics;
-public class MaskFilter {}
+public class MaskFilter {
+}

@@ -821,7 +821,17 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 {
     if (t_depth < 8192) { t_frames[t_depth] = m; t_pcs[t_depth] = 0; }
     t_depth++;
-    if (t_depth > 8000) { t_depth--; return dvm_throw("java/lang/StackOverflowError", "stack size 8000 frames"); }
+    /* past 8000 frames: StackOverflowError, which is made with calls of its own, so those get 200 frames more (a deeper one
+       throwing again would recurse without end) */
+    static _Thread_local bool t_overflowing;
+    if (t_depth > (t_overflowing ? 8200 : 8000)) {
+        t_depth--;
+        if (t_overflowing) return false;
+        t_overflowing = true;
+        bool r = dvm_throw("java/lang/StackOverflowError", "stack size 8000 frames");
+        t_overflowing = false;
+        return r;
+    }
     bool ok = dvm_call_inner(m, self, params, ret);
     t_depth--;
     return ok;

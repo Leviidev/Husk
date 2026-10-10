@@ -5,21 +5,21 @@ package android.widget;
 public class QuickContactBadge extends android.widget.ImageView implements android.view.View.OnClickListener {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     protected java.lang.String[] mExcludeMimes;
-    public QuickContactBadge(android.content.Context p0) { super((android.content.Context) null); }
-    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public QuickContactBadge(android.content.Context p0) { super(p0); }
+    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public QuickContactBadge(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     public void assignContactFromEmail(java.lang.String p0, boolean p1) {}
     public void assignContactFromEmail(java.lang.String p0, boolean p1, android.os.Bundle p2) {}
     public void assignContactFromPhone(java.lang.String p0, boolean p1) {}
     public void assignContactFromPhone(java.lang.String p0, boolean p1, android.os.Bundle p2) {}
     public void assignContactUri(android.net.Uri p0) {}
     public void drawableHotspotChanged(float p0, float p1) {}
-    protected void drawableStateChanged() {}
+    public void drawableStateChanged() {}
     public java.lang.CharSequence getAccessibilityClassName() { return (java.lang.CharSequence) huskProps.get("AccessibilityClassName"); }
-    protected void onAttachedToWindow() {}
+    public void onAttachedToWindow() {}
     public void onClick(android.view.View p0) {}
-    protected void onDraw(android.graphics.Canvas p0) {}
+    public void onDraw(android.graphics.Canvas p0) {}
     public void setExcludeMimes(java.lang.String[] p0) { huskProps.put("ExcludeMimes", p0); }
     public void setImageToDefault() {}
     public void setMode(int p0) { huskProps.put("Mode", Integer.valueOf(p0)); }

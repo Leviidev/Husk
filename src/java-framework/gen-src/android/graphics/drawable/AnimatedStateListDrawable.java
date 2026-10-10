@@ -13,7 +13,7 @@ public class AnimatedStateListDrawable extends android.graphics.drawable.StateLi
     public boolean isStateful() { return (huskProps.get("Stateful") instanceof Boolean ? (Boolean) huskProps.get("Stateful") : false); }
     public void jumpToCurrentState() {}
     public android.graphics.drawable.Drawable mutate() { return null; }
-    protected boolean onStateChange(int[] p0) { return false; }
+    public boolean onStateChange(int[] p0) { return false; }
     protected void setConstantState(android.graphics.drawable.DrawableContainer.DrawableContainerState p0) { huskProps.put("ConstantState", p0); }
     public boolean setVisible(boolean p0, boolean p1) { return false; }
 }

@@ -69,8 +69,8 @@ public class ApplicationErrorReport implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
         public ParcelableCrashInfo() { super(); }
-        public ParcelableCrashInfo(android.os.Parcel p0) { super(); }
-        public ParcelableCrashInfo(java.lang.Throwable p0) { super(); }
+        public ParcelableCrashInfo(android.os.Parcel p0) { super(p0); }
+        public ParcelableCrashInfo(java.lang.Throwable p0) { super(p0); }
         public int describeContents() { return 0; }
     }
     public static class RunningServiceInfo {

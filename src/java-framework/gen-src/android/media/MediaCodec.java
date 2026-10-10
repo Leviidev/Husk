@@ -89,8 +89,15 @@ public final class MediaCodec {
     public void subscribeToVendorParameters(java.util.List p0) {}
     public void unsubscribeFromVendorParameters(java.util.List p0) {}
     protected MediaCodec() {}
-    public static abstract class BufferInfo {
-        protected BufferInfo() {}
+    public static final class BufferInfo {
+        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+        public int flags;
+        public int offset;
+        public long presentationTimeUs;
+        public int size;
+        public BufferInfo() {}
+        public android.media.MediaCodec.BufferInfo dup() { return this; }
+        public void set(int p0, int p1, long p2, int p3) {}
     }
     public static abstract class Callback {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

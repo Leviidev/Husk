@@ -9,4 +9,7 @@ public interface BiometricAuthenticator {
     public static abstract class AuthenticationResult {
         protected AuthenticationResult() {}
     }
+    public static abstract class Identifier implements android.os.Parcelable {
+        protected Identifier() {}
+    }
 }

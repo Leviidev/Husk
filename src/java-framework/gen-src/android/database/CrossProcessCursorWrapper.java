@@ -4,7 +4,7 @@ package android.database;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class CrossProcessCursorWrapper extends android.database.CursorWrapper implements android.database.CrossProcessCursor {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public CrossProcessCursorWrapper(android.database.Cursor p0) { super((android.database.Cursor) null); }
+    public CrossProcessCursorWrapper(android.database.Cursor p0) { super(p0); }
     public void fillWindow(int p0, android.database.CursorWindow p1) {}
     public android.database.CursorWindow getWindow() { return (android.database.CursorWindow) huskProps.get("Window"); }
     public boolean onMove(int p0, int p1) { return false; }

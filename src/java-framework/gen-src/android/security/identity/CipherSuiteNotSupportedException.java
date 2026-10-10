@@ -4,6 +4,6 @@ package android.security.identity;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class CipherSuiteNotSupportedException extends android.security.identity.IdentityCredentialException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public CipherSuiteNotSupportedException(java.lang.String p0) { super((java.lang.String) null); }
-    public CipherSuiteNotSupportedException(java.lang.String p0, java.lang.Throwable p1) { super((java.lang.String) null); }
+    public CipherSuiteNotSupportedException(java.lang.String p0) { super(p0); }
+    public CipherSuiteNotSupportedException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
 }

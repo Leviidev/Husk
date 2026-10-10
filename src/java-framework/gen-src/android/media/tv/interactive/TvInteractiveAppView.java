@@ -10,9 +10,9 @@ public class TvInteractiveAppView extends android.view.ViewGroup {
     public static final java.lang.String BI_INTERACTIVE_APP_KEY_HTTP_USER_AGENT = "http_user_agent";
     public static final java.lang.String BI_INTERACTIVE_APP_KEY_PRIVATE_KEY = "private_key";
     public static final java.lang.String ERROR_KEY_METHOD_NAME = "method_name";
-    public TvInteractiveAppView(android.content.Context p0) { super((android.content.Context) null); }
-    public TvInteractiveAppView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public TvInteractiveAppView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
+    public TvInteractiveAppView(android.content.Context p0) { super(p0); }
+    public TvInteractiveAppView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public TvInteractiveAppView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
     public void clearCallback() {}
     public void clearOnUnhandledInputEventListener() {}
     public void createBiInteractiveApp(android.net.Uri p0, android.os.Bundle p1) {}

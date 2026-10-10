@@ -17,7 +17,7 @@ public abstract class CarrierService extends android.app.Service {
         public static final int RESULT_ERROR = 1;
         public static int RESULT_OK;
         public ICarrierServiceWrapper(android.service.carrier.CarrierService p0) { super(); }
-        protected void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
+        public void dump(java.io.FileDescriptor p0, java.io.PrintWriter p1, java.lang.String[] p2) {}
         public void getCarrierConfig(int p0, android.service.carrier.CarrierIdentifier p1, android.os.ResultReceiver p2) {}
     }
 }

@@ -5,7 +5,7 @@ package android.telephony.mbms;
 public final class StreamingServiceInfo extends android.telephony.mbms.ServiceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.os.Parcelable.Creator CREATOR;
-    public StreamingServiceInfo(java.util.Map p0, java.lang.String p1, java.util.List p2, java.lang.String p3, java.util.Date p4, java.util.Date p5) { super((android.os.Parcel) null); }
+    public StreamingServiceInfo(java.util.Map p0, java.lang.String p1, java.util.List p2, java.lang.String p3, java.util.Date p4, java.util.Date p5) { super(p0, p1, p2, p3, p4, p5); }
     public int describeContents() { return 0; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
 }

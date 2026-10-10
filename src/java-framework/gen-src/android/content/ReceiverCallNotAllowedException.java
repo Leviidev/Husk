@@ -4,5 +4,5 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class ReceiverCallNotAllowedException extends android.util.AndroidRuntimeException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public ReceiverCallNotAllowedException(java.lang.String p0) { super(); }
+    public ReceiverCallNotAllowedException(java.lang.String p0) { super(p0); }
 }

@@ -9,6 +9,6 @@ public class DateTimeKeyListener extends android.text.method.NumberKeyListener {
     public DateTimeKeyListener(java.util.Locale p0) { super(); }
     public static android.text.method.DateTimeKeyListener getInstance() { return new DateTimeKeyListener(); }
     public static android.text.method.DateTimeKeyListener getInstance(java.util.Locale p0) { return new DateTimeKeyListener(); }
-    protected char[] getAcceptedChars() { return (char[]) huskProps.get("AcceptedChars"); }
+    public char[] getAcceptedChars() { return (char[]) huskProps.get("AcceptedChars"); }
     public int getInputType() { return (huskProps.get("InputType") instanceof Integer ? (Integer) huskProps.get("InputType") : 0); }
 }

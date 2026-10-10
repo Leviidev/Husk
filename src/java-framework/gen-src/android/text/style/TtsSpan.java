@@ -107,7 +107,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public CardinalBuilder() { super((java.lang.String) null); }
         public CardinalBuilder(long p0) { super((java.lang.String) null); }
-        public CardinalBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public CardinalBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.CardinalBuilder setNumber(long p0) { huskProps.put("Number", Long.valueOf(p0)); return this; }
         public android.text.style.TtsSpan.CardinalBuilder setNumber(java.lang.String p0) { huskProps.put("Number", p0); return this; }
     }
@@ -133,7 +133,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public static class DigitsBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public DigitsBuilder() { super((java.lang.String) null); }
-        public DigitsBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public DigitsBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.DigitsBuilder setDigits(java.lang.String p0) { huskProps.put("Digits", p0); return this; }
     }
     public static class DurationBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
@@ -194,13 +194,13 @@ public class TtsSpan implements android.text.ParcelableSpan {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public OrdinalBuilder() { super((java.lang.String) null); }
         public OrdinalBuilder(long p0) { super((java.lang.String) null); }
-        public OrdinalBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public OrdinalBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.OrdinalBuilder setNumber(long p0) { huskProps.put("Number", Long.valueOf(p0)); return this; }
         public android.text.style.TtsSpan.OrdinalBuilder setNumber(java.lang.String p0) { huskProps.put("Number", p0); return this; }
     }
     public static class SemioticClassBuilder extends android.text.style.TtsSpan.Builder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public SemioticClassBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public SemioticClassBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.SemioticClassBuilder setAnimacy(java.lang.String p0) { huskProps.put("Animacy", p0); return this; }
         public android.text.style.TtsSpan.SemioticClassBuilder setCase(java.lang.String p0) { huskProps.put("Case", p0); return this; }
         public android.text.style.TtsSpan.SemioticClassBuilder setGender(java.lang.String p0) { huskProps.put("Gender", p0); return this; }
@@ -209,7 +209,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public static class TelephoneBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public TelephoneBuilder() { super((java.lang.String) null); }
-        public TelephoneBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public TelephoneBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.TelephoneBuilder setCountryCode(java.lang.String p0) { huskProps.put("CountryCode", p0); return this; }
         public android.text.style.TtsSpan.TelephoneBuilder setExtension(java.lang.String p0) { huskProps.put("Extension", p0); return this; }
         public android.text.style.TtsSpan.TelephoneBuilder setNumberParts(java.lang.String p0) { huskProps.put("NumberParts", p0); return this; }
@@ -217,7 +217,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public static class TextBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public TextBuilder() { super((java.lang.String) null); }
-        public TextBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public TextBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.TextBuilder setText(java.lang.String p0) { huskProps.put("Text", p0); return this; }
     }
     public static class TimeBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
@@ -231,7 +231,7 @@ public class TtsSpan implements android.text.ParcelableSpan {
     public static class VerbatimBuilder extends android.text.style.TtsSpan.SemioticClassBuilder {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public VerbatimBuilder() { super((java.lang.String) null); }
-        public VerbatimBuilder(java.lang.String p0) { super((java.lang.String) null); }
+        public VerbatimBuilder(java.lang.String p0) { super(p0); }
         public android.text.style.TtsSpan.VerbatimBuilder setVerbatim(java.lang.String p0) { huskProps.put("Verbatim", p0); return this; }
     }
 }

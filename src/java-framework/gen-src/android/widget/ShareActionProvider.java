@@ -5,7 +5,7 @@ package android.widget;
 public class ShareActionProvider extends android.view.ActionProvider {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String DEFAULT_SHARE_HISTORY_FILE_NAME = "share_history.xml";
-    public ShareActionProvider(android.content.Context p0) { super((android.content.Context) null); }
+    public ShareActionProvider(android.content.Context p0) { super(p0); }
     public boolean hasSubMenu() { return false; }
     public android.view.View onCreateActionView() { return null; }
     public void onPrepareSubMenu(android.view.SubMenu p0) {}

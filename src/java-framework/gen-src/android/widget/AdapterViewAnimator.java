@@ -4,10 +4,10 @@ package android.widget;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class AdapterViewAnimator extends android.widget.AdapterView implements android.widget.RemoteViewsAdapter.RemoteAdapterConnectionCallback, android.widget.Advanceable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public AdapterViewAnimator(android.content.Context p0) { super((android.content.Context) null); }
-    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public AdapterViewAnimator(android.content.Context p0) { super(p0); }
+    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public AdapterViewAnimator(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     public void advance() {}
     public void deferNotifyDataSetChanged() {}
     public void fyiWillBeAdvancedByHostKThx() {}
@@ -19,8 +19,8 @@ public abstract class AdapterViewAnimator extends android.widget.AdapterView imp
     public android.animation.ObjectAnimator getInAnimation() { return (android.animation.ObjectAnimator) huskProps.get("InAnimation"); }
     public android.animation.ObjectAnimator getOutAnimation() { return (android.animation.ObjectAnimator) huskProps.get("OutAnimation"); }
     public android.view.View getSelectedView() { return (android.view.View) huskProps.get("SelectedView"); }
-    protected void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
-    protected void onMeasure(int p0, int p1) {}
+    public void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
+    public void onMeasure(int p0, int p1) {}
     public boolean onRemoteAdapterConnected() { return false; }
     public void onRemoteAdapterDisconnected() {}
     public void onRestoreInstanceState(android.os.Parcelable p0) {}

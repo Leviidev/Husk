@@ -21,7 +21,7 @@ public class AnimatedImageDrawable extends android.graphics.drawable.Drawable im
     public boolean isAutoMirrored() { return (huskProps.get("AutoMirrored") instanceof Boolean ? (Boolean) huskProps.get("AutoMirrored") : false); }
     public boolean isFilterBitmap() { return (huskProps.get("FilterBitmap") instanceof Boolean ? (Boolean) huskProps.get("FilterBitmap") : false); }
     public boolean isRunning() { return (huskProps.get("Running") instanceof Boolean ? (Boolean) huskProps.get("Running") : false); }
-    protected void onBoundsChange(android.graphics.Rect p0) {}
+    public void onBoundsChange(android.graphics.Rect p0) {}
     public boolean onLayoutDirectionChanged(int p0) { return false; }
     public void registerAnimationCallback(android.graphics.drawable.Animatable2.AnimationCallback p0) {}
     public void setAlpha(int p0) { huskProps.put("Alpha", Integer.valueOf(p0)); }

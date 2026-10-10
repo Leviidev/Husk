@@ -114,6 +114,7 @@ public final class ContextImpl extends Context {
             Object s = sServices.get(name);
             if (s != null) return s;
             s = Services.system(name, this);
+            if (s == null) s = byReflection(name);
             if (s != null) sServices.put(name, s);
             return s;
         }
@@ -134,8 +135,56 @@ public final class ContextImpl extends Context {
             { "android.os.storage.StorageManager", STORAGE_SERVICE }, { "android.hardware.input.InputManager", INPUT_SERVICE },
             { "android.view.textclassifier.TextClassificationManager", TEXT_CLASSIFICATION_SERVICE }, { "android.app.LocaleManager", LOCALE_SERVICE },
             { "android.net.wifi.WifiManager", WIFI_SERVICE }, { "android.location.LocationManager", LOCATION_SERVICE },
+            { "android.app.DownloadManager", DOWNLOAD_SERVICE }, { "android.hardware.camera2.CameraManager", CAMERA_SERVICE },
+            { "android.media.session.MediaSessionManager", MEDIA_SESSION_SERVICE }, { "android.app.WallpaperManager", WALLPAPER_SERVICE },
+            { "android.app.SearchManager", SEARCH_SERVICE }, { "android.content.pm.ShortcutManager", SHORTCUT_SERVICE },
+            { "android.app.usage.UsageStatsManager", USAGE_STATS_SERVICE }, { "android.bluetooth.BluetoothManager", BLUETOOTH_SERVICE },
+            { "android.net.nsd.NsdManager", NSD_SERVICE }, { "android.appwidget.AppWidgetManager", APPWIDGET_SERVICE },
+            { "android.print.PrintManager", PRINT_SERVICE }, { "android.app.admin.DevicePolicyManager", DEVICE_POLICY_SERVICE },
+            { "android.view.accessibility.CaptioningManager", CAPTIONING_SERVICE }, { "android.hardware.biometrics.BiometricManager", BIOMETRIC_SERVICE },
+            { "android.hardware.fingerprint.FingerprintManager", FINGERPRINT_SERVICE }, { "android.credentials.CredentialManager", CREDENTIAL_SERVICE },
+            { "android.media.MediaRouter", MEDIA_ROUTER_SERVICE }, { "android.content.RestrictionsManager", RESTRICTIONS_SERVICE },
+            { "android.telecom.TelecomManager", TELECOM_SERVICE }, { "android.telephony.SubscriptionManager", TELEPHONY_SUBSCRIPTION_SERVICE },
+            { "android.os.HardwarePropertiesManager", HARDWARE_PROPERTIES_SERVICE }, { "android.app.GameManager", GAME_SERVICE },
+            { "android.view.textservice.TextServicesManager", TEXT_SERVICES_MANAGER_SERVICE }, { "android.app.StatusBarManager", STATUS_BAR_SERVICE },
+            { "android.content.ClipboardManager", CLIPBOARD_SERVICE }, { "android.net.wifi.p2p.WifiP2pManager", WIFI_P2P_SERVICE },
+            { "android.nfc.NfcManager", NFC_SERVICE }, { "android.hardware.usb.UsbManager", USB_SERVICE },
+            { "android.media.projection.MediaProjectionManager", MEDIA_PROJECTION_SERVICE }, { "android.app.usage.StorageStatsManager", STORAGE_STATS_SERVICE },
+            { "android.os.DropBoxManager", DROPBOX_SERVICE }, { "android.app.role.RoleManager", ROLE_SERVICE },
+            { "android.view.contentcapture.ContentCaptureManager", CONTENT_CAPTURE_MANAGER_SERVICE }, { "android.os.health.SystemHealthManager", SYSTEM_HEALTH_SERVICE },
+            { "android.companion.CompanionDeviceManager", COMPANION_DEVICE_SERVICE }, { "android.view.translation.TranslationManager", TRANSLATION_MANAGER_SERVICE },
+            { "android.media.midi.MidiManager", MIDI_SERVICE }, { "android.hardware.ConsumerIrManager", CONSUMER_IR_SERVICE },
+            { "android.app.GrammaticalInflectionManager", GRAMMATICAL_INFLECTION_SERVICE }, { "android.os.PerformanceHintManager", PERFORMANCE_HINT_SERVICE },
         };
         for (String[] e : m) { try { sNames.put(Class.forName(e[0]), e[1]); } catch (Throwable t) {} }
     }
     public static String serviceName(Class<?> c) { String n = sNames.get(c); return n; }
+    /** A service Husk has no implementation of: its manager class, made as best it can be (a no-argument constructor, else one
+     *  taking a Context, else any with defaults), so apps that only ask whether a feature is there get an answer instead of null. */
+    private Object byReflection(String name) {
+        Class<?> cls = null;
+        for (java.util.Map.Entry<Class<?>, String> e : sNames.entrySet()) if (e.getValue().equals(name)) { cls = e.getKey(); break; }
+        if (cls == null || java.lang.reflect.Modifier.isAbstract(cls.getModifiers())) return null;
+        java.lang.reflect.Constructor<?>[] ctors = cls.getDeclaredConstructors();
+        java.util.Arrays.sort(ctors, (a, b) -> a.getParameterTypes().length - b.getParameterTypes().length);
+        for (java.lang.reflect.Constructor<?> k : ctors) {
+            Class<?>[] pt = k.getParameterTypes();
+            Object[] av = new Object[pt.length];
+            for (int i = 0; i < pt.length; i++) {
+                Class<?> t = pt[i];
+                Object v = null;                       /* if/else: a ?: chain of boxes would unbox them all */
+                if (Context.class.isAssignableFrom(t)) v = this;
+                else if (t == boolean.class) v = Boolean.FALSE;
+                else if (t == int.class) v = Integer.valueOf(0);
+                else if (t == long.class) v = Long.valueOf(0);
+                else if (t == float.class) v = Float.valueOf(0);
+                else if (t == double.class) v = Double.valueOf(0);
+                else if (t.isPrimitive()) { av = null; break; }
+                av[i] = v;
+            }
+            if (av == null) continue;
+            try { k.setAccessible(true); return k.newInstance(av); } catch (Throwable t) {}
+        }
+        return null;
+    }
 }

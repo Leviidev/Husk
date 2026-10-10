@@ -5,7 +5,7 @@ package android.accounts;
 public class NetworkErrorException extends android.accounts.AccountsException {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public NetworkErrorException() { super(); }
-    public NetworkErrorException(java.lang.String p0) { super(); }
-    public NetworkErrorException(java.lang.String p0, java.lang.Throwable p1) { super(); }
-    public NetworkErrorException(java.lang.Throwable p0) { super(); }
+    public NetworkErrorException(java.lang.String p0) { super(p0); }
+    public NetworkErrorException(java.lang.String p0, java.lang.Throwable p1) { super(p0, p1); }
+    public NetworkErrorException(java.lang.Throwable p0) { super(p0); }
 }

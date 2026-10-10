@@ -4,10 +4,10 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class TvView extends android.view.ViewGroup {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public TvView(android.content.Context p0) { super((android.content.Context) null); }
-    public TvView(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public TvView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    protected void dispatchDraw(android.graphics.Canvas p0) {}
+    public TvView(android.content.Context p0) { super(p0); }
+    public TvView(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public TvView(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public void dispatchDraw(android.graphics.Canvas p0) {}
     public boolean dispatchGenericMotionEvent(android.view.MotionEvent p0) { return false; }
     public boolean dispatchKeyEvent(android.view.KeyEvent p0) { return false; }
     public boolean dispatchTouchEvent(android.view.MotionEvent p0) { return false; }
@@ -21,12 +21,12 @@ public class TvView extends android.view.ViewGroup {
     public java.lang.String getSelectedTrack(int p0) { return null; }
     public java.util.List getTracks(int p0) { return new java.util.ArrayList(); }
     public void notifyTvMessage(int p0, android.os.Bundle p1) {}
-    protected void onAttachedToWindow() {}
-    protected void onDetachedFromWindow() {}
-    protected void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
-    protected void onMeasure(int p0, int p1) {}
+    public void onAttachedToWindow() {}
+    public void onDetachedFromWindow() {}
+    public void onLayout(boolean p0, int p1, int p2, int p3, int p4) {}
+    public void onMeasure(int p0, int p1) {}
     public boolean onUnhandledInputEvent(android.view.InputEvent p0) { return false; }
-    protected void onVisibilityChanged(android.view.View p0, int p1) {}
+    public void onVisibilityChanged(android.view.View p0, int p1) {}
     public void overrideTvAppAttributionSource(android.content.AttributionSource p0) {}
     public void requestUnblockContent(android.media.tv.TvContentRating p0) {}
     public void reset() {}

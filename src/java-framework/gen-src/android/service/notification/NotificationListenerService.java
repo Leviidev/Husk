@@ -60,7 +60,7 @@ public abstract class NotificationListenerService extends android.app.Service {
     public static void requestRebind(android.content.ComponentName p0) {}
     public static void requestUnbind(android.content.ComponentName p0) {}
     public void applyUpdateLocked(android.service.notification.NotificationRankingUpdate p0) {}
-    protected void attachBaseContext(android.content.Context p0) {}
+    public void attachBaseContext(android.content.Context p0) {}
     public void cancelAllNotifications() {}
     public void cancelNotification(java.lang.String p0) {}
     public void cancelNotification(java.lang.String p0, java.lang.String p1, int p2) {}

@@ -4,10 +4,10 @@ package android.inputmethodservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class ExtractEditText extends android.widget.EditText {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public ExtractEditText(android.content.Context p0) { super((android.content.Context) null); }
-    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1) { super((android.content.Context) null); }
-    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1, int p2) { super((android.content.Context) null); }
-    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super((android.content.Context) null); }
+    public ExtractEditText(android.content.Context p0) { super(p0); }
+    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1, int p2) { super(p0, p1, p2); }
+    public ExtractEditText(android.content.Context p0, android.util.AttributeSet p1, int p2, int p3) { super(p0, p1, p2, p3); }
     protected void deleteText_internal(int p0, int p1) {}
     public void finishInternalChanges() {}
     public boolean hasFocus() { return false; }
@@ -16,7 +16,7 @@ public class ExtractEditText extends android.widget.EditText {
     public boolean isFocused() { return (huskProps.get("Focused") instanceof Boolean ? (Boolean) huskProps.get("Focused") : false); }
     public boolean isInExtractedMode() { return (huskProps.get("InExtractedMode") instanceof Boolean ? (Boolean) huskProps.get("InExtractedMode") : false); }
     public boolean isInputMethodTarget() { return (huskProps.get("InputMethodTarget") instanceof Boolean ? (Boolean) huskProps.get("InputMethodTarget") : false); }
-    protected void onSelectionChanged(int p0, int p1) {}
+    public void onSelectionChanged(int p0, int p1) {}
     public boolean onTextContextMenuItem(int p0) { return false; }
     public boolean performClick() { return false; }
     protected void replaceText_internal(int p0, int p1, java.lang.CharSequence p2) {}

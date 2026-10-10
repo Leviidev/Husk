@@ -13,8 +13,8 @@ public class GridLayoutAnimationController extends android.view.animation.Layout
     public static final int PRIORITY_COLUMN = 1;
     public static final int PRIORITY_NONE = 0;
     public static final int PRIORITY_ROW = 2;
-    public GridLayoutAnimationController(android.content.Context p0, android.util.AttributeSet p1) { super((android.view.animation.Animation) null); }
-    public GridLayoutAnimationController(android.view.animation.Animation p0) { super((android.view.animation.Animation) null); }
+    public GridLayoutAnimationController(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
+    public GridLayoutAnimationController(android.view.animation.Animation p0) { super(p0); }
     public GridLayoutAnimationController(android.view.animation.Animation p0, float p1, float p2) { super((android.view.animation.Animation) null); }
     public float getColumnDelay() { return (huskProps.get("ColumnDelay") instanceof Float ? (Float) huskProps.get("ColumnDelay") : 0f); }
     protected long getDelayForView(android.view.View p0) { return 0L; }
