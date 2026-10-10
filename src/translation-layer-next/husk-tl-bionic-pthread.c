@@ -513,6 +513,6 @@ const tl_bionic_entry tl_tab_pthread[] = {
     TL_WRAP("pthread_create", b_create), TL_WRAP("pthread_join", b_join), TL_WRAP("pthread_detach", b_detach),
     TL_DIRECT(pthread_exit), TL_DIRECT(pthread_self), TL_DIRECT(pthread_equal),
     TL_WRAP("pthread_kill", b_kill), TL_WRAP("pthread_setname_np", b_setname_np),
-    TL_WRAP("pthread_sigmask", b_sigmask),
+    TL_WRAP("pthread_sigmask", b_sigmask), TL_WRAP("pthread_sigmask64", b_sigmask),
     TL_END
 };

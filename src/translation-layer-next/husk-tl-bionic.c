@@ -189,6 +189,25 @@ static int bionic___system_property_get(const char *name, char *value)
     return (int)strlen(value);
 }
 
+/* The rest of the property API Android's own libraries use (ART's libbase reads properties through the callback). */
+typedef void (*guest_prop_cb)(void *cookie, const char *name, const char *value, uint32_t serial);
+static void bionic___system_property_read_callback(const void *pi, guest_prop_cb cb, void *cookie)
+{
+    if (!pi || !cb) return;
+    const struct { const char *k, *v; } *p = pi;
+    cb(cookie, p->k, p->v, 0);
+}
+static uint32_t bionic___system_property_serial(const void *pi) { (void)pi; return 0; }
+static uint32_t bionic___system_property_area_serial(void) { return 0; }
+/* Nothing ever changes a property here, so a wait always times out. */
+static bool bionic___system_property_wait(const void *pi, uint32_t old, uint32_t *serial, const void *timeout)
+{
+    (void)pi; (void)old; (void)timeout;
+    if (serial) *serial = 0;
+    return false;
+}
+static int bionic___system_property_set(const char *name, const char *value) { (void)name; (void)value; return 0; }
+
 /* ---------------------------------------------------------------- logging */
 
 static void log_emit(int prio, const char *tag, const char *text)
@@ -202,6 +221,50 @@ static int bionic___android_log_write(int prio, const char *tag, const char *tex
 {
     log_emit(prio, tag, text);
     return 1;
+}
+
+/* liblog's API since Android 11: a minimum priority, a pluggable logger and aborter. Android's own libraries (libbase) call these. */
+typedef struct { size_t struct_size; int32_t buffer_id; int32_t priority; const char *tag; const char *file; uint32_t line; const char *message; } guest_log_message;
+typedef void (*guest_logger)(const guest_log_message *);
+typedef void (*guest_aborter)(const char *);
+static _Atomic int32_t g_log_min;                 /* ANDROID_LOG_DEFAULT (0): info and up */
+static _Atomic(guest_logger) g_logger;
+static _Atomic(guest_aborter) g_aborter;
+static const char *_Atomic g_default_tag;
+
+static int bionic___android_log_is_loggable(int prio, const char *tag, int def)
+{
+    (void)tag;
+    int32_t min = g_log_min ? g_log_min : (def ? def : 4);
+    return prio >= min;
+}
+static int bionic___android_log_is_loggable_len(int prio, const char *tag, size_t len, int def) { (void)len; return bionic___android_log_is_loggable(prio, tag, def); }
+static int32_t bionic___android_log_get_minimum_priority(void) { return g_log_min; }
+static int32_t bionic___android_log_set_minimum_priority(int32_t p) { return atomic_exchange(&g_log_min, p); }
+static void bionic___android_log_set_default_tag(const char *tag) { g_default_tag = tag; }
+static void bionic___android_log_logd_logger(const guest_log_message *m)
+{
+    if (m) log_emit(m->priority, m->tag ? m->tag : g_default_tag, m->message);
+}
+static void bionic___android_log_set_logger(guest_logger fn) { g_logger = fn; }
+static void bionic___android_log_write_log_message(guest_log_message *m)
+{
+    if (!m) return;
+    /* as liblog does: a message without a tag gets the default one (the process name, unless set) */
+    if (!m->tag) { const char *t = g_default_tag; m->tag = t ? t : "app_process64"; }
+    guest_logger fn = g_logger;
+    if (fn && fn != bionic___android_log_logd_logger) fn(m); else bionic___android_log_logd_logger(m);
+}
+static void bionic___android_log_default_aborter(const char *msg)
+{
+    tl_log_line("bionic: abort message: %s", msg ? msg : "");
+    abort();
+}
+static void bionic___android_log_set_aborter(guest_aborter fn) { g_aborter = fn; }
+static void bionic___android_log_call_aborter(const char *msg)
+{
+    guest_aborter fn = g_aborter;
+    if (fn && fn != bionic___android_log_default_aborter) fn(msg); else bionic___android_log_default_aborter(msg);
 }
 
 static int bionic___android_log_buf_write(int buf, int prio, const char *tag, const char *text)
@@ -535,7 +598,11 @@ static void *bionic_dlsym(void *handle, const char *name)
 {
     if (!name) return NULL;
     void *r = NULL;
-    if (handle == NULL || handle == (void *)-1L) {
+    if (handle == (void *)-1L) {
+        /* RTLD_NEXT: the definition after the caller's own, which for a library wrapping libc (ART's signal chain) is libc's */
+        r = tl_bionic_find(name);
+        if (!r) r = tl_ld_sym(NULL, name);
+    } else if (handle == NULL) {
         r = tl_ld_sym(NULL, name);
         if (!r) r = tl_bionic_find(name);
     } else if ((sysh *)handle >= g_sys_handle && (sysh *)handle < g_sys_handle + 16) {
@@ -598,6 +665,23 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("__system_property_find", bionic___system_property_find),
     TL_WRAP("__system_property_read", bionic___system_property_read),
     TL_WRAP("__system_property_get", bionic___system_property_get),
+    TL_WRAP("__system_property_read_callback", bionic___system_property_read_callback),
+    TL_WRAP("__system_property_serial", bionic___system_property_serial),
+    TL_WRAP("__system_property_area_serial", bionic___system_property_area_serial),
+    TL_WRAP("__system_property_wait", bionic___system_property_wait),
+    TL_WRAP("__system_property_set", bionic___system_property_set),
+    TL_WRAP("__android_log_is_loggable", bionic___android_log_is_loggable),
+    TL_WRAP("__android_log_is_loggable_len", bionic___android_log_is_loggable_len),
+    TL_WRAP("__android_log_get_minimum_priority", bionic___android_log_get_minimum_priority),
+    TL_WRAP("__android_log_set_minimum_priority", bionic___android_log_set_minimum_priority),
+    TL_WRAP("__android_log_set_default_tag", bionic___android_log_set_default_tag),
+    TL_WRAP("__android_log_logd_logger", bionic___android_log_logd_logger),
+    TL_WRAP("__android_log_stderr_logger", bionic___android_log_logd_logger),
+    TL_WRAP("__android_log_set_logger", bionic___android_log_set_logger),
+    TL_WRAP("__android_log_write_log_message", bionic___android_log_write_log_message),
+    TL_WRAP("__android_log_default_aborter", bionic___android_log_default_aborter),
+    TL_WRAP("__android_log_set_aborter", bionic___android_log_set_aborter),
+    TL_WRAP("__android_log_call_aborter", bionic___android_log_call_aborter),
     TL_WRAP("__android_log_write", bionic___android_log_write),
     TL_WRAP("__android_log_buf_write", bionic___android_log_buf_write),
     TL_WRAP("__android_log_vprint", bionic___android_log_vprint),
@@ -652,7 +736,7 @@ const tl_bionic_entry tl_tab_core[] = {
 
 /* ----------------------------------------------------------------- lookup */
 
-static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles };
+static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles, tl_tab_sys };
 
 typedef struct { const char *name; void *addr; } slot;
 static slot *g_slots;

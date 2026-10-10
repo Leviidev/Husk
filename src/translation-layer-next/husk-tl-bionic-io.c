@@ -1027,6 +1027,7 @@ static void *b_signal(int sig, void *handler)
 static int b_sigemptyset(uint64_t *s) { *s = 0; return 0; }
 static int b_sigfillset(uint64_t *s) { *s = ~0ull; return 0; }
 static int b_sigaddset(uint64_t *s, int sig) { if (sig < 1 || sig > 64) { tl_set_guest_errno(22); return -1; } *s |= 1ull << (sig - 1); return 0; }
+static int b_sigismember(const uint64_t *s, int sig) { if (sig < 1 || sig > 64) { tl_set_guest_errno(22); return -1; } return (int)((*s >> (sig - 1)) & 1); }
 static int b_sigdelset(uint64_t *s, int sig) { if (sig < 1 || sig > 64) { tl_set_guest_errno(22); return -1; } *s &= ~(1ull << (sig - 1)); return 0; }
 static int b_sigsuspend(const uint64_t *mask)
 {
@@ -1265,9 +1266,9 @@ static int b_inotify_add_watch(int a, const char *b, unsigned c) { (void)a; (voi
 const tl_bionic_entry tl_tab_io[] = {
     TL_WRAP("open", b_open), TL_WRAP("__open_2", b___open_2), TL_WRAP("close", b_close), TL_WRAP("read", b_read),
     TL_WRAP("__read_chk", b___read_chk), TL_WRAP("write", b_write), TL_WRAP("__write_chk", b___write_chk), TL_WRAP("writev", b_writev),
-    TL_WRAP("pread64", b_pread64), TL_WRAP("pwrite64", b_pwrite64), TL_WRAP("__pread64_chk", b___pread64_chk), TL_WRAP("__pwrite64_chk", b___pwrite64_chk), TL_WRAP("__pwrite_chk", b___pwrite64_chk), TL_WRAP("__pread_chk", b___pread64_chk), TL_WRAP("lseek", b_lseek), TL_WRAP("lseek64", b_lseek),
+    TL_WRAP("pread64", b_pread64), TL_WRAP("pwrite64", b_pwrite64), TL_WRAP("pread", b_pread64), TL_WRAP("pwrite", b_pwrite64), TL_WRAP("__pread64_chk", b___pread64_chk), TL_WRAP("__pwrite64_chk", b___pwrite64_chk), TL_WRAP("__pwrite_chk", b___pwrite64_chk), TL_WRAP("__pread_chk", b___pread64_chk), TL_WRAP("lseek", b_lseek), TL_WRAP("lseek64", b_lseek),
     TL_WRAP("dup", b_dup), TL_WRAP("dup2", b_dup2), TL_WRAP("pipe", b_pipe), TL_WRAP("fsync", b_fsync), TL_WRAP("fdatasync", b_fsync),
-    TL_WRAP("ftruncate", b_ftruncate), TL_WRAP("truncate", b_truncate), TL_WRAP("isatty", b_isatty), TL_WRAP("flock", b_flock),
+    TL_WRAP("ftruncate", b_ftruncate), TL_WRAP("ftruncate64", b_ftruncate), TL_WRAP("truncate", b_truncate), TL_WRAP("isatty", b_isatty), TL_WRAP("flock", b_flock),
     TL_WRAP("unlink", b_unlink), TL_WRAP("rmdir", b_rmdir), TL_WRAP("mkdir", b_mkdir), TL_WRAP("access", b_access),
     TL_WRAP("chmod", b_chmod), TL_WRAP("fchmod", b_fchmod), TL_WRAP("link", b_link), TL_WRAP("symlink", b_symlink),
     TL_WRAP("readlink", b_readlink), TL_WRAP("realpath", b_realpath), TL_WRAP("getcwd", b_getcwd),
@@ -1286,6 +1287,10 @@ const tl_bionic_entry tl_tab_io[] = {
     TL_DIRECT(ctime), TL_DIRECT(ctime_r), TL_DIRECT(asctime), TL_DIRECT(asctime_r), TL_DIRECT(timegm),
     TL_WRAP("sigaction", b_sigaction), TL_WRAP("signal", b_signal), TL_WRAP("sigemptyset", b_sigemptyset),
     TL_WRAP("sigfillset", b_sigfillset), TL_WRAP("sigaddset", b_sigaddset), TL_WRAP("sigdelset", b_sigdelset),
+    /* LP64 bionic's sigset64_t is sigset_t, so the ...64 calls are the same ones (ART's signal chain asks for these) */
+    TL_WRAP("sigaction64", b_sigaction), TL_WRAP("sigemptyset64", b_sigemptyset), TL_WRAP("sigfillset64", b_sigfillset),
+    TL_WRAP("sigaddset64", b_sigaddset), TL_WRAP("sigdelset64", b_sigdelset),
+    TL_WRAP("sigismember", b_sigismember), TL_WRAP("sigismember64", b_sigismember),
     TL_WRAP("sigsuspend", b_sigsuspend), TL_WRAP("sigaltstack", b_sigaltstack), TL_WRAP("raise", b_raise),
     TL_WRAP("poll", b_poll), TL_WRAP("select", b_select), TL_WRAP("__FD_SET_chk", b___FD_SET_chk),
     TL_WRAP("__FD_ISSET_chk", b___FD_ISSET_chk), TL_WRAP("__cmsg_nxthdr", b___cmsg_nxthdr),

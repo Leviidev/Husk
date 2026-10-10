@@ -177,7 +177,7 @@ const tl_bionic_entry tl_tab_cxx[] = {
     TL_WRAP("getgid", b_getgid), TL_WRAP("setuid", b_setid), TL_WRAP("setgid", b_setid), TL_WRAP("initgroups", b_initgroups),
     TL_WRAP("tcgetattr", b_tcattr), TL_WRAP("tcsetattr", b_tcsetattr), TL_WRAP("execl", b_execl),
     TL_WRAP("umask", b_umask), TL_WRAP("alarm", b_alarm), TL_WRAP("mlock", b_mlock), TL_WRAP("kill", b_kill),
-    TL_WRAP("sigprocmask", b_sigprocmask),
+    TL_WRAP("sigprocmask", b_sigprocmask), TL_WRAP("sigprocmask64", b_sigprocmask),
     TL_DIRECT(sigsetjmp), TL_DIRECT(siglongjmp),
     TL_END
 };
