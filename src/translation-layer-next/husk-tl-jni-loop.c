@@ -115,6 +115,81 @@ static void Method_getParameterTypes(tl_jcall *c)
     for (int i = 0; i < nt; i++) arr->oarr.v[i] = types[i];
     c->ret = vl(arr);
 }
+/* ---- reflection over the APK's classes, as pyjnius's autoclass walks them: declared members per class, up the hierarchy */
+
+#include "husk-tl-dexindex.h"
+
+typedef struct { jobj *cls; jobj *items[1024]; int n; bool methods, ctors; } member_walk;
+static void collect_member(const char *name, const char *sig, uint32_t flags, void *ctx)
+{
+    member_walk *w = ctx;
+    if (w->n >= 1024) return;
+    bool st = (flags & 8) != 0;
+    jobj *o;
+    if (!w->methods) o = tl_jni_reflect_field(w->cls, name, sig, st);
+    else {
+        bool ctor = !strcmp(name, "<init>");
+        if (ctor != w->ctors || !strcmp(name, "<clinit>")) return;
+        o = tl_jni_reflect_method(w->cls, name, sig, st);
+    }
+    if (o) { jvalue f; f.j = 0; f.i = (int)(flags | 0x10000u); tl_jni_set_field(o, "accessFlags", "I", f); w->items[w->n++] = o; }
+}
+static jobj *members(jobj *cls, bool methods, bool ctors, const char *elem)
+{
+    member_walk *w = calloc(1, sizeof(*w));
+    w->cls = cls; w->methods = methods; w->ctors = ctors;
+    const char *name = tl_jni_class_name(cls);
+    if (tl_dexidx_has_class(name)) tl_dexidx_each_member(name, methods, collect_member, w);
+    else tl_jni_each_known_member(cls, methods, collect_member, w);
+    jobj *arr = tl_jni_new_obj_array(C(elem), (uint32_t)w->n);
+    for (int i = 0; i < w->n; i++) arr->oarr.v[i] = w->items[i];
+    free(w);
+    return arr;
+}
+static void Class_getDeclaredMethods(tl_jcall *c) { c->ret = vl(members(c->self, true, false, "java/lang/reflect/Method")); }
+static void Class_getDeclaredConstructors(tl_jcall *c) { c->ret = vl(members(c->self, true, true, "java/lang/reflect/Constructor")); }
+static void Class_getDeclaredFields(tl_jcall *c) { c->ret = vl(members(c->self, false, false, "java/lang/reflect/Field")); }
+static void Class_getInterfaces(tl_jcall *c) { c->ret = vl(tl_jni_new_obj_array(C("java/lang/Class"), 0)); }
+static void Class_getSuperclass(tl_jcall *c)
+{
+    const char *name = tl_jni_class_name(c->self);
+    char sup[260];
+    if (tl_dexidx_super(name, sup, sizeof(sup))) { c->ret = vl(tl_jni_class_object(sup)); return; }
+    c->ret = vl(strcmp(name, "java/lang/Object") ? tl_jni_class_super(c->self) : NULL);
+}
+static void Class_isInterface(tl_jcall *c) { jvalue v; v.j = 0; v.z = (tl_dexidx_class_flags(tl_jni_class_name(c->self)) & 0x200) != 0; c->ret = v; }
+static void Class_isArray(tl_jcall *c) { jvalue v; v.j = 0; v.z = tl_jni_class_name(c->self)[0] == '['; c->ret = v; }
+static void Class_isPrimitive(tl_jcall *c)
+{
+    static const char *const prim[] = { "boolean", "byte", "char", "short", "int", "long", "float", "double", "void" };
+    const char *n = tl_jni_class_name(c->self);
+    jvalue v; v.j = 0;
+    for (size_t i = 0; i < sizeof(prim) / sizeof(prim[0]); i++) if (!strcmp(n, prim[i])) v.z = 1;
+    c->ret = v;
+}
+static void Class_getComponentType(tl_jcall *c)
+{
+    const char *n = tl_jni_class_name(c->self);
+    int len;
+    c->ret = vl(n[0] == '[' ? class_for_desc(n + 1, &len) : NULL);
+}
+static void Class_getModifiers(tl_jcall *c) { jvalue v; v.j = 0; v.i = (int)(tl_dexidx_class_flags(tl_jni_class_name(c->self)) | 1); c->ret = v; }
+/* A member's modifiers: the access flags it was listed with, or public (and static when it is) for one made otherwise. */
+static void Member_getModifiers(tl_jcall *c)
+{
+    int f = tl_jni_get_field(c->self, "accessFlags", "I").i;
+    jvalue v; v.j = 0; v.i = (f & 0x10000) ? (f & 0xFFFF) : 1;
+    c->ret = v;
+}
+static void Member_isVarArgs(tl_jcall *c) { int f = tl_jni_get_field(c->self, "accessFlags", "I").i; jvalue v; v.j = 0; v.z = (f & 0x10000) && (f & 0x80); c->ret = v; }
+static void Field_getType(tl_jcall *c) { int n; const char *sig = tl_jni_reflected_field_sig(c->self); c->ret = vl(sig ? class_for_desc(sig, &n) : tl_jni_class_object("java/lang/Object")); }
+
+/* java.lang.reflect.Modifier's tests, on the access flags above. */
+#define MODIFIER(fn, bit) static void fn(tl_jcall *c) { jvalue v; v.j = 0; v.z = (c->args[0].i & (bit)) != 0; c->ret = v; }
+MODIFIER(Mod_isPublic, 0x1) MODIFIER(Mod_isPrivate, 0x2) MODIFIER(Mod_isProtected, 0x4) MODIFIER(Mod_isStatic, 0x8)
+MODIFIER(Mod_isFinal, 0x10) MODIFIER(Mod_isSynchronized, 0x20) MODIFIER(Mod_isVolatile, 0x40) MODIFIER(Mod_isTransient, 0x80)
+MODIFIER(Mod_isNative, 0x100) MODIFIER(Mod_isInterface, 0x200) MODIFIER(Mod_isAbstract, 0x400) MODIFIER(Mod_isStrict, 0x800)
+
 static void Class_getName(tl_jcall *c)
 {
     char buf[200];
@@ -569,6 +644,33 @@ static const tl_jhle k_loop_hle[] = {
     M("java/lang/reflect/Method", "getReturnType", "()Ljava/lang/Class;", Method_getReturnType),
     M("java/lang/reflect/Method", "getParameterTypes", "()[Ljava/lang/Class;", Method_getParameterTypes),
     M("java/lang/Class", "getName", "()Ljava/lang/String;", Class_getName),
+    M("java/lang/Class", "getDeclaredMethods", "()[Ljava/lang/reflect/Method;", Class_getDeclaredMethods),
+    M("java/lang/Class", "getMethods", "()[Ljava/lang/reflect/Method;", Class_getDeclaredMethods),
+    M("java/lang/Class", "getDeclaredConstructors", "()[Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructors),
+    M("java/lang/Class", "getConstructors", "()[Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructors),
+    M("java/lang/Class", "getDeclaredFields", "()[Ljava/lang/reflect/Field;", Class_getDeclaredFields),
+    M("java/lang/Class", "getFields", "()[Ljava/lang/reflect/Field;", Class_getDeclaredFields),
+    M("java/lang/Class", "getInterfaces", "()[Ljava/lang/Class;", Class_getInterfaces),
+    M("java/lang/Class", "getSuperclass", "()Ljava/lang/Class;", Class_getSuperclass),
+    M("java/lang/Class", "isInterface", "()Z", Class_isInterface),
+    M("java/lang/Class", "isArray", "()Z", Class_isArray),
+    M("java/lang/Class", "isPrimitive", "()Z", Class_isPrimitive),
+    M("java/lang/Class", "getComponentType", "()Ljava/lang/Class;", Class_getComponentType),
+    M("java/lang/Class", "getModifiers", "()I", Class_getModifiers),
+    M("java/lang/reflect/Method", "getModifiers", "()I", Member_getModifiers),
+    M("java/lang/reflect/Method", "isVarArgs", "()Z", Member_isVarArgs),
+    M("java/lang/reflect/Constructor", "getModifiers", "()I", Member_getModifiers),
+    M("java/lang/reflect/Constructor", "isVarArgs", "()Z", Member_isVarArgs),
+    M("java/lang/reflect/Constructor", "getParameterTypes", "()[Ljava/lang/Class;", Method_getParameterTypes),
+    M("java/lang/reflect/Field", "getName", "()Ljava/lang/String;", Method_getName),
+    M("java/lang/reflect/Field", "getType", "()Ljava/lang/Class;", Field_getType),
+    M("java/lang/reflect/Field", "getModifiers", "()I", Member_getModifiers),
+    M("java/lang/reflect/Modifier", "isPublic", "(I)Z", Mod_isPublic), M("java/lang/reflect/Modifier", "isPrivate", "(I)Z", Mod_isPrivate),
+    M("java/lang/reflect/Modifier", "isProtected", "(I)Z", Mod_isProtected), M("java/lang/reflect/Modifier", "isStatic", "(I)Z", Mod_isStatic),
+    M("java/lang/reflect/Modifier", "isFinal", "(I)Z", Mod_isFinal), M("java/lang/reflect/Modifier", "isSynchronized", "(I)Z", Mod_isSynchronized),
+    M("java/lang/reflect/Modifier", "isVolatile", "(I)Z", Mod_isVolatile), M("java/lang/reflect/Modifier", "isTransient", "(I)Z", Mod_isTransient),
+    M("java/lang/reflect/Modifier", "isNative", "(I)Z", Mod_isNative), M("java/lang/reflect/Modifier", "isInterface", "(I)Z", Mod_isInterface),
+    M("java/lang/reflect/Modifier", "isAbstract", "(I)Z", Mod_isAbstract), M("java/lang/reflect/Modifier", "isStrict", "(I)Z", Mod_isStrict),
 
     M("android/os/Looper", "getMainLooper", "()Landroid/os/Looper;", Looper_getMainLooper),
     M("android/os/Looper", "myLooper", "()Landroid/os/Looper;", Looper_myLooper),

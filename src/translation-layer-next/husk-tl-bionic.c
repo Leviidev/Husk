@@ -736,7 +736,7 @@ const tl_bionic_entry tl_tab_core[] = {
 
 /* ----------------------------------------------------------------- lookup */
 
-static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles, tl_tab_sys };
+static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles, tl_tab_sys, tl_tab_ldbl };
 
 typedef struct { const char *name; void *addr; } slot;
 static slot *g_slots;

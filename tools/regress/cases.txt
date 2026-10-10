@@ -1,5 +1,6 @@
 # The games the regression run plays, one per line:
 #   name | harness | APK | seconds before the screenshot | width height | extra environment | text the log must have
+# $HUSK_ENGINES is a folder of GitHub-release APKs for the newer drivers (GameMaker, Kivy).
 # An APK path starting with fdroid: is downloaded from F-Droid into the cache (package_versioncode). Paths may use ~ and
 # $VARIABLES; a case whose APK is not there is skipped, not failed. ANGLE comes from TL_ANGLE_EGL/TL_ANGLE_GLES (the
 # harnesses default to the copy inside Steam's Chromium Embedded Framework on this Mac).
@@ -11,3 +12,5 @@ minecraft  | ga-test    | ~/Documents/Minecraft-v1.26.60.29-full-apkvision.apk  
 rocksndiamonds | sdl-test | fdroid:org.artsoft.rocksndiamonds_4020200                  | 20 | 1748 804 |
 pocketbroomball | godot-test | fdroid:com.simondalvai.pocketbroomball_100           | 12 | 804 1748 | TL_PACKAGE=com.simondalvai.pocketbroomball | Godot Engine v3.6
 burgers    | godot-test | fdroid:org.xolatgames.burgers_7                              | 15 | 1748 804 | TL_PACKAGE=org.xolatgames.burgers | Godot Engine v4.6
+bytelife   | gamemaker-test | $HUSK_ENGINES/ByteLife.Simulator.apk                     | 10 | 1748 804 | | gamemaker: started
+kivy-ttt   | sdl-test   | $HUSK_ENGINES/TicTacToe-v1.0.0-Android.apk                   | 35 | 804 1748 | | Start application main loop

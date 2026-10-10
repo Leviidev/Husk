@@ -31,6 +31,10 @@ bool tl_dexidx_has_class(const char *name);
 const char *tl_dexidx_super(const char *name, char *buf, size_t n);
 
 /* Whether `cls` declares a method/field with this name and JNI signature ("" sig matches any). */
+/* Every method (or field) a class in the DEX declares, with its access flags (ACC_STATIC 8, ACC_VARARGS 0x80, ...). */
+void tl_dexidx_each_member(const char *cls, bool methods, void (*fn)(const char *name, const char *sig, uint32_t flags, void *ctx), void *ctx);
+/* A DEX class's access flags (ACC_INTERFACE 0x200, ACC_ABSTRACT 0x400), or 0 when it is not in the DEX. */
+uint32_t tl_dexidx_class_flags(const char *cls);
 bool tl_dexidx_declares_method(const char *cls, const char *name, const char *sig, bool *is_static);
 bool tl_dexidx_declares_field(const char *cls, const char *name, const char *sig, bool *is_static);
 

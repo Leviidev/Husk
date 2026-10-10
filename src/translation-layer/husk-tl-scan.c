@@ -65,7 +65,7 @@ static bool is_dex(const char *name)
 
 /* Recognised by the libraries an engine always ships. */
 typedef struct engine_scan {
-    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor, gamemaker;
+    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor, gamemaker, python;
 } engine_scan;
 
 static void note_engine(engine_scan *s, const char *f)
@@ -75,6 +75,7 @@ static void note_engine(engine_scan *s, const char *f)
     else if (!strcmp(f, "libmonobdwgc-2.0.so") || !strcmp(f, "libmono.so")) s->mono_unity = true;
     else if (!strcmp(f, "libflutter.so")) s->flutter = true;
     else if (!strcmp(f, "libyoyo.so")) s->gamemaker = true;
+    else if (!strncmp(f, "libpython", 9)) s->python = true;
     else if (!strcmp(f, "libreactnativejni.so") || !strcmp(f, "libhermes.so")) s->react = true;
     else if (!strcmp(f, "libmonosgen-2.0.so") || !strcmp(f, "libmonodroid.so")) s->dotnet = true;
     else if (!strcmp(f, "libgodot_android.so")) s->godot = true;
@@ -108,6 +109,8 @@ static const char *engine_name(const engine_scan *s)
     if (s->cocos) return "Cocos";
     if (s->minecraft) return "Minecraft";
     /* SDL 2 is told by the pair its Java shell always loads: libSDL2 and the game's own libmain (SDL 3 games ship libSDL3 alone, as it is the only SDL there). */
+    /* python-for-android (Kivy, pygame): SDL 2 with CPython in libmain. The SDL driver runs it. */
+    if (s->python && s->sdl2 && s->mainlib) return "Python";
     if (s->sdl || (s->sdl2 && s->mainlib) || s->sdl_symbols) return "SDL";
     if (s->gdx) return "libGDX";
     /* A game that is only a NativeActivity library of its own (sokol, android_native_app_glue): the runtime drives the activity itself. */

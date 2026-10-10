@@ -118,6 +118,8 @@ void *tl_jni_native(const char *cls, const char *name, const char *sig);
 jobj *tl_jni_reflect_method(jobj *cls, const char *name, const char *sig, bool is_static);
 jobj *tl_jni_reflect_field(jobj *cls, const char *name, const char *sig, bool is_static);
 const char *tl_jni_reflected_field_sig(const jobj *field);
+jobj *tl_jni_class_super(jobj *cls);
+void tl_jni_each_known_member(jobj *cls, bool methods, void (*fn)(const char *name, const char *sig, uint32_t flags, void *ctx), void *ctx);                          /* a Class's superclass, or NULL */
 jobj *tl_jni_reflected_declaring_class(const jobj *member);
 const char *tl_jni_reflected_name(const jobj *member);       /* a method's or field's name */
 const char *tl_jni_reflected_sig(const jobj *member);        /* a method's or field's signature */

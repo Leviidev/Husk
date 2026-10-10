@@ -269,6 +269,12 @@ static int b_putchar(int c) { char ch = (char)c; console_write(stdout, &ch, 1); 
 static int b_puts(const char *str) { console_write(stdout, str, strlen(str)); console_write(stdout, "\n", 1); return 1; }
 static size_t b_wcsftime(wchar_t *buf, size_t n, const wchar_t *fmt, const struct tm *tm) { return wcsftime(buf, n, fmt, tm); }
 static int b_putc(int c, void *f) { return b_fputc(c, f); }
+static ssize_t b_getline(char **line, size_t *cap, void *f) { TL_ERRNO_BEGIN(); ssize_t r = getline(line, cap, map_stream(f)); TL_ERRNO_END(); return r; }
+static ssize_t b_getdelim(char **line, size_t *cap, int delim, void *f) { TL_ERRNO_BEGIN(); ssize_t r = getdelim(line, cap, delim, map_stream(f)); TL_ERRNO_END(); return r; }
+static void b_flockfile(void *f) { flockfile(map_stream(f)); }
+static void b_funlockfile(void *f) { funlockfile(map_stream(f)); }
+static int b_getc_unlocked(void *f) { return getc_unlocked(map_stream(f)); }
+static int b_putc_unlocked(int c, void *f) { return putc_unlocked(c, map_stream(f)); }
 static int b_getc(void *f) { TL_ERRNO_BEGIN(); int r = fgetc(map_stream(f)); TL_ERRNO_END(); return r; }
 static int b_ungetc(int c, void *f) { return ungetc(c, map_stream(f)); }
 static wint_t b_getwc(void *f) { return fgetwc(map_stream(f)); }
@@ -616,6 +622,8 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("fopen", b_fopen), TL_WRAP("freopen", b_freopen), TL_WRAP("freopen64", b_freopen), TL_WRAP("fopen64", b_fopen), TL_WRAP("fseeko64", b_fseeko), TL_WRAP("ftello64", b_ftello), TL_DIRECT(funopen), TL_DIRECT(wcwidth), TL_WRAP("fdopen", b_fdopen), TL_WRAP("fclose", b_fclose), TL_WRAP("fgets", b_fgets),
     TL_WRAP("fread", b_fread), TL_WRAP("fwrite", b_fwrite), TL_WRAP("fseek", b_fseek), TL_WRAP("fseeko", b_fseeko),
     TL_WRAP("ftell", b_ftell), TL_WRAP("ftello", b_ftello), TL_WRAP("fflush", b_fflush), TL_WRAP("fputc", b_fputc),
+    TL_WRAP("getline", b_getline), TL_WRAP("getdelim", b_getdelim), TL_WRAP("flockfile", b_flockfile), TL_WRAP("funlockfile", b_funlockfile),
+    TL_WRAP("getc_unlocked", b_getc_unlocked), TL_WRAP("putc_unlocked", b_putc_unlocked),
     TL_WRAP("putc", b_putc), TL_WRAP("getc", b_getc), TL_WRAP("fgetc", b_getc), TL_WRAP("ungetc", b_ungetc), TL_WRAP("getwc", b_getwc),
     TL_WRAP("putwc", b_putwc), TL_WRAP("ungetwc", b_ungetwc), TL_WRAP("vsprintf", b_vsprintf), TL_WRAP("wcsftime", b_wcsftime),
     TL_WRAP("fputs", b_fputs), TL_WRAP("puts", b_puts), TL_WRAP("feof", b_feof), TL_WRAP("ferror", b_ferror),

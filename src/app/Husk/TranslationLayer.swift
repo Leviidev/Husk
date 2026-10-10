@@ -56,7 +56,7 @@ extension TLReport {
         if engine?.hasPrefix("Unity") == true { return .unity }
         if engine == "Cocos" { return .cocos }
         if engine == "Minecraft" { return .minecraft }
-        if engine == "SDL" { return .sdl }
+        if engine == "SDL" || engine == "Python" { return .sdl }
         if engine == "Unreal Engine" { return .ue4 }
         if engine == "Rockstar" { return .gta }
         if engine == "Godot" { return .godot }
@@ -72,7 +72,7 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : "Unity" }
+    var nativeEngineName: String { engine == "Python" ? "Python (Kivy)" : nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
@@ -166,7 +166,7 @@ final class TranslationLayerStore: ObservableObject {
 
     /// Which reading of an app's libraries its report came from. A newer Husk that recognises more (an engine, a kind of game) reads
     /// the apps it already holds again, so they are not left with what the old one knew.
-    nonisolated static let scanVersion = 5
+    nonisolated static let scanVersion = 6
     private var rescanning = false
 
     func reload() {

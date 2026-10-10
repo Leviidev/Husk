@@ -267,6 +267,44 @@ bool tl_dexidx_find_method_lenient(const char *cls, const char *name, const char
     return best >= 0;
 }
 
+void tl_dexidx_each_member(const char *cls, bool methods, void (*fn)(const char *name, const char *sig, uint32_t flags, void *ctx), void *ctx)
+{
+    const cls_ref *r = lookup(cls);
+    if (!r) return;
+    const dexfile *x = &g_dex[r->dex - 1];
+    uint32_t cdata = u32(x, x->class_off + 32u * r->def + 24);
+    if (!cdata) return;
+    size_t o = cdata;
+    uint32_t nsf = uleb(x, &o), nif = uleb(x, &o), ndm = uleb(x, &o), nvm = uleb(x, &o);
+    uint32_t counts[4] = { nsf, nif, ndm, nvm };
+    for (int group = 0; group < 4; group++) {
+        bool method_group = group >= 2;
+        uint32_t idx = 0;
+        for (uint32_t i = 0; i < counts[group]; i++) {
+            idx += uleb(x, &o);
+            uint32_t flags = uleb(x, &o);
+            if (method_group) uleb(x, &o);
+            if (method_group != methods) continue;
+            if (method_group) {
+                size_t mo = x->meth_off + 8u * idx;
+                char ps[512]; proto_sig(x, u16(x, mo + 2), ps, sizeof(ps));
+                fn(str_of(x, u32(x, mo + 4)), ps, flags, ctx);
+            } else {
+                size_t fo = x->field_off + 8u * idx;
+                fn(str_of(x, u32(x, fo + 4)), type_of(x, u16(x, fo + 2)), flags, ctx);
+            }
+        }
+    }
+}
+
+uint32_t tl_dexidx_class_flags(const char *cls)
+{
+    const cls_ref *r = lookup(cls);
+    if (!r) return 0;
+    const dexfile *x = &g_dex[r->dex - 1];
+    return u32(x, x->class_off + 32u * r->def + 4);
+}
+
 bool tl_dexidx_declares_method(const char *cls, const char *name, const char *sig, bool *st) { return scan_members(cls, true, name, sig, st, NULL, 0); }
 bool tl_dexidx_declares_field(const char *cls, const char *name, const char *sig, bool *st) { return scan_members(cls, false, name, sig, st, NULL, 0); }
 bool tl_dexidx_field_sig(const char *cls, const char *name, char *out, size_t n) { return scan_members(cls, false, name, "", NULL, out, n); }

@@ -669,6 +669,34 @@ jobj *tl_jni_reflect_field(jobj *cls, const char *name, const char *sig, bool is
     return f ? reflected("java/lang/reflect/Field", f) : NULL;
 }
 
+/* The members of a framework class (one the APK does not define) that this Java world knows: the methods implemented for it and the
+ * fields its objects have been given. What reflection over such a class can honestly list. */
+void tl_jni_each_known_member(jobj *cls, bool methods, void (*fn)(const char *name, const char *sig, uint32_t flags, void *ctx), void *ctx)
+{
+    if (!cls || cls->kind != TL_K_CLASS) return;
+    tl_jclass *jc = cls->klass.jc;
+    if (methods) {
+        for (int t = 0; t < g_nhle; t++)
+            for (const tl_jhle *e = g_hle[t]; e->cls; e++)
+                if (!strcmp(e->cls, jc->name)) fn(e->name, e->sig, 1 /* public */, ctx);
+        return;
+    }
+    pthread_mutex_lock(&g_lock);
+    int n = jc->nfields;
+    tl_jfield **copy = malloc((size_t)(n ? n : 1) * sizeof(*copy));
+    memcpy(copy, jc->fields, (size_t)n * sizeof(*copy));
+    pthread_mutex_unlock(&g_lock);
+    for (int i = 0; i < n; i++) fn(copy[i]->name, copy[i]->sig, 1u | (copy[i]->is_static ? 8u : 0u), ctx);
+    free(copy);
+}
+
+/* A class's superclass as a Class object, or NULL for java/lang/Object and anything without one. */
+jobj *tl_jni_class_super(jobj *cls)
+{
+    if (!cls || cls->kind != TL_K_CLASS || !cls->klass.jc->super) return NULL;
+    return tl_jni_class_object(cls->klass.jc->super->name);
+}
+
 const char *tl_jni_reflected_field_sig(const jobj *field) { return field && field->native ? ((const tl_jfield *)field->native)->sig : NULL; }
 
 jobj *tl_jni_reflected_declaring_class(const jobj *member)

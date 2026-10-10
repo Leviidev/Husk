@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/times.h>
+#include <wchar.h>
 #include <string.h>
 #include <sys/event.h>
 #include <sys/mman.h>
@@ -407,6 +409,24 @@ static int b_posix_madvise(void *addr, size_t len, int advice) { (void)addr; (vo
 static int b_inotify_init1(int flags) { (void)flags; tl_set_guest_errno(38); return -1; }
 static int b_inotify_rm_watch(int fd, int wd) { (void)fd; (void)wd; tl_set_guest_errno(22); return -1; }
 
+/* What CPython's posix module links against (python-for-android): mostly things an app cannot do on iOS either, answered as an
+ * unprivileged Android app would get them. */
+static int b_ok0(void) { return 0; }
+static int b_eperm(void) { tl_set_guest_errno(1); return -1; }
+static int b_chown(const char *p, int u, int g) { (void)p; (void)u; (void)g; return 0; }
+static int b_fchownat(int d, const char *p, int u, int g, int f) { (void)d; (void)p; (void)u; (void)g; (void)f; return 0; }
+static int b_getgroups(int n, unsigned *list) { if (n > 0 && list) list[0] = 10100; return 1; }
+static int b_getgrouplist(const char *u, unsigned g, unsigned *groups, int *n) { (void)u; if (*n < 1) { *n = 1; return -1; } groups[0] = g; *n = 1; return 1; }
+static char *b_getlogin(void) { static char name[] = "u0_a100"; return name; }
+static int b_nice(int inc) { (void)inc; return 0; }
+static void *b___sched_cpualloc(size_t count) { return calloc(1, (count + 63) / 64 * 8); }
+static void b___sched_cpufree(void *set) { free(set); }
+static int b_sched_rr_get_interval(int pid, struct timespec *ts) { (void)pid; if (ts) { ts->tv_sec = 0; ts->tv_nsec = 10000000; } return 0; }
+static char *b_ptsname(int fd) { (void)fd; tl_set_guest_errno(25); return NULL; }
+static int *b___get_h_errno(void) { static __thread int e; return &e; }
+static void *b_getservbyname(const char *n, const char *p) { (void)n; (void)p; return NULL; }
+static long b_times(void *buf) { struct tms t; clock_t r = times(&t); if (buf) { long *o = buf; o[0] = (long)t.tms_utime; o[1] = (long)t.tms_stime; o[2] = (long)t.tms_cutime; o[3] = (long)t.tms_cstime; } return (long)r; }
+
 const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("getprogname", b_getprogname),
     TL_WRAP("android_get_device_api_level", b_android_get_device_api_level),
@@ -433,5 +453,13 @@ const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("epoll_create", b_epoll_create), TL_WRAP("epoll_create1", b_epoll_create1), TL_WRAP("epoll_ctl", b_epoll_ctl),
     TL_WRAP("epoll_wait", b_epoll_wait), TL_WRAP("epoll_pwait", b_epoll_pwait), TL_WRAP("eventfd", b_eventfd),
     TL_WRAP("timerfd_create", b_timerfd_create), TL_WRAP("timerfd_settime", b_timerfd_settime), TL_WRAP("timerfd_gettime", b_timerfd_gettime),
+    TL_WRAP("chown", b_chown), TL_WRAP("lchown", b_chown), TL_WRAP("fchownat", b_fchownat), TL_WRAP("chroot", b_eperm),
+    TL_WRAP("linkat", b_eperm), TL_WRAP("setgroups", b_eperm), TL_WRAP("seteuid", b_eperm), TL_WRAP("setegid", b_eperm),
+    TL_WRAP("setreuid", b_eperm), TL_WRAP("setregid", b_eperm), TL_WRAP("getgroups", b_getgroups), TL_WRAP("getgrouplist", b_getgrouplist),
+    TL_WRAP("getlogin", b_getlogin), TL_WRAP("nice", b_nice), TL_WRAP("sched_setparam", b_ok0), TL_WRAP("sched_setscheduler", b_ok0),
+    TL_WRAP("sched_rr_get_interval", b_sched_rr_get_interval), TL_WRAP("__sched_cpualloc", b___sched_cpualloc),
+    TL_WRAP("__sched_cpufree", b___sched_cpufree), TL_WRAP("grantpt", b_eperm), TL_WRAP("unlockpt", b_eperm), TL_WRAP("ptsname", b_ptsname),
+    TL_WRAP("__get_h_errno", b___get_h_errno), TL_WRAP("getservbyname", b_getservbyname), TL_WRAP("times", b_times),
+    TL_WRAP("setpgrp", b_ok0), TL_DIRECT(getpgrp), TL_DIRECT(getpgid), TL_DIRECT(killpg), TL_DIRECT(fchdir), TL_DIRECT(abs), TL_DIRECT(wcstok),
     TL_END
 };

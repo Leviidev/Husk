@@ -680,6 +680,8 @@ bool tl_sdl_start(const tl_ga_config *cfg, const char *activity_class)
     char dir[700];
     snprintf(dir, sizeof(dir), "%s/files", S.data); mkdirs(dir);
     snprintf(dir, sizeof(dir), "%s/sdcard/Android/data/%s/files", S.data, S.pkg); mkdirs(dir);
+    /* python-for-android (Kivy, pygame): the app and Python unpacked, and the environment its start.c reads. */
+    { bool tl_python_prepare(const char *apk, const char *data_dir); tl_python_prepare(S.apk, S.data); }
 
     tl_set_data_dir(cfg->data_dir);
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);

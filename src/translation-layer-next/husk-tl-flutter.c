@@ -297,7 +297,13 @@ static void J_asyncWaitForVsync(tl_jcall *c)
     if (ch && post) post(ch, (void *)vsync_cb, (void *)(intptr_t)c->args[0].j);
 }
 
+/* package:jni_flutter's plugin: the context and activity jnigen bindings start from. */
+static void J_appContext(tl_jcall *c) { c->ret = vl(F.activity); }
+
 static const tl_jhle k_hle[] = {
+    { "com/github/dart_lang/jni_flutter/JniFlutterPlugin", "getApplicationContext", "()Landroid/content/Context;", J_appContext },
+    { "com/github/dart_lang/jni_flutter/JniFlutterPlugin", "getActivity", "()Landroid/app/Activity;", J_appContext },
+    { "com/github/dart_lang/jni/JniPlugin", "getApplicationContext", "()Landroid/content/Context;", J_appContext },
     { FJNI, "handlePlatformMessage", NULL, J_handlePlatformMessage },
     { FJNI, "handlePlatformMessageResponse", NULL, J_handleResponse },
     { FJNI, "onFirstFrame", "()V", J_onFirstFrame },
@@ -409,6 +415,19 @@ bool tl_flutter_start(const tl_ga_config *cfg)
     tl_jni_call(tl_jni_class_object("java/lang/System"), "loadLibrary", "(Ljava/lang/String;)V", &a);
     if (tl_jni_pending()) { tl_log_line("flutter: loading libflutter.so failed"); return false; }
     if (!tl_jni_native(FJNI, "nativeAttach", NULL)) { tl_log_line("flutter: the engine registered no natives"); return false; }
+    /* package:jni (jnigen plugins such as newer path_provider_android): JniPlugin loads libdartjni and hands it a class loader, which
+     * is also how the library gets the Java VM. Without it Dart's JNI calls fail with "No JNI instance is available". */
+    if (tl_dexidx_has_class("com/github/dart_lang/jni/JniPlugin")) {
+        jvalue d; d.j = 0; d.l = tl_jni_new_string("dartjni");
+        tl_jni_call(tl_jni_class_object("java/lang/System"), "loadLibrary", "(Ljava/lang/String;)V", &d);
+        if (tl_jni_pending()) tl_jni_clear();
+        tl_lib *dj = tl_ld_find_lib("libdartjni.so");
+        void (*set_loader)(void *env, void *cls, void *loader) = dj ? (void (*)(void *, void *, void *))tl_ld_sym(dj, "Java_com_github_dart_1lang_jni_JniPlugin_setClassLoader") : NULL;
+        if (set_loader) {
+            set_loader(tl_jni_env(), tl_jni_class_object("com/github/dart_lang/jni/JniPlugin"), tl_jni_new_object(tl_jni_class("dalvik/system/PathClassLoader")));
+            tl_log_line("flutter: package:jni set up");
+        }
+    }
     /* How many fields a pointer record has: 35 before Dart 3.0 and for Dart 3.1-3.2 (Flutter 3.13, 3.16), 36 otherwise. The Dart
      * SDK's version string is in the engine. */
     {
