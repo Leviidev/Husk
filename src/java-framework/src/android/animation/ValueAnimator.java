@@ -24,6 +24,10 @@ public class ValueAnimator extends Animator {
     public static void setDurationScale(float s) { sDurationScale = s; }
     public static float getDurationScale() { return sDurationScale; }
     public static boolean areAnimatorsEnabled() { return sDurationScale != 0; }
+    /** Hidden API (Compose and Material read it to follow the animator duration scale setting): the scale never changes here. */
+    public interface DurationScaleChangeListener { void onChanged(float scale); }
+    public static boolean registerDurationScaleChangeListener(DurationScaleChangeListener l) { return true; }
+    public static boolean unregisterDurationScaleChangeListener(DurationScaleChangeListener l) { return true; }
     public static long getFrameDelay() { return 16; }
     public static void setFrameDelay(long d) {}
     public static ValueAnimator ofInt(int... v) { ValueAnimator a = new ValueAnimator(); a.setIntValues(v); return a; }
