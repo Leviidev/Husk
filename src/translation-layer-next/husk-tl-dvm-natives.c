@@ -798,19 +798,24 @@ void dvm_fill_mirror(jobj *mirror)
     /* ifTable: every interface the class implements, its superclasses' and super-interfaces' included, as (interface, methods)
      * pairs -- what isAssignableFrom, getMethods and instanceof-by-reflection read */
     if ((f = dvm_find_field(cc, "ifTable", false))) {
-        tl_jclass *list[256]; int n = 0;
+        /* no limit: Hilt's generated components implement hundreds of entry points (Duolingo's: 655) */
+        int cap = 64, scap = 64, n = 0, sp = 0;
+        tl_jclass **list = malloc(sizeof(*list) * cap), **stack = malloc(sizeof(*stack) * scap);
+        #define PUSH(x) do { if (sp == scap) stack = realloc(stack, sizeof(*stack) * (scap *= 2)); stack[sp++] = (x); } while (0)
         if (jc->name[0] == '[') { list[n++] = tl_jni_class("java/lang/Cloneable"); list[n++] = tl_jni_class("java/io/Serializable"); }
-        tl_jclass *stack[256]; int sp = 0;
-        for (dvm_class *k = c; k; k = k->super) for (int i = 0; i < k->nifaces && sp < 256; i++) stack[sp++] = k->ifaces[i];
-        while (sp > 0 && n < 256) {
+        for (dvm_class *k = c; k; k = k->super) for (int i = 0; i < k->nifaces; i++) PUSH(k->ifaces[i]);
+        while (sp > 0) {
             tl_jclass *ic = stack[--sp];
             bool dup = false;
             for (int i = 0; i < n && !dup; i++) dup = list[i] == ic;
             if (dup) continue;
+            if (n == cap) list = realloc(list, sizeof(*list) * (cap *= 2));
             list[n++] = ic;
             dvm_class *idc = dvm_class_of(ic);
-            for (int i = 0; idc && i < idc->nifaces && sp < 256; i++) stack[sp++] = idc->ifaces[i];
+            for (int i = 0; idc && i < idc->nifaces; i++) PUSH(idc->ifaces[i]);
         }
+        #undef PUSH
+        free(stack);
         if (n) {
             jobj *t = tl_jni_new_obj_array(tl_jni_class("java/lang/Object"), (uint32_t)(2 * n));
             t->cls = tl_jni_class("[Ljava/lang/Object;");
@@ -818,6 +823,7 @@ void dvm_fill_mirror(jobj *mirror)
             for (int i = 0; i < n; i++) t->oarr.v[2 * i] = list[i]->mirror;
             s[f->slot] = L(t);
         }
+        free(list);
     }
 }
 

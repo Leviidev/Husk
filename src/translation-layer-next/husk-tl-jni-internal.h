@@ -35,7 +35,7 @@ typedef struct tl_jfield {
 } tl_jfield;
 
 struct tl_jclass {
-    char name[160];
+    char *name;                        /* any length: Dagger's generated factories run past 160 characters */
     tl_jclass *super;
     jobj *mirror;
     bool in_dex;                       /* the APK defines it */

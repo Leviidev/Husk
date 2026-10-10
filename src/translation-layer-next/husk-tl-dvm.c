@@ -704,7 +704,7 @@ const char *tl_dvm_describe_pending(char *buf, size_t n)
     dvm_field *f = dc ? dvm_find_field(dc, "detailMessage", false) : NULL;
     if (f && e->fields && f->slot < e->nfields) msg = tl_jni_string(e->fields[f->slot].l);
     else { jvalue v = tl_jni_get_field(e, "detailMessage", "Ljava/lang/String;"); msg = tl_jni_string(v.l); }
-    char name[200]; snprintf(name, sizeof(name), "%s", c ? c->name : "?");
+    char name[600]; snprintf(name, sizeof(name), "%s", c ? c->name : "?");
     for (char *p = name; *p; p++) if (*p == '/') *p = '.';
     size_t k = (size_t)snprintf(buf, n, "%s%s%s", name, msg ? ": " : "", msg ? msg : "");
     /* and what caused it, a few levels down */
@@ -1241,6 +1241,8 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
         return true;
     }
     dvm_method *target = r->dm;
+    { static const char *w2; if (!w2) w2 = getenv("TL_DVM_RES") ? getenv("TL_DVM_RES") : "";
+      if (w2[0] && strstr(r->name, w2)) tl_log_line("dvm: resolve %s.%s%s kind %d -> dm %p (%s) hm %p", r->cls ? r->cls->name : "?", r->name, r->sig, kind, (void *)r->dm, r->dm ? r->dm->cls->name : "", (void *)r->hm); }
     switch (kind) {
     case 3:                                                        /* static */
         if (target && !dvm_ensure_init(target->cls)) return false;
@@ -1289,6 +1291,12 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
         return dvm_throw("java/lang/NoSuchMethodError", "%s.%s%s", r->cls->name, r->name, r->sig);
     }
     if (g_dvm_trace >= 2) tl_log_line("dvm: -> %s.%s%s", target->cls->name, target->name, target->sig);
+    { static const char *watch; if (!watch) watch = getenv("TL_DVM_ARGS") ? getenv("TL_DVM_ARGS") : "";
+      if (watch[0] && !strcmp(target->name, strchr(watch, '.') + 1) && !strncmp(target->cls->name, watch, (size_t)(strchr(watch, '.') - watch))) {
+          char b[600]; int o = 0;
+          for (int i = 0; i < r->nparams && i < 10; i++) o += snprintf(b + o, sizeof(b) - o, " %c:%llx", r->shorty[1 + i], (unsigned long long)params[i].j);
+          tl_log_line("dvm: args %s.%s from %s.%s regs[%d..]:%s", target->cls->name, target->name, caller->cls->name, caller->name, areg[0], b);
+      } }
     return dvm_call(target, self, params, result);
 }
 

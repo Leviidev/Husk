@@ -103,7 +103,7 @@ static tl_jclass *tl_jni_declare_linked(const char *name, const char *super)
     tl_jclass *c = find_class_locked(name);
     if (!c) {
         c = calloc(1, sizeof(*c));
-        snprintf(c->name, sizeof(c->name), "%s", name);
+        c->name = strdup(name);
         uint32_t h = hash_str(name) % NBUCKETS;
         c->next = g_classes[h];
         g_classes[h] = c;
@@ -139,7 +139,7 @@ tl_jclass *tl_jni_class(const char *name)
     pthread_mutex_unlock(&g_lock);
     if (c) { tl_jni_wait_linked(c); return c; }
     /* Not declared: the APK may define it, and its superclass is whatever the DEX says. */
-    char sup[160];
+    char sup[1024];
     const char *s = tl_dexidx_super(name, sup, sizeof(sup));
     return tl_jni_declare(name, s ? s : (strcmp(name, "java/lang/Object") ? "java/lang/Object" : NULL));
 }
@@ -184,7 +184,7 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len)
 
 jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len)
 {
-    char cn[200];
+    char cn[1024];
     snprintf(cn, sizeof(cn), "[L%s;", elem ? elem->name : "java/lang/Object");
     jobj *o = obj_alloc(TL_K_OBJ_ARRAY, tl_jni_class(cn));
     o->oarr.len = len;
@@ -719,7 +719,7 @@ static void *jni_GetFieldID_impl(jo cls, const char *name, const char *sig, bool
         tl_jni_throw("java/lang/NullPointerException", "class is null");
         return NULL;
     }
-    char real[200];
+    char real[1024];
     bool mismatch = dex_field_real_sig(cls->klass.jc, name, real, sizeof(real)) && strcmp(real, sig) != 0;
     tl_jfield *f = mismatch ? NULL : lookup_field(cls->klass.jc, name, sig, is_static, false);
     TRACE("jni: Get%sFieldID(%s, %s %s) -> %s", is_static ? "Static" : "", cls->klass.jc->name, name, sig, f ? "ok" : "NOT FOUND");
@@ -759,7 +759,7 @@ jobj *tl_jni_reflect_field(jobj *cls, const char *name, const char *sig, bool is
 {
     if (!cls || cls->kind != TL_K_CLASS) return NULL;
     /* The real helper finds a field by name; Unity passes "Ljava/lang/Object;" for any object-typed field. */
-    char real[200];
+    char real[1024];
     if (dex_field_real_sig(cls->klass.jc, name, real, sizeof(real)) && strcmp(real, sig) != 0
         && (real[0] == 'L' || real[0] == '[') && (sig[0] == 'L' || sig[0] == '['))
         sig = real;
