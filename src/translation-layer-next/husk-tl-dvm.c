@@ -648,7 +648,21 @@ const char *tl_dvm_describe_pending(char *buf, size_t n)
     else { jvalue v = tl_jni_get_field(e, "detailMessage", "Ljava/lang/String;"); msg = tl_jni_string(v.l); }
     char name[200]; snprintf(name, sizeof(name), "%s", c ? c->name : "?");
     for (char *p = name; *p; p++) if (*p == '/') *p = '.';
-    snprintf(buf, n, "%s%s%s", name, msg ? ": " : "", msg ? msg : "");
+    size_t k = (size_t)snprintf(buf, n, "%s%s%s", name, msg ? ": " : "", msg ? msg : "");
+    /* and what caused it, a few levels down */
+    jobj *e2 = e;
+    for (int depth = 0; depth < 4 && k + 40 < n; depth++) {
+        dvm_class *ec = dvm_class_of(dvm_object_class(e2));
+        dvm_field *cf = ec ? dvm_find_field(ec, "cause", false) : NULL;
+        jobj *cause = cf && e2->fields && cf->slot < e2->nfields ? e2->fields[cf->slot].l : NULL;
+        if (!cause || cause == e2) break;
+        tl_jclass *cc = dvm_object_class(cause);
+        dvm_class *dcc = dvm_class_of(cc);
+        dvm_field *mf = dcc ? dvm_find_field(dcc, "detailMessage", false) : NULL;
+        const char *cm = mf && cause->fields && mf->slot < cause->nfields ? tl_jni_string(cause->fields[mf->slot].l) : NULL;
+        k += (size_t)snprintf(buf + k, n - k, " | caused by %s%s%s", cc ? cc->name : "?", cm ? ": " : "", cm ? cm : "");
+        e2 = cause;
+    }
     return buf;
 }
 
@@ -1698,6 +1712,15 @@ bool tl_dvm_load_natives(const char *libdir)
     /* core-icu4j's natives (charset converters, ICU's Java side), which ART loads with the runtime */
     if (!tl_jni_load_library("libicu_jni.so")) tl_log_line("dvm: libicu_jni.so did not load");
     if (tl_jni_pending()) { char b[300]; tl_log_line("dvm: loading libcore's natives threw %s", tl_dvm_describe_pending(b, sizeof(b)) ? b : "?"); tl_jni_clear(); }
+    /* What ART initialises as it starts, before any app code: the core classes, in an order where each one's <clinit> finds what
+     * it needs (System's pulls in most of java.lang and java.util.concurrent). */
+    static const char *const order[] = { "java/lang/Object", "java/lang/Class", "java/lang/String", "java/lang/System",
+                                         "java/lang/ThreadGroup", "java/lang/Thread", NULL };
+    for (int i = 0; order[i]; i++) {
+        dvm_class *c = dvm_class_of(dvm_class_named(order[i]));
+        if (c && !dvm_ensure_init(c)) { char b[400]; tl_log_line("dvm: initialising %s threw %s", order[i], tl_dvm_describe_pending(b, sizeof(b)) ? b : "?"); tl_jni_clear(); }
+    }
+    dvm_current_thread();
     return ok;
 }
 

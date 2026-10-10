@@ -1,0 +1,29 @@
+package android.content.res;
+
+import java.io.*;
+
+/** The APK's assets/ folder, read through Husk (the APK is a zip Husk already has open). */
+public final class AssetManager implements AutoCloseable {
+    public static final int ACCESS_UNKNOWN = 0, ACCESS_RANDOM = 1, ACCESS_STREAMING = 2, ACCESS_BUFFER = 3;
+    public AssetManager() {}
+    private static String norm(String p) { while (p.startsWith("/")) p = p.substring(1); while (p.startsWith("./")) p = p.substring(2); return p; }
+    public InputStream open(String name) throws IOException { return open(name, ACCESS_STREAMING); }
+    public InputStream open(String name, int mode) throws IOException {
+        byte[] b = husk.Native.readAsset(norm(name));
+        if (b == null) throw new FileNotFoundException(name);
+        return new ByteArrayInputStream(b);
+    }
+    public String[] list(String path) throws IOException { String[] l = husk.Native.listAssets(norm(path)); return l == null ? new String[0] : l; }
+    public AssetFileDescriptor openFd(String name) throws IOException {
+        String n = norm(name);
+        long fdoff = husk.Native.assetFd(n);
+        if (fdoff == -1) throw new FileNotFoundException("This file can not be opened as a file descriptor; it is probably compressed: " + name);
+        long len = husk.Native.assetLength(n);
+        FileDescriptor fd = new FileDescriptor();
+        try { java.lang.reflect.Field f = FileDescriptor.class.getDeclaredField("descriptor"); f.setAccessible(true); f.setInt(fd, (int) (fdoff >>> 40)); } catch (Exception e) { }
+        return new AssetFileDescriptor(n, fd, fdoff & 0xFFFFFFFFFFL, len);
+    }
+    public AssetFileDescriptor openNonAssetFd(String name) throws IOException { return openFd(name); }
+    public String[] getLocales() { return new String[] { "en-US" }; }
+    public void close() {}
+}

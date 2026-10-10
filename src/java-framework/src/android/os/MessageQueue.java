@@ -1,0 +1,44 @@
+package android.os;
+
+/** Messages by time; next() waits for the first that is due. Also polls Husk's input queue, so touches reach the UI thread. */
+public final class MessageQueue {
+    private Message head;
+    private boolean quitting;
+    public interface IdleHandler { boolean queueIdle(); }
+    public void addIdleHandler(IdleHandler h) {}
+    public void removeIdleHandler(IdleHandler h) {}
+
+    synchronized boolean enqueue(Message m, long when) {
+        if (quitting) return false;
+        m.when = when;
+        if (head == null || when < head.when) { m.next = head; head = m; }
+        else { Message p = head; while (p.next != null && p.next.when <= when) p = p.next; m.next = p.next; p.next = m; }
+        notifyAll();
+        return true;
+    }
+    synchronized void remove(Handler h, Runnable r, int what, boolean byWhat, Object token) {
+        Message prev = null, p = head;
+        while (p != null) {
+            boolean hit = p.target == h && (byWhat ? p.what == what && (token == null || p.obj == token) : (r == null || p.callback == r) && (token == null || p.obj == token));
+            if (byWhat == false && r == null && token == null) hit = p.target == h;
+            if (hit) { if (prev == null) head = p.next; else prev.next = p.next; p = p.next; }
+            else { prev = p; p = p.next; }
+        }
+    }
+    synchronized boolean has(Handler h, int what) { for (Message p = head; p != null; p = p.next) if (p.target == h && p.what == what) return true; return false; }
+    synchronized void quit() { quitting = true; notifyAll(); }
+
+    Message next(boolean main) {
+        for (;;) {
+            if (main) Looper.deliverInput();
+            synchronized (this) {
+                if (quitting) return null;
+                long now = SystemClock.uptimeMillis();
+                if (head != null && head.when <= now) { Message m = head; head = m.next; m.next = null; return m; }
+                long wait = head == null ? 8 : Math.min(8, head.when - now);
+                if (!main) wait = head == null ? 0 : Math.max(1, head.when - now);
+                try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
+            }
+        }
+    }
+}

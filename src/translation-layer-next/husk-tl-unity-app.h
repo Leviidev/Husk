@@ -65,6 +65,13 @@ int  husk_flutter_is_app(const char *apk);
 bool husk_gamemaker_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                            const char *angle_dylib, const char *ca_bundle);
 int  husk_gamemaker_orientation(const char *apk);                   /* from options.ini: 1 portrait, 0 landscape, -1 either */
+/* Java apps (libGDX games and other apps whose code is Java) on Husk's Dalvik runtime. The runtime folder (the bundled
+ * java-runtime) and the screen's pixels per dp are set before the launch call. */
+bool husk_java_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
+                      const char *angle_dylib, const char *ca_bundle);
+void husk_java_set_runtime(const char *root, float density);
+void husk_java_back(void);
+void husk_java_key(int android_keycode, int down);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
 void husk_flutter_resize(int width, int height);                     /* the view's new size in pixels, after the launch */

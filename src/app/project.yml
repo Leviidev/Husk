@@ -188,6 +188,15 @@ targets:
           else
             echo "warning: build/android-system missing (scripts/build_android_system.sh): Flutter apps will have no system fonts" >&2
           fi
+
+          # Husk's Dalvik runtime for Java apps (libGDX games and the like): libcore, ICU and Husk's Java framework
+          # (scripts/build_java_runtime.sh). ELF libraries and jars, so resources, not code the app links.
+          JRT="$SRCROOT/../../build/java-runtime"
+          if [ -f "$JRT/husk-framework.dex" ]; then
+            rsync -a --delete "$JRT/" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/java-runtime/"
+          else
+            echo "warning: build/java-runtime missing (scripts/build_java_runtime.sh): Java apps will not start" >&2
+          fi
         outputFiles:
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/vmlinuz-virt"
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/initramfs-virt"

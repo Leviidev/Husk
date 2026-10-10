@@ -63,6 +63,7 @@ extension TLReport {
         if engine == "NativeActivity" { return .nativeactivity }
         if engine == "Flutter" { return .flutter }
         if engine == "GameMaker" { return .gamemaker }
+        if engine == "libGDX" { return .java }
         return nil
     }
 
@@ -72,7 +73,7 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { engine == "Python" ? "Python (Kivy)" : nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : "Unity" }
+    var nativeEngineName: String { engine == "Python" ? "Python (Kivy)" : nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : nativeEngine == .java ? "libGDX" : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }

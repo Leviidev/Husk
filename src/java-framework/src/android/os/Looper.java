@@ -1,0 +1,44 @@
+package android.os;
+
+public final class Looper {
+    private static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<>();
+    private static Looper sMain;
+    final MessageQueue mQueue = new MessageQueue();
+    final Thread mThread = Thread.currentThread();
+    private static InputSink sInput;
+
+    /** Where touches and keys go: set by the driver's activity. */
+    public interface InputSink { void deliver(int[] events); }
+    public static void setInputSink(InputSink s) { sInput = s; }
+    static void deliverInput() {
+        InputSink s = sInput;
+        if (s == null) return;
+        int[] ev = husk.Native.pollInput();
+        if (ev != null) s.deliver(ev);
+    }
+
+    public static void prepare() { if (sThreadLocal.get() == null) sThreadLocal.set(new Looper()); }
+    public static void prepareMainLooper() { prepare(); sMain = myLooper(); }
+    public static Looper getMainLooper() { return sMain; }
+    public static Looper myLooper() { return sThreadLocal.get(); }
+    public static MessageQueue myQueue() { return myLooper().mQueue; }
+    public MessageQueue getQueue() { return mQueue; }
+    public Thread getThread() { return mThread; }
+    public boolean isCurrentThread() { return Thread.currentThread() == mThread; }
+    public void quit() { mQueue.quit(); }
+    public void quitSafely() { mQueue.quit(); }
+    public static void loop() {
+        Looper me = myLooper();
+        boolean main = me == sMain;
+        for (;;) {
+            Message m = me.mQueue.next(main);
+            if (m == null) return;
+            try {
+                m.target.dispatchMessage(m);
+            } catch (Throwable t) {
+                android.util.Log.e("Looper", "uncaught exception on " + Thread.currentThread().getName(), t);
+                if (main) throw t;
+            }
+        }
+    }
+}

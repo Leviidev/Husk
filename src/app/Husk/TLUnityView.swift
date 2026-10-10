@@ -16,6 +16,7 @@ enum TLNativeEngine {
     case godot     // A Godot 3 or 4 game: the manifest says which way up, OpenGL ES through ANGLE, multi-touch
     case nativeactivity // A game that is a NativeActivity library of its own (Open Golf): the manifest says which way up, OpenGL ES through ANGLE
     case gamemaker // A GameMaker game: YoYo's runner draws with OpenGL ES through ANGLE; options.ini says which way up
+    case java      // A Java app (libGDX games): Husk's own Dalvik runtime runs its code, GLSurfaceView draws through ANGLE
     case flutter   // A Flutter app: the engine and the app's Dart run natively, Impeller draws through ANGLE; portrait unless the manifest says
 }
 
@@ -99,6 +100,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
         } else if engine == .minecraft {
             TLUnityUIView.cocosView = self
             TLUnityUIView.installGameActivityKeyboardHandler()
+        } else if engine == .java {
+            // Android's back gesture: a swipe in from the left edge.
+            let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
+            back.edges = .left
+            addGestureRecognizer(back)
         } else if engine == .flutter {
             TLUnityUIView.cocosView = self
             TLUnityUIView.installFlutterHandlers()
@@ -125,7 +131,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
 
     @objc private func edgeSwiped(_ g: UIScreenEdgePanGestureRecognizer) {
-        if g.state == .ended, g.translation(in: self).x > 60 { husk_flutter_back() }
+        if g.state == .ended, g.translation(in: self).x > 60 { if engine == .java { husk_java_back() } else { husk_flutter_back() } }
     }
 
     private func keyboardMoved(_ note: Notification) {
@@ -210,7 +216,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try? session.setActive(true)
         }
-        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : engine == .gamemaker ? "gamemaker" : "unity"))")
+        HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : engine == .gamemaker ? "gamemaker" : engine == .java ? "java" : "unity"))")
         // Splits and the asset pack are part of the app, whatever its engine; the game's libraries and data may be in any of
         // them (a Google Play install keeps a Unity game's libraries in one split and its data in an asset pack).
         for extra in extraApks.prefix(3) { husk_native_add_package(extra) }
@@ -245,6 +251,10 @@ final class TLUnityUIView: UIView, UIKeyInput {
             husk_cocos_set_geode(geode?.zip, geode?.launcher)
             if geode != nil { HuskLog.log("geode", "loading Geode into the game") }
             started = husk_cocos_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
+        case .java:
+            // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
+            husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
+            started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:
             // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
@@ -811,6 +821,7 @@ extension TLApp {
         case .nativeactivity: return .nativeactivity
         case .flutter: return .flutter
         case .gamemaker: return .gamemaker
+        case .java: return .java
         case .cocos: return .cocos
         default: return .unity
         }
@@ -832,6 +843,7 @@ extension TLApp {
         case .nativeactivity: return "na-data"
         case .flutter: return "flutter-data"
         case .gamemaker: return "gm-data"
+        case .java: return "java-data"
         case .cocos: return "cocos-data"
         }
     }
@@ -844,7 +856,7 @@ extension TLApp {
         case .portrait: return true
         case .auto:
             // A Flutter app is a phone app: portrait, unless its manifest asks for landscape.
-            if screenEngine == .flutter, let apk = apks.first { return husk_apk_orientation(apk) != 0 }
+            if screenEngine == .flutter || screenEngine == .java, let apk = apks.first { return husk_apk_orientation(apk) != 0 }
             if screenEngine == .gamemaker, let apk = apks.first {
                 let o = husk_gamemaker_orientation(apk)
                 return o == 1 || (o < 0 && husk_sdl_apk_is_portrait(apk) != 0)

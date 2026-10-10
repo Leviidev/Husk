@@ -956,6 +956,15 @@ static int32_t jni_MonitorExit(void *env, jo o) { (void)env; (void)o; return 0; 
 static jo jni_NewDirectByteBuffer(void *env, void *addr, int64_t cap)
 {
     (void)env;
+    if (tl_dvm) {
+        /* the Java runtime's own DirectByteBuffer, made as ART makes it for JNI: DirectByteBuffer(long address, int capacity) */
+        tl_jclass *c = tl_jni_class("java/nio/DirectByteBuffer");
+        jobj *o = tl_jni_new_object(c);
+        tl_jmeth *m = lookup_method(c, "<init>", "(JI)V", false);
+        jvalue args[2]; args[0].j = (int64_t)(uintptr_t)addr; args[1].j = 0; args[1].i = (int32_t)cap;
+        invoke(o, m, true, args);
+        return o;
+    }
     jobj *o = tl_jni_new_object(tl_jni_class("java/nio/DirectByteBuffer"));
     jvalue a, c; a.l = addr; c.j = cap;
     tl_jni_set_field(o, "address", "J", a);

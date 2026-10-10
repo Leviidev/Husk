@@ -536,6 +536,30 @@ void dvm_fill_mirror(jobj *mirror)
         s[f->slot] = L(ec->mirror);
     }
     if ((f = dvm_find_field(cc, "status", false))) s[f->slot] = I(c && c->state == CS_INITIALIZED ? 0x0F : 0x0A);
+    /* ifTable: every interface the class implements, its superclasses' and super-interfaces' included, as (interface, methods)
+     * pairs -- what isAssignableFrom, getMethods and instanceof-by-reflection read */
+    if ((f = dvm_find_field(cc, "ifTable", false))) {
+        tl_jclass *list[256]; int n = 0;
+        if (jc->name[0] == '[') { list[n++] = tl_jni_class("java/lang/Cloneable"); list[n++] = tl_jni_class("java/io/Serializable"); }
+        tl_jclass *stack[256]; int sp = 0;
+        for (dvm_class *k = c; k; k = k->super) for (int i = 0; i < k->nifaces && sp < 256; i++) stack[sp++] = k->ifaces[i];
+        while (sp > 0 && n < 256) {
+            tl_jclass *ic = stack[--sp];
+            bool dup = false;
+            for (int i = 0; i < n && !dup; i++) dup = list[i] == ic;
+            if (dup) continue;
+            list[n++] = ic;
+            dvm_class *idc = dvm_class_of(ic);
+            for (int i = 0; idc && i < idc->nifaces && sp < 256; i++) stack[sp++] = idc->ifaces[i];
+        }
+        if (n) {
+            jobj *t = tl_jni_new_obj_array(tl_jni_class("java/lang/Object"), (uint32_t)(2 * n));
+            t->cls = tl_jni_class("[Ljava/lang/Object;");
+            t->refs = 1u << 30;
+            for (int i = 0; i < n; i++) t->oarr.v[2 * i] = list[i]->mirror;
+            s[f->slot] = L(t);
+        }
+    }
 }
 
 static void dotted(const char *n, char *out, size_t sz)
@@ -599,8 +623,25 @@ NAT(Class_newInstance)
     return true;
 }
 NAT(Class_null) { UNUSED; *ret = L(NULL); return true; }
+/* ensureExtDataPresent: the class's ClassExt, made once and kept in its extData field (enum constant caches and the like live there) */
+NAT(Class_ensureExtData)
+{
+    (void)a;
+    dvm_class *cc = dvm_class_of(tl_jni_class("java/lang/Class"));
+    dvm_field *f = cc ? dvm_find_field(cc, "extData", false) : NULL;
+    if (!f) { *ret = L(NULL); return true; }
+    jvalue *s = dvm_slots(self);
+    if (!s[f->slot].l) {
+        jobj *e = dvm_new_object(dvm_class_named("dalvik/system/ClassExt"));
+        dvm_slots(e);
+        s[f->slot].l = e;
+    }
+    *ret = L(s[f->slot].l);
+    return true;
+}
 NAT(Class_false) { UNUSED; *ret = Z(false); return true; }
 NAT(Class_zero) { UNUSED; *ret = I(0); return true; }
+NAT(Class_innerFlags) { (void)self; *ret = I(a[0].i); return true; }   /* no InnerClass annotation read: the flags it was given */
 NAT(Class_getSimpleNameNative)
 {
     (void)a;
@@ -1197,6 +1238,38 @@ NAT(Array_createObjectArray)
     *ret = L(arr);
     return true;
 }
+/* new T[a][b]...: nested arrays, the innermost of T */
+static jobj *multi_array(const char *elem_desc, const int32_t *dims, int ndims)
+{
+    char name[400];
+    snprintf(name, sizeof(name), "%.*s%s", ndims, "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[", elem_desc);
+    if (ndims == 1) {
+        if (elem_desc[0] != 'L' && elem_desc[0] != '[') { jobj *a = tl_jni_new_prim_array(elem_desc[0], (uint32_t)dims[0]); a->refs = 1u << 30; return a; }
+        jobj *a = tl_jni_new_obj_array(NULL, (uint32_t)dims[0]);
+        a->cls = tl_jni_class(name); a->refs = 1u << 30;
+        return a;
+    }
+    jobj *a = tl_jni_new_obj_array(NULL, (uint32_t)dims[0]);
+    a->cls = tl_jni_class(name); a->refs = 1u << 30;
+    for (int32_t i = 0; i < dims[0]; i++) a->oarr.v[i] = multi_array(elem_desc, dims + 1, ndims - 1);
+    return a;
+}
+NAT(Array_createMultiArray)
+{
+    (void)self;
+    jobj *cls = a[0].l, *dims = a[1].l;
+    if (!cls || !dims) return npe("createMultiArray");
+    int n = (int)dims->arr.len;
+    int32_t *d = dims->arr.data;
+    for (int i = 0; i < n; i++) if (d[i] < 0) return dvm_throw("java/lang/NegativeArraySizeException", "%d", d[i]);
+    char desc[400];
+    dvm_class *c = dvm_class_of(cls->klass.jc);
+    if (c && c->prim) snprintf(desc, sizeof(desc), "%c", c->prim);
+    else if (cls->klass.jc->name[0] == '[') snprintf(desc, sizeof(desc), "%s", cls->klass.jc->name);
+    else snprintf(desc, sizeof(desc), "L%s;", cls->klass.jc->name);
+    *ret = L(multi_array(desc, d, n));
+    return true;
+}
 NAT(VMStack_null) { UNUSED; *ret = L(NULL); return true; }
 /* getStackClass2: the caller of the method that called the method asking (frames: getStackClass2, getCallerClass, its caller, X). */
 NAT(VMStack_getStackClass2)
@@ -1301,6 +1374,7 @@ static const entry k_natives[] = {
     { "java/lang/Runtime", "nativeLoad", "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/String;", Runtime_nativeLoad },
 
     { "java/lang/Float", "floatToRawIntBits", "(F)I", Float_toBits },
+    { "java/util/concurrent/atomic/AtomicLong", "VMSupportsCS8", "()Z", VMR_true },
     { "java/lang/Float", "intBitsToFloat", "(I)F", Float_fromBits },
     { "java/lang/Double", "doubleToRawLongBits", "(D)J", Double_toBits },
     { "java/lang/Double", "longBitsToDouble", "(J)D", Double_fromBits },
@@ -1332,13 +1406,14 @@ static const entry k_natives[] = {
     { "java/lang/Class", "getDeclaredFieldsUnchecked", "(Z)[Ljava/lang/reflect/Field;", Class_getDeclaredFields },
     { "java/lang/Class", "getSimpleNameNative", "()Ljava/lang/String;", Class_getSimpleNameNative },
     { "java/lang/Class", "getDeclaringClass", "()Ljava/lang/Class;", Class_null },
+    { "java/lang/Class", "ensureExtDataPresent", "()Ldalvik/system/ClassExt;", Class_ensureExtData },
     { "java/lang/Class", "getEnclosingClass", "()Ljava/lang/Class;", Class_null },
     { "java/lang/Class", "getSignatureAnnotation", "()[Ljava/lang/String;", Class_null },
     { "java/lang/Class", "getDeclaredAnnotation", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", Class_null },
     { "java/lang/Class", "isDeclaredAnnotationPresent", "(Ljava/lang/Class;)Z", Class_false },
     { "java/lang/Class", "isAnonymousClass", "()Z", Class_false },
     { "java/lang/Class", "isRecord0", "()Z", Class_false },
-    { "java/lang/Class", "getInnerClassFlags", "(I)I", Class_zero },
+    { "java/lang/Class", "getInnerClassFlags", "(I)I", Class_innerFlags },
 
     { "java/lang/Class", "getDeclaredConstructorInternal", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructorInternal },
     { "java/lang/Class", "getDeclaredConstructorsInternal", "(Z)[Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructorsInternal },
@@ -1394,6 +1469,7 @@ static const entry k_natives[] = {
     { "java/lang/ref/Reference", "clearReferent", "()V", Ref_clear },
     { "java/lang/ref/Reference", "refersTo0", "(Ljava/lang/Object;)Z", Ref_refersTo },
     { "java/lang/reflect/Array", "createObjectArray", "(Ljava/lang/Class;I)Ljava/lang/Object;", Array_createObjectArray },
+    { "java/lang/reflect/Array", "createMultiArray", "(Ljava/lang/Class;[I)Ljava/lang/Object;", Array_createMultiArray },
     { "dalvik/system/VMStack", "getCallingClassLoader", "()Ljava/lang/ClassLoader;", VMStack_null },
     { "dalvik/system/VMStack", "getClosestUserClassLoader", "()Ljava/lang/ClassLoader;", VMStack_null },
     { "dalvik/system/VMStack", "getStackClass2", "()Ljava/lang/Class;", VMStack_getStackClass2 },
@@ -1472,6 +1548,8 @@ dvm_native_fn dvm_intrinsic(const char *cls, const char *name, const char *sig)
     for (const entry *e = k_natives; e->cls; e++) if (!strcmp(e->cls, cls) && !strcmp(e->name, name) && !strcmp(e->sig, sig)) return e->fn;
     if (!strcmp(cls, "sun/misc/Unsafe") || !strcmp(cls, "jdk/internal/misc/Unsafe"))
         for (const entry *e = k_unsafe; e->name; e++) if (!strcmp(e->name, name) && !strcmp(e->sig, sig)) return e->fn;
+    /* Husk's Java framework (husk.Native, GLES20) */
+    { dvm_native_fn dvm_android_native(const char *, const char *, const char *); dvm_native_fn f = dvm_android_native(cls, name, sig); if (f) return f; }
     /* the runtime's housekeeping (heap tuning, debugging hooks): nothing to do here, and zero is the quiet answer */
     if (!strcmp(cls, "dalvik/system/VMRuntime") || !strcmp(cls, "dalvik/system/VMDebug") || !strcmp(cls, "dalvik/system/ZygoteHooks"))
         return VMR_zero;

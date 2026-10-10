@@ -1,0 +1,11 @@
+package android.content.pm;
+public class ActivityInfo {
+    public static final int SCREEN_ORIENTATION_UNSPECIFIED = -1, SCREEN_ORIENTATION_LANDSCAPE = 0, SCREEN_ORIENTATION_PORTRAIT = 1,
+        SCREEN_ORIENTATION_USER = 2, SCREEN_ORIENTATION_SENSOR = 4, SCREEN_ORIENTATION_NOSENSOR = 5, SCREEN_ORIENTATION_SENSOR_LANDSCAPE = 6,
+        SCREEN_ORIENTATION_SENSOR_PORTRAIT = 7, SCREEN_ORIENTATION_REVERSE_LANDSCAPE = 8, SCREEN_ORIENTATION_REVERSE_PORTRAIT = 9,
+        SCREEN_ORIENTATION_FULL_SENSOR = 10, SCREEN_ORIENTATION_USER_LANDSCAPE = 11, SCREEN_ORIENTATION_USER_PORTRAIT = 12;
+    public String name, packageName;
+    public int screenOrientation = SCREEN_ORIENTATION_UNSPECIFIED, configChanges, flags;
+    public ApplicationInfo applicationInfo = ApplicationInfo.self();
+    public android.os.Bundle metaData;
+}

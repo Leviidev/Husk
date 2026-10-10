@@ -36,6 +36,8 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 #include "husk-tl-flutter.h"
 #include "husk-tl-flutter-text.h"
 #include "husk-tl-gamemaker.h"
+#include "husk-tl-dvm.h"
+#include "husk-tl-dvm-javaapp.h"
 #include "husk-tl-nativeactivity.h"
 #include "husk-tl-gtasa.h"
 #include "husk-tl-vulkan.h"
@@ -43,7 +45,11 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 void tl_hle_set_ca_bundle(const char *path);
 extern int tl_log_sink_fd;
 
-enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL = 3, ENGINE_UE4 = 4, ENGINE_GTA = 5, ENGINE_GODOT = 6, ENGINE_FLUTTER = 7, ENGINE_GAMEMAKER = 8 };
+enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL = 3, ENGINE_UE4 = 4, ENGINE_GTA = 5, ENGINE_GODOT = 6, ENGINE_FLUTTER = 7, ENGINE_GAMEMAKER = 8, ENGINE_JAVA = 9 };
+
+/* Where the Java runtime is: the ART, i18n, tzdata and conscrypt APEX folders and husk-framework.dex (scripts/build_java_runtime.sh). */
+static char g_java_root[1024];
+static float g_java_density = 3.0f;
 
 static unsigned long engine_frames(void);
 
@@ -167,7 +173,7 @@ static void *heartbeat_thread(void *arg)
               tl_log_line("unity: a variadic shim's implementation (%s) changed callee-saved registers (%llu times; x21 then %#llx, diff mask %#llx)",
                           nm, (unsigned long long)seen, (unsigned long long)tl_va_clobber.x21, (unsigned long long)tl_va_clobber.mask);
           } }
-        if ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended())) atomic_store(&A.state, HUSK_UNITY_ENDED);
+        if ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended())) atomic_store(&A.state, HUSK_UNITY_ENDED);
         if (atomic_load(&A.state) == HUSK_UNITY_ENDED || atomic_load(&A.state) == HUSK_UNITY_FAILED) return NULL;
     }
 }
@@ -224,6 +230,37 @@ static bool manifest_launcher_activity(const char *apk, const char *package, cha
     if (owned) free((void *)data);
     tl_zip_close(&z);
     return ok;
+}
+
+/*
+ * Start the Dalvik runtime on the bundled boot class path (libcore, ICU, conscrypt and Husk's framework) and load libcore's
+ * natives. Java recursion is C recursion in the interpreter, and class initialisation runs deep, so this runs on its own
+ * thread with a big stack rather than on the launch thread.
+ */
+static void *java_boot(void *arg)
+{
+    bool *ok = arg;
+    const char *r = g_java_root;
+    static const char *const jars[] = { "core-oj", "core-libart", "okhttp", "bouncycastle", "apache-xml" };
+    static char paths[9][1200];
+    const char *boot[9]; int nb = 0;
+    for (int i = 0; i < 5; i++) { snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.art/javalib/%s.jar", r, jars[i]); boot[nb] = paths[nb]; nb++; }
+    snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.i18n/javalib/core-icu4j.jar", r); boot[nb] = paths[nb]; nb++;
+    snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.conscrypt/javalib/conscrypt.jar", r); boot[nb] = paths[nb]; nb++;
+    snprintf(paths[nb], sizeof(paths[nb]), "%s/husk-framework.dex", r); boot[nb] = paths[nb]; nb++;
+    char v[1200];
+    snprintf(v, sizeof(v), "%s/com.android.art", r); setenv("ANDROID_ART_ROOT", v, 1);
+    snprintf(v, sizeof(v), "%s/com.android.i18n", r); setenv("ANDROID_I18N_ROOT", v, 1);
+    snprintf(v, sizeof(v), "%s/com.android.tzdata", r); setenv("ANDROID_TZDATA_ROOT", v, 1);
+    snprintf(v, sizeof(v), "%s", A.data); setenv("ANDROID_ROOT", v, 1);
+    snprintf(v, sizeof(v), "%s", A.data); setenv("ANDROID_DATA", v, 1);
+    tl_jni_init();
+    if (!tl_dvm_start(boot, nb)) { tl_log_line("java: the runtime did not start"); *ok = false; return NULL; }
+    snprintf(v, sizeof(v), "%s/com.android.i18n/lib64", r); tl_ld_add_search_dir(v);
+    snprintf(v, sizeof(v), "%s/com.android.art/lib64", r);
+    if (!tl_dvm_load_natives(v)) tl_log_line("java: libcore's natives did not all load");
+    *ok = true;
+    return NULL;
 }
 
 static void *launch_thread(void *arg)
@@ -286,6 +323,23 @@ static void *launch_thread(void *arg)
         tl_log_line("gamemaker: starting %s as %s, %dx%d", A.apk, A.package, A.width, A.height);
         tl_audio_install();
         ok = tl_gm_start(&cfg) && tl_gm_run();
+    } else if (A.engine == ENGINE_JAVA) {
+        tl_log_line("java: starting %s as %s, %dx%d (runtime %s)", A.apk, A.package, A.width, A.height, g_java_root);
+        ok = false;
+        if (g_java_root[0]) {
+            pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 64u << 20);
+            pthread_t t;
+            if (pthread_create(&t, &at, java_boot, &ok) == 0) pthread_join(t, NULL);
+            pthread_attr_destroy(&at);
+        } else tl_log_line("java: no runtime folder given");
+        if (ok) {
+            tl_audio_install();
+            tl_javaapp_config cfg = {
+                .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
+                .density = g_java_density, .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL,
+            };
+            ok = tl_javaapp_start(&cfg);
+        }
     } else if (A.engine == ENGINE_GODOT) {
         tl_godot_config cfg = {
             .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
@@ -359,7 +413,7 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
     snprintf(A.angle, sizeof(A.angle), "%s", angle_dylib);
     snprintf(A.ca, sizeof(A.ca), "%s", ca_bundle ? ca_bundle : "");
     A.layer = metal_layer; A.width = width; A.height = height;
-    if (!husk_unity_package_name(apk, A.package, sizeof(A.package))) snprintf(A.package, sizeof(A.package), "%s", engine == ENGINE_GAMEACTIVITY ? "com.mojang.minecraftpe" : engine == ENGINE_GTA ? "com.rockstargames.gtasa" : engine == ENGINE_UE4 ? "com.epicgames.ue4" : engine == ENGINE_SDL ? "com.sdl.game" : engine == ENGINE_COCOS ? "com.cocos.game" : engine == ENGINE_GODOT ? "com.godot.game" : engine == ENGINE_FLUTTER ? "com.flutter.app" : engine == ENGINE_GAMEMAKER ? "com.company.game" : "com.unity.game");
+    if (!husk_unity_package_name(apk, A.package, sizeof(A.package))) snprintf(A.package, sizeof(A.package), "%s", engine == ENGINE_GAMEACTIVITY ? "com.mojang.minecraftpe" : engine == ENGINE_GTA ? "com.rockstargames.gtasa" : engine == ENGINE_UE4 ? "com.epicgames.ue4" : engine == ENGINE_SDL ? "com.sdl.game" : engine == ENGINE_COCOS ? "com.cocos.game" : engine == ENGINE_GODOT ? "com.godot.game" : engine == ENGINE_FLUTTER ? "com.flutter.app" : engine == ENGINE_GAMEMAKER ? "com.company.game" : engine == ENGINE_JAVA ? "com.java.app" : "com.unity.game");
     pthread_attr_t at;
     pthread_attr_init(&at);
     pthread_attr_setstacksize(&at, 4u << 20);
@@ -426,6 +480,18 @@ bool husk_gamemaker_launch(const char *apk, const char *data_dir, void *metal_la
     return launch(ENGINE_GAMEMAKER, apk, data_dir, metal_layer, width, height, angle_dylib, ca_bundle);
 }
 int husk_gamemaker_orientation(const char *apk) { return tl_gm_orientation(apk); }
+bool husk_java_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
+                      const char *angle_dylib, const char *ca_bundle)
+{
+    return launch(ENGINE_JAVA, apk, data_dir, metal_layer, width, height, angle_dylib, ca_bundle);
+}
+void husk_java_set_runtime(const char *root, float density)
+{
+    snprintf(g_java_root, sizeof(g_java_root), "%s", root ? root : "");
+    if (density > 0) g_java_density = density;
+}
+void husk_java_back(void) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_back(); }
+void husk_java_key(int android_keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_key(android_keycode, down != 0); }
 int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }
 void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }
 void husk_flutter_set_insets(int top, int right, int bottom, int left) { tl_flutter_set_insets(top, right, bottom, left); }
@@ -501,17 +567,17 @@ const char *husk_native_loaded_apk(void) { return atomic_load(&A.state) == HUSK_
 
 int husk_unity_state(void)
 {
-    if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()))) atomic_store(&A.state, HUSK_UNITY_ENDED);
+    if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended()))) atomic_store(&A.state, HUSK_UNITY_ENDED);
     return atomic_load(&A.state);
 }
 static unsigned long engine_frames(void)
 {
-    return A.engine == ENGINE_GAMEMAKER ? tl_gm_frames() : A.engine == ENGINE_FLUTTER ? tl_flutter_frames() : A.engine == ENGINE_GODOT ? tl_godot_frames() : A.engine == ENGINE_GTA ? tl_gta_frames() : A.engine == ENGINE_UE4 ? tl_na_frames() : A.engine == ENGINE_SDL ? tl_sdl_frames() : A.engine == ENGINE_GAMEACTIVITY ? tl_ga_frames() : A.engine == ENGINE_COCOS ? tl_cocos_frames() : tl_unity_frames();
+    return A.engine == ENGINE_JAVA ? tl_javaapp_frames() : A.engine == ENGINE_GAMEMAKER ? tl_gm_frames() : A.engine == ENGINE_FLUTTER ? tl_flutter_frames() : A.engine == ENGINE_GODOT ? tl_godot_frames() : A.engine == ENGINE_GTA ? tl_gta_frames() : A.engine == ENGINE_UE4 ? tl_na_frames() : A.engine == ENGINE_SDL ? tl_sdl_frames() : A.engine == ENGINE_GAMEACTIVITY ? tl_ga_frames() : A.engine == ENGINE_COCOS ? tl_cocos_frames() : tl_unity_frames();
 }
 unsigned long husk_unity_frames(void) { return engine_frames(); }
 void husk_unity_perf_snapshot(husk_unity_perf *out)
 {
-    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA || A.engine == ENGINE_FLUTTER) {
+    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA || A.engine == ENGINE_FLUTTER || A.engine == ENGINE_JAVA) {
         /* The game paces its own frames; the rate is how many it presented since the last look. */
         static unsigned long last; static struct timespec since;
         struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
@@ -530,7 +596,8 @@ void husk_unity_perf_snapshot(husk_unity_perf *out)
 void husk_unity_touch(int phase, int id, float x, float y)
 {
     if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
-    if (A.engine == ENGINE_GAMEMAKER) tl_gm_touch(phase, id, x, y);
+    if (A.engine == ENGINE_JAVA) tl_javaapp_touch(phase, id, x, y);
+    else if (A.engine == ENGINE_GAMEMAKER) tl_gm_touch(phase, id, x, y);
     else if (A.engine == ENGINE_FLUTTER) tl_flutter_touch(phase, id, x, y);
     else if (A.engine == ENGINE_GODOT) tl_godot_touch(phase, id, x, y);
     else if (A.engine == ENGINE_GTA) tl_gta_touch(phase, id, x, y);
@@ -542,7 +609,8 @@ void husk_unity_touch(int phase, int id, float x, float y)
 void husk_unity_set_paused(bool paused)
 {
     if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
-    if (A.engine == ENGINE_GAMEMAKER) { tl_gm_set_paused(paused); tl_audio_set_paused(paused); }
+    if (A.engine == ENGINE_JAVA) { tl_javaapp_set_paused(paused); tl_audio_set_paused(paused); }
+    else if (A.engine == ENGINE_GAMEMAKER) { tl_gm_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_FLUTTER) { tl_flutter_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_GODOT) { tl_godot_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_GTA) { tl_gta_set_paused(paused); tl_audio_set_paused(paused); }
