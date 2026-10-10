@@ -41,12 +41,14 @@ public final class Manifest {
         try {
             XmlBlock.Parser p = new XmlBlock(d, "AndroidManifest.xml").newParser();
             Component cur = null; Filter filter = null;
+            boolean inApp = false;          /* components are only those under <application> (<queries> names packages, intents and providers too) */
             int t;
             TypedValue v = new TypedValue();
             while ((t = p.next()) != XmlPullParser.END_DOCUMENT) {
                 if (t == XmlPullParser.END_TAG) {
                     String n = p.getName();
                     if ("intent-filter".equals(n)) filter = null;
+                    else if ("application".equals(n)) inApp = false;
                     else if ("activity".equals(n) || "activity-alias".equals(n) || "service".equals(n) || "receiver".equals(n) || "provider".equals(n)) cur = null;
                     continue;
                 }
@@ -65,6 +67,7 @@ public final class Manifest {
                 case "uses-permission": permissions.add(p.getAttributeValue(NS, "name")); break;
                 case "uses-library": libraries.add(p.getAttributeValue(NS, "name")); break;
                 case "application":
+                    inApp = true;
                     applicationClass = full(p.getAttributeValue(NS, "name"));
                     appTheme = p.getAttributeResourceValue(NS, "theme", 0);
                     appLabel = p.getAttributeResourceValue(NS, "label", 0);
@@ -75,6 +78,7 @@ public final class Manifest {
                     appComponentFactory = full(p.getAttributeValue(NS, "appComponentFactory"));
                     break;
                 case "activity": case "activity-alias": case "service": case "receiver": case "provider": {
+                    if (!inApp) break;
                     cur = new Component();
                     cur.kind = tag;
                     cur.name = full(p.getAttributeValue(NS, "name"));

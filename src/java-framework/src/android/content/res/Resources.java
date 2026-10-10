@@ -30,6 +30,9 @@ public class Resources {
     private final HashMap<Integer, Drawable.ConstantState> mDrawableCache = new HashMap<>();
     private final HashMap<Integer, ColorStateList> mColorCache = new HashMap<>();
     private final HashMap<Integer, Typeface> mFontCache = new HashMap<>();
+    /** The class loader for the app's classes, as Android's Resources keeps it (apps' own Resources subclasses set it by reflection). */
+    private ClassLoader mClassLoader = Resources.class.getClassLoader();
+    public ClassLoader getClassLoader() { return mClassLoader; }
 
     public Resources(AssetManager a) { this(a, null, null); }
     public Resources(AssetManager a, DisplayMetrics m, Configuration c) {
@@ -515,7 +518,6 @@ public class Resources {
     public void clearLoaders() {}
     public void dump(java.io.PrintWriter p0, java.lang.String p1) {}
     public void finishPreloading() {}
-    public java.lang.ClassLoader getClassLoader() { return null; }
     public java.lang.String getLastResourceResolution() { return null; }
     public java.util.List getLoaders() { return new java.util.ArrayList(); }
     public android.util.LongSparseArray getPreloadedDrawables() { return null; }

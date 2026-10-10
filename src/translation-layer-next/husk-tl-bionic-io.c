@@ -171,12 +171,27 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
             size_t l = strlen(libdirs[i]);
             bool tl_bionic_is_system_lib(const char *soname);
             if (!strncmp(path, libdirs[i], l) && !strchr(path + l, '/') && tl_bionic_is_system_lib(path + l)) {
-                snprintf(buf, n, "%s/.husk-system-lib.so", tl_data_dir());
+                snprintf(buf, n, "%s/.husk-system-lib2.so", tl_data_dir());
                 struct stat st;
                 if (stat(buf, &st) != 0) {
-                    /* the 64-byte header of an empty arm64 shared object */
-                    static const uint8_t elf[64] = { 0x7f, 'E', 'L', 'F', 2, 1, 1, 0, 0,0,0,0,0,0,0,0, 3, 0, 0xb7, 0, 1, 0, 0, 0,
-                                                     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0, 64, 0, 56, 0, 0, 0, 64, 0, 0, 0, 0, 0 };
+                    /* a minimal arm64 shared object: a header, a load segment and a dynamic section (SONAME only), which ELF
+                     * readers such as SoLoader's MinElf parse to list a library's dependencies (none) */
+                    uint8_t elf[0x110]; memset(elf, 0, sizeof(elf));
+                    #define W16(o, v) do { elf[o] = (uint8_t)(v); elf[(o) + 1] = (uint8_t)((v) >> 8); } while (0)
+                    #define W32(o, v) do { W16(o, (v) & 0xffff); W16((o) + 2, ((uint32_t)(v)) >> 16); } while (0)
+                    #define W64(o, v) do { W32(o, (uint32_t)(v)); W32((o) + 4, (uint32_t)((uint64_t)(v) >> 32)); } while (0)
+                    static const uint8_t ident[16] = { 0x7f, 'E', 'L', 'F', 2, 1, 1, 0 };
+                    memcpy(elf, ident, 16);
+                    W16(16, 3); W16(18, 0xb7); W32(20, 1); W64(32, 64); W16(52, 64); W16(54, 56); W16(56, 2); W16(58, 64);
+                    W32(64, 1); W32(68, 4); W64(72, 0); W64(80, 0); W64(88, 0); W64(96, sizeof(elf)); W64(104, sizeof(elf)); W64(112, 0x1000);
+                    W32(120, 2); W32(124, 6); W64(128, 0xb0); W64(136, 0xb0); W64(144, 0xb0); W64(152, 64); W64(160, 64); W64(168, 8);
+                    W64(0xb0, 5); W64(0xb8, 0xf0);                  /* DT_STRTAB */
+                    W64(0xc0, 10); W64(0xc8, 0x20);                 /* DT_STRSZ */
+                    W64(0xd0, 14); W64(0xd8, 1);                    /* DT_SONAME */
+                    memcpy(elf + 0xf1, "libhusk-system.so", 17);
+                    #undef W64
+                    #undef W32
+                    #undef W16
                     FILE *f = fopen(buf, "wb");
                     if (f) { fwrite(elf, 1, sizeof(elf), f); fclose(f); }
                 }

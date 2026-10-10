@@ -175,8 +175,31 @@ public class PackageManager {
     public String[] getPackagesForUid(int uid) { return new String[] { husk.Native.packageName() }; }
     public String getNameForUid(int uid) { return husk.Native.packageName(); }
     public int getPackageUid(String pkg, int flags) throws NameNotFoundException { if (husk.GooglePackages.is(pkg)) return husk.GooglePackages.applicationInfo(pkg).uid; if (!mine(pkg)) throw new NameNotFoundException(pkg); return android.os.Process.myUid(); }
-    public void setComponentEnabledSetting(ComponentName c, int state, int flags) {}
-    public int getComponentEnabledSetting(ComponentName c) { return COMPONENT_ENABLED_STATE_DEFAULT; }
+    /* components the app enabled or disabled (Instagram turns its own on in stages and checks each took), kept across launches */
+    private static java.util.Properties sStates;
+    private static synchronized java.util.Properties states() {
+        if (sStates == null) {
+            sStates = new java.util.Properties();
+            try (java.io.FileInputStream in = new java.io.FileInputStream(stateFile())) { sStates.load(in); } catch (Exception e) {}
+        }
+        return sStates;
+    }
+    private static java.io.File stateFile() { return new java.io.File(ApplicationInfo.self().dataDir, ".husk-component-states"); }
+    public void setComponentEnabledSetting(ComponentName c, int state, int flags) {
+        if (c == null) return;
+        synchronized (PackageManager.class) {
+            java.util.Properties p = states();
+            if (state == COMPONENT_ENABLED_STATE_DEFAULT) p.remove(c.flattenToString()); else p.setProperty(c.flattenToString(), Integer.toString(state));
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(stateFile())) { p.store(out, null); } catch (Exception e) {}
+        }
+    }
+    public void setComponentEnabledSettings(java.util.List settings) {
+        for (Object o : settings) { ComponentEnabledSetting s = (ComponentEnabledSetting) o; setComponentEnabledSetting(s.getComponentName(), s.getEnabledState(), s.getEnabledFlags()); }
+    }
+    public int getComponentEnabledSetting(ComponentName c) {
+        if (c == null) return COMPONENT_ENABLED_STATE_DEFAULT;
+        synchronized (PackageManager.class) { String v = states().getProperty(c.flattenToString()); return v == null ? COMPONENT_ENABLED_STATE_DEFAULT : Integer.parseInt(v); }
+    }
     public void setApplicationEnabledSetting(String pkg, int state, int flags) {}
     public int getApplicationEnabledSetting(String pkg) { return COMPONENT_ENABLED_STATE_DEFAULT; }
     public boolean isSafeMode() { return false; }
@@ -847,7 +870,6 @@ public class PackageManager {
     public void setApplicationCategoryHint(java.lang.String p0, int p1) {}
     public boolean setApplicationHiddenSettingAsUser(java.lang.String p0, boolean p1, android.os.UserHandle p2) { return false; }
     public boolean setAutoRevokeWhitelisted(java.lang.String p0, boolean p1) { return false; }
-    public void setComponentEnabledSettings(java.util.List p0) {}
     public boolean setDefaultBrowserPackageNameAsUser(java.lang.String p0, int p1) { return false; }
     public java.lang.String[] setDistractingPackageRestrictions(java.lang.String[] p0, int p1) { return null; }
     public void setHarmfulAppWarning(java.lang.String p0, java.lang.CharSequence p1) {}
@@ -874,7 +896,7 @@ public class PackageManager {
     public static final class ComponentEnabledSetting implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static android.os.Parcelable.Creator CREATOR;
-        public ComponentEnabledSetting(android.content.ComponentName p0, int p1, int p2) {}
+        public ComponentEnabledSetting(android.content.ComponentName p0, int p1, int p2) { huskProps.put("ComponentName", p0); huskProps.put("EnabledState", p1); huskProps.put("EnabledFlags", p2); }
         public ComponentEnabledSetting(java.lang.String p0, int p1, int p2) {}
         public int describeContents() { return 0; }
         public java.lang.String getClassName() { return (java.lang.String) huskProps.get("ClassName"); }

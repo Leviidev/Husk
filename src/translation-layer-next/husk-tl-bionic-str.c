@@ -697,6 +697,9 @@ static wint_t b_fputwc(wchar_t c, void *f) { return fputwc(c, map_stream(f)); }
 /* popen: no shell here, so the commands apps read from are answered directly -- getprop <name> from the system properties,
  * cat <file> from the file -- and anything else reads as empty output (never a null stream: code reads it unchecked). */
 int tl_property_get(const char *name, char *value);
+/* lgamma_r: lgamma and the sign of gamma, without the global signgam */
+static double b_lgamma_r(double x, int *sign) { double g = tgamma(x); if (sign) *sign = g < 0 ? -1 : 1; return lgamma(x); }
+static float b_lgammaf_r(float x, int *sign) { float g = tgammaf(x); if (sign) *sign = g < 0 ? -1 : 1; return lgammaf(x); }
 static void *b_popen(const char *cmd, const char *mode)
 {
     if (!cmd || !mode) { tl_set_guest_errno(22); return NULL; }
@@ -739,6 +742,13 @@ const tl_bionic_entry tl_tab_str2[] = {
     TL_WRAP("perror", b_perror), TL_WRAP("rewind", b_rewind), TL_WRAP("fputwc", b_fputwc), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),
     TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("wcsrtombs", b_wcsrtombs),
     TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_DIRECT(sleep), TL_DIRECT(pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
+    /* the rest of libm a guest may import (most are inlined as instructions, some libraries call them) */
+    TL_DIRECT(ceilf), TL_DIRECT(copysignf), TL_DIRECT(erfcf), TL_DIRECT(fdim), TL_DIRECT(fdimf), TL_DIRECT(floorf), TL_DIRECT(fma), TL_DIRECT(fmaf),
+    TL_DIRECT(fmaxf), TL_DIRECT(fminf), TL_DIRECT(ilogb), TL_DIRECT(lgamma), TL_DIRECT(lgammaf), TL_WRAP("lgamma_r", b_lgamma_r), TL_WRAP("lgammaf_r", b_lgammaf_r),
+    TL_DIRECT(llrint), TL_DIRECT(llrintf), TL_DIRECT(llround), TL_DIRECT(llroundf), TL_DIRECT(logbf), TL_DIRECT(lrint), TL_DIRECT(lrintf),
+    TL_DIRECT(lround), TL_DIRECT(lroundf), TL_DIRECT(nearbyint), TL_DIRECT(nearbyintf), TL_DIRECT(remainderf), TL_DIRECT(remquo), TL_DIRECT(remquof),
+    TL_DIRECT(rintf), TL_DIRECT(roundf), TL_DIRECT(scalbln), TL_DIRECT(scalblnf), TL_DIRECT(tgamma), TL_DIRECT(tgammaf), TL_DIRECT(truncf),
+    TL_DIRECT(j0), TL_DIRECT(j1), TL_DIRECT(jn), TL_DIRECT(y0), TL_DIRECT(y1), TL_DIRECT(yn),
     TL_DIRECT(ceil), TL_DIRECT(floor), TL_DIRECT(fabs), TL_DIRECT(trunc), TL_DIRECT(cbrt), TL_DIRECT(acosh), TL_DIRECT(atanh), TL_DIRECT(cosh),
     TL_WRAP("feholdexcept", b_fe_env), TL_WRAP("fegetenv", b_fe_env), TL_WRAP("fesetenv", b_fe_env), TL_WRAP("feupdateenv", b_fe_env), TL_WRAP("fegetround", b_fe_ok), TL_WRAP("fesetround", b_fe_ok), TL_WRAP("feclearexcept", b_fe_ok), TL_WRAP("feraiseexcept", b_fe_ok), TL_WRAP("fetestexcept", b_fe_ok),
     TL_DIRECT(regcomp), TL_DIRECT(regexec), TL_DIRECT(regfree), TL_DIRECT(regerror), TL_DIRECT(sinh), TL_DIRECT(sinhf), TL_DIRECT(scalbnf), TL_DIRECT(mbstowcs), TL_DIRECT(wcstombs), TL_DIRECT(exp2), TL_DIRECT(expm1), TL_DIRECT(log1p), TL_DIRECT(hypotf), TL_DIRECT(ilogbf), TL_DIRECT(nextafter),
