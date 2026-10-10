@@ -144,6 +144,22 @@ public final class Manifest {
         for (Component c : activities) for (Filter f : c.filters) if (f.categories.contains("android.intent.category.LAUNCHER")) return c;
         return activities.isEmpty() ? null : activities.get(0);
     }
+    /** The services (or receivers) of this app an intent names or whose filters take it. */
+    public static java.util.List<Component> match(java.util.List<Component> list, android.content.Intent i) {
+        read();
+        java.util.ArrayList<Component> out = new java.util.ArrayList<>();
+        android.content.ComponentName cn = i.getComponent();
+        if (cn != null) {
+            if (cn.getPackageName() != null && !cn.getPackageName().equals(husk.Native.packageName())) return out;
+            for (Component c : list) if (c.name.equals(cn.getClassName())) { out.add(c); return out; }
+            return out;
+        }
+        String action = i.getAction();
+        if (action == null) return out;
+        if (i.getPackage() != null && !i.getPackage().equals(husk.Native.packageName())) return out;
+        for (Component c : list) for (Filter f : c.filters) if (f.actions.contains(action)) { out.add(c); break; }
+        return out;
+    }
     /** The activity an explicit or implicit intent would open in this app, or null. */
     public static Component resolve(android.content.Intent i) {
         read();

@@ -806,9 +806,31 @@ bool dvm_ensure_init(dvm_class *c)
         if (!strcmp(m->name, "<clinit>")) {
             if (g_dvm_trace >= 1) tl_log_line("dvm: <clinit> %s", c->name);
             jvalue r;
-            if (!dvm_call(m, NULL, NULL, &r)) {
+            /* native code that left an exception pending from an earlier call, then touches a new class: the initialiser runs
+               regardless, and the old exception stays pending after it, as on ART */
+            jobj *stale = tl_jni_pending_object();
+            if (stale) tl_jni_clear();
+            bool inited = dvm_call(m, NULL, NULL, &r);
+            if (inited && stale && !tl_jni_pending_object()) tl_jni_set_pending(stale);
+            if (!inited) {
                 char buf[400];
                 tl_log_line("dvm: %s.<clinit> threw %s", c->name, tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
+                /* where (the first few): a class that fails to initialise fails every later use of it */
+                static atomic_int shown;
+                jobj *e = tl_jni_pending_object();
+                if (e && atomic_fetch_add(&shown, 1) < 30) {
+                    tl_jni_clear();
+                    jvalue a[1], st; a[0].j = 0; a[0].l = e;
+                    if (tl_dvm_call_static("android/util/Log", "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;", a, &st)) {
+                        const char *t = tl_jni_string(st.l);
+                        for (int ln = 0; t && *t && ln < 14; ln++) {
+                            const char *nl = strchr(t, '\n');
+                            tl_log_line("dvm:   %.*s", nl ? (int)(nl - t) : (int)strlen(t), t);
+                            t = nl ? nl + 1 : NULL;
+                        }
+                    }
+                    tl_jni_set_pending(e);
+                }
                 c->state = CS_FAILED;
                 return false;
             }

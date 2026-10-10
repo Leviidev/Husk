@@ -453,13 +453,17 @@ void tl_jni_clear(void) { t_pending = NULL; }
 
 /* --------------------------------------------------------------- calling */
 
+static void jni_ExceptionDescribe(void *env);
 static jvalue g_zero;
 
 static jvalue invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *args)
 {
     if (m->dvm && tl_dvm) {
         jvalue r = tl_dvm->invoke(m->dvm, self, nonvirtual, args);
-        if (g_trace >= 3) tl_log_line("jni: java call %s.%s%s on %p -> %#llx%s", m->cls->name, m->name, m->sig, (void *)self, (unsigned long long)r.j, t_pending ? " (threw)" : "");
+        if (g_trace >= 3) {
+            tl_log_line("jni: java call %s.%s%s on %p -> %#llx%s", m->cls->name, m->name, m->sig, (void *)self, (unsigned long long)r.j, t_pending ? " (threw)" : "");
+            if (t_pending) jni_ExceptionDescribe(NULL);
+        }
         if (m->retk == 'L' && r.l && ((jobj *)r.l)->kind != TL_K_CLASS) tl_jni_ref(r.l);
         return r;
     }

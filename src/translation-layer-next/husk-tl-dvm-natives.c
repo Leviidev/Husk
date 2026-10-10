@@ -642,6 +642,11 @@ static void *thread_main(void *p)
     dvm_monitor_enter(t);
     dvm_monitor_notify(t, true);
     dvm_monitor_exit(t);
+    /* Android's Thread.join() waits on the thread's private lock object, which ART notifies as the thread ends */
+    static dvm_field *lf;
+    if (!lf) { dvm_class *tc = dvm_class_of(dvm_class_named("java/lang/Thread")); lf = tc ? dvm_find_field(tc, "lock", false) : NULL; }
+    jobj *lk = lf ? dvm_slots(t)[lf->slot].l : NULL;
+    if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
     return NULL;
 }
 NAT(Thread_nativeCreate)

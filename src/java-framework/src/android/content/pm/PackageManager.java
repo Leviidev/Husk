@@ -138,9 +138,30 @@ public class PackageManager {
     public List<ResolveInfo> queryIntentActivities(Intent i, ResolveInfoFlags flags) { return queryIntentActivities(i, 0); }
     public ResolveInfo resolveActivity(Intent i, int flags) { List<ResolveInfo> l = queryIntentActivities(i, flags); return l.isEmpty() ? null : l.get(0); }
     public ResolveInfo resolveActivity(Intent i, ResolveInfoFlags flags) { return resolveActivity(i, 0); }
-    public ResolveInfo resolveService(Intent i, int flags) { return null; }
-    public List<ResolveInfo> queryIntentServices(Intent i, int flags) { return new ArrayList<>(); }
-    public List<ResolveInfo> queryBroadcastReceivers(Intent i, int flags) { return new ArrayList<>(); }
+    public ResolveInfo resolveService(Intent i, int flags) { List<ResolveInfo> l = queryIntentServices(i, flags); return l.isEmpty() ? null : l.get(0); }
+    /** The app's own services the intent reaches; and an intent meant for Google Play services (push registration, its APIs)
+     *  resolves to it, as it is installed (husk.GooglePackages) -- apps take the first answer without checking for none. */
+    public List<ResolveInfo> queryIntentServices(Intent i, int flags) {
+        ArrayList<ResolveInfo> l = new ArrayList<>();
+        for (husk.Manifest.Component c : husk.Manifest.match(husk.Manifest.services, i)) { ResolveInfo r = new ResolveInfo(); r.serviceInfo = service(c); l.add(r); }
+        if (l.isEmpty() && googleService(i)) {
+            ResolveInfo r = new ResolveInfo(); ServiceInfo s = new ServiceInfo();
+            s.packageName = "com.google.android.gms"; s.name = "com.google.android.gms.chimera.GmsIntentOperationService"; s.exported = true; s.enabled = true;
+            try { s.applicationInfo = husk.GooglePackages.applicationInfo(s.packageName); } catch (Exception e) {}
+            r.serviceInfo = s; l.add(r);
+        }
+        return l;
+    }
+    private static boolean googleService(Intent i) {
+        String p = i.getComponent() != null ? i.getComponent().getPackageName() : i.getPackage();
+        String a = i.getAction();
+        return "com.google.android.gms".equals(p) || (a != null && (a.startsWith("com.google.android.c2dm.intent.") || a.startsWith("com.google.android.gms.") || a.startsWith("com.google.firebase.")));
+    }
+    public List<ResolveInfo> queryBroadcastReceivers(Intent i, int flags) {
+        ArrayList<ResolveInfo> l = new ArrayList<>();
+        for (husk.Manifest.Component c : husk.Manifest.match(husk.Manifest.receivers, i)) { ResolveInfo r = new ResolveInfo(); r.activityInfo = activity(c); l.add(r); }
+        return l;
+    }
     public List<ResolveInfo> queryIntentContentProviders(Intent i, int flags) { return new ArrayList<>(); }
     public Intent getLaunchIntentForPackage(String pkg) {
         if (!mine(pkg)) return null;
