@@ -1026,6 +1026,37 @@ static dvm_method *method_of(jobj *exe)
     return x ? (dvm_method *)(uintptr_t)dvm_slots(exe)[x->slot].j : NULL;
 }
 
+/* annotations and the reflection that reads them (husk-tl-dvm-annotations.c) */
+bool An_Class_getDeclaredAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getDeclaredAnnotations(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getDeclaredClasses(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getDeclaringClass(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getEnclosingClass(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getEnclosingConstructorNative(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getEnclosingMethodNative(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getInnerClassFlags(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getInnerClassName(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_getSignatureAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_isAnonymousClass(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Class_isDeclaredAnnotationPresent(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_getAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_getDeclaredAnnotations(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_getExceptionTypes(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_getParameterAnnotations(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_getSignatureAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Exe_isAnnotationPresent(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Field_getAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Field_getDeclaredAnnotations(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Field_getSignatureAnnotation(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Field_isAnnotationPresent(jobj *self, const jvalue *a, jvalue *ret);
+bool An_Method_getDefaultValue(jobj *self, const jvalue *a, jvalue *ret);
+dvm_method *dvm_method_of_reflect(jobj *exe);
+dvm_method *dvm_method_of_reflect(jobj *exe) { return method_of(exe); }
+jobj *dvm_make_executable(dvm_method *m);
+jobj *dvm_make_executable(dvm_method *m) { return make_executable(m); }
+dvm_field *dvm_field_of_reflect(jobj *f);
+dvm_field *dvm_field_of_reflect(jobj *f) { return field_of(f); }
+
 static jobj *exe_array(dvm_method **list, int n, bool ctor)
 {
     jobj *arr = tl_jni_new_obj_array(tl_jni_class(ctor ? "java/lang/reflect/Constructor" : "java/lang/reflect/Method"), (uint32_t)n);
@@ -1126,7 +1157,15 @@ NAT(Exe_getParameterTypes)
     return true;
 }
 NAT(Exe_getParameterCount) { (void)a; dvm_method *m = method_of(self); *ret = I(m ? m->nparams : 0); return true; }
-NAT(Exe_getName) { (void)a; dvm_method *m = method_of(self); *ret = L(m ? dvm_new_string_utf8(m->name) : NULL); return true; }
+/* Member names are interned, as ART's are: Method.equals and Field.equals compare them with == */
+static jobj *interned(const char *s)
+{
+    jvalue r;
+    jobj *o = dvm_new_string_utf8(s);
+    if (!String_intern(o, NULL, &r)) return o;
+    return r.l;
+}
+NAT(Exe_getName) { (void)a; dvm_method *m = method_of(self); *ret = L(m ? interned(m->name) : NULL); return true; }
 NAT(Exe_getReturnType) { (void)a; dvm_method *m = method_of(self); int l; *ret = L(m ? class_of_desc(strchr(m->sig, ')') + 1, &l)->mirror : NULL); return true; }
 NAT(Exe_compareParams)
 {
@@ -1257,7 +1296,7 @@ NAT(Ctor_newInstance0)
 }
 
 
-NAT(Field_getName) { (void)a; dvm_field *f = field_of(self); *ret = L(f ? dvm_new_string_utf8(f->name) : NULL); return true; }
+NAT(Field_getName) { (void)a; dvm_field *f = field_of(self); *ret = L(f ? interned(f->name) : NULL); return true; }
 NAT(Field_getArtField) { (void)a; *ret = J((int64_t)(uintptr_t)field_of(self)); return true; }
 NAT(Field_getByte) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->b); return true; }
 NAT(Field_getChar) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->c); return true; }
@@ -1564,8 +1603,6 @@ static const entry k_natives[] = {
     { "java/util/jar/JarFile", "getMetaInfEntryNames", "()[Ljava/lang/String;", JarFile_getMetaInfEntryNames },
     { "java/lang/Package", "getSystemPackage0", "(Ljava/lang/String;)Ljava/lang/String;", Native_null },
     { "java/lang/Package", "getSystemPackages0", "()[Ljava/lang/String;", Native_emptyStrings },
-    { "java/lang/Class", "getEnclosingConstructorNative", "()Ljava/lang/reflect/Constructor;", Native_null },
-    { "java/lang/Class", "getEnclosingMethodNative", "()Ljava/lang/reflect/Method;", Native_null },
     { "java/lang/Class", "getNestHostFromAnnotation", "()Ljava/lang/Class;", Native_null },
     { "java/lang/Class", "getNestMembersFromAnnotation", "()[Ljava/lang/Class;", Native_null },
     { "java/lang/Class", "getPermittedSubclassesFromAnnotation", "()[Ljava/lang/Class;", Native_null },
@@ -1662,15 +1699,18 @@ static const entry k_natives[] = {
     { "java/lang/Class", "getDeclaredFields", "()[Ljava/lang/reflect/Field;", Class_getDeclaredFields },
     { "java/lang/Class", "getDeclaredFieldsUnchecked", "(Z)[Ljava/lang/reflect/Field;", Class_getDeclaredFields },
     { "java/lang/Class", "getSimpleNameNative", "()Ljava/lang/String;", Class_getSimpleNameNative },
-    { "java/lang/Class", "getDeclaringClass", "()Ljava/lang/Class;", Class_null },
+    { "java/lang/Class", "getDeclaringClass", "()Ljava/lang/Class;", An_Class_getDeclaringClass },
     { "java/lang/Class", "ensureExtDataPresent", "()Ldalvik/system/ClassExt;", Class_ensureExtData },
-    { "java/lang/Class", "getEnclosingClass", "()Ljava/lang/Class;", Class_null },
-    { "java/lang/Class", "getSignatureAnnotation", "()[Ljava/lang/String;", Class_null },
-    { "java/lang/Class", "getDeclaredAnnotation", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", Class_null },
-    { "java/lang/Class", "isDeclaredAnnotationPresent", "(Ljava/lang/Class;)Z", Class_false },
-    { "java/lang/Class", "isAnonymousClass", "()Z", Class_false },
+    { "java/lang/Class", "getEnclosingClass", "()Ljava/lang/Class;", An_Class_getEnclosingClass },
+    { "java/lang/Class", "getSignatureAnnotation", "()[Ljava/lang/String;", An_Class_getSignatureAnnotation },
+    { "java/lang/Class", "getDeclaredAnnotation", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", An_Class_getDeclaredAnnotation },
+    { "java/lang/Class", "isDeclaredAnnotationPresent", "(Ljava/lang/Class;)Z", An_Class_isDeclaredAnnotationPresent },
+    { "java/lang/Class", "isAnonymousClass", "()Z", An_Class_isAnonymousClass },
     { "java/lang/Class", "isRecord0", "()Z", Class_false },
-    { "java/lang/Class", "getInnerClassFlags", "(I)I", Class_innerFlags },
+    { "java/lang/Class", "getInnerClassFlags", "(I)I", An_Class_getInnerClassFlags },
+    { "java/lang/Class", "getInnerClassName", "()Ljava/lang/String;", An_Class_getInnerClassName },
+    { "java/lang/Class", "getEnclosingMethodNative", "()Ljava/lang/reflect/Method;", An_Class_getEnclosingMethodNative },
+    { "java/lang/Class", "getEnclosingConstructorNative", "()Ljava/lang/reflect/Constructor;", An_Class_getEnclosingConstructorNative },
 
     { "java/lang/Class", "getDeclaredConstructorInternal", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructorInternal },
     { "java/lang/Class", "getDeclaredConstructorsInternal", "(Z)[Ljava/lang/reflect/Constructor;", Class_getDeclaredConstructorsInternal },
@@ -1678,28 +1718,28 @@ static const entry k_natives[] = {
     { "java/lang/Class", "getDeclaredMethodsUnchecked", "(Z)[Ljava/lang/reflect/Method;", Class_getDeclaredMethodsUnchecked },
     { "java/lang/Class", "getPublicDeclaredFields", "()[Ljava/lang/reflect/Field;", Class_getPublicDeclaredFields },
     { "java/lang/Class", "getPublicFieldRecursive", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", Class_getPublicFieldRecursive },
-    { "java/lang/Class", "getDeclaredAnnotations", "()[Ljava/lang/annotation/Annotation;", Exe_emptyAnnotations },
-    { "java/lang/Class", "getDeclaredClasses", "()[Ljava/lang/Class;", Exe_noClasses },
+    { "java/lang/Class", "getDeclaredAnnotations", "()[Ljava/lang/annotation/Annotation;", An_Class_getDeclaredAnnotations },
+    { "java/lang/Class", "getDeclaredClasses", "()[Ljava/lang/Class;", An_Class_getDeclaredClasses },
     { "java/lang/reflect/Executable", "getParameterTypesInternal", "()[Ljava/lang/Class;", Exe_getParameterTypes },
     { "java/lang/reflect/Executable", "getParameterCountInternal", "()I", Exe_getParameterCount },
     { "java/lang/reflect/Executable", "getMethodNameInternal", "()Ljava/lang/String;", Exe_getName },
     { "java/lang/reflect/Executable", "getMethodReturnTypeInternal", "()Ljava/lang/Class;", Exe_getReturnType },
     { "java/lang/reflect/Executable", "compareMethodParametersInternal", "(Ljava/lang/reflect/Method;)I", Exe_compareParams },
-    { "java/lang/reflect/Executable", "getDeclaredAnnotationsNative", "()[Ljava/lang/annotation/Annotation;", Exe_emptyAnnotations },
-    { "java/lang/reflect/Executable", "getAnnotationNative", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", Class_null },
-    { "java/lang/reflect/Executable", "isAnnotationPresentNative", "(Ljava/lang/Class;)Z", Class_false },
-    { "java/lang/reflect/Executable", "getParameterAnnotationsNative", "()[[Ljava/lang/annotation/Annotation;", Exe_paramAnnotations },
-    { "java/lang/reflect/Executable", "getSignatureAnnotation", "()[Ljava/lang/String;", Class_null },
+    { "java/lang/reflect/Executable", "getDeclaredAnnotationsNative", "()[Ljava/lang/annotation/Annotation;", An_Exe_getDeclaredAnnotations },
+    { "java/lang/reflect/Executable", "getAnnotationNative", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", An_Exe_getAnnotation },
+    { "java/lang/reflect/Executable", "isAnnotationPresentNative", "(Ljava/lang/Class;)Z", An_Exe_isAnnotationPresent },
+    { "java/lang/reflect/Executable", "getParameterAnnotationsNative", "()[[Ljava/lang/annotation/Annotation;", An_Exe_getParameterAnnotations },
+    { "java/lang/reflect/Executable", "getSignatureAnnotation", "()[Ljava/lang/String;", An_Exe_getSignatureAnnotation },
     { "java/lang/reflect/Executable", "getParameters0", "()[Ljava/lang/reflect/Parameter;", Class_null },
-    { "java/lang/reflect/Method", "getExceptionTypes", "()[Ljava/lang/Class;", Exe_noClasses },
-    { "java/lang/reflect/Constructor", "getExceptionTypes", "()[Ljava/lang/Class;", Exe_noClasses },
+    { "java/lang/reflect/Method", "getExceptionTypes", "()[Ljava/lang/Class;", An_Exe_getExceptionTypes },
+    { "java/lang/reflect/Constructor", "getExceptionTypes", "()[Ljava/lang/Class;", An_Exe_getExceptionTypes },
     { "java/lang/reflect/Method", "invoke", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", Method_invoke },
-    { "java/lang/reflect/Method", "getDefaultValue", "()Ljava/lang/Object;", Class_null },
+    { "java/lang/reflect/Method", "getDefaultValue", "()Ljava/lang/Object;", An_Method_getDefaultValue },
     { "java/lang/reflect/Constructor", "newInstance0", "([Ljava/lang/Object;)Ljava/lang/Object;", Ctor_newInstance0 },
-    { "java/lang/reflect/Field", "getDeclaredAnnotations", "()[Ljava/lang/annotation/Annotation;", Exe_emptyAnnotations },
-    { "java/lang/reflect/Field", "getAnnotationNative", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", Class_null },
-    { "java/lang/reflect/Field", "isAnnotationPresentNative", "(Ljava/lang/Class;)Z", Class_false },
-    { "java/lang/reflect/Field", "getSignatureAnnotation", "()[Ljava/lang/String;", Class_null },
+    { "java/lang/reflect/Field", "getDeclaredAnnotations", "()[Ljava/lang/annotation/Annotation;", An_Field_getDeclaredAnnotations },
+    { "java/lang/reflect/Field", "getAnnotationNative", "(Ljava/lang/Class;)Ljava/lang/annotation/Annotation;", An_Field_getAnnotation },
+    { "java/lang/reflect/Field", "isAnnotationPresentNative", "(Ljava/lang/Class;)Z", An_Field_isAnnotationPresent },
+    { "java/lang/reflect/Field", "getSignatureAnnotation", "()[Ljava/lang/String;", An_Field_getSignatureAnnotation },
     { "java/lang/reflect/Field", "getNameInternal", "()Ljava/lang/String;", Field_getName },
     { "java/lang/reflect/Field", "getArtField", "()J", Field_getArtField },
     { "java/lang/reflect/Field", "isMonotonic0", "()Z", Class_false },
@@ -1805,6 +1845,8 @@ dvm_native_fn dvm_intrinsic(const char *cls, const char *name, const char *sig)
     for (const entry *e = k_natives; e->cls; e++) if (!strcmp(e->cls, cls) && !strcmp(e->name, name) && !strcmp(e->sig, sig)) return e->fn;
     if (!strcmp(cls, "sun/misc/Unsafe") || !strcmp(cls, "jdk/internal/misc/Unsafe"))
         for (const entry *e = k_unsafe; e->name; e++) if (!strcmp(e->name, name) && !strcmp(e->sig, sig)) return e->fn;
+    /* java.lang.reflect.Proxy's classes (husk-tl-dvm-proxy.c) */
+    { dvm_native_fn dvm_proxy_native(const char *, const char *, const char *); dvm_native_fn f = dvm_proxy_native(cls, name, sig); if (f) return f; }
     /* Husk's Java framework (husk.Native, GLES20) */
     { dvm_native_fn dvm_android_native(const char *, const char *, const char *); dvm_native_fn f = dvm_android_native(cls, name, sig); if (f) return f; }
     /* the runtime's housekeeping (heap tuning, debugging hooks): nothing to do here, and zero is the quiet answer */

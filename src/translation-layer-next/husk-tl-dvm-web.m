@@ -120,13 +120,16 @@ static atomic_int g_visible_webs;
 static NSString *bridge_js(void)
 {
     /* Android's addJavascriptInterface objects call through prompt(); the console reaches WebChromeClient.onConsoleMessage */
-    return @"(function(){if(window.__husk)return;window.__husk={call:function(o,m,a){var r=prompt('husk:'+JSON.stringify({o:o,m:m,a:Array.prototype.slice.call(a)}));"
+    /* Android's WebView has no speech synthesis: apps put their own (a native TTS plugin) at window.speechSynthesis, which WebKit's
+       getter would refuse; it stays WebKit's until they do */
+    return @"(function(){if(window.__husk)return;try{Object.defineProperty(window,'speechSynthesis',{value:window.speechSynthesis,writable:true,configurable:true,enumerable:true})}catch(e){}"
+            "window.__husk={call:function(o,m,a){var r=prompt('husk:'+JSON.stringify({o:o,m:m,a:Array.prototype.slice.call(a)}));"
             "if(r===null||r===undefined)return undefined;var v=JSON.parse(r);if(v&&v.e)throw new Error(v.e);return v.v;}};"
             "var lv=['log','debug','info','warn','error'];lv.forEach(function(k,i){var o=console[k];console[k]=function(){try{var s=Array.prototype.map.call(arguments,function(x){"
             "try{return typeof x==='object'?JSON.stringify(x):String(x)}catch(e){return String(x)}}).join(' ');"
             "window.webkit.messageHandlers.huskConsole.postMessage({l:i,m:s,s:(document.currentScript&&document.currentScript.src)||location.href});}catch(e){}"
             "if(o)o.apply(console,arguments);};});"
-            "window.addEventListener('error',function(e){try{window.webkit.messageHandlers.huskConsole.postMessage({l:4,m:'Uncaught '+e.message,s:e.filename||'',n:e.lineno||0});}catch(x){}});})();";
+            "window.addEventListener('error',function(e){try{window.webkit.messageHandlers.huskConsole.postMessage({l:4,m:'Uncaught '+e.message+(e.error&&e.error.stack?' | '+String(e.error.stack).slice(0,600):''),s:e.filename||'',n:e.lineno||0});}catch(x){}});})();";
 }
 
 @interface HuskWeb : NSObject <WKNavigationDelegate, WKUIDelegate, WKURLSchemeHandler, WKScriptMessageHandler>

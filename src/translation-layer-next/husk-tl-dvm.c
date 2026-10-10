@@ -280,6 +280,16 @@ static jobj *const_string(dvm_dex *d, uint32_t idx)
     return s;
 }
 
+/* For the annotations (husk-tl-dvm-annotations.c): the dex's strings, types, prototypes and constant strings. */
+const char *dvm_dex_str(const dvm_dex *d, uint32_t idx) { return dex_str(d, idx); }
+const char *dvm_dex_type(const dvm_dex *d, uint32_t idx) { return dex_type(d, idx); }
+void dvm_dex_proto(const dvm_dex *d, uint32_t proto, char *sig, size_t n)
+{
+    char shorty[64]; int np;
+    proto_sig(d, proto, sig, n, shorty, sizeof(shorty), &np);
+}
+jobj *dvm_dex_string(dvm_dex *d, uint32_t idx) { return const_string(d, idx); }
+
 /* ================================================================== classes */
 
 dvm_class *dvm_class_of(tl_jclass *jc) { if (!jc) return NULL; if (jc->linking) tl_jni_wait_linked(jc); return (dvm_class *)jc->dvm; }
@@ -820,6 +830,7 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 static bool dvm_call_inner(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 {
     ret->j = 0;
+    if (m->proxy_method) { bool dvm_proxy_invoke(dvm_method *, jobj *, const jvalue *, jvalue *); return dvm_proxy_invoke(m, self, params, ret); }
     if (m->intrinsic) return m->intrinsic(self, params, ret);
     if (!m->insns) {
         if (m->flags & 0x100) return call_native(m, self, params, ret);

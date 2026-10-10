@@ -58,6 +58,8 @@ struct dvm_method {
     dvm_native_fn intrinsic;        /* an ART-internal native, or NULL */
     void *jni;                      /* a JNI native's address, once found */
     bool jni_looked;
+    jobj *proxy_method;             /* a Proxy class's method: the interface Method it hands the InvocationHandler */
+    jobj *proxy_throws;             /* and the Class[] of checked exceptions it declares */
 };
 
 enum { CS_LINKED = 0, CS_INITIALIZING = 1, CS_INITIALIZED = 2, CS_FAILED = -1 };
