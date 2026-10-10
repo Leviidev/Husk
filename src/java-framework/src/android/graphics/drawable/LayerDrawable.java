@@ -11,32 +11,35 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
 
     public LayerDrawable(Drawable[] layers) { for (Drawable d : layers) addLayer(d); }
     LayerDrawable() {}
-    public int addLayer(Drawable d) { Layer l = new Layer(); l.d = d; if (d != null) d.setCallback(this); mLayers.add(l); onBoundsChange(getBounds()); return mLayers.size() - 1; }
+    public int addLayer(Drawable d) { Layer l = new Layer(); l.d = d; if (d != null) d.setCallback(this); mLayers.add(l); layout(getBounds()); return mLayers.size() - 1; }
     public int getNumberOfLayers() { return mLayers.size(); }
     public Drawable getDrawable(int i) { return i >= 0 && i < mLayers.size() ? mLayers.get(i).d : null; }
-    public void setDrawable(int i, Drawable d) { Layer l = mLayers.get(i); l.d = d; if (d != null) d.setCallback(this); onBoundsChange(getBounds()); invalidateSelf(); }
+    public void setDrawable(int i, Drawable d) { Layer l = mLayers.get(i); l.d = d; if (d != null) d.setCallback(this); layout(getBounds()); invalidateSelf(); }
     public int getId(int i) { return mLayers.get(i).id; }
     public void setId(int i, int id) { mLayers.get(i).id = id; }
     public int findIndexByLayerId(int id) { for (int i = 0; i < mLayers.size(); i++) if (mLayers.get(i).id == id) return i; return -1; }
     public Drawable findDrawableByLayerId(int id) { int i = findIndexByLayerId(id); return i < 0 ? null : mLayers.get(i).d; }
     public boolean setDrawableByLayerId(int id, Drawable d) { int i = findIndexByLayerId(id); if (i < 0) return false; setDrawable(i, d); return true; }
-    public void setLayerInset(int i, int l, int t, int r, int b) { Layer y = mLayers.get(i); y.l = l; y.t = t; y.r = r; y.b = b; onBoundsChange(getBounds()); }
-    public void setLayerInsetLeft(int i, int v) { mLayers.get(i).l = v; onBoundsChange(getBounds()); }
-    public void setLayerInsetTop(int i, int v) { mLayers.get(i).t = v; onBoundsChange(getBounds()); }
-    public void setLayerInsetRight(int i, int v) { mLayers.get(i).r = v; onBoundsChange(getBounds()); }
-    public void setLayerInsetBottom(int i, int v) { mLayers.get(i).b = v; onBoundsChange(getBounds()); }
+    public void setLayerInset(int i, int l, int t, int r, int b) { Layer y = mLayers.get(i); y.l = l; y.t = t; y.r = r; y.b = b; layout(getBounds()); }
+    public void setLayerInsetLeft(int i, int v) { mLayers.get(i).l = v; layout(getBounds()); }
+    public void setLayerInsetTop(int i, int v) { mLayers.get(i).t = v; layout(getBounds()); }
+    public void setLayerInsetRight(int i, int v) { mLayers.get(i).r = v; layout(getBounds()); }
+    public void setLayerInsetBottom(int i, int v) { mLayers.get(i).b = v; layout(getBounds()); }
     public void setLayerInsetStart(int i, int v) { setLayerInsetLeft(i, v); }
     public void setLayerInsetEnd(int i, int v) { setLayerInsetRight(i, v); }
-    public void setLayerSize(int i, int w, int h) { Layer y = mLayers.get(i); y.w = w; y.h = h; onBoundsChange(getBounds()); }
-    public void setLayerWidth(int i, int w) { mLayers.get(i).w = w; onBoundsChange(getBounds()); }
-    public void setLayerHeight(int i, int h) { mLayers.get(i).h = h; onBoundsChange(getBounds()); }
-    public void setLayerGravity(int i, int g) { mLayers.get(i).gravity = g; onBoundsChange(getBounds()); }
+    public void setLayerSize(int i, int w, int h) { Layer y = mLayers.get(i); y.w = w; y.h = h; layout(getBounds()); }
+    public void setLayerWidth(int i, int w) { mLayers.get(i).w = w; layout(getBounds()); }
+    public void setLayerHeight(int i, int h) { mLayers.get(i).h = h; layout(getBounds()); }
+    public void setLayerGravity(int i, int g) { mLayers.get(i).gravity = g; layout(getBounds()); }
     public int getLayerGravity(int i) { return mLayers.get(i).gravity; }
     public void setPaddingMode(int m) { mPaddingMode = m; }
     public int getPaddingMode() { return mPaddingMode; }
     public void setPadding(int l, int t, int r, int b) {}
 
-    @Override protected void onBoundsChange(Rect b) {
+    /* Android only lays the layers out from onBoundsChange; the setters must not call it, because apps override it
+       and read layers the constructor has not added yet (Shazam's home background) */
+    @Override protected void onBoundsChange(Rect b) { layout(b); }
+    private void layout(Rect b) {
         for (Layer y : mLayers) {
             if (y.d == null) continue;
             mTmp.set(b.left + y.l, b.top + y.t, b.right - y.r, b.bottom - y.b);

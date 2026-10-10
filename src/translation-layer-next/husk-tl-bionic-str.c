@@ -736,7 +736,7 @@ static size_t b_wcsrtombs(char *dst, const wchar_t **src, size_t len, void *ps) 
 
 const tl_bionic_entry tl_tab_str2[] = {
     TL_WRAP("__strcpy_chk", b___strcpy_chk), TL_WRAP("__strcat_chk", b___strcat_chk), TL_WRAP("__strncpy_chk", b___strncpy_chk),
-    TL_WRAP("__stpcpy_chk", b___stpcpy_chk), TL_WRAP("putchar", b_putchar), TL_WRAP("__strlcpy_chk", b___strlcpy_chk), TL_WRAP("__strlcat_chk", b___strlcat_chk), TL_WRAP("__strrchr_chk", b___strrchr_chk), TL_WRAP("__fgets_chk", b___fgets_chk), TL_WRAP("__sprintf_chk", tl_va___sprintf_chk), TL_WRAP("__snprintf_chk", tl_va___snprintf_chk), TL_WRAP("__memchr_chk", b___memchr_chk), TL_WRAP("__memrchr_chk", b___memrchr_chk), TL_WRAP("__stpncpy_chk", b___stpncpy_chk), TL_WRAP("__stpncpy_chk2", b___stpncpy_chk2),
+    TL_WRAP("__stpcpy_chk", b___stpcpy_chk), TL_WRAP("putchar", b_putchar), TL_WRAP("__strlcpy_chk", b___strlcpy_chk), TL_WRAP("__strlcat_chk", b___strlcat_chk), TL_WRAP("__strrchr_chk", b___strrchr_chk), TL_WRAP("__fgets_chk", b___fgets_chk), TL_WRAP("__sprintf_chk", tl_va___sprintf_chk), TL_WRAP("__snprintf_chk", tl_va___snprintf_chk), TL_WRAP("__memchr_chk", b___memchr_chk), TL_WRAP("__memrchr_chk", b___memrchr_chk), TL_WRAP("memmem", memmem), TL_WRAP("__stpncpy_chk", b___stpncpy_chk), TL_WRAP("__stpncpy_chk2", b___stpncpy_chk2),
     TL_WRAP("__FD_CLR_chk", b___FD_CLR_chk),
     TL_DATA("stdin", &g_stdin_var), TL_DATA("stdout", &g_stdout_var), TL_DATA("stderr", &g_stderr_var),
     TL_WRAP("perror", b_perror), TL_WRAP("rewind", b_rewind), TL_WRAP("fputwc", b_fputwc), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),

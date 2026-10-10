@@ -1189,6 +1189,13 @@ typedef struct { void *ss_sp; int ss_flags; int pad; size_t ss_size; } guest_sta
 static int b_sigaltstack(const guest_stack_t *ss, guest_stack_t *old)
 {
     stack_t d, od;
+    /* Android's MINSIGSTKSZ is 5 KB, Darwin's 32 KB: crashpad's smaller stack is kept for the guest to read back, not installed */
+    static __thread guest_stack_t small;
+    if (ss && !(ss->ss_flags & 2) && ss->ss_size < MINSIGSTKSZ) {
+        if (old) { *old = small; if (!old->ss_sp) old->ss_flags = 2; }
+        small = *ss; return 0;
+    }
+    if (!ss && old && small.ss_sp) { *old = small; return 0; }
     if (ss) { d.ss_sp = ss->ss_sp; d.ss_size = ss->ss_size; d.ss_flags = ss->ss_flags & 2 ? SS_DISABLE : 0; }
     TL_ERRNO_BEGIN(); int r = sigaltstack(ss ? &d : NULL, old ? &od : NULL); TL_ERRNO_END();
     if (old && r == 0) { old->ss_sp = od.ss_sp; old->ss_size = od.ss_size; old->ss_flags = od.ss_flags & SS_DISABLE ? 2 : 0; }
