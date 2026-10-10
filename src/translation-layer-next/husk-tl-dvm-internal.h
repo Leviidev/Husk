@@ -45,8 +45,8 @@ struct dvm_field {
 struct dvm_method {
     dvm_class *cls;
     const char *name;
-    char sig[256];                  /* "(...)R" */
-    char shorty[64];                /* return kind first, then each parameter: L I J F D Z B C S V */
+    const char *sig;                /* "(...)R": as long as the descriptor is (a Kotlin constructor's runs to thousands) */
+    const char *shorty;             /* return kind first, then each parameter: L I J F D Z B C S V */
     uint32_t flags;
     uint32_t idx;                   /* method_idx in its dex */
     uint16_t regs, ins, outs, ntries;

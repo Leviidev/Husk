@@ -138,8 +138,8 @@ bool dvm_proxy_invoke(dvm_method *m, jobj *self, const jvalue *params, jvalue *r
 static void method_like(dvm_method *dst, const dvm_method *src)
 {
     dst->name = src->name;
-    memcpy(dst->sig, src->sig, sizeof(dst->sig));
-    memcpy(dst->shorty, src->shorty, sizeof(dst->shorty));
+    dst->sig = src->sig;
+    dst->shorty = src->shorty;
     dst->nparams = src->nparams;
 }
 
@@ -172,8 +172,8 @@ NAT(Proxy_generateProxy)
     c->dm = calloc(1, sizeof(dvm_method));
     dvm_method *init = &c->dm[c->ndm++];
     init->cls = c; init->name = "<init>"; init->vidx = -1;
-    snprintf(init->sig, sizeof(init->sig), "(Ljava/lang/reflect/InvocationHandler;)V");
-    snprintf(init->shorty, sizeof(init->shorty), "VL");
+    init->sig = "(Ljava/lang/reflect/InvocationHandler;)V";
+    init->shorty = "VL";
     init->nparams = 1;
     init->flags = 0x1 | 0x100;                                /* public, native */
     init->intrinsic = proxy_init;

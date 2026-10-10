@@ -249,6 +249,17 @@ struct TLAppSettingsView: View {
             }
 
             Section {
+                Button { AppClip.generate(for: app) } label: {
+                    Label("Generate App Clip", systemImage: "apps.iphone.badge.plus")
+                }
+            } header: {
+                Text("Home Screen")
+            } footer: {
+                Text("Puts \(app.label) on your Home Screen with its own icon. Tapping it opens Husk straight into the game. Husk "
+                   + "downloads a profile: open Settings, tap Profile Downloaded, then Install.")
+            }
+
+            Section {
                 DetailRow(label: "Saved by the game", value: dataSize, mono: false)
                 Button(role: .destructive) { confirmReset = true } label: {
                     Label("Reset Game Data", systemImage: "arrow.counterclockwise")

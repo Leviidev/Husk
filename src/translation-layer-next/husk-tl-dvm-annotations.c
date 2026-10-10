@@ -189,7 +189,7 @@ static jobj *method_object(dvm_dex *d, uint32_t midx)
     tl_jclass *jc = class_by_desc(dvm_dex_type(d, rd16(mi)));
     dvm_class *c = dvm_class_of(jc);
     if (!c) return NULL;
-    char sig[256];
+    char sig[8192];
     dvm_dex_proto(d, rd16(mi + 2), sig, sizeof(sig));
     const char *name = dvm_dex_str(d, rd32(mi + 4));
     dvm_method *m = dvm_find_method(c, name, sig, false);

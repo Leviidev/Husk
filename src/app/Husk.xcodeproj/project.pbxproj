@@ -58,6 +58,7 @@
 		38E7D6B6947ED3CF1A82BB7D /* libqemu-aarch64-softmmu.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B29247002CE43A3B9DEC633 /* libqemu-aarch64-softmmu.dylib */; };
 		395C2F3AADC9F0FDE2188950 /* husk-tl-dex.c in Sources */ = {isa = PBXBuildFile; fileRef = 7FE5D3DD79B5BEA14506FF60 /* husk-tl-dex.c */; };
 		3FFF24EF3C18B086F2D0B97C /* husk-tl-vulkan.m in Sources */ = {isa = PBXBuildFile; fileRef = 42A3D0C796971935D477F89B /* husk-tl-vulkan.m */; };
+		42B7F8F954D9CF0C84AFD8EE /* AppClip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */; };
 		43C9B645209AEDA8FCDD8CB8 /* husk-tl-dvm-gles30.c in Sources */ = {isa = PBXBuildFile; fileRef = 24C5D68AB8EBD8B65BA22A9C /* husk-tl-dvm-gles30.c */; };
 		48B7AF4FFC377766FF6158A4 /* PlayDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036699CBF5693E75237EF112 /* PlayDevice.swift */; };
 		48E699E0016694F530355275 /* FilesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BF573E8CED9B238E762BA6 /* FilesTab.swift */; };
@@ -285,6 +286,7 @@
 		3B72237F810FCE0EE433FA3D /* husk-tl-nativeactivity.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-nativeactivity.c"; sourceTree = "<group>"; };
 		3B9FC5A63D4CAA7FBDA016EB /* fishhook.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fishhook.h; sourceTree = "<group>"; };
 		3F25C8D085028063DE39D3F2 /* husk-tl-jni-audiotrack.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-audiotrack.c"; sourceTree = "<group>"; };
+		3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppClip.swift; sourceTree = "<group>"; };
 		40BF573E8CED9B238E762BA6 /* FilesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesTab.swift; sourceTree = "<group>"; };
 		411E4F9A6C6D4F737E8611B9 /* husk-tl-jni-http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-http.c"; sourceTree = "<group>"; };
 		42A3D0C796971935D477F89B /* husk-tl-vulkan.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-vulkan.m"; sourceTree = "<group>"; };
@@ -478,6 +480,7 @@
 			isa = PBXGroup;
 			children = (
 				2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */,
+				3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */,
 				C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */,
 				0FCF57D3D74B527852EC0327 /* AppIcon.swift */,
 				15D08F1730303C74C1B7DE23 /* AppSource.swift */,
@@ -993,6 +996,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D354FA5AC96B3361B4A5A635 /* ApkMetadata.swift in Sources */,
+				42B7F8F954D9CF0C84AFD8EE /* AppClip.swift in Sources */,
 				5C20168883D258DF9715F6D9 /* AppDetailView.swift in Sources */,
 				4EF06C9496D4D86646EFD631 /* AppIcon.swift in Sources */,
 				8C743346878007F8D22CEA0A /* AppSource.swift in Sources */,

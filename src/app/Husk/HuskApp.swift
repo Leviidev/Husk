@@ -84,7 +84,10 @@ struct HuskApp: App {
         WindowGroup {
             ContentView()
                 // An APK shared to Husk, or opened in it from Files.
-                .onOpenURL { IncomingFiles.shared.receive($0) }
+                .onOpenURL { url in
+                    // husk://open_app?unique_identifier=… from a Home Screen clip; anything else may be a shared APK
+                    if !AppClip.handle(url) { IncomingFiles.shared.receive(url) }
+                }
         }
     }
 }

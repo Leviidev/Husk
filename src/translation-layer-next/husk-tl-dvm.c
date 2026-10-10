@@ -285,7 +285,7 @@ const char *dvm_dex_str(const dvm_dex *d, uint32_t idx) { return dex_str(d, idx)
 const char *dvm_dex_type(const dvm_dex *d, uint32_t idx) { return dex_type(d, idx); }
 void dvm_dex_proto(const dvm_dex *d, uint32_t proto, char *sig, size_t n)
 {
-    char shorty[64]; int np;
+    char shorty[300]; int np;
     proto_sig(d, proto, sig, n, shorty, sizeof(shorty), &np);
 }
 jobj *dvm_dex_string(dvm_dex *d, uint32_t idx) { return const_string(d, idx); }
@@ -456,7 +456,7 @@ static bool attach(tl_jclass *jc)
                 m->cls = c; m->idx = idx; m->vidx = -1;
                 const uint8_t *mi = d->b + d->meth_off + 8 * idx;
                 m->name = dex_str(d, rd32(mi + 4));
-                proto_sig(d, rd16(mi + 2), m->sig, sizeof(m->sig), m->shorty, sizeof(m->shorty), &m->nparams);
+                { char sg[8192], sh[300]; proto_sig(d, rd16(mi + 2), sg, sizeof(sg), sh, sizeof(sh), &m->nparams); m->sig = strdup(sg); m->shorty = strdup(sh); }
                 if (code_off) {
                     const uint8_t *ci = d->b + code_off;
                     m->code = ci;
@@ -974,7 +974,7 @@ static bool call_native(dvm_method *m, jobj *self, const jvalue *params, jvalue 
 typedef struct mref {
     tl_jclass *cls;                 /* the class the reference names */
     const char *name;
-    char sig[256], shorty[64];
+    const char *sig, *shorty;
     int nparams;
     dvm_method *dm;                 /* resolved in an interpreted class */
     tl_jmeth *hm;                   /* or Husk's own */
@@ -990,7 +990,7 @@ static mref *resolve_mref(dvm_dex *d, uint32_t idx, bool is_static)
     const uint8_t *mi = d->b + d->meth_off + 8 * idx;
     r->cls = resolve_type(d, rd16(mi));
     r->name = dex_str(d, rd32(mi + 4));
-    proto_sig(d, rd16(mi + 2), r->sig, sizeof(r->sig), r->shorty, sizeof(r->shorty), &r->nparams);
+    { char sg[8192], sh[300]; proto_sig(d, rd16(mi + 2), sg, sizeof(sg), sh, sizeof(sh), &r->nparams); r->sig = strdup(sg); r->shorty = strdup(sh); }
     dvm_class *c = dvm_class_of(r->cls);
     if (c) r->dm = dvm_find_method(c, r->name, r->sig, is_static);
     if (!r->dm && !c) r->hm = tl_jni_method(r->cls, r->name, r->sig, is_static);
@@ -1112,8 +1112,8 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
         if (!self) return dvm_throw("java/lang/NullPointerException", "Attempt to invoke %s method '%s.%s%s' on a null object reference",
                                      kind == 4 ? "interface" : "virtual", r->cls->name, r->name, r->sig);
     }
-    jvalue params[64];
-    for (int i = 0; i < r->nparams && i < 64; i++) {
+    jvalue params[256];                     /* a call can pass up to 255 registers' worth (Kotlin's default-argument constructors do) */
+    for (int i = 0; i < r->nparams && i < 256; i++) {
         char k = r->shorty[1 + i];
         params[i].j = 0;
         switch (k) {
@@ -1660,12 +1660,12 @@ dispatch:;
             bool range = op == 0xfb;
             int count = range ? AA : B4;
             uint16_t list = FETCH(2);
-            uint64_t vals[64];
-            for (int i = 0; i < count && i < 64; i++) vals[i] = regs[range ? list + i : (i < 4 ? (list >> (4 * i)) & 0xF : A4)];
+            uint64_t vals[256];
+            for (int i = 0; i < count && i < 256; i++) vals[i] = regs[range ? list + i : (i < 4 ? (list >> (4 * i)) & 0xF : A4)];
             const uint8_t *mi = dex->b + dex->meth_off + 8 * FETCH(1);
             const char *mname = dex_str(dex, rd32(mi + 4));
             tl_jclass *owner = resolve_type(dex, rd16(mi));
-            char csig[256], cshorty[64]; int np;
+            char csig[8192], cshorty[300]; int np;
             proto_sig(dex, FETCH(3), csig, sizeof(csig), cshorty, sizeof(cshorty), &np);
             jobj *recv = (jobj *)(uintptr_t)vals[0];
             if (!recv) { dvm_throw("java/lang/NullPointerException", "invoke-polymorphic on null"); goto exception; }

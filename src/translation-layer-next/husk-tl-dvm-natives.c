@@ -423,7 +423,25 @@ NAT(Thread_priorityForNiceness)
     *ret = I(n <= -8 ? 10 : n <= -4 ? 8 : n <= -2 ? 6 : n <= 0 ? 5 : n <= 4 ? 4 : n <= 8 ? 3 : n <= 12 ? 2 : 1);
     return true;
 }
-NAT(VMStack_threadStackTrace) { UNUSED; *ret = L(tl_jni_new_obj_array(tl_jni_class("java/lang/StackTraceElement"), 0)); ((jobj *)ret->l)->cls = tl_jni_class("[Ljava/lang/StackTraceElement;"); return true; }
+static bool Throwable_getStack(jobj *self, const jvalue *a, jvalue *ret);
+int dvm_capture_frames(void **out, uint32_t *pcs, int max);
+/* Thread.getStackTrace(): the calling thread's own frames (Kotlin's null checks read them); another thread's are not known */
+NAT(VMStack_threadStackTrace)
+{
+    if (a[0].l && a[0].l == dvm_current_thread()) {
+        void *fr[512]; uint32_t pcs[512];
+        int n = dvm_capture_frames(fr, pcs, 512);
+        jobj *bt = tl_jni_new_prim_array('J', (uint32_t)(2 * n));
+        int64_t *v = bt->arr.data;
+        for (int i = 0; i < n; i++) { v[2 * i] = (int64_t)(uintptr_t)fr[i]; v[2 * i + 1] = pcs[i]; }
+        jvalue p[1]; p[0].j = 0; p[0].l = bt;
+        return Throwable_getStack(NULL, p, ret);
+    }
+    (void)self;
+    *ret = L(tl_jni_new_obj_array(tl_jni_class("java/lang/StackTraceElement"), 0));
+    ((jobj *)ret->l)->cls = tl_jni_class("[Ljava/lang/StackTraceElement;");
+    return true;
+}
 
 /* JarFile.getMetaInfEntryNames(): the META-INF entries of the jar (its signature files, the manifest), for JarFile's verifier */
 NAT(JarFile_getMetaInfEntryNames)
