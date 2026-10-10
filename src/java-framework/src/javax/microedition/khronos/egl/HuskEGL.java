@@ -5,7 +5,7 @@ final class HuskEGL implements EGL11 {
     static final class Display extends EGLDisplay {}
     static final class Config extends EGLConfig {}
     static final class Surface extends EGLSurface {}
-    static final class Context extends EGLContext { public javax.microedition.khronos.opengles.GL getGL() { return null; } }
+    static final class Context extends EGLContext { public javax.microedition.khronos.opengles.GL getGL() { return android.opengl.GLSurfaceView.huskGL(); } }
     static final Display DISPLAY = new Display();
     static final Config CONFIG = new Config();
     static final Surface SURFACE = new Surface();
@@ -27,7 +27,11 @@ final class HuskEGL implements EGL11 {
     public EGLContext eglGetCurrentContext() { return CONTEXT; }
     public EGLDisplay eglGetCurrentDisplay() { return DISPLAY; }
     public EGLSurface eglGetCurrentSurface(int which) { return SURFACE; }
-    public EGLContext eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share, int[] attribs) { return CONTEXT; }
+    static volatile int sRequestedVersion = 1;
+    public EGLContext eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share, int[] attribs) {
+        if (attribs != null) for (int i = 0; i + 1 < attribs.length && attribs[i] != EGL_NONE; i += 2) if (attribs[i] == 0x3098) sRequestedVersion = attribs[i + 1];
+        return CONTEXT;
+    }
     public boolean eglDestroyContext(EGLDisplay d, EGLContext c) { return true; }
     public EGLSurface eglCreateWindowSurface(EGLDisplay d, EGLConfig c, Object w, int[] attribs) { return SURFACE; }
     public boolean eglDestroySurface(EGLDisplay d, EGLSurface s) { return true; }

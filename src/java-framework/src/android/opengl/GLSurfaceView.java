@@ -19,6 +19,8 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
 
     private Renderer renderer;
     private int version = 1, renderMode = RENDERMODE_CONTINUOUSLY;
+    private boolean versionSet;
+    private EGLContextFactory contextFactory;
     private volatile boolean dirty = true, started, paused;
     private final ArrayList<Runnable> queue = new ArrayList<>();
 
@@ -30,11 +32,11 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public void surfaceRedrawNeeded(android.view.SurfaceHolder h) { requestRender(); }
     public void surfaceRedrawNeededAsync(android.view.SurfaceHolder h, Runnable done) { requestRender(); done.run(); }
     public void setRenderer(Renderer r) { renderer = r; if (isAttachedToWindow()) start(); }
-    public void setEGLContextClientVersion(int v) { version = v; }
+    public void setEGLContextClientVersion(int v) { version = v; versionSet = true; }
     public void setEGLConfigChooser(EGLConfigChooser c) {}
     public void setEGLConfigChooser(boolean depth) {}
     public void setEGLConfigChooser(int r, int g, int b, int a, int depth, int stencil) {}
-    public void setEGLContextFactory(EGLContextFactory f) {}
+    public void setEGLContextFactory(EGLContextFactory f) { contextFactory = f; }
     public void setEGLWindowSurfaceFactory(EGLWindowSurfaceFactory f) {}
     public void setGLWrapper(GLWrapper w) {}
     public void setDebugFlags(int f) {}
@@ -48,7 +50,29 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public void onResume() { paused = false; dirty = true; }
     public void queueEvent(Runnable r) { synchronized (queue) { queue.add(r); } husk.Native.requestRender(); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); start(); }
-    private void start() { if (renderer != null && !started) { started = true; husk.Native.startGL(this, renderer, version); } }
+    private void start() {
+        if (renderer == null || started) return;
+        started = true;
+        // an app with its own context factory asks for its GL ES version there (EGL_CONTEXT_CLIENT_VERSION), not here
+        if (!versionSet && contextFactory != null) {
+            try {
+                EGL10 egl = (EGL10) EGLContext.getEGL();
+                EGLDisplay d = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+                EGLConfig[] cfg = new EGLConfig[1];
+                egl.eglChooseConfig(d, null, cfg, 1, new int[1]);
+                contextFactory.createContext(egl, d, cfg[0]);
+                version = Math.max(1, EGLContext.huskRequestedVersion());
+            } catch (RuntimeException e) {
+                android.util.Log.w("GLSurfaceView", "the app's EGLContextFactory threw: " + e);
+                version = 2;
+            }
+        }
+        husk.Native.startGL(this, renderer, version);
+    }
+
+    private static HuskGL10 sGL;
+    /** @hide The GL10 object EGLContext.getGL() hands out. */
+    public static synchronized javax.microedition.khronos.opengles.GL huskGL() { if (sGL == null) sGL = new HuskGL10(); return sGL; }
 
     /** Husk's GL thread, each frame: queued events, then whether to draw. */
     public final boolean huskBeginFrame() {

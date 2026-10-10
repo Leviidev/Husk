@@ -159,6 +159,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
         threeFingers.numberOfTouchesRequired = 3
         threeFingers.cancelsTouchesInView = false
+        threeFingers.delaysTouchesBegan = false
+        threeFingers.delaysTouchesEnded = false
         host.addGestureRecognizer(threeFingers)
         webHost = host
         husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Unmanaged.passUnretained(host).toOpaque(), Float(contentScaleFactor), fresh ? 1 : 0)

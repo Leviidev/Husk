@@ -148,18 +148,34 @@ NAT(String_getCharsNoCheck)
     for (int32_t i = start; i < end && i < n; i++) ((uint16_t *)dst->arr.data)[at + i - start] = s[i];
     return true;
 }
-static jobj *g_interned[65536];
+static jobj **g_interned;                 /* open addressing, kept at most half full */
+static uint32_t g_icap, g_icount;
 static pthread_mutex_t g_intern_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint32_t str_hash(const uint16_t *s, int32_t n) { uint32_t h = 0; for (int32_t i = 0; i < n; i++) h = h * 31 + s[i]; return h; }
 NAT(String_intern)
 {
     (void)a;
     int32_t n; const uint16_t *s = chars(self, &n);
-    uint32_t h = 0; for (int32_t i = 0; i < n; i++) h = h * 31 + s[i];
+    uint32_t h = str_hash(s, n);
     pthread_mutex_lock(&g_intern_lock);
-    for (uint32_t k = 0; k < 65536; k++) {
-        uint32_t slot = (h + k) & 0xFFFF;
-        jobj *o = g_interned[slot];
-        if (!o) { g_interned[slot] = self; *ret = L(self); break; }
+    if ((g_icount + 1) * 2 > g_icap) {
+        uint32_t cap = g_icap ? g_icap * 2 : 65536;
+        jobj **t = calloc(cap, sizeof(*t));
+        for (uint32_t i = 0; i < g_icap; i++) {
+            jobj *o = g_interned[i];
+            if (!o) continue;
+            int32_t m; const uint16_t *u = chars(o, &m);
+            uint32_t k = str_hash(u, m) & (cap - 1);
+            while (t[k]) k = (k + 1) & (cap - 1);
+            t[k] = o;
+        }
+        free(g_interned);
+        g_interned = t; g_icap = cap;
+    }
+    *ret = L(self);
+    for (uint32_t k = h & (g_icap - 1);; k = (k + 1) & (g_icap - 1)) {
+        jobj *o = g_interned[k];
+        if (!o) { g_interned[k] = self; self->refs = 1u << 30; g_icount++; break; }
         int32_t m; const uint16_t *t = chars(o, &m);
         if (m == n && !memcmp(s, t, (size_t)n * 2)) { *ret = L(o); break; }
     }

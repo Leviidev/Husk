@@ -137,6 +137,7 @@ static NSString *bridge_js(void)
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic) bool apiLoad;            /* the next navigation is the app's own loadUrl: not offered to shouldOverrideUrlLoading */
 @property (nonatomic, strong) NSMutableArray<NSString *> *scripts;
+@property (nonatomic) bool edgeLinked;
 @end
 
 @implementation HuskWeb
@@ -355,6 +356,13 @@ NAT(W_frame)
         /* the screen may have had no superview when the web view was made */
         if (!g_container) ensure_container();
         if (g_container && !h.web.superview) [g_container addSubview:h.web];
+#if TARGET_OS_IPHONE
+        /* the back swipe from the screen's edge wins over the page's own scrolling */
+        if (!h.edgeLinked) {
+            for (UIGestureRecognizer *g in g_container.gestureRecognizers)
+                if ([g isKindOfClass:UIScreenEdgePanGestureRecognizer.class]) { [h.web.scrollView.panGestureRecognizer requireGestureRecognizerToFail:g]; h.edgeLinked = true; }
+        }
+#endif
 #if TARGET_OS_IPHONE
         if (g_screen && g_container && g_container.superview == g_screen.superview && !CGRectEqualToRect(g_container.frame, g_screen.frame)) g_container.frame = g_screen.frame;
 #endif
