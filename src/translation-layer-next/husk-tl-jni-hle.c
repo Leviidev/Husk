@@ -411,6 +411,8 @@ static void Process_myTid(tl_jcall *c) { uint64_t t = 0; pthread_threadid_np(NUL
 static tl_lib *g_onload_done[96];
 static int g_nonload;
 static pthread_mutex_t g_onload_mu = PTHREAD_MUTEX_INITIALIZER;
+static bool load_native_library(const char *base);
+bool tl_jni_load_library(const char *base) { return load_native_library(base); }
 static bool load_native_library(const char *base)
 {
     tl_lib *L = tl_ld_load(base);

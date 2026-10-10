@@ -1784,6 +1784,11 @@ static bool relocate(tl_lib *L)
     return true;
 }
 
+/* Folders a library named only by its file name is also looked for in (the Java runtime's: the ART APEX's lib64). */
+static char *g_search[8];
+static int g_nsearch;
+void tl_ld_add_search_dir(const char *dir) { if (g_nsearch < 8) g_search[g_nsearch++] = strdup(dir); }
+
 static tl_lib *load_locked(const char *name, int depth)
 {
     tl_lib *L = find_loaded(name);
@@ -1792,7 +1797,13 @@ static tl_lib *load_locked(const char *name, int depth)
     if (depth > 32) { tl_log_line("ld: dependency chain too deep at %s", name); return NULL; }
 
     uint8_t *file; size_t flen;
-    if (!fetch_from_apks(base_name(name), &file, &flen) && !fetch_from_file(name, &file, &flen)) {
+    bool got = fetch_from_apks(base_name(name), &file, &flen) || fetch_from_file(name, &file, &flen);
+    for (int d = 0; !got && d < g_nsearch; d++) {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", g_search[d], base_name(name));
+        got = fetch_from_file(path, &file, &flen);
+    }
+    if (!got) {
         tl_log_line("ld: %s is not in the APK and is not a system library", name);
         return NULL;
     }

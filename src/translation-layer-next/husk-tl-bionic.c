@@ -736,7 +736,7 @@ const tl_bionic_entry tl_tab_core[] = {
 
 /* ----------------------------------------------------------------- lookup */
 
-static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles, tl_tab_sys, tl_tab_ldbl };
+static const tl_bionic_entry *const k_tables[] = { tl_tab_core, tl_tab_str, tl_tab_io, tl_tab_io2, tl_tab_str2, tl_tab_net, tl_tab_pthread, tl_tab_ndk, tl_tab_egl, tl_tab_cxx, tl_tab_opensles, tl_tab_sys, tl_tab_ldbl, tl_tab_jvm };
 
 typedef struct { const char *name; void *addr; } slot;
 static slot *g_slots;
@@ -790,7 +790,8 @@ bool tl_bionic_is_system_lib(const char *soname)
     static const char *const sys[] = {
         "libc.so", "libm.so", "libdl.so", "liblog.so", "libandroid.so", "libEGL.so", "libGLESv1_CM.so",
         "libGLESv2.so", "libGLESv3.so", "libz.so", "libmediandk.so", "libOpenSLES.so", "libaaudio.so",
-        "libvulkan.so", "libnativewindow.so", "libjnigraphics.so", "libcamera2ndk.so", "libstdc++.so", NULL };
+        "libvulkan.so", "libnativewindow.so", "libjnigraphics.so", "libcamera2ndk.so", "libstdc++.so",
+        /* the Java runtime's: answered by Husk (husk-tl-dvm-jvm.c), never loaded */ "libopenjdkjvm.so", "libdl_android.so", "libart.so", NULL };
     for (int i = 0; sys[i]; i++) if (!strcmp(sys[i], soname)) return true;
     return false;
 }

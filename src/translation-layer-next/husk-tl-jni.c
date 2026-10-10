@@ -15,36 +15,9 @@
 
 /* ---------------------------------------------------------------- types */
 
-typedef struct tl_jmeth {
-    tl_jclass *cls;                    /* the class the method was looked up on */
-    char *name, *sig;
-    bool is_static;
-    tl_jhle_fn fn;                     /* NULL: no implementation */
-    char argk[40];                     /* one kind letter per argument: Z B C S I J F D L */
-    int nargs;
-    char retk;                         /* kind of the return value, or V */
-    bool exists;                       /* declared by something we can see */
-    bool warned;
-} tl_jmeth;
+#include "husk-tl-jni-internal.h"
 
-typedef struct tl_jfield {
-    tl_jclass *cls;
-    char *name, *sig;
-    bool is_static;
-    uint32_t index;
-} tl_jfield;
-
-struct tl_jclass {
-    char name[160];
-    tl_jclass *super;
-    jobj *mirror;
-    bool in_dex;                       /* the APK defines it */
-    tl_jmeth **meths; int nmeths, capm;
-    tl_jfield **fields; int nfields, capf;
-    jvalue *statics; int nstatics;
-    struct { char *name, *sig; void *fn; } *natives; int nnatives;
-    tl_jclass *next;
-};
+const tl_dvm_hooks *tl_dvm;
 
 #define NBUCKETS 512
 static tl_jclass *g_classes[NBUCKETS];
@@ -76,9 +49,12 @@ jobj *tl_jni_ref(jobj *o) { if (o) __atomic_add_fetch(&o->refs, 1, __ATOMIC_RELA
 void tl_jni_unref(jobj *o)
 {
     if (!o || o->kind == TL_K_CLASS) return;
+    /* With the Java runtime up, objects live as long as Java can reach them, which reference counts from native code do not
+     * know about: nothing is freed here (a tracing collector's job). */
+    if (tl_dvm) return;
     if (__atomic_sub_fetch(&o->refs, 1, __ATOMIC_ACQ_REL) != 0) return;
     switch (o->kind) {
-    case TL_K_STRING: free(o->str.utf8); break;
+    case TL_K_STRING: free(o->str.utf8); free(o->str.u16); break;
     case TL_K_PRIM_ARRAY: free(o->arr.data); break;
     case TL_K_OBJ_ARRAY: free(o->oarr.v); break;
     default: break;
@@ -107,6 +83,13 @@ tl_jclass *tl_jni_declare(const char *name, const char *super)
         c->mirror = obj_alloc(TL_K_CLASS, NULL);
         c->mirror->klass.jc = c;
         c->mirror->refs = 1u << 30;
+        /* A class the interpreter has bytecode for: it says what the superclass is, and keeps the statics. */
+        if (tl_dvm) {
+            pthread_mutex_unlock(&g_lock);
+            bool attached = tl_dvm->attach(c);
+            pthread_mutex_lock(&g_lock);
+            if (attached) { c->in_dex = true; pthread_mutex_unlock(&g_lock); return c; }
+        }
     }
     if (super && !c->super) {
         pthread_mutex_unlock(&g_lock);
@@ -135,7 +118,15 @@ const char *tl_jni_class_name(const jobj *o) { return o && o->kind == TL_K_CLASS
 
 jobj *tl_jni_class_object(const char *name) { return tl_jni_class(name)->mirror; }
 
-jobj *tl_jni_new_object(tl_jclass *cls) { return obj_alloc(TL_K_OBJECT, cls); }
+jobj *tl_jni_new_object(tl_jclass *cls)
+{
+    jobj *o = obj_alloc(TL_K_OBJECT, cls);
+    if (tl_dvm && cls && cls->dvm) {
+        uint32_t n = tl_dvm->instance_slots(cls);
+        if (n) { o->fields = calloc(n, sizeof(jvalue)); o->nfields = n; }
+    }
+    return o;
+}
 
 jobj *tl_jni_new_string(const char *utf8)
 {
@@ -246,6 +237,21 @@ static tl_jmeth *lookup_method(tl_jclass *cls, const char *name, const char *sig
     }
     pthread_mutex_unlock(&g_lock);
 
+    /* A class the interpreter runs: its bytecode (or an intrinsic) is the method, wherever up the chain it is declared. */
+    if (tl_dvm && cls->dvm) {
+        void *dm = tl_dvm->find_method(cls, name, sig, is_static);
+        if (dm) {
+            tl_jmeth *m = calloc(1, sizeof(*m));
+            m->cls = cls; m->name = strdup(name); m->sig = strdup(sig); m->is_static = is_static;
+            m->dvm = dm; m->exists = true;
+            parse_sig(m);
+            pthread_mutex_lock(&g_lock);
+            if (cls->nmeths == cls->capm) { cls->capm = cls->capm ? cls->capm * 2 : 8; cls->meths = realloc(cls->meths, (size_t)cls->capm * sizeof(*cls->meths)); }
+            cls->meths[cls->nmeths++] = m;
+            pthread_mutex_unlock(&g_lock);
+            return m;
+        }
+    }
     /* Where could this method come from? An implementation here, the APK's DEX, or a
      * framework class somewhere up the chain (which cannot be checked, so is believed). */
     tl_jhle_fn fn = NULL; bool dex_decl = false, framework = false;
@@ -283,6 +289,24 @@ static bool dex_field_real_sig(tl_jclass *cls, const char *name, char *out, size
 
 static tl_jfield *lookup_field(tl_jclass *cls, const char *name, const char *sig, bool is_static, bool create)
 {
+    if (tl_dvm && cls->dvm) {
+        /* The interpreter lays its classes out: the field is a slot of the class that declares it. */
+        tl_jclass *decl; uint32_t slot;
+        if (tl_dvm->find_field(cls, name, sig, is_static, &decl, &slot)) {
+            pthread_mutex_lock(&g_lock);
+            for (int i = 0; i < decl->nfields; i++) {
+                tl_jfield *f = decl->fields[i];
+                if (f->is_static == is_static && f->index == slot && !strcmp(f->name, name)) { pthread_mutex_unlock(&g_lock); return f; }
+            }
+            tl_jfield *f = calloc(1, sizeof(*f));
+            f->cls = decl; f->name = strdup(name); f->sig = strdup(sig); f->is_static = is_static; f->index = slot;
+            if (decl->nfields == decl->capf) { decl->capf = decl->capf ? decl->capf * 2 : 8; decl->fields = realloc(decl->fields, (size_t)decl->capf * sizeof(*decl->fields)); }
+            decl->fields[decl->nfields++] = f;
+            pthread_mutex_unlock(&g_lock);
+            return f;
+        }
+        if (!create) return NULL;
+    }
     pthread_mutex_lock(&g_lock);
     for (int i = 0; i < cls->nfields; i++) {
         tl_jfield *f = cls->fields[i];
@@ -371,6 +395,8 @@ void tl_jni_throw(const char *cls, const char *msg)
     tl_log_line("jni: throwing %s: %s", cls, msg ? msg : "");
 }
 bool tl_jni_pending(void) { return t_pending != NULL; }
+jobj *tl_jni_pending_object(void) { return t_pending; }
+void tl_jni_set_pending(jobj *e) { t_pending = e; }
 void tl_jni_clear(void) { t_pending = NULL; }
 
 /* --------------------------------------------------------------- calling */
@@ -379,6 +405,11 @@ static jvalue g_zero;
 
 static jvalue invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *args)
 {
+    if (m->dvm && tl_dvm) {
+        jvalue r = tl_dvm->invoke(m->dvm, self, nonvirtual, args);
+        if (m->retk == 'L' && r.l && ((jobj *)r.l)->kind != TL_K_CLASS) tl_jni_ref(r.l);
+        return r;
+    }
     tl_jcall c = { .self = self, .cls = m->cls, .args = args };
     c.ret.j = 0;
     tl_jhle_fn fn = m->fn;
@@ -473,6 +504,14 @@ static jo jni_FindClass(void *env, const char *name)
                   || !strncmp(name, "org/json/", 9) || !strncmp(name, "org/xml/", 8) || !strncmp(name, "org/w3c/", 8);
     tl_jclass *known;
     pthread_mutex_lock(&g_lock); known = find_class_locked(name); pthread_mutex_unlock(&g_lock);
+    if (tl_dvm && !known && !array) {
+        /* the Java runtime is up: a class exists when some DEX on its class paths defines it */
+        tl_jclass *c = tl_jni_class(name);
+        if (c->dvm || framework) return c->mirror;
+        char msg[200]; snprintf(msg, sizeof(msg), "%s", name);
+        tl_jni_throw("java/lang/NoClassDefFoundError", msg);
+        return NULL;
+    }
     if (array || framework || known || tl_dexidx_has_class(name)) {
         TRACE("jni: FindClass(%s)", name);
         return tl_jni_class(name)->mirror;
@@ -990,4 +1029,27 @@ void tl_jni_init(void)
 {
     pthread_once(&g_init_once, build_tables);
     g_env_fns[228] = (const void *)jni_ExceptionCheck;
+}
+
+/* ------------------------------------------------------------- for the interpreter */
+
+tl_jmeth *tl_jni_method(tl_jclass *cls, const char *name, const char *sig, bool is_static) { return lookup_method(cls, name, sig, is_static); }
+jvalue tl_jni_invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *args) { return invoke(self, m, nonvirtual, args); }
+tl_jfield *tl_jni_field(tl_jclass *cls, const char *name, const char *sig, bool is_static) { return lookup_field(cls, name, sig, is_static, true); }
+jvalue *tl_jni_field_slot(jobj *o, tl_jfield *f) { return field_slot(o, f); }
+void tl_jni_each_declared(void (*fn)(tl_jclass *jc))
+{
+    tl_jclass *list[8192]; int n = 0;
+    pthread_mutex_lock(&g_lock);
+    for (int b = 0; b < NBUCKETS; b++) for (tl_jclass *c = g_classes[b]; c && n < 8192; c = c->next) list[n++] = c;
+    pthread_mutex_unlock(&g_lock);
+    for (int i = 0; i < n; i++) fn(list[i]);
+}
+
+tl_jclass *tl_jni_find_declared(const char *name)
+{
+    pthread_mutex_lock(&g_lock);
+    tl_jclass *c = find_class_locked(name);
+    pthread_mutex_unlock(&g_lock);
+    return c;
 }

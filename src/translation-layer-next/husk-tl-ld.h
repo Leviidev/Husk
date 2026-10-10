@@ -59,6 +59,8 @@ int tl_ld_apk_libs(void (*cb)(const char *name, uint64_t size, void *user), void
  * logging an error, because the system is not a library this linker owns.
  */
 tl_lib *tl_ld_load(const char *name);
+/* Another folder to look for libraries in, by file name, after the APKs. */
+void tl_ld_add_search_dir(const char *dir);
 
 /* Run constructors for a library and anything it needs that has not run. */
 bool tl_ld_init(tl_lib *lib);

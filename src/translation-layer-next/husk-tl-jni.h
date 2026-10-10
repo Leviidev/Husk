@@ -39,7 +39,7 @@ struct jobj {
     uint8_t kind;
     tl_jclass *cls;
     union {
-        struct { char *utf8; } str;
+        struct { char *utf8; uint16_t *u16; int32_t len16; } str;   /* u16: the UTF-16 form, made when the interpreter first needs it */
         struct { void *data; uint32_t len; uint8_t esz; char etype; } arr;
         struct { jobj **v; uint32_t len; } oarr;
         struct { tl_jclass *jc; } klass;
