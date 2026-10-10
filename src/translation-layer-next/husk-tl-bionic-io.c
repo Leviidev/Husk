@@ -264,8 +264,28 @@ static pthread_mutex_t g_jar_lock = PTHREAD_MUTEX_INITIALIZER;
 static tl_zip g_jar_zip;
 static char g_jar_apk[1024];
 
+static bool jar_lookup(const char *p, jar_entry *out);
+/* The native library folder holds an empty stand-in for each library the APKs carry (so File.exists() and findLibrary() find
+ * them); opened or looked at, one is the APK's entry -- Unity copies its symbol file (libil2cpp.usym.so) out of there. */
+static bool lib_standin(const char *p, jar_entry *out)
+{
+    const char *dd = tl_data_dir();
+    size_t dl = dd ? strlen(dd) : 0;
+    if (!dl || strncmp(p, dd, dl) || strncmp(p + dl, "/lib/", 5) || strchr(p + dl + 5, '/')) return false;
+    const char *name = p + dl + 5;
+    size_t nl = strlen(name);
+    if (nl < 4 || strcmp(name + nl - 3, ".so")) return false;
+    struct stat st;
+    if (stat(p, &st) != 0 || st.st_size != 0) return false;
+    const char *tl_ld_lib_apk(const char *name);
+    const char *apk = tl_ld_lib_apk(name);
+    if (!apk) return false;
+    char jar[1400]; snprintf(jar, sizeof(jar), "jar:file://%s!/lib/arm64-v8a/%s", apk, name);
+    return jar_lookup(jar, out) && out->found;
+}
 static bool jar_lookup(const char *p, jar_entry *out)
 {
+    if (p && p[0] == '/' && lib_standin(p, out)) return true;
     memset(out, 0, sizeof(*out));
     const char *q = p ? strstr(p, "jar:file:") : NULL;
     if (!q) return false;

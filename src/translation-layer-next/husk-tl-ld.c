@@ -169,6 +169,15 @@ int tl_ld_apk_libs(void (*cb)(const char *name, uint64_t size, void *user), void
     return n;
 }
 
+/* The APK (base or split) whose lib/arm64-v8a/ carries a library, or NULL. */
+const char *tl_ld_lib_apk(const char *name)
+{
+    char entry[200];
+    snprintf(entry, sizeof(entry), "lib/arm64-v8a/%s", name);
+    for (int i = 0; i < G.napks; i++) if (tl_zip_find(&G.apks[i], entry)) return g_apk_paths[i];
+    return NULL;
+}
+
 bool tl_ld_has_lib(const char *name)
 {
     char path[160];

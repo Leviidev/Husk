@@ -459,6 +459,7 @@ static jvalue invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *arg
 {
     if (m->dvm && tl_dvm) {
         jvalue r = tl_dvm->invoke(m->dvm, self, nonvirtual, args);
+        if (g_trace >= 3) tl_log_line("jni: java call %s.%s%s on %p -> %#llx%s", m->cls->name, m->name, m->sig, (void *)self, (unsigned long long)r.j, t_pending ? " (threw)" : "");
         if (m->retk == 'L' && r.l && ((jobj *)r.l)->kind != TL_K_CLASS) tl_jni_ref(r.l);
         return r;
     }
@@ -576,10 +577,12 @@ static jo jni_FindClass(void *env, const char *name)
 
 static jo jni_GetSuperclass(void *env, jo cls) { (void)env; return cls && cls->kind == TL_K_CLASS && cls->klass.jc->super ? cls->klass.jc->super->mirror : NULL; }
 
+bool dvm_assignable(tl_jclass *sub, tl_jclass *sup);
+/* superclasses, interfaces (the interpreter knows a class's) and arrays: Unity asks IsInstanceOf(trustManager, X509TrustManager) */
 static bool assignable(tl_jclass *sub, tl_jclass *sup)
 {
     for (tl_jclass *c = sub; c; c = c->super) if (c == sup) return true;
-    return false;
+    return sub && sup && dvm_assignable(sub, sup);
 }
 static uint8_t jni_IsAssignableFrom(void *env, jo a, jo b) { (void)env; return (a && b && a->kind == TL_K_CLASS && b->kind == TL_K_CLASS) ? assignable(a->klass.jc, b->klass.jc) : 0; }
 static uint8_t jni_IsInstanceOf(void *env, jo obj, jo cls)
@@ -593,7 +596,13 @@ static uint8_t jni_IsInstanceOf(void *env, jo obj, jo cls)
 
 static int32_t jni_Throw(void *env, jo t) { (void)env; t_pending = t; return 0; }
 static int32_t jni_ThrowNew(void *env, jo cls, const char *msg) { (void)env; tl_jni_throw(cls && cls->kind == TL_K_CLASS ? cls->klass.jc->name : "java/lang/Error", msg); return 0; }
-static jo jni_ExceptionOccurred(void *env) { (void)env; return tl_jni_ref(t_pending); }
+static void jni_ExceptionDescribe(void *env);
+static jo jni_ExceptionOccurred(void *env)
+{
+    static __thread jobj *t_seen;
+    if (t_pending && g_trace >= 1 && t_pending != t_seen) { t_seen = t_pending; jni_ExceptionDescribe(env); }
+    return tl_jni_ref(t_pending);
+}
 static void jni_ExceptionDescribe(void *env)
 {
     (void)env;
@@ -601,7 +610,7 @@ static void jni_ExceptionDescribe(void *env)
     jvalue m = tl_jni_get_field(t_pending, "detailMessage", "Ljava/lang/String;");
     tl_log_line("jni: pending exception %s: %s", t_pending->cls->name, tl_jni_string(m.l) ? tl_jni_string(m.l) : "");
 }
-static void jni_ExceptionClear(void *env) { (void)env; t_pending = NULL; }
+static void jni_ExceptionClear(void *env) { if (t_pending && g_trace >= 2) { tl_log_line("jni: ExceptionClear of:"); jni_ExceptionDescribe(env); } t_pending = NULL; }
 static void jni_FatalError(void *env, const char *msg) { (void)env; tl_log_line("jni: FatalError: %s", msg); abort(); }
 static int32_t jni_PushLocalFrame(void *env, int32_t cap) { (void)env; (void)cap; return 0; }
 static jo jni_PopLocalFrame(void *env, jo r) { (void)env; return r; }

@@ -156,7 +156,9 @@ static EGLBoolean w_eglChooseConfig(EGLDisplay d, const EGLint *at, EGLConfig *c
     if (ok) {
         EGLConfig all[512];
         for (int i = 0; i < k; i++) all[total++] = tmp[i];
-        for (int i = 0; i < k && !alpha_wanted && total < 512; i++) {
+        static int no_alias = -1;
+        if (no_alias < 0) no_alias = getenv("TL_EGL_NO_ALIAS") ? 1 : 0;
+        for (int i = 0; i < k && !alpha_wanted && !no_alias && total < 512; i++) {
             EGLint a = 0, rr = 0, g = 0, b = 0;
             a_eglGetConfigAttrib(d, tmp[i], 0x3021, &a); a_eglGetConfigAttrib(d, tmp[i], 0x3024, &rr);
             a_eglGetConfigAttrib(d, tmp[i], 0x3023, &g); a_eglGetConfigAttrib(d, tmp[i], 0x3022, &b);
