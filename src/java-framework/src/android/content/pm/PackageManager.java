@@ -47,6 +47,16 @@ public class PackageManager {
     private static ServiceInfo service(husk.Manifest.Component c) { ServiceInfo s = new ServiceInfo(); s.name = c.name; s.packageName = husk.Native.packageName(); s.exported = c.exported; s.enabled = c.enabled; s.metaData = c.metaData; s.permission = c.permission; return s; }
     private static ProviderInfo provider(husk.Manifest.Component c) { ProviderInfo p = new ProviderInfo(); p.name = c.name; p.packageName = husk.Native.packageName(); p.authority = c.authorities; p.exported = c.exported; p.metaData = c.metaData; return p; }
     public PackageInfo getPackageInfo(String pkg, int flags) throws NameNotFoundException {
+        if ("android".equals(pkg)) {
+            // the platform itself (okhttp, Play libraries and WebView checks read its version)
+            PackageInfo p = new PackageInfo();
+            p.packageName = "android"; p.versionCode = android.os.Build.VERSION.SDK_INT; p.versionName = android.os.Build.VERSION.RELEASE;
+            ApplicationInfo a = new ApplicationInfo();
+            a.packageName = a.processName = "android"; a.flags = ApplicationInfo.FLAG_SYSTEM; a.targetSdkVersion = a.minSdkVersion = android.os.Build.VERSION.SDK_INT; a.enabled = true;
+            p.applicationInfo = a;
+            p.signatures = new Signature[] { new Signature("") };
+            return p;
+        }
         if (!mine(pkg)) throw new NameNotFoundException(pkg);
         husk.Manifest.read();
         PackageInfo p = new PackageInfo();

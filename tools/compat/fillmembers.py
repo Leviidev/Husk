@@ -105,7 +105,7 @@ def strip_section(text, nested):
 
 # the platform: framework.jar and the mainline modules' framework jars (MediaStore, connectivity, Wi-Fi, Bluetooth...)
 import glob as _glob
-PLATFORM = ','.join(['/Volumes/GTAV/husk2/aosp/fw/framework.jar'] + sorted(_glob.glob('/Volumes/GTAV/husk2/modules/jars/framework-*.jar')) + ['/Volumes/GTAV/husk2/modules/jars/android.net.ipsec.ike.jar'])
+PLATFORM = ','.join(['/Volumes/GTAV/husk2/aosp/fw/framework.jar'] + sorted(_glob.glob('/Volumes/GTAV/husk2/modules/jars/framework-*.jar')) + ['/Volumes/GTAV/husk2/modules/jars/android.net.ipsec.ike.jar', '/Volumes/GTAV/husk2/modules/jars/updatable-media.jar'])
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]

@@ -141,26 +141,8 @@ public final class MediaCodec {
         public int getVendorError() { return (huskProps.get("VendorError") instanceof Integer ? (Integer) huskProps.get("VendorError") : 0); }
         CryptoException() { this((int) 0, (java.lang.String) null); }
     }
-    public static final class CryptoInfo {
-        private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public byte[] iv;
-        public byte[] key;
-        public int mode;
-        public int[] numBytesOfClearData;
-        public int[] numBytesOfEncryptedData;
-        public int numSubSamples;
-        public CryptoInfo() {}
-        public android.media.MediaCodec.CryptoInfo.Pattern getPattern() { return (android.media.MediaCodec.CryptoInfo.Pattern) huskProps.get("Pattern"); }
-        public void set(int p0, int[] p1, int[] p2, byte[] p3, byte[] p4, int p5) {}
-        public void setPattern(android.media.MediaCodec.CryptoInfo.Pattern p0) { huskProps.put("Pattern", p0); }
-        public static final class Pattern {
-            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-            public Pattern(int p0, int p1) {}
-            public int getEncryptBlocks() { return (huskProps.get("EncryptBlocks") instanceof Integer ? (Integer) huskProps.get("EncryptBlocks") : 0); }
-            public int getSkipBlocks() { return (huskProps.get("SkipBlocks") instanceof Integer ? (Integer) huskProps.get("SkipBlocks") : 0); }
-            public void set(int p0, int p1) {}
-            Pattern() { this((int) 0, (int) 0); }
-        }
+    public static abstract class CryptoInfo {
+        protected CryptoInfo() {}
     }
     public static final class GlobalResourceInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

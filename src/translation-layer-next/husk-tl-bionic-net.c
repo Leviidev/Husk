@@ -399,6 +399,13 @@ static int b_getaddrinfo(const char *node, const char *service, const guest_addr
     return 0;
 }
 
+/* bionic's own: getaddrinfo on a network (netid/mark are Android's network selection; there is one network here) */
+static int b_android_getaddrinfofornet(const char *node, const char *service, const guest_addrinfo *gh, unsigned netid, unsigned mark, guest_addrinfo **res)
+{
+    (void)netid; (void)mark;
+    return b_getaddrinfo(node, service, gh, res);
+}
+
 static void b_freeaddrinfo(guest_addrinfo *a)
 {
     while (a) { guest_addrinfo *n = a->ai_next; free(a); a = n; }
@@ -490,7 +497,7 @@ const tl_bionic_entry tl_tab_net[] = {
     TL_WRAP("recv", b_recv), TL_WRAP("sendto", b_sendto), TL_WRAP("recvfrom", b_recvfrom), TL_WRAP("__recvfrom_chk", b___recvfrom_chk), TL_WRAP("sendmsg", b_sendmsg),
     TL_WRAP("recvmsg", b_recvmsg), TL_WRAP("shutdown", b_shutdown), TL_WRAP("getsockname", b_getsockname),
     TL_WRAP("getpeername", b_getpeername), TL_WRAP("setsockopt", b_setsockopt), TL_WRAP("getsockopt", b_getsockopt),
-    TL_WRAP("getaddrinfo", b_getaddrinfo), TL_WRAP("freeaddrinfo", b_freeaddrinfo), TL_WRAP("gai_strerror", b_gai_strerror),
+    TL_WRAP("getaddrinfo", b_getaddrinfo), TL_WRAP("android_getaddrinfofornet", b_android_getaddrinfofornet), TL_WRAP("freeaddrinfo", b_freeaddrinfo), TL_WRAP("gai_strerror", b_gai_strerror),
     TL_WRAP("getnameinfo", b_getnameinfo), TL_WRAP("gethostbyname", b_gethostbyname), TL_WRAP("gethostbyaddr", b_gethostbyaddr),
     TL_WRAP("if_nametoindex", b_if_nametoindex), TL_WRAP("inet_pton", b_inet_pton), TL_WRAP("inet_ntop", b_inet_ntop),
     TL_DIRECT(inet_addr), TL_DIRECT(inet_aton), TL_DIRECT(inet_ntoa), TL_WRAP("htons", b_htons), TL_WRAP("ntohs", b_htons), TL_WRAP("htonl", b_htonl), TL_WRAP("ntohl", b_htonl),

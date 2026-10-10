@@ -1806,3 +1806,5 @@ android.provider.CloudMediaProviderContract
 android.provider.MediaStore
 android.telephony.gsm.SmsManager
 android.telephony.gsm.SmsMessage
+android.media.MediaFormat
+android.media.session.MediaSessionManager

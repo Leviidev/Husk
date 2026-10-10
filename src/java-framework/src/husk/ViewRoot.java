@@ -241,6 +241,7 @@ public final class ViewRoot implements ViewParent {
         sScreen.eraseColor(0);
         int gen = sScreen.getGenerationId();
         Paint dim = null;
+        boolean drew = false;
         for (ViewRoot r : roots) {
             if (r.mRemoved || r.mView.getVisibility() != View.VISIBLE) continue;
             if ((r.mLp.flags & WindowManager.LayoutParams.FLAG_DIM_BEHIND) != 0 && r.mLp.dimAmount > 0) {
@@ -252,6 +253,7 @@ public final class ViewRoot implements ViewParent {
             sCanvas.translate(r.mX, r.mY);
             sCanvas.clipRect(0, 0, r.mW, r.mH);
             if (r.mLp.alpha < 1f) sCanvas.saveLayerAlpha(0, 0, r.mW, r.mH, Math.round(r.mLp.alpha * 255));
+            drew = true;
             try {
                 r.mView.draw(sCanvas);
             } catch (RuntimeException e) {
@@ -259,7 +261,8 @@ public final class ViewRoot implements ViewParent {
             }
             sCanvas.restoreToCount(save);
         }
-        boolean any = sScreen.getGenerationId() != gen;
+        // a window drawn counts even when its drawing left the generation alone (the screen must lose a closed dialog)
+        boolean any = drew || sScreen.getGenerationId() != gen;
         if (any || sPresentedAny) Gfx.present(any ? sScreen.huskNative() : 0);
         sPresentedAny = any;
     }

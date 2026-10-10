@@ -1036,12 +1036,14 @@ static void desc_of(jobj *mirror, char *out, size_t n)
 
 static bool params_match(const dvm_method *m, jobj *types)
 {
-    char want[256] = "("; size_t k = 1;
+    char want[8192] = "("; size_t k = 1;
     uint32_t n = types ? types->oarr.len : 0;
     for (uint32_t i = 0; i < n; i++) {
-        char d[200]; if (!types->oarr.v[i]) return false;
+        char d[400]; if (!types->oarr.v[i]) return false;
         desc_of(types->oarr.v[i], d, sizeof(d));
-        k += (size_t)snprintf(want + k, sizeof(want) - k, "%s", d);
+        size_t dl = strlen(d);
+        if (k + dl + 2 >= sizeof(want)) return false;
+        memcpy(want + k, d, dl); k += dl; want[k] = 0;
     }
     snprintf(want + k, sizeof(want) - k, ")");
     return !strncmp(m->sig, want, strlen(want));

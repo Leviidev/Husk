@@ -6,7 +6,7 @@
  *
  * Environment: TL_JNI_TRACE=1|2, TL_VERBOSE=0..2, TL_DATA=<dir> (kept between runs), TL_PACKAGE, TL_AUDIO=1,
  * TL_CTL=<file> (lines "tap X Y", "hold X Y MS", "swipe X1 Y1 X2 Y2 MS", "wait MS", "shot PNG" (+ PNG.web.png of a web view), "js CODE", "key CODE", "pause",
- * "resume", "quit"), TL_FRAMES=<n> (save every nth frame; default latest only).
+ * "resume", "quit"), TL_FRAMES=<n> (save every nth frame; default every frame, latest only).
  */
 #include <mach/mach.h>
 #include <pthread.h>
@@ -160,6 +160,7 @@ static void *run(void *p)
     if (!tl_dvm_start(boot, nb)) { fprintf(stderr, "dvm start failed\n"); _exit(1); }
     { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.i18n/lib64", art); tl_ld_add_search_dir(d); }
     { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/lib64", art); tl_ld_add_search_dir(d); }
+    { void tl_set_cacerts_dir(const char *); static char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/cacerts", art); tl_set_cacerts_dir(d); }   /* the trusted roots, as the app ships them */
     { char d[800]; snprintf(d, sizeof(d), "%s/lib64", art); tl_dvm_load_natives(d); }
     char tmp[600] = "/tmp/husk-javaapp-XXXXXX";
     if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); } else mkdtemp(tmp);
@@ -171,7 +172,7 @@ static void *run(void *p)
     int w = argc > 4 ? atoi(argv[3]) : 804, h = argc > 4 ? atoi(argv[4]) : 1748;
     tl_javaapp_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
                               .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
-                              .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -6,
+                              .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -1,
                               .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",
                               .show_keyboard = h_keyboard, .set_clipboard = h_set_clip, .get_clipboard = h_get_clip, .share = h_share, .set_orientation = h_orientation };
     if (getenv("TL_INSETS")) sscanf(getenv("TL_INSETS"), "%d,%d,%d,%d", &cfg.insets[0], &cfg.insets[1], &cfg.insets[2], &cfg.insets[3]);

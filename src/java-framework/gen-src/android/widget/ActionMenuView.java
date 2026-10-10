@@ -47,10 +47,10 @@ public class ActionMenuView extends android.widget.LinearLayout {
         public boolean isOverflowButton;
         public boolean preventEdgeOffset;
         public LayoutParams(int p0, int p1) { super(p0, p1); }
-        public LayoutParams(int p0, int p1, boolean p2) { super((android.view.ViewGroup.LayoutParams) null); }
+        public LayoutParams(int p0, int p1, boolean p2) { super((android.widget.LinearLayout.LayoutParams) null); }
         public LayoutParams(android.content.Context p0, android.util.AttributeSet p1) { super(p0, p1); }
         public LayoutParams(android.view.ViewGroup.LayoutParams p0) { super(p0); }
-        public LayoutParams(android.widget.ActionMenuView.LayoutParams p0) { super((android.view.ViewGroup.LayoutParams) null); }
+        public LayoutParams(android.widget.ActionMenuView.LayoutParams p0) { super((android.widget.LinearLayout.LayoutParams) null); }
         protected void encodeProperties(android.view.ViewHierarchyEncoder p0) {}
         LayoutParams() { this((android.view.ViewGroup.LayoutParams) null); }
     }

@@ -76,6 +76,7 @@ static void *run(void *p)
     for (int i = 0; i < 5; i++) { snprintf(paths[nb], sizeof(paths[nb]), "%s/javalib/%s.jar", art, jars[i]); boot[nb] = paths[nb]; nb++; }
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.i18n/javalib/core-icu4j.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.conscrypt/javalib/conscrypt.jar", art); boot[nb] = paths[nb]; nb++;
+    if (getenv("TL_FRAMEWORK")) { snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK")); boot[nb] = paths[nb]; nb++; }
     snprintf(lib, sizeof(lib), "%s/lib64", art);
     /* what ICU and libcore read to find their data: the APEX roots */
     { char v[700];
@@ -86,6 +87,8 @@ static void *run(void *p)
     tl_jni_init();
     if (!tl_dvm_start(boot, nb)) { j->rc = 1; return NULL; }
     { char i18n[700]; snprintf(i18n, sizeof(i18n), "%s/../com.android.i18n/lib64", art); tl_ld_add_search_dir(i18n); }
+    { char d[700]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/lib64", art); tl_ld_add_search_dir(d); }
+    { void tl_set_cacerts_dir(const char *); static char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/cacerts", art); tl_set_cacerts_dir(d); }   /* the trusted roots, as the app ships them */
     if (!getenv("TL_NO_NATIVES") && !tl_dvm_load_natives(lib)) fprintf(stderr, "java-test: libcore's natives did not all load\n");
     if (!tl_dvm_add_apk(argv[1])) { j->rc = 1; return NULL; }
     const char *sigs[] = { argv[4], "()Ljava/lang/String;", "()I", "()V", "([Ljava/lang/String;)V" };
