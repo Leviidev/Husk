@@ -50,7 +50,7 @@ public class SearchView extends LinearLayout {
         setIconified(true);
     }
     private void submit() { String q = mQuery.getText().toString(); if (mOnQuery == null || !mOnQuery.onQueryTextSubmit(q)) { android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE); if (imm != null) imm.hideSoftInputFromWindow(getWindowToken(), 0); } }
-    public void setSearchableInfo(Object info) {}
+    public void setSearchableInfo(android.app.SearchableInfo info) {}
     public void setImeOptions(int o) { mQuery.setImeOptions(o); } public int getImeOptions() { return mQuery.getImeOptions(); }
     public void setInputType(int t) { mQuery.setInputType(t); } public int getInputType() { return mQuery.getInputType(); }
     public void setOnQueryTextListener(OnQueryTextListener l) { mOnQuery = l; }

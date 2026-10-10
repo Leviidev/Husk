@@ -35,7 +35,7 @@ public class StaticLayout extends Layout {
         public Builder setIndents(int[] l, int[] r) { return this; }
         public Builder setJustificationMode(int m) { return this; }
         public Builder setUseLineSpacingFromFallbacks(boolean b) { return this; }
-        public Builder setLineBreakConfig(Object c) { return this; }
+        public Builder setLineBreakConfig(android.graphics.text.LineBreakConfig c) { return this; }
         public Builder setUseBoundsForWidth(boolean b) { return this; }
         public Builder setShiftDrawingOffsetForStartOverhang(boolean b) { return this; }
         public Builder setMinimumFontMetrics(Paint.FontMetrics m) { return this; }

@@ -320,6 +320,9 @@ public class GLES20 {
     public static native void glGenTextures(int n, int[] textures, int texturesOffset);
     public static native void glGenTextures(int n, IntBuffer textures);
     public static native void glGetAttachedShaders(int program, int maxcount, int[] count, int countOffset, int[] shaders, int shadersOffset);
+    public static native void glGetAttachedShaders(int program, int maxcount, IntBuffer count, IntBuffer shaders);
+    public static native void glShaderBinary(int n, int[] shaders, int shadersOffset, int binaryformat, Buffer binary, int length);
+    public static native void glShaderBinary(int n, IntBuffer shaders, int binaryformat, Buffer binary, int length);
     public static native int glGetAttribLocation(int program, String name);
     public static native void glGetBooleanv(int pname, boolean[] params, int paramsOffset);
     public static native void glGetBooleanv(int pname, IntBuffer params);

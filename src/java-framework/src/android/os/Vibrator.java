@@ -9,7 +9,7 @@ public class Vibrator {
     public boolean hasVibrator() { return true; }
     public boolean hasAmplitudeControl() { return false; }
     public boolean hasFrequencyControl() { return false; }
-    public boolean areVibrationFeaturesSupported(Object features) { return false; }
+    public boolean areVibrationFeaturesSupported(VibrationEffect effect) { return false; }
     public int areAllEffectsSupported(int... effectIds) { return VIBRATION_EFFECT_SUPPORT_NO; }
     public int[] areEffectsSupported(int... effectIds) { int[] r = new int[effectIds.length]; java.util.Arrays.fill(r, VIBRATION_EFFECT_SUPPORT_NO); return r; }
     public boolean areAllPrimitivesSupported(int... primitiveIds) { return false; }

@@ -36,6 +36,7 @@ public class Notification implements android.os.Parcelable {
     public boolean getAllowSystemGeneratedContextualActions() { return true; } public BubbleMetadata getBubbleMetadata() { return null; } public android.content.LocusId getLocusId() { return null; }
     public int describeContents() { return 0; }
     public static class Action implements android.os.Parcelable {
+        public interface Extender { android.app.Notification.Action.Builder extend(android.app.Notification.Action.Builder b); }
         public int icon; public CharSequence title; public PendingIntent actionIntent;
         public Action(int icon, CharSequence title, PendingIntent intent) { this.icon = icon; this.title = title; actionIntent = intent; }
         public Bundle getExtras() { return new Bundle(); } public Icon getIcon() { return null; } public RemoteInput[] getRemoteInputs() { return null; }
@@ -46,7 +47,7 @@ public class Notification implements android.os.Parcelable {
             public Builder(int icon, CharSequence title, PendingIntent intent) { i = icon; t = title; p = intent; } public Builder(Icon icon, CharSequence title, PendingIntent intent) { this(0, title, intent); } public Builder(Action a) { this(a.icon, a.title, a.actionIntent); }
             public Builder addExtras(Bundle b) { return this; } public Builder addRemoteInput(RemoteInput r) { return this; } public Builder setAllowGeneratedReplies(boolean b) { return this; }
             public Builder setSemanticAction(int a) { return this; } public Builder setContextual(boolean c) { return this; } public Builder setAuthenticationRequired(boolean b) { return this; }
-            public Builder extend(Object e) { return this; } public Bundle getExtras() { return new Bundle(); } public Action build() { return new Action(i, t, p); }
+            public Builder extend(Action.Extender e) { return e != null ? e.extend(this) : this; } public Bundle getExtras() { return new Bundle(); } public Action build() { return new Action(i, t, p); }
         }
     }
     public static final class BubbleMetadata { public static final class Builder { public Builder(PendingIntent p, Icon i) {} public Builder(String s) {} public Builder setDesiredHeight(int h) { return this; } public Builder setAutoExpandBubble(boolean b) { return this; } public Builder setSuppressNotification(boolean b) { return this; } public BubbleMetadata build() { return new BubbleMetadata(); } } }
@@ -61,7 +62,7 @@ public class Notification implements android.os.Parcelable {
         public static final class Message { public Message(CharSequence t, long ts, CharSequence s) {} public Message(CharSequence t, long ts, Person s) {} public Message setData(String m, android.net.Uri u) { return this; } public Bundle getExtras() { return new Bundle(); } }
     }
     public static class DecoratedCustomViewStyle extends Style {}
-    public static class MediaStyle extends Style { public MediaStyle() {} public MediaStyle(Builder b) {} public MediaStyle setShowActionsInCompactView(int... a) { return this; } public MediaStyle setMediaSession(Object t) { return this; } }
+    public static class MediaStyle extends Style { public MediaStyle() {} public MediaStyle(Builder b) {} public MediaStyle setShowActionsInCompactView(int... a) { return this; } public MediaStyle setMediaSession(android.media.session.MediaSession.Token t) { return this; } }
     public static class CallStyle extends Style { public static CallStyle forIncomingCall(Person p, PendingIntent d, PendingIntent a) { return new CallStyle(); } public static CallStyle forOngoingCall(Person p, PendingIntent h) { return new CallStyle(); } public static CallStyle forScreeningCall(Person p, PendingIntent h, PendingIntent a) { return new CallStyle(); } public CallStyle setIsVideo(boolean v) { return this; } public CallStyle setVerificationIcon(Icon i) { return this; } public CallStyle setVerificationText(CharSequence t) { return this; } public CallStyle setAnswerButtonColorHint(int c) { return this; } public CallStyle setDeclineButtonColorHint(int c) { return this; } }
     public static class Builder {
         private final Notification n = new Notification();
@@ -81,10 +82,14 @@ public class Notification implements android.os.Parcelable {
         public Builder setGroup(String g) { return this; } public Builder setGroupSummary(boolean s) { return this; } public Builder setSortKey(String k) { return this; } public Builder addExtras(Bundle b) { n.extras.putAll(b); return this; }
         public Builder setExtras(Bundle b) { n.extras = b; return this; } public Bundle getExtras() { return n.extras; } public Builder addAction(int i, CharSequence t, PendingIntent p) { return this; } public Builder addAction(Action a) { return this; }
         public Builder setActions(Action... a) { return this; } public Builder setStyle(Style s) { return this; } public Builder setVisibility(int v) { return this; } public Builder setPublicVersion(Notification p) { return this; }
-        public Builder extend(Object e) { return this; } public Builder setColor(int c) { return this; } public Builder setChannelId(String c) { return this; } public Builder setTimeoutAfter(long t) { return this; }
+        public Builder extend(Extender e) { return e != null ? e.extend(this) : this; } public Builder setColor(int c) { return this; } public Builder setChannelId(String c) { return this; } public Builder setTimeoutAfter(long t) { return this; }
         public Builder setShortcutId(String s) { return this; } public Builder setLocusId(android.content.LocusId l) { return this; } public Builder setBadgeIconType(int t) { return this; } public Builder setGroupAlertBehavior(int b) { return this; }
         public Builder setBubbleMetadata(BubbleMetadata d) { return this; } public Builder setAllowSystemGeneratedContextualActions(boolean b) { return this; } public Builder setForegroundServiceBehavior(int b) { return this; }
         public Builder setRemoteInputHistory(CharSequence[] h) { return this; } public Builder setSettingsText(CharSequence t) { return this; } public Builder setFlag(int m, boolean v) { return this; }
         public Notification build() { return n; } @Deprecated public Notification getNotification() { return n; }
+    }
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public interface Extender {
+        android.app.Notification.Builder extend(android.app.Notification.Builder p0);
     }
 }

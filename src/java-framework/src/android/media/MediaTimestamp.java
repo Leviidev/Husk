@@ -1,0 +1,2 @@
+package android.media;
+public final class MediaTimestamp { public static final MediaTimestamp TIMESTAMP_UNKNOWN = new MediaTimestamp(-1, -1, 0); private final long mMedia, mNano; private final float mRate; public MediaTimestamp(long media, long nano, float rate) { mMedia = media; mNano = nano; mRate = rate; } public long getAnchorMediaTimeUs() { return mMedia; } public long getAnchorSystemNanoTime() { return mNano; } public float getMediaClockRate() { return mRate; } }

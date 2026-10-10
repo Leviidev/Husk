@@ -579,6 +579,33 @@ static bool G_glGetAttachedShaders_0(jobj *self, const jvalue *a, jvalue *ret)
     f(a[0].i, a[1].i, gl_array(a[2].l, a[3].i), gl_array(a[4].l, a[5].i));
     return true;
 }
+static bool G_glGetAttachedShaders_1(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self; (void)a; (void)ret;
+    static void (*f)(int32_t, int32_t, void *, void *);
+    if (!f) f = (void (*)(int32_t, int32_t, void *, void *))gl_fn("glGetAttachedShaders");
+    if (!f) return true;
+    f(a[0].i, a[1].i, gl_buffer(a[2].l), gl_buffer(a[3].l));
+    return true;
+}
+static bool G_glShaderBinary_0(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self; (void)a; (void)ret;
+    static void (*f)(int32_t, void *, int32_t, void *, int32_t);
+    if (!f) f = (void (*)(int32_t, void *, int32_t, void *, int32_t))gl_fn("glShaderBinary");
+    if (!f) return true;
+    f(a[0].i, gl_array(a[1].l, a[2].i), a[3].i, gl_buffer(a[4].l), a[5].i);
+    return true;
+}
+static bool G_glShaderBinary_1(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self; (void)a; (void)ret;
+    static void (*f)(int32_t, void *, int32_t, void *, int32_t);
+    if (!f) f = (void (*)(int32_t, void *, int32_t, void *, int32_t))gl_fn("glShaderBinary");
+    if (!f) return true;
+    f(a[0].i, gl_buffer(a[1].l), a[2].i, gl_buffer(a[3].l), a[4].i);
+    return true;
+}
 static bool G_glGetAttribLocation_0(jobj *self, const jvalue *a, jvalue *ret)
 {
     (void)self; (void)a; (void)ret;
@@ -1646,6 +1673,9 @@ const gl_native k_gles20[] = {
     { "glGenTextures", "(I[II)V", G_glGenTextures_0 },
     { "glGenTextures", "(ILjava/nio/IntBuffer;)V", G_glGenTextures_1 },
     { "glGetAttachedShaders", "(II[II[II)V", G_glGetAttachedShaders_0 },
+    { "glGetAttachedShaders", "(IILjava/nio/IntBuffer;Ljava/nio/IntBuffer;)V", G_glGetAttachedShaders_1 },
+    { "glShaderBinary", "(I[IIILjava/nio/Buffer;I)V", G_glShaderBinary_0 },
+    { "glShaderBinary", "(ILjava/nio/IntBuffer;ILjava/nio/Buffer;I)V", G_glShaderBinary_1 },
     { "glGetAttribLocation", "(ILjava/lang/String;)I", G_glGetAttribLocation_0 },
     { "glGetBooleanv", "(I[ZI)V", G_glGetBooleanv_0 },
     { "glGetBooleanv", "(ILjava/nio/IntBuffer;)V", G_glGetBooleanv_1 },

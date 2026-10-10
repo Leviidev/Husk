@@ -16,9 +16,31 @@ public final class InputDevice {
     public boolean isExternal() { return false; }
     public int getVendorId() { return 0; }
     public int getProductId() { return 0; }
-    public java.util.List<Object> getMotionRanges() { return new java.util.ArrayList<>(); }
-    public Object getMotionRange(int axis) { return null; }
+    /** The touch screen's ranges (the screen's pixels), as a phone's touch screen reports them. */
+    public java.util.List<MotionRange> getMotionRanges() { java.util.ArrayList<MotionRange> l = new java.util.ArrayList<>(); MotionRange x = getMotionRange(MotionEvent.AXIS_X), y = getMotionRange(MotionEvent.AXIS_Y); if (x != null) l.add(x); if (y != null) l.add(y); return l; }
+    public MotionRange getMotionRange(int axis) { return getMotionRange(axis, SOURCE_TOUCHSCREEN); }
+    public MotionRange getMotionRange(int axis, int source) {
+        if ((getSources() & source) != source || (source & SOURCE_TOUCHSCREEN) != SOURCE_TOUCHSCREEN) return null;
+        if (axis == MotionEvent.AXIS_X) return new MotionRange(axis, source, 0, husk.Native.screenWidth() - 1);
+        if (axis == MotionEvent.AXIS_Y) return new MotionRange(axis, source, 0, husk.Native.screenHeight() - 1);
+        if (axis == MotionEvent.AXIS_PRESSURE || axis == MotionEvent.AXIS_SIZE) return new MotionRange(axis, source, 0, 1);
+        return null;
+    }
     public boolean supportsSource(int s) { return (s & SOURCE_TOUCHSCREEN) == s; }
     public boolean[] hasKeys(int... keys) { return new boolean[keys.length]; }
     public android.os.Vibrator getVibrator() { return new android.os.Vibrator(); }
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public static final class MotionRange {
+        private final int mAxis, mSource; private final float mMin, mMax;
+        MotionRange(int axis, int source, float min, float max) { mAxis = axis; mSource = source; mMin = min; mMax = max; }
+        public int getAxis() { return mAxis; }
+        public int getSource() { return mSource; }
+        public boolean isFromSource(int source) { return (mSource & source) == source; }
+        public float getMin() { return mMin; }
+        public float getMax() { return mMax; }
+        public float getRange() { return mMax - mMin; }
+        public float getFlat() { return 0f; }
+        public float getFuzz() { return 0f; }
+        public float getResolution() { return 0f; }
+    }
 }

@@ -52,7 +52,7 @@ public class SurfaceView extends View {
     public void setZOrderMediaOverlay(boolean o) {}
     public void setSecure(boolean s) {}
     public SurfaceControl getSurfaceControl() { return new SurfaceControl(); }
-    public void setChildSurfacePackage(Object p) {}
+    public void setChildSurfacePackage(SurfaceControlViewHost.SurfacePackage p) {}
     public android.os.IBinder getHostToken() { return null; }
     @Override protected void onMeasure(int ws, int hs) {
         int w = mFixed ? resolveSizeAndState(mFixedW, ws, 0) : getDefaultSize(0, ws);

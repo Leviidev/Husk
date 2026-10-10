@@ -133,8 +133,13 @@ static bool dex_add(const uint8_t *b, size_t size, const char *label)
 }
 
 /* Every classes*.dex in a jar/APK, or a plain .dex file. The data is kept for the life of the process. */
+/* Every jar and APK on the class path, for VMClassLoader.getBootClassPathEntries: libcore serves classpath resources
+   (Class.getResourceAsStream) from these, as Android's boot class loader does from its jars. */
+static char *g_cp[64]; static int g_ncp;
+int tl_dvm_class_path(const char **out, int max) { int n = g_ncp < max ? g_ncp : max; for (int i = 0; i < n; i++) out[i] = g_cp[i]; return n; }
 static bool open_path(const char *path)
 {
+    { size_t pl = strlen(path); if (pl > 4 && strcmp(path + pl - 4, ".dex") && g_ncp < 64) { bool dup = false; for (int i = 0; i < g_ncp && !dup; i++) dup = !strcmp(g_cp[i], path); if (!dup) g_cp[g_ncp++] = strdup(path); } }
     size_t l = strlen(path);
     if (l > 4 && !strcmp(path + l - 4, ".dex")) {
         FILE *f = fopen(path, "rb");
@@ -750,12 +755,61 @@ static int arg_words(const dvm_method *m)
 
 /* The interpreter's call stack, per thread: what Reflection.getCallerClass and stack traces read. */
 _Thread_local dvm_method *t_frames[8192];
+_Thread_local uint32_t t_pcs[8192];             /* each frame's pc at its last call out: the line a stack trace shows */
 _Thread_local int t_depth;
+
+/* The source line of a pc in a method, from its debug info; -1 without one. */
+int dvm_line_of(dvm_method *m, uint32_t pc)
+{
+    if (!m || !m->code || !m->cls->dex) return -1;
+    const dvm_dex *d = m->cls->dex;
+    uint32_t dbg = rd32(m->code + 8);
+    if (!dbg || dbg >= d->size) return -1;
+    const uint8_t *p = d->b + dbg;
+    int32_t line = (int32_t)uleb(&p);
+    uint32_t np = uleb(&p);
+    for (uint32_t i = 0; i < np; i++) uleb(&p);
+    uint32_t addr = 0; int best = line;
+    for (;;) {
+        uint8_t op = *p++;
+        if (op == 0x00) break;                                   /* DBG_END_SEQUENCE */
+        switch (op) {
+        case 0x01: addr += uleb(&p); break;                      /* ADVANCE_PC */
+        case 0x02: line += sleb(&p); break;                      /* ADVANCE_LINE */
+        case 0x03: uleb(&p); uleb(&p); uleb(&p); break;          /* START_LOCAL */
+        case 0x04: uleb(&p); uleb(&p); uleb(&p); uleb(&p); break;/* START_LOCAL_EXTENDED */
+        case 0x05: case 0x06: uleb(&p); break;                   /* END_LOCAL, RESTART_LOCAL */
+        case 0x07: case 0x08: break;                             /* SET_PROLOGUE_END, SET_EPILOGUE_BEGIN */
+        case 0x09: uleb(&p); break;                              /* SET_FILE */
+        default: {
+            int adj = op - 0x0a;
+            addr += (uint32_t)(adj / 15); line += -4 + adj % 15;
+            if (addr > pc) return best;
+            best = line;
+        }
+        }
+    }
+    return best;
+}
+/* The source file of a class (its class_def's source_file_idx), or NULL. */
+const char *dvm_source_file(dvm_class *c)
+{
+    if (!c || !c->dex) return NULL;
+    uint32_t idx = rd32(c->dex->b + c->dex->cls_off + 32 * c->def + 16);
+    return idx == 0xFFFFFFFFu ? NULL : dex_str(c->dex, idx);
+}
+/* This thread's frames, innermost first: method and pc pairs into out (2 per frame); returns how many frames. */
+int dvm_capture_frames(void **out, uint32_t *pcs, int max)
+{
+    int n = 0;
+    for (int i = (t_depth < 8192 ? t_depth : 8192) - 1; i >= 0 && n < max; i--, n++) { out[n] = t_frames[i]; pcs[n] = t_pcs[i]; }
+    return n;
+}
 
 static bool dvm_call_inner(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret);
 bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 {
-    if (t_depth < 8192) t_frames[t_depth] = m;
+    if (t_depth < 8192) { t_frames[t_depth] = m; t_pcs[t_depth] = 0; }
     t_depth++;
     if (t_depth > 8000) { t_depth--; return dvm_throw("java/lang/StackOverflowError", "stack size 8000 frames"); }
     bool ok = dvm_call_inner(m, self, params, ret);
@@ -1469,6 +1523,7 @@ dispatch:;
         NEXT(2);
     }
     case 0x6e: case 0x6f: case 0x70: case 0x71: case 0x72: {      /* invoke-kind */
+        if (t_depth > 0 && t_depth <= 8192) t_pcs[t_depth - 1] = pc;
         uint16_t list = FETCH(2);
         uint16_t argregs[5] = { (uint16_t)(list & 0xF), (uint16_t)((list >> 4) & 0xF), (uint16_t)((list >> 8) & 0xF), (uint16_t)(list >> 12), (uint16_t)A4 };
         result.j = 0;
@@ -1477,6 +1532,7 @@ dispatch:;
         NEXT(3);
     }
     case 0x74: case 0x75: case 0x76: case 0x77: case 0x78: {      /* invoke-kind/range */
+        if (t_depth > 0 && t_depth <= 8192) t_pcs[t_depth - 1] = pc;
         result.j = 0;
         if (!invoke_regs(m, (w & 0xFF) - 0x74, FETCH(1), AA, NULL, FETCH(2), true, regs, &result)) goto exception;
         normalize(((mref *)dex->mcache[FETCH(1)])->shorty[0], &result);

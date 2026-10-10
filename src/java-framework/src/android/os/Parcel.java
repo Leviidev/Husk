@@ -60,7 +60,7 @@ public final class Parcel {
     public <T extends Parcelable> void writeTypedArray(T[] v, int flags) { w(v); }
     @SuppressWarnings("unchecked") public <T> T[] createTypedArray(Parcelable.Creator<T> c) { return (T[]) r(); }
     public void writeParcelableArray(Parcelable[] v, int flags) { w(v); }
-    @SuppressWarnings("unchecked") public <T extends Parcelable> T[] readParcelableArray(ClassLoader l, Class<T> c) { return (T[]) r(); }
+    @SuppressWarnings("unchecked") public <T> T[] readParcelableArray(ClassLoader l, Class<T> c) { return (T[]) r(); }
     public Parcelable[] readParcelableArray(ClassLoader l) { return (Parcelable[]) r(); }
     public void writeParcelableList(List<? extends Parcelable> v, int flags) { w(v == null ? null : new ArrayList<>(v)); }
     @SuppressWarnings("unchecked") public <T extends Parcelable> List<T> readParcelableList(List<T> o, ClassLoader l) { List<T> v = (List<T>) r(); if (v != null) o.addAll(v); return o; }

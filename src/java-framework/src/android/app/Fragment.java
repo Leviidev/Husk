@@ -106,8 +106,8 @@ public class Fragment implements android.content.ComponentCallbacks2, View.OnCre
     public boolean onContextItemSelected(MenuItem i) { return false; }
     public void setEnterSharedElementCallback(SharedElementCallback c) {}
     public void setExitSharedElementCallback(SharedElementCallback c) {}
-    public void setEnterTransition(Object t) {} public void setReturnTransition(Object t) {} public void setExitTransition(Object t) {} public void setReenterTransition(Object t) {}
-    public void setSharedElementEnterTransition(Object t) {} public void setSharedElementReturnTransition(Object t) {} public void postponeEnterTransition() {} public void startPostponedEnterTransition() {}
+    public void setEnterTransition(android.transition.Transition t) {} public void setReturnTransition(android.transition.Transition t) {} public void setExitTransition(android.transition.Transition t) {} public void setReenterTransition(android.transition.Transition t) {}
+    public void setSharedElementEnterTransition(android.transition.Transition t) {} public void setSharedElementReturnTransition(android.transition.Transition t) {} public void postponeEnterTransition() {} public void startPostponedEnterTransition() {}
     public void setAllowEnterTransitionOverlap(boolean b) {} public void setAllowReturnTransitionOverlap(boolean b) {}
     public void dump(String p, java.io.FileDescriptor fd, java.io.PrintWriter w, String[] a) {}
     @Override public String toString() { return getClass().getSimpleName() + "{" + Integer.toHexString(System.identityHashCode(this)) + (mFragmentId != 0 ? " #" + Integer.toHexString(mFragmentId) : "") + (mTag != null ? " " + mTag : "") + "}"; }

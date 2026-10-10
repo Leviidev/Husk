@@ -65,6 +65,6 @@ public abstract class ActionBar {
     public void setHomeActionContentDescription(CharSequence c) {} public void setHomeActionContentDescription(int r) {}
     public void setHideOnContentScrollEnabled(boolean e) {} public boolean isHideOnContentScrollEnabled() { return false; }
     public int getHideOffset() { return 0; } public void setHideOffset(int o) {} public void setElevation(float e) {} public float getElevation() { return 0; }
-    public boolean onMenuKeyEvent(android.view.KeyEvent e) { return false; } public boolean collapseActionView() { return false; } public void invalidateOptionsMenu() {}
+    public boolean onMenuKeyEvent(android.view.KeyEvent e) { return false; } public boolean collapseActionView() { return false; } public boolean invalidateOptionsMenu() { return false; }
     public void setShowHideAnimationEnabled(boolean e) {}
 }

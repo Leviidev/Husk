@@ -206,5 +206,5 @@ public class Canvas {
     public void drawTextOnPath(char[] t, int index, int count, Path path, float h, float v, Paint p) { drawText(t, index, count, h, v, p); }
     public void drawPosText(char[] t, int index, int count, float[] pos, Paint p) { for (int i = 0; i < count; i++) drawText(t, index + i, 1, pos[2 * i], pos[2 * i + 1], p); }
     public void drawPosText(String s, float[] pos, Paint p) { drawPosText(s.toCharArray(), 0, s.length(), pos, p); }
-    public void drawGlyphs(int[] ids, int io, float[] pos, int po, int n, android.graphics.text.Font font, Paint p) {}
+    public void drawGlyphs(int[] ids, int io, float[] pos, int po, int n, android.graphics.fonts.Font font, Paint p) {}
 }

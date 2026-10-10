@@ -10,6 +10,6 @@ public class TelephonyManager {
     public int getCallState() { return CALL_STATE_IDLE; } public int getDataState() { return DATA_DISCONNECTED; } public boolean isNetworkRoaming() { return false; }
     public String getLine1Number() { return null; } public String getDeviceId() { return null; } public String getImei() { return null; } public String getSubscriberId() { return null; }
     public boolean isVoiceCapable() { return false; } public boolean isSmsCapable() { return false; } public boolean hasCarrierPrivileges() { return false; }
-    public int getPhoneCount() { return 0; } public int getActiveModemCount() { return 0; } public void listen(Object l, int events) {}
+    public int getPhoneCount() { return 0; } public int getActiveModemCount() { return 0; } public void listen(PhoneStateListener l, int events) {}
     public TelephonyManager createForSubscriptionId(int id) { return this; }
 }

@@ -145,7 +145,7 @@ public abstract class Layout {
             dest.addRect(x0, getLineTop(l), Math.max(x1, x0 + 1), getLineBottom(l), Path.Direction.CW);
         }
     }
-    public void getSelection(int start, int end, Object consumer) {}
+    public void getSelection(int start, int end, SelectionRectangleConsumer consumer) {}
     public void draw(Canvas c) { draw(c, null, null, 0); }
     public void draw(Canvas c, Path highlight, Paint highlightPaint, int cursorOffsetVertical) {
         drawBackground(c, highlight, highlightPaint, cursorOffsetVertical, 0, getLineCount());
@@ -181,4 +181,8 @@ public abstract class Layout {
     }
     public boolean isSpanned() { return mSpannedText; }
     public final int getLineLeftHusk(int line) { return (int) getLineLeft(line); }
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public interface SelectionRectangleConsumer {
+        void accept(float p0, float p1, float p2, float p3, int p4);
+    }
 }

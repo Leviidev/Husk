@@ -6,5 +6,11 @@ public class AppOpsManager {
     public int noteOpNoThrow(String op, int uid, String pkg) { return MODE_ALLOWED; } public int noteOpNoThrow(String op, int uid, String pkg, String tag, String msg) { return MODE_ALLOWED; }
     public int noteProxyOpNoThrow(String op, String pkg) { return MODE_ALLOWED; } public int checkOp(String op, int uid, String pkg) { return MODE_ALLOWED; }
     public void checkPackage(int uid, String pkg) {} public static String permissionToOp(String p) { return null; }
-    public void startWatchingMode(String op, String pkg, Object cb) {} public void stopWatchingMode(Object cb) {}
+    public void startWatchingMode(String op, String pkg, OnOpChangedListener cb) {} public void startWatchingMode(int op, String pkg, OnOpChangedListener cb) {} public void stopWatchingMode(OnOpChangedListener cb) {}
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public interface OnOpChangedListener {
+        void onOpChanged(java.lang.String p0, java.lang.String p1);
+        default void onOpChanged(java.lang.String p0, java.lang.String p1, int p2) {}
+        default void onOpChanged(java.lang.String p0, java.lang.String p1, int p2, java.lang.String p3) {}
+    }
 }

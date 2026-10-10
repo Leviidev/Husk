@@ -100,6 +100,7 @@ public final class MotionEvent extends InputEvent {
     public final float getHistoricalX(int p, int h) { return getX(p); }
     public final float getHistoricalY(int p, int h) { return getY(p); }
     public final float getHistoricalAxisValue(int axis, int p, int h) { return getAxisValue(axis, p); }
+    public final float getHistoricalAxisValue(int axis, int h) { return getAxisValue(axis, 0); }
     public final float getHistoricalPressure(int p, int h) { return getPressure(); }
     public final long getHistoricalEventTime(int h) { return eventTime; }
     public final void getHistoricalPointerCoords(int p, int h, PointerCoords out) { getPointerCoords(p, out); }

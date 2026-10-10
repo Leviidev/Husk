@@ -1,35 +1,100 @@
 package android.media;
 
+import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+import android.os.Handler;
+import android.os.Looper;
+import java.io.FileDescriptor;
 import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/** Short sounds: decoded and mixed by Husk (husk.Native's sound calls); until a sound loads it plays nothing. */
+/** Short sounds, decoded on a loader thread as they load and played by Husk's mixer. */
 public class SoundPool {
     public interface OnLoadCompleteListener { void onLoadComplete(SoundPool pool, int sampleId, int status); }
     public static class Builder {
-        private int max = 8;
-        public Builder setMaxStreams(int m) { max = m; return this; }
-        public Builder setAudioAttributes(AudioAttributes a) { return this; }
-        public SoundPool build() { return new SoundPool(max, 3, 0); }
+        private int max = 1; private AudioAttributes attrs;
+        public Builder() {}
+        public Builder setMaxStreams(int m) { if (m <= 0) throw new IllegalArgumentException("Strictly positive value required for the maximum number of audio streams."); max = m; return this; }
+        public Builder setAudioAttributes(AudioAttributes a) { attrs = a; return this; }
+        public Builder setContext(Context c) { return this; }
+        public SoundPool build() { return new SoundPool(max, AudioManager.STREAM_MUSIC, 0); }
     }
-    private int next = 1, nextStream = 1;
-    private OnLoadCompleteListener listener;
-    private final HashMap<Integer, String> sounds = new HashMap<>();
-    public SoundPool(int maxStreams, int streamType, int quality) {}
-    public void setOnLoadCompleteListener(OnLoadCompleteListener l) { listener = l; }
-    private int loaded(String what) {
-        int id = next++;
-        sounds.put(id, what);
-        if (listener != null) { final int i = id; new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> listener.onLoadComplete(this, i, 0)); }
+    private static final ExecutorService sLoader = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "SoundPool loader"); t.setDaemon(true); return t; });
+    private final Object mLock = new Object();
+    private final HashMap<Integer, Integer> mSamples = new HashMap<>();     /* the app's sample id -> the mixer's */
+    private final HashMap<Integer, Integer> mStreams = new HashMap<>();     /* the app's stream id -> the mixer's voice */
+    private final java.util.ArrayList<Integer> mStreamOrder = new java.util.ArrayList<>();
+    private final int mMaxStreams;
+    private int mNext = 1, mNextStream = 1;
+    private OnLoadCompleteListener mListener;
+    private final Handler mMain = new Handler(Looper.getMainLooper());
+    private boolean mReleased;
+    @Deprecated public SoundPool(int maxStreams, int streamType, int srcQuality) { mMaxStreams = Math.max(1, maxStreams); }
+    public void setOnLoadCompleteListener(OnLoadCompleteListener l) { mListener = l; }
+    private interface Loader { int load() throws Exception; }
+    private int enqueue(Loader l) {
+        final int id;
+        synchronized (mLock) { id = mNext++; }
+        sLoader.execute(() -> {
+            int mixer;
+            try { mixer = l.load(); } catch (Throwable t) { android.util.Log.w("SoundPool", "cannot load sound " + id + ": " + t); mixer = -1; }
+            final int status = mixer > 0 ? 0 : 1;
+            synchronized (mLock) { if (mReleased) { if (mixer > 0) husk.Audio.soundUnload(mixer); return; } if (mixer > 0) mSamples.put(id, mixer); }
+            final OnLoadCompleteListener lis = mListener;
+            if (lis != null) mMain.post(() -> lis.onLoadComplete(this, id, status));
+        });
         return id;
     }
-    public int load(String path, int priority) { return loaded(path); }
-    public int load(android.content.res.AssetFileDescriptor afd, int priority) { return loaded(afd.huskAssetName()); }
-    public int load(android.content.Context c, int resId, int priority) { return loaded("res:" + resId); }
-    public int load(java.io.FileDescriptor fd, long offset, long length, int priority) { return loaded("fd"); }
-    public boolean unload(int id) { return sounds.remove(id) != null; }
-    public int play(int soundId, float left, float right, int priority, int loop, float rate) { return sounds.containsKey(soundId) ? nextStream++ : 0; }
-    public void stop(int stream) {} public void pause(int stream) {} public void resume(int stream) {}
-    public void autoPause() {} public void autoResume() {}
-    public void setVolume(int stream, float l, float r) {} public void setRate(int stream, float rate) {} public void setLoop(int stream, int loop) {} public void setPriority(int stream, int p) {}
-    public void release() {}
+    public int load(String path, int priority) { return enqueue(() -> { try (java.io.FileInputStream in = new java.io.FileInputStream(path)) { return husk.Audio.soundLoad(husk.Audio.readAll(in)); } }); }
+    public int load(Context c, int resId, int priority) {
+        final android.content.res.Resources r = c.getResources();
+        return enqueue(() -> { try (java.io.InputStream in = r.openRawResource(resId)) { return husk.Audio.soundLoad(husk.Audio.readAll(in)); } });
+    }
+    public int load(AssetFileDescriptor afd, int priority) {
+        if (afd == null) return 0;
+        final FileDescriptor fd = afd.getFileDescriptor(); final long off = afd.getStartOffset(), len = afd.getLength(); final String asset = afd.huskAssetName();
+        return enqueue(() -> {
+            int n = fd != null ? husk.Audio.fdOf(fd) : -1;
+            if (n >= 0) return husk.Audio.soundLoadFd(n, off, len);
+            if (asset != null) { byte[] b = husk.Native.readAsset(asset); if (b != null) return husk.Audio.soundLoad(b); }
+            return -1;
+        });
+    }
+    public int load(FileDescriptor fd, long offset, long length, int priority) { final int n = husk.Audio.fdOf(fd); return enqueue(() -> husk.Audio.soundLoadFd(n, offset, length)); }
+    public boolean unload(int soundId) { Integer m; synchronized (mLock) { m = mSamples.remove(soundId); } if (m != null) husk.Audio.soundUnload(m); return m != null; }
+    public int play(int soundId, float leftVolume, float rightVolume, int priority, int loop, float rate) {
+        Integer m;
+        synchronized (mLock) { m = mSamples.get(soundId); }
+        if (m == null) return 0;
+        int v = husk.Audio.soundPlay(m, clamp(leftVolume), clamp(rightVolume), loop, Math.max(0.5f, Math.min(2f, rate)));
+        if (v == 0) return 0;
+        synchronized (mLock) {
+            int id = mNextStream++;
+            mStreams.put(id, v); mStreamOrder.add(id);
+            while (mStreamOrder.size() > mMaxStreams) { Integer old = mStreamOrder.remove(0); Integer ov = mStreams.remove(old); if (ov != null) husk.Audio.voiceStop(ov); }
+            return id;
+        }
+    }
+    private static float clamp(float v) { return Math.max(0, Math.min(1, v)); }
+    private Integer voice(int stream) { synchronized (mLock) { return mStreams.get(stream); } }
+    public void pause(int stream) { Integer v = voice(stream); if (v != null) husk.Audio.voicePause(v, true); }
+    public void resume(int stream) { Integer v = voice(stream); if (v != null) husk.Audio.voicePause(v, false); }
+    public void autoPause() { synchronized (mLock) { for (Integer v : mStreams.values()) husk.Audio.voicePause(v, true); } }
+    public void autoResume() { synchronized (mLock) { for (Integer v : mStreams.values()) husk.Audio.voicePause(v, false); } }
+    public void stop(int stream) { Integer v; synchronized (mLock) { v = mStreams.remove(stream); mStreamOrder.remove((Integer) stream); } if (v != null) husk.Audio.voiceStop(v); }
+    public void setVolume(int stream, float l, float r) { Integer v = voice(stream); if (v != null) husk.Audio.voiceVolume(v, clamp(l), clamp(r)); }
+    public void setVolume(int stream, float volume) { setVolume(stream, volume, volume); }
+    public void setPriority(int stream, int priority) {}
+    public void setLoop(int stream, int loop) { Integer v = voice(stream); if (v != null) husk.Audio.voiceLoop(v, loop); }
+    public void setRate(int stream, float rate) { Integer v = voice(stream); if (v != null) husk.Audio.voiceRate(v, Math.max(0.5f, Math.min(2f, rate))); }
+    public void release() {
+        synchronized (mLock) {
+            mReleased = true;
+            for (Integer v : mStreams.values()) husk.Audio.voiceStop(v);
+            for (Integer s : mSamples.values()) husk.Audio.soundUnload(s);
+            mStreams.clear(); mSamples.clear(); mStreamOrder.clear();
+        }
+    }
+    @Override protected void finalize() throws Throwable { try { release(); } finally { super.finalize(); } }
 }

@@ -67,6 +67,8 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
     public final boolean isTemporary() { return false; }
     public ContentProviderResult[] applyBatch(java.util.ArrayList<ContentProviderOperation> ops) throws OperationApplicationException { return new ContentProviderResult[0]; }
     public void dump(java.io.FileDescriptor fd, java.io.PrintWriter w, String[] args) {}
-    public final void restoreCallingIdentity(Object token) {}
-    public final Object clearCallingIdentityHusk() { return null; }
+    public final void restoreCallingIdentity(CallingIdentity token) {}
+    public final CallingIdentity clearCallingIdentity() { return null; }
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public static final class CallingIdentity { CallingIdentity() {} }
 }

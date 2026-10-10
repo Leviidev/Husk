@@ -49,12 +49,18 @@ public class KeyEvent extends InputEvent {
         }
     }
     private final int action, code, repeat, meta, source;
+    private int mDeviceId, mScanCode;
     int mFlags;
     private final long downTime, eventTime;
     private final String chars;
     public KeyEvent(int action, int code) { this(0, 0, action, code, 0, 0); }
     public KeyEvent(long down, long time, int action, int code, int repeat) { this(down, time, action, code, repeat, 0); }
     public KeyEvent(long down, long time, int action, int code, int repeat, int meta) { this(down, time, action, code, repeat, meta, InputDevice.SOURCE_KEYBOARD, null); }
+    public KeyEvent(long down, long time, int action, int code, int repeat, int meta, int deviceId, int scancode) { this(down, time, action, code, repeat, meta, InputDevice.SOURCE_KEYBOARD, null); mDeviceId = deviceId; mScanCode = scancode; }
+    public KeyEvent(long down, long time, int action, int code, int repeat, int meta, int deviceId, int scancode, int flags) { this(down, time, action, code, repeat, meta, deviceId, scancode); mFlags = flags; }
+    public KeyEvent(long down, long time, int action, int code, int repeat, int meta, int deviceId, int scancode, int flags, int source) { this(down, time, action, code, repeat, meta, source, null); mDeviceId = deviceId; mScanCode = scancode; mFlags = flags; }
+    public KeyEvent(KeyEvent o) { this(o.downTime, o.eventTime, o.action, o.code, o.repeat, o.meta, o.source, o.chars); mDeviceId = o.mDeviceId; mScanCode = o.mScanCode; mFlags = o.mFlags; }
+    @Deprecated public KeyEvent(KeyEvent o, long eventTime, int newRepeat) { this(o.downTime, eventTime, o.action, o.code, newRepeat, o.meta, o.source, o.chars); mDeviceId = o.mDeviceId; mScanCode = o.mScanCode; mFlags = o.mFlags; }
     public KeyEvent(long down, String chars, int device, int flags) { this(down, down, ACTION_MULTIPLE, KEYCODE_UNKNOWN, 0, 0, InputDevice.SOURCE_KEYBOARD, chars); }
     private KeyEvent(long down, long time, int action, int code, int repeat, int meta, int source, String chars) {
         this.downTime = down; this.eventTime = time; this.action = action; this.code = code; this.repeat = repeat; this.meta = meta; this.source = source; this.chars = chars;
@@ -67,9 +73,9 @@ public class KeyEvent extends InputEvent {
     public final long getDownTime() { return downTime; }
     public final long getEventTime() { return eventTime; }
     public final int getSource() { return source; }
-    public final int getDeviceId() { return 0; }
+    public final int getDeviceId() { return mDeviceId; }
     public final int getFlags() { return mFlags; }
-    public final int getScanCode() { return 0; }
+    public final int getScanCode() { return mScanCode; }
     public final InputDevice getDevice() { return InputDevice.getDevice(1); }
     public final String getCharacters() { return chars; }
     public final boolean isShiftPressed() { return (meta & META_SHIFT_ON) != 0; }

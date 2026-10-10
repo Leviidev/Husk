@@ -861,9 +861,10 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
     public void cancelLongPress() {}
     public void clearComposingText() {}
     public boolean isSuggestionsEnabled() { return false; }
-    public void setTextClassifier(Object c) {}
-    public void setTextMetricsParams(Object p) {}
-    public Object getTextMetricsParams() { return null; }
+    public void setTextClassifier(android.view.textclassifier.TextClassifier c) {}
+    public android.view.textclassifier.TextClassifier getTextClassifier() { return android.view.textclassifier.TextClassifier.NO_OP; }
+    public void setTextMetricsParams(android.text.PrecomputedText.Params p) {}
+    public android.text.PrecomputedText.Params getTextMetricsParams() { return new android.text.PrecomputedText.Params.Builder(getPaint()).build(); }
     public void setPrecomputedText(Object p) { setText(String.valueOf(p)); }
     public float getLineSpacingExtraHusk() { return mSpacingAdd; }
     public void setEnabled(boolean e) { super.setEnabled(e); if (!e && husk.InputMethods.focused() == this) husk.InputMethods.hide(); }

@@ -16,6 +16,8 @@
 #include <unistd.h>
 
 #include "husk-tl-bionic.h"
+#include "husk-tl-internal.h"
+#include <strings.h>
 
 static jvalue J(int64_t v) { jvalue r; r.j = v; return r; }
 static jvalue I(int32_t v) { jvalue r; r.j = (uint32_t)v; return r; }
@@ -279,6 +281,150 @@ NAT(System_arraycopy)
     else memmove((uint8_t *)dst->arr.data + (size_t)dp * dst->arr.esz, (uint8_t *)src->arr.data + (size_t)sp * src->arr.esz, (size_t)n * src->arr.esz);
     return true;
 }
+static jobj *string_array(const char *const *v, int n);
+/* The unchecked primitive copies libcore's own code uses (bounds already checked by the caller). */
+NAT(System_arraycopyUnchecked)
+{
+    (void)self; (void)ret;
+    jobj *src = a[0].l, *dst = a[2].l;
+    if (!src || !dst || a[4].i <= 0) return true;
+    memmove((uint8_t *)dst->arr.data + (size_t)a[3].i * dst->arr.esz, (uint8_t *)src->arr.data + (size_t)a[1].i * src->arr.esz, (size_t)a[4].i * src->arr.esz);
+    return true;
+}
+
+/* ================================================================== libcore.io.Memory: native memory to and from arrays */
+
+static void swap_copy(void *dst, const void *src, size_t n, size_t esz, bool swap)
+{
+    if (!swap || esz == 1) { memcpy(dst, src, n * esz); return; }
+    const uint8_t *s = src; uint8_t *d = dst;
+    for (size_t i = 0; i < n; i++, s += esz, d += esz) for (size_t k = 0; k < esz; k++) d[k] = s[esz - 1 - k];
+}
+/* peekXArray(long address, X[] dst, int dstOffset, int count, boolean swap) */
+NAT(Memory_peekArray)
+{
+    (void)self; (void)ret;
+    jobj *arr = a[1].l;
+    if (!arr) return npe("dst");
+    swap_copy((uint8_t *)arr->arr.data + (size_t)a[2].i * arr->arr.esz, (const void *)(uintptr_t)a[0].j, (size_t)a[3].i, arr->arr.esz, a[4].z);
+    return true;
+}
+NAT(Memory_peekByteArray)
+{
+    (void)self; (void)ret;
+    jobj *arr = a[1].l;
+    if (!arr) return npe("dst");
+    memcpy((uint8_t *)arr->arr.data + a[2].i, (const void *)(uintptr_t)a[0].j, (size_t)a[3].i);
+    return true;
+}
+
+/* ================================================================== libcore.util.CharsetUtils */
+
+static jobj *bytes_of(const uint8_t *b, size_t n)
+{
+    jobj *arr = tl_jni_new_prim_array('B', (uint32_t)n);
+    arr->refs = 1u << 30;
+    memcpy(arr->arr.data, b, n);
+    return arr;
+}
+/* toUtf8Bytes(String s, int offset, int length): unpaired surrogates become '?', as libcore's does */
+NAT(CharsetUtils_toUtf8Bytes)
+{
+    (void)self;
+    int32_t n; const uint16_t *c = chars(a[0].l, &n);
+    if (!c) return npe("string");
+    int32_t off = a[1].i, len = a[2].i;
+    if (off < 0 || len < 0 || off + len > n) return dvm_throw("java/lang/StringIndexOutOfBoundsException", "offset %d length %d", off, len);
+    uint8_t *b = malloc((size_t)len * 3 + 1); size_t k = 0;
+    for (int32_t i = off; i < off + len; i++) {
+        uint32_t ch = c[i];
+        if (ch >= 0xD800 && ch <= 0xDBFF && i + 1 < off + len && c[i + 1] >= 0xDC00 && c[i + 1] <= 0xDFFF) { ch = 0x10000 + ((ch - 0xD800) << 10) + (c[i + 1] - 0xDC00); i++; }
+        else if (ch >= 0xD800 && ch <= 0xDFFF) ch = '?';
+        if (ch < 0x80) b[k++] = (uint8_t)ch;
+        else if (ch < 0x800) { b[k++] = (uint8_t)(0xC0 | ch >> 6); b[k++] = (uint8_t)(0x80 | (ch & 0x3F)); }
+        else if (ch < 0x10000) { b[k++] = (uint8_t)(0xE0 | ch >> 12); b[k++] = (uint8_t)(0x80 | ((ch >> 6) & 0x3F)); b[k++] = (uint8_t)(0x80 | (ch & 0x3F)); }
+        else { b[k++] = (uint8_t)(0xF0 | ch >> 18); b[k++] = (uint8_t)(0x80 | ((ch >> 12) & 0x3F)); b[k++] = (uint8_t)(0x80 | ((ch >> 6) & 0x3F)); b[k++] = (uint8_t)(0x80 | (ch & 0x3F)); }
+    }
+    *ret = L(bytes_of(b, k));
+    free(b);
+    return true;
+}
+static bool narrow(jobj *s, int32_t off, int32_t len, uint16_t max, jvalue *ret)
+{
+    int32_t n; const uint16_t *c = chars(s, &n);
+    if (!c) return npe("string");
+    if (off < 0 || len < 0 || off + len > n) return dvm_throw("java/lang/StringIndexOutOfBoundsException", "offset %d length %d", off, len);
+    uint8_t *b = malloc((size_t)len + 1);
+    for (int32_t i = 0; i < len; i++) b[i] = c[off + i] <= max ? (uint8_t)c[off + i] : '?';
+    *ret = L(bytes_of(b, (size_t)len));
+    free(b);
+    return true;
+}
+NAT(CharsetUtils_toAsciiBytes) { (void)self; return narrow(a[0].l, a[1].i, a[2].i, 0x7F, ret); }
+NAT(CharsetUtils_toIsoLatin1Bytes) { (void)self; return narrow(a[0].l, a[1].i, a[2].i, 0xFF, ret); }
+/* asciiBytesToChars(byte[] bytes, int offset, int length, char[] chars): non-ASCII bytes become U+FFFD */
+NAT(CharsetUtils_asciiBytesToChars)
+{
+    (void)self; (void)ret;
+    jobj *b = a[0].l, *c = a[3].l;
+    if (!b || !c) return npe("array");
+    const uint8_t *src = (const uint8_t *)b->arr.data + a[1].i; uint16_t *dst = c->arr.data;
+    for (int32_t i = 0; i < a[2].i; i++) dst[i] = src[i] < 0x80 ? src[i] : 0xFFFD;
+    return true;
+}
+
+/* ================================================================== TimeZone, Package, Version, threads */
+
+#include <CoreFoundation/CoreFoundation.h>
+/* The device's time zone, as Android's persist.sys.timezone gives it (an Olson name). */
+NAT(TimeZone_getSystemTimeZoneID)
+{
+    UNUSED;
+    char buf[128] = "GMT";
+    CFTimeZoneRef tz = CFTimeZoneCopySystem();
+    if (tz) { CFStringRef n = CFTimeZoneGetName(tz); if (n) CFStringGetCString(n, buf, sizeof(buf), kCFStringEncodingUTF8); CFRelease(tz); }
+    *ret = L(dvm_new_string_utf8(buf));
+    return true;
+}
+NAT(TimeZone_getSystemGMTOffsetID)
+{
+    UNUSED;
+    time_t t = time(NULL); struct tm lt; localtime_r(&t, &lt);
+    long off = lt.tm_gmtoff / 60;
+    char buf[32]; snprintf(buf, sizeof(buf), "GMT%c%02ld:%02ld", off < 0 ? '-' : '+', labs(off) / 60, labs(off) % 60);
+    *ret = L(dvm_new_string_utf8(buf));
+    return true;
+}
+NAT(Native_null) { UNUSED; *ret = L(NULL); return true; }
+NAT(Native_emptyStrings) { UNUSED; *ret = L(string_array(NULL, 0)); return true; }
+NAT(Native_false) { UNUSED; *ret = Z(false); return true; }
+NAT(Native_noop) { UNUSED; return true; }
+NAT(Thread_priorityForNiceness)
+{
+    (void)self;
+    int n = a[0].i;
+    *ret = I(n <= -8 ? 10 : n <= -4 ? 8 : n <= -2 ? 6 : n <= 0 ? 5 : n <= 4 ? 4 : n <= 8 ? 3 : n <= 12 ? 2 : 1);
+    return true;
+}
+NAT(VMStack_threadStackTrace) { UNUSED; *ret = L(tl_jni_new_obj_array(tl_jni_class("java/lang/StackTraceElement"), 0)); ((jobj *)ret->l)->cls = tl_jni_class("[Ljava/lang/StackTraceElement;"); return true; }
+
+/* JarFile.getMetaInfEntryNames(): the META-INF entries of the jar (its signature files, the manifest), for JarFile's verifier */
+NAT(JarFile_getMetaInfEntryNames)
+{
+    (void)a;
+    dvm_class *zc = dvm_class_of(dvm_class_named("java/util/zip/ZipFile"));
+    dvm_field *f = zc ? dvm_find_field(zc, "name", false) : NULL;
+    const char *path = f ? tl_jni_string(dvm_slots(self)[f->slot].l) : NULL;
+    tl_zip z; char err[160];
+    if (!path || !tl_zip_open(&z, path, err, sizeof(err))) { *ret = L(NULL); return true; }
+    const char **v = NULL; int n = 0;
+    for (size_t i = 0; i < z.count; i++) if (!strncasecmp(z.entries[i].name, "META-INF/", 9)) { v = realloc(v, (size_t)(n + 1) * sizeof(*v)); v[n++] = z.entries[i].name; }
+    *ret = L(n ? string_array(v, n) : NULL);
+    free(v);
+    tl_zip_close(&z);
+    return true;
+}
+
 NAT(System_log)
 {
     (void)self; (void)ret;
@@ -414,7 +560,20 @@ NAT(Thread_sleep)
 NAT(Thread_false) { UNUSED; *ret = Z(false); return true; }
 NAT(Thread_noop) { UNUSED; return true; }
 NAT(Thread_nice) { (void)self; *ret = I(a[0].i <= 1 ? 19 : a[0].i >= 10 ? -8 : 10 - 2 * a[0].i); return true; }
-NAT(Thread_status) { UNUSED; *ret = I(1 /* RUNNABLE */); return true; }
+/* Java's Thread.State ordinals: NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED. A thread is alive while its nativePeer is set. */
+static dvm_field *thread_peer(jobj *t)
+{
+    static dvm_field *f;
+    if (!f) { dvm_class *c = dvm_class_of(dvm_class_named("java/lang/Thread")); f = c ? dvm_find_field(c, "nativePeer", false) : NULL; }
+    return f;
+}
+NAT(Thread_status)
+{
+    dvm_field *f = thread_peer(self);
+    bool alive = self == t_thread || (f && dvm_slots(self)[f->slot].j != 0);
+    *ret = I(alive ? 1 : a[0].z ? 5 : 0);
+    return true;
+}
 NAT(Thread_holdsLock) { UNUSED; *ret = Z(true); return true; }
 
 typedef struct { jobj *thread; } start_arg;
@@ -432,8 +591,18 @@ static void *thread_main(void *p)
     if (run && !dvm_call(run, t, NULL, &r)) {
         char buf[400];
         tl_log_line("dvm: uncaught exception in a thread: %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
+        /* the thread's (or the default) uncaught exception handler gets it, as on Android */
+        jobj *e = tl_jni_pending_object();
         tl_jni_set_pending(NULL);
+        dvm_method *d = e ? dvm_find_virtual(dvm_object_class(t), "dispatchUncaughtException", "(Ljava/lang/Throwable;)V") : NULL;
+        if (d) { jvalue arg; arg.j = 0; arg.l = e; jvalue r2; if (!dvm_call(d, t, &arg, &r2)) tl_jni_set_pending(NULL); }
     }
+    /* the thread is over: no longer alive, and whoever joins it wakes */
+    dvm_field *pf = thread_peer(t);
+    if (pf) dvm_slots(t)[pf->slot].j = 0;
+    dvm_monitor_enter(t);
+    dvm_monitor_notify(t, true);
+    dvm_monitor_exit(t);
     return NULL;
 }
 NAT(Thread_nativeCreate)
@@ -441,6 +610,8 @@ NAT(Thread_nativeCreate)
     (void)self; (void)ret;
     start_arg *s = malloc(sizeof(*s));
     s->thread = a[0].l;
+    dvm_field *pf = s->thread ? thread_peer(s->thread) : NULL;
+    if (pf) dvm_slots(s->thread)[pf->slot].j = (int64_t)(uintptr_t)s->thread;     /* alive from here (before it runs: start() then isAlive() is true) */
     pthread_attr_t at; pthread_attr_init(&at);
     pthread_attr_setstacksize(&at, 32u << 20);
     pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
@@ -451,12 +622,57 @@ NAT(Thread_nativeCreate)
 
 /* ================================================================== Throwable */
 
-NAT(Throwable_fill) { UNUSED; *ret = L(NULL); return true; }
+int dvm_capture_frames(void **out, uint32_t *pcs, int max);
+int dvm_line_of(dvm_method *m, uint32_t pc);
+const char *dvm_source_file(dvm_class *c);
+/* The backtrace: a long[] of (method, pc) pairs, the frames of the throwable's own constructors and fillInStackTrace left out. */
+NAT(Throwable_fill)
+{
+    (void)a;
+    void *fr[512]; uint32_t pcs[512];
+    int n = dvm_capture_frames(fr, pcs, 512), skip = 0;
+    tl_jclass *tc = tl_jni_class("java/lang/Throwable");
+    while (skip < n) {
+        dvm_method *m = fr[skip];
+        bool own = !strcmp(m->name, "fillInStackTrace") || !strcmp(m->name, "nativeFillInStackTrace")
+            || (!strcmp(m->name, "<init>") && dvm_assignable(m->cls->jc, tc));
+        if (!own) break;
+        skip++;
+    }
+    jobj *arr = tl_jni_new_prim_array('J', (uint32_t)(2 * (n - skip)));
+    arr->refs = 1u << 30;
+    int64_t *v = arr->arr.data;
+    for (int i = skip; i < n; i++) { v[2 * (i - skip)] = (int64_t)(uintptr_t)fr[i]; v[2 * (i - skip) + 1] = pcs[i]; }
+    *ret = L(arr);
+    return true;
+}
 NAT(Throwable_getStack)
 {
-    UNUSED;
-    jobj *arr = tl_jni_new_obj_array(tl_jni_class("java/lang/StackTraceElement"), 0);
+    (void)self;
+    jobj *bt = a[0].l;
+    int n = bt && bt->kind == TL_K_PRIM_ARRAY && bt->arr.etype == 'J' ? (int)(bt->arr.len / 2) : 0;
+    tl_jclass *ec = tl_jni_class("java/lang/StackTraceElement");
+    jobj *arr = tl_jni_new_obj_array(ec, (uint32_t)n);
     arr->cls = tl_jni_class("[Ljava/lang/StackTraceElement;");
+    arr->refs = 1u << 30;
+    dvm_method *ctor = dvm_find_method(dvm_class_of(ec), "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V", false);
+    const int64_t *v = n ? bt->arr.data : NULL;
+    for (int i = 0; i < n && ctor; i++) {
+        dvm_method *m = (dvm_method *)(uintptr_t)v[2 * i];
+        char cls[512]; snprintf(cls, sizeof(cls), "%s", m->cls->name);
+        for (char *p = cls; *p; p++) if (*p == '/') *p = '.';
+        jobj *e = dvm_new_object(ec);
+        e->refs = 1u << 30;
+        const char *file = dvm_source_file(m->cls);
+        jvalue args[4];
+        args[0].j = 0; args[0].l = dvm_new_string_utf8(cls);
+        args[1].j = 0; args[1].l = dvm_new_string_utf8(m->name);
+        args[2].j = 0; args[2].l = file ? dvm_new_string_utf8(file) : NULL;
+        args[3].j = (uint32_t)((m->flags & 0x100) ? -2 : dvm_line_of(m, (uint32_t)v[2 * i + 1]));
+        jvalue r;
+        dvm_call(ctor, e, args, &r);
+        arr->oarr.v[i] = e;
+    }
     *ret = L(arr);
     return true;
 }
@@ -1291,7 +1507,8 @@ NAT(VMCL_findLoaded)
     *ret = L(jc ? jc->mirror : NULL);
     return true;
 }
-NAT(VMCL_bootEntries) { UNUSED; *ret = L(string_array(NULL, 0)); return true; }
+int tl_dvm_class_path(const char **out, int max);
+NAT(VMCL_bootEntries) { UNUSED; const char *v[64]; int n = tl_dvm_class_path(v, 64); *ret = L(string_array(v, n)); return true; }
 
 /* ================================================================== the table */
 
@@ -1322,6 +1539,45 @@ static const entry k_natives[] = {
     { "java/lang/StringFactory", "newStringFromUtf8Bytes", "([BII)Ljava/lang/String;", SF_fromUtf8Bytes },
 
     { "java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V", System_arraycopy },
+    { "java/lang/System", "arraycopyBooleanUnchecked", "([ZI[ZII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyByteUnchecked", "([BI[BII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyCharUnchecked", "([CI[CII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyDoubleUnchecked", "([DI[DII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyFloatUnchecked", "([FI[FII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyIntUnchecked", "([II[III)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyLongUnchecked", "([JI[JII)V", System_arraycopyUnchecked },
+    { "java/lang/System", "arraycopyShortUnchecked", "([SI[SII)V", System_arraycopyUnchecked },
+    { "libcore/io/Memory", "peekByteArray", "(J[BII)V", Memory_peekByteArray },
+    { "libcore/io/Memory", "peekCharArray", "(J[CIIZ)V", Memory_peekArray },
+    { "libcore/io/Memory", "peekDoubleArray", "(J[DIIZ)V", Memory_peekArray },
+    { "libcore/io/Memory", "peekFloatArray", "(J[FIIZ)V", Memory_peekArray },
+    { "libcore/io/Memory", "peekIntArray", "(J[IIIZ)V", Memory_peekArray },
+    { "libcore/io/Memory", "peekLongArray", "(J[JIIZ)V", Memory_peekArray },
+    { "libcore/io/Memory", "peekShortArray", "(J[SIIZ)V", Memory_peekArray },
+    { "libcore/util/CharsetUtils", "toUtf8Bytes", "(Ljava/lang/String;II)[B", CharsetUtils_toUtf8Bytes },
+    { "libcore/util/CharsetUtils", "toAsciiBytes", "(Ljava/lang/String;II)[B", CharsetUtils_toAsciiBytes },
+    { "libcore/util/CharsetUtils", "toIsoLatin1Bytes", "(Ljava/lang/String;II)[B", CharsetUtils_toIsoLatin1Bytes },
+    { "libcore/util/CharsetUtils", "asciiBytesToChars", "([BII[C)V", CharsetUtils_asciiBytesToChars },
+    { "java/util/TimeZone", "getSystemTimeZoneID", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", TimeZone_getSystemTimeZoneID },
+    { "java/util/TimeZone", "getSystemGMTOffsetID", "()Ljava/lang/String;", TimeZone_getSystemGMTOffsetID },
+    { "java/util/jar/JarFile", "getMetaInfEntryNames", "()[Ljava/lang/String;", JarFile_getMetaInfEntryNames },
+    { "java/lang/Package", "getSystemPackage0", "(Ljava/lang/String;)Ljava/lang/String;", Native_null },
+    { "java/lang/Package", "getSystemPackages0", "()[Ljava/lang/String;", Native_emptyStrings },
+    { "java/lang/Class", "getEnclosingConstructorNative", "()Ljava/lang/reflect/Constructor;", Native_null },
+    { "java/lang/Class", "getEnclosingMethodNative", "()Ljava/lang/reflect/Method;", Native_null },
+    { "java/lang/Class", "getNestHostFromAnnotation", "()Ljava/lang/Class;", Native_null },
+    { "java/lang/Class", "getNestMembersFromAnnotation", "()[Ljava/lang/Class;", Native_null },
+    { "java/lang/Class", "getPermittedSubclassesFromAnnotation", "()[Ljava/lang/Class;", Native_null },
+    { "java/lang/Class", "getRecordAnnotationElement", "(Ljava/lang/String;Ljava/lang/Class;)[Ljava/lang/Object;", Native_null },
+    { "java/lang/reflect/Parameter", "getAnnotationNative", "(Ljava/lang/reflect/Executable;ILjava/lang/Class;)Ljava/lang/annotation/Annotation;", Native_null },
+    { "java/lang/Thread", "priorityForNiceness", "(I)I", Thread_priorityForNiceness },
+    { "dalvik/system/VMStack", "getThreadStackTrace", "(Ljava/lang/Thread;)[Ljava/lang/StackTraceElement;", VMStack_threadStackTrace },
+    { "dalvik/system/BaseDexClassLoader", "computeClassLoaderContextsNative", "()[Ljava/lang/String;", Native_emptyStrings },
+    { "sun/misc/Version", "getJvmVersionInfo", "()Z", Native_false },
+    { "sun/misc/Version", "getJdkVersionInfo", "()V", Native_noop },
+    { "sun/misc/Version", "getJvmSpecialVersion", "()Ljava/lang/String;", Native_null },
+    { "sun/misc/Version", "getJdkSpecialVersion", "()Ljava/lang/String;", Native_null },
+    { "sun/nio/fs/LinuxNativeDispatcher", "init", "()V", Native_noop },
     { "java/lang/System", "currentTimeMillis", "()J", System_currentTimeMillis },
     { "java/lang/System", "nanoTime", "()J", System_nanoTime },
     { "java/lang/System", "log", "(CLjava/lang/String;Ljava/lang/Throwable;)V", System_log },

@@ -154,8 +154,7 @@ public class PackageManager {
     public CharSequence getUserBadgedLabel(CharSequence l, android.os.UserHandle u) { return l; }
     public android.graphics.drawable.Drawable getUserBadgedIcon(android.graphics.drawable.Drawable d, android.os.UserHandle u) { return d; }
     public android.content.res.XmlResourceParser getXml(String pkg, int res, ApplicationInfo a) { return husk.ContextImpl.app().getResources().getXml(res); }
-    public ChangedPackages getChangedPackages(int seq) { return null; }
-    public static final class ChangedPackages {}
+    public android.content.pm.ChangedPackages getChangedPackages(int seq) { return null; }
     public void addPermissionHusk() {}
     public Bundle_ getSuspendedPackageAppExtrasHusk() { return null; }
     interface Bundle_ {}

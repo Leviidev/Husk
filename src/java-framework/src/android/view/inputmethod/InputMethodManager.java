@@ -18,7 +18,7 @@ public final class InputMethodManager {
     public boolean isFullscreenMode() { return false; }
     public void restartInput(View v) { husk.InputMethods.restart(v); }
     public void updateSelection(View v, int ss, int se, int cs, int ce) {}
-    public void updateCursorAnchorInfo(View v, Object info) {}
+    public void updateCursorAnchorInfo(View v, CursorAnchorInfo info) {}
     public void updateExtractedText(View v, int token, ExtractedText t) {}
     public void displayCompletions(View v, CompletionInfo[] c) {}
     public void viewClicked(View v) {}

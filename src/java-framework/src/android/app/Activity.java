@@ -282,7 +282,7 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     public void removeDialog(int id) {}
     protected Dialog onCreateDialog(int id) { return null; }
     public boolean releaseInstance() { return false; }
-    public void setLocusContext(Object id, Bundle b) {}
+    public void setLocusContext(android.content.LocusId id, Bundle b) {}
     public boolean showAssist(Bundle args) { return false; }
     public android.view.DragAndDropPermissions requestDragAndDropPermissions(DragEvent e) { return null; }
     public void startLockTask() {}
@@ -291,8 +291,8 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     public void triggerSearch(String q, Bundle d) {}
     public void startSearch(String q, boolean s, Bundle d, boolean g) {}
     public void takeKeyEvents(boolean b) {}
-    public void registerScreenCaptureCallback(java.util.concurrent.Executor e, Object cb) {}
-    public void unregisterScreenCaptureCallback(Object cb) {}
+    public void registerScreenCaptureCallback(java.util.concurrent.Executor e, ScreenCaptureCallback cb) {}
+    public void unregisterScreenCaptureCallback(ScreenCaptureCallback cb) {}
 
     // ---- events
     public boolean dispatchKeyEvent(KeyEvent e) {
@@ -377,4 +377,8 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     }
     public void dump(String prefix, java.io.FileDescriptor fd, java.io.PrintWriter w, String[] args) {}
     static final class SuperNotCalledException extends android.util.AndroidRuntimeException { SuperNotCalledException(String s) { super(s); } }
+    // ---- platform API stubs (tools/compat/genstubs.py)
+    public interface ScreenCaptureCallback {
+        void onScreenCaptured();
+    }
 }

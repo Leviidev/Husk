@@ -45,6 +45,6 @@ public interface ViewParent {
     boolean onNestedPreFling(View target, float vx, float vy);
     boolean onNestedPrePerformAccessibilityAction(View target, int action, android.os.Bundle args);
     default void onDescendantInvalidated(View child, View target) {}
-    default void keyboardNavigationClusterSearch(View current, int dir) {}
+    default View keyboardNavigationClusterSearch(View current, int dir) { return null; }
     default ActionMode startActionModeForChild(View original, ActionMode.Callback cb, int type) { return null; }
 }

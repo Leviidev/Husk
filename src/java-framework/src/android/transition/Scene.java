@@ -8,7 +8,7 @@ public final class Scene {
     @Deprecated public Scene(ViewGroup root, ViewGroup layout) { this(root, (View) layout); }
     private Scene(ViewGroup root, int id, android.content.Context c) { mSceneRoot = root; mLayoutId = id; mContext = c; }
     public static Scene getSceneForLayout(ViewGroup root, int layoutId, android.content.Context c) { return new Scene(root, layoutId, c); }
-    public static Scene getCurrentScene(View v) { return null; }
+    public static Scene getCurrentScene(ViewGroup v) { return null; }
     public ViewGroup getSceneRoot() { return mSceneRoot; }
     public void exit() { if (mExit != null) mExit.run(); }
     public void enter() {

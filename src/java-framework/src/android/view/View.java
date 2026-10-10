@@ -339,8 +339,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public android.os.IBinder getWindowToken() { return mRoot == null ? null : mRoot.token(); }
     public android.os.IBinder getApplicationWindowToken() { return getWindowToken(); }
     public Display getDisplay() { return mRoot == null ? null : ((WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay(); }
-    public WindowId getWindowId() { return new WindowId(); }
-    public static final class WindowId {}
+    public WindowId getWindowId() { return null; }
     public ViewTreeObserver getViewTreeObserver() {
         if (mRoot != null) return mRoot.observer();
         if (mFloatingObserver == null) mFloatingObserver = new ViewTreeObserver();
@@ -927,7 +926,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public void requestApplyInsets() { if (mRoot != null) mRoot.requestApplyInsets(); }
     @Deprecated public void requestFitSystemWindows() { requestApplyInsets(); }
     protected boolean fitSystemWindows(Rect insets) { return false; }
-    public void setWindowInsetsAnimationCallback(Object cb) {}
+    public void setWindowInsetsAnimationCallback(WindowInsetsAnimation.Callback cb) {}
     public WindowInsetsController getWindowInsetsController() { return mRoot != null ? mRoot.insetsController() : null; }
     public void setSystemUiVisibility(int v) { mSystemUiVisibility = v; if (mRoot != null) mRoot.systemUiChanged(v); }
     public int getSystemUiVisibility() { return mSystemUiVisibility; }
@@ -1310,9 +1309,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public void dispatchStartTemporaryDetach() {}
     public void dispatchFinishTemporaryDetach() {}
     public boolean isShowingLayoutBounds() { return false; }
-    public void setAutofillId(Object id) {}
-    public Object getAutofillId() { return null; }
-    public void autofill(Object v) {}
+    private android.view.autofill.AutofillId mAutofillId;
+    public void setAutofillId(android.view.autofill.AutofillId id) { mAutofillId = id; }
+    public android.view.autofill.AutofillId getAutofillId() { return mAutofillId; }
+    public void autofill(android.view.autofill.AutofillValue v) {}
+    public void autofill(android.util.SparseArray<android.view.autofill.AutofillValue> values) {}
     public void setTooltip(CharSequence t) { mTooltip = t; }
     public void setFocusedInCluster() {}
     public void setNextClusterForwardId(int id) {}
@@ -1338,7 +1339,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public Bitmap huskSnapshot() { return getDrawingCache(); }
     public boolean isAggregatedVisible() { return isShown(); }
     public void onCancelPendingInputEvents() {}
-    public void setOnReceiveContentListener(String[] mime, Object l) {}
+    public void setOnReceiveContentListener(String[] mime, OnReceiveContentListener l) {}
+    public ContentInfo performReceiveContent(ContentInfo c) { return c; }
+    public ContentInfo onReceiveContent(ContentInfo c) { return c; }
+    public void requestUnbufferedDispatch(MotionEvent e) {}
+    public void requestUnbufferedDispatch(int sources) {}
     public void setSystemUiVisibilityHusk(int v) { setSystemUiVisibility(v); }
     public void setForceDarkAllowed(boolean b) {}
     public void setVisibilityHusk(int v) { setVisibility(v); }

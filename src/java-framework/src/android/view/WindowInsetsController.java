@@ -12,5 +12,5 @@ public interface WindowInsetsController {
     int getSystemBarsBehavior();
     default void addOnControllableInsetsChangedListener(OnControllableInsetsChangedListener l) {}
     default void removeOnControllableInsetsChangedListener(OnControllableInsetsChangedListener l) {}
-    default void controlWindowInsetsAnimation(int types, long durationMs, android.view.animation.Interpolator i, android.os.CancellationSignal c, Object listener) {}
+    default void controlWindowInsetsAnimation(int types, long durationMs, android.view.animation.Interpolator i, android.os.CancellationSignal c, WindowInsetsAnimationControlListener listener) {}
 }

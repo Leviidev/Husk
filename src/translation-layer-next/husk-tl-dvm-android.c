@@ -446,14 +446,21 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
 
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig);
 dvm_native_fn tl_gfx_native(const char *name, const char *sig);
+dvm_native_fn tl_audio_native(const char *name, const char *sig);
+dvm_native_fn tl_sensors_native(const char *name, const char *sig);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
+    if (!strcmp(cls, "husk/Sensors")) return tl_sensors_native(name, sig);
     if (!strcmp(cls, "husk/Gfx")) return tl_gfx_native(name, sig);
+    if (!strcmp(cls, "husk/Audio")) return tl_audio_native(name, sig);
     if (!strcmp(cls, "husk/Native")) {
         for (int i = 0; k_native[i].name; i++) if (!strcmp(k_native[i].name, name) && !strcmp(k_native[i].sig, sig)) return k_native[i].fn;
     } else if (!strcmp(cls, "android/opengl/GLES20")) {
         for (int i = 0; k_gles_special[i].name; i++) if (!strcmp(k_gles_special[i].name, name) && !strcmp(k_gles_special[i].sig, sig)) return k_gles_special[i].fn;
         for (int i = 0; k_gles20[i].name; i++) if (!strcmp(k_gles20[i].name, name) && !strcmp(k_gles20[i].sig, sig)) return k_gles20[i].fn;
+    } else if (!strncmp(cls, "android/opengl/GLES3", 20)) {
+        const gl_native *t = !strcmp(cls, "android/opengl/GLES30") ? k_gles30 : !strcmp(cls, "android/opengl/GLES31") ? k_gles31 : !strcmp(cls, "android/opengl/GLES32") ? k_gles32 : NULL;
+        for (int i = 0; t && t[i].name; i++) if (!strcmp(t[i].name, name) && !strcmp(t[i].sig, sig)) return t[i].fn;
     }
     return NULL;
 }

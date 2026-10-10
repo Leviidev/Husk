@@ -62,7 +62,7 @@ public class TextUtils {
         for (int i = 0; i < s.length(); i++) { char c = s.charAt(i); switch (c) { case '<': b.append("&lt;"); break; case '>': b.append("&gt;"); break; case '&': b.append("&amp;"); break; case '\'': b.append("&#39;"); break; case '"': b.append("&quot;"); break; default: b.append(c); } }
         return b.toString();
     }
-    public static String expandTemplate(CharSequence template, CharSequence... values) { String t = template.toString(); for (int i = 0; i < values.length; i++) t = t.replace("^" + (i + 1), values[i]); return t; }
+    public static CharSequence expandTemplate(CharSequence template, CharSequence... values) { String t = template.toString(); for (int i = 0; i < values.length; i++) t = t.replace("^" + (i + 1), values[i]); return t; }
     public static void copySpansFrom(Spanned src, int start, int end, Class kind, Spannable dest, int off) {
         if (kind == null) kind = Object.class;
         Object[] spans = src.getSpans(start, end, kind);
@@ -118,7 +118,7 @@ public class TextUtils {
     public static boolean isPrintableAscii(char c) { return (c >= ' ' && c <= '~') || c == '\r' || c == '\n'; }
     public static boolean isPrintableAsciiOnly(CharSequence s) { for (int i = 0; i < s.length(); i++) if (!isPrintableAscii(s.charAt(i))) return false; return true; }
     public static int getLayoutDirectionFromLocale(Locale l) { return 0; }
-    public static String toUpperCase(Locale l, CharSequence s, boolean copy) { return s.toString().toUpperCase(l); }
+    public static CharSequence toUpperCase(Locale l, CharSequence s, boolean copy) { return s.toString().toUpperCase(l); }
     public static CharSequence replace(CharSequence template, String[] sources, CharSequence[] dest) { String t = template.toString(); for (int i = 0; i < sources.length; i++) t = t.replace(sources[i], dest[i]); return t; }
     public static String nullIfEmpty(String s) { return isEmpty(s) ? null : s; }
     public static String emptyIfNull(String s) { return s == null ? "" : s; }
