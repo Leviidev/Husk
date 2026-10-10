@@ -13,7 +13,7 @@ Sources read, all local clones, September 2026:
 
 `mmap(PROT_READ|PROT_WRITE|PROT_EXEC)` does not work for a sideloaded iOS app. The
 `dynamic-codesigning` entitlement that would allow it is only honoured for
-platform binaries or on TrollStore/jailbroken devices. Hypervisor.framework is
+platform binaries or when not under PPL/TXM. Hypervisor.framework is
 not available to third-party iOS apps at all — confirmed by UTM's own
 `Documentation/Architecture.md` — so hardware virtualization is off the table
 and every guest instruction must go through TCG, which means we need a JIT, which
@@ -182,7 +182,7 @@ Confirmed from the shipping `AetherPS4-iOS.entitlements`:
 
 ```xml
 <key>get-task-allow</key><true/>                                  <!-- lets StikDebug attach -->
-<key>dynamic-codesigning</key><true/>                             <!-- honoured only on TrollStore/JB -->
+<key>dynamic-codesigning</key><true/>                             <!-- honoured only when not under PPL/TXM -->
 <key>com.apple.developer.kernel.increased-memory-limit</key><true/>
 ```
 

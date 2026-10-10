@@ -487,7 +487,7 @@ struct JITSettings: View {
                           mono: false)
                 if let route = husk_ios_jit_self_route() {
                     DetailRow(label: "Made by Husk",
-                              value: String(cString: route) == "MAP_JIT" ? "MAP_JIT (TrollStore entitlement)" : "plain memory (debugged or jailbroken)",
+                              value: String(cString: route) == "MAP_JIT" ? "MAP_JIT (dynamic-codesigning)" : "plain memory (debugged or jailbroken)",
                               mono: false)
                 }
                 // Cached answer only: running the probe from a view body

@@ -5,8 +5,10 @@
 	<!-- Lets StikDebug attach to us as a debugger. Without this there is no JIT. -->
 	<key>get-task-allow</key>
 	<true/>
-	<!-- Only honoured on TrollStore/jailbroken devices; harmless otherwise, and it
-	     lets the same build skip the StikDebug dance where it IS honoured. -->
+	<!-- Honoured on standard sideloaded apps for MAP_JIT. Note: this entitlement
+	     is banned on TrollStore (see https://github.com/opa334/TrollStore#banned-entitlements)
+	     under PPL/TXM because process launch validation will kill the app. It is
+	     stripped when packaging for TrollStore (see /scripts/package_ipa.sh). -->
 	<key>dynamic-codesigning</key>
 	<true/>
 	<!-- An Android guest needs real RAM on top of the host app's own footprint.

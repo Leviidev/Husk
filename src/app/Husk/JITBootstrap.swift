@@ -71,9 +71,10 @@ enum JITBootstrap {
     @discardableResult
     static func prewarm() -> Bool {
         if prewarmed { return true }
-        // Before iOS 26 Husk can make the region itself where the device allows it (TrollStore's dynamic-codesigning, a
-        // jailbreak, or a debugger that attached and let go), so it does not wait for CS_DEBUGGED there: Dopamine hides that
-        // flag from apps unless "Allow JIT in Apps" is on, while still letting them run code they wrote.
+        // Before iOS 26 Husk can make the region itself where the device allows it (a jailbreak,
+        // a debugger that attached and let go such as TrollStore's enable-jit, or dynamic-codesigning),
+        // so it does not wait for CS_DEBUGGED there if jailbroken: Dopamine hides that flag from apps unless
+        // "Allow JIT in Apps" is on, while still letting them run code they wrote.
         guard isDebuggerAttached || (canGrantOwnJIT && !selfGrantTried) else {
             HuskLog.log("jit", "no debugger attached yet; not prewarming")
             return false
@@ -231,8 +232,7 @@ enum JITBootstrap {
     }
 
     /// Whether this copy of Husk was installed by TrollStore (or TrollStore Lite): it leaves a marker file next to the app in
-    /// its bundle container (TrollStore's `TS_MARKER`). Only then is it a TrollStore app, which keeps the entitlements it was
-    /// built with -- including the memory ones.
+    /// its bundle container (TrollStore's `TS_MARKER`).
     static var isInstalledWithTrollStore: Bool {
         let container = Bundle.main.bundleURL.deletingLastPathComponent()
         return ["_TrollStore", "_TrollStoreLite"].contains {
