@@ -3,7 +3,24 @@ package android.util;
 public final class Log {
     public static final int VERBOSE = 2, DEBUG = 3, INFO = 4, WARN = 5, ERROR = 6, ASSERT = 7;
     private Log() {}
+    /* An app that logs the same line every frame (Firebase Remote Config asking for a missing key) would fill the log file:
+       each distinct line is written 20 times, then once per 1000 with its count. */
+    private static final java.util.HashMap<String, int[]> sSeen = new java.util.HashMap<>();
     private static int out(int p, String tag, String msg, Throwable t) {
+        if (t == null && msg != null) {
+            String k = tag + '\u0001' + msg;
+            int n;
+            synchronized (sSeen) {
+                if (sSeen.size() > 8192) sSeen.clear();
+                int[] c = sSeen.get(k);
+                if (c == null) sSeen.put(k, c = new int[1]);
+                n = ++c[0];
+            }
+            if (n > 20) {
+                if (n % 1000 != 0) return 0;
+                msg = msg + " (logged " + n + " times)";
+            }
+        }
         if (t != null) msg = msg + "\n" + getStackTraceString(t);
         husk.Native.log(p, tag == null ? "" : tag, msg == null ? "null" : msg);
         return 0;

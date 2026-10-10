@@ -41,6 +41,7 @@ public class SurfaceView extends View {
         super(c, a, s, r);
         setWillNotDraw(false);
         mClear.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        mSurface.huskView = this;
         mSurface.mProducer = new Surface.Producer() {
             public Canvas lock(Rect d) { return SurfaceView.this.lock(d); }
             public void post(Canvas c) { SurfaceView.this.post(c); }
@@ -48,6 +49,11 @@ public class SurfaceView extends View {
         };
     }
     public SurfaceHolder getHolder() { return mHolder; }
+    private volatile boolean mGL;
+    /** The size an EGL window surface on this view gets: the fixed size, else the view's. */
+    public int[] huskSurfaceSize() { int w = mSurfaceW > 0 ? mSurfaceW : getWidth(), h = mSurfaceH > 0 ? mSurfaceH : getHeight(); return new int[] { w > 0 ? w : husk.Native.screenWidth(), h > 0 ? h : husk.Native.screenHeight() }; }
+    /** EGL draws on this view: it keeps its area clear for the frame under the window. */
+    public void huskSetGL(boolean gl) { mGL = gl; postInvalidate(); }
     public void setZOrderOnTop(boolean onTop) { mZOnTop = onTop; }
     public void setZOrderMediaOverlay(boolean o) {}
     public void setSecure(boolean s) {}
@@ -60,6 +66,13 @@ public class SurfaceView extends View {
         setMeasuredDimension(w, h);
     }
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); sizeChanged(); }
+    /** The surface follows the view's frame, as Android's window does it, whatever the subclass does with onSizeChanged
+     *  (cocos2d-x's GLSurfaceView does not call up). */
+    @Override public void layout(int l, int t, int r, int b) {
+        super.layout(l, t, r, b);
+        int w = mFixed ? mFixedW : r - l, h = mFixed ? mFixedH : b - t;
+        if (w > 0 && h > 0 && (!mCreated || w != mSurfaceW || h != mSurfaceH)) post(this::sizeChanged);
+    }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (getWidth() > 0 && getHeight() > 0) post(this::sizeChanged); }
     @Override protected void onDetachedFromWindow() { destroy(); super.onDetachedFromWindow(); }
     @Override protected void onWindowVisibilityChanged(int v) { super.onWindowVisibilityChanged(v); if (v != VISIBLE) destroy(); else if (getWidth() > 0) post(this::sizeChanged); }
@@ -69,7 +82,7 @@ public class SurfaceView extends View {
         int w = mFixed ? mFixedW : getWidth(), h = mFixed ? mFixedH : getHeight();
         if (w <= 0 || h <= 0) return;
         boolean created = false;
-        if (!mCreated) { mCreated = true; created = true; for (SurfaceHolder.Callback c : callbacks()) c.surfaceCreated(mHolder); }
+        if (!mCreated) { mCreated = true; created = true; android.util.Log.d("SurfaceView", getClass().getName() + ": surface created " + w + "x" + h + ", " + callbacks().size() + " callbacks"); for (SurfaceHolder.Callback c : callbacks()) c.surfaceCreated(mHolder); }
         if (created || w != mSurfaceW || h != mSurfaceH) {
             mSurfaceW = w; mSurfaceH = h;
             for (SurfaceHolder.Callback c : callbacks()) c.surfaceChanged(mHolder, mFormat, w, h);
@@ -79,6 +92,7 @@ public class SurfaceView extends View {
     private void destroy() {
         if (!mCreated) return;
         for (SurfaceHolder.Callback c : callbacks()) c.surfaceDestroyed(mHolder);
+        if (mGL) { mGL = false; husk.EGLNative.hide(); }
         synchronized (mLock) { mCreated = false; mHasFrame = false; mLock.notifyAll(); }
     }
     /** Software drawing: a canvas on the back buffer (kept from the last frame, as Android's is). */
@@ -122,7 +136,7 @@ public class SurfaceView extends View {
     }
     @Override protected void onDraw(Canvas c) {
         synchronized (mLock) {
-            if (mHasFrame && mFront != null) {
+            if (mHasFrame && mFront != null && !mGL) {
                 if (mFront.getWidth() == getWidth() && mFront.getHeight() == getHeight()) c.drawBitmap(mFront, 0, 0, mBlit);
                 else c.drawBitmap(mFront, null, new Rect(0, 0, getWidth(), getHeight()), mBlit);
                 return;

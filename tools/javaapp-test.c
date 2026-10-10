@@ -13,6 +13,8 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,15 +164,32 @@ static void *run(void *p)
     { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/lib64", art); tl_ld_add_search_dir(d); }
     { void tl_set_cacerts_dir(const char *); static char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/cacerts", art); tl_set_cacerts_dir(d); }   /* the trusted roots, as the app ships them */
     { char d[800]; snprintf(d, sizeof(d), "%s/lib64", art); tl_dvm_load_natives(d); }
-    char tmp[600] = "/tmp/husk-javaapp-XXXXXX";
+    char tmp[600] = "/Volumes/GTAV/husk2/tmp/husk-javaapp-XXXXXX";
     if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); } else mkdtemp(tmp);
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
     static char egl[700], gles[700]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
-    static char frames[] = "/tmp/husk-jframes-XXXXXX"; mkdtemp(frames);
+    static char frames[] = "/Volumes/GTAV/husk2/tmp/husk-jframes-XXXXXX"; mkdtemp(frames);
     g_frame_dir = frames;
     fprintf(stderr, "frames: %s\ndata: %s\n", frames, tmp);
     int w = argc > 4 ? atoi(argv[3]) : 804, h = argc > 4 ? atoi(argv[4]) : 1748;
-    tl_javaapp_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
+    /* A folder is an app as Google Play delivers it: <package>.apk and its splits and asset packs (<package>.<split>.apk), as the app
+       is given them; TL_SPLITS (colon-separated) adds split APKs to a single APK */
+    static char base[1024];
+    const char *apk = argv[1];
+    struct stat st;
+    if (stat(apk, &st) == 0 && S_ISDIR(st.st_mode)) {
+        DIR *d = opendir(apk); struct dirent *de; char names[32][256]; int n = 0;
+        while (d && (de = readdir(d)) && n < 32) { size_t l = strlen(de->d_name); if (l > 4 && !strcmp(de->d_name + l - 4, ".apk")) snprintf(names[n++], 256, "%s", de->d_name); }
+        if (d) closedir(d);
+        int bi = -1;
+        for (int i = 0; i < n; i++) if (bi < 0 || strlen(names[i]) < strlen(names[bi])) bi = i;
+        if (bi < 0) { fprintf(stderr, "javaapp: no APK in %s\n", apk); _exit(1); }
+        snprintf(base, sizeof(base), "%s/%s", apk, names[bi]);
+        for (int i = 0; i < n; i++) if (i != bi) { char sp[1400]; snprintf(sp, sizeof(sp), "%s/%s", apk, names[i]); tl_ld_queue_split(sp); fprintf(stderr, "javaapp: split %s\n", names[i]); }
+        apk = base;
+    }
+    if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
+    tl_javaapp_config cfg = { .apk_path = apk, .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
                               .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
                               .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -1,
                               .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",

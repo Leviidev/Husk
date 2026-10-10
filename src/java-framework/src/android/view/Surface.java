@@ -9,6 +9,8 @@ public class Surface implements android.os.Parcelable {
     public static class OutOfResourcesException extends RuntimeException { public OutOfResourcesException() {} public OutOfResourcesException(String s) { super(s); } }
     interface Producer { Canvas lock(Rect dirty); void post(Canvas c); boolean valid(); }
     Producer mProducer;
+    /** The SurfaceView this surface belongs to (EGL draws where it is). */
+    public SurfaceView huskView;
     private boolean mReleased;
     public Surface() {}
     public Surface(android.graphics.SurfaceTexture t) {}

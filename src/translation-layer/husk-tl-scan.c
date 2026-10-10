@@ -65,7 +65,7 @@ static bool is_dex(const char *name)
 
 /* Recognised by the libraries an engine always ships. */
 typedef struct engine_scan {
-    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor, gamemaker, python;
+    bool il2cpp, unity, mono_unity, flutter, react, dotnet, godot, unreal, cocos, gdx, minecraft, sdl, sdl2, mainlib, rockstar_game, openal, mpg123, sdl_symbols, native_activity, cordova, capacitor, gamemaker, python, supercell;
 } engine_scan;
 
 static void note_engine(engine_scan *s, const char *f)
@@ -86,6 +86,7 @@ static void note_engine(engine_scan *s, const char *f)
     else if (!strcmp(f, "libSDL3.so")) s->sdl = true;
     else if (!strcmp(f, "libSDL2.so")) s->sdl2 = true;
     else if (!strcmp(f, "libmain.so")) s->mainlib = true;
+    else if (!strcmp(f, "libg.so")) s->supercell = true;
     else if (!strcmp(f, "libGame.so")) s->rockstar_game = true;
     else if (!strcmp(f, "libopenal.so")) s->openal = true;
     else if (!strcmp(f, "libVendor_mpg123.so")) s->mpg123 = true;
@@ -97,7 +98,8 @@ static const char *engine_name(const engine_scan *s)
     if (s->rockstar_game && s->openal && s->mpg123) return "Rockstar";
     if (s->il2cpp) return "Unity (IL2CPP)";
     if (s->unity) return s->mono_unity ? "Unity (Mono)" : "Unity";
-    if (s->flutter) return "Flutter";
+    /* Supercell's games (libg.so) carry a Flutter module for some screens; the game itself is their engine behind a Java activity */
+    if (s->flutter && !s->supercell) return "Flutter";
     if (s->gamemaker) return "GameMaker";
     /* Web apps: the app is HTML and JavaScript in a WebView (Ionic is one or the other underneath). */
     if (s->capacitor) return "Capacitor";
@@ -381,7 +383,8 @@ char *husk_tl_scan(const char *const *paths, int count)
     tl_json_key(&j, "error");       tl_json_string(&j, error[0] ? error : NULL);
     tl_json_key(&j, "verdict");     tl_json_string(&j, verdict);
     tl_json_key(&j, "summary");     tl_json_string(&j, summary);
-    tl_json_key(&j, "engine");      tl_json_string(&j, engine_name(&eng));
+    /* An app with code and no engine Husk knows by its libraries is an Android app: Husk's own Java runtime runs it */
+    tl_json_key(&j, "engine");      tl_json_string(&j, engine_name(&eng) ? engine_name(&eng) : dex_count > 0 ? "Java" : NULL);
     tl_json_key(&j, "hasManifest"); tl_json_bool(&j, manifest);
     tl_json_key(&j, "dexCount");    tl_json_int(&j, dex_count);
     tl_json_key(&j, "dexBytes");    tl_json_int(&j, dex_bytes);

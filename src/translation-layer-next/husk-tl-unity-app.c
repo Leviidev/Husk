@@ -66,7 +66,7 @@ static struct {
     atomic_int state;
     int engine;
     char apk[1024], data[1024], package[160], angle[1024], ca[1024], vulkan[1024];
-    char extra[3][1024];
+    char extra[15][1024];
     int nextra;
     void *layer;
     int width, height;
@@ -557,7 +557,7 @@ void husk_native_set_shared_storage(const char *dir) { tl_set_shared_storage(dir
 
 void husk_native_add_package(const char *apk)
 {
-    if (apk && A.nextra < 3 && atomic_load(&A.state) == HUSK_UNITY_IDLE) {
+    if (apk && A.nextra < 15 && atomic_load(&A.state) == HUSK_UNITY_IDLE) {
         snprintf(A.extra[A.nextra++], sizeof(A.extra[0]), "%s", apk);
         tl_ld_queue_split(apk);
     }

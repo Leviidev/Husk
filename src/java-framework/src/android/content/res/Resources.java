@@ -49,6 +49,12 @@ public class Resources {
             if (sApp == null) {
                 byte[] d = husk.Native.readApkFile(0, "resources.arsc");
                 sApp = d != null ? new ResTable(d) : new ResTable(emptyTable());
+                // a Play install's split APKs (config.xxhdpi, config.en, feature splits) carry their own tables for the same package
+                for (int k = 2; k < 12; k++) {
+                    byte[] sd = husk.Native.readApkFile(k, "resources.arsc");
+                    if (sd == null) continue;
+                    try { sApp.merge(new ResTable(sd)); } catch (RuntimeException e) { android.util.Log.w("Resources", "split " + k + "'s resources.arsc: " + e); }
+                }
             }
             if (sFramework == null) {
                 byte[] d = husk.Native.readApkFile(1, "resources.arsc");
@@ -297,7 +303,7 @@ public class Resources {
         byte[] d = husk.Native.readApkFile((id >>> 24) == 1 ? 1 : 0, path);
         if (d == null && (id >>> 24) != 1) {
             // a split APK may hold it
-            for (int k = 2; k < 6 && d == null; k++) d = husk.Native.readApkFile(k, path);
+            for (int k = 2; k < 12 && d == null; k++) d = husk.Native.readApkFile(k, path);
         }
         if (d == null) throw new NotFoundException("File " + path + " not found (resource ID #0x" + Integer.toHexString(id) + ")");
         return d;

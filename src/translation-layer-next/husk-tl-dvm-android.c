@@ -189,14 +189,23 @@ NAT(N_log)
     tl_log_line("%c/%s: %s", p >= 0 && p < 8 ? lv[p] : '?', tl_jni_string(a[1].l) ? tl_jni_string(a[1].l) : "", tl_jni_string(a[2].l) ? tl_jni_string(a[2].l) : "");
     return true;
 }
-static const tl_zip *apk_zip(void) { return tl_ld_apk_at(0); }
+/* Assets: the app's APK first, then its splits and asset packs (a Play install keeps a game's data in an install-time asset pack). */
+static const tl_zip_entry *asset_find(const char *n, const tl_zip **zout)
+{
+    char path[1024]; snprintf(path, sizeof(path), "assets/%s", n ? n : "");
+    for (int i = 0; i < 16; i++) {
+        const tl_zip *z = tl_ld_apk_at(i);
+        if (!z) { if (i == 0) continue; break; }
+        const tl_zip_entry *e = tl_zip_find(z, path);
+        if (e) { if (zout) *zout = z; return e; }
+    }
+    return NULL;
+}
 NAT(N_readAsset)
 {
     (void)self;
-    const char *n = tl_jni_string(a[0].l);
-    const tl_zip *z = apk_zip();
-    char path[1024]; snprintf(path, sizeof(path), "assets/%s", n ? n : "");
-    const tl_zip_entry *e = z ? tl_zip_find(z, path) : NULL;
+    const tl_zip *z = NULL;
+    const tl_zip_entry *e = asset_find(tl_jni_string(a[0].l), &z);
     if (!e) { *ret = L(NULL); return true; }
     const uint8_t *d; size_t len; bool owned; char err[160];
     if (!tl_zip_data(z, e, (size_t)1 << 30, &d, &len, &owned, err, sizeof(err))) { *ret = L(NULL); return true; }
@@ -211,21 +220,24 @@ NAT(N_listAssets)
 {
     (void)self;
     const char *dir = tl_jni_string(a[0].l);
-    const tl_zip *z = apk_zip();
     char prefix[1024]; snprintf(prefix, sizeof(prefix), "assets/%s%s", dir ? dir : "", dir && *dir ? "/" : "");
     size_t pl = strlen(prefix);
     char **names = NULL; int n = 0, cap = 0;
-    for (size_t i = 0; z && i < z->count; i++) {
-        const char *en = z->entries[i].name;
-        if (strncmp(en, prefix, pl)) continue;
-        const char *rest = en + pl;
-        if (!*rest) continue;
-        size_t l = strcspn(rest, "/");
-        bool dup = false;
-        for (int k = 0; k < n && !dup; k++) dup = strlen(names[k]) == l && !strncmp(names[k], rest, l);
-        if (dup) continue;
-        if (n == cap) { cap = cap ? cap * 2 : 32; names = realloc(names, (size_t)cap * sizeof(*names)); }
-        names[n++] = strndup(rest, l);
+    for (int zi = 0; zi < 16; zi++) {
+        const tl_zip *z = tl_ld_apk_at(zi);
+        if (!z) { if (zi == 0) continue; break; }
+        for (size_t i = 0; i < z->count; i++) {
+            const char *en = z->entries[i].name;
+            if (strncmp(en, prefix, pl)) continue;
+            const char *rest = en + pl;
+            if (!*rest) continue;
+            size_t l = strcspn(rest, "/");
+            bool dup = false;
+            for (int k = 0; k < n && !dup; k++) dup = strlen(names[k]) == l && !strncmp(names[k], rest, l);
+            if (dup) continue;
+            if (n == cap) { cap = cap ? cap * 2 : 32; names = realloc(names, (size_t)cap * sizeof(*names)); }
+            names[n++] = strndup(rest, l);
+        }
     }
     jobj *arr = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), (uint32_t)n);
     arr->cls = tl_jni_class("[Ljava/lang/String;");
@@ -235,26 +247,20 @@ NAT(N_listAssets)
     *ret = L(arr);
     return true;
 }
-/* An asset stored (not compressed) can be read straight out of the APK: its file descriptor and offset, as Android gives them. */
-static const tl_zip_entry *asset_entry(const char *n)
-{
-    const tl_zip *z = apk_zip();
-    char path[1024]; snprintf(path, sizeof(path), "assets/%s", n ? n : "");
-    return z ? tl_zip_find(z, path) : NULL;
-}
+/* An asset stored (not compressed) can be read straight out of its APK: a file descriptor and offset, as Android gives them. */
 NAT(N_assetFd)
 {
     (void)self;
-    const tl_zip_entry *e = asset_entry(tl_jni_string(a[0].l));
+    const tl_zip *z = NULL;
+    const tl_zip_entry *e = asset_find(tl_jni_string(a[0].l), &z);
     if (!e || e->method != 0) { *ret = J(-1); return true; }
-    const tl_zip *z = apk_zip();
     const uint8_t *lh = z->map + e->local_offset;
     uint64_t data = e->local_offset + 30 + (lh[26] | lh[27] << 8) + (lh[28] | lh[29] << 8);
-    int fd = open(A.apk, O_RDONLY);
-    *ret = J(((int64_t)fd << 40) | (int64_t)data);
+    int fd = z == tl_ld_apk_at(0) ? open(A.apk, O_RDONLY) : dup(z->fd);
+    *ret = J(fd < 0 ? -1 : ((int64_t)fd << 40) | (int64_t)data);
     return true;
 }
-NAT(N_assetLength) { (void)self; const tl_zip_entry *e = asset_entry(tl_jni_string(a[0].l)); *ret = J(e ? (int64_t)e->usize : -1); return true; }
+NAT(N_assetLength) { (void)self; const tl_zip_entry *e = asset_find(tl_jni_string(a[0].l), NULL); *ret = J(e ? (int64_t)e->usize : -1); return true; }
 NAT(N_dataDir) { (void)self; (void)a; *ret = L(jstr(A.data)); return true; }
 NAT(N_externalDir) { (void)self; (void)a; *ret = L(jstr(A.ext)); return true; }
 NAT(N_packageName) { (void)self; (void)a; *ret = L(jstr(A.pkg)); return true; }
@@ -446,6 +452,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { NULL, NULL, NULL },
 };
 
+static dvm_native_fn egl_native_lookup(const char *name, const char *sig);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig);
 dvm_native_fn tl_gfx_native(const char *name, const char *sig);
 dvm_native_fn tl_audio_native(const char *name, const char *sig);
@@ -460,6 +467,9 @@ dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *
     if (!strcmp(cls, "husk/Sensors")) return tl_sensors_native(name, sig);
     if (!strcmp(cls, "husk/Gfx")) return tl_gfx_native(name, sig);
     if (!strcmp(cls, "husk/Audio")) return tl_audio_native(name, sig);
+    if (!strcmp(cls, "husk/EGLNative")) {
+        return egl_native_lookup(name, sig);
+    }
     if (!strcmp(cls, "husk/Native")) {
         for (int i = 0; k_native[i].name; i++) if (!strcmp(k_native[i].name, name) && !strcmp(k_native[i].sig, sig)) return k_native[i].fn;
     } else if (!strcmp(cls, "android/opengl/GLES20")) {
@@ -511,9 +521,11 @@ static uint32_t ov_shader(uint32_t kind, const char *src)
     return sh;
 }
 
-static void ov_init(overlay *o)
+static void ov_init_flip(overlay *o, bool bottom_up)
 {
-    static const char *vs = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    static const char *vs_top = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    static const char *vs_bottom = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 + p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    const char *vs = bottom_up ? vs_bottom : vs_top;
     static const char *fs = "precision mediump float; uniform sampler2D s; varying vec2 t; void main() { gl_FragColor = texture2D(s, t); }";
     uint32_t (*createProgram)(void) = gl_fn("glCreateProgram");
     void (*attach)(uint32_t, uint32_t) = gl_fn("glAttachShader");
@@ -534,6 +546,7 @@ static void ov_init(overlay *o)
     bindBuf(0x8892, o->vbo);
     bufData(0x8892, sizeof(quad), quad, 0x88E4);
 }
+static void ov_init(overlay *o) { ov_init_flip(o, false); }
 
 static void ov_upload(overlay *o, const uint8_t *px, int w, int h)
 {
@@ -581,6 +594,221 @@ static void ov_draw(overlay *o, int vw, int vh)
     draw(0x0005, 0, 4);
 }
 
+/* ---- EGL for the app's own threads (a GLSurfaceView copied into the app, an engine's GL thread, EGL14 users)
+ *
+ * The app's contexts are real ANGLE contexts made on its threads, sharing the render thread's objects. A window surface is a pbuffer
+ * the size of the SurfaceView; eglSwapBuffers copies it into a texture (two, in turn) and hands that to the render thread, which
+ * draws it where the SurfaceView is, under the window's views. A context that cannot share (ANGLE refuses some pairs) reads its
+ * frame back into memory instead. */
+typedef struct { EGLContext c; int version; bool readback; } app_ctx;
+typedef struct { EGLSurface pb; int w, h; uint32_t tex[2]; int tw[2], th[2]; int cur; uint8_t *px; } app_surf;
+static struct {
+    pthread_mutex_t lk;
+    pthread_cond_t cv;
+    EGLDisplay dpy; EGLConfig cfg; EGLContext ui; bool es3, ready;
+    /* the frame to show: a shared texture, or pixels (bottom row first) */
+    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq; bool on;
+} E2 = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER };
+
+static bool e2_wait_ready(void)
+{
+    pthread_mutex_lock(&E2.lk);
+    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); ts.tv_sec += 5;
+    while (!E2.ready) if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
+    bool r = E2.ready;
+    pthread_mutex_unlock(&E2.lk);
+    return r;
+}
+
+NAT(EN_createContext)
+{
+    (void)self;
+    ret->j = 0;
+    if (!e2_wait_ready()) return true;
+    EGLContext (*createContext)(EGLDisplay, EGLConfig, EGLContext, const EGLint *) = tl_egl_resolve("eglCreateContext");
+    int v = a[0].i <= 1 ? 1 : a[0].i >= 3 && E2.es3 ? 3 : 2;
+    app_ctx *share = (app_ctx *)(uintptr_t)a[1].j;
+    app_ctx *c = calloc(1, sizeof(*c));
+    for (int tries = 0; tries < 2 && !c->c; tries++) {
+        const EGLint attr[] = { 0x3098, v, EGL_NONE };
+        c->c = createContext(E2.dpy, E2.cfg, share && share->c ? share->c : E2.ui, attr);
+        if (!c->c) { c->c = createContext(E2.dpy, E2.cfg, share && share->c ? share->c : NULL, attr); c->readback = c->c != NULL; }
+        if (!c->c && v == 1) v = 2;
+    }
+    if (!c->c) { tl_log_line("egl: no ES %d context for the app's thread", v); free(c); return true; }
+    c->version = v;
+    tl_log_line("egl: the app made an ES %d context on its own thread%s", v, c->readback ? " (frames read back)" : "");
+    ret->j = (int64_t)(uintptr_t)c;
+    return true;
+}
+NAT(EN_destroyContext)
+{
+    (void)self; (void)ret;
+    app_ctx *c = (app_ctx *)(uintptr_t)a[0].j;
+    if (!c) return true;
+    unsigned (*destroy)(EGLDisplay, EGLContext) = tl_egl_resolve("eglDestroyContext");
+    if (destroy) destroy(E2.dpy, c->c);
+    free(c);
+    return true;
+}
+NAT(EN_createSurface)
+{
+    (void)self;
+    ret->j = 0;
+    if (!e2_wait_ready()) return true;
+    EGLSurface (*createPbuffer)(EGLDisplay, EGLConfig, const EGLint *) = tl_egl_resolve("eglCreatePbufferSurface");
+    int w = a[0].i > 0 ? a[0].i : 1, h = a[1].i > 0 ? a[1].i : 1;
+    const EGLint attr[] = { 0x3057, w, 0x3056, h, EGL_NONE };
+    EGLSurface pb = createPbuffer ? createPbuffer(E2.dpy, E2.cfg, attr) : NULL;
+    if (!pb) { tl_log_line("egl: no %dx%d surface for the app", w, h); return true; }
+    app_surf *s = calloc(1, sizeof(*s));
+    s->pb = pb; s->w = w; s->h = h;
+    ret->j = (int64_t)(uintptr_t)s;
+    return true;
+}
+NAT(EN_destroySurface)
+{
+    (void)self; (void)ret;
+    app_surf *s = (app_surf *)(uintptr_t)a[0].j;
+    if (!s) return true;
+    unsigned (*destroy)(EGLDisplay, EGLSurface) = tl_egl_resolve("eglDestroySurface");
+    pthread_mutex_lock(&E2.lk);
+    if (E2.on && (E2.tex == s->tex[0] || E2.tex == s->tex[1])) { E2.on = false; E2.seq++; }
+    pthread_mutex_unlock(&E2.lk);
+    if (destroy) destroy(E2.dpy, s->pb);
+    free(s->px);
+    free(s);
+    return true;
+}
+/* makeCurrent(surface, context): no context releases the thread's */
+NAT(EN_makeCurrent)
+{
+    (void)self;
+    unsigned (*makeCurrent)(EGLDisplay, EGLSurface, EGLSurface, EGLContext) = tl_egl_resolve("eglMakeCurrent");
+    app_surf *s = (app_surf *)(uintptr_t)a[0].j;
+    app_ctx *c = (app_ctx *)(uintptr_t)a[1].j;
+    ret->j = 0;
+    if (!E2.ready) { ret->z = !c; return true; }
+    if (!c) { ret->z = makeCurrent(E2.dpy, NULL, NULL, NULL) != 0; return true; }
+    EGLSurface surf = s ? s->pb : NULL;
+    if (!surf) {
+        /* a context with no surface: a small pbuffer per thread when the display cannot go surfaceless */
+        static __thread EGLSurface tiny;
+        if (makeCurrent(E2.dpy, NULL, NULL, c->c)) { ret->z = true; return true; }
+        if (!tiny) { EGLSurface (*createPbuffer)(EGLDisplay, EGLConfig, const EGLint *) = tl_egl_resolve("eglCreatePbufferSurface"); const EGLint at[] = { 0x3057, 1, 0x3056, 1, EGL_NONE }; tiny = createPbuffer(E2.dpy, E2.cfg, at); }
+        surf = tiny;
+    }
+    ret->z = makeCurrent(E2.dpy, surf, surf, c->c) != 0;
+    if (!ret->z) tl_log_line("egl: makeCurrent failed for the app's thread");
+    return true;
+}
+/* swap(surface, context, x, y, w, h): the frame the app drew goes on screen at the view's place */
+NAT(EN_swap)
+{
+    (void)self;
+    app_surf *s = (app_surf *)(uintptr_t)a[0].j;
+    app_ctx *c = (app_ctx *)(uintptr_t)a[1].j;
+    ret->j = 0;
+    if (!s || !c) return true;
+    void (*getIntegerv)(uint32_t, int32_t *) = gl_fn("glGetIntegerv");
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    void (*genTex)(int32_t, uint32_t *) = gl_fn("glGenTextures");
+    void (*texParam)(uint32_t, uint32_t, int32_t) = gl_fn("glTexParameteri");
+    void (*copyTex)(uint32_t, int32_t, uint32_t, int32_t, int32_t, int32_t, int32_t, int32_t) = gl_fn("glCopyTexImage2D");
+    void (*copyTexSub)(uint32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t) = gl_fn("glCopyTexSubImage2D");
+    void (*bindFb)(uint32_t, uint32_t) = gl_fn("glBindFramebuffer");
+    void (*readPixels)(int32_t, int32_t, int32_t, int32_t, uint32_t, uint32_t, void *) = gl_fn("glReadPixels");
+    void (*pixelStore)(uint32_t, int32_t) = gl_fn("glPixelStorei");
+    void (*finish)(void) = gl_fn("glFinish");
+    int32_t fb = 0, active = 0x84C0, tex = 0, pack = 4;
+    if (c->version >= 2) getIntegerv(0x8CA6, &fb);                /* the app's framebuffer: the frame is the surface's own */
+    getIntegerv(0x84E0, &active);
+    if (fb && bindFb) bindFb(0x8D40, 0);
+    if (c->readback) {
+        getIntegerv(0x0D05, &pack);
+        s->px = realloc(s->px, (size_t)s->w * s->h * 4);
+        pixelStore(0x0D05, 4);
+        readPixels(0, 0, s->w, s->h, 0x1908, 0x1401, s->px);
+        pixelStore(0x0D05, pack);
+        pthread_mutex_lock(&E2.lk);
+        E2.px = realloc(E2.px, (size_t)s->w * s->h * 4);
+        memcpy(E2.px, s->px, (size_t)s->w * s->h * 4);
+        E2.pw = s->w; E2.ph = s->h; E2.tex = 0;
+    } else {
+        activeTex(0x84C0);
+        getIntegerv(0x8069, &tex);
+        int k = s->cur;
+        if (!s->tex[k]) genTex(1, &s->tex[k]);
+        bindTex(0x0DE1, s->tex[k]);
+        if (s->tw[k] != s->w || s->th[k] != s->h) {
+            texParam(0x0DE1, 0x2801, 0x2601); texParam(0x0DE1, 0x2800, 0x2601);
+            texParam(0x0DE1, 0x2802, 0x812F); texParam(0x0DE1, 0x2803, 0x812F);
+            copyTex(0x0DE1, 0, 0x1908, 0, 0, s->w, s->h, 0);
+            s->tw[k] = s->w; s->th[k] = s->h;
+        } else copyTexSub(0x0DE1, 0, 0, 0, 0, 0, s->w, s->h);
+        bindTex(0x0DE1, (uint32_t)tex);
+        activeTex((uint32_t)active);
+        finish();
+        s->cur ^= 1;
+        pthread_mutex_lock(&E2.lk);
+        E2.tex = s->tex[k]; E2.pw = s->w; E2.ph = s->h;
+    }
+    E2.x = a[2].i; E2.y = a[3].i; E2.w = a[4].i > 0 ? a[4].i : s->w; E2.h = a[5].i > 0 ? a[5].i : s->h;
+    E2.on = true; E2.seq++;
+    pthread_mutex_unlock(&E2.lk);
+    if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+    ret->z = true;
+    return true;
+}
+/* the GL thread Husk drives GLSurfaceView from: there EGL10 answers for the context it made */
+static pthread_t g_render_thread;
+NAT(EN_isRenderThread) { (void)self; (void)a; ret->j = 0; ret->z = pthread_equal(pthread_self(), g_render_thread) != 0; return true; }
+NAT(EN_hide) { (void)self; (void)a; (void)ret; pthread_mutex_lock(&E2.lk); E2.on = false; E2.seq++; pthread_mutex_unlock(&E2.lk); return true; }
+static const struct { const char *name, *sig; dvm_native_fn fn; } k_eglnative[] = {
+    { "createContext", "(IJ)J", EN_createContext }, { "destroyContext", "(J)V", EN_destroyContext },
+    { "createSurface", "(II)J", EN_createSurface }, { "destroySurface", "(J)V", EN_destroySurface },
+    { "makeCurrent", "(JJ)Z", EN_makeCurrent }, { "swap", "(JJIIII)Z", EN_swap },
+    { "isRenderThread", "()Z", EN_isRenderThread }, { "hide", "()V", EN_hide },
+    { NULL, NULL, NULL },
+};
+static dvm_native_fn egl_native_lookup(const char *name, const char *sig)
+{
+    for (int i = 0; k_eglnative[i].name; i++) if (!strcmp(k_eglnative[i].name, name) && !strcmp(k_eglnative[i].sig, sig)) return k_eglnative[i].fn;
+    return NULL;
+}
+
+/* drawing the app's frame on the render thread: a quad at the view's place, the frame's bottom row first */
+static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
+{
+    pthread_mutex_lock(&E2.lk);
+    bool on = E2.on; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
+    if (on && !tex && E2.px) { ov_upload(up, E2.px, E2.pw, E2.ph); }
+    pthread_mutex_unlock(&E2.lk);
+    if (!on) return;
+    void (*viewport)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glViewport");
+    void (*useProgram)(uint32_t) = gl_fn("glUseProgram");
+    void (*disable)(uint32_t) = gl_fn("glDisable");
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
+    void (*attrPtr)(uint32_t, int32_t, uint32_t, uint8_t, int32_t, const void *) = gl_fn("glVertexAttribPointer");
+    void (*enableAttr)(uint32_t) = gl_fn("glEnableVertexAttribArray");
+    void (*draw)(uint32_t, int32_t, int32_t) = gl_fn("glDrawArrays");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    viewport(x, vh - y - h, w, h);
+    disable(0x0B71); disable(0x0B44); disable(0x0C11); disable(0x0B90); disable(0x0BE2);
+    useProgram(o->prog);
+    activeTex(0x84C0);
+    bindTex(0x0DE1, tex ? tex : up->tex);
+    bindBuf(0x8892, o->vbo);
+    attrPtr(0, 2, 0x1406, 0, 0, NULL);
+    enableAttr(0);
+    draw(0x0005, 0, 4);
+    viewport(0, 0, vw, vh);
+}
+static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
+static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
+
 /*
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
@@ -604,8 +832,8 @@ static void *gl_main(void *arg)
     initialize(dpy, &major, &minor);
     bindAPI(0x30A0);
     EGLConfig cfg = NULL; EGLint ncfg = 0;
-    const EGLint want3[] = { 0x3040, 0x40, 0x3033, 0x4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
-    const EGLint want2[] = { 0x3040, 0x4, 0x3033, 0x4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
+    const EGLint want3[] = { 0x3040, 0x40, 0x3033, 0x5, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
+    const EGLint want2[] = { 0x3040, 0x4, 0x3033, 0x5, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
     bool es3 = chooseConfig(dpy, want3, &cfg, 1, &ncfg) && ncfg >= 1;
     if (!es3 && (!chooseConfig(dpy, want2, &cfg, 1, &ncfg) || ncfg < 1)) { tl_log_line("javaapp: no EGL config"); return NULL; }
     const EGLint ui_attr[] = { 0x3098, 2, EGL_NONE };
@@ -613,8 +841,16 @@ static void *gl_main(void *arg)
     EGLSurface surf = createWindowSurface(dpy, cfg, tl_nwindow_get(), NULL);
     if (!ui || !surf || !makeCurrent(dpy, surf, surf, ui)) { tl_log_line("javaapp: no GL context"); return NULL; }
     if (swapInterval) swapInterval(dpy, 1);
-    overlay ov = { 0 };
+    overlay ov = { 0 }, appov = { 0 }, appup = { 0 };
     ov_init(&ov);
+    ov_init_flip(&appov, true);
+    ov_init_flip(&appup, true);
+    g_render_thread = pthread_self();
+    pthread_mutex_lock(&E2.lk);
+    E2.dpy = dpy; E2.cfg = cfg; E2.ui = ui; E2.es3 = es3; E2.ready = true;
+    pthread_cond_broadcast(&E2.cv);
+    pthread_mutex_unlock(&E2.lk);
+    uint64_t app_seq = 0;
     void (*clearColor)(float, float, float, float) = gl_fn("glClearColor");
     void (*clear)(uint32_t) = gl_fn("glClear");
     tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
@@ -673,9 +909,13 @@ static void *gl_main(void *arg)
                 drew = true;
             }
         }
-        if (drew || fresh) {
+        uint64_t q = app_frame_seq();
+        bool app_fresh = q != app_seq;
+        app_seq = q;
+        if (drew || fresh || app_fresh) {
             makeCurrent(dpy, surf, surf, ui);
-            if (!app) { clearColor(0, 0, 0, tl_web_any_visible() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
+            if (!app) { clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
+            if (!app) app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
             if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);

@@ -117,13 +117,13 @@ static inline const void *at(const tl_lib *L, uint64_t vaddr) { return L->rw + (
 
 /* The app's split APKs (its 64-bit libraries, its asset packs), given before the engine starts: they are added right after
  * the base, whichever engine adds that, as Android puts a split's libraries and assets beside the base's. */
-static char g_splits[4][1024];
+static char g_splits[15][1024];
 static int g_nsplits;
 static char g_apk_paths[TL_LD_MAX_APKS][1024];
 
 void tl_ld_queue_split(const char *path)
 {
-    if (path && path[0] && g_nsplits < 4) snprintf(g_splits[g_nsplits++], sizeof(g_splits[0]), "%s", path);
+    if (path && path[0] && g_nsplits < 15) snprintf(g_splits[g_nsplits++], sizeof(g_splits[0]), "%s", path);
 }
 
 const char *tl_ld_queued_split(int i) { return i >= 0 && i < g_nsplits ? g_splits[i] : NULL; }

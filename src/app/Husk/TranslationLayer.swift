@@ -52,7 +52,11 @@ struct TLReport: Decodable {
 extension TLReport {
     /// The engine the native runtime drives this app with, if it can: Unity (IL2CPP) games and cocos2d-x games.
     var nativeEngine: TLNativeEngine? {
-        guard ok, !abis.isEmpty, abis.contains("arm64-v8a") else { return nil }
+        guard ok else { return nil }
+        // Native code for other CPUs only (32-bit ARM, x86): nothing here can run it
+        if !abis.isEmpty && !abis.contains("arm64-v8a") { return nil }
+        // An app with Java code and no native code at all runs on Husk's own Java runtime
+        if abis.isEmpty { return dexCount > 0 && webKind == nil ? .java : nil }
         if engine?.hasPrefix("Unity") == true { return .unity }
         if engine == "Cocos" { return .cocos }
         if engine == "Minecraft" { return .minecraft }
@@ -63,7 +67,10 @@ extension TLReport {
         if engine == "NativeActivity" { return .nativeactivity }
         if engine == "Flutter" { return .flutter }
         if engine == "GameMaker" { return .gamemaker }
-        if engine == "libGDX" { return .java }
+        // Everything else with Java code: libGDX games, ordinary apps, React Native and the like, and games whose engine is their
+        // own library behind a Java activity (Hill Climb Racing, Supercell's games)
+        if engine == "libGDX" || engine == "Java" || engine == "React Native" || engine == ".NET / Xamarin" { return .java }
+        if engine == nil, dexCount > 0 { return .java }
         return nil
     }
 
@@ -73,7 +80,7 @@ extension TLReport {
     var runsOnNativeRuntime: Bool { nativeEngine != nil }
 
     /// "Unity" or "Cocos2d-x", for words on screen.
-    var nativeEngineName: String { engine == "Python" ? "Python (Kivy)" : nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : nativeEngine == .java ? "libGDX" : "Unity" }
+    var nativeEngineName: String { engine == "Python" ? "Python (Kivy)" : nativeEngine == .cocos ? "Cocos2d-x" : nativeEngine == .minecraft ? "Minecraft" : nativeEngine == .sdl ? "SDL" : nativeEngine == .ue4 ? "Unreal Engine" : nativeEngine == .gta ? "Rockstar" : nativeEngine == .godot ? "Godot" : nativeEngine == .nativeactivity ? "NativeActivity" : nativeEngine == .flutter ? "Flutter" : nativeEngine == .gamemaker ? "GameMaker" : nativeEngine == .java ? (engine == "libGDX" ? "libGDX" : "Android") : "Unity" }
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
@@ -81,6 +88,8 @@ extension TLReport {
         let total = libraries.filter { $0.abi == "arm64-v8a" }.count
         var text = nativeEngine == .flutter
             ? "A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself."
+            : nativeEngine == .java && engine != "libGDX"
+            ? "An Android app. Husk runs its code on its own Java runtime" + (total > 0 ? " and loads its \(total) arm64 libraries itself." : ".")
             : "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
         if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
         else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot || nativeEngine == .gamemaker { text += " Husk turns the screen the way the game asks for." }
@@ -167,7 +176,7 @@ final class TranslationLayerStore: ObservableObject {
 
     /// Which reading of an app's libraries its report came from. A newer Husk that recognises more (an engine, a kind of game) reads
     /// the apps it already holds again, so they are not left with what the old one knew.
-    nonisolated static let scanVersion = 6
+    nonisolated static let scanVersion = 7
     private var rescanning = false
 
     func reload() {

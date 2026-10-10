@@ -61,6 +61,7 @@ public final class ResTable {
     static final class TypeChunk {
         int off, entryCount, entriesStart, indexStart;
         StringPool keys;                    /* the key names of the package chunk this came in (a table may split one package over several) */
+        ResTable src;                       /* the table whose bytes and value strings it is in (a split APK's, merged into the base's) */
         boolean sparse, offset16;
         final int[] cfg = new int[Config.N];
         int density;
@@ -69,6 +70,7 @@ public final class ResTable {
         int id;
         String name;
         int specFlagsOff = -1, specCount;
+        ResTable specSrc;
         final ArrayList<TypeChunk> configs = new ArrayList<>();
     }
     public static final class Package {
@@ -120,12 +122,13 @@ public final class ResTable {
             if (t == RES_TABLE_TYPE_SPEC) {
                 int tid = b.get(c + 8) & 255;
                 Type ty = type(p, tid, typeStrings);
-                if (ty.specFlagsOff < 0 || b.getInt(c + 12) > ty.specCount) { ty.specCount = b.getInt(c + 12); ty.specFlagsOff = c + ch; }
+                if (ty.specFlagsOff < 0 || b.getInt(c + 12) > ty.specCount) { ty.specCount = b.getInt(c + 12); ty.specFlagsOff = c + ch; ty.specSrc = this; }
             } else if (t == RES_TABLE_TYPE) {
                 int tid = b.get(c + 8) & 255, flags = b.get(c + 9) & 255;
                 Type ty = type(p, tid, typeStrings);
                 TypeChunk tc = new TypeChunk();
                 tc.off = c;
+                tc.src = this;
                 tc.keys = keyStrings;
                 tc.entryCount = b.getInt(c + 12);
                 tc.entriesStart = c + b.getInt(c + 16);
@@ -147,6 +150,23 @@ public final class ResTable {
         }
         if (fresh) { packages.add(p); byId[p.id & 255] = p; }
     }
+    /** A split APK's table (a Play install's config.xxhdpi, config.en...): its configurations join the same packages and types
+     *  here, each still reading its own bytes and strings. */
+    public void merge(ResTable o) {
+        for (Package op : o.packages) {
+            Package p = byId[op.id & 255];
+            if (p == null) { packages.add(op); byId[op.id & 255] = op; continue; }
+            for (int i = 0; i < 256; i++) {
+                Type ot = op.types[i];
+                if (ot == null) continue;
+                Type t = p.types[i];
+                if (t == null) { p.types[i] = ot; continue; }
+                t.configs.addAll(ot.configs);
+            }
+            p.names = null;
+        }
+    }
+
     private Type type(Package p, int tid, StringPool typeStrings) {
         Type t = p.types[tid];
         if (t == null) { t = p.types[tid] = new Type(); t.id = tid; t.name = typeStrings.get(tid - 1); }
@@ -155,6 +175,7 @@ public final class ResTable {
 
     /** The offset of entry e in a type chunk, or -1 when this configuration does not have it. */
     int entryOffset(TypeChunk tc, int e) {
+        ByteBuffer b = tc.src.b;
         if (tc.sparse) {
             int lo = 0, hi = tc.entryCount - 1;
             while (lo <= hi) {
@@ -173,6 +194,7 @@ public final class ResTable {
     /** A looked-up entry: where it is and in which configuration. */
     public static final class Entry {
         public int off, flags, key, density, typeChunk, specFlags;
+        ResTable src;
         public boolean complex() { return (flags & 1) != 0; }
     }
 
@@ -204,17 +226,20 @@ public final class ResTable {
         if (best == null) return null;
         Entry r = new Entry();
         r.off = bestOff;
-        int sz = b.getShort(bestOff) & 0xffff;
-        r.flags = b.getShort(bestOff + 2) & 0xffff;
-        r.key = (r.flags & 8) != 0 ? sz : b.getInt(bestOff + 4);
+        r.src = best.src;
+        ByteBuffer eb = best.src.b;
+        int sz = eb.getShort(bestOff) & 0xffff;
+        r.flags = eb.getShort(bestOff + 2) & 0xffff;
+        r.key = (r.flags & 8) != 0 ? sz : eb.getInt(bestOff + 4);
         r.density = best.density;
-        r.specFlags = t.specFlagsOff >= 0 && e < t.specCount ? b.getInt(t.specFlagsOff + 4 * e) : 0;
+        r.specFlags = t.specFlagsOff >= 0 && e < t.specCount ? t.specSrc.b.getInt(t.specFlagsOff + 4 * e) : 0;
         return r;
     }
 
     /** A simple entry's value into v (type, data, string); false for a bag. */
     public boolean value(Entry en, android.util.TypedValue v) {
         if (en.complex()) return false;
+        ByteBuffer b = en.src.b; StringPool strings = en.src.strings;
         if ((en.flags & 8) != 0) {   /* compact: type in the high byte of flags, data where the key would be */
             v.type = (en.flags >>> 8) & 0xff;
             v.data = b.getInt(en.off + 4);
@@ -232,10 +257,11 @@ public final class ResTable {
     }
 
     /** A bag's parent and its items (attr id -> value), parents' items first, then its own. */
-    public int bagParent(Entry en) { return en.complex() ? b.getInt(en.off + 8) : 0; }
-    public int bagCount(Entry en) { return en.complex() ? b.getInt(en.off + 12) : 0; }
+    public int bagParent(Entry en) { return en.complex() ? en.src.b.getInt(en.off + 8) : 0; }
+    public int bagCount(Entry en) { return en.complex() ? en.src.b.getInt(en.off + 12) : 0; }
     /** The i-th item: its name (attr id) and value into v. */
     public int bagItem(Entry en, int i, android.util.TypedValue v) {
+        ByteBuffer b = en.src.b; StringPool strings = en.src.strings;
         int sz = b.getShort(en.off) & 0xffff;
         int m = en.off + sz + 12 * i;
         int name = b.getInt(m);
@@ -258,6 +284,7 @@ public final class ResTable {
         for (TypeChunk tc : t.configs) {
             int o = entryOffset(tc, id & 0xffff);
             if (o < 0) continue;
+            ByteBuffer b = tc.src.b;
             int fl = b.getShort(o + 2) & 0xffff;
             int key = (fl & 8) != 0 ? (b.getShort(o) & 0xffff) : b.getInt(o + 4);
             return tc.keys.get(key);
@@ -281,6 +308,7 @@ public final class ResTable {
             if (t == null) continue;
             for (TypeChunk tc : t.configs) {
                 int n = tc.sparse ? tc.entryCount : tc.entryCount;
+                ByteBuffer b = tc.src.b;
                 for (int i = 0; i < n; i++) {
                     int e, o;
                     if (tc.sparse) { e = b.getShort(tc.indexStart + 4 * i) & 0xffff; o = tc.entriesStart + (b.getShort(tc.indexStart + 4 * i + 2) & 0xffff) * 4; }
