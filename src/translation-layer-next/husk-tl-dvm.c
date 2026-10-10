@@ -21,7 +21,7 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* ================================================================== DEX files */
 
-static dvm_dex *g_dex[64];
+static dvm_dex *g_dex[256];
 static int g_ndex;
 
 static inline uint16_t rd16(const uint8_t *p) { return (uint16_t)(p[0] | p[1] << 8); }
@@ -102,7 +102,7 @@ static cdef *cdef_find(const char *name)
 static bool dex_add(const uint8_t *b, size_t size, const char *label)
 {
     if (size < 0x70 || memcmp(b, "dex\n", 4)) { tl_log_line("dvm: %s is not a DEX file", label); return false; }
-    if (g_ndex >= 64) return false;
+    if (g_ndex >= 256) return false;
     dvm_dex *d = calloc(1, sizeof(*d));
     d->b = b; d->size = size;
     d->nstr = rd32(b + 0x38); d->str_off = rd32(b + 0x3c);
@@ -427,8 +427,16 @@ static bool attach(tl_jclass *jc)
     if (data_off) {
         const uint8_t *p = d->b + data_off;
         uint32_t nsf = uleb(&p), nif = uleb(&p), ndm = uleb(&p), nvm = uleb(&p);
-        c->sf = calloc(nsf ? nsf : 1, sizeof(dvm_field)); c->inf = calloc(nif ? nif : 1, sizeof(dvm_field));
-        c->dm = calloc(ndm ? ndm : 1, sizeof(dvm_method)); c->vm = calloc(nvm ? nvm : 1, sizeof(dvm_method));
+        /* As ART lays them out (LengthPrefixedArray: a count, then the members back to back): fields instance then static,
+         * methods direct then virtual. Class.fields/methods point at these, and code that walks ART's tables through Unsafe
+         * (HiddenApiBypass) finds dvm_field/dvm_method entries a fixed stride apart. */
+        uint8_t *fb = calloc(1, DVM_MEMBERS_HDR + (nif + nsf + 1) * sizeof(dvm_field));
+        *(uint32_t *)fb = nif + nsf;
+        c->inf = (dvm_field *)(fb + DVM_MEMBERS_HDR); c->sf = c->inf + nif;
+        uint8_t *mb = calloc(1, DVM_MEMBERS_HDR + (ndm + nvm + 1) * sizeof(dvm_method));
+        *(uint32_t *)mb = ndm + nvm;
+        c->dm = (dvm_method *)(mb + DVM_MEMBERS_HDR); c->vm = c->dm + ndm;
+        c->art_tables = true;
         uint32_t idx = 0;
         for (uint32_t i = 0; i < nsf; i++) {
             idx += uleb(&p);
@@ -1761,8 +1769,14 @@ static void reattach(tl_jclass *jc)
 }
 bool tl_dvm_running(void) { return g_running; }
 
+/* java.boot.class.path: the boot jars, colon-separated, core-oj first (HiddenApiBypass reloads libcore's classes from it). */
+char g_dvm_boot_path[4096];
+
 bool tl_dvm_start(const char *const *boot, int nboot)
 {
+    size_t k = 0;
+    for (int i = 0; i < nboot && k < sizeof(g_dvm_boot_path); i++)
+        k += (size_t)snprintf(g_dvm_boot_path + k, sizeof(g_dvm_boot_path) - k, "%s%s", i ? ":" : "", boot[i]);
     for (int i = 0; i < nboot; i++) if (!open_path(boot[i])) tl_log_line("dvm: could not open %s", boot[i]);
     if (!cdef_find("java/lang/Object")) { tl_log_line("dvm: no java/lang/Object on the boot class path"); return false; }
     dvm_natives_init();
@@ -1778,6 +1792,159 @@ bool tl_dvm_start(const char *const *boot, int nboot)
 }
 
 bool tl_dvm_add_apk(const char *apk) { return open_path(apk); }
+
+/* ---- dalvik.system.DexFile: DexClassLoader, InMemoryDexClassLoader and PathClassLoaders made at run time.
+ * Classes live in one namespace here (first definition wins), so opening a file adds its classes to it and defineClass finds a class
+ * by name. The cookie is a long[] { first dex, count } into g_dex; a file already open is not read again. */
+static struct { char *path; int first, count; } g_opened[256];
+static int g_nopened;
+static pthread_mutex_t g_open_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static jobj *dex_cookie(int first, int count)
+{
+    jobj *c = tl_jni_new_prim_array('J', 2);
+    c->refs = 1u << 30;
+    ((int64_t *)c->arr.data)[0] = first; ((int64_t *)c->arr.data)[1] = count;
+    return c;
+}
+
+static bool DexFile_open(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self;
+    const char *path = tl_jni_string(a[0].l);
+    if (!path) return dvm_throw("java/lang/NullPointerException", "path");
+    pthread_mutex_lock(&g_open_lock);
+    int first = -1, count = 0;
+    for (int i = 0; i < g_nopened; i++) if (!strcmp(g_opened[i].path, path)) { first = g_opened[i].first; count = g_opened[i].count; break; }
+    if (first < 0) {
+        /* the boot class path is open already: its dexes by label */
+        const char *base = strrchr(path, '/'); base = base ? base + 1 : path;
+        size_t bl = strlen(base);
+        for (int i = 0; i < g_ndex; i++) if (!strncmp(g_dex[i]->name, base, bl) && g_dex[i]->name[bl] == '!') { if (first < 0) first = i; count++; }
+    }
+    if (first < 0) {
+        int before = g_ndex;
+        bool ok = open_path(path);
+        if (ok || g_ndex > before) { first = before; count = g_ndex - before; }
+        if (first >= 0 && g_nopened < 256) { g_opened[g_nopened].path = strdup(path); g_opened[g_nopened].first = first; g_opened[g_nopened++].count = count; }
+    }
+    pthread_mutex_unlock(&g_open_lock);
+    if (first < 0) return dvm_throw("java/io/IOException", "No original dex files found for dex location %s", path);
+    if (g_dvm_trace >= 1) tl_log_line("dvm: DexFile %s: dexes %d..%d", path, first, first + count - 1);
+    ret->l = dex_cookie(first, count);
+    return true;
+}
+
+/* openInMemoryDexFilesNative(ByteBuffer[] bufs, byte[][] arrays, int[] starts, int[] ends, loader, elements) */
+static bool DexFile_openInMemory(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self;
+    jobj *bufs = a[0].l, *arrays = a[1].l, *starts = a[2].l, *ends = a[3].l;
+    uint32_t n = bufs ? bufs->oarr.len : arrays ? arrays->oarr.len : 0;
+    pthread_mutex_lock(&g_open_lock);
+    int first = g_ndex;
+    for (uint32_t i = 0; i < n; i++) {
+        const uint8_t *src = NULL; size_t len = 0;
+        jobj *arr = arrays ? arrays->oarr.v[i] : NULL;
+        int32_t st = starts ? ((int32_t *)starts->arr.data)[i] : 0, en = ends ? ((int32_t *)ends->arr.data)[i] : 0;
+        if (arr) { src = (const uint8_t *)arr->arr.data + st; len = (size_t)(en - st); }
+        else if (bufs && bufs->oarr.v[i]) {
+            /* a direct ByteBuffer: its address */
+            jobj *bb = bufs->oarr.v[i];
+            dvm_class *bc = dvm_class_of(dvm_object_class(bb));
+            dvm_field *addr = bc ? dvm_find_field(bc, "address", false) : NULL;
+            if (addr) { src = (const uint8_t *)(uintptr_t)dvm_slots(bb)[addr->slot].j + st; len = (size_t)(en - st); }
+        }
+        if (!src || !len) continue;
+        uint8_t *copy = malloc(len);
+        memcpy(copy, src, len);
+        char label[64]; snprintf(label, sizeof(label), "memory-%d.dex", g_ndex);
+        if (!dex_add(copy, len, label)) free(copy);
+    }
+    int count = g_ndex - first;
+    pthread_mutex_unlock(&g_open_lock);
+    if (!count) return dvm_throw("java/io/IOException", "no dex in memory");
+    ret->l = dex_cookie(first, count);
+    return true;
+}
+
+static bool cookie_range(jobj *c, int *first, int *count)
+{
+    if (!c || c->kind != TL_K_PRIM_ARRAY || c->arr.len < 2) return false;
+    *first = (int)((int64_t *)c->arr.data)[0]; *count = (int)((int64_t *)c->arr.data)[1];
+    return *first >= 0 && *first + *count <= g_ndex;
+}
+
+/* defineClassNative(String name "a/b/C", ClassLoader, Object cookie, DexFile) */
+static bool DexFile_define(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self;
+    const char *n = tl_jni_string(a[0].l);
+    ret->l = NULL;
+    if (!n) return true;
+    char name[512]; snprintf(name, sizeof(name), "%s", n);
+    for (char *q = name; *q; q++) if (*q == '.') *q = '/';
+    /* only what this file defines (or a class of the same name already loaded from elsewhere, first definition winning) */
+    int first, count;
+    cdef *cd = cdef_find(name);
+    if (!cd) return true;
+    if (cookie_range(a[2].l, &first, &count)) {
+        bool here = false;
+        for (int i = first; i < first + count && !here; i++) {
+            dvm_dex *d = g_dex[i];
+            for (uint32_t k = 0; k < d->ncls && !here; k++) {
+                char nm[512]; desc_to_name(dex_type(d, rd32(d->b + d->cls_off + 32 * k)), nm, sizeof(nm));
+                here = !strcmp(nm, name);
+            }
+        }
+        if (!here) return true;
+    }
+    tl_jclass *jc = dvm_class_named(name);
+    ret->l = jc ? jc->mirror : NULL;
+    return true;
+}
+
+static bool DexFile_names(jobj *self, const jvalue *a, jvalue *ret)
+{
+    (void)self;
+    int first = 0, count = 0;
+    cookie_range(a[0].l, &first, &count);
+    uint32_t total = 0;
+    for (int i = first; i < first + count; i++) total += g_dex[i]->ncls;
+    jobj *arr = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), total);
+    arr->cls = tl_jni_class("[Ljava/lang/String;");
+    arr->refs = 1u << 30;
+    uint32_t k = 0;
+    for (int i = first; i < first + count; i++) {
+        dvm_dex *d = g_dex[i];
+        for (uint32_t j = 0; j < d->ncls; j++) {
+            char nm[512]; desc_to_name(dex_type(d, rd32(d->b + d->cls_off + 32 * j)), nm, sizeof(nm));
+            for (char *q = nm; *q; q++) if (*q == '/') *q = '.';
+            arr->oarr.v[k++] = dvm_new_string_utf8(nm);
+        }
+    }
+    ret->l = arr;
+    return true;
+}
+
+static bool DexFile_true(jobj *self, const jvalue *a, jvalue *ret) { (void)self; (void)a; ret->j = 0; ret->z = true; return true; }
+static bool DexFile_false(jobj *self, const jvalue *a, jvalue *ret) { (void)self; (void)a; ret->j = 0; return true; }
+
+dvm_native_fn dvm_dexfile_native(const char *cls, const char *name, const char *sig);
+dvm_native_fn dvm_dexfile_native(const char *cls, const char *name, const char *sig)
+{
+    (void)sig;
+    if (strcmp(cls, "dalvik/system/DexFile")) return NULL;
+    if (!strcmp(name, "openDexFileNative")) return DexFile_open;
+    if (!strcmp(name, "openInMemoryDexFilesNative")) return DexFile_openInMemory;
+    if (!strcmp(name, "defineClassNative")) return DexFile_define;
+    if (!strcmp(name, "getClassNameList")) return DexFile_names;
+    if (!strcmp(name, "closeDexFile")) return DexFile_true;
+    if (!strcmp(name, "isBackedByOatFile") || !strcmp(name, "isDexOptNeeded") || !strcmp(name, "getDexOptNeeded")
+        || !strcmp(name, "isReadOnlyJavaDclEnforced") || !strcmp(name, "setTrusted") || !strcmp(name, "verifyInBackgroundNative")
+        || !strcmp(name, "getStaticSizeOfDexFile")) return DexFile_false;
+    return NULL;
+}
 
 bool tl_jni_load_library(const char *base);
 bool tl_dvm_load_library(const char *name_or_path);

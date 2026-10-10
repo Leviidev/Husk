@@ -493,8 +493,12 @@ NAT(System_specialProperties)
     UNUSED;
     char cwd[1024]; if (!getcwd(cwd, sizeof(cwd))) snprintf(cwd, sizeof(cwd), "/");
     char ud[1100]; snprintf(ud, sizeof(ud), "user.dir=%s", cwd);
-    const char *v[] = { ud, "android.zlib.version=1.2.13", "android.openssl.version=OpenSSL 3.0", NULL };
-    *ret = L(string_array(v, 3));
+    extern char g_dvm_boot_path[];
+    char *bcp = malloc(strlen(g_dvm_boot_path) + 32);
+    sprintf(bcp, "java.boot.class.path=%s", g_dvm_boot_path);
+    const char *v[] = { ud, "android.zlib.version=1.2.13", "android.openssl.version=OpenSSL 3.0", bcp, NULL };
+    *ret = L(string_array(v, 4));
+    free(bcp);
     return true;
 }
 NAT(System_setStream) { (void)self; (void)ret; (void)a; return true; }   /* setIn0/setOut0/setErr0: the Java side keeps the field */
@@ -904,6 +908,11 @@ NAT(Class_getSimpleNameNative)
 
 /* ---- reflection objects (Field, Method, Constructor) over the interpreter's own members */
 
+/* What Unsafe calls a field's offset: slot*8+16, statics STATIC_OFFSET higher so a Class object's own fields (Class.methods, which
+ * HiddenApiBypass reads) and the statics of the class it stands for do not share offsets. */
+#define STATIC_OFFSET (1 << 20)
+static int64_t field_offset(const dvm_field *f) { return (int64_t)f->slot * 8 + 16 + ((f->flags & 8) ? STATIC_OFFSET : 0); }
+
 static jobj *make_field(dvm_field *f)
 {
     tl_jclass *fc = tl_jni_class("java/lang/reflect/Field");
@@ -913,7 +922,7 @@ static jobj *make_field(dvm_field *f)
     if ((x = dvm_find_field(c, "declaringClass", false))) s[x->slot] = L(f->cls->jc->mirror);
     if ((x = dvm_find_field(c, "accessFlags", false))) s[x->slot] = I((int32_t)f->flags);
     if ((x = dvm_find_field(c, "dexFieldIndex", false))) s[x->slot] = I((int32_t)f->idx);
-    if ((x = dvm_find_field(c, "offset", false))) s[x->slot] = I((int32_t)(f->slot * 8 + 16));
+    if ((x = dvm_find_field(c, "offset", false))) s[x->slot] = I((int32_t)field_offset(f));
     if ((x = dvm_find_field(c, "type", false))) {
         const char *t = f->type; char nm[400];
         if (t[0] == 'L') snprintf(nm, sizeof(nm), "%.*s", (int)strlen(t) - 2, t + 1);
@@ -1332,6 +1341,23 @@ NAT(Ctor_newInstance0)
 
 NAT(Field_getName) { (void)a; dvm_field *f = field_of(self); *ret = L(f ? interned(f->name) : NULL); return true; }
 NAT(Field_getArtField) { (void)a; *ret = J((int64_t)(uintptr_t)field_of(self)); return true; }
+/* MethodHandleImpl.getMemberInternal: the Method, Constructor or Field a direct handle stands for, from its artFieldOrMethod
+ * (a dvm_method or dvm_field, as Executable.artMethod and Field.getArtField give them) and its kind. */
+NAT(MH_getMemberInternal)
+{
+    (void)a;
+    dvm_class *c = dvm_class_of(tl_jni_class("java/lang/invoke/MethodHandle"));
+    dvm_field *art = c ? dvm_find_field(c, "artFieldOrMethod", false) : NULL, *kind = c ? dvm_find_field(c, "handleKind", false) : NULL;
+    if (!art || !kind) return dvm_throw("java/lang/InternalError", "MethodHandle has no artFieldOrMethod");
+    jvalue *s = dvm_slots(self);
+    void *p = (void *)(uintptr_t)s[art->slot].j;
+    int k = s[kind->slot].i;
+    *ret = L(NULL);
+    if (!p) return true;
+    if (k >= 8 && k <= 11) *ret = L(make_field((dvm_field *)p));           /* IGET IPUT SGET SPUT */
+    else if (k <= 4) *ret = L(make_executable((dvm_method *)p));            /* INVOKE_VIRTUAL .. INVOKE_INTERFACE */
+    return true;
+}
 NAT(Field_getByte) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->b); return true; }
 NAT(Field_getChar) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->c); return true; }
 NAT(Field_getShort) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->s); return true; }
@@ -1352,13 +1378,29 @@ static jvalue *unsafe_place(jobj *o, int64_t off, int size)
     if (o->kind == TL_K_PRIM_ARRAY) return (jvalue *)((uint8_t *)o->arr.data + (off - 16));
     if (o->kind == TL_K_OBJ_ARRAY) return (jvalue *)&o->oarr.v[(off - 16) / 8];
     if (o->kind == TL_K_CLASS) {
-        /* a static field: Unsafe.staticFieldOffset gives slot*8+16 of the class's statics */
-        return &o->klass.jc->statics[(off - 16) / 8];
+        /* a static field of the class it stands for */
+        if (off >= STATIC_OFFSET) return &o->klass.jc->statics[(off - STATIC_OFFSET - 16) / 8];
+        /* else a field of the Class object itself; fields and methods are ART's member tables, kept current */
+        jvalue *slots = dvm_slots(o);
+        static dvm_field *fields, *methods;
+        dvm_class *cc = dvm_class_of(tl_jni_class("java/lang/Class"));
+        if (!fields && cc) { fields = dvm_find_field(cc, "fields", false); methods = dvm_find_field(cc, "methods", false); }
+        int slot = (int)((off - 16) / 8);
+        dvm_class *c = dvm_class_of(o->klass.jc);
+        if (c && c->art_tables && fields && slot == (int)fields->slot) slots[slot].j = (int64_t)(uintptr_t)((uint8_t *)c->inf - DVM_MEMBERS_HDR);
+        if (c && c->art_tables && methods && slot == (int)methods->slot) slots[slot].j = (int64_t)(uintptr_t)((uint8_t *)c->dm - DVM_MEMBERS_HDR);
+        return &slots[slot];
     }
     (void)size;
     return &dvm_slots(o)[(off - 16) / 8];
 }
-NAT(U_objectFieldOffset) { (void)self; dvm_field *f = field_of(a[0].l); *ret = J(f ? f->slot * 8 + 16 : 0); return true; }
+NAT(U_objectFieldOffset)
+{
+    (void)self; dvm_field *f = field_of(a[0].l);
+    *ret = J(f ? field_offset(f) : 0);
+    if (g_dvm_trace >= 1 && f) tl_log_line("dvm: Unsafe.objectFieldOffset %s.%s = %lld", f->cls->name, f->name, (long long)ret->j);
+    return true;
+}
 NAT(U_objectFieldOffset2)
 {
     (void)self;
@@ -1776,6 +1818,7 @@ static const entry k_natives[] = {
     { "java/lang/reflect/Field", "getSignatureAnnotation", "()[Ljava/lang/String;", An_Field_getSignatureAnnotation },
     { "java/lang/reflect/Field", "getNameInternal", "()Ljava/lang/String;", Field_getName },
     { "java/lang/reflect/Field", "getArtField", "()J", Field_getArtField },
+    { "java/lang/invoke/MethodHandleImpl", "getMemberInternal", "()Ljava/lang/reflect/Member;", MH_getMemberInternal },
     { "java/lang/reflect/Field", "isMonotonic0", "()Z", Class_false },
     { "java/lang/reflect/Field", "getByte", "(Ljava/lang/Object;)B", Field_getByte },
     { "java/lang/reflect/Field", "getChar", "(Ljava/lang/Object;)C", Field_getChar },
@@ -1881,6 +1924,7 @@ dvm_native_fn dvm_intrinsic(const char *cls, const char *name, const char *sig)
         for (const entry *e = k_unsafe; e->name; e++) if (!strcmp(e->name, name) && !strcmp(e->sig, sig)) return e->fn;
     /* java.lang.reflect.Proxy's classes (husk-tl-dvm-proxy.c) */
     { dvm_native_fn dvm_proxy_native(const char *, const char *, const char *); dvm_native_fn f = dvm_proxy_native(cls, name, sig); if (f) return f; }
+    { dvm_native_fn dvm_dexfile_native(const char *, const char *, const char *); dvm_native_fn f = dvm_dexfile_native(cls, name, sig); if (f) return f; }
     /* Husk's Java framework (husk.Native, GLES20) */
     { dvm_native_fn dvm_android_native(const char *, const char *, const char *); dvm_native_fn f = dvm_android_native(cls, name, sig); if (f) return f; }
     /* the runtime's housekeeping (heap tuning, debugging hooks): nothing to do here, and zero is the quiet answer */

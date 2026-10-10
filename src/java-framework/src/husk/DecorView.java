@@ -47,7 +47,16 @@ public final class DecorView extends FrameLayout {
     }
     public void setCloseOnTouchOutside(boolean c) { mCloseOnTouchOutside = c; }
     public boolean closeOnTouchOutside() { return mCloseOnTouchOutside; }
-    public void setWindowBackground(Drawable d) { mBackground = d; if (d != null) d.setCallback(this); invalidate(); }
+    /** The window background; its padding (a Material dialog's InsetDrawable: the card inset from the window's edges) keeps the
+     *  content inside it, as View.setBackground does on Android. */
+    public void setWindowBackground(Drawable d) {
+        mBackground = d;
+        Rect p = new Rect();
+        if (d != null) { d.setCallback(this); if (!d.getPadding(p)) p.setEmpty(); }
+        setPadding(p.left, p.top, p.right, p.bottom);
+        invalidate();
+        requestLayout();
+    }
     @Override protected boolean verifyDrawable(Drawable who) { return who == mBackground || super.verifyDrawable(who); }
 
     /** The views between the decor and the content: an action bar when asked for, then the content frame. */

@@ -46,11 +46,18 @@ public final class ViewRoot implements ViewParent {
     /** A new window on top of the others. */
     public static ViewRoot add(View v, WindowManager.LayoutParams lp) {
         ViewRoot r = new ViewRoot(v, lp);
-        sRoots.add(r);
+        // An activity's own window goes under the windows it already opened (a dialog shown from onCreate is added before the
+        // activity's window, which comes after onResume): on Android a dialog stays above the activity it belongs to.
+        int at = sRoots.size();
+        android.app.Activity owner = lp != null && lp.type == WindowManager.LayoutParams.TYPE_BASE_APPLICATION ? activityOf(v.getContext()) : null;
+        if (owner != null) for (int i = 0; i < sRoots.size(); i++) if (activityOf(sRoots.get(i).mView.getContext()) == owner) { at = i; break; }
+        boolean under = at < sRoots.size();
+        sRoots.add(at, r);
+        if (under) for (int i = at + 1; i < sRoots.size(); i++) if (sRoots.get(i).focusable()) { r.mHasFocus = false; break; }
         if (v.getLayoutParams() == null) v.setLayoutParams(r.mLp);
         r.attach();
         android.webkit.WebView.huskWindowsChanged();
-        for (ViewRoot o : sRoots) if (o != r && o.mHasFocus && r.focusable()) { o.mHasFocus = false; o.mView.dispatchWindowFocusChanged(false); o.mObserver.huskWindowFocus(false); }
+        if (r.mHasFocus) for (ViewRoot o : sRoots) if (o != r && o.mHasFocus && r.focusable()) { o.mHasFocus = false; o.mView.dispatchWindowFocusChanged(false); o.mObserver.huskWindowFocus(false); }
         scheduleFrame();
         return r;
     }
@@ -289,6 +296,8 @@ public final class ViewRoot implements ViewParent {
         MotionEvent l = MotionEvent.obtain(e);
         l.offsetLocation(-r.mX, -r.mY);
         boolean h = r.mView.dispatchTouchEvent(l);
+        if (TOUCH_LOG && am != MotionEvent.ACTION_MOVE)
+            android.util.Log.d("Touch", MotionEvent.actionToString(am) + " " + l.getX() + "," + l.getY() + " -> window " + r.mView.getClass().getName() + " at " + r.mX + "," + r.mY + " " + r.mW + "x" + r.mH + ": " + (h ? "handled" : "not handled") + ", under it " + deepest(r.mView, l.getX(), l.getY()));
         if (am == MotionEvent.ACTION_UP || am == MotionEvent.ACTION_CANCEL) sTouchTarget = null;
         return h;
     }
@@ -311,6 +320,32 @@ public final class ViewRoot implements ViewParent {
         }
         return false;
     }
+    private static android.app.Activity activityOf(android.content.Context c) {
+        while (c instanceof android.content.ContextWrapper) {
+            if (c instanceof android.app.Activity) return (android.app.Activity) c;
+            c = ((android.content.ContextWrapper) c).getBaseContext();
+        }
+        return null;
+    }
+    private static final boolean TOUCH_LOG = System.getenv("TL_TOUCH_LOG") != null;
+    private static String deepest(View v, float x, float y) {
+        String path = v.getClass().getSimpleName();
+        while (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            View hit = null;
+            for (int i = g.getChildCount() - 1; i >= 0; i--) {
+                View c = g.getChildAt(i);
+                if (c.getVisibility() != View.VISIBLE) continue;
+                float cx = x + g.getScrollX() - c.getLeft(), cy = y + g.getScrollY() - c.getTop();
+                if (cx >= 0 && cy >= 0 && cx < c.getWidth() && cy < c.getHeight()) { hit = c; x = cx; y = cy; break; }
+            }
+            if (hit == null) break;
+            v = hit;
+            path += " > " + v.getClass().getSimpleName() + (v.isClickable() ? "*" : "");
+        }
+        return path;
+    }
+
     /** The window touches go to: the top one that takes them (a toast does not). */
     public static ViewRoot topTouchable() {
         for (int i = sRoots.size() - 1; i >= 0; i--) if ((sRoots.get(i).mLp.flags & WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) == 0) return sRoots.get(i);

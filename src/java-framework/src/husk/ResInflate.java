@@ -267,7 +267,7 @@ public final class ResInflate {
             Drawable d = a.getDrawable(S.AnimatedVectorDrawable_drawable);
             a.recycle();
             skip(p);
-            return d != null ? d : new ColorDrawable(0);
+            return new AnimatedVectorDrawable(d != null ? d : new ColorDrawable(0));
         }
         case "adaptive-icon": case "maskable-icon": {
             LayerDrawable ld = new LayerDrawable(new Drawable[0]);

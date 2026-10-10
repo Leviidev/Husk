@@ -441,6 +441,7 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
             public void enableTaskLocaleOverride() {}
             public void finishActivityFromChild(android.app.Activity p0, int p1) {}
             public android.content.pm.ActivityInfo getActivityInfo() { return null; }
+            public android.app.ActivityThread getActivityThread() { return null; }
             public android.os.IBinder getActivityToken() { return null; }
             public android.os.IBinder getAssistToken() { return null; }
             public android.view.autofill.AutofillManager.AutofillClient getAutofillClient() { return null; }

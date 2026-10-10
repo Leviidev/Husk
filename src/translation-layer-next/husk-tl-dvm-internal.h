@@ -83,7 +83,10 @@ struct dvm_class {
     pthread_t init_thread;
     char elem;                      /* arrays: the element's descriptor letter ('L' or '[' for objects) */
     char prim;                      /* primitive classes: their letter */
+    bool art_tables;                /* inf/sf and dm/vm are each one length-prefixed block (DVM_MEMBERS_HDR before them) */
 };
+
+#define DVM_MEMBERS_HDR 16
 
 /* ---- the interpreter, for its natives */
 dvm_class *dvm_class_of(tl_jclass *jc);
