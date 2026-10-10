@@ -11,6 +11,8 @@ public class Process {
     public static void setThreadPriority(int tid, int p) {}
     public static int getThreadPriority(int tid) { return 0; }
     public static void killProcess(int pid) { husk.Native.exit(); }
+    /* when the process started: the first use of this class, early in the app's start */
+    private static final long START_NANOS = System.nanoTime(), START_ELAPSED = SystemClock.elapsedRealtime(), START_UPTIME = SystemClock.uptimeMillis();
     public static boolean is64Bit() { return true; }
         /** One process per app here, named after its package as Android names an app's main process. */
     public static String myProcessName() { return husk.Native.packageName(); }
@@ -114,8 +116,9 @@ public class Process {
     public static void freezeCgroupUid(int p0, boolean p1) {}
     public static long getAdvertisedMem() { return 0L; }
     public static int getAppUidForSdkSandboxUid(int p0) { return 0; }
-    public static long getElapsedCpuTime() { return 0L; }
-    public static int[] getExclusiveCores() { return null; }
+    /** CPU time the process has used, in ms: never 0 once it runs (obfuscated code compares it with 0) */
+    public static long getElapsedCpuTime() { return Math.max(1L, (System.nanoTime() - START_NANOS) / 2000000L + 1); }
+    public static int[] getExclusiveCores() { return new int[0]; }
     public static long getFreeMemory() { return 0L; }
     public static int getGidForName(String name) {
         if (name == null) return -1;
@@ -131,16 +134,16 @@ public class Process {
     public static long[] getRss(int p0) { return null; }
     public static long[] getSchedAffinity(int p0) { return null; }
     public static int getSdkSandboxUidForAppUid(int p0) { return 0; }
-    public static long getStartElapsedRealtime() { return 0L; }
-    public static long getStartRequestedElapsedRealtime() { return 0L; }
-    public static long getStartRequestedUptimeMillis() { return 0L; }
-    public static long getStartUptimeMillis() { return 0L; }
+    public static long getStartElapsedRealtime() { return START_ELAPSED; }
+    public static long getStartRequestedElapsedRealtime() { return START_ELAPSED; }
+    public static long getStartRequestedUptimeMillis() { return START_UPTIME; }
+    public static long getStartUptimeMillis() { return START_UPTIME; }
     public static int getThreadGroupLeader(int p0) { return 0; }
     public static int getThreadScheduler(int p0) { return 0; }
     public static long getTotalMemory() { return 0L; }
     public static int getUidForName(String name) { return name == null ? -1 : "root".equals(name) ? 0 : "system".equals(name) ? 1000 : -1; }
     public static int getUidForPid(int p0) { return 0; }
-    public static boolean isApplicationUid(int p0) { return false; }
+    public static boolean isApplicationUid(int uid) { int a = uid % 100000; return a >= 10000 && a <= 19999; }
     public static boolean isCoreUid(int p0) { return false; }
     public static boolean isIsolated() { return false; }
     public static boolean isIsolated(int p0) { return false; }
@@ -152,7 +155,7 @@ public class Process {
     public static int killProcessGroup(int p0, int p1) { return 0; }
     public static void killProcessQuiet(int p0) {}
     public static int myPpid() { return 0; }
-    public static android.os.UserHandle myUserHandle() { return null; }
+    public static android.os.UserHandle myUserHandle() { return new android.os.UserHandle(0); }
     public static java.io.FileDescriptor openPidFd(int p0, int p1) { return null; }
     public static boolean parseProcLine(byte[] p0, int p1, int p2, int[] p3, java.lang.String[] p4, long[] p5, float[] p6) { return false; }
     public static boolean readProcFile(java.lang.String p0, int[] p1, java.lang.String[] p2, long[] p3, float[] p4) { return false; }
@@ -174,7 +177,7 @@ public class Process {
     public static android.os.Process.ProcessStartResult start(java.lang.String p0, java.lang.String p1, int p2, int p3, int[] p4, int p5, int p6, int p7, java.lang.String p8, java.lang.String p9, java.lang.String p10, java.lang.String p11, java.lang.String p12, java.lang.String p13, int p14, boolean p15, long[] p16, java.util.Map p17, java.util.Map p18, boolean p19, boolean p20, boolean p21, long p22, java.lang.String[] p23) { return null; }
     public static android.os.Process.ProcessStartResult startWebView(java.lang.String p0, java.lang.String p1, int p2, int p3, int[] p4, int p5, int p6, int p7, java.lang.String p8, java.lang.String p9, java.lang.String p10, java.lang.String p11, java.lang.String p12, java.lang.String p13, long[] p14, long p15, java.lang.String[] p16) { return null; }
     public static boolean supportsPidFd() { return false; }
-    public static boolean supportsProcesses() { return false; }
+    public static boolean supportsProcesses() { return true; }
     public static int toSdkSandboxUid(int p0) { return 0; }
     public static void waitForProcessDeath(int p0, int p1) {}
     // ---- end of generated members

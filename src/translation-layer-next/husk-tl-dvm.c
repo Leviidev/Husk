@@ -670,6 +670,16 @@ bool dvm_assignable(tl_jclass *sub, tl_jclass *sup)
     return false;
 }
 
+/* Whether a class itself declares a method (not one it inherits): JNI's RegisterNatives binds a native to the class that does. */
+bool tl_dvm_declares(tl_jclass *jc, const char *name, const char *sig)
+{
+    dvm_class *c = dvm_class_of(jc);
+    if (!c) return false;
+    for (int i = 0; i < c->ndm; i++) if (!strcmp(c->dm[i].name, name) && !strcmp(c->dm[i].sig, sig)) return true;
+    for (int i = 0; i < c->nvm; i++) if (!strcmp(c->vm[i].name, name) && !strcmp(c->vm[i].sig, sig)) return true;
+    return false;
+}
+
 bool dvm_instance_of(jobj *o, tl_jclass *c) { return o && dvm_assignable(dvm_object_class(o), c); }
 
 /* ================================================================== exceptions */
@@ -935,7 +945,15 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
     static const char *watch;
     if (!watch) watch = getenv("TL_DVM_CALLS") ? getenv("TL_DVM_CALLS") : "";
     if (watch[0] && strchr(watch, '.') && !strcmp(m->name, strchr(watch, '.') + 1) && !strncmp(m->cls->name, watch, (size_t)(strchr(watch, '.') - watch))) {
-        tl_log_line("dvm: call %s.%s%s self %p", m->cls->name, m->name, m->sig, (void *)self);
+        { char pb[300]; int po = 0, pn = 0;
+          for (const char *q = (m->shorty ? m->shorty : "") + 1; *q && po < 280; q++, pn++) po += snprintf(pb + po, sizeof(pb) - po, " %c:%lld", *q, params ? (long long)params[pn].j : 0);
+          char cb[600]; int co = 0;
+          for (int up = 2; up <= 5 && t_depth - up >= 0 && t_depth - up < 8192 && co < 560; up++) {
+              dvm_method *cm = t_frames[t_depth - up];
+              co += snprintf(cb + co, sizeof(cb) - co, " <- %s.%s@%u", cm ? cm->cls->name : "?", cm ? cm->name : "?", t_pcs[t_depth - up]);
+          }
+          cb[co] = 0;
+          tl_log_line("dvm: call %s.%s%s self %p args%s%s", m->cls->name, m->name, m->sig, (void *)self, pb, cb); }
         int np = 0; const char *sh = m->shorty ? m->shorty : "";
         for (const char *q = sh + 1; *q; q++, np++) {
             if (*q != 'L' || !params || !params[np].l) continue;

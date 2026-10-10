@@ -1020,9 +1020,15 @@ static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, in
 {
     (void)env;
     if (!cls || cls->kind != TL_K_CLASS) return -1;
-    tl_jclass *c = cls->klass.jc;
+    tl_jclass *given = cls->klass.jc;
+    bool tl_dvm_declares(tl_jclass *jc, const char *name, const char *sig);
     pthread_mutex_lock(&g_lock);
     for (int32_t i = 0; i < n; i++) {
+        /* the class that declares the method, the given one or a superclass (ART's FindClassMethod): Reanimated registers
+           NativeProxyCommon's natives through its subclass NativeProxy */
+        tl_jclass *c = given;
+        if (!tl_dvm_declares(c, m[i].name, m[i].sig))
+            for (tl_jclass *k = given->super; k; k = k->super) if (tl_dvm_declares(k, m[i].name, m[i].sig)) { c = k; break; }
         c->natives = realloc(c->natives, (size_t)(c->nnatives + 1) * sizeof(*c->natives));
         c->natives[c->nnatives].name = strdup(m[i].name);
         c->natives[c->nnatives].sig = strdup(m[i].sig);
