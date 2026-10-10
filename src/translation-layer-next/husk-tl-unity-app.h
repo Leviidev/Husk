@@ -84,6 +84,10 @@ void husk_java_delete_backward(void);
 void husk_java_text_action(void);
 void husk_java_keyboard_closed(void);
 void husk_java_key(int android_keycode, int down);
+/* A Java app's WebViews are WKWebViews put under the app's screen view (its superview's subview below it), at its scale (surface
+   pixels per point); husk_java_web_hit says whether a touch at a point in the screen view belongs to a web page instead. */
+void husk_java_web_attach(void *screen_view, float scale);
+int husk_java_web_hit(float x, float y);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
 void husk_flutter_resize(int width, int height);                     /* the view's new size in pixels, after the launch */

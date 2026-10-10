@@ -27,6 +27,7 @@ public final class AppRunner {
     private static boolean sPausedByHost;
 
     public static void run(String activityClass, String applicationClass) throws Exception {
+        android.webkit.MimeTypeMap.huskInstallDefault();
         Looper.prepareMainLooper();
         sHandler = new Handler(Looper.getMainLooper());
         Manifest.read();
@@ -176,7 +177,7 @@ public final class AppRunner {
     }
 
     // ---- input from Husk
-    /** events: [n, then n x (phase, id, xbits, ybits)] -- phase 0 down, 1 move, 2 up, 3 cancel; 4 key (id = code, x = down); 5 back; 6 host pause (id 1) / resume (0); 7 text waiting; 8 insets changed */
+    /** events: [n, then n x (phase, id, xbits, ybits)] -- phase 0 down, 1 move, 2 up, 3 cancel; 4 key (id = code, x = down); 5 back; 6 host pause (id 1) / resume (0); 7 text waiting; 8 insets changed; 9 web view events waiting */
     private static void deliver(int[] ev) {
         int n = ev[0];
         for (int k = 0; k < n; k++) {
@@ -187,6 +188,7 @@ public final class AppRunner {
                 if (phase == 6) { hostPause(id != 0); continue; }
                 if (phase == 7) { InputMethods.deliverPending(); continue; }
                 if (phase == 8) { applyInsets(); continue; }
+                if (phase == 9) { Web.deliver(); continue; }
                 if (phase == 4) {
                     long t = SystemClock.uptimeMillis();
                     KeyEvent ke = new KeyEvent(t, t, ev[3 + 4 * k] != 0 ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP, id, 0);

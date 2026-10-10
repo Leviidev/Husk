@@ -5,6 +5,7 @@ import android.graphics.Rect;
 
 public final class WindowInsets {
     public static final WindowInsets CONSUMED = new WindowInsets(Insets.NONE, Insets.NONE, true);
+    static { CONSUMED.mCutoutConsumed = true; }
     public static final class Type {
         public static int statusBars() { return 1; } public static int navigationBars() { return 2; } public static int captionBar() { return 4; }
         public static int ime() { return 8; } public static int systemGestures() { return 16; } public static int mandatorySystemGestures() { return 32; }
@@ -15,8 +16,11 @@ public final class WindowInsets {
     private final Insets mSystem, mIme;
     private final boolean mConsumed;
     private DisplayCutout mCutout;
+    /* as on a phone with a display cutout: consuming the system window insets leaves the cutout, so the insets still reach the
+     * children of a view that fits system windows (with nothing left in them); only consumeDisplayCutout ends that */
+    private boolean mCutoutConsumed;
     public WindowInsets(Insets system, Insets ime, boolean consumed) { mSystem = system; mIme = ime; mConsumed = consumed; }
-    public WindowInsets(WindowInsets o) { this(o.mSystem, o.mIme, o.mConsumed); mCutout = o.mCutout; }
+    public WindowInsets(WindowInsets o) { this(o.mSystem, o.mIme, o.mConsumed); mCutout = o.mCutout; mCutoutConsumed = o.mCutoutConsumed; }
     public WindowInsets(Rect r) { this(Insets.of(r), Insets.NONE, false); }
     /** Husk: the window's insets (the status bar and home indicator areas, the keyboard). */
     public static WindowInsets huskOf(int l, int t, int r, int b, int imeBottom, DisplayCutout cutout) { WindowInsets i = new WindowInsets(Insets.of(l, t, r, b), Insets.of(0, 0, 0, imeBottom), false); i.mCutout = cutout; return i; }
@@ -31,12 +35,12 @@ public final class WindowInsets {
     public boolean hasSystemWindowInsets() { return !mConsumed && (mSystem.left | mSystem.top | mSystem.right | mSystem.bottom | mIme.bottom) != 0; }
     public boolean hasInsets() { return hasSystemWindowInsets(); }
     public boolean hasStableInsets() { return (mSystem.left | mSystem.top | mSystem.right | mSystem.bottom) != 0; }
-    public boolean isConsumed() { return mConsumed; }
+    public boolean isConsumed() { return mConsumed && mCutoutConsumed; }
     public boolean isRound() { return false; }
-    public WindowInsets consumeSystemWindowInsets() { WindowInsets i = new WindowInsets(mSystem, mIme, true); i.mCutout = mCutout; return i; }
+    public WindowInsets consumeSystemWindowInsets() { WindowInsets i = new WindowInsets(mSystem, mIme, true); i.mCutout = mCutout; i.mCutoutConsumed = mCutoutConsumed; return i; }
     public WindowInsets consumeStableInsets() { return this; }
-    public WindowInsets consumeDisplayCutout() { WindowInsets i = new WindowInsets(this); i.mCutout = null; return i; }
-    public WindowInsets replaceSystemWindowInsets(int l, int t, int r, int b) { WindowInsets i = new WindowInsets(Insets.of(l, t, r, b), Insets.NONE, false); i.mCutout = mCutout; return i; }
+    public WindowInsets consumeDisplayCutout() { WindowInsets i = new WindowInsets(this); i.mCutout = null; i.mCutoutConsumed = true; return i; }
+    public WindowInsets replaceSystemWindowInsets(int l, int t, int r, int b) { WindowInsets i = new WindowInsets(Insets.of(l, t, r, b), Insets.NONE, false); i.mCutout = mCutout; i.mCutoutConsumed = mCutoutConsumed; return i; }
     public WindowInsets replaceSystemWindowInsets(Rect r) { return replaceSystemWindowInsets(r.left, r.top, r.right, r.bottom); }
     public WindowInsets inset(int l, int t, int r, int b) { return replaceSystemWindowInsets(Math.max(0, getSystemWindowInsetLeft() - l), Math.max(0, getSystemWindowInsetTop() - t), Math.max(0, getSystemWindowInsetRight() - r), Math.max(0, getSystemWindowInsetBottom() - b)); }
     public WindowInsets inset(Insets i) { return inset(i.left, i.top, i.right, i.bottom); }

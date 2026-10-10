@@ -69,7 +69,35 @@ static tl_jclass *find_class_locked(const char *name)
     return NULL;
 }
 
+static tl_jclass *tl_jni_declare_linked(const char *name, const char *super);
+
+/* Declaring a class and linking its bytecode is one step to every other thread: a class is visible from the moment it is declared
+ * (the linking itself looks it up, through superclasses that refer back), so lookups that find one mid-link wait on this lock. */
+static pthread_mutex_t g_link;
+static pthread_once_t g_link_once = PTHREAD_ONCE_INIT;
+static void link_init(void)
+{
+    pthread_mutexattr_t a; pthread_mutexattr_init(&a); pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&g_link, &a);
+}
+void tl_jni_wait_linked(tl_jclass *c)
+{
+    if (!c || !c->linking) return;
+    pthread_once(&g_link_once, link_init);
+    pthread_mutex_lock(&g_link);
+    pthread_mutex_unlock(&g_link);
+}
+
 tl_jclass *tl_jni_declare(const char *name, const char *super)
+{
+    if (tl_dvm) { pthread_once(&g_link_once, link_init); pthread_mutex_lock(&g_link); }
+    tl_jclass *c = tl_jni_declare_linked(name, super);
+    if (tl_dvm) pthread_mutex_unlock(&g_link);
+    tl_jni_wait_linked(c);
+    return c;
+}
+
+static tl_jclass *tl_jni_declare_linked(const char *name, const char *super)
 {
     pthread_mutex_lock(&g_lock);
     tl_jclass *c = find_class_locked(name);
@@ -85,9 +113,11 @@ tl_jclass *tl_jni_declare(const char *name, const char *super)
         c->mirror->refs = 1u << 30;
         /* A class the interpreter has bytecode for: it says what the superclass is, and keeps the statics. */
         if (tl_dvm) {
+            c->linking = true;
             pthread_mutex_unlock(&g_lock);
             bool attached = tl_dvm->attach(c);
             pthread_mutex_lock(&g_lock);
+            c->linking = false;
             if (attached) { c->in_dex = true; pthread_mutex_unlock(&g_lock); return c; }
         }
     }
@@ -107,7 +137,7 @@ tl_jclass *tl_jni_class(const char *name)
     pthread_mutex_lock(&g_lock);
     c = find_class_locked(name);
     pthread_mutex_unlock(&g_lock);
-    if (c) return c;
+    if (c) { tl_jni_wait_linked(c); return c; }
     /* Not declared: the APK may define it, and its superclass is whatever the DEX says. */
     char sup[160];
     const char *s = tl_dexidx_super(name, sup, sizeof(sup));
@@ -1060,5 +1090,6 @@ tl_jclass *tl_jni_find_declared(const char *name)
     pthread_mutex_lock(&g_lock);
     tl_jclass *c = find_class_locked(name);
     pthread_mutex_unlock(&g_lock);
+    tl_jni_wait_linked(c);
     return c;
 }

@@ -451,9 +451,12 @@ dvm_native_fn tl_gfx_native(const char *name, const char *sig);
 dvm_native_fn tl_audio_native(const char *name, const char *sig);
 dvm_native_fn tl_sensors_native(const char *name, const char *sig);
 dvm_native_fn tl_sqlite_native(const char *name, const char *sig);
+dvm_native_fn tl_web_native(const char *name, const char *sig);
+bool tl_web_any_visible(void);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
     if (!strcmp(cls, "husk/Sqlite")) return tl_sqlite_native(name, sig);
+    if (!strcmp(cls, "husk/Web")) return tl_web_native(name, sig);
     if (!strcmp(cls, "husk/Sensors")) return tl_sensors_native(name, sig);
     if (!strcmp(cls, "husk/Gfx")) return tl_gfx_native(name, sig);
     if (!strcmp(cls, "husk/Audio")) return tl_audio_native(name, sig);
@@ -663,7 +666,7 @@ static void *gl_main(void *arg)
         }
         if (drew || fresh) {
             makeCurrent(dpy, surf, surf, ui);
-            if (!app) { clearColor(0, 0, 0, 1); clear(0x4000); }
+            if (!app) { clearColor(0, 0, 0, tl_web_any_visible() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
             if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);
@@ -753,6 +756,23 @@ bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, 
     return ok;
 }
 
+/* The pending exception's stack trace, through android.util.Log, line by line; the exception is cleared. */
+static void log_pending_stack(void)
+{
+    jobj *e = tl_jni_pending_object();
+    if (!e) return;
+    tl_jni_clear();
+    jvalue a[1] = { L(e) }, r;
+    if (!tl_dvm_call_static("android/util/Log", "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;", a, &r)) { tl_jni_clear(); return; }
+    const char *t = tl_jni_string(r.l);
+    while (t && *t) {
+        const char *nl = strchr(t, '\n');
+        int len = nl ? (int)(nl - t) : (int)strlen(t);
+        tl_log_line("javaapp:   %.*s", len, t);
+        t = nl ? nl + 1 : NULL;
+    }
+}
+
 static void *app_main(void *arg)
 {
     (void)arg;
@@ -762,6 +782,7 @@ static void *app_main(void *arg)
     if (!tl_dvm_call_static("husk/AppRunner", "run", "(Ljava/lang/String;Ljava/lang/String;)V", a, &r)) {
         char buf[800];
         tl_log_line("javaapp: the app's main thread ended with %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
+        log_pending_stack();
         atomic_store(&A.ended, true);
     }
     return NULL;

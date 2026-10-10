@@ -186,8 +186,9 @@ public abstract class Uri implements Comparable<Uri>, android.os.Parcelable {
         public Builder appendPath(String seg) { return appendEncodedPath(encode(seg, null)); }
         public Builder appendEncodedPath(String seg) {
             opaque = null;
-            if (path == null || path.isEmpty()) path = seg.startsWith("/") ? seg : "/" + seg;
-            else { boolean a = path.endsWith("/"), b = seg.startsWith("/"); path = a && b ? path + seg.substring(1) : a || b ? path + seg : path + "/" + seg; }
+            // as Android's PathPart.appendEncodedSegment, slashes and all ("" + "/" is "//": apps' URI matchers count on it)
+            if (path == null || path.isEmpty()) path = "/" + seg;
+            else path = path.endsWith("/") ? path + seg : path + "/" + seg;
             return this;
         }
         public Builder query(String q) { opaque = null; query = encode(q, "=&"); return this; }

@@ -523,6 +523,10 @@ void husk_java_delete_backward(void) { if (java_running()) tl_javaapp_text_delet
 void husk_java_text_action(void) { if (java_running()) tl_javaapp_text_action(); }
 void husk_java_keyboard_closed(void) { if (java_running()) tl_javaapp_keyboard_closed(); }
 void husk_java_back(void) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_back(); }
+void tl_web_attach(void *screen_view, float scale);
+bool tl_web_hit(float x, float y);
+void husk_java_web_attach(void *screen_view, float scale) { tl_web_attach(screen_view, scale); }
+int husk_java_web_hit(float x, float y) { return java_running() && tl_web_hit(x, y) ? 1 : 0; }
 void husk_java_key(int android_keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_key(android_keycode, down != 0); }
 int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }
 void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }

@@ -28,6 +28,12 @@ enum TLNativeEngine {
 final class TLUnityUIView: UIView, UIKeyInput {
     override class var layerClass: AnyClass { CAMetalLayer.self }
 
+    /// A touch on a Java app's web page goes to the WKWebView under this view.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if engine == .java, husk_java_web_hit(Float(point.x), Float(point.y)) != 0 { return nil }
+        return super.hitTest(point, with: event)
+    }
+
     /// The cocos2d-x or SDL game on screen, which the game's keyboard requests (they arrive on its own thread) are routed to.
     nonisolated(unsafe) static weak var cocosView: TLUnityUIView?
 
@@ -274,6 +280,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
                 let k = contentScaleFactor
                 husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
             }
+            // WebViews go under this view, where the app's window leaves a hole for them.
+            husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Float(contentScaleFactor))
             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:

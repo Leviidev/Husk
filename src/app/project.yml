@@ -100,6 +100,9 @@ targets:
           # ImageIO decodes and encodes images for Java apps' BitmapFactory and Bitmap.compress.
           - "-framework"
           - "ImageIO"
+          # WebKit draws Java apps' android.webkit.WebView (WKWebView under the app's screen).
+          - "-framework"
+          - "WebKit"
           # Security verifies the licence signature Minecraft's UI engine checks through Java's Signature class.
           - "-framework"
           - "Security"

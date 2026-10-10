@@ -282,7 +282,7 @@ static jobj *const_string(dvm_dex *d, uint32_t idx)
 
 /* ================================================================== classes */
 
-dvm_class *dvm_class_of(tl_jclass *jc) { return jc ? (dvm_class *)jc->dvm : NULL; }
+dvm_class *dvm_class_of(tl_jclass *jc) { if (!jc) return NULL; if (jc->linking) tl_jni_wait_linked(jc); return (dvm_class *)jc->dvm; }
 
 tl_jclass *dvm_class_named(const char *name)
 {

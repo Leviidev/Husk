@@ -40,7 +40,11 @@ struct tl_jclass {
     struct { char *name, *sig; void *fn; } *natives; int nnatives;
     tl_jclass *next;
     void *dvm;                         /* the interpreter's class (husk-tl-dvm.c), or NULL */
+    volatile bool linking;             /* declared, its bytecode still being linked (by the thread holding the link lock) */
 };
+
+/* A class another thread is still linking: wait for it (returns at once on the linking thread itself). */
+void tl_jni_wait_linked(tl_jclass *c);
 
 /* What the interpreter provides, once it is running (tl_dvm_start). */
 typedef struct tl_dvm_hooks {

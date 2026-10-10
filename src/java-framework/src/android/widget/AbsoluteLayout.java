@@ -17,6 +17,7 @@ public class AbsoluteLayout extends ViewGroup {
     public AbsoluteLayout(Context c) { super(c); }
     public AbsoluteLayout(Context c, AttributeSet a) { super(c, a); }
     public AbsoluteLayout(Context c, AttributeSet a, int s) { super(c, a, s); }
+    public AbsoluteLayout(Context c, AttributeSet a, int s, int r) { super(c, a, s, r); }
     @Override protected void onMeasure(int ws, int hs) {
         int count = getChildCount(), maxHeight = 0, maxWidth = 0;
         measureChildren(ws, hs);

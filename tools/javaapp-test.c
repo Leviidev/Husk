@@ -5,7 +5,7 @@
  *   javaapp-test <apk> [seconds] [width height]
  *
  * Environment: TL_JNI_TRACE=1|2, TL_VERBOSE=0..2, TL_DATA=<dir> (kept between runs), TL_PACKAGE, TL_AUDIO=1,
- * TL_CTL=<file> (lines "tap X Y", "hold X Y MS", "swipe X1 Y1 X2 Y2 MS", "wait MS", "shot PNG", "key CODE", "pause",
+ * TL_CTL=<file> (lines "tap X Y", "hold X Y MS", "swipe X1 Y1 X2 Y2 MS", "wait MS", "shot PNG" (+ PNG.web.png of a web view), "js CODE", "key CODE", "pause",
  * "resume", "quit"), TL_FRAMES=<n> (save every nth frame; default latest only).
  */
 #include <mach/mach.h>
@@ -84,6 +84,11 @@ static void on_crash(int sig, siginfo_t *info, void *uctx)
 }
 
 static const char *g_frame_dir;
+bool tl_web_tap(float px, float py);
+void tl_web_snapshot(const char *png);
+void tl_web_eval_log(const char *js);
+void tl_web_harness_size(int w, int h, float scale);
+void tl_web_main_loop(void);
 static void sleep_ms(long ms) { usleep((useconds_t)ms * 1000); }
 static void do_swipe(float x1, float y1, float x2, float y2, long ms)
 {
@@ -107,7 +112,7 @@ static void *control_thread(void *arg)
         char line[512];
         while (fgets(line, sizeof(line), f)) {
             float a, b, c, d; long ms; char p[400];
-            if (sscanf(line, "tap %f %f", &a, &b) == 2) { tl_javaapp_touch(0, 0, a, b); sleep_ms(80); tl_javaapp_touch(2, 0, a, b); }
+            if (sscanf(line, "tap %f %f", &a, &b) == 2) { if (tl_web_tap(a, b)) continue; tl_javaapp_touch(0, 0, a, b); sleep_ms(80); tl_javaapp_touch(2, 0, a, b); }
             else if (sscanf(line, "hold %f %f %ld", &a, &b, &ms) == 3) { tl_javaapp_touch(0, 0, a, b); sleep_ms(ms); tl_javaapp_touch(2, 0, a, b); }
             else if (sscanf(line, "swipe %f %f %f %f %ld", &a, &b, &c, &d, &ms) == 5) do_swipe(a, b, c, d, ms);
             else if (sscanf(line, "wait %ld", &ms) == 1) sleep_ms(ms);
@@ -115,7 +120,10 @@ static void *control_thread(void *arg)
                 char cmd[900]; snprintf(cmd, sizeof(cmd), "sips -s format png '%s/latest.bmp' --out '%s' >/dev/null 2>&1", g_frame_dir, p);
                 if (system(cmd)) fprintf(stderr, "ctl: shot failed\n");
                 else fprintf(stderr, "ctl: shot %s (frame %lu)\n", p, tl_javaapp_frames());
+                char wp[420]; snprintf(wp, sizeof(wp), "%.*s.web.png", (int)(strlen(p) > 4 ? strlen(p) - 4 : strlen(p)), p);
+                tl_web_snapshot(wp);
             }
+            else if (!strncmp(line, "js ", 3)) { line[strcspn(line, "\n")] = 0; tl_web_eval_log(line + 3); }
             else if (sscanf(line, "key %ld", &ms) == 1) { tl_javaapp_key((int)ms, true); sleep_ms(60); tl_javaapp_key((int)ms, false); }
             else if (!strncmp(line, "text ", 5)) { line[strcspn(line, "\n")] = 0; tl_javaapp_text(line + 5); }
             else if (!strncmp(line, "del", 3)) tl_javaapp_text_delete();
@@ -166,6 +174,7 @@ static void *run(void *p)
                               .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",
                               .show_keyboard = h_keyboard, .set_clipboard = h_set_clip, .get_clipboard = h_get_clip, .share = h_share, .set_orientation = h_orientation };
     if (getenv("TL_INSETS")) sscanf(getenv("TL_INSETS"), "%d,%d,%d,%d", &cfg.insets[0], &cfg.insets[1], &cfg.insets[2], &cfg.insets[3]);
+    tl_web_harness_size(w, h, cfg.density);
     if (!tl_javaapp_start(&cfg)) { fprintf(stderr, "javaapp: start failed\n"); _exit(1); }
     if (getenv("TL_CTL")) { static pthread_t ct; pthread_create(&ct, NULL, control_thread, getenv("TL_CTL")); }
     int secs = argc > 2 ? atoi(argv[2]) : 10;
@@ -191,6 +200,6 @@ int main(int argc, char **argv)
     job j = { argc, argv };
     pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setstacksize(&a, 64u << 20);
     pthread_t t; pthread_create(&t, &a, run, &j);
-    pthread_join(t, NULL);
+    tl_web_main_loop();                     /* WebKit runs on the main thread; run() ends the process */
     return 0;
 }
