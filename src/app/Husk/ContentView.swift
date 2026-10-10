@@ -65,6 +65,10 @@ struct ContentView: View {
             }
             .opacity(showGuestScreen && started && runner.isRunning ? 0 : 1)
 
+            // Multitasking: an app in a window over everything else in Husk (AppWindows.swift).
+            AppWindowLayer()
+                .ignoresSafeArea(.keyboard)
+
             // Outcomes, over whichever tab is showing. Above the tab bar rather
             // than over it: a message that covers the way out of the screen it
             // appears on is a message in the way.

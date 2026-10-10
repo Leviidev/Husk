@@ -63,6 +63,7 @@ bool husk_flutter_launch(const char *apk, const char *data_dir, void *metal_laye
 int  husk_flutter_is_app(const char *apk);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */
+void husk_flutter_resize(int width, int height);                     /* the view's new size in pixels, after the launch */
 void husk_native_set_system_files(const char *cacerts_dir, const char *fonts_root);
 /* Another APK of the app about to be launched (a split, an asset pack). Before the launch call; at most three. */
 void husk_native_add_package(const char *apk);

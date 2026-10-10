@@ -4,6 +4,8 @@ import SwiftUI
 /// Settings, as the iOS Settings app lays them out: a card for the app up top, then groups of rows that each
 /// push a page of their own. What belongs to the app, what belongs to the emulator, and what the thing is.
 struct SettingsTab: View {
+    @AppStorage(AppWindows.defaultKey) private var multitask = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -24,6 +26,31 @@ struct SettingsTab: View {
                     row(LibrarySettings(), "square.grid.2x2.fill", .blue, "Library", "Your apps and their icons")
                     row(PerformanceSettings(), "speedometer", .orange, "Performance", "Renderer, sound")
                     row(AppearanceSettings(), "paintbrush.fill", .pink, "Appearance", "Light or dark, accent colour, app icon")
+                }
+
+                Section {
+                    Toggle(isOn: $multitask) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Open Apps in Windows")
+                                Text("Use Husk while an app runs").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        } icon: {
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .fill(Color.purple.gradient)
+                                .frame(width: 30, height: 30)
+                                .overlay {
+                                    Image(systemName: "macwindow.on.rectangle")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(.white)
+                                }
+                        }
+                    }
+                } header: {
+                    Text("Multitasking")
+                } footer: {
+                    Text("Apps and games open in a window you can move, resize and minimise to a dock, like LiveContainer's multitasking. "
+                       + "Each app can override this in its own settings.")
                 }
 
                 Section("Emulator") {

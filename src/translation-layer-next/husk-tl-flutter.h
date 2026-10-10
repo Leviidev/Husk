@@ -31,6 +31,8 @@ void tl_flutter_touch(int phase, int id, float x, float y);
 void tl_flutter_set_pixel_ratio(float ratio);
 /* Safe-area insets in surface pixels (notch, home indicator): set before tl_flutter_run, or any time after. */
 void tl_flutter_set_insets(int top, int right, int bottom, int left);
+/* The view's new size in pixels (a window being resized): any time after tl_flutter_run. */
+void tl_flutter_resize(int width, int height);
 
 #ifdef __cplusplus
 }

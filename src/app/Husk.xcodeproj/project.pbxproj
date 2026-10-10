@@ -75,6 +75,7 @@
 		61B170D2F117D85F651CD6E6 /* icon-cleardark.png in Resources */ = {isa = PBXBuildFile; fileRef = E3A701AA76E485A6CE15F106 /* icon-cleardark.png */; };
 		622DA3EB6E956A9ED06CF55C /* husk-tl-probe.c in Sources */ = {isa = PBXBuildFile; fileRef = E4D1C81CB49D39A7D865A0DA /* husk-tl-probe.c */; };
 		6A8A2290222C62C81EBF2E3E /* husk-tl-bionic-pthread.c in Sources */ = {isa = PBXBuildFile; fileRef = C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */; };
+		6CA4A4E301BCB015E19AF7A8 /* AppWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8F4838EC0E68E364143E79 /* AppWindows.swift */; };
 		6EE0DCCC80014D645AC6E23A /* Geode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9736391C1BCE43667293DB7B /* Geode.swift */; };
 		6F6142A042D5107E3F35FBB4 /* Showcase.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE40E8DB8AB8EBDF4EA539E /* Showcase.swift */; };
 		70AAC964808B173B7E8E395B /* husk-tl-va.c in Sources */ = {isa = PBXBuildFile; fileRef = 23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */; };
@@ -381,6 +382,7 @@
 		F44A2196AA5F6271BF893660 /* libFilePickerFix.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libFilePickerFix.dylib; path = Frameworks/libFilePickerFix.dylib; sourceTree = "<group>"; };
 		F54A47159D39CB8039E9E44E /* JITCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITCard.swift; sourceTree = "<group>"; };
 		F7FE1E9438A6B743456806DF /* husk-tl-xmem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-xmem.h"; sourceTree = "<group>"; };
+		FA8F4838EC0E68E364143E79 /* AppWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWindows.swift; sourceTree = "<group>"; };
 		FAB8BAA1A1D0AB19EBD6F784 /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
 		FBD3B29AEC525999260507BD /* husk-tl-opensles.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-opensles.c"; sourceTree = "<group>"; };
 		FBE40E8DB8AB8EBDF4EA539E /* Showcase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Showcase.swift; sourceTree = "<group>"; };
@@ -421,6 +423,7 @@
 				0FCF57D3D74B527852EC0327 /* AppIcon.swift */,
 				15D08F1730303C74C1B7DE23 /* AppSource.swift */,
 				D05B2EFC533719ED2E455C24 /* AppTheme.swift */,
+				FA8F4838EC0E68E364143E79 /* AppWindows.swift */,
 				28D3E1CEE343707BE986FA6E /* Assets.xcassets */,
 				6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */,
 				E37298010F80517A3057579E /* BundleUnpacker.swift */,
@@ -902,6 +905,7 @@
 				4EF06C9496D4D86646EFD631 /* AppIcon.swift in Sources */,
 				8C743346878007F8D22CEA0A /* AppSource.swift in Sources */,
 				F6B3DA43CA16FAF920EF236D /* AppTheme.swift in Sources */,
+				6CA4A4E301BCB015E19AF7A8 /* AppWindows.swift in Sources */,
 				853E83FF7FF5B9A7FDE5E638 /* BootScreen.swift in Sources */,
 				7FA5D73DC2780CACC7399534 /* BundleUnpacker.swift in Sources */,
 				4E1329C07A116B3BE1FDFA7A /* ContentView.swift in Sources */,

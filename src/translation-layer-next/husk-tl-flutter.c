@@ -444,6 +444,23 @@ static void send_metrics(void)
     fj_call("nativeSetViewportMetrics", a, n);
 }
 
+/* The view changed size (a window being resized): the surface and the metrics, as FlutterView sends them on a layout. */
+static void resize_surface(void)
+{
+    jvalue ch[3] = { { .j = F.shell }, vi(F.cfg.width), vi(F.cfg.height) };
+    fj_call("nativeSurfaceChanged", ch, 3);
+    send_metrics();
+}
+
+void tl_nwindow_resize(int w, int h);
+void tl_flutter_resize(int width, int height)
+{
+    if (width <= 0 || height <= 0 || (width == F.cfg.width && height == F.cfg.height)) return;
+    F.cfg.width = width; F.cfg.height = height;
+    tl_nwindow_resize(width, height);
+    post_event(3, 0);
+}
+
 void tl_flutter_set_insets(int top, int right, int bottom, int left)
 {
     F.inset_t = top; F.inset_r = right; F.inset_b = bottom; F.inset_l = left;
@@ -497,6 +514,7 @@ static int on_post(int fd, int events, void *data)
         if (e.kind == 0) dispatch_touch(&e);
         else if (e.kind == 1) send_string("flutter/lifecycle", e.phase ? "AppLifecycleState.paused" : "AppLifecycleState.resumed");
         else if (e.kind == 2) send_metrics();
+        else if (e.kind == 3) resize_surface();
     }
     return 1;
 }

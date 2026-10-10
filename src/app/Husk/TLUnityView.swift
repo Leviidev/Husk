@@ -33,10 +33,15 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// The app's other APKs -- splits, an asset pack -- which an SDL game's libraries and data may be in.
     private let extraApks: [String]
     private let dataDir: String
-    private let engine: TLNativeEngine
+    let engine: TLNativeEngine
     /// A portrait game is told its size when the screen is taller than wide, as a landscape one is when it is wider.
     private let portrait: Bool
-    private var launched = false
+    private(set) var launched = false
+    /// The size, in points, the game was told it has as it started. Every engine but Flutter keeps it for good, so a window
+    /// that is resized later scales the picture instead (TLWindowHost).
+    private(set) var launchedSize: CGSize?
+    /// In a floating window rather than full screen: no notch or home indicator to keep clear of.
+    var windowed = false
     /// Where the corner statistics go when this view does not draw them itself (a landscape game has its own bar).
     var onStats: ((String) -> Void)?
     /// Active touches by UITouch identity, each given a small stable id like Android's pointer ids.
@@ -128,6 +133,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
         // swapchain disagreeing from then on.
         if !(engine == .ue4 && launched) { (layer as? CAMetalLayer)?.drawableSize = CGSize(width: w, height: h) }
+        // Flutter lays itself out again at any size, as an Android view does when its window changes: a window being resized, the
+        // screen turning.
+        if engine == .flutter, launched { husk_flutter_resize(Int32(w), Int32(h)) }
         // A landscape game is told its size once, when it starts, so it must not start while the screen is still
         // turning: wait for a surface that is wider than it is tall.
         // Unity games too: Fruit Ninja is a landscape one. If the screen has not turned after two seconds it is not going to,
@@ -159,6 +167,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     private func launch(width: Int, height: Int) {
         launched = true
+        launchedSize = bounds.size
         let angle = (Bundle.main.privateFrameworksPath ?? "") + "/libANGLE-shared.dylib"
         let ca = Bundle.main.path(forResource: "cacert", ofType: "pem") ?? ""
         try? FileManager.default.createDirectory(atPath: dataDir, withIntermediateDirectories: true)
@@ -190,7 +199,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         switch engine {
         case .sdl:
             // The notch and the rounded corners, in the surface's pixels: the game keeps its controls out of them.
-            if let inset = window?.safeAreaInsets {
+            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
                 let k = contentScaleFactor
                 husk_sdl_set_safe_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k))
             }
@@ -213,7 +222,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         case .flutter:
             // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
             husk_flutter_set_pixel_ratio(Float(contentScaleFactor))
-            if let inset = window?.safeAreaInsets {
+            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
                 let k = contentScaleFactor
                 husk_flutter_set_insets(Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32(inset.left * k))
             }
@@ -385,8 +394,20 @@ struct TLUnityScreen: UIViewRepresentable {
     /// engine cannot be started twice, so coming back to the game must show the same layer, not a new one.
     private static var shared: [String: TLUnityUIView] = [:]
 
+    /// The game's one view, made the first time it is asked for.
+    static func view(apk: String, extraApks: [String], dataDir: String, engine: TLNativeEngine, portrait: Bool, scale: CGFloat) -> TLUnityUIView {
+        if let view = shared[apk] { return view }
+        let view = TLUnityUIView(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
+        shared[apk] = view
+        return view
+    }
+
     func makeUIView(context: Context) -> TLUnityUIView {
-        if let view = Self.shared[apk] { view.onStats = onStats; view.onThreeFingerTap = onThreeFingerTap; return view }
+        if let view = Self.shared[apk] {
+            view.windowed = false
+            view.transform = .identity
+            view.onStats = onStats; view.onThreeFingerTap = onThreeFingerTap; return view
+        }
         let view = TLUnityUIView(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
         view.onStats = onStats
         view.onThreeFingerTap = onThreeFingerTap
@@ -484,39 +505,9 @@ struct TLCocosAttemptView: View {
         _uiHidden = State(initialValue: loaded.cleanView)
     }
 
-    /// Geometry Dash and the like are cocos2d-x; Minecraft is built on GameActivity. Both are landscape.
-    private var engine: TLNativeEngine {
-        switch app.report?.nativeEngine {
-        case .minecraft: return .minecraft
-        case .sdl: return .sdl
-        case .ue4: return .ue4
-        case .gta: return .gta
-        case .godot: return .godot
-        case .nativeactivity: return .nativeactivity
-        case .flutter: return .flutter
-        case .cocos: return .cocos
-        default: return .unity
-        }
-    }
-
-    private var dataDir: String {
-        TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
-            .appendingPathComponent(engine == .unity ? "unity-data" : engine == .minecraft ? "minecraft-data" : engine == .sdl ? "sdl-data" : engine == .ue4 ? "ue4-data" : engine == .gta ? "gta-data" : engine == .godot ? "godot-data" : engine == .nativeactivity ? "na-data" : engine == .flutter ? "flutter-data" : "cocos-data", isDirectory: true).path
-    }
-
-    /// Which way up: what the game's settings say, and otherwise what its manifest asks. Some SDL games are portrait; every other
-    /// native game is landscape.
-    private var portrait: Bool {
-        switch settings.orientation {
-        case .landscape: return false
-        case .portrait: return true
-        case .auto:
-            // A Flutter app is a phone app: portrait, unless its manifest asks for landscape.
-            if engine == .flutter, let apk = app.apks.first { return husk_apk_orientation(apk) != 0 }
-            guard engine == .sdl || engine == .nativeactivity || engine == .unity || engine == .godot, let apk = app.apks.first else { return false }
-            return husk_sdl_apk_is_portrait(apk) != 0
-        }
-    }
+    private var engine: TLNativeEngine { app.screenEngine }
+    private var dataDir: String { app.nativeDataDir }
+    private var portrait: Bool { app.drawsPortrait(settings) }
 
     /// Whether an on-screen controller may be offered: not when the game's settings say never, not while a real one is connected, and
     /// without "Always" only for Unreal, whose menus answer nothing else.
@@ -734,5 +725,56 @@ struct TLCocosAttemptView: View {
             }
         }
         .background(Theme.bg.opacity(0.85))
+    }
+}
+
+/// How the native runtime shows an app: which engine draws it, where it keeps its data, and which way up it is.
+extension TLApp {
+    /// Geometry Dash and the like are cocos2d-x; Minecraft is built on GameActivity. Both are landscape.
+    var screenEngine: TLNativeEngine {
+        switch report?.nativeEngine {
+        case .minecraft: return .minecraft
+        case .sdl: return .sdl
+        case .ue4: return .ue4
+        case .gta: return .gta
+        case .godot: return .godot
+        case .nativeactivity: return .nativeactivity
+        case .flutter: return .flutter
+        case .cocos: return .cocos
+        default: return .unity
+        }
+    }
+
+    var nativeDataDir: String {
+        TranslationLayer.root.appendingPathComponent(id, isDirectory: true)
+            .appendingPathComponent(Self.dataFolder(screenEngine), isDirectory: true).path
+    }
+
+    private static func dataFolder(_ engine: TLNativeEngine) -> String {
+        switch engine {
+        case .unity: return "unity-data"
+        case .minecraft: return "minecraft-data"
+        case .sdl: return "sdl-data"
+        case .ue4: return "ue4-data"
+        case .gta: return "gta-data"
+        case .godot: return "godot-data"
+        case .nativeactivity: return "na-data"
+        case .flutter: return "flutter-data"
+        case .cocos: return "cocos-data"
+        }
+    }
+
+    /// Which way up: what the game's settings say, and otherwise what its manifest asks. Some SDL games are portrait; every other
+    /// native game is landscape.
+    func drawsPortrait(_ settings: TLAppSettings) -> Bool {
+        switch settings.orientation {
+        case .landscape: return false
+        case .portrait: return true
+        case .auto:
+            // A Flutter app is a phone app: portrait, unless its manifest asks for landscape.
+            if screenEngine == .flutter, let apk = apks.first { return husk_apk_orientation(apk) != 0 }
+            guard screenEngine == .sdl || screenEngine == .nativeactivity || screenEngine == .unity || screenEngine == .godot, let apk = apks.first else { return false }
+            return husk_sdl_apk_is_portrait(apk) != 0
+        }
     }
 }

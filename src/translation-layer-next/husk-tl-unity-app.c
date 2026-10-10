@@ -413,6 +413,7 @@ bool husk_flutter_launch(const char *apk, const char *data_dir, void *metal_laye
 int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }
 void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }
 void husk_flutter_set_insets(int top, int right, int bottom, int left) { tl_flutter_set_insets(top, right, bottom, left); }
+void husk_flutter_resize(int width, int height) { if (A.engine == ENGINE_FLUTTER) tl_flutter_resize(width, height); }
 void tl_set_cacerts_dir(const char *dir);
 void tl_set_system_fonts_dir(const char *dir);
 /* The certificates and fonts Android keeps under /system, as copies the app carries (cacerts/, and fonts/ + etc/fonts.xml). */

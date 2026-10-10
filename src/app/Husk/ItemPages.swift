@@ -228,13 +228,23 @@ struct GamePage: View {
     private func play() {
         guard TLAppSettings.load(app.id).geode, case .ready = GeodeSupport.shared.current(app) else {
             if TLAppSettings.load(app.id).geode {
-                Task { await GeodeSupport.shared.prepare(app); playing = true }
+                Task { await GeodeSupport.shared.prepare(app); start() }
             } else {
-                playing = true
+                start()
             }
             return
         }
-        playing = true
+        start()
+    }
+
+    /// Full screen, or in a window over Husk when Multitasking says so for this app.
+    private func start() {
+        if app.report?.runsOnNativeRuntime == true, AppWindows.opensInWindow(app) {
+            AppWindows.shared.open(app)
+        } else {
+            AppWindows.shared.close(app)
+            playing = true
+        }
     }
 
     /// This game's engine is loaded in this run of Husk, so its files may be open: no restoring under it.
