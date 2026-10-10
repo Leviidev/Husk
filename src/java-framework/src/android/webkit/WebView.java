@@ -651,14 +651,25 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
     }
 
     // ---- where the page shows
-    private void updateFrame() {
+    private boolean mFrameTouchable;
+    private void updateFrame() { updateFrame(false); }
+    private void updateFrame(boolean force) {
         if (mDestroyed) return;
         boolean visible = isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE && getWidth() > 0 && getHeight() > 0;
         int[] loc = new int[2];
         if (visible) getLocationOnScreen(loc);
-        if (visible == mFrameVisible && (!visible || (loc[0] == mFrameX && loc[1] == mFrameY && getWidth() == mFrameW && getHeight() == mFrameH))) return;
-        mFrameVisible = visible; mFrameX = loc[0]; mFrameY = loc[1]; mFrameW = getWidth(); mFrameH = getHeight();
-        husk.Web.frame(mId, loc[0], loc[1], getWidth(), getHeight(), visible);
+        // a dialog, popup or menu over the page takes the touches: the page only gets them while its window is the top one
+        husk.ViewRoot root = visible ? husk.ViewRoot.of(getRootView()) : null;
+        boolean touchable = root != null && root == husk.ViewRoot.topTouchable();
+        if (!force && visible == mFrameVisible && touchable == mFrameTouchable && (!visible || (loc[0] == mFrameX && loc[1] == mFrameY && getWidth() == mFrameW && getHeight() == mFrameH))) return;
+        mFrameVisible = visible; mFrameTouchable = touchable; mFrameX = loc[0]; mFrameY = loc[1]; mFrameW = getWidth(); mFrameH = getHeight();
+        husk.Web.frame(mId, loc[0], loc[1], getWidth(), getHeight(), visible, touchable);
+    }
+    /** @hide A window came or went: every page says again whether it takes touches. */
+    public static void huskWindowsChanged() {
+        ArrayList<WebView> all;
+        synchronized (sViews) { all = new ArrayList<>(sViews.values()); }
+        for (WebView w : all) w.updateFrame(true);
     }
     @Override protected void onDraw(Canvas canvas) {
         canvas.drawRect(0, 0, getWidth(), getHeight(), mClear);

@@ -7,6 +7,7 @@
 #ifndef HUSK_TL_JNI_INTERNAL_H
 #define HUSK_TL_JNI_INTERNAL_H
 
+#include <stdatomic.h>
 #include "husk-tl-jni.h"
 
 typedef struct tl_jmeth {
@@ -40,7 +41,7 @@ struct tl_jclass {
     struct { char *name, *sig; void *fn; } *natives; int nnatives;
     tl_jclass *next;
     void *dvm;                         /* the interpreter's class (husk-tl-dvm.c), or NULL */
-    volatile bool linking;             /* declared, its bytecode still being linked (by the thread holding the link lock) */
+    _Atomic bool linking;              /* declared, its bytecode still being linked (by the thread holding the link lock) */
 };
 
 /* A class another thread is still linking: wait for it (returns at once on the linking thread itself). */

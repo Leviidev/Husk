@@ -64,7 +64,7 @@ static __weak HView *g_screen;    /* the app's GL view */
 static HView *g_container;
 static float g_scale = 1;         /* surface pixels per point */
 static pthread_mutex_t g_hit_lock = PTHREAD_MUTEX_INITIALIZER;
-typedef struct { int id; bool visible; float x, y, w, h; } hit_rect;   /* points */
+typedef struct { int id; bool visible, touchable; float x, y, w, h; } hit_rect;   /* points */
 static hit_rect g_hits[16];
 static int g_nhits;
 
@@ -81,15 +81,11 @@ static void ensure_container(void)
 {
     if (g_container) return;
 #if TARGET_OS_IPHONE
-    if (!g_screen || !g_screen.superview) { tl_log_line("web: no screen view to put web views under"); return; }
-    g_container = [[UIView alloc] initWithFrame:g_screen.frame];
-    g_container.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    g_container.backgroundColor = UIColor.blackColor;
-    [g_screen.superview insertSubview:g_container belowSubview:g_screen];
+    tl_log_line("web: the host has given no container for web views");      /* husk_java_web_attach comes before the app starts */
 #else
-    /* the harness: an off-screen window the size of the app's surface */
+    /* the harness: an off-screen window the size of the app's surface. WebKit only renders a page whose window is on screen:
+       this one shows one column of pixels at the screen's right edge */
     CGFloat w = g_screen ? g_screen.frame.size.width : 400, h = g_screen ? g_screen.frame.size.height : 800;
-    /* WebKit only renders a page whose window is on screen: this one shows one column of pixels at the screen's right edge */
     NSRect scr = NSScreen.mainScreen ? NSScreen.mainScreen.frame : NSMakeRect(0, 0, 1440, 900);
     g_window = [[NSWindow alloc] initWithContentRect:NSMakeRect(NSMaxX(scr) - 1, NSMinY(scr), w, h) styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
     g_window.ignoresMouseEvents = YES;
@@ -175,7 +171,7 @@ static NSString *bridge_js(void)
     [_web addObserver:self forKeyPath:@"estimatedProgress" options:NSKeyValueObservingOptionNew context:NULL];
     [_web addObserver:self forKeyPath:@"URL" options:NSKeyValueObservingOptionNew context:NULL];
     ensure_container();
-    [g_container addSubview:_web];
+    if (g_container) [g_container addSubview:_web];
     return self;
 }
 - (void)teardown
@@ -298,15 +294,24 @@ static NSArray<NSString *> *nstrs(jobj *arr)
 static void on_main(dispatch_block_t b) { dispatch_async(dispatch_get_main_queue(), b); }
 static HuskWeb *view_of(int wid) { return g_views[@(wid)]; }
 
-static void update_hits(int wid, bool visible, CGRect r)
+static void update_hits(int wid, bool visible, bool touchable, CGRect r)
 {
     pthread_mutex_lock(&g_hit_lock);
     int i = 0;
     while (i < g_nhits && g_hits[i].id != wid) i++;
     if (i == g_nhits && g_nhits < 16) g_nhits++;
-    if (i < 16) g_hits[i] = (hit_rect){ wid, visible, (float)r.origin.x, (float)r.origin.y, (float)r.size.width, (float)r.size.height };
+    if (i < 16) g_hits[i] = (hit_rect){ wid, visible, touchable, (float)r.origin.x, (float)r.origin.y, (float)r.size.width, (float)r.size.height };
     int n = 0;
-    for (int k = 0; k < g_nhits; k++) if (g_hits[k].visible && g_hits[k].id) n++;
+    for (int k = 0; k < g_nhits; k++) if (g_hits[k].visible) n++;
+    pthread_mutex_unlock(&g_hit_lock);
+    atomic_store(&g_visible_webs, n);
+}
+static void forget_hits(int wid)
+{
+    pthread_mutex_lock(&g_hit_lock);
+    for (int i = 0; i < g_nhits; i++) if (g_hits[i].id == wid) { g_hits[i] = g_hits[--g_nhits]; break; }
+    int n = 0;
+    for (int k = 0; k < g_nhits; k++) if (g_hits[k].visible) n++;
     pthread_mutex_unlock(&g_hit_lock);
     atomic_store(&g_visible_webs, n);
 }
@@ -325,7 +330,7 @@ NAT(W_destroy)
 {
     (void)self; (void)ret;
     int wid = a[0].i;
-    update_hits(wid, false, CGRectZero);
+    forget_hits(wid);
     on_main(^{
         HuskWeb *h = view_of(wid);
         [h teardown];
@@ -338,14 +343,17 @@ NAT(W_frame)
 {
     (void)self; (void)ret;
     int wid = a[0].i;
-    bool vis = a[5].i != 0;
+    bool vis = a[5].i != 0, touchable = a[6].i != 0;
     CGRect r = CGRectMake(a[1].i / g_scale, a[2].i / g_scale, a[3].i / g_scale, a[4].i / g_scale);
-    update_hits(wid, vis, r);
+    update_hits(wid, vis, touchable, r);
     on_main(^{
         HuskWeb *h = view_of(wid);
         if (!h) return;
+        /* the screen may have had no superview when the web view was made */
+        if (!g_container) ensure_container();
+        if (g_container && !h.web.superview) [g_container addSubview:h.web];
 #if TARGET_OS_IPHONE
-        if (g_screen && g_container.superview == g_screen.superview && !CGRectEqualToRect(g_container.frame, g_screen.frame)) g_container.frame = g_screen.frame;
+        if (g_screen && g_container && g_container.superview == g_screen.superview && !CGRectEqualToRect(g_container.frame, g_screen.frame)) g_container.frame = g_screen.frame;
 #endif
         h.web.frame = r;
         h.web.hidden = !vis;
@@ -558,7 +566,7 @@ NAT(W_poll)
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_web[] = {
     { "create", "(I)V", W_create },
     { "destroy", "(I)V", W_destroy },
-    { "frame", "(IIIIIZ)V", W_frame },
+    { "frame", "(IIIIIZZ)V", W_frame },
     { "load", "(ILjava/lang/String;[Ljava/lang/String;[B)V", W_load },
     { "loadData", "(I[BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", W_loadData },
     { "eval", "(ILjava/lang/String;I)V", W_eval },
@@ -580,23 +588,29 @@ dvm_native_fn tl_web_native(const char *name, const char *sig)
 
 /* ---- the host's side */
 
-void tl_web_attach(void *screen_view, float scale)
+void tl_web_attach(void *screen_view, void *container, float scale, bool fresh)
 {
-    HView *view = (__bridge HView *)screen_view;
+    HView *view = (__bridge HView *)screen_view, *box = (__bridge HView *)container;
     float s = scale > 0 ? scale : 1;
     dispatch_block_t b = ^{
-        /* a new app on a new screen: whatever the last one left goes */
-        for (HuskWeb *h in g_views.allValues) [h teardown];
-        [g_views removeAllObjects];
-        [g_pending removeAllObjects];
-        [g_container removeFromSuperview];
-        g_container = nil;
+        if (fresh) {
+            /* a new app on a new screen: whatever the last one left goes */
+            for (HuskWeb *h in g_views.allValues) [h teardown];
+            [g_views removeAllObjects];
+            [g_pending removeAllObjects];
+            pthread_mutex_lock(&g_hit_lock);
+            g_nhits = 0;
+            pthread_mutex_unlock(&g_hit_lock);
+            atomic_store(&g_visible_webs, 0);
+        } else {
+            /* the same app shown again on a new screen: its pages move over */
+            for (HuskWeb *h in g_views.allValues) if (box) [box addSubview:h.web];
+        }
+        if (g_container != box) [g_container removeFromSuperview];
+        g_container = box;
         g_screen = view;
         g_scale = s;
-        pthread_mutex_lock(&g_hit_lock);
-        g_nhits = 0;
-        pthread_mutex_unlock(&g_hit_lock);
-        atomic_store(&g_visible_webs, 0);
+        set_screen_opaque(atomic_load(&g_visible_webs) == 0);
     };
     if ([NSThread isMainThread]) b(); else dispatch_sync(dispatch_get_main_queue(), b);
 }
@@ -607,7 +621,7 @@ bool tl_web_hit(float x, float y)
     pthread_mutex_lock(&g_hit_lock);
     for (int i = 0; i < g_nhits && !hit; i++) {
         const hit_rect *r = &g_hits[i];
-        hit = r->id && r->visible && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h;
+        hit = r->id && r->visible && r->touchable && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h;
     }
     pthread_mutex_unlock(&g_hit_lock);
     return hit;
@@ -630,6 +644,7 @@ void tl_web_main_loop(void)
 {
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    [NSApp finishLaunching];
     CFRunLoopRun();
 }
 bool tl_web_tap(float px, float py)
@@ -640,7 +655,7 @@ bool tl_web_tap(float px, float py)
     pthread_mutex_lock(&g_hit_lock);
     for (int i = 0; i < g_nhits; i++) {
         const hit_rect *r = &g_hits[i];
-        if (r->id && r->visible && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h) { wid = r->id; ox = r->x; oy = r->y; break; }
+        if (r->id && r->visible && r->touchable && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h) { wid = r->id; ox = r->x; oy = r->y; break; }
     }
     pthread_mutex_unlock(&g_hit_lock);
     if (!wid) return false;

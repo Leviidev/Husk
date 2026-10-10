@@ -144,6 +144,31 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
 
+    /// A Java app's WebViews (WKWebViews) live in a view right under this one, where the app's window leaves a hole for them.
+    /// Touches on a page go straight to it, so the back swipe and the three-finger tap are on that view too.
+    private var webHost: UIView?
+    private func attachWebHost(fresh: Bool) {
+        guard let superview else { return }
+        webHost?.removeFromSuperview()
+        let host = UIView(frame: frame)
+        host.backgroundColor = .black
+        superview.insertSubview(host, belowSubview: self)
+        let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
+        back.edges = .left
+        host.addGestureRecognizer(back)
+        let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
+        threeFingers.numberOfTouchesRequired = 3
+        threeFingers.cancelsTouchesInView = false
+        host.addGestureRecognizer(threeFingers)
+        webHost = host
+        husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Unmanaged.passUnretained(host).toOpaque(), Float(contentScaleFactor), fresh ? 1 : 0)
+    }
+
+    override func willMove(toSuperview newSuperview: UIView?) {
+        super.willMove(toSuperview: newSuperview)
+        if newSuperview == nil { webHost?.removeFromSuperview() }
+    }
+
     @objc private func edgeSwiped(_ g: UIScreenEdgePanGestureRecognizer) {
         if g.state == .ended, g.translation(in: self).x > 60 { if engine == .java { husk_java_back() } else { husk_flutter_back() } }
     }
@@ -179,6 +204,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override func layoutSubviews() {
         super.layoutSubviews()
         stats.frame = CGRect(x: bounds.width - 148, y: bounds.height - 22, width: 142, height: 16)
+        if let webHost, webHost.frame != frame { webHost.frame = frame }
         guard bounds.width > 0, bounds.height > 0 else { return }
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
@@ -227,6 +253,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         if husk_unity_state() != Int32(HUSK_UNITY_IDLE) {
             // Already started this run: the engine cannot be loaded twice, so just show it again.
             HuskLog.log("tl", "unity: already started; resuming")
+            if engine == .java { attachWebHost(fresh: false) }
             return
         }
         // The game plays through the silent switch, like the guest's own audio, and mixes with other audio. Unity games too:
@@ -280,8 +307,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
                 let k = contentScaleFactor
                 husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
             }
-            // WebViews go under this view, where the app's window leaves a hole for them.
-            husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Float(contentScaleFactor))
+            attachWebHost(fresh: true)
             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:

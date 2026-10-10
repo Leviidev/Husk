@@ -84,9 +84,10 @@ void husk_java_delete_backward(void);
 void husk_java_text_action(void);
 void husk_java_keyboard_closed(void);
 void husk_java_key(int android_keycode, int down);
-/* A Java app's WebViews are WKWebViews put under the app's screen view (its superview's subview below it), at its scale (surface
-   pixels per point); husk_java_web_hit says whether a touch at a point in the screen view belongs to a web page instead. */
-void husk_java_web_attach(void *screen_view, float scale);
+/* A Java app's WebViews are WKWebViews in a container the host puts right under the app's screen view, the same size, at the screen's
+   scale (surface pixels per point). fresh: a new app (1), or the running one shown on a new screen view (0: its pages move over).
+   husk_java_web_hit says whether a touch at a point in the screen view belongs to a web page instead. */
+void husk_java_web_attach(void *screen_view, void *container, float scale, int fresh);
 int husk_java_web_hit(float x, float y);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */

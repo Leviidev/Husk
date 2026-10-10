@@ -9,7 +9,7 @@ public final class Web {
     private Web() {}
     public static native void create(int id);
     public static native void destroy(int id);
-    public static native void frame(int id, int x, int y, int w, int h, boolean visible);   // screen pixels
+    public static native void frame(int id, int x, int y, int w, int h, boolean visible, boolean touchable);   // screen pixels
     public static native void load(int id, String url, String[] headers, byte[] postBody);
     public static native void loadData(int id, byte[] data, String mime, String encoding, String baseUrl);
     public static native void eval(int id, String js, int callback);                        // callback 0: no result wanted

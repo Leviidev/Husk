@@ -48,6 +48,7 @@ public final class ViewRoot implements ViewParent {
         sRoots.add(r);
         if (v.getLayoutParams() == null) v.setLayoutParams(r.mLp);
         r.attach();
+        android.webkit.WebView.huskWindowsChanged();
         for (ViewRoot o : sRoots) if (o != r && o.mHasFocus && r.focusable()) { o.mHasFocus = false; o.mView.dispatchWindowFocusChanged(false); o.mObserver.huskWindowFocus(false); }
         scheduleFrame();
         return r;
@@ -63,6 +64,7 @@ public final class ViewRoot implements ViewParent {
         sRoots.remove(this);
         if (sTouchTarget == this) sTouchTarget = null;
         mView.huskDetach();
+        android.webkit.WebView.huskWindowsChanged();
         mObserver.huskAttached(false);
         if (hadFocus) {
             for (int i = sRoots.size() - 1; i >= 0; i--) {
@@ -298,6 +300,11 @@ public final class ViewRoot implements ViewParent {
             return r.mView.dispatchGenericMotionEvent(l);
         }
         return false;
+    }
+    /** The window touches go to: the top one that takes them (a toast does not). */
+    public static ViewRoot topTouchable() {
+        for (int i = sRoots.size() - 1; i >= 0; i--) if ((sRoots.get(i).mLp.flags & WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) == 0) return sRoots.get(i);
+        return null;
     }
     public static ViewRoot top() { return sRoots.isEmpty() ? null : sRoots.get(sRoots.size() - 1); }
 
