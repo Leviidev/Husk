@@ -427,7 +427,9 @@ static int b_create(pthread_t *out, const guest_attr *attr, void *(*fn)(void *),
     pthread_attr_t a;
     pthread_attr_init(&a);
     size_t stack = attr && attr->stack_size ? attr->stack_size : DEFAULT_STACK;
-    if (stack < 256 * 1024) stack = 256 * 1024;
+    /* at least 16 MB (address space; pages are only used as touched): a native thread that calls into Java runs the interpreter,
+       whose calls take far more stack than ART's */
+    if (stack < (16u << 20)) stack = 16u << 20;
     stack = (stack + 16383) & ~(size_t)16383;
     pthread_attr_setstacksize(&a, stack);
     if (attr && (attr->flags & GATTR_DETACHED)) pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);

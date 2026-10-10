@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -891,7 +892,17 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
     /* past 8000 frames: StackOverflowError, which is made with calls of its own, so those get 200 frames more (a deeper one
        throwing again would recurse without end) */
     static _Thread_local bool t_overflowing;
-    if (t_depth > (t_overflowing ? 8200 : 8000)) {
+    /* ...or when the thread's own stack is nearly used up (a native thread made with a small one calling into Java): each
+       interpreted call takes several KB of it, where ART's take a few hundred bytes */
+    static _Thread_local uintptr_t t_stack_low;
+    if (!t_stack_low) {
+        pthread_t me = pthread_self();
+        uintptr_t top = (uintptr_t)pthread_get_stackaddr_np(me); size_t sz = pthread_get_stacksize_np(me);
+        t_stack_low = top - sz + (sz > (2u << 20) ? (512u << 10) : sz / 4);   /* what is kept back for C below the interpreter */
+    }
+    uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
+    /* the error is thrown with 128 KB still above that, which its own calls may use */
+    if (t_depth > (t_overflowing ? 8200 : 8000) || sp < t_stack_low + (t_overflowing ? 0 : (128u << 10))) {
         t_depth--;
         if (t_overflowing) return false;
         t_overflowing = true;
