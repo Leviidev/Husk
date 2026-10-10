@@ -154,6 +154,28 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
             if (!strncmp(path, roots[i], l) && (path[l] == 0 || path[l] == '/')) { snprintf(buf, n, "%s%s", g_cacerts, path + l); return buf; }
         }
     }
+    /* /system/lib64/libdl.so and the like: the libraries Husk provides itself are files there, as on a phone, so loaders that look
+     * for a dependency on disk before loading it (Facebook's SoLoader, in React Native apps) find them. Each is a small ELF stub;
+     * loading it by that path loads Husk's own. */
+    {
+        static const char *const libdirs[] = { "/system/lib64/", "/System/lib64/", "/vendor/lib64/", "/system/lib/" };
+        for (int i = 0; i < 4; i++) {
+            size_t l = strlen(libdirs[i]);
+            bool tl_bionic_is_system_lib(const char *soname);
+            if (!strncmp(path, libdirs[i], l) && !strchr(path + l, '/') && tl_bionic_is_system_lib(path + l)) {
+                snprintf(buf, n, "%s/.husk-system-lib.so", tl_data_dir());
+                struct stat st;
+                if (stat(buf, &st) != 0) {
+                    /* the 64-byte header of an empty arm64 shared object */
+                    static const uint8_t elf[64] = { 0x7f, 'E', 'L', 'F', 2, 1, 1, 0, 0,0,0,0,0,0,0,0, 3, 0, 0xb7, 0, 1, 0, 0, 0,
+                                                     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0, 64, 0, 56, 0, 0, 0, 64, 0, 0, 0, 0, 0 };
+                    FILE *f = fopen(buf, "wb");
+                    if (f) { fwrite(elf, 1, sizeof(elf), f); fclose(f); }
+                }
+                return buf;
+            }
+        }
+    }
     const char *pkg = "/data/data/";
     if (!strncmp(path, pkg, strlen(pkg))) {
         const char *rest = strchr(path + strlen(pkg), '/');

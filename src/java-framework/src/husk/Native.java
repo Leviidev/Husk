@@ -13,6 +13,10 @@ public final class Native {
     public static native long apkFileFd(int apk, String path);
     public static native long apkFileLength(int apk, String path);
     public static native String apkPath();
+    /** The app's split APKs (a Google Play install: libraries, resources, asset packs), in the order they were given. */
+    public static native String[] splitPaths();
+    /** Class.getClassLoader for the app's own classes. */
+    public static native void setAppClassLoader(ClassLoader loader);
     public static native String dataDir();
     public static native String externalDir();
     public static native String packageName();

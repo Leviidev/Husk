@@ -668,6 +668,8 @@ struct TLCocosAttemptView: View {
     let app: TLApp
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = TLUnityModel()
+    /// Why the app stopped, when its log says: shown over the screen
+    @State private var stoppedWhy: AppDiagnosis?
     @AppStorage("husk.tl.unity.showLog") private var showLogSetting = false
     @AppStorage(TranslationLayer.devInfoKey) private var devInfo = false
     @State private var stats = "starting"
@@ -798,7 +800,10 @@ struct TLCocosAttemptView: View {
             if f > 600, model.state == Int32(HUSK_UNITY_RUNNING) { GameStatusStore.shared.record(app.id, .plays) }
         }
         .onChange(of: model.state) { st in
-            if st == Int32(HUSK_UNITY_FAILED) { GameStatusStore.shared.record(app.id, .failed) }
+            if st == Int32(HUSK_UNITY_FAILED) || st == Int32(HUSK_UNITY_ENDED), stoppedWhy == nil, let d = AppDiagnosis.ofCurrentRun() {
+                stoppedWhy = d
+                GameStatusStore.shared.record(app.id, st == Int32(HUSK_UNITY_FAILED) ? .failed : .crashed, diagnosis: d)
+            } else if st == Int32(HUSK_UNITY_FAILED) { GameStatusStore.shared.record(app.id, .failed) }
         }
         .onDisappear {
             CrashReport.gameEnded()
@@ -807,6 +812,7 @@ struct TLCocosAttemptView: View {
             HuskOrientation.set(HuskOrientation.standard)
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in dismiss() }
+        .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { dismiss() } } }
     }
 
     /// While the pad is being edited: what to do with the control picked, in a small panel in the middle of the screen.

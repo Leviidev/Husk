@@ -336,6 +336,20 @@ static tl_jfield *lookup_field(tl_jclass *cls, const char *name, const char *sig
             return f;
         }
         if (!create) return NULL;
+        /* not a field of the class: a detached one, so the object's slots and the class's statics are never reallocated under the
+           interpreter */
+        pthread_mutex_lock(&g_lock);
+        for (int i = 0; i < cls->nfields; i++) {
+            tl_jfield *f = cls->fields[i];
+            if (f->detached && f->is_static == is_static && !strcmp(f->name, name) && !strcmp(f->sig, sig)) { pthread_mutex_unlock(&g_lock); return f; }
+        }
+        tl_jfield *f = calloc(1, sizeof(*f));
+        f->cls = cls; f->name = strdup(name); f->sig = strdup(sig); f->is_static = is_static; f->detached = true;
+        if (cls->nfields == cls->capf) { cls->capf = cls->capf ? cls->capf * 2 : 8; cls->fields = realloc(cls->fields, (size_t)cls->capf * sizeof(*cls->fields)); }
+        cls->fields[cls->nfields++] = f;
+        pthread_mutex_unlock(&g_lock);
+        tl_log_line("jni: %s has no field %s %s: kept apart from its objects", cls->name, name, sig);
+        return f;
     }
     pthread_mutex_lock(&g_lock);
     for (int i = 0; i < cls->nfields; i++) {
@@ -372,9 +386,17 @@ static tl_jfield *lookup_field(tl_jclass *cls, const char *name, const char *sig
 
 static jvalue *field_slot(jobj *o, tl_jfield *f)
 {
+    if (f->detached) return &f->dval;
     if (f->is_static) return &f->cls->statics[f->index];
+    /* an interpreter object's slots are its own: never grown from here */
+    if (tl_dvm && o && o->cls && o->cls->dvm && f->index >= o->nfields) {
+        static __thread jvalue scratch;
+        scratch.j = 0;
+        return &scratch;
+    }
     if (f->index >= o->nfields) {
         uint32_t n = f->index + 8;
+        if (tl_dvm) { jvalue *dvm_grow_slots(jobj *, uint32_t); return &dvm_grow_slots(o, n)[f->index]; }
         o->fields = realloc(o->fields, n * sizeof(jvalue));
         memset(o->fields + o->nfields, 0, (n - o->nfields) * sizeof(jvalue));
         o->nfields = n;
@@ -1080,11 +1102,16 @@ tl_jfield *tl_jni_field(tl_jclass *cls, const char *name, const char *sig, bool 
 jvalue *tl_jni_field_slot(jobj *o, tl_jfield *f) { return field_slot(o, f); }
 void tl_jni_each_declared(void (*fn)(tl_jclass *jc))
 {
-    tl_jclass *list[8192]; int n = 0;
+    int cap = 8192, n = 0;
+    tl_jclass **list = malloc((size_t)cap * sizeof(*list));
     pthread_mutex_lock(&g_lock);
-    for (int b = 0; b < NBUCKETS; b++) for (tl_jclass *c = g_classes[b]; c && n < 8192; c = c->next) list[n++] = c;
+    for (int b = 0; b < NBUCKETS; b++) for (tl_jclass *c = g_classes[b]; c; c = c->next) {
+        if (n == cap) { cap *= 2; list = realloc(list, (size_t)cap * sizeof(*list)); }
+        list[n++] = c;
+    }
     pthread_mutex_unlock(&g_lock);
     for (int i = 0; i < n; i++) fn(list[i]);
+    free(list);
 }
 
 tl_jclass *tl_jni_find_declared(const char *name)

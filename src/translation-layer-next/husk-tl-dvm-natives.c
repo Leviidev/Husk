@@ -733,6 +733,9 @@ NAT(Runtime_nativeLoad)
     tl_jmeth *m = tl_jni_method(tl_jni_class("husk/Loader"), "loadLibrary", "(Ljava/lang/String;)V", true);
     (void)m;
     extern bool tl_dvm_load_library(const char *name);
+    bool tl_bionic_is_system_lib(const char *soname);
+    /* a library Husk itself provides (/system/lib64/liblog.so): there already */
+    if (tl_bionic_is_system_lib(slash ? slash + 1 : path)) { *ret = L(NULL); return true; }
     *ret = L(tl_dvm_load_library(path) ? NULL : dvm_new_string_utf8("could not load library"));
     return true;
 }
@@ -791,6 +794,7 @@ void dvm_fill_mirror(jobj *mirror)
         s[f->slot] = L(ec->mirror);
     }
     if ((f = dvm_find_field(cc, "status", false))) s[f->slot] = I(c && c->state == CS_INITIALIZED ? 0x0F : 0x0A);
+    { void dvm_mirror_loader(jobj *); dvm_mirror_loader(mirror); }
     /* ifTable: every interface the class implements, its superclasses' and super-interfaces' included, as (interface, methods)
      * pairs -- what isAssignableFrom, getMethods and instanceof-by-reflection read */
     if ((f = dvm_find_field(cc, "ifTable", false))) {
@@ -827,6 +831,7 @@ NAT(Class_getNameNative)
 {
     (void)a;
     char buf[512]; dotted(self->klass.jc->name, buf, sizeof(buf));
+    char *at = strchr(buf, '@'); if (at) *at = 0;              /* a class in a run-time loader's own namespace (name@n) */
     *ret = L(dvm_new_string_utf8(buf));
     return true;
 }
@@ -961,19 +966,31 @@ NAT(Class_getDeclaredFields)
 }
 static jvalue *field_place(dvm_field *f, jobj *obj)
 {
-    if (f->flags & 8) { dvm_ensure_init(f->cls); return &f->cls->jc->statics[f->slot]; }
-    return obj ? &dvm_slots(obj)[f->slot] : NULL;
+    if (f->flags & 8) {
+        dvm_ensure_init(f->cls);
+        if (!f->cls->jc->statics || f->slot >= (uint32_t)f->cls->jc->nstatics) { static jvalue none; none.j = 0; return &none; }
+        return &f->cls->jc->statics[f->slot];
+    }
+    if (!obj) return NULL;
+    /* an object of another class: Java says so (and its slots are not this field's) */
+    if (obj->kind != TL_K_CLASS && !dvm_instance_of(obj, f->cls->jc)) {
+        dvm_throw("java/lang/IllegalArgumentException", "Expected receiver of type %s, but got %s", f->cls->name, dvm_object_class(obj)->name);
+        return NULL;
+    }
+    jvalue *sl = dvm_slots(obj);
+    if (f->slot >= obj->nfields) { jvalue *dvm_grow_slots(jobj *, uint32_t); sl = dvm_grow_slots(obj, f->slot + 1); }
+    return &sl[f->slot];
 }
-NAT(Field_getInt) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->i); return true; }
-NAT(Field_getLong) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = J(p->j); return true; }
-NAT(Field_getBoolean) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = Z(p->z); return true; }
-NAT(Field_setInt) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->i = a[1].i; return true; }
-NAT(Field_setLong) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = a[1].j; return true; }
-NAT(Field_setBoolean) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->z = a[1].z; return true; }
+NAT(Field_getInt) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = I(p->i); return true; }
+NAT(Field_getLong) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = J(p->j); return true; }
+NAT(Field_getBoolean) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = Z(p->z); return true; }
+NAT(Field_setInt) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->i = a[1].i; return true; }
+NAT(Field_setLong) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = a[1].j; return true; }
+NAT(Field_setBoolean) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->z = a[1].z; return true; }
 NAT(Field_get)
 {
     dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l);
-    if (!p) return npe("object");
+    if (!p) return tl_jni_pending() ? false : npe("object");
     if (f->type[0] == 'L' || f->type[0] == '[') { *ret = L(p->l); return true; }
     /* a primitive, boxed */
     const char *box; const char *sig;
@@ -993,7 +1010,7 @@ NAT(Field_set)
 {
     (void)ret;
     dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l);
-    if (!p) return npe("object");
+    if (!p) return tl_jni_pending() ? false : npe("object");
     if (f->type[0] == 'L' || f->type[0] == '[') { p->l = a[1].l; return true; }
     jobj *b = a[1].l;
     if (!b) return npe("value");
@@ -1360,16 +1377,16 @@ NAT(MH_getMemberInternal)
     else if (k <= 4) *ret = L(make_executable((dvm_method *)p));            /* INVOKE_VIRTUAL .. INVOKE_INTERFACE */
     return true;
 }
-NAT(Field_getByte) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->b); return true; }
-NAT(Field_getChar) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->c); return true; }
-NAT(Field_getShort) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = I(p->s); return true; }
-NAT(Field_getFloat) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = F(p->f); return true; }
-NAT(Field_getDouble) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); *ret = D(p->d); return true; }
-NAT(Field_setByte) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->b = a[1].b; return true; }
-NAT(Field_setChar) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->c = a[1].c; return true; }
-NAT(Field_setShort) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->s = a[1].s; return true; }
-NAT(Field_setFloat) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->j = 0; p->f = a[1].f; return true; }
-NAT(Field_setDouble) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return npe("object"); p->d = a[1].d; return true; }
+NAT(Field_getByte) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = I(p->b); return true; }
+NAT(Field_getChar) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = I(p->c); return true; }
+NAT(Field_getShort) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = I(p->s); return true; }
+NAT(Field_getFloat) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = F(p->f); return true; }
+NAT(Field_getDouble) { dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); *ret = D(p->d); return true; }
+NAT(Field_setByte) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->b = a[1].b; return true; }
+NAT(Field_setChar) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->c = a[1].c; return true; }
+NAT(Field_setShort) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->s = a[1].s; return true; }
+NAT(Field_setFloat) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->j = 0; p->f = a[1].f; return true; }
+NAT(Field_setDouble) { (void)ret; dvm_field *f = field_of(self); jvalue *p = field_place(f, a[0].l); if (!p) return tl_jni_pending() ? false : npe("object"); p->d = a[1].d; return true; }
 
 /* ================================================================== Unsafe */
 
@@ -1388,13 +1405,22 @@ static jvalue *unsafe_place(jobj *o, int64_t off, int size)
         dvm_class *cc = dvm_class_of(tl_jni_class("java/lang/Class"));
         if (!fields && cc) { fields = dvm_find_field(cc, "fields", false); methods = dvm_find_field(cc, "methods", false); }
         int slot = (int)((off - 16) / 8);
+        if (slot < 0 || (uint32_t)slot >= o->nfields) { jvalue *dvm_grow_slots(jobj *, uint32_t); tl_log_line("dvm: Unsafe offset %lld past a Class object's %u fields", (long long)off, o->nfields); slots = dvm_grow_slots(o, (uint32_t)(slot < 0 ? 0 : slot) + 1); }
         dvm_class *c = dvm_class_of(o->klass.jc);
         if (c && c->art_tables && fields && slot == (int)fields->slot) slots[slot].j = (int64_t)(uintptr_t)((uint8_t *)c->inf - DVM_MEMBERS_HDR);
         if (c && c->art_tables && methods && slot == (int)methods->slot) slots[slot].j = (int64_t)(uintptr_t)((uint8_t *)c->dm - DVM_MEMBERS_HDR);
         return &slots[slot];
     }
     (void)size;
-    return &dvm_slots(o)[(off - 16) / 8];
+    jvalue *sl = dvm_slots(o);
+    int64_t slot = (off - 16) / 8;
+    if (slot < 0 || (uint64_t)slot >= o->nfields) {
+        jvalue *dvm_grow_slots(jobj *, uint32_t);
+        tl_log_line("dvm: Unsafe offset %lld past a %s's %u fields", (long long)off, o->cls ? o->cls->name : "?", o->nfields);
+        if (slot < 0 || slot > 4096) { static jvalue junk; junk.j = 0; return &junk; }
+        sl = dvm_grow_slots(o, (uint32_t)slot + 1);
+    }
+    return &sl[slot];
 }
 NAT(U_objectFieldOffset)
 {
@@ -1614,6 +1640,24 @@ NAT(VMStack_getStackClass2)
     return true;
 }
 NAT(VMStack_fill) { UNUSED; *ret = I(0); return true; }
+/* getCallingClassLoader: the loader of the class whose code called (Class.forName(name) looks there, as code loaded by a
+ * custom loader expects); frames of Class and reflection itself do not count */
+NAT(VMStack_callingLoader)
+{
+    UNUSED;
+    *ret = L(NULL);
+    for (int i = t_depth - 2; i >= 0 && i < 8192; i--) {
+        dvm_method *m = t_frames[i];
+        if (!m) continue;
+        const char *n = m->cls->name;
+        if (!strncmp(n, "java/lang/Class", 15) || !strncmp(n, "java/lang/reflect/", 18) || !strncmp(n, "dalvik/system/VMStack", 21)) continue;
+        static dvm_field *lf;
+        if (!lf) { dvm_class *cc = dvm_class_of(tl_jni_class("java/lang/Class")); lf = cc ? dvm_find_field(cc, "classLoader", false) : NULL; }
+        if (lf) { jvalue *sl = dvm_slots(m->cls->jc->mirror); if (lf->slot < m->cls->jc->mirror->nfields) *ret = L(sl[lf->slot].l); }
+        break;
+    }
+    return true;
+}
 NAT(VMCL_findLoaded)
 {
     (void)self;
@@ -1846,8 +1890,8 @@ static const entry k_natives[] = {
     { "java/lang/ref/Reference", "refersTo0", "(Ljava/lang/Object;)Z", Ref_refersTo },
     { "java/lang/reflect/Array", "createObjectArray", "(Ljava/lang/Class;I)Ljava/lang/Object;", Array_createObjectArray },
     { "java/lang/reflect/Array", "createMultiArray", "(Ljava/lang/Class;[I)Ljava/lang/Object;", Array_createMultiArray },
-    { "dalvik/system/VMStack", "getCallingClassLoader", "()Ljava/lang/ClassLoader;", VMStack_null },
-    { "dalvik/system/VMStack", "getClosestUserClassLoader", "()Ljava/lang/ClassLoader;", VMStack_null },
+    { "dalvik/system/VMStack", "getCallingClassLoader", "()Ljava/lang/ClassLoader;", VMStack_callingLoader },
+    { "dalvik/system/VMStack", "getClosestUserClassLoader", "()Ljava/lang/ClassLoader;", VMStack_callingLoader },
     { "dalvik/system/VMStack", "getStackClass2", "()Ljava/lang/Class;", VMStack_getStackClass2 },
     { "dalvik/system/VMStack", "fillStackTraceElements", "(Ljava/lang/Thread;[Ljava/lang/StackTraceElement;)I", VMStack_fill },
     { "java/lang/VMClassLoader", "findLoadedClass", "(Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/Class;", VMCL_findLoaded },

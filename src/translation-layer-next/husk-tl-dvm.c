@@ -22,6 +22,8 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 /* ================================================================== DEX files */
 
 static dvm_dex *g_dex[256];
+static int g_add_ns, g_next_ns;    /* the namespace dex_add gives the dexes it adds now (DexFile at run time) */
+static int g_nboot_dex = -1;     /* the boot class path's dexes are g_dex[0 .. g_nboot_dex) */
 static int g_ndex;
 
 static inline uint16_t rd16(const uint8_t *p) { return (uint16_t)(p[0] | p[1] << 8); }
@@ -116,11 +118,18 @@ static bool dex_add(const uint8_t *b, size_t size, const char *label)
     d->tcache = calloc(d->ntype ? d->ntype : 1, sizeof(*d->tcache));
     d->scache = calloc(d->nstr ? d->nstr : 1, sizeof(*d->scache));
     snprintf(d->name, sizeof(d->name), "%s", label);
+    d->ns = g_add_ns;
     int added = 0;
     for (uint32_t i = 0; i < d->ncls; i++) {
         const char *desc = dex_type(d, rd32(b + d->cls_off + 32 * i));
         char name[512]; desc_to_name(desc, name, sizeof(name));
-        if (cdef_find(name)) continue;
+        if (cdef_find(name)) {
+            /* a run-time loader's class named like one already defined: its own, in its namespace (name@ns) */
+            if (!d->ns) continue;
+            char key[540]; snprintf(key, sizeof(key), "%s@%d", name, d->ns);
+            if (cdef_find(key)) continue;
+            snprintf(name, sizeof(name), "%s", key);
+        }
         cdef *c = malloc(sizeof(*c));
         c->name = strdup(name); c->dex = d; c->def = i;
         uint32_t h = hstr(name) % CBUCKETS;
@@ -271,12 +280,12 @@ jobj *dvm_new_string_utf8(const char *s)
 
 static jobj *const_string(dvm_dex *d, uint32_t idx)
 {
-    jobj *s = d->scache[idx];
+    jobj *s = __atomic_load_n(&d->scache[idx], __ATOMIC_ACQUIRE);
     if (s) return s;
     int32_t n; uint16_t *u = mutf8_to_u16(dex_str(d, idx), &n);
     s = tl_dvm_string_u16(u, n);
     free(u);
-    d->scache[idx] = s;
+    __atomic_store_n(&d->scache[idx], s, __ATOMIC_RELEASE);
     return s;
 }
 
@@ -319,10 +328,16 @@ static tl_jclass *class_for_desc(const char *desc)
 
 static tl_jclass *resolve_type(dvm_dex *d, uint32_t idx)
 {
-    tl_jclass *c = d->tcache[idx];
+    tl_jclass *c = __atomic_load_n(&d->tcache[idx], __ATOMIC_ACQUIRE);
     if (c) return c;
-    c = class_for_desc(dex_type(d, idx));
-    d->tcache[idx] = c;
+    const char *desc = dex_type(d, idx);
+    if (d->ns && desc[0] == 'L') {
+        /* a run-time loader's code sees its own classes first */
+        char name[512], key[540]; desc_to_name(desc, name, sizeof(name)); snprintf(key, sizeof(key), "%s@%d", name, d->ns);
+        if (cdef_find(key)) c = tl_jni_class(key);
+    }
+    if (!c) c = class_for_desc(desc);
+    __atomic_store_n(&d->tcache[idx], c, __ATOMIC_RELEASE);
     return c;
 }
 
@@ -594,6 +609,26 @@ jvalue *dvm_slots(jobj *o)
     free(f);
     if (mine && o->kind == TL_K_CLASS) { void dvm_fill_mirror(jobj *mirror); dvm_fill_mirror(o); }
     return o->fields;
+}
+
+/* An object with fewer slots than its class has (made before the class was linked, or through JNI): grown under the lock, to the
+ * class's full size, and the old array is kept, not freed -- another thread may be reading it this moment, and a freed array read
+ * that way is how a register ends up holding garbage. */
+jvalue *dvm_grow_slots(jobj *o, uint32_t need)
+{
+    pthread_mutex_lock(&g_lock);
+    if (o->nfields < need) {
+        dvm_class *c = dvm_class_of(o->kind == TL_K_CLASS ? g_class_class : o->cls);
+        uint32_t nn = need;
+        if (c && c->nslots > nn) nn = c->nslots;
+        jvalue *f = calloc(nn, sizeof(jvalue));
+        if (o->fields && o->nfields) memcpy(f, o->fields, (size_t)o->nfields * sizeof(jvalue));
+        __atomic_store_n(&o->fields, f, __ATOMIC_RELEASE);
+        o->nfields = nn;
+    }
+    jvalue *r = o->fields;
+    pthread_mutex_unlock(&g_lock);
+    return r;
 }
 
 jobj *dvm_new_object(tl_jclass *jc)
@@ -1019,7 +1054,7 @@ static mref *resolve_mref(dvm_dex *d, uint32_t idx, bool is_static)
 {
     static _Thread_local mref *last;
     (void)last;
-    mref *r = (mref *)d->mcache[idx];
+    mref *r = (mref *)__atomic_load_n(&d->mcache[idx], __ATOMIC_ACQUIRE);
     if (r) return r;
     r = calloc(1, sizeof(*r));
     const uint8_t *mi = d->b + d->meth_off + 8 * idx;
@@ -1034,7 +1069,7 @@ static mref *resolve_mref(dvm_dex *d, uint32_t idx, bool is_static)
         for (tl_jclass *k = r->cls; k; k = k->super) if (!dvm_class_of(k)) { r->hm = tl_jni_method(k, r->name, r->sig, is_static); break; }
     }
     pthread_mutex_lock(&g_lock);
-    if (!d->mcache[idx]) d->mcache[idx] = (dvm_method *)r; else { free(r); r = (mref *)d->mcache[idx]; }
+    if (!d->mcache[idx]) __atomic_store_n(&d->mcache[idx], (dvm_method *)r, __ATOMIC_RELEASE); else { free(r); r = (mref *)d->mcache[idx]; }
     pthread_mutex_unlock(&g_lock);
     return r;
 }
@@ -1045,7 +1080,7 @@ typedef struct fref { dvm_field *df; tl_jfield *hf; tl_jclass *cls; char type; }
 
 static fref *resolve_fref(dvm_dex *d, uint32_t idx, bool is_static)
 {
-    fref *r = (fref *)d->fcache[idx];
+    fref *r = (fref *)__atomic_load_n(&d->fcache[idx], __ATOMIC_ACQUIRE);
     if (r) return r;
     r = calloc(1, sizeof(*r));
     const uint8_t *fi = d->b + d->field_off + 8 * idx;
@@ -1057,7 +1092,7 @@ static fref *resolve_fref(dvm_dex *d, uint32_t idx, bool is_static)
     if (!r->df) r->hf = tl_jni_field(cls, name, type, is_static);
     r->cls = r->df ? r->df->cls->jc : cls;
     pthread_mutex_lock(&g_lock);
-    if (!d->fcache[idx]) d->fcache[idx] = (dvm_field *)r; else { free(r); r = (fref *)d->fcache[idx]; }
+    if (!d->fcache[idx]) __atomic_store_n(&d->fcache[idx], (dvm_field *)r, __ATOMIC_RELEASE); else { free(r); r = (fref *)d->fcache[idx]; }
     pthread_mutex_unlock(&g_lock);
     return r;
 }
@@ -1098,7 +1133,37 @@ static inline void WI(uint64_t *r, int n, int32_t v) { r[n] = (uint32_t)v; }
 static inline void WF(uint64_t *r, int n, float f) { union { uint32_t u; float f; } v; v.f = f; r[n] = v.u; }
 static inline void WD(uint64_t *r, int n, double d) { union { uint64_t u; double d; } v; v.d = d; r[n] = v.u; }
 static inline void WJ(uint64_t *r, int n, int64_t v) { r[n] = (uint64_t)v; }
-static inline void WL(uint64_t *r, int n, jobj *o) { r[n] = (uint64_t)(uintptr_t)o; }
+/* TL_DVM_CHECK=1: every reference put in a register is checked for being an object, and the first that is not is logged with the
+ * method and instruction that loaded it (a debugging aid for memory bugs; off by default). */
+int g_dvm_check = -1;
+static void check_ref(jobj *o, int n);
+static inline void WL(uint64_t *r, int n, jobj *o)
+{
+    if (__builtin_expect(g_dvm_check != 0, 0) && o) check_ref(o, n);
+    r[n] = (uint64_t)(uintptr_t)o;
+}
+extern _Thread_local uint32_t t_pcs[8192];
+static void check_ref(jobj *o, int n)
+{
+    if (g_dvm_check < 0) { g_dvm_check = getenv("TL_DVM_CHECK") ? 1 : 0; if (!g_dvm_check) return; }
+    uintptr_t p = (uintptr_t)o;
+    bool ok = (p & 7) == 0 && p > 0x100000 && o->kind <= TL_K_OBJ_ARRAY && (o->kind == TL_K_CLASS || ((uintptr_t)o->cls & 7) == 0);
+    if (ok && o->kind != TL_K_CLASS && o->cls) { unsigned char ch = (unsigned char)o->cls->name[0]; ok = ch == '[' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'); }
+    if (ok) return;
+    dvm_method *m = t_depth > 0 && t_depth <= 8192 ? t_frames[t_depth - 1] : NULL;
+    uint32_t pc = t_depth > 0 && t_depth <= 8192 ? t_pcs[t_depth - 1] : 0;
+    char callee[300] = "";
+    if (m && m->insns && m->cls->dex) {
+        unsigned op = m->insns[pc] & 0xFF;
+        if ((op >= 0x6e && op <= 0x72) || (op >= 0x74 && op <= 0x78)) {
+            dvm_dex *d = m->cls->dex; uint32_t midx = m->insns[pc + 1];
+            const uint8_t *mi = d->b + d->meth_off + 8 * midx;
+            snprintf(callee, sizeof(callee), " calling %s.%s", dex_type(d, rd16(mi)), dex_str(d, rd32(mi + 4)));
+        }
+    }
+    tl_log_line("dvm-check: v%d gets %p (\"%.16s\") in %s.%s near pc %u (insn %04x)%s", n, (void *)o, (p > 0x100000 && !(p & 7)) ? (const char *)o : "?",
+                m ? m->cls->name : "?", m ? m->name : "?", pc, m && m->insns ? m->insns[pc] : 0, callee);
+}
 
 static int32_t f2i(float f) { if (isnan(f)) return 0; if (f >= 2147483647.0f) return INT32_MAX; if (f <= -2147483648.0f) return INT32_MIN; return (int32_t)f; }
 static int64_t f2l(double f) { if (isnan(f)) return 0; if (f >= 9223372036854775807.0) return INT64_MAX; if (f <= -9223372036854775808.0) return INT64_MIN; return (int64_t)f; }
@@ -1146,6 +1211,12 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
         self = RL(regs, areg[ai++]);
         if (!self) return dvm_throw("java/lang/NullPointerException", "Attempt to invoke %s method '%s.%s%s' on a null object reference",
                                      kind == 4 ? "interface" : "virtual", r->cls->name, r->name, r->sig);
+        /* not an object at all (a bug elsewhere put something else in the register): say where, rather than crash on it */
+        if (self->kind > TL_K_OBJ_ARRAY || (self->kind != TL_K_CLASS && self->cls && (((uintptr_t)self->cls & 7) || !((unsigned char)self->cls->name[0] == '[' || ((unsigned char)self->cls->name[0] | 0x20) >= 'a')))) {
+            tl_log_line("dvm: register v%u of %s.%s holds %p, not an object (\"%.24s\"), for %s.%s%s", areg[0], caller->cls->name, caller->name,
+                        (void *)self, (const char *)self, r->cls->name, r->name, r->sig);
+            return dvm_throw("java/lang/InternalError", "not an object in v%u for %s.%s", areg[0], r->cls->name, r->name);
+        }
     }
     jvalue params[256];                     /* a call can pass up to 255 registers' worth (Kotlin's default-argument constructors do) */
     for (int i = 0; i < r->nparams && i < 256; i++) {
@@ -1361,7 +1432,7 @@ dispatch:;
     case 0x09: regs[FETCH(1)] = regs[FETCH(2)]; NEXT(3);
     case 0x0a: regs[AA] = (uint32_t)result.i; NEXT(1);
     case 0x0b: regs[AA] = (uint64_t)result.j; NEXT(1);
-    case 0x0c: regs[AA] = (uint64_t)(uintptr_t)result.l; NEXT(1);
+    case 0x0c: WL(regs, AA, (jobj *)result.l); NEXT(1);
     case 0x0d: regs[AA] = (uint64_t)(uintptr_t)caught; caught = NULL; NEXT(1);
     case 0x0e: ret->j = 0; goto done;
     case 0x0f: ret->j = 0; ret->i = RI(regs, AA); goto done;
@@ -1539,12 +1610,7 @@ dispatch:;
                 NEXT(2);
             }
             jvalue *sl = dvm_slots(o);
-            if (f->df->slot >= o->nfields) {
-                uint32_t nn = f->df->slot + 1;
-                o->fields = realloc(o->fields, nn * sizeof(jvalue));
-                memset(o->fields + o->nfields, 0, (nn - o->nfields) * sizeof(jvalue));
-                o->nfields = nn; sl = o->fields;
-            }
+            if (f->df->slot >= o->nfields) sl = dvm_grow_slots(o, f->df->slot + 1);
             slot = &sl[f->df->slot];
         } else {
             if (!f->hf) { dvm_throw("java/lang/NoSuchFieldError", "field %u", FETCH(1)); goto exception; }
@@ -1814,11 +1880,44 @@ bool tl_dvm_start(const char *const *boot, int nboot)
     /* The core classes, linked in the order everything else leans on. */
     g_class_class = tl_jni_class("java/lang/Class");
     tl_jni_class("java/lang/Object");
+    g_nboot_dex = g_ndex;
     g_string_class = tl_jni_class("java/lang/String");
     return true;
 }
 
 bool tl_dvm_add_apk(const char *apk) { return open_path(apk); }
+
+/* ---- the app's class loader: what Class.getClassLoader says for the app's own classes (a PathClassLoader over its APKs, made by
+ * husk.AppRunner), so code that reads resources through its class's loader, or checks a class came from its own loader, works */
+static jobj *g_app_loader;
+static bool from_app(dvm_class *c)
+{
+    if (!c || !c->dex || g_nboot_dex < 0) return false;
+    for (int i = 0; i < g_nboot_dex; i++) if (g_dex[i] == c->dex) return false;
+    return true;
+}
+static dvm_field *class_loader_field(void)
+{
+    static dvm_field *f;
+    if (!f) { dvm_class *cc = dvm_class_of(g_class_class); f = cc ? dvm_find_field(cc, "classLoader", false) : NULL; }
+    return f;
+}
+void dvm_mirror_loader(jobj *mirror);
+void dvm_mirror_loader(jobj *mirror)
+{
+    dvm_field *f = g_app_loader ? class_loader_field() : NULL;
+    if (!f || !mirror->fields || f->slot >= mirror->nfields || mirror->fields[f->slot].l) return;
+    if (from_app((dvm_class *)mirror->klass.jc->dvm)) mirror->fields[f->slot].l = g_app_loader;
+}
+static void loader_for(tl_jclass *jc) { if (jc->mirror && jc->mirror->fields) dvm_mirror_loader(jc->mirror); }
+void dvm_set_app_loader(jobj *loader);
+void dvm_set_app_loader(jobj *loader)
+{
+    if (!loader) return;
+    loader->refs = 1u << 30;
+    g_app_loader = loader;
+    tl_jni_each_declared(loader_for);
+}
 
 /* ---- dalvik.system.DexFile: DexClassLoader, InMemoryDexClassLoader and PathClassLoaders made at run time.
  * Classes live in one namespace here (first definition wins), so opening a file adds its classes to it and defineClass finds a class
@@ -1851,7 +1950,9 @@ static bool DexFile_open(jobj *self, const jvalue *a, jvalue *ret)
     }
     if (first < 0) {
         int before = g_ndex;
+        g_add_ns = ++g_next_ns;
         bool ok = open_path(path);
+        g_add_ns = 0;
         if (ok || g_ndex > before) { first = before; count = g_ndex - before; }
         if (first >= 0 && g_nopened < 256) { g_opened[g_nopened].path = strdup(path); g_opened[g_nopened].first = first; g_opened[g_nopened++].count = count; }
     }
@@ -1870,6 +1971,7 @@ static bool DexFile_openInMemory(jobj *self, const jvalue *a, jvalue *ret)
     uint32_t n = bufs ? bufs->oarr.len : arrays ? arrays->oarr.len : 0;
     pthread_mutex_lock(&g_open_lock);
     int first = g_ndex;
+    g_add_ns = ++g_next_ns;
     for (uint32_t i = 0; i < n; i++) {
         const uint8_t *src = NULL; size_t len = 0;
         jobj *arr = arrays ? arrays->oarr.v[i] : NULL;
@@ -1886,9 +1988,12 @@ static bool DexFile_openInMemory(jobj *self, const jvalue *a, jvalue *ret)
         uint8_t *copy = malloc(len);
         memcpy(copy, src, len);
         char label[64]; snprintf(label, sizeof(label), "memory-%d.dex", g_ndex);
+        /* TL_DEX_DUMP=<dir>: keep a copy of each dex an app loads from memory, to look at */
+        if (getenv("TL_DEX_DUMP")) { char fp[600]; snprintf(fp, sizeof(fp), "%s/%s", getenv("TL_DEX_DUMP"), label); FILE *df = fopen(fp, "wb"); if (df) { fwrite(copy, 1, len, df); fclose(df); } }
         if (!dex_add(copy, len, label)) free(copy);
     }
     int count = g_ndex - first;
+    g_add_ns = 0;
     pthread_mutex_unlock(&g_open_lock);
     if (!count) return dvm_throw("java/io/IOException", "no dex in memory");
     ret->l = dex_cookie(first, count);
@@ -1917,17 +2022,29 @@ static bool DexFile_define(jobj *self, const jvalue *a, jvalue *ret)
     if (!cd) return true;
     if (cookie_range(a[2].l, &first, &count)) {
         bool here = false;
+        dvm_dex *hd = NULL; uint32_t hdef = 0;
         for (int i = first; i < first + count && !here; i++) {
             dvm_dex *d = g_dex[i];
             for (uint32_t k = 0; k < d->ncls && !here; k++) {
                 char nm[512]; desc_to_name(dex_type(d, rd32(d->b + d->cls_off + 32 * k)), nm, sizeof(nm));
-                here = !strcmp(nm, name);
+                if (!strcmp(nm, name)) { here = true; hd = d; hdef = k; }
             }
         }
         if (!here) return true;
     }
-    tl_jclass *jc = dvm_class_named(name);
+    tl_jclass *jc = NULL;
+    if (cookie_range(a[2].l, &first, &count) && count > 0 && g_dex[first]->ns) {
+        char key[540]; snprintf(key, sizeof(key), "%s@%d", name, g_dex[first]->ns);
+        if (cdef_find(key)) jc = tl_jni_class(key);
+    }
+    if (!jc) jc = dvm_class_named(name);
     ret->l = jc ? jc->mirror : NULL;
+    /* the loader that defined it, which Class.getClassLoader answers (loaders that check their classes are their own rely on it) */
+    if (jc && a[1].l) {
+        static dvm_field *loader_field;
+        if (!loader_field) { dvm_class *cc = dvm_class_of(g_class_class); loader_field = cc ? dvm_find_field(cc, "classLoader", false) : NULL; }
+        if (loader_field) { jvalue *sl = dvm_slots(jc->mirror); if (!sl[loader_field->slot].l) sl[loader_field->slot].l = a[1].l; }
+    }
     return true;
 }
 

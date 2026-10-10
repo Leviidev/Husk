@@ -26,12 +26,29 @@ public final class AppRunner {
     private static long downTime;
     private static boolean sPausedByHost;
 
+    private static ClassLoader sLoader;
+    /** The app's class loader, as Android gives every app: a PathClassLoader over its APK and splits. Its classes say they come from
+     *  it (Class.getClassLoader), and resources in the APKs are found through it. */
+    public static ClassLoader classLoader() { return sLoader != null ? sLoader : AppRunner.class.getClassLoader(); }
+    private static void installClassLoader() {
+        try {
+            StringBuilder path = new StringBuilder(Native.apkPath());
+            String[] splits = Native.splitPaths();
+            if (splits != null) for (String sp : splits) path.append(java.io.File.pathSeparatorChar).append(sp);
+            sLoader = (ClassLoader) Class.forName("dalvik.system.PathClassLoader").getConstructor(String.class, String.class, ClassLoader.class)
+                    .newInstance(path.toString(), android.content.pm.ApplicationInfo.self().nativeLibraryDir, AppRunner.class.getClassLoader());
+            Native.setAppClassLoader(sLoader);
+            Thread.currentThread().setContextClassLoader(sLoader);
+        } catch (Throwable t) { android.util.Log.w("Husk", "the app's class loader: " + t); }
+    }
+
     public static void run(String activityClass, String applicationClass) throws Exception {
         android.webkit.MimeTypeMap.huskInstallDefault();
         KeyStoreProvider.install();
         Looper.prepareMainLooper();
         sHandler = new Handler(Looper.getMainLooper());
         Manifest.read();
+        installClassLoader();
         ContextImpl base = ContextImpl.app();
         String appCls = applicationClass != null ? applicationClass : Manifest.applicationClass;
         Application app;

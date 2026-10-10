@@ -307,6 +307,21 @@ static const tl_zip *apk_n(int n, const char **path)
     }
     return tl_ld_apk_at(n - 1);
 }
+const char *tl_ld_queued_split(int i);
+void dvm_set_app_loader(jobj *loader);
+NAT(N_setAppClassLoader) { (void)self; (void)ret; dvm_set_app_loader(a[0].l); return true; }
+NAT(N_splitPaths)
+{
+    (void)self; (void)a;
+    int n = 0;
+    while (n < 16 && tl_ld_queued_split(n)) n++;
+    jobj *arr = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), (uint32_t)n);
+    arr->cls = tl_jni_class("[Ljava/lang/String;");
+    arr->refs = 1u << 30;
+    for (int i = 0; i < n; i++) arr->oarr.v[i] = jstr(tl_ld_queued_split(i));
+    *ret = L(arr);
+    return true;
+}
 NAT(N_readApkFile)
 {
     (void)self;
@@ -438,6 +453,8 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "exit", "()V", N_exit },
     { "uptimeNanos", "()J", N_uptimeNanos },
     { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
+    { "splitPaths", "()[Ljava/lang/String;", N_splitPaths },
+    { "setAppClassLoader", "(Ljava/lang/ClassLoader;)V", N_setAppClassLoader },
     { "apkFileFd", "(ILjava/lang/String;)J", N_apkFileFd },
     { "apkFileLength", "(ILjava/lang/String;)J", N_apkFileLength },
     { "apkPath", "()Ljava/lang/String;", N_apkPath },

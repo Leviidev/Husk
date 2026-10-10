@@ -28,6 +28,10 @@ typedef struct tl_jfield {
     char *name, *sig;
     bool is_static;
     uint32_t index;
+    /* a field the interpreter's class does not declare, asked for by name from C: kept here, never in the object's slots (resizing
+       those under the interpreter frees memory it is using) */
+    bool detached;
+    jvalue dval;
 } tl_jfield;
 
 struct tl_jclass {

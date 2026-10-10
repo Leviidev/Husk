@@ -111,6 +111,8 @@ struct GamePage: View {
         return store.apps.first { $0.apks.first == loaded }?.label ?? "Another game"
     }
 
+    private var preflight: AppDiagnosis? { AppDiagnosis.preflight(app) }
+
     private var subtitle: String {
         if let used = LibraryItem.game(app).usedText { return used }
         return runs ? "Ready to play" : "May not run on this iPhone"
@@ -133,6 +135,21 @@ struct GamePage: View {
                 }
             }
             .heroRow()
+
+            // what the files say before it starts: a damaged APK, the wrong CPU, a missing piece, protection that refuses Husk
+            if let d = preflight {
+                Section {
+                    AppDiagnosisCard(diagnosis: d)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+                }
+            }
+            // why it stopped last time, until it plays again
+            if let d = GameStatusStore.shared.diagnosis(app.id), d != preflight {
+                Section("Last Run") {
+                    AppDiagnosisCard(diagnosis: d, showsEvidence: true)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+                }
+            }
 
             if !ShowcaseStore.shared.pictures(for: app.packageName).isEmpty {
                 Section("Screenshots") {

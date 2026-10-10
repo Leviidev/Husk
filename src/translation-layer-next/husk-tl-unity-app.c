@@ -566,6 +566,8 @@ void husk_sdl_set_safe_insets(int left, int top, int right, int bottom) { tl_sdl
 int husk_sdl_apk_is_portrait(const char *apk) { return tl_sdl_manifest_portrait(apk) ? 1 : 0; }
 int husk_apk_orientation(const char *apk) { return tl_manifest_orientation(apk); }
 int husk_apk_is_game(const char *apk) { return tl_manifest_is_game(apk) ? 1 : 0; }
+bool tl_manifest_split_required(const char *apk);
+int husk_apk_split_required(const char *apk) { return tl_manifest_split_required(apk) ? 1 : 0; }
 void husk_sdl_set_keyboard_handler(void (*handler)(int action)) { tl_sdl_set_keyboard_handler(handler); }
 void husk_sdl_commit_text(const char *utf8) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_commit_text(utf8); }
 void husk_sdl_key(int keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_SDL) tl_sdl_key(keycode, down != 0); }

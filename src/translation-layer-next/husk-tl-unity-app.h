@@ -113,6 +113,8 @@ void husk_sdl_set_safe_insets(int left, int top, int right, int bottom);
 int husk_sdl_apk_is_portrait(const char *apk);
 int husk_apk_orientation(const char *apk);
 int husk_apk_is_game(const char *apk);         /* the manifest files it as a game (appCategory / isGame) */      /* 1 portrait, 0 landscape, -1 the manifest does not say */
+/* 1 when the app needs its split APKs (isSplitRequired, requiredSplitTypes, Play's splits.required) */
+int husk_apk_split_required(const char *apk);
 /* Soft keyboard for an SDL game: the handler is told 1 = show, 2 = hide; typed text goes in with husk_sdl_commit_text, Backspace (67) and Enter (66) with husk_sdl_key. */
 void husk_sdl_set_keyboard_handler(void (*handler)(int action));
 void husk_sdl_commit_text(const char *utf8);

@@ -26,12 +26,14 @@ final class CrashReport: ObservableObject {
         case signal(Int)        // a fatal signal the crash handler recorded
         case startFailed        // the runtime said the game could not be started, and Husk closed after that
         case unknown            // no record of why: memory (iOS ends the app without a word), or Husk swiped away
+        case diagnosed(AppDiagnosis)    // the run's log says why (AppDiagnosis)
 
         var title: String {
             switch self {
             case .signal: return "The game crashed"
             case .startFailed: return "The game could not start"
             case .unknown: return "Husk closed while the game was running"
+            case .diagnosed(let d): return d.title
             }
         }
         var detail: String {
@@ -45,6 +47,8 @@ final class CrashReport: ObservableObject {
                 return "The runtime could not start it. The report says which part was missing."
             case .unknown:
                 return "Nothing was recorded, which usually means iOS ended Husk for using too much memory, or Husk was closed from the app switcher."
+            case .diagnosed(let d):
+                return d.detail
             }
         }
     }
@@ -104,6 +108,7 @@ final class CrashReport: ObservableObject {
         } else if lines.contains(where: { $0.contains("the game could not be started") || $0.contains("native: launch refused") }) {
             cause = .startFailed
         }
+        if let d = AppDiagnosis.fromLog(lines.joined(separator: "\n")) { cause = .diagnosed(d) }
         let time = (info["time"] as? Double).map { Date(timeIntervalSince1970: $0) }
         pending = Report(game: info["label"] as? String ?? "A game", appID: info["id"] as? String ?? "",
                          cause: cause, when: time, excerpt: Array(Self.interesting(lines).suffix(14)))
@@ -112,6 +117,7 @@ final class CrashReport: ObservableObject {
         case .signal: GameStatusStore.shared.record(pending!.appID, .crashed)
         case .startFailed: GameStatusStore.shared.record(pending!.appID, .failed)
         case .unknown: break
+        case .diagnosed(let d): GameStatusStore.shared.record(pending!.appID, .crashed, diagnosis: d)
         }
     }
 

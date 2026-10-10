@@ -40,6 +40,23 @@ final class GameStatusStore: ObservableObject {
         var result: Result
         var time: Date
         var detail: String?
+        /// Why it stopped, when the run's log said (AppDiagnosis)
+        var why: Why?
+    }
+    struct Why: Codable { var kind: String; var title: String; var detail: String; var evidence: String? }
+
+    /// The reason the last run stopped, while it has not played since.
+    func diagnosis(_ appID: String) -> AppDiagnosis? {
+        guard let s = status(appID), s.result != .plays, let w = s.why, let kind = AppDiagnosis.Kind(rawValue: w.kind) else { return nil }
+        return AppDiagnosis(kind: kind, title: w.title, detail: w.detail, evidence: w.evidence)
+    }
+
+    func record(_ appID: String, _ result: Result, diagnosis d: AppDiagnosis) {
+        guard !appID.isEmpty else { return }
+        let s = Status(result: result, time: Date(), detail: d.title, why: Why(kind: d.kind.rawValue, title: d.title, detail: d.detail, evidence: d.evidence))
+        cache[appID] = s
+        if let data = try? JSONEncoder().encode(s) { try? data.write(to: Self.file(appID), options: .atomic) }
+        HuskLog.log("status", "\(appID): \(result.rawValue) (\(d.title))")
     }
 
     @Published private var cache: [String: Status] = [:]
@@ -60,7 +77,7 @@ final class GameStatusStore: ObservableObject {
 
     func record(_ appID: String, _ result: Result, detail: String? = nil) {
         guard !appID.isEmpty, status(appID)?.result != result || result != .plays else { return }
-        let s = Status(result: result, time: Date(), detail: detail)
+        let s = Status(result: result, time: Date(), detail: detail, why: nil)
         cache[appID] = s
         if let data = try? JSONEncoder().encode(s) { try? data.write(to: Self.file(appID), options: .atomic) }
         HuskLog.log("status", "\(appID): \(result.rawValue)\(detail.map { " (\($0))" } ?? "")")
