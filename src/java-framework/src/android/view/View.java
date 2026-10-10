@@ -383,6 +383,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
         if (mOverlay != null) mOverlay.huskAttached(root);
     }
     void dispatchDetachedFromWindow() {
+        if (mRoot == null) return;                  /* never attached (or already detached): listeners must not hear a second detach */
         if (mOverlay != null) mOverlay.huskDetached();
         if (mAnimator != null) mAnimator.cancel();
         onWindowVisibilityChanged(GONE);

@@ -168,6 +168,8 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         System.arraycopy(mChildren, index, mChildren, index + 1, mChildrenCount - index);
         mChildren[index] = child; mChildrenCount++;
         child.mParent = this;
+        /* a child detached from its parent stays attached to the window; one that never was joins it now, so the tree stays consistent */
+        if (mRoot != null && !child.isAttachedToWindow()) child.dispatchAttachedToWindow(mRoot, getVisibility());
     }
     protected void detachViewFromParent(View child) { int i = indexOfChild(child); if (i >= 0) detachViewFromParent(i); }
     protected void detachViewFromParent(int index) { View c = mChildren[index]; removeFromArray(index); if (c != null) c.mParent = null; }
@@ -177,7 +179,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         System.arraycopy(mChildren, index + 1, mChildren, index, mChildrenCount - index - 1);
         mChildren[--mChildrenCount] = null;
     }
-    public void removeView(View v) { int i = indexOfChild(v); if (i >= 0) removeViewAt(i); }
+    public void removeView(View v) { int i = indexOfChild(v); if (i >= 0) { removeViewInternal(i); requestLayout(); invalidate(); } }
     public void removeViewInLayout(View v) { int i = indexOfChild(v); if (i >= 0) removeViewInternal(i); }
     public void removeViewsInLayout(int start, int count) { for (int i = start + count - 1; i >= start; i--) removeViewInternal(i); }
     public void removeViewAt(int index) { removeViewInternal(index); requestLayout(); invalidate(); }
@@ -189,14 +191,32 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         if (v == null) return;
         if (v == mFocused) { v.unFocus(null); clearChildFocus(v); }
         for (int i = 0; i < mTouchTarget.length; i++) if (mTouchTarget[i] == v) { mTouchTarget[i] = null; mTouchTargetBits &= ~(1 << i); }
-        if (v.isAttachedToWindow()) v.dispatchDetachedFromWindow();
+        /* a child in a view transition (a fragment animating out) leaves the list but stays attached, parented and drawn until endViewTransition */
+        boolean transitioning = mTransitioningViews != null && mTransitioningViews.contains(v);
+        if (transitioning) { if (mDisappearingChildren == null) mDisappearingChildren = new java.util.ArrayList(); if (!mDisappearingChildren.contains(v)) mDisappearingChildren.add(v); }
+        else if (v.isAttachedToWindow()) v.dispatchDetachedFromWindow();
         removeFromArray(index);
-        v.mParent = null;
+        if (!transitioning) v.mParent = null;
         onViewRemoved(v);
         if (mOnHierarchy != null) mOnHierarchy.onChildViewRemoved(this, v);
     }
-    public void endViewTransition(View v) {}
-    public void startViewTransition(View v) {}
+    private java.util.ArrayList<View> mTransitioningViews;
+    public void startViewTransition(View v) { if (v.mParent == this) { if (mTransitioningViews == null) mTransitioningViews = new java.util.ArrayList<>(); mTransitioningViews.add(v); } }
+    public void endViewTransition(View v) {
+        if (mTransitioningViews == null) return;
+        mTransitioningViews.remove(v);
+        if (mDisappearingChildren != null && mDisappearingChildren.remove(v)) {
+            if (v.isAttachedToWindow()) v.dispatchDetachedFromWindow();
+            if (v.mParent == this) v.mParent = null;
+            invalidate();
+        }
+    }
+    public void clearDisappearingChildren() {
+        if (mDisappearingChildren == null) return;
+        java.util.ArrayList<?> l = new java.util.ArrayList<>(mDisappearingChildren); mDisappearingChildren.clear();
+        for (Object o : l) { View v = (View) o; if (v.isAttachedToWindow()) v.dispatchDetachedFromWindow(); if (v.mParent == this) v.mParent = null; }
+        invalidate();
+    }
     public void setOnHierarchyChangeListener(OnHierarchyChangeListener l) { mOnHierarchy = l; }
     public void updateViewLayout(View v, LayoutParams p) { if (!checkLayoutParams(p)) throw new IllegalArgumentException("Invalid LayoutParams supplied to " + this); v.setLayoutParams(p); }
     void onSetLayoutParams(View child, LayoutParams p) { requestLayout(); }
@@ -240,7 +260,9 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         for (int i = 0; i < mChildrenCount; i++) mChildren[i].dispatchAttachedToWindow(root, visibility);
     }
     @Override void dispatchDetachedFromWindow() {
+        if (!isAttachedToWindow()) return;
         for (int i = 0; i < mChildrenCount; i++) mChildren[i].dispatchDetachedFromWindow();
+        clearDisappearingChildren();
         super.dispatchDetachedFromWindow();
     }
     @Override public void dispatchWindowFocusChanged(boolean f) { super.dispatchWindowFocusChanged(f); for (int i = 0; i < mChildrenCount; i++) mChildren[i].dispatchWindowFocusChanged(f); }
@@ -420,6 +442,8 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             if (child == null) continue;
             if (child.getVisibility() == VISIBLE || child.getAnimation() != null) drawChild(c, child, getDrawingTime());
         }
+        if (mDisappearingChildren != null && !mDisappearingChildren.isEmpty())
+            for (Object o : mDisappearingChildren.toArray()) drawChild(c, (View) o, getDrawingTime());
         c.restoreToCount(save);
     }
     protected boolean drawChild(Canvas c, View child, long time) { child.drawFromParent(c, this); return false; }
@@ -587,7 +611,6 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     public java.util.ArrayList buildTouchDispatchChildList() { return new java.util.ArrayList(); }
     public void captureTransitioningViews(java.util.List p0) {}
     protected void cleanupLayoutState(android.view.View p0) {}
-    public void clearDisappearingChildren() {}
     public android.graphics.Bitmap createSnapshot(android.view.ViewDebug.CanvasProvider p0, boolean p1) { return null; }
     protected void debug(int p0) {}
     protected void destroyHardwareResources() {}

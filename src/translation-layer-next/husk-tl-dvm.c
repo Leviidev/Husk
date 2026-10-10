@@ -917,6 +917,19 @@ int dvm_capture_frames(void **out, uint32_t *pcs, int max)
 }
 
 static bool dvm_call_inner(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret);
+/* TL_DVM_CALLS: comma-separated cls.method entries (class names with slashes) */
+static bool watch_hit(const char *w, const dvm_method *m)
+{
+    size_t cl = strlen(m->cls->name), ml = strlen(m->name);
+    for (const char *e = w; *e; ) {
+        const char *end = strchr(e, ','); if (!end) end = e + strlen(e);
+        const char *dot = memchr(e, '.', (size_t)(end - e));
+        if (dot && (size_t)(dot - e) == cl && !memcmp(e, m->cls->name, cl) && (size_t)(end - dot - 1) == ml && !memcmp(dot + 1, m->name, ml)) return true;
+        e = *end ? end + 1 : end;
+    }
+    return false;
+}
+
 bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 {
     if (t_depth < 8192) { t_frames[t_depth] = m; t_pcs[t_depth] = 0; }
@@ -944,11 +957,12 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
     }
     static const char *watch;
     if (!watch) watch = getenv("TL_DVM_CALLS") ? getenv("TL_DVM_CALLS") : "";
-    if (watch[0] && strchr(watch, '.') && !strcmp(m->name, strchr(watch, '.') + 1) && !strncmp(m->cls->name, watch, (size_t)(strchr(watch, '.') - watch))) {
+    if (watch[0] && watch_hit(watch, m)) {
         { char pb[300]; int po = 0, pn = 0;
           for (const char *q = (m->shorty ? m->shorty : "") + 1; *q && po < 280; q++, pn++) po += snprintf(pb + po, sizeof(pb) - po, " %c:%lld", *q, params ? (long long)params[pn].j : 0);
-          char cb[600]; int co = 0;
-          for (int up = 2; up <= 5 && t_depth - up >= 0 && t_depth - up < 8192 && co < 560; up++) {
+          static int depth; if (!depth) depth = getenv("TL_DVM_CALLS_DEPTH") ? atoi(getenv("TL_DVM_CALLS_DEPTH")) : 4;
+          char cb[4000]; int co = 0;
+          for (int up = 2; up <= depth + 1 && t_depth - up >= 0 && t_depth - up < 8192 && co < 3900; up++) {
               dvm_method *cm = t_frames[t_depth - up];
               co += snprintf(cb + co, sizeof(cb) - co, " <- %s.%s@%u", cm ? cm->cls->name : "?", cm ? cm->name : "?", t_pcs[t_depth - up]);
           }
