@@ -199,6 +199,13 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
             }
         }
     }
+    /* /data/local/tmp: the world-writable scratch folder (JNA unpacks itself there): a folder of the app's own */
+    if (!strncmp(path, "/data/local/tmp", 15) && (path[15] == 0 || path[15] == '/')) {
+        snprintf(buf, n, "%s/cache/local-tmp", tl_data_dir());
+        mkdir(buf, 0777);
+        snprintf(buf, n, "%s/cache/local-tmp%s", tl_data_dir(), path + 15);
+        return buf;
+    }
     const char *pkg = "/data/data/";
     if (!strncmp(path, pkg, strlen(pkg))) {
         const char *rest = strchr(path + strlen(pkg), '/');
@@ -985,6 +992,16 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
             : mmap(addr, len, prot_filter(prot, "mmap"), df, (flags & 0x20) ? -1 : fd, off);
     if (r == MAP_FAILED && (errno == ENOMEM || force_phantom) && prot == 0 && (flags & 0x20) && !(flags & 0x10)) { r = phantom_reserve(len); if (r != MAP_FAILED) errno = 0; }
     TL_ERRNO_END();
+    /* a file mapped executable (libffi's closures: a temporary file mapped twice, once to write and once to run): that view made
+       read+execute for real where the system allows it (never writable and executable at once), else the mapping fails so the
+       library can take another way, rather than seeming to work and faulting on the first call */
+    if (r != MAP_FAILED && (prot & PROT_EXEC) && !(flags & 0x20)) {
+        TL_ERRNO_BEGIN();
+        int pr = mprotect(r, len, (prot & PROT_READ) | PROT_EXEC);
+        TL_ERRNO_END();
+        if (pr == 0) { sys_icache_invalidate(r, len); tl_note_once("a file was mapped executable (libffi closures)"); }
+        else { munmap(r, len); tl_set_guest_errno(13); r = MAP_FAILED; }
+    }
     if (r != MAP_FAILED && (flags & 0x20)) anon_add(r, len);
     mm_trace("mmap", r, len, prot, flags);
     if (r == MAP_FAILED) tl_log_line("mm: mmap FAILED len=%#zx prot=%d flags=%#x errno=%d", len, prot, flags, errno);
