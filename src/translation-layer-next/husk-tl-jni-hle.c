@@ -837,6 +837,7 @@ static const struct { const char *name, *super; } k_classes[] = {
     { "java/nio/DirectByteBuffer", "java/lang/Object" },
     { "android/content/Context", "java/lang/Object" }, { "android/content/ContextWrapper", "android/content/Context" },
     { "android/view/ContextThemeWrapper", "android/content/ContextWrapper" }, { "android/app/Activity", "android/view/ContextThemeWrapper" },
+    { "android/app/ActivityThread", "java/lang/Object" },
     { "android/view/View", "java/lang/Object" }, { "android/view/ViewGroup", "android/view/View" },
     { "android/widget/FrameLayout", "android/view/ViewGroup" }, { "android/view/Surface", "java/lang/Object" },
     { "android/view/SurfaceView", "android/view/View" }, { "com/unity3d/player/UnityPlayer", "android/widget/FrameLayout" },
@@ -896,6 +897,10 @@ static const tl_jhle k_hle[] = {
     M("com/sybo/analytics/ChipsetUtils", "GetChipsetName", "()Ljava/lang/String;", Chipset_name),
     M("com/unity/androidnotifications/UnityNotificationManager", "getNotificationManagerImpl", "(Ljava/lang/Object;Lcom/unity/androidnotifications/NotificationCallback;)Ljava/lang/Object;", NotificationManager_get),
     M("com/unity3d/player/ReflectionHelper", "newProxyInstance", "(Lcom/unity3d/player/UnityPlayer;JLjava/lang/Class;)Ljava/lang/Object;", Reflection_newProxyInstance),
+    /* Android exposes the active Application via ActivityThread as a static JNI method.
+     * Some native Android ports query it without an Activity instance. Return the same
+     * Application singleton as Activity.getApplication(), not a null placeholder. */
+    M("android/app/ActivityThread", "currentApplication", "()Landroid/app/Application;", Activity_getApplication),
     M("android/app/Activity", "getApplication", "()Landroid/app/Application;", Activity_getApplication),
     M("android/app/Activity", "getApplication", "()Ljava/lang/Object;", Activity_getApplication),
     M("com/dikra/diskutils/DiskUtils", "availableSpace", "(Z)I", DiskUtils_availableSpace),
