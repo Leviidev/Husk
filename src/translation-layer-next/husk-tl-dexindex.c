@@ -271,6 +271,7 @@ bool tl_dexidx_declares_method(const char *cls, const char *name, const char *si
 bool tl_dexidx_declares_field(const char *cls, const char *name, const char *sig, bool *st) { return scan_members(cls, false, name, sig, st, NULL, 0); }
 bool tl_dexidx_field_sig(const char *cls, const char *name, char *out, size_t n) { return scan_members(cls, false, name, "", NULL, out, n); }
 bool tl_dexidx_method_named(const char *cls, const char *name) { return scan_members(cls, true, name, "", NULL, NULL, 0); }
+bool tl_dexidx_method_sig(const char *cls, const char *name, char *out, size_t n, bool *is_static) { return scan_members(cls, true, name, "", is_static, out, n); }
 
 void tl_dexidx_each_string(bool (*fn)(const char *s, void *ctx), void *ctx)
 {

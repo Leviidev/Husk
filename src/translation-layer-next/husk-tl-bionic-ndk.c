@@ -131,6 +131,130 @@ static int b_ALooper_pollAll(int timeout_ms, int *out_fd, int *out_events, void 
     }
 }
 
+/* ----------------------------------------------------------- choreographer */
+/*
+ * AChoreographer: frame callbacks at the display's vsync, delivered on the thread that asked, through its looper. Flutter's engine
+ * times its frames with it (API 29+). One clock thread ticks at 60 Hz and pokes every choreographer that has callbacks waiting; the
+ * owner thread's looper runs them with that tick's time, as Android's does.
+ */
+#define VSYNC_NS 16666667ll
+typedef struct chcb { int kind; void *fn, *data; int64_t not_before; struct chcb *next; } chcb;    /* kind 0: frame, 1: frame64, 2: vsync */
+typedef struct tl_choreo { tl_looper *looper; int pipe[2]; pthread_mutex_t mu; chcb *pending; void *rate_fn, *rate_data; struct tl_choreo *next; } tl_choreo;
+static __thread tl_choreo *t_choreo;
+static tl_choreo *g_choreos;
+static pthread_mutex_t g_choreo_mu = PTHREAD_MUTEX_INITIALIZER;
+static atomic_llong g_vsync_time;
+
+static int64_t mono_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec; }
+
+/* What a vsync callback is given: one frame timeline, this vsync's. */
+typedef struct { int64_t frame_time, deadline, expected_present; } tl_choreo_frame;
+static int64_t b_AChoreographerFrameCallbackData_getFrameTimeNanos(const tl_choreo_frame *d) { return d->frame_time; }
+static size_t b_AChoreographerFrameCallbackData_getFrameTimelinesLength(const tl_choreo_frame *d) { (void)d; return 1; }
+static size_t b_AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex(const tl_choreo_frame *d) { (void)d; return 0; }
+static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineVsyncId(const tl_choreo_frame *d, size_t i) { (void)i; return d->frame_time / VSYNC_NS; }
+static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos(const tl_choreo_frame *d, size_t i) { (void)i; return d->expected_present; }
+static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos(const tl_choreo_frame *d, size_t i) { (void)i; return d->deadline; }
+
+static int choreo_run(int fd, int events, void *data)
+{
+    (void)events;
+    tl_choreo *c = data;
+    char buf[64];
+    while (read(fd, buf, sizeof(buf)) > 0) {}
+    int64_t now = atomic_load(&g_vsync_time);
+    pthread_mutex_lock(&c->mu);
+    chcb *due = NULL, **keep = &c->pending;
+    for (chcb *cb = c->pending; cb;) {
+        chcb *n = cb->next;
+        if (cb->not_before <= now) { *keep = n; cb->next = due; due = cb; } else keep = &cb->next;
+        cb = n;
+    }
+    pthread_mutex_unlock(&c->mu);
+    /* in the order they were posted */
+    chcb *rev = NULL;
+    while (due) { chcb *n = due->next; due->next = rev; rev = due; due = n; }
+    tl_choreo_frame fd_ = { now, now + VSYNC_NS - 2000000, now + 2 * VSYNC_NS };
+    for (chcb *cb = rev; cb;) {
+        chcb *n = cb->next;
+        if (cb->kind == 0) ((void (*)(long, void *))cb->fn)((long)now, cb->data);
+        else if (cb->kind == 1) ((void (*)(int64_t, void *))cb->fn)(now, cb->data);
+        else ((void (*)(const tl_choreo_frame *, void *))cb->fn)(&fd_, cb->data);
+        free(cb);
+        cb = n;
+    }
+    return 1;
+}
+
+static void *choreo_clock(void *arg)
+{
+    (void)arg;
+    pthread_setname_np("husk-vsync");
+    int64_t next = mono_ns();
+    for (;;) {
+        next += VSYNC_NS;
+        int64_t now = mono_ns();
+        if (next > now) { struct timespec ts = { 0, (long)(next - now) }; nanosleep(&ts, NULL); } else next = now;
+        atomic_store(&g_vsync_time, next);
+        pthread_mutex_lock(&g_choreo_mu);
+        for (tl_choreo *c = g_choreos; c; c = c->next) {
+            pthread_mutex_lock(&c->mu);
+            bool any = c->pending != NULL;
+            pthread_mutex_unlock(&c->mu);
+            if (any) { char b = 1; (void)!write(c->pipe[1], &b, 1); }
+        }
+        pthread_mutex_unlock(&g_choreo_mu);
+    }
+    return NULL;
+}
+
+static tl_choreo *b_AChoreographer_getInstance(void)
+{
+    if (t_choreo) return t_choreo;
+    if (!t_looper) { tl_log_line("choreographer: asked for on a thread without a looper"); return NULL; }   /* as on Android */
+    tl_choreo *c = calloc(1, sizeof(*c));
+    c->looper = t_looper;
+    pthread_mutex_init(&c->mu, NULL);
+    if (pipe(c->pipe)) { free(c); return NULL; }
+    fcntl(c->pipe[0], F_SETFL, O_NONBLOCK); fcntl(c->pipe[1], F_SETFL, O_NONBLOCK);
+    b_ALooper_addFd(t_looper, c->pipe[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, (void *)choreo_run, c);
+    static pthread_t clock_thread;
+    pthread_mutex_lock(&g_choreo_mu);
+    c->next = g_choreos; g_choreos = c;
+    pthread_mutex_unlock(&g_choreo_mu);
+    if (!atomic_load(&g_vsync_time)) atomic_store(&g_vsync_time, mono_ns());
+    static atomic_bool started;
+    if (!atomic_exchange(&started, true)) pthread_create(&clock_thread, NULL, choreo_clock, NULL);
+    t_choreo = c;
+    return c;
+}
+
+static void choreo_post(tl_choreo *c, int kind, void *fn, void *data, int64_t delay_ms)
+{
+    static int tr = -1; if (tr < 0) tr = getenv("TL_CHOREO_TRACE") ? 1 : 0;
+    if (tr) tl_log_line("choreographer: post kind %d on %p", kind, (void *)c);
+    if (!c || !fn) return;
+    chcb *cb = calloc(1, sizeof(*cb));
+    cb->kind = kind; cb->fn = fn; cb->data = data;
+    cb->not_before = delay_ms > 0 ? mono_ns() + delay_ms * 1000000ll : 0;
+    pthread_mutex_lock(&c->mu);
+    cb->next = c->pending; c->pending = cb;
+    pthread_mutex_unlock(&c->mu);
+}
+static void b_AChoreographer_postFrameCallback(tl_choreo *c, void *fn, void *data) { choreo_post(c, 0, fn, data, 0); }
+static void b_AChoreographer_postFrameCallbackDelayed(tl_choreo *c, void *fn, void *data, long ms) { choreo_post(c, 0, fn, data, ms); }
+static void b_AChoreographer_postFrameCallback64(tl_choreo *c, void *fn, void *data) { choreo_post(c, 1, fn, data, 0); }
+static void b_AChoreographer_postFrameCallbackDelayed64(tl_choreo *c, void *fn, void *data, uint32_t ms) { choreo_post(c, 1, fn, data, ms); }
+static void b_AChoreographer_postVsyncCallback(tl_choreo *c, void *fn, void *data) { choreo_post(c, 2, fn, data, 0); }
+/* The refresh rate never changes: a callback is told 60 Hz once, when it registers. */
+static void b_AChoreographer_registerRefreshRateCallback(tl_choreo *c, void *fn, void *data)
+{
+    if (!c || !fn) return;
+    c->rate_fn = fn; c->rate_data = data;
+    ((void (*)(int64_t, void *))fn)(VSYNC_NS, data);
+}
+static void b_AChoreographer_unregisterRefreshRateCallback(tl_choreo *c, void *fn, void *data) { (void)fn; (void)data; if (c) c->rate_fn = NULL; }
+
 /* ----------------------------------------------------------- configuration */
 
 /* AConfiguration: an English, landscape, phone-sized device. */
@@ -567,6 +691,20 @@ const tl_bionic_entry tl_tab_ndk[] = {
     TL_WRAP("ALooper_acquire", b_ALooper_acquire), TL_WRAP("ALooper_release", b_ALooper_release),
     TL_WRAP("ALooper_wake", b_ALooper_wake), TL_WRAP("ALooper_pollOnce", b_ALooper_pollOnce), TL_WRAP("ALooper_pollAll", b_ALooper_pollAll),
     TL_WRAP("ALooper_addFd", b_ALooper_addFd), TL_WRAP("ALooper_removeFd", b_ALooper_removeFd),
+    TL_WRAP("AChoreographer_getInstance", b_AChoreographer_getInstance),
+    TL_WRAP("AChoreographer_postFrameCallback", b_AChoreographer_postFrameCallback),
+    TL_WRAP("AChoreographer_postFrameCallbackDelayed", b_AChoreographer_postFrameCallbackDelayed),
+    TL_WRAP("AChoreographer_postFrameCallback64", b_AChoreographer_postFrameCallback64),
+    TL_WRAP("AChoreographer_postFrameCallbackDelayed64", b_AChoreographer_postFrameCallbackDelayed64),
+    TL_WRAP("AChoreographer_postVsyncCallback", b_AChoreographer_postVsyncCallback),
+    TL_WRAP("AChoreographer_registerRefreshRateCallback", b_AChoreographer_registerRefreshRateCallback),
+    TL_WRAP("AChoreographer_unregisterRefreshRateCallback", b_AChoreographer_unregisterRefreshRateCallback),
+    TL_WRAP("AChoreographerFrameCallbackData_getFrameTimeNanos", b_AChoreographerFrameCallbackData_getFrameTimeNanos),
+    TL_WRAP("AChoreographerFrameCallbackData_getFrameTimelinesLength", b_AChoreographerFrameCallbackData_getFrameTimelinesLength),
+    TL_WRAP("AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex", b_AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex),
+    TL_WRAP("AChoreographerFrameCallbackData_getFrameTimelineVsyncId", b_AChoreographerFrameCallbackData_getFrameTimelineVsyncId),
+    TL_WRAP("AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos", b_AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos),
+    TL_WRAP("AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos", b_AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos),
     /* configuration */
     TL_WRAP("AConfiguration_new", b_AConfiguration_new), TL_WRAP("AConfiguration_delete", b_AConfiguration_delete),
     TL_WRAP("AConfiguration_fromAssetManager", b_AConfiguration_fromAssetManager), TL_WRAP("AConfiguration_getLanguage", b_AConfiguration_getLanguage),

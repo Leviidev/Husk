@@ -37,6 +37,8 @@ bool tl_dexidx_declares_field(const char *cls, const char *name, const char *sig
 /* The declared signature of a field by name, or whether any method has this name, ignoring signatures. */
 bool tl_dexidx_field_sig(const char *cls, const char *name, char *out, size_t n);
 bool tl_dexidx_method_named(const char *cls, const char *name);
+/* The signature of the first method of that name (for a method whose signature changes between versions of a library). */
+bool tl_dexidx_method_sig(const char *cls, const char *name, char *out, size_t n, bool *is_static);
 bool tl_dexidx_find_method_lenient(const char *cls, const char *name, const char *want, char *out, size_t n, bool *is_static);
 
 /* Calls `fn` with every string constant in the APK's DEX files, until it returns false. */

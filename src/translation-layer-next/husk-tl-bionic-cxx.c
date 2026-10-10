@@ -159,7 +159,6 @@ static void b___pthread_cleanup_pop(cleanup_rec *c, int execute) { t_cleanup = c
 static void b_mallinfo(int *out) { memset(out, 0, 10 * sizeof(int)); }
 static size_t b_malloc_usable_size(void *p) { return p ? malloc_size(p) : 0; }
 
-static int b_epoll_create(int size) { (void)size; tl_set_guest_errno(38); return -1; }
 
 const tl_bionic_entry tl_tab_cxx[] = {
     TL_WRAP("getrlimit", b_getrlimit), TL_WRAP("setrlimit", b_setrlimit), TL_WRAP("getrusage", b_getrusage),
@@ -167,7 +166,7 @@ const tl_bionic_entry tl_tab_cxx[] = {
     TL_WRAP("pthread_setschedparam", b_pthread_setschedparam), TL_WRAP("pthread_getschedparam", b_pthread_getschedparam),
     TL_WRAP("pthread_attr_setschedparam", b_pthread_attr_setschedparam), TL_WRAP("pthread_gettid_np", b_pthread_gettid_np),
     TL_WRAP("__pthread_cleanup_push", b___pthread_cleanup_push), TL_WRAP("__pthread_cleanup_pop", b___pthread_cleanup_pop),
-    TL_WRAP("mallinfo", b_mallinfo), TL_WRAP("malloc_usable_size", b_malloc_usable_size), TL_WRAP("epoll_create", b_epoll_create),
+    TL_WRAP("mallinfo", b_mallinfo), TL_WRAP("malloc_usable_size", b_malloc_usable_size),
     TL_WRAP("_Znwm", b_new), TL_WRAP("_Znam", b_new), TL_WRAP("_ZnwmRKSt9nothrow_t", b_new_nothrow), TL_WRAP("_ZnamRKSt9nothrow_t", b_new_nothrow),
     TL_WRAP("_ZdlPv", b_delete), TL_WRAP("_ZdaPv", b_delete), TL_WRAP("_ZdlPvm", b_delete_sized), TL_WRAP("_ZdaPvm", b_delete_sized),
     TL_WRAP("_ZdlPvRKSt9nothrow_t", b_delete_sized), TL_WRAP("_ZdaPvRKSt9nothrow_t", b_delete_sized),

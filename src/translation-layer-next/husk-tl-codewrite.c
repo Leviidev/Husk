@@ -91,6 +91,34 @@ static bool emulate(mcontext_t mc)
     unsigned rt = insn & 31, rn = (insn >> 5) & 31;
     bool simd = (insn >> 26) & 1;
 
+    /* Atomics, as compiled for the C++ runtime's std::atomic and Dart's BSS set-up. A fault means the address is in the executable
+     * view, which only this thread is writing at that moment in practice (start-up initialisation), so the store is done plainly. */
+    {
+        unsigned bytes = 1u << (insn >> 30);
+        uint64_t a = xreg(ss, rn, true);
+        if ((insn & 0x3FE07C00u) == 0x08007C00u) {                 /* STXR / STLXR Ws, Rt, [Xn]: store, and report success in Ws */
+            reg_bytes(mc, false, rt, bytes, buf);
+            if (!put(a, buf, bytes)) return false;
+            set_xreg(ss, (insn >> 16) & 31, 0);
+            return true;
+        }
+        if ((insn & 0x3FFFFC00u) == 0x089FFC00u) {                 /* STLR Rt, [Xn] */
+            reg_bytes(mc, false, rt, bytes, buf);
+            return put(a, buf, bytes);
+        }
+        if ((insn & 0x3FA07C00u) == 0x08A07C00u) {                 /* CAS{A}{L} Rs, Rt, [Xn]: store Rt if [Xn] == Rs; Rs gets the old value */
+            unsigned rs = (insn >> 16) & 31;
+            uint64_t old = 0, want = xreg(ss, rs, false), mask = bytes == 8 ? ~0ull : ((1ull << (8 * bytes)) - 1);
+            memcpy(&old, (const void *)a, bytes);
+            if ((old & mask) == (want & mask)) {
+                reg_bytes(mc, false, rt, bytes, buf);
+                if (!put(a, buf, bytes)) return false;
+            }
+            set_xreg(ss, rs, old);
+            return true;
+        }
+    }
+
     /* STP / STNP: a pair. */
     if ((insn & 0x3A000000u) == 0x28000000u) {
         if ((insn >> 22) & 1) return false;                         /* a load */

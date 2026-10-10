@@ -130,9 +130,21 @@ int tl_synth_open(const char *path)
 static char g_shared_storage[1024];
 void tl_set_shared_storage(const char *dir) { snprintf(g_shared_storage, sizeof(g_shared_storage), "%s", dir ? dir : ""); }
 
+/* The trusted root certificates (one PEM file per certificate, named by subject hash), where Android keeps them: TLS libraries that
+ * read them from there (Dart's, in Flutter apps) find the copy the app carries. */
+static char g_cacerts[1024];
+void tl_set_cacerts_dir(const char *dir) { snprintf(g_cacerts, sizeof(g_cacerts), "%s", dir ? dir : ""); }
+
 const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
+    if (g_cacerts[0]) {
+        static const char *const roots[] = { "/system/etc/security/cacerts", "/apex/com.android.conscrypt/cacerts" };
+        for (int i = 0; i < 2; i++) {
+            size_t l = strlen(roots[i]);
+            if (!strncmp(path, roots[i], l) && (path[l] == 0 || path[l] == '/')) { snprintf(buf, n, "%s%s", g_cacerts, path + l); return buf; }
+        }
+    }
     const char *pkg = "/data/data/";
     if (!strncmp(path, pkg, strlen(pkg))) {
         const char *rest = strchr(path + strlen(pkg), '/');
@@ -419,7 +431,11 @@ static int b_open(const char *path, int flags, unsigned mode)
 }
 static int b___open_2(const char *path, int flags) { return b_open(path, flags, 0); }
 static bool net_trace_fd(int fd);
-static int b_close(int fd) { if (vfd_is(fd)) g_vfd[fd].on = false; bool sock = net_trace_fd(fd); TL_ERRNO_BEGIN(); int r = close(fd); tl_atomic_closed(fd); TL_ERRNO_END(); if (sock) tl_log_line("net: close(fd %d)", fd); return r; }
+/* eventfds are pipes whose read end is the descriptor the guest holds: writes to it go to the other end, and closing it closes both */
+static int g_evfd_peer[1024];
+void tl_eventfd_register(int rd, int wr) { if (rd >= 0 && rd < 1024) g_evfd_peer[rd] = wr + 1; }
+static int evfd_peer(int fd) { return fd >= 0 && fd < 1024 ? g_evfd_peer[fd] - 1 : -1; }
+static int b_close(int fd) { if (evfd_peer(fd) >= 0) { close(evfd_peer(fd)); g_evfd_peer[fd] = 0; } if (vfd_is(fd)) g_vfd[fd].on = false; bool sock = net_trace_fd(fd); TL_ERRNO_BEGIN(); int r = close(fd); tl_atomic_closed(fd); TL_ERRNO_END(); if (sock) tl_log_line("net: close(fd %d)", fd); return r; }
 static bool net_trace_fd(int fd)
 {
     static int on = -1;
@@ -451,6 +467,7 @@ static long b___read_chk(int fd, void *p, size_t n, size_t bufsz)
 }
 static long b_write(int fd, const void *p, size_t n)
 {
+    if (evfd_peer(fd) >= 0) fd = evfd_peer(fd);
     TL_ERRNO_BEGIN(); long r = write(fd, p, n); int e = errno; TL_ERRNO_END();
     if (net_trace_fd(fd)) tl_log_line("net: write(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0);
     return r;
@@ -1256,10 +1273,6 @@ static int stub_enosys_i(const char *what)
     tl_set_guest_errno(38);
     return -1;
 }
-static int b_epoll_create1(int flags) { (void)flags; return stub_enosys_i("epoll_create1"); }
-static int b_epoll_ctl(int a, int b, int c, void *d) { (void)a; (void)b; (void)c; (void)d; return stub_enosys_i("epoll_ctl"); }
-static int b_epoll_wait(int a, void *b, int c, int d) { (void)a; (void)b; (void)c; (void)d; return stub_enosys_i("epoll_wait"); }
-static int b_eventfd(unsigned a, int b) { (void)a; (void)b; return stub_enosys_i("eventfd"); }
 static int b_inotify_init(void) { return stub_enosys_i("inotify_init"); }
 static int b_inotify_add_watch(int a, const char *b, unsigned c) { (void)a; (void)b; (void)c; return stub_enosys_i("inotify_add_watch"); }
 
@@ -1294,8 +1307,7 @@ const tl_bionic_entry tl_tab_io[] = {
     TL_WRAP("sigsuspend", b_sigsuspend), TL_WRAP("sigaltstack", b_sigaltstack), TL_WRAP("raise", b_raise),
     TL_WRAP("poll", b_poll), TL_WRAP("select", b_select), TL_WRAP("__FD_SET_chk", b___FD_SET_chk),
     TL_WRAP("__FD_ISSET_chk", b___FD_ISSET_chk), TL_WRAP("__cmsg_nxthdr", b___cmsg_nxthdr),
-    TL_WRAP("epoll_create1", b_epoll_create1), TL_WRAP("epoll_ctl", b_epoll_ctl), TL_WRAP("epoll_wait", b_epoll_wait),
-    TL_WRAP("eventfd", b_eventfd), TL_WRAP("inotify_init", b_inotify_init), TL_WRAP("inotify_add_watch", b_inotify_add_watch),
+    TL_WRAP("inotify_init", b_inotify_init), TL_WRAP("inotify_add_watch", b_inotify_add_watch),
     TL_END
 };
 
