@@ -95,6 +95,9 @@ targets:
           - "CoreText"
           - "-framework"
           - "CoreGraphics"
+          # ImageIO decodes and encodes images for Java apps' BitmapFactory and Bitmap.compress.
+          - "-framework"
+          - "ImageIO"
           # Security verifies the licence signature Minecraft's UI engine checks through Java's Signature class.
           - "-framework"
           - "Security"

@@ -1,0 +1,29 @@
+package android.util;
+public class SparseBooleanArray implements Cloneable {
+    private int[] k; boolean[] v; private int n;
+    public SparseBooleanArray() { this(10); }
+    public SparseBooleanArray(int cap) { k = new int[Math.max(cap, 1)]; v = new boolean[k.length]; }
+    private int find(int key) { return java.util.Arrays.binarySearch(k, 0, n, key); }
+    public boolean get(int key) { return get(key, false); }
+    public boolean get(int key, boolean def) { int i = find(key); return i < 0 ? def : v[i]; }
+    public void put(int key, boolean value) {
+        int i = find(key);
+        if (i >= 0) { v[i] = value; return; }
+        i = ~i;
+        if (n == k.length) { k = java.util.Arrays.copyOf(k, n * 2); v = java.util.Arrays.copyOf(v, n * 2); }
+        System.arraycopy(k, i, k, i + 1, n - i); System.arraycopy(v, i, v, i + 1, n - i);
+        k[i] = key; v[i] = value; n++;
+    }
+    public void append(int key, boolean value) { put(key, value); }
+    public void delete(int key) { int i = find(key); if (i >= 0) removeAt(i); }
+    public void removeAt(int i) { System.arraycopy(k, i + 1, k, i, n - i - 1); System.arraycopy(v, i + 1, v, i, n - i - 1); n--; }
+    public int size() { return n; }
+    public int keyAt(int i) { return k[i]; }
+    public boolean valueAt(int i) { return v[i]; }
+    public void setValueAt(int i, boolean value) { v[i] = value; }
+    public int indexOfKey(int key) { int i = find(key); return i < 0 ? -1 : i; }
+    public int indexOfValue(boolean value) { for (int i = 0; i < n; i++) if (v[i] == value) return i; return -1; }
+    public void clear() { n = 0; }
+    public int[] copyKeys() { return java.util.Arrays.copyOf(k, n); }
+    @Override public SparseBooleanArray clone() { try { SparseBooleanArray c = (SparseBooleanArray) super.clone(); c.k = k.clone(); c.v = v.clone(); return c; } catch (CloneNotSupportedException e) { throw new AssertionError(e); } }
+}

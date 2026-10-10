@@ -9,7 +9,7 @@ import javax.microedition.khronos.egl.EGLSurface;
 import javax.microedition.khronos.opengles.GL10;
 
 /** The renderer runs on Husk's GL thread (husk-tl-dvm-android.c), which owns the EGL context on the app's screen. */
-public class GLSurfaceView extends android.view.SurfaceView {
+public class GLSurfaceView extends android.view.SurfaceView implements android.view.SurfaceHolder.Callback2 {
     public static final int RENDERMODE_WHEN_DIRTY = 0, RENDERMODE_CONTINUOUSLY = 1, DEBUG_CHECK_GL_ERROR = 1, DEBUG_LOG_GL_CALLS = 2;
     public interface Renderer { void onSurfaceCreated(GL10 gl, EGLConfig config); void onSurfaceChanged(GL10 gl, int w, int h); void onDrawFrame(GL10 gl); }
     public interface EGLConfigChooser { EGLConfig chooseConfig(EGL10 egl, EGLDisplay display); }
@@ -22,8 +22,13 @@ public class GLSurfaceView extends android.view.SurfaceView {
     private volatile boolean dirty = true, started, paused;
     private final ArrayList<Runnable> queue = new ArrayList<>();
 
-    public GLSurfaceView(android.content.Context c) { super(c); }
-    public GLSurfaceView(android.content.Context c, android.util.AttributeSet a) { super(c); }
+    public GLSurfaceView(android.content.Context c) { this(c, null); }
+    public GLSurfaceView(android.content.Context c, android.util.AttributeSet a) { super(c, a); getHolder().addCallback(this); }
+    public void surfaceCreated(android.view.SurfaceHolder h) { start(); }
+    public void surfaceChanged(android.view.SurfaceHolder h, int format, int w, int ht) {}
+    public void surfaceDestroyed(android.view.SurfaceHolder h) {}
+    public void surfaceRedrawNeeded(android.view.SurfaceHolder h) { requestRender(); }
+    public void surfaceRedrawNeededAsync(android.view.SurfaceHolder h, Runnable done) { requestRender(); done.run(); }
     public void setRenderer(Renderer r) { renderer = r; if (isAttachedToWindow()) start(); }
     public void setEGLContextClientVersion(int v) { version = v; }
     public void setEGLConfigChooser(EGLConfigChooser c) {}

@@ -1,0 +1,59 @@
+package android.view;
+
+import android.content.Context;
+
+public class ScaleGestureDetector {
+    public interface OnScaleGestureListener { boolean onScale(ScaleGestureDetector d); boolean onScaleBegin(ScaleGestureDetector d); void onScaleEnd(ScaleGestureDetector d); }
+    public static class SimpleOnScaleGestureListener implements OnScaleGestureListener {
+        public boolean onScale(ScaleGestureDetector d) { return false; } public boolean onScaleBegin(ScaleGestureDetector d) { return true; } public void onScaleEnd(ScaleGestureDetector d) {}
+    }
+    private final OnScaleGestureListener mListener;
+    private float mFocusX, mFocusY, mSpan, mPrevSpan, mInitialSpan;
+    private boolean mInProgress;
+    private long mTime, mPrevTime;
+    private final int mMinSpan;
+    public ScaleGestureDetector(Context c, OnScaleGestureListener l) { this(c, l, null); }
+    public ScaleGestureDetector(Context c, OnScaleGestureListener l, android.os.Handler h) { mListener = l; mMinSpan = ViewConfiguration.get(c).getScaledMinimumScalingSpan() / 4; }
+    public boolean onTouchEvent(MotionEvent e) {
+        int a = e.getActionMasked();
+        boolean end = a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL;
+        if (a == MotionEvent.ACTION_DOWN || end) { if (mInProgress) { mListener.onScaleEnd(this); mInProgress = false; mInitialSpan = 0; } if (end) return true; }
+        boolean pu = a == MotionEvent.ACTION_POINTER_UP; int skip = pu ? e.getActionIndex() : -1;
+        float sx = 0, sy = 0; int n = 0;
+        for (int i = 0; i < e.getPointerCount(); i++) { if (i == skip) continue; sx += e.getX(i); sy += e.getY(i); n++; }
+        if (n == 0) return true;
+        float fx = sx / n, fy = sy / n, dev = 0;
+        for (int i = 0; i < e.getPointerCount(); i++) { if (i == skip) continue; dev += Math.hypot(e.getX(i) - fx, e.getY(i) - fy); }
+        float span = n > 1 ? dev / n * 2 : 0;
+        boolean config = a == MotionEvent.ACTION_POINTER_DOWN || pu;
+        mFocusX = fx; mFocusY = fy;
+        if (mInProgress && (span < mMinSpan || config)) { mListener.onScaleEnd(this); mInProgress = false; mInitialSpan = span; }
+        if (config) { mPrevSpan = mSpan = mInitialSpan = span; }
+        if (!mInProgress && n > 1 && span >= mMinSpan && Math.abs(span - mInitialSpan) > mMinSpan / 2f) {
+            mPrevSpan = mSpan = span; mPrevTime = mTime = e.getEventTime();
+            mInProgress = mListener.onScaleBegin(this);
+        }
+        if (a == MotionEvent.ACTION_MOVE) {
+            mSpan = span; mTime = e.getEventTime();
+            boolean upd = true;
+            if (mInProgress) upd = mListener.onScale(this);
+            if (upd) { mPrevSpan = mSpan; mPrevTime = mTime; }
+        }
+        return true;
+    }
+    public boolean isInProgress() { return mInProgress; }
+    public float getFocusX() { return mFocusX; }
+    public float getFocusY() { return mFocusY; }
+    public float getCurrentSpan() { return mSpan; }
+    public float getCurrentSpanX() { return mSpan; }
+    public float getCurrentSpanY() { return mSpan; }
+    public float getPreviousSpan() { return mPrevSpan; }
+    public float getPreviousSpanX() { return mPrevSpan; }
+    public float getPreviousSpanY() { return mPrevSpan; }
+    public float getScaleFactor() { return mPrevSpan > 0 ? mSpan / mPrevSpan : 1; }
+    public long getTimeDelta() { return mTime - mPrevTime; }
+    public long getEventTime() { return mTime; }
+    public void setQuickScaleEnabled(boolean e) {}
+    public boolean isQuickScaleEnabled() { return false; }
+    public void setStylusScaleEnabled(boolean e) {}
+}

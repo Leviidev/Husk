@@ -23,14 +23,31 @@ typedef struct tl_javaapp_config {
     int frame_every;
     void (*vibrate)(int ms);
     void (*open_url)(const char *url);
+    const char *framework_res;       /* the platform's resources (framework-res.apk): its resources.arsc, layouts, drawables */
+    /* the host's side of the views: its keyboard for a focused text field (input type and IME options as EditorInfo has them),
+       the clipboard (get returns a malloc'd string or NULL), the share sheet, the screen orientation the activity asks for */
+    void (*show_keyboard)(int show, int input_type, int ime_options);
+    void (*set_clipboard)(const char *utf8);
+    char *(*get_clipboard)(void);
+    void (*share)(const char *utf8);
+    void (*set_orientation)(int android_orientation);
+    int insets[4];                   /* left, top, right, bottom: the screen's notch and home indicator, in pixels */
 } tl_javaapp_config;
 
-bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an);
+bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an, char *application, size_t apn);
 bool tl_javaapp_start(const tl_javaapp_config *cfg);
 void tl_javaapp_touch(int phase, int id, float x, float y);    /* surface pixels; phase 0 down, 1 move, 2 up, 3 cancel */
 void tl_javaapp_key(int android_keycode, bool down);
 void tl_javaapp_back(void);
 void tl_javaapp_set_paused(bool paused);
+/* The host keyboard's typing, to the focused text field: text, one delete before the cursor, the editor action (return), the
+   keyboard closed by the host. */
+void tl_javaapp_text(const char *utf8);
+void tl_javaapp_text_delete(void);
+void tl_javaapp_text_action(void);
+void tl_javaapp_keyboard_closed(void);
+/* The screen's insets changed (rotation), or the keyboard now covers ime_bottom pixels of it. */
+void tl_javaapp_set_insets(int left, int top, int right, int bottom, int ime_bottom);
 unsigned long tl_javaapp_frames(void);
 bool tl_javaapp_ended(void);
 

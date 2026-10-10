@@ -1,0 +1,53 @@
+package android.widget;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.View;
+import android.view.ViewGroup;
+
+public class RadioGroup extends LinearLayout {
+    public interface OnCheckedChangeListener { void onCheckedChanged(RadioGroup group, int checkedId); }
+    public static class LayoutParams extends LinearLayout.LayoutParams {
+        public LayoutParams(Context c, AttributeSet a) { super(c, a); }
+        public LayoutParams(int w, int h) { super(w, h); }
+        public LayoutParams(int w, int h, float weight) { super(w, h, weight); }
+        public LayoutParams(ViewGroup.LayoutParams p) { super(p); }
+        public LayoutParams(MarginLayoutParams p) { super(p); }
+    }
+    private int mCheckedId = -1;
+    private boolean mProtectFromCheckedChange;
+    private OnCheckedChangeListener mListener;
+    private final CompoundButton.OnCheckedChangeListener mChildListener = (b, checked) -> {
+        if (mProtectFromCheckedChange) return;
+        mProtectFromCheckedChange = true;
+        if (mCheckedId != -1) setCheckedStateForView(mCheckedId, false);
+        mProtectFromCheckedChange = false;
+        setCheckedId(b.getId());
+    };
+    public RadioGroup(Context c) { super(c); setOrientation(VERTICAL); }
+    public RadioGroup(Context c, AttributeSet a) { super(c, a); if (a == null) setOrientation(VERTICAL); }
+    @Override public void onViewAdded(View child) {
+        super.onViewAdded(child);
+        if (child instanceof RadioButton) {
+            if (child.getId() == View.NO_ID) child.setId(View.generateViewId());
+            ((RadioButton) child).setOnCheckedChangeWidgetListener(mChildListener);
+            if (((RadioButton) child).isChecked()) { mProtectFromCheckedChange = true; if (mCheckedId != -1) setCheckedStateForView(mCheckedId, false); mProtectFromCheckedChange = false; setCheckedId(child.getId()); }
+        }
+    }
+    public void check(int id) {
+        if (id != -1 && id == mCheckedId) return;
+        if (mCheckedId != -1) setCheckedStateForView(mCheckedId, false);
+        if (id != -1) setCheckedStateForView(id, true);
+        setCheckedId(id);
+    }
+    private void setCheckedId(int id) { boolean changed = id != mCheckedId; mCheckedId = id; if (mListener != null && changed) mListener.onCheckedChanged(this, mCheckedId); }
+    private void setCheckedStateForView(int id, boolean checked) { View v = findViewById(id); if (v instanceof RadioButton) { mProtectFromCheckedChange = true; ((RadioButton) v).setChecked(checked); mProtectFromCheckedChange = false; } }
+    public int getCheckedRadioButtonId() { return mCheckedId; }
+    public void clearCheck() { check(-1); }
+    public void setOnCheckedChangeListener(OnCheckedChangeListener l) { mListener = l; }
+    @Override public LayoutParams generateLayoutParams(AttributeSet a) { return new RadioGroup.LayoutParams(getContext(), a); }
+    @Override protected boolean checkLayoutParams(ViewGroup.LayoutParams p) { return p instanceof RadioGroup.LayoutParams; }
+    @Override protected LinearLayout.LayoutParams generateDefaultLayoutParams() { return new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT); }
+    @Override protected ViewGroup.LayoutParams generateLayoutParams(ViewGroup.LayoutParams p) { return new LayoutParams(p); }
+    @Override public CharSequence getAccessibilityClassName() { return RadioGroup.class.getName(); }
+}

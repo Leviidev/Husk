@@ -1,0 +1,62 @@
+package android.widget;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.Gravity;
+import java.text.DateFormatSymbols;
+import java.util.Calendar;
+
+/** Month, day and year wheels. */
+public class DatePicker extends FrameLayout {
+    public static final int MODE_SPINNER = 1, MODE_CALENDAR = 2;
+    public interface OnDateChangedListener { void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth); }
+    private final NumberPicker mDay, mMonth, mYear;
+    private final Calendar mCurrent = Calendar.getInstance(), mMinDate = Calendar.getInstance(), mMaxDate = Calendar.getInstance();
+    private OnDateChangedListener mListener;
+    private OnDateChangedListener mAutofill;
+    public DatePicker(Context c) { this(c, null); }
+    public DatePicker(Context c, AttributeSet a) { this(c, a, android.R.attr.datePickerStyle); }
+    public DatePicker(Context c, AttributeSet a, int s) { this(c, a, s, 0); }
+    public DatePicker(Context c, AttributeSet a, int s, int r) {
+        super(c, a, s, r);
+        mMinDate.set(1900, 0, 1); mMaxDate.set(2100, 11, 31);
+        LinearLayout row = new LinearLayout(c);
+        row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER);
+        mMonth = new NumberPicker(c); mDay = new NumberPicker(c); mYear = new NumberPicker(c);
+        mMonth.setMinValue(0); mMonth.setMaxValue(11); mMonth.setDisplayedValues(new DateFormatSymbols().getShortMonths());
+        mYear.setWrapSelectorWheel(false);
+        NumberPicker.OnValueChangeListener l = (p, o, n) -> {
+            if (p == mDay) mCurrent.set(Calendar.DAY_OF_MONTH, n);
+            else if (p == mMonth) { int d = mCurrent.get(Calendar.DAY_OF_MONTH); mCurrent.set(Calendar.DAY_OF_MONTH, 1); mCurrent.set(Calendar.MONTH, n); mCurrent.set(Calendar.DAY_OF_MONTH, Math.min(d, mCurrent.getActualMaximum(Calendar.DAY_OF_MONTH))); }
+            else { int d = mCurrent.get(Calendar.DAY_OF_MONTH); mCurrent.set(Calendar.DAY_OF_MONTH, 1); mCurrent.set(Calendar.YEAR, n); mCurrent.set(Calendar.DAY_OF_MONTH, Math.min(d, mCurrent.getActualMaximum(Calendar.DAY_OF_MONTH))); }
+            clamp(); sync(); notifyChanged();
+        };
+        mDay.setOnValueChangedListener(l); mMonth.setOnValueChangedListener(l); mYear.setOnValueChangedListener(l);
+        row.addView(mMonth); row.addView(mDay); row.addView(mYear);
+        addView(row, new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        sync();
+    }
+    private void clamp() { if (mCurrent.before(mMinDate)) mCurrent.setTimeInMillis(mMinDate.getTimeInMillis()); if (mCurrent.after(mMaxDate)) mCurrent.setTimeInMillis(mMaxDate.getTimeInMillis()); }
+    private void sync() {
+        mYear.setMinValue(mMinDate.get(Calendar.YEAR)); mYear.setMaxValue(mMaxDate.get(Calendar.YEAR));
+        mDay.setMinValue(1); mDay.setMaxValue(mCurrent.getActualMaximum(Calendar.DAY_OF_MONTH));
+        mYear.setValue(mCurrent.get(Calendar.YEAR)); mMonth.setValue(mCurrent.get(Calendar.MONTH)); mDay.setValue(mCurrent.get(Calendar.DAY_OF_MONTH));
+    }
+    private void notifyChanged() { if (mListener != null) mListener.onDateChanged(this, getYear(), getMonth(), getDayOfMonth()); if (mAutofill != null) mAutofill.onDateChanged(this, getYear(), getMonth(), getDayOfMonth()); }
+    public void init(int year, int month, int day, OnDateChangedListener l) { mCurrent.set(year, month, day); clamp(); sync(); mListener = l; }
+    public void setOnDateChangedListener(OnDateChangedListener l) { mListener = l; }
+    public void updateDate(int year, int month, int day) { mCurrent.set(year, month, day); clamp(); sync(); notifyChanged(); }
+    public int getYear() { return mCurrent.get(Calendar.YEAR); }
+    public int getMonth() { return mCurrent.get(Calendar.MONTH); }
+    public int getDayOfMonth() { return mCurrent.get(Calendar.DAY_OF_MONTH); }
+    public long getMinDate() { return mMinDate.getTimeInMillis(); }
+    public void setMinDate(long d) { mMinDate.setTimeInMillis(d); clamp(); sync(); }
+    public long getMaxDate() { return mMaxDate.getTimeInMillis(); }
+    public void setMaxDate(long d) { mMaxDate.setTimeInMillis(d); clamp(); sync(); }
+    public void setFirstDayOfWeek(int d) {} public int getFirstDayOfWeek() { return Calendar.getInstance().getFirstDayOfWeek(); }
+    public boolean getCalendarViewShown() { return false; } public void setCalendarViewShown(boolean s) {} public CalendarView getCalendarView() { return null; }
+    public boolean getSpinnersShown() { return true; } public void setSpinnersShown(boolean s) {}
+    public int getDatePickerMode() { return MODE_SPINNER; }
+    @Override public void setEnabled(boolean e) { super.setEnabled(e); mDay.setEnabled(e); mMonth.setEnabled(e); mYear.setEnabled(e); }
+    @Override public CharSequence getAccessibilityClassName() { return DatePicker.class.getName(); }
+}

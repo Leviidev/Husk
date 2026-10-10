@@ -71,6 +71,16 @@ bool husk_java_launch(const char *apk, const char *data_dir, void *metal_layer, 
                       const char *angle_dylib, const char *ca_bundle);
 void husk_java_set_runtime(const char *root, float density);
 void husk_java_back(void);
+/* The host's side of a Java app's views: its keyboard (show, EditorInfo input type and IME options), the clipboard (get returns a
+   malloc'd string or NULL), the share sheet, the orientation the activity asks for. Before husk_java_launch. */
+void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_options), void (*set_clipboard)(const char *utf8),
+                        char *(*get_clipboard)(void), void (*share)(const char *utf8), void (*orientation)(int android_orientation));
+/* The notch / home indicator areas and the keyboard's height, in surface pixels; before the launch and whenever they change. */
+void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard);
+void husk_java_insert_text(const char *utf8);
+void husk_java_delete_backward(void);
+void husk_java_text_action(void);
+void husk_java_keyboard_closed(void);
 void husk_java_key(int android_keycode, int down);
 void husk_flutter_set_pixel_ratio(float ratio);                      /* the screen's scale, before the launch */
 void husk_flutter_set_insets(int top, int right, int bottom, int left);   /* safe area, in surface pixels */

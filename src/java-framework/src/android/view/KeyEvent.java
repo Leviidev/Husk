@@ -30,7 +30,26 @@ public class KeyEvent extends InputEvent {
         KEYCODE_NUMPAD_ADD = 157, KEYCODE_NUMPAD_DOT = 158, KEYCODE_NUMPAD_COMMA = 159, KEYCODE_NUMPAD_ENTER = 160, KEYCODE_NUMPAD_EQUALS = 161,
         KEYCODE_NUMPAD_LEFT_PAREN = 162, KEYCODE_NUMPAD_RIGHT_PAREN = 163, KEYCODE_VOLUME_MUTE = 164, KEYCODE_INFO = 165, KEYCODE_BUTTON_1 = 188,
         KEYCODE_BUTTON_16 = 203, KEYCODE_SETTINGS = 176, KEYCODE_APP_SWITCH = 187, KEYCODE_BUTTON_2 = 189;
+    public static final int FLAG_WOKE_HERE = 1, FLAG_FROM_SYSTEM = 8, FLAG_VIRTUAL_HARD_KEY = 64, FLAG_LONG_PRESS = 128, FLAG_CANCELED = 32, FLAG_CANCELED_LONG_PRESS = 256,
+        FLAG_TRACKING = 512, FLAG_FALLBACK = 1024, META_ALT_LEFT_ON = 16, META_ALT_RIGHT_ON = 32, META_SYM_ON_ = 4, META_FUNCTION_ON = 8, META_CTRL_LEFT_ON = 0x2000,
+        META_CTRL_RIGHT_ON = 0x4000, META_META_LEFT_ON = 0x20000, META_META_RIGHT_ON = 0x40000, META_CAPS_LOCK_ON = 0x100000, META_NUM_LOCK_ON = 0x200000,
+        META_SCROLL_LOCK_ON = 0x400000, META_ALT_MASK = 50, META_CTRL_MASK = 0x7000, META_META_MASK = 0x70000, META_SHIFT_MASK = 193;
+    public static class DispatcherState {
+        private int mDownKeyCode; private Object mDownTarget; private final android.util.SparseIntArray mActiveLongPresses = new android.util.SparseIntArray();
+        public void reset() { mDownKeyCode = 0; mDownTarget = null; mActiveLongPresses.clear(); }
+        public void reset(Object target) { if (mDownTarget == target) { mDownKeyCode = 0; mDownTarget = null; } }
+        public void startTracking(KeyEvent e, Object target) { if (e.getAction() != ACTION_DOWN) throw new IllegalArgumentException("Can only start tracking on a down event"); mDownKeyCode = e.getKeyCode(); mDownTarget = target; }
+        public boolean isTracking(KeyEvent e) { return mDownKeyCode == e.getKeyCode(); }
+        public void performedLongPress(KeyEvent e) { mActiveLongPresses.put(e.getKeyCode(), 1); }
+        public void handleUpEvent(KeyEvent e) {
+            int code = e.getKeyCode();
+            int idx = mActiveLongPresses.indexOfKey(code);
+            if (idx >= 0) { e.mFlags |= FLAG_CANCELED | FLAG_CANCELED_LONG_PRESS; mActiveLongPresses.removeAt(idx); }
+            if (mDownKeyCode == code) { e.mFlags |= FLAG_TRACKING; mDownKeyCode = 0; mDownTarget = null; }
+        }
+    }
     private final int action, code, repeat, meta, source;
+    int mFlags;
     private final long downTime, eventTime;
     private final String chars;
     public KeyEvent(int action, int code) { this(0, 0, action, code, 0, 0); }
@@ -49,15 +68,56 @@ public class KeyEvent extends InputEvent {
     public final long getEventTime() { return eventTime; }
     public final int getSource() { return source; }
     public final int getDeviceId() { return 0; }
-    public final int getFlags() { return 0; }
+    public final int getFlags() { return mFlags; }
     public final int getScanCode() { return 0; }
     public final InputDevice getDevice() { return InputDevice.getDevice(1); }
     public final String getCharacters() { return chars; }
     public final boolean isShiftPressed() { return (meta & META_SHIFT_ON) != 0; }
     public final boolean isAltPressed() { return (meta & META_ALT_ON) != 0; }
     public final boolean isCtrlPressed() { return (meta & META_CTRL_ON) != 0; }
-    public final boolean isLongPress() { return false; }
-    public final boolean isCanceled() { return false; }
+    public final boolean isLongPress() { return (mFlags & FLAG_LONG_PRESS) != 0; }
+    public final boolean isCanceled() { return (mFlags & FLAG_CANCELED) != 0; }
+    public final boolean isTracking() { return (mFlags & FLAG_TRACKING) != 0; }
+    public final void startTracking() { mFlags |= FLAG_START_TRACKING; }
+    static final int FLAG_START_TRACKING = 0x40000000;
+    public final boolean hasModifiers(int m) { return (meta & 0x770ff) == m; }
+    public final boolean hasNoModifiers() { return (meta & 0x770ff) == 0; }
+    public final boolean isMetaPressed() { return (meta & META_META_ON) != 0; }
+    public final boolean isFunctionPressed() { return false; }
+    public final boolean isSymPressed() { return false; }
+    public final boolean isCapsLockOn() { return false; }
+    public final boolean isNumLockOn() { return false; }
+    public final boolean isPrintingKey() { return getUnicodeChar() != 0; }
+    public final long getEventTimeNanos() { return eventTime * 1000000L; }
+    public final int getDisplayIdHusk() { return 0; }
+    public static boolean isConfirmKey(int c) { return c == KEYCODE_DPAD_CENTER || c == KEYCODE_ENTER || c == KEYCODE_SPACE || c == KEYCODE_NUMPAD_ENTER; }
+    public static boolean isMediaSessionKey(int c) { return c >= KEYCODE_MEDIA_PLAY_PAUSE && c <= KEYCODE_MEDIA_FAST_FORWARD || c == KEYCODE_MEDIA_PLAY || c == KEYCODE_MEDIA_PAUSE; }
+    public static boolean metaStateHasNoModifiers(int m) { return (m & 0x770ff) == 0; }
+    public static boolean metaStateHasModifiers(int m, int mods) { return (m & 0x770ff) == mods; }
+    public static int normalizeMetaState(int m) { return m; }
+    public static KeyEvent changeAction(KeyEvent e, int action) { KeyEvent k = new KeyEvent(e.downTime, e.eventTime, action, e.code, e.repeat, e.meta, e.source, e.chars); k.mFlags = e.mFlags; return k; }
+    public static KeyEvent changeTimeRepeat(KeyEvent e, long time, int repeat) { return new KeyEvent(e.downTime, time, e.action, e.code, repeat, e.meta, e.source, e.chars); }
+    public static KeyEvent changeFlags(KeyEvent e, int flags) { KeyEvent k = changeAction(e, e.action); k.mFlags = flags; return k; }
+    /** As KeyEvent.dispatch: to the receiver's onKeyDown/onKeyUp, keeping track of downs for long presses and canceled ups. */
+    public final boolean dispatch(Callback receiver, DispatcherState state, Object target) {
+        switch (action) {
+        case ACTION_DOWN: {
+            mFlags &= ~FLAG_START_TRACKING;
+            boolean res = receiver.onKeyDown(code, this);
+            if (state != null) {
+                if (res && repeat == 0 && (mFlags & FLAG_START_TRACKING) != 0) state.startTracking(this, target);
+                else if (isLongPress() && state.isTracking(this)) { if (receiver.onKeyLongPress(code, this)) { state.performedLongPress(this); res = true; } }
+            }
+            return res;
+        }
+        case ACTION_UP:
+            if (state != null) state.handleUpEvent(this);
+            return receiver.onKeyUp(code, this);
+        case ACTION_MULTIPLE:
+            return receiver.onKeyMultiple(code, repeat, this);
+        }
+        return false;
+    }
     public final boolean isSystem() { return code == KEYCODE_BACK || code == KEYCODE_HOME || code == KEYCODE_MENU || code == KEYCODE_VOLUME_UP || code == KEYCODE_VOLUME_DOWN; }
     public static boolean isGamepadButton(int c) { return c >= KEYCODE_BUTTON_A && c <= KEYCODE_BUTTON_MODE; }
     public static boolean isModifierKey(int c) { return c >= KEYCODE_ALT_LEFT && c <= KEYCODE_SHIFT_RIGHT || c == KEYCODE_CTRL_LEFT || c == KEYCODE_CTRL_RIGHT; }

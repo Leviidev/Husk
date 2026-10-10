@@ -1,0 +1,2 @@
+package android.transition;
+public abstract class VisibilityPropagation extends TransitionPropagation { public void captureValues(TransitionValues v) {} public String[] getPropagationProperties() { return null; } public int getViewVisibility(TransitionValues v) { return v == null || v.view == null ? android.view.View.GONE : v.view.getVisibility(); } public int getViewX(TransitionValues v) { return 0; } public int getViewY(TransitionValues v) { return 0; } }

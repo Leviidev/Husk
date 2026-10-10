@@ -1,0 +1,15 @@
+package android.view;
+public abstract class AbsSavedState implements android.os.Parcelable {
+    public static final AbsSavedState EMPTY_STATE = new AbsSavedState() {};
+    private final android.os.Parcelable mSuperState;
+    private AbsSavedState() { mSuperState = null; }
+    protected AbsSavedState(android.os.Parcelable superState) {
+        if (superState == null) throw new IllegalArgumentException("superState must not be null");
+        mSuperState = superState != EMPTY_STATE ? superState : null;
+    }
+    protected AbsSavedState(android.os.Parcel source) { this(source, null); }
+    protected AbsSavedState(android.os.Parcel source, ClassLoader loader) { android.os.Parcelable s = source.readParcelable(loader); mSuperState = s != null ? s : EMPTY_STATE; }
+    public final android.os.Parcelable getSuperState() { return mSuperState; }
+    public int describeContents() { return 0; }
+    public void writeToParcel(android.os.Parcel dest, int flags) { dest.writeParcelable(mSuperState, flags); }
+}

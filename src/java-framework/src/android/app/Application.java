@@ -1,11 +1,55 @@
 package android.app;
-public class Application extends android.content.ContextWrapper {
+
+import android.content.ComponentCallbacks;
+import android.content.Context;
+import android.os.Bundle;
+import java.util.ArrayList;
+
+public class Application extends android.content.ContextWrapper implements android.content.ComponentCallbacks2 {
+    public interface ActivityLifecycleCallbacks {
+        default void onActivityPreCreated(Activity a, Bundle s) {}
+        void onActivityCreated(Activity a, Bundle s);
+        default void onActivityPostCreated(Activity a, Bundle s) {}
+        default void onActivityPreStarted(Activity a) {}
+        void onActivityStarted(Activity a);
+        default void onActivityPostStarted(Activity a) {}
+        default void onActivityPreResumed(Activity a) {}
+        void onActivityResumed(Activity a);
+        default void onActivityPostResumed(Activity a) {}
+        default void onActivityPrePaused(Activity a) {}
+        void onActivityPaused(Activity a);
+        default void onActivityPostPaused(Activity a) {}
+        default void onActivityPreStopped(Activity a) {}
+        void onActivityStopped(Activity a);
+        default void onActivityPostStopped(Activity a) {}
+        default void onActivityPreSaveInstanceState(Activity a, Bundle s) {}
+        void onActivitySaveInstanceState(Activity a, Bundle s);
+        default void onActivityPostSaveInstanceState(Activity a, Bundle s) {}
+        default void onActivityPreDestroyed(Activity a) {}
+        void onActivityDestroyed(Activity a);
+        default void onActivityPostDestroyed(Activity a) {}
+    }
+    public interface OnProvideAssistDataListener { void onProvideAssistData(Activity a, Bundle d); }
+    private static Application sApp;
+    private final ArrayList<ActivityLifecycleCallbacks> mCallbacks = new ArrayList<>();
+    private final ArrayList<ComponentCallbacks> mComponentCallbacks = new ArrayList<>();
     public Application() { super(null); }
+    /** Husk's driver: the app's one Application, attached to the base context before its providers and onCreate. */
+    public final void huskAttach(Context base) { attachBaseContext(base); }
+    public static void huskSet(Application a) { sApp = a; }
+    public static Application huskGet() { if (sApp == null) { sApp = new Application(); sApp.huskAttach(husk.ContextImpl.app()); } return sApp; }
+    public ArrayList<ActivityLifecycleCallbacks> huskLifecycleCallbacks() { return mCallbacks; }
     public void onCreate() {}
     public void onTerminate() {}
-    public void onLowMemory() {}
+    public void onLowMemory() { for (ComponentCallbacks c : new ArrayList<>(mComponentCallbacks)) c.onLowMemory(); }
     public void onTrimMemory(int level) {}
-    public void onConfigurationChanged(android.content.res.Configuration c) {}
-    public void registerActivityLifecycleCallbacks(Object cb) {}
+    public void onConfigurationChanged(android.content.res.Configuration c) { for (ComponentCallbacks cb : new ArrayList<>(mComponentCallbacks)) cb.onConfigurationChanged(c); }
+    @Override public Context getApplicationContext() { return this; }
+    public void registerActivityLifecycleCallbacks(ActivityLifecycleCallbacks c) { synchronized (mCallbacks) { mCallbacks.add(c); } }
+    public void unregisterActivityLifecycleCallbacks(ActivityLifecycleCallbacks c) { synchronized (mCallbacks) { mCallbacks.remove(c); } }
+    @Override public void registerComponentCallbacks(ComponentCallbacks c) { mComponentCallbacks.add(c); }
+    @Override public void unregisterComponentCallbacks(ComponentCallbacks c) { mComponentCallbacks.remove(c); }
+    public void registerOnProvideAssistDataListener(OnProvideAssistDataListener l) {}
+    public void unregisterOnProvideAssistDataListener(OnProvideAssistDataListener l) {}
     public static String getProcessName() { return husk.Native.packageName(); }
 }

@@ -1,0 +1,73 @@
+package android.widget;
+
+import android.content.Context;
+import android.content.res.TypedArray;
+import android.util.AttributeSet;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+
+/** A FrameLayout showing one child at a time. */
+public class ViewAnimator extends FrameLayout {
+    int mWhichChild = 0;
+    private boolean mFirstTime = true, mAnimateFirstTime = true;
+    Animation mInAnimation, mOutAnimation;
+    public ViewAnimator(Context c) { super(c); }
+    public ViewAnimator(Context c, AttributeSet attrs) {
+        super(c, attrs);
+        TypedArray a = c.obtainStyledAttributes(attrs, husk.S.ViewAnimator);
+        int r = a.getResourceId(husk.S.ViewAnimator_inAnimation, 0); if (r > 0) setInAnimation(c, r);
+        r = a.getResourceId(husk.S.ViewAnimator_outAnimation, 0); if (r > 0) setOutAnimation(c, r);
+        setAnimateFirstView(a.getBoolean(husk.S.ViewAnimator_animateFirstView, true));
+        a.recycle();
+        setMeasureAllChildren(true);
+    }
+    public void setDisplayedChild(int whichChild) {
+        mWhichChild = whichChild;
+        if (whichChild >= getChildCount()) mWhichChild = 0; else if (whichChild < 0) mWhichChild = getChildCount() - 1;
+        boolean hasFocus = getFocusedChild() != null;
+        showOnly(mWhichChild);
+        if (hasFocus) requestFocus(FOCUS_FORWARD);
+    }
+    public int getDisplayedChild() { return mWhichChild; }
+    public void showNext() { setDisplayedChild(mWhichChild + 1); }
+    public void showPrevious() { setDisplayedChild(mWhichChild - 1); }
+    void showOnly(int childIndex, boolean animate) {
+        final int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            final View child = getChildAt(i);
+            if (i == childIndex) { if (animate && mInAnimation != null) child.startAnimation(mInAnimation); child.setVisibility(View.VISIBLE); mFirstTime = false; }
+            else { if (animate && mOutAnimation != null && child.getVisibility() == View.VISIBLE) child.startAnimation(mOutAnimation); else if (child.getAnimation() == mInAnimation) child.clearAnimation(); child.setVisibility(View.GONE); }
+        }
+    }
+    void showOnly(int childIndex) { final boolean animate = (!mFirstTime || mAnimateFirstTime); showOnly(childIndex, animate); }
+    @Override public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        super.addView(child, index, params);
+        if (getChildCount() == 1) child.setVisibility(View.VISIBLE); else child.setVisibility(View.GONE);
+        if (index >= 0 && mWhichChild >= index) setDisplayedChild(mWhichChild + 1);
+    }
+    @Override public void removeAllViews() { super.removeAllViews(); mWhichChild = 0; mFirstTime = true; }
+    @Override public void removeView(View view) { final int index = indexOfChild(view); if (index >= 0) removeViewAt(index); }
+    @Override public void removeViewAt(int index) {
+        super.removeViewAt(index);
+        final int childCount = getChildCount();
+        if (childCount == 0) { mWhichChild = 0; mFirstTime = true; }
+        else if (mWhichChild >= childCount) setDisplayedChild(childCount - 1);
+        else if (mWhichChild == index) setDisplayedChild(mWhichChild);
+    }
+    @Override public void removeViewInLayout(View view) { removeView(view); }
+    @Override public void removeViews(int start, int count) { super.removeViews(start, count); if (getChildCount() == 0) { mWhichChild = 0; mFirstTime = true; } else if (mWhichChild >= start && mWhichChild < start + count) setDisplayedChild(mWhichChild); }
+    @Override public void removeViewsInLayout(int start, int count) { removeViews(start, count); }
+    public View getCurrentView() { return getChildAt(mWhichChild); }
+    public Animation getInAnimation() { return mInAnimation; }
+    public void setInAnimation(Animation a) { mInAnimation = a; }
+    public Animation getOutAnimation() { return mOutAnimation; }
+    public void setOutAnimation(Animation a) { mOutAnimation = a; }
+    public void setInAnimation(Context c, int r) { setInAnimation(AnimationUtils.loadAnimation(c, r)); }
+    public void setOutAnimation(Context c, int r) { setOutAnimation(AnimationUtils.loadAnimation(c, r)); }
+    public boolean getAnimateFirstView() { return mAnimateFirstTime; }
+    public void setAnimateFirstView(boolean a) { mAnimateFirstTime = a; }
+    @Override public int getBaseline() { return (getCurrentView() != null) ? getCurrentView().getBaseline() : super.getBaseline(); }
+    @Override public CharSequence getAccessibilityClassName() { return ViewAnimator.class.getName(); }
+}

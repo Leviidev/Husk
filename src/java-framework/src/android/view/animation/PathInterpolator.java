@@ -1,0 +1,27 @@
+package android.view.animation;
+/** A cubic (or quadratic) Bezier from (0,0) to (1,1), sampled into a lookup table. */
+public class PathInterpolator extends BaseInterpolator {
+    private float[] mX, mY;
+    public PathInterpolator(float cx, float cy) { initQuad(cx, cy); }
+    public PathInterpolator(float x1, float y1, float x2, float y2) { initCubic(x1, y1, x2, y2); }
+    public PathInterpolator(android.graphics.Path p) { initCubic(0.4f, 0, 0.2f, 1); }
+    public PathInterpolator(android.content.Context c, android.util.AttributeSet a) { initCubic(0.4f, 0, 0.2f, 1); }
+    private void initQuad(float cx, float cy) { initCubic(cx * 2 / 3f, cy * 2 / 3f, 1 + (cx - 1) * 2 / 3f, 1 + (cy - 1) * 2 / 3f); }
+    private void initCubic(float x1, float y1, float x2, float y2) {
+        int n = 200; mX = new float[n + 1]; mY = new float[n + 1];
+        for (int i = 0; i <= n; i++) {
+            float t = i / (float) n, u = 1 - t;
+            mX[i] = 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t;
+            mY[i] = 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t;
+        }
+    }
+    public float getInterpolation(float t) {
+        if (t <= 0) return 0; if (t >= 1) return 1;
+        int lo = 0, hi = mX.length - 1;
+        while (hi - lo > 1) { int mid = (lo + hi) >>> 1; if (t < mX[mid]) hi = mid; else lo = mid; }
+        float span = mX[hi] - mX[lo];
+        if (span == 0) return mY[lo];
+        float f = (t - mX[lo]) / span;
+        return mY[lo] + f * (mY[hi] - mY[lo]);
+    }
+}

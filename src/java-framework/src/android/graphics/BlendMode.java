@@ -1,0 +1,8 @@
+package android.graphics;
+public enum BlendMode {
+    CLEAR(0), SRC(1), DST(2), SRC_OVER(3), DST_OVER(4), SRC_IN(5), DST_IN(6), SRC_OUT(7), DST_OUT(8), SRC_ATOP(9), DST_ATOP(10), XOR(11), PLUS(12),
+    MODULATE(13), SCREEN(14), OVERLAY(15), DARKEN(16), LIGHTEN(17), COLOR_DODGE(3), COLOR_BURN(3), HARD_LIGHT(3), SOFT_LIGHT(3), DIFFERENCE(3),
+    EXCLUSION(3), MULTIPLY(13), HUE(3), SATURATION(3), COLOR(3), LUMINOSITY(3);
+    final int n;
+    BlendMode(int n) { this.n = n; }
+}

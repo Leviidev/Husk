@@ -50,6 +50,14 @@ enum { ENGINE_UNITY = 0, ENGINE_COCOS = 1, ENGINE_GAMEACTIVITY = 2, ENGINE_SDL =
 /* Where the Java runtime is: the ART, i18n, tzdata and conscrypt APEX folders and husk-framework.dex (scripts/build_java_runtime.sh). */
 static char g_java_root[1024];
 static float g_java_density = 3.0f;
+static int g_java_insets[4];
+static struct {
+    void (*keyboard)(int show, int input_type, int ime_options);
+    void (*set_clipboard)(const char *utf8);
+    char *(*get_clipboard)(void);
+    void (*share)(const char *utf8);
+    void (*orientation)(int android_orientation);
+} g_java_host;
 
 static unsigned long engine_frames(void);
 
@@ -334,9 +342,14 @@ static void *launch_thread(void *arg)
         } else tl_log_line("java: no runtime folder given");
         if (ok) {
             tl_audio_install();
+            char fwres[1100];
+            snprintf(fwres, sizeof(fwres), "%s/framework-res.apk", g_java_root);
             tl_javaapp_config cfg = {
                 .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
                 .density = g_java_density, .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL,
+                .framework_res = fwres, .show_keyboard = g_java_host.keyboard, .set_clipboard = g_java_host.set_clipboard,
+                .get_clipboard = g_java_host.get_clipboard, .share = g_java_host.share, .set_orientation = g_java_host.orientation,
+                .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] },
             };
             ok = tl_javaapp_start(&cfg);
         }
@@ -490,6 +503,22 @@ void husk_java_set_runtime(const char *root, float density)
     snprintf(g_java_root, sizeof(g_java_root), "%s", root ? root : "");
     if (density > 0) g_java_density = density;
 }
+void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_options), void (*set_clipboard)(const char *utf8),
+                        char *(*get_clipboard)(void), void (*share)(const char *utf8), void (*orientation)(int android_orientation))
+{
+    g_java_host.keyboard = keyboard; g_java_host.set_clipboard = set_clipboard; g_java_host.get_clipboard = get_clipboard;
+    g_java_host.share = share; g_java_host.orientation = orientation;
+}
+static bool java_running(void) { return atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA; }
+void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard)
+{
+    g_java_insets[0] = left; g_java_insets[1] = top; g_java_insets[2] = right; g_java_insets[3] = bottom;
+    if (java_running()) tl_javaapp_set_insets(left, top, right, bottom, keyboard);
+}
+void husk_java_insert_text(const char *utf8) { if (java_running()) tl_javaapp_text(utf8); }
+void husk_java_delete_backward(void) { if (java_running()) tl_javaapp_text_delete(); }
+void husk_java_text_action(void) { if (java_running()) tl_javaapp_text_action(); }
+void husk_java_keyboard_closed(void) { if (java_running()) tl_javaapp_keyboard_closed(); }
 void husk_java_back(void) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_back(); }
 void husk_java_key(int android_keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_key(android_keycode, down != 0); }
 int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }

@@ -1,0 +1,25 @@
+package android.graphics.drawable;
+
+public class AnimationDrawable extends DrawableContainer implements Runnable, Animatable {
+    private final java.util.ArrayList<Integer> mDurations = new java.util.ArrayList<>();
+    private boolean mOneShot, mRunning;
+    private int mFrame;
+    public void addFrame(Drawable d, int duration) { addChild(d); mDurations.add(duration); if (mCurIndex < 0) selectDrawable(0); }
+    public int getNumberOfFrames() { return mDurations.size(); }
+    public Drawable getFrame(int i) { return mChildren.get(i); }
+    public int getDuration(int i) { return mDurations.get(i); }
+    public boolean isOneShot() { return mOneShot; }
+    public void setOneShot(boolean o) { mOneShot = o; }
+    public void start() { if (!mRunning && !mDurations.isEmpty()) { mRunning = true; mFrame = 0; selectDrawable(0); scheduleSelf(this, android.os.SystemClock.uptimeMillis() + mDurations.get(0)); } }
+    public void stop() { mRunning = false; unscheduleSelf(this); }
+    public boolean isRunning() { return mRunning; }
+    public void run() {
+        if (!mRunning) return;
+        int next = mFrame + 1;
+        if (next >= mDurations.size()) { if (mOneShot) { mRunning = false; return; } next = 0; }
+        mFrame = next;
+        selectDrawable(next);
+        scheduleSelf(this, android.os.SystemClock.uptimeMillis() + mDurations.get(next));
+    }
+    @Override public boolean setVisible(boolean v, boolean restart) { boolean ch = super.setVisible(v, restart); if (!v) unscheduleSelf(this); else if (restart || mRunning) { mRunning = false; start(); } return ch; }
+}

@@ -1,0 +1,11 @@
+package android.text.style;
+public class AbsoluteSizeSpan extends MetricAffectingSpan implements android.text.ParcelableSpan {
+    private final int mSize; private final boolean mDip;
+    public AbsoluteSizeSpan(int size) { this(size, false); }
+    public AbsoluteSizeSpan(int size, boolean dip) { mSize = size; mDip = dip; }
+    public int getSize() { return mSize; } public boolean getDip() { return mDip; }
+    @Override public void updateDrawState(android.text.TextPaint tp) { apply(tp); }
+    @Override public void updateMeasureState(android.text.TextPaint tp) { apply(tp); }
+    private void apply(android.text.TextPaint tp) { tp.setTextSize(mDip ? mSize * (tp.density > 0 ? husk.Native.density() : 1) : mSize); }
+    public int getSpanTypeId() { return 16; } public int describeContents() { return 0; }
+}

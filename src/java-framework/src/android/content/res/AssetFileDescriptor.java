@@ -8,6 +8,11 @@ public class AssetFileDescriptor implements Closeable {
     private final FileDescriptor fd;
     private final long start, length;
     AssetFileDescriptor(String asset, FileDescriptor fd, long start, long length) { this.asset = asset; this.fd = fd; this.start = start; this.length = length; }
+    private android.os.ParcelFileDescriptor pfd;
+    public AssetFileDescriptor(android.os.ParcelFileDescriptor fd, long start, long length) { this(null, fd.getFileDescriptor(), start, length); pfd = fd; }
+    public AssetFileDescriptor(android.os.ParcelFileDescriptor fd, long start, long length, android.os.Bundle extras) { this(fd, start, length); }
+    public android.os.ParcelFileDescriptor getParcelFileDescriptor() { return pfd; }
+    public android.os.Bundle getExtras() { return null; }
     public FileDescriptor getFileDescriptor() { return fd; }
     public long getStartOffset() { return start; }
     public long getLength() { return length; }
@@ -15,5 +20,5 @@ public class AssetFileDescriptor implements Closeable {
     /** Husk's own: the asset this describes, for players that read it by name. */
     public String huskAssetName() { return asset; }
     public FileInputStream createInputStream() throws IOException { return new FileInputStream(fd); }
-    public void close() {}
+    public void close() throws IOException { if (pfd != null) pfd.close(); }
 }

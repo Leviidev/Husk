@@ -1,0 +1,61 @@
+package android.graphics.drawable;
+
+import android.content.res.Resources;
+import android.graphics.*;
+
+public class BitmapDrawable extends Drawable {
+    private Bitmap mBitmap;
+    private final Paint mPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+    private int mGravity = android.view.Gravity.FILL, mTargetDensity = android.util.DisplayMetrics.DENSITY_DEVICE_STABLE;
+    private Shader.TileMode mTileX, mTileY;
+    private BitmapShader mShader;
+    private final Rect mDst = new Rect();
+
+    public BitmapDrawable() {}
+    public BitmapDrawable(Bitmap b) { this(null, b); }
+    public BitmapDrawable(Resources r, Bitmap b) { mBitmap = b; if (r != null) mTargetDensity = r.getDisplayMetrics().densityDpi; }
+    public BitmapDrawable(String path) { this(null, BitmapFactory.decodeFile(path)); }
+    public BitmapDrawable(Resources r, String path) { this(r, BitmapFactory.decodeFile(path)); }
+    public BitmapDrawable(java.io.InputStream in) { this(null, BitmapFactory.decodeStream(in)); }
+    public BitmapDrawable(Resources r, java.io.InputStream in) { this(r, BitmapFactory.decodeStream(in)); }
+    public final Paint getPaint() { return mPaint; }
+    public final Bitmap getBitmap() { return mBitmap; }
+    public void setBitmap(Bitmap b) { mBitmap = b; mShader = null; invalidateSelf(); }
+    public void setTargetDensity(int d) { mTargetDensity = d == 0 ? 160 : d; }
+    public void setTargetDensity(Canvas c) { setTargetDensity(c.getDensity()); }
+    public void setTargetDensity(android.util.DisplayMetrics m) { setTargetDensity(m.densityDpi); }
+    public int getGravity() { return mGravity; }
+    public void setGravity(int g) { mGravity = g; invalidateSelf(); }
+    public void setMipMap(boolean m) {}
+    public boolean hasMipMap() { return false; }
+    public void setAntiAlias(boolean aa) { mPaint.setAntiAlias(aa); }
+    public boolean hasAntiAlias() { return mPaint.isAntiAlias(); }
+    @Override public void setFilterBitmap(boolean f) { mPaint.setFilterBitmap(f); }
+    @Override public boolean isFilterBitmap() { return mPaint.isFilterBitmap(); }
+    public Shader.TileMode getTileModeX() { return mTileX; }
+    public Shader.TileMode getTileModeY() { return mTileY; }
+    public void setTileModeX(Shader.TileMode m) { setTileModeXY(m, mTileY); }
+    public void setTileModeY(Shader.TileMode m) { setTileModeXY(mTileX, m); }
+    public void setTileModeXY(Shader.TileMode x, Shader.TileMode y) { mTileX = x; mTileY = y; mShader = null; invalidateSelf(); }
+    @Override public void setAlpha(int a) { mPaint.setAlpha(a); invalidateSelf(); }
+    @Override public int getAlpha() { return mPaint.getAlpha(); }
+    private int scaled(int v) { if (mBitmap == null) return -1; int d = mBitmap.getDensity(); return d == 0 || d == mTargetDensity ? v : (v * mTargetDensity + d / 2) / d; }
+    @Override public int getIntrinsicWidth() { return mBitmap == null ? -1 : scaled(mBitmap.getWidth()); }
+    @Override public int getIntrinsicHeight() { return mBitmap == null ? -1 : scaled(mBitmap.getHeight()); }
+    @Override public int getOpacity() { return mBitmap == null || mBitmap.hasAlpha() || mPaint.getAlpha() < 255 ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE; }
+    @Override public void draw(Canvas c) {
+        if (mBitmap == null || mBitmap.isRecycled()) return;
+        mPaint.setColorFilter(huskTintFilter());
+        Rect b = getBounds();
+        if (mTileX != null || mTileY != null) {
+            if (mShader == null) mShader = new BitmapShader(mBitmap, mTileX == null ? Shader.TileMode.CLAMP : mTileX, mTileY == null ? Shader.TileMode.CLAMP : mTileY);
+            mPaint.setShader(mShader);
+            c.drawRect(b, mPaint);
+            mPaint.setShader(null);
+            return;
+        }
+        android.view.Gravity.apply(mGravity, getIntrinsicWidth(), getIntrinsicHeight(), b, mDst);
+        c.drawBitmap(mBitmap, null, mDst, mPaint);
+    }
+    @Override public ConstantState getConstantState() { final Bitmap b = mBitmap; return new ConstantState() { public Drawable newDrawable() { return new BitmapDrawable(null, b); } public Drawable newDrawable(Resources r) { return new BitmapDrawable(r, b); } }; }
+}

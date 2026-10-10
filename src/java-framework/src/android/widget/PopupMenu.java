@@ -1,0 +1,78 @@
+package android.widget;
+
+import android.content.Context;
+import android.view.*;
+import java.util.ArrayList;
+
+/** A menu dropped under an anchor: the app's menu items in a list popup (submenus open as a second popup). */
+public class PopupMenu {
+    public interface OnMenuItemClickListener { boolean onMenuItemClick(MenuItem item); }
+    public interface OnDismissListener { void onDismiss(PopupMenu menu); }
+    private final Context mContext;
+    private final husk.MenuImpl mMenu;
+    private final View mAnchor;
+    private int mGravity;
+    private ListPopupWindow mPopup;
+    private OnMenuItemClickListener mMenuItemClickListener;
+    private OnDismissListener mOnDismissListener;
+    public PopupMenu(Context c, View anchor) { this(c, anchor, Gravity.NO_GRAVITY); }
+    public PopupMenu(Context c, View anchor, int gravity) { this(c, anchor, gravity, android.R.attr.popupMenuStyle, 0); }
+    public PopupMenu(Context c, View anchor, int gravity, int popupStyleAttr, int popupStyleRes) { mContext = c; mAnchor = anchor; mGravity = gravity; mMenu = new husk.MenuImpl(c); }
+    public void setGravity(int g) { mGravity = g; }
+    public int getGravity() { return mGravity; }
+    public View.OnTouchListener getDragToOpenListener() { return null; }
+    public Menu getMenu() { return mMenu; }
+    public MenuInflater getMenuInflater() { return new MenuInflater(mContext); }
+    public void inflate(int menuRes) { getMenuInflater().inflate(menuRes, mMenu); }
+    public void setForceShowIcon(boolean f) {}
+    public void show() { mPopup = showMenu(mContext, mAnchor, mMenu, mGravity, item -> mMenuItemClickListener != null && mMenuItemClickListener.onMenuItemClick(item), () -> { if (mOnDismissListener != null) mOnDismissListener.onDismiss(this); }); }
+    public void dismiss() { if (mPopup != null) mPopup.dismiss(); }
+    public void setOnMenuItemClickListener(OnMenuItemClickListener l) { mMenuItemClickListener = l; }
+    public void setOnDismissListener(OnDismissListener l) { mOnDismissListener = l; }
+    /** Husk: a menu's visible items in a list popup under the anchor; a pick goes to onClick (then the item's own listener / intent). */
+    public static ListPopupWindow showMenu(Context c, View anchor, husk.MenuImpl menu, int gravity, java.util.function.Predicate<MenuItem> onClick, Runnable onDismiss) {
+        final ArrayList<MenuItem> items = new ArrayList<>();
+        for (int i = 0; i < menu.size(); i++) if (menu.getItem(i).isVisible()) items.add(menu.getItem(i));
+        if (items.isEmpty()) return null;
+        final ListPopupWindow p = new ListPopupWindow(c);
+        final float d = c.getResources().getDisplayMetrics().density;
+        p.setAdapter(new BaseAdapter() {
+            public int getCount() { return items.size(); }
+            public Object getItem(int i) { return items.get(i); }
+            public long getItemId(int i) { return items.get(i).getItemId(); }
+            @Override public boolean isEnabled(int i) { return items.get(i).isEnabled(); }
+            public View getView(int i, View cv, ViewGroup parent) {
+                MenuItem it = items.get(i);
+                LinearLayout row = new LinearLayout(c);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setMinimumHeight((int) (48 * d));
+                row.setPadding((int) (12 * d), 0, (int) (12 * d), 0);
+                TextView t = new TextView(c);
+                t.setText(it.getTitle());
+                t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 16);
+                t.setSingleLine(true);
+                t.setEnabled(it.isEnabled());
+                if (!it.isEnabled()) t.setAlpha(0.38f);
+                row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                if (it.isCheckable()) { CheckBox cb = new CheckBox(c); cb.setChecked(it.isChecked()); cb.setClickable(false); cb.setFocusable(false); row.addView(cb); }
+                return row;
+            }
+        });
+        p.setAnchorView(anchor);
+        p.setDropDownGravity(gravity);
+        p.setModal(true);
+        p.setWidth(Math.max((int) (196 * d), ListPopupWindow.WRAP_CONTENT));
+        p.setWidth(ListPopupWindow.WRAP_CONTENT);
+        p.setOnItemClickListener((parent, view, pos, id) -> {
+            MenuItem it = items.get(pos);
+            p.dismiss();
+            if (it.hasSubMenu()) { showMenu(c, anchor, (husk.MenuImpl) it.getSubMenu(), gravity, onClick, onDismiss); return; }
+            if (onClick.test(it)) return;
+            ((husk.MenuImpl.Item) it).huskInvoke();
+        });
+        p.setOnDismissListener(() -> { if (onDismiss != null) onDismiss.run(); });
+        p.show();
+        return p;
+    }
+}

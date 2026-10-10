@@ -1,0 +1,9 @@
+package android.widget;
+public class ImageButton extends ImageView {
+    public ImageButton(android.content.Context c) { this(c, null); }
+    public ImageButton(android.content.Context c, android.util.AttributeSet a) { this(c, a, android.R.attr.imageButtonStyle); }
+    public ImageButton(android.content.Context c, android.util.AttributeSet a, int s) { this(c, a, s, 0); }
+    public ImageButton(android.content.Context c, android.util.AttributeSet a, int s, int r) { super(c, a, s, r); setFocusable(true); setClickable(true); }
+    protected boolean onSetAlphaHusk(int a) { return false; }
+    @Override public CharSequence getAccessibilityClassName() { return ImageButton.class.getName(); }
+}

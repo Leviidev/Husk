@@ -1,0 +1,12 @@
+package android.widget;
+public class ToggleButton extends CompoundButton {
+    private CharSequence mOn = "ON", mOff = "OFF";
+    public ToggleButton(android.content.Context c) { this(c, null); }
+    public ToggleButton(android.content.Context c, android.util.AttributeSet a) { this(c, a, android.R.attr.buttonStyleToggle); }
+    public ToggleButton(android.content.Context c, android.util.AttributeSet a, int s) { this(c, a, s, 0); }
+    public ToggleButton(android.content.Context c, android.util.AttributeSet a, int s, int r) { super(c, a, s, r); syncText(); }
+    @Override public void setChecked(boolean c) { super.setChecked(c); syncText(); }
+    private void syncText() { if (mOn != null) setText(isChecked() ? mOn : mOff); }
+    public CharSequence getTextOn() { return mOn; } public void setTextOn(CharSequence t) { mOn = t; syncText(); }
+    public CharSequence getTextOff() { return mOff; } public void setTextOff(CharSequence t) { mOff = t; syncText(); }
+}

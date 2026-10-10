@@ -1,0 +1,41 @@
+package android.widget;
+
+import android.content.Context;
+import android.graphics.BlendMode;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+
+/** The overscroll glow: a soft arc at the edge that grows with the pull and fades. */
+public class EdgeEffect {
+    public static final BlendMode DEFAULT_BLEND_MODE = BlendMode.SRC_ATOP;
+    private int mWidth, mHeight, mColor = 0x33000000;
+    private float mPull, mGlow;
+    private long mReleaseStart;
+    private boolean mReleasing;
+    private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    public EdgeEffect(Context c) {}
+    public EdgeEffect(Context c, android.util.AttributeSet a) {}
+    public void setSize(int w, int h) { mWidth = w; mHeight = h; }
+    public boolean isFinished() { return mGlow <= 0.001f && mPull == 0; }
+    public void finish() { mPull = 0; mGlow = 0; mReleasing = false; }
+    public void onPull(float d) { onPull(d, 0.5f); }
+    public void onPull(float d, float x) { mReleasing = false; mPull = Math.max(0, Math.min(1, mPull + d)); mGlow = Math.min(1, mPull * 2); }
+    public float onPullDistance(float d, float x) { float before = mPull; onPull(d, x); return mPull - before; }
+    public float getDistance() { return mPull; }
+    public void onRelease() { if (!mReleasing && mGlow > 0) { mReleasing = true; mReleaseStart = android.os.SystemClock.uptimeMillis(); } mPull = 0; }
+    public void onAbsorb(int v) { mGlow = Math.min(1, Math.abs(v) / 8000f + 0.2f); mReleasing = true; mReleaseStart = android.os.SystemClock.uptimeMillis(); }
+    public void setColor(int c) { mColor = c; }
+    public int getColor() { return mColor; }
+    public void setBlendMode(BlendMode m) {}
+    public BlendMode getBlendMode() { return DEFAULT_BLEND_MODE; }
+    public int getMaxHeight() { return mHeight; }
+    public boolean draw(Canvas c) {
+        if (mReleasing) { float t = (android.os.SystemClock.uptimeMillis() - mReleaseStart) / 300f; if (t >= 1) { finish(); return false; } mGlow *= 1 - t * 0.5f; }
+        if (mGlow <= 0.001f) return false;
+        int a = (int) (((mColor >>> 24) & 0xFF) * mGlow);
+        mPaint.setColor((mColor & 0xFFFFFF) | (a << 24));
+        float h = Math.min(mHeight, mWidth * 0.6f) * (0.3f + 0.7f * mGlow);
+        c.drawOval(-mWidth * 0.25f, -h, mWidth * 1.25f, h, mPaint);
+        return true;
+    }
+}

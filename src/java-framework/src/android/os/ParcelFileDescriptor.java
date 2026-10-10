@@ -1,0 +1,56 @@
+package android.os;
+
+import java.io.*;
+
+public class ParcelFileDescriptor implements Parcelable, Closeable {
+    public static final int MODE_READ_ONLY = 0x10000000, MODE_WRITE_ONLY = 0x20000000, MODE_READ_WRITE = 0x30000000, MODE_CREATE = 0x08000000,
+        MODE_TRUNCATE = 0x04000000, MODE_APPEND = 0x02000000, MODE_WORLD_READABLE = 1, MODE_WORLD_WRITEABLE = 2;
+    private final FileDescriptor mFd;
+    private final Closeable mOwner;
+    private final File mFile;
+    ParcelFileDescriptor(FileDescriptor fd, Closeable owner, File f) { mFd = fd; mOwner = owner; mFile = f; }
+    public ParcelFileDescriptor(ParcelFileDescriptor o) { this(o.mFd, o.mOwner, o.mFile); }
+    public static int parseMode(String m) {
+        int r;
+        if ("r".equals(m)) r = MODE_READ_ONLY;
+        else if ("w".equals(m) || "wt".equals(m)) r = MODE_WRITE_ONLY | MODE_CREATE | MODE_TRUNCATE;
+        else if ("wa".equals(m)) r = MODE_WRITE_ONLY | MODE_CREATE | MODE_APPEND;
+        else if ("rw".equals(m)) r = MODE_READ_WRITE | MODE_CREATE;
+        else if ("rwt".equals(m)) r = MODE_READ_WRITE | MODE_CREATE | MODE_TRUNCATE;
+        else throw new IllegalArgumentException("Bad mode '" + m + "'");
+        return r;
+    }
+    public static ParcelFileDescriptor open(File f, int mode) throws FileNotFoundException {
+        try {
+            if ((mode & MODE_READ_WRITE) == MODE_READ_ONLY) { FileInputStream in = new FileInputStream(f); return new ParcelFileDescriptor(in.getFD(), in, f); }
+            if ((mode & MODE_READ_WRITE) == MODE_WRITE_ONLY) { FileOutputStream out = new FileOutputStream(f, (mode & MODE_APPEND) != 0); return new ParcelFileDescriptor(out.getFD(), out, f); }
+            RandomAccessFile raf = new RandomAccessFile(f, "rw");
+            if ((mode & MODE_TRUNCATE) != 0) raf.setLength(0);
+            return new ParcelFileDescriptor(raf.getFD(), raf, f);
+        } catch (FileNotFoundException e) { throw e; } catch (IOException e) { throw new FileNotFoundException(e.toString()); }
+    }
+    public static ParcelFileDescriptor dup(FileDescriptor fd) throws IOException { return new ParcelFileDescriptor(fd, null, null); }
+    public static ParcelFileDescriptor fromFd(int fd) throws IOException { FileDescriptor f = new FileDescriptor(); try { java.lang.reflect.Field d = FileDescriptor.class.getDeclaredField("descriptor"); d.setAccessible(true); d.setInt(f, fd); } catch (Exception e) {} return new ParcelFileDescriptor(f, null, null); }
+    public static ParcelFileDescriptor adoptFd(int fd) { try { return fromFd(fd); } catch (IOException e) { return null; } }
+    public static ParcelFileDescriptor[] createPipe() throws IOException { throw new IOException("pipes are not supported"); }
+    public static ParcelFileDescriptor[] createReliablePipe() throws IOException { return createPipe(); }
+    public ParcelFileDescriptor dup() throws IOException { return new ParcelFileDescriptor(mFd, null, mFile); }
+    public FileDescriptor getFileDescriptor() { return mFd; }
+    public int getFd() { try { java.lang.reflect.Field d = FileDescriptor.class.getDeclaredField("descriptor"); d.setAccessible(true); return d.getInt(mFd); } catch (Exception e) { return -1; } }
+    public int detachFd() { return getFd(); }
+    public long getStatSize() { return mFile != null ? mFile.length() : -1; }
+    public void close() throws IOException { if (mOwner != null) mOwner.close(); }
+    public void closeWithError(String msg) throws IOException { close(); }
+    public void checkError() throws IOException {}
+    public int describeContents() { return CONTENTS_FILE_DESCRIPTOR; }
+    public static class AutoCloseInputStream extends FileInputStream {
+        private final ParcelFileDescriptor mPfd;
+        public AutoCloseInputStream(ParcelFileDescriptor p) { super(p.getFileDescriptor()); mPfd = p; }
+        @Override public void close() throws IOException { try { super.close(); } finally { mPfd.close(); } }
+    }
+    public static class AutoCloseOutputStream extends FileOutputStream {
+        private final ParcelFileDescriptor mPfd;
+        public AutoCloseOutputStream(ParcelFileDescriptor p) { super(p.getFileDescriptor()); mPfd = p; }
+        @Override public void close() throws IOException { try { super.close(); } finally { mPfd.close(); } }
+    }
+}

@@ -4,12 +4,12 @@ import java.io.*;
 import java.util.*;
 
 /** SharedPreferences kept in a file of typed lines ("i key value"), written on every commit. */
-final class HuskSharedPreferences implements SharedPreferences {
+public final class HuskSharedPreferences implements SharedPreferences {
     private final File file;
     private final HashMap<String, Object> map = new HashMap<>();
     private final ArrayList<OnSharedPreferenceChangeListener> listeners = new ArrayList<>();
 
-    HuskSharedPreferences(File f) { file = f; load(); }
+    public HuskSharedPreferences(File f) { file = f; load(); }
 
     private static String esc(String s) { return s.replace("\\", "\\\\").replace("\n", "\\n"); }
     private static String unesc(String s) {

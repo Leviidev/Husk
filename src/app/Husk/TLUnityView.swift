@@ -101,10 +101,18 @@ final class TLUnityUIView: UIView, UIKeyInput {
             TLUnityUIView.cocosView = self
             TLUnityUIView.installGameActivityKeyboardHandler()
         } else if engine == .java {
+            TLUnityUIView.cocosView = self
+            TLUnityUIView.installJavaHandlers()
             // Android's back gesture: a swipe in from the left edge.
             let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
             back.edges = .left
             addGestureRecognizer(back)
+            // The keyboard covers the bottom of the app: its views are told (an adjustResize window shrinks above it).
+            for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                    self?.keyboardMoved(note)
+                }
+            }
         } else if engine == .flutter {
             TLUnityUIView.cocosView = self
             TLUnityUIView.installFlutterHandlers()
@@ -139,6 +147,12 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let hiding = note.name == UIResponder.keyboardWillHideNotification
         let mine = convert(bounds, to: window)
         let covered = hiding ? 0 : max(0, mine.maxY - window.convert(end, from: nil).minY)
+        if engine == .java {
+            let k = contentScaleFactor, inset = windowed ? UIEdgeInsets.zero : window.safeAreaInsets
+            husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32((covered * k).rounded()))
+            if hiding, isFirstResponder == false { husk_java_keyboard_closed() }
+            return
+        }
         husk_flutter_set_keyboard_inset(Int32((covered * contentScaleFactor).rounded()))
     }
 
@@ -254,6 +268,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
         case .java:
             // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
+            // The notch and the home indicator, in surface pixels: the app's window keeps its content out of them.
+            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
+                let k = contentScaleFactor
+                husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
+            }
             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:
@@ -274,7 +293,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     /// A game asks for the keyboard when its text field is tapped. The keyboard belongs to this view; what it types goes
     /// to the game, and a strip above the keyboard shows the text, because in landscape the keyboard covers the game's field.
-    override var canBecomeFirstResponder: Bool { engine == .cocos || engine == .sdl || engine == .minecraft || engine == .flutter }
+    override var canBecomeFirstResponder: Bool { engine == .cocos || engine == .sdl || engine == .minecraft || engine == .flutter || engine == .java }
     var hasText: Bool { true }
     var autocorrectionType: UITextAutocorrectionType = .no
     var autocapitalizationType: UITextAutocapitalizationType = .none
@@ -314,6 +333,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override var inputAccessoryView: UIView? { engine == .cocos || engine == .sdl || engine == .minecraft ? keyboardBar : nil }
 
     func insertText(_ text: String) {
+        if engine == .java {
+            // The app's own text field shows what is typed; Return is the field's action (a new line in a multi-line one).
+            if text == "\n" { husk_java_text_action() } else { husk_java_insert_text(text) }
+            return
+        }
         if engine == .flutter {
             // Flutter's field draws the text itself: no strip over the keyboard, and Return is the field's action.
             if text == "\n", !husk_flutter_text_multiline() { husk_flutter_text_action() } else { husk_flutter_insert_text(text) }
@@ -326,6 +350,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     }
 
     func deleteBackward() {
+        if engine == .java { husk_java_delete_backward(); return }
         if engine == .flutter { husk_flutter_delete_backward(); return }
         if !typed.isEmpty { typed.removeLast() }
         typedLabel.text = typed
@@ -368,6 +393,58 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_flutter_set_close_handler {
             DispatchQueue.main.async { NotificationCenter.default.post(name: TLUnityUIView.appClosedItself, object: nil) }
         }
+    }
+
+    /// A Java app's views (Husk's framework): a focused text field asks for the keyboard with Android's EditorInfo input type and
+    /// IME options; the clipboard is the iPhone's; sharing opens the share sheet.
+    static func installJavaHandlers() {
+        husk_java_set_host({ show, inputType, imeOptions in
+            DispatchQueue.main.async {
+                guard let view = TLUnityUIView.cocosView, view.engine == .java else { return }
+                guard show != 0 else { view.resignFirstResponder(); return }
+                let cls = inputType & 0xF, variation = inputType & 0xFF0
+                switch cls {
+                case 2: view.keyboardType = variation == 0x10 ? .numberPad : .decimalPad           // number (password: digits only)
+                case 3: view.keyboardType = .phonePad
+                case 4: view.keyboardType = .numbersAndPunctuation
+                default: view.keyboardType = variation == 0x20 || variation == 0xD0 ? .emailAddress : variation == 0x10 ? .URL : .default
+                }
+                view.isSecureTextEntry = (cls == 1 && (variation == 0x80 || variation == 0xE0)) || (cls == 2 && variation == 0x10)
+                let multiLine = cls == 1 && inputType & 0x20000 != 0
+                switch imeOptions & 0xFF {
+                case 2: view.returnKeyType = .go
+                case 3: view.returnKeyType = .search
+                case 4: view.returnKeyType = .send
+                case 5: view.returnKeyType = .next
+                default: view.returnKeyType = multiLine ? .default : .done
+                }
+                let caps = inputType & 0x7000
+                view.autocapitalizationType = cls != 1 || view.isSecureTextEntry ? .none : caps & 0x1000 != 0 ? .allCharacters : caps & 0x2000 != 0 ? .words : caps & 0x4000 != 0 ? .sentences : .none
+                view.autocorrectionType = cls == 1 && inputType & 0x8000 != 0 ? .yes : .no
+                if view.isFirstResponder { view.reloadInputViews() } else { view.becomeFirstResponder() }
+            }
+        }, { text in
+            guard let text else { return }
+            let s = String(cString: text)
+            DispatchQueue.main.async { UIPasteboard.general.string = s }
+        }, {
+            guard let s = UIPasteboard.general.string else { return nil }
+            return strdup(s)
+        }, { text in
+            guard let text else { return }
+            let s = String(cString: text)
+            DispatchQueue.main.async {
+                guard let view = TLUnityUIView.cocosView, let root = view.window?.rootViewController else { return }
+                var top = root
+                while let p = top.presentedViewController { top = p }
+                let sheet = UIActivityViewController(activityItems: [s], applicationActivities: nil)
+                sheet.popoverPresentationController?.sourceView = view
+                sheet.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+                top.present(sheet, animated: true)
+            }
+        }, { orientation in
+            HuskLog.log("tl", "java: the app asks for orientation \(orientation)")
+        })
     }
 
     /// A Flutter app closed itself (back on its first screen): whatever shows it closes.

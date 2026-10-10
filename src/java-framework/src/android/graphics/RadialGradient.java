@@ -1,0 +1,7 @@
+package android.graphics;
+public class RadialGradient extends Shader {
+    public RadialGradient(float cx, float cy, float r, int[] colors, float[] stops, TileMode tile) { mNative = husk.Gfx.shRadial(cx, cy, r, colors, stops, tile(tile)); }
+    public RadialGradient(float cx, float cy, float r, int c0, int c1, TileMode tile) { this(cx, cy, r, new int[] { c0, c1 }, null, tile); }
+    public RadialGradient(float cx, float cy, float r, long[] colors, float[] stops, TileMode tile) { this(cx, cy, r, Color.huskInts(colors), stops, tile); }
+    public RadialGradient(float cx, float cy, float r, long c0, long c1, TileMode tile) { this(cx, cy, r, Color.toArgb(c0), Color.toArgb(c1), tile); }
+}

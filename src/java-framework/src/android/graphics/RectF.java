@@ -1,2 +1,45 @@
 package android.graphics;
-public class RectF { public float left, top, right, bottom; public RectF() {} public RectF(float l, float t, float r, float b) { left = l; top = t; right = r; bottom = b; } public float width() { return right - left; } public float height() { return bottom - top; } }
+
+public class RectF {
+    public float left, top, right, bottom;
+    public RectF() {}
+    public RectF(float l, float t, float r, float b) { set(l, t, r, b); }
+    public RectF(RectF o) { if (o != null) set(o); }
+    public RectF(Rect o) { if (o != null) set(o); }
+    public final void set(float l, float t, float r, float b) { left = l; top = t; right = r; bottom = b; }
+    public final void set(RectF o) { set(o.left, o.top, o.right, o.bottom); }
+    public final void set(Rect o) { set(o.left, o.top, o.right, o.bottom); }
+    public void setEmpty() { left = top = right = bottom = 0; }
+    public final float width() { return right - left; }
+    public final float height() { return bottom - top; }
+    public final float centerX() { return (left + right) * 0.5f; }
+    public final float centerY() { return (top + bottom) * 0.5f; }
+    public final boolean isEmpty() { return left >= right || top >= bottom; }
+    public boolean contains(float x, float y) { return left < right && top < bottom && x >= left && x < right && y >= top && y < bottom; }
+    public boolean contains(float l, float t, float r, float b) { return left < right && top < bottom && left <= l && top <= t && right >= r && bottom >= b; }
+    public boolean contains(RectF r) { return contains(r.left, r.top, r.right, r.bottom); }
+    public void offset(float dx, float dy) { left += dx; right += dx; top += dy; bottom += dy; }
+    public void offsetTo(float x, float y) { right += x - left; bottom += y - top; left = x; top = y; }
+    public void inset(float dx, float dy) { left += dx; top += dy; right -= dx; bottom -= dy; }
+    public boolean intersect(float l, float t, float r, float b) {
+        if (left < r && l < right && top < b && t < bottom) { if (left < l) left = l; if (top < t) top = t; if (right > r) right = r; if (bottom > b) bottom = b; return true; }
+        return false;
+    }
+    public boolean intersect(RectF r) { return intersect(r.left, r.top, r.right, r.bottom); }
+    public boolean setIntersect(RectF a, RectF b) { if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) { set(Math.max(a.left, b.left), Math.max(a.top, b.top), Math.min(a.right, b.right), Math.min(a.bottom, b.bottom)); return true; } return false; }
+    public boolean intersects(float l, float t, float r, float b) { return left < r && l < right && top < b && t < bottom; }
+    public static boolean intersects(RectF a, RectF b) { return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom; }
+    public void union(float l, float t, float r, float b) {
+        if (l >= r || t >= b) return;
+        if (left < right && top < bottom) { if (left > l) left = l; if (top > t) top = t; if (right < r) right = r; if (bottom < b) bottom = b; }
+        else set(l, t, r, b);
+    }
+    public void union(RectF r) { union(r.left, r.top, r.right, r.bottom); }
+    public void union(float x, float y) { if (x < left) left = x; else if (x > right) right = x; if (y < top) top = y; else if (y > bottom) bottom = y; }
+    public void sort() { if (left > right) { float t = left; left = right; right = t; } if (top > bottom) { float t = top; top = bottom; bottom = t; } }
+    public void round(Rect dst) { dst.set(Math.round(left), Math.round(top), Math.round(right), Math.round(bottom)); }
+    public void roundOut(Rect dst) { dst.set((int) Math.floor(left), (int) Math.floor(top), (int) Math.ceil(right), (int) Math.ceil(bottom)); }
+    @Override public boolean equals(Object o) { if (!(o instanceof RectF)) return false; RectF r = (RectF) o; return left == r.left && top == r.top && right == r.right && bottom == r.bottom; }
+    @Override public int hashCode() { return Float.floatToIntBits(left) * 31 + Float.floatToIntBits(top) * 17 + Float.floatToIntBits(right) * 7 + Float.floatToIntBits(bottom); }
+    @Override public String toString() { return "RectF(" + left + ", " + top + ", " + right + ", " + bottom + ")"; }
+}

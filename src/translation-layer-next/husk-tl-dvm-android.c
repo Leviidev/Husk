@@ -30,7 +30,7 @@ void *tl_nwindow_get(void);
 
 static struct {
     tl_javaapp_config cfg;
-    char apk[1024], data[512], ext[512], pkg[200], activity[260], frame_dir[512], angle_egl[600], angle_gles[600];
+    char apk[1024], data[512], ext[512], pkg[200], activity[260], application[260], frame_dir[512], angle_egl[600], angle_gles[600];
     pthread_mutex_t q_lock;
     int32_t q[4096]; int qn;                    /* packed input events: phase, id, x bits, y bits */
     atomic_ulong frames;
@@ -40,7 +40,12 @@ static struct {
     pthread_t gl_thread;
     bool gl_started;
     jobj *content;
-} A = { .q_lock = PTHREAD_MUTEX_INITIALIZER };
+    char fwres[1024];
+    tl_zip fwres_zip; bool fwres_tried, fwres_ok;
+    pthread_mutex_t t_lock;
+    char **text; int ntext, ctext;              /* typed text waiting for Native.pollText: "t<text>", "d", "e", "h" */
+    int insets[5];                              /* left, top, right, bottom, keyboard */
+} A = { .q_lock = PTHREAD_MUTEX_INITIALIZER, .t_lock = PTHREAD_MUTEX_INITIALIZER };
 
 static jvalue L(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue I(int32_t i) { jvalue v; v.j = (uint32_t)i; return v; }
@@ -279,15 +284,129 @@ NAT(N_pollInput)
     return true;
 }
 
+/* ---- files in the APKs: 0 the app's, 1 the platform's resources, 2.. the app's splits */
+static const tl_zip *apk_n(int n, const char **path)
+{
+    if (path) *path = NULL;
+    if (n == 0) { if (path) *path = A.apk; return tl_ld_apk_at(0); }
+    if (n == 1) {
+        if (!A.fwres_tried) {
+            A.fwres_tried = true;
+            char err[160];
+            if (A.fwres[0]) A.fwres_ok = tl_zip_open(&A.fwres_zip, A.fwres, err, sizeof(err));
+            if (!A.fwres_ok) tl_log_line("javaapp: no platform resources (%s): %s", A.fwres[0] ? A.fwres : "none given", A.fwres[0] ? err : "-");
+        }
+        if (path) *path = A.fwres;
+        return A.fwres_ok ? &A.fwres_zip : NULL;
+    }
+    return tl_ld_apk_at(n - 1);
+}
+NAT(N_readApkFile)
+{
+    (void)self;
+    const char *n = tl_jni_string(a[1].l);
+    const tl_zip *z = apk_n(a[0].i, NULL);
+    const tl_zip_entry *e = z && n ? tl_zip_find(z, n) : NULL;
+    if (!e) { *ret = L(NULL); return true; }
+    const uint8_t *d; size_t len; bool owned; char err[160];
+    if (!tl_zip_data(z, e, (size_t)1 << 30, &d, &len, &owned, err, sizeof(err))) { *ret = L(NULL); return true; }
+    jobj *arr = tl_jni_new_prim_array('B', (uint32_t)len);
+    arr->refs = 1u << 30;
+    memcpy(arr->arr.data, d, len);
+    if (owned) free((void *)d);
+    *ret = L(arr);
+    return true;
+}
+NAT(N_apkFileFd)
+{
+    (void)self;
+    const char *n = tl_jni_string(a[1].l), *path;
+    const tl_zip *z = apk_n(a[0].i, &path);
+    const tl_zip_entry *e = z && n ? tl_zip_find(z, n) : NULL;
+    if (!e || e->method != 0) { *ret = J(-1); return true; }
+    const uint8_t *lh = z->map + e->local_offset;
+    uint64_t data = e->local_offset + 30 + (lh[26] | lh[27] << 8) + (lh[28] | lh[29] << 8);
+    int fd = path && path[0] ? open(path, O_RDONLY) : dup(z->fd);
+    *ret = J(fd < 0 ? -1 : ((int64_t)fd << 40) | (int64_t)data);
+    return true;
+}
+NAT(N_apkFileLength)
+{
+    (void)self;
+    const char *n = tl_jni_string(a[1].l);
+    const tl_zip *z = apk_n(a[0].i, NULL);
+    const tl_zip_entry *e = z && n ? tl_zip_find(z, n) : NULL;
+    *ret = J(e ? (int64_t)e->usize : -1);
+    return true;
+}
+NAT(N_apkPath) { (void)self; (void)a; *ret = L(jstr(A.apk)); return true; }
+
+/* ---- the host keyboard, clipboard, share sheet, orientation, insets */
+static void text_push(const char *kind, const char *utf8)
+{
+    pthread_mutex_lock(&A.t_lock);
+    if (A.ntext == A.ctext) { A.ctext = A.ctext ? A.ctext * 2 : 16; A.text = realloc(A.text, (size_t)A.ctext * sizeof(*A.text)); }
+    size_t l = strlen(kind) + (utf8 ? strlen(utf8) : 0) + 1;
+    char *e = malloc(l);
+    snprintf(e, l, "%s%s", kind, utf8 ? utf8 : "");
+    A.text[A.ntext++] = e;
+    pthread_mutex_unlock(&A.t_lock);
+    tl_javaapp_touch(7, 0, 0, 0);
+}
+void tl_javaapp_text(const char *utf8) { if (utf8 && *utf8) text_push("t", utf8); }
+void tl_javaapp_text_delete(void) { text_push("d", NULL); }
+void tl_javaapp_text_action(void) { text_push("e", NULL); }
+void tl_javaapp_keyboard_closed(void) { text_push("h", NULL); }
+void tl_javaapp_set_insets(int l, int t, int r, int b, int ime)
+{
+    A.insets[0] = l; A.insets[1] = t; A.insets[2] = r; A.insets[3] = b; A.insets[4] = ime;
+    tl_javaapp_touch(8, 0, 0, 0);
+}
+NAT(N_pollText)
+{
+    (void)self; (void)a;
+    pthread_mutex_lock(&A.t_lock);
+    int n = A.ntext;
+    if (!n) { pthread_mutex_unlock(&A.t_lock); *ret = L(NULL); return true; }
+    jobj *arr = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), (uint32_t)n);
+    arr->cls = tl_jni_class("[Ljava/lang/String;");
+    arr->refs = 1u << 30;
+    for (int i = 0; i < n; i++) { arr->oarr.v[i] = jstr(A.text[i]); free(A.text[i]); }
+    A.ntext = 0;
+    pthread_mutex_unlock(&A.t_lock);
+    *ret = L(arr);
+    return true;
+}
+NAT(N_showKeyboard) { (void)self; (void)ret; if (A.cfg.show_keyboard) A.cfg.show_keyboard(a[0].i != 0, a[1].i, a[2].i); else tl_log_line("javaapp: the app asked for the keyboard (%s)", a[0].i ? "show" : "hide"); return true; }
+NAT(N_setClipboard) { (void)self; (void)ret; const char *t = tl_jni_string(a[0].l); if (A.cfg.set_clipboard) A.cfg.set_clipboard(t ? t : ""); return true; }
+NAT(N_getClipboard)
+{
+    (void)self; (void)a;
+    char *t = A.cfg.get_clipboard ? A.cfg.get_clipboard() : NULL;
+    *ret = L(t ? jstr(t) : NULL);
+    free(t);
+    return true;
+}
+NAT(N_share) { (void)self; (void)ret; const char *t = tl_jni_string(a[0].l); tl_log_line("javaapp: share %.80s", t ? t : ""); if (A.cfg.share && t) A.cfg.share(t); return true; }
+NAT(N_setOrientation) { (void)self; (void)ret; if (A.cfg.set_orientation) A.cfg.set_orientation(a[0].i); return true; }
+NAT(N_insets)
+{
+    (void)self; (void)a;
+    jobj *arr = tl_jni_new_prim_array('I', 5);
+    arr->refs = 1u << 30;
+    memcpy(arr->arr.data, A.insets, sizeof(A.insets));
+    *ret = L(arr);
+    return true;
+}
+
 static void *gl_main(void *arg);
 NAT(N_startGL)
 {
     (void)self; (void)ret;
     if (A.gl_started) return true;
-    A.gl_view = a[0].l; A.gl_renderer = a[1].l; A.gl_version = a[2].i;
+    A.gl_version = a[2].i; A.gl_view = a[0].l;
     A.gl_started = true;
-    pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 64u << 20);
-    pthread_create(&A.gl_thread, &at, gl_main, NULL);
+    A.gl_renderer = a[1].l;                 /* the render thread picks it up */
     return true;
 }
 
@@ -311,12 +430,25 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "openUrl", "(Ljava/lang/String;)V", N_openUrl },
     { "exit", "()V", N_exit },
     { "uptimeNanos", "()J", N_uptimeNanos },
+    { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
+    { "apkFileFd", "(ILjava/lang/String;)J", N_apkFileFd },
+    { "apkFileLength", "(ILjava/lang/String;)J", N_apkFileLength },
+    { "apkPath", "()Ljava/lang/String;", N_apkPath },
+    { "pollText", "()[Ljava/lang/String;", N_pollText },
+    { "showKeyboard", "(ZII)V", N_showKeyboard },
+    { "setClipboard", "(Ljava/lang/String;)V", N_setClipboard },
+    { "getClipboard", "()Ljava/lang/String;", N_getClipboard },
+    { "share", "(Ljava/lang/String;)V", N_share },
+    { "setOrientation", "(I)V", N_setOrientation },
+    { "insets", "()[I", N_insets },
     { NULL, NULL, NULL },
 };
 
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig);
+dvm_native_fn tl_gfx_native(const char *name, const char *sig);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
+    if (!strcmp(cls, "husk/Gfx")) return tl_gfx_native(name, sig);
     if (!strcmp(cls, "husk/Native")) {
         for (int i = 0; k_native[i].name; i++) if (!strcmp(k_native[i].name, name) && !strcmp(k_native[i].sig, sig)) return k_native[i].fn;
     } else if (!strcmp(cls, "android/opengl/GLES20")) {
@@ -341,6 +473,102 @@ static void log_pending(const char *where)
     tl_jni_clear();
 }
 
+/* ---- the view system's frame, drawn over whatever the app's GL drew (its own context, so the app's GL state is never touched) */
+
+bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any);
+void tl_ui_frame_done(void);
+bool tl_ui_has_frame(void);
+
+typedef struct {
+    uint32_t prog, tex, vbo;
+    int tw, th;
+} overlay;
+
+static uint32_t ov_shader(uint32_t kind, const char *src)
+{
+    uint32_t (*create)(uint32_t) = gl_fn("glCreateShader");
+    void (*source)(uint32_t, int32_t, const char *const *, const int32_t *) = gl_fn("glShaderSource");
+    void (*compile)(uint32_t) = gl_fn("glCompileShader");
+    uint32_t sh = create(kind);
+    source(sh, 1, &src, NULL);
+    compile(sh);
+    return sh;
+}
+
+static void ov_init(overlay *o)
+{
+    static const char *vs = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    static const char *fs = "precision mediump float; uniform sampler2D s; varying vec2 t; void main() { gl_FragColor = texture2D(s, t); }";
+    uint32_t (*createProgram)(void) = gl_fn("glCreateProgram");
+    void (*attach)(uint32_t, uint32_t) = gl_fn("glAttachShader");
+    void (*bindAttrib)(uint32_t, uint32_t, const char *) = gl_fn("glBindAttribLocation");
+    void (*link)(uint32_t) = gl_fn("glLinkProgram");
+    void (*genTex)(int32_t, uint32_t *) = gl_fn("glGenTextures");
+    void (*genBuf)(int32_t, uint32_t *) = gl_fn("glGenBuffers");
+    void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
+    void (*bufData)(uint32_t, intptr_t, const void *, uint32_t) = gl_fn("glBufferData");
+    o->prog = createProgram();
+    attach(o->prog, ov_shader(0x8B31, vs));
+    attach(o->prog, ov_shader(0x8B30, fs));
+    bindAttrib(o->prog, 0, "p");
+    link(o->prog);
+    genTex(1, &o->tex);
+    static const float quad[] = { -1, -1, 1, -1, -1, 1, 1, 1 };
+    genBuf(1, &o->vbo);
+    bindBuf(0x8892, o->vbo);
+    bufData(0x8892, sizeof(quad), quad, 0x88E4);
+}
+
+static void ov_upload(overlay *o, const uint8_t *px, int w, int h)
+{
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*texParam)(uint32_t, uint32_t, int32_t) = gl_fn("glTexParameteri");
+    void (*texImage)(uint32_t, int32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, uint32_t, const void *) = gl_fn("glTexImage2D");
+    void (*texSub)(uint32_t, int32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, uint32_t, const void *) = gl_fn("glTexSubImage2D");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    void (*pixelStore)(uint32_t, int32_t) = gl_fn("glPixelStorei");
+    activeTex(0x84C0);
+    bindTex(0x0DE1, o->tex);
+    pixelStore(0x0CF5, 4);
+    if (o->tw != w || o->th != h) {
+        texParam(0x0DE1, 0x2801, 0x2601); texParam(0x0DE1, 0x2800, 0x2601);
+        texParam(0x0DE1, 0x2802, 0x812F); texParam(0x0DE1, 0x2803, 0x812F);
+        texImage(0x0DE1, 0, 0x1908, w, h, 0, 0x1908, 0x1401, px);
+        o->tw = w; o->th = h;
+    } else texSub(0x0DE1, 0, 0, 0, w, h, 0x1908, 0x1401, px);
+}
+
+static void ov_draw(overlay *o, int vw, int vh)
+{
+    void (*viewport)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glViewport");
+    void (*useProgram)(uint32_t) = gl_fn("glUseProgram");
+    void (*enable)(uint32_t) = gl_fn("glEnable");
+    void (*disable)(uint32_t) = gl_fn("glDisable");
+    void (*blendFunc)(uint32_t, uint32_t) = gl_fn("glBlendFunc");
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
+    void (*attrPtr)(uint32_t, int32_t, uint32_t, uint8_t, int32_t, const void *) = gl_fn("glVertexAttribPointer");
+    void (*enableAttr)(uint32_t) = gl_fn("glEnableVertexAttribArray");
+    void (*draw)(uint32_t, int32_t, int32_t) = gl_fn("glDrawArrays");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    if (!o->tw) return;
+    viewport(0, 0, vw, vh);
+    disable(0x0B71); disable(0x0B44); disable(0x0C11); disable(0x0B90);    /* depth, cull, scissor, stencil */
+    enable(0x0BE2);
+    blendFunc(1, 0x0303);                                                  /* premultiplied: ONE, ONE_MINUS_SRC_ALPHA */
+    useProgram(o->prog);
+    activeTex(0x84C0);
+    bindTex(0x0DE1, o->tex);
+    bindBuf(0x8892, o->vbo);
+    attrPtr(0, 2, 0x1406, 0, 0, NULL);
+    enableAttr(0);
+    draw(0x0005, 0, 4);
+}
+
+/*
+ * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
+ * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
+ */
 static void *gl_main(void *arg)
 {
     (void)arg;
@@ -359,39 +587,73 @@ static void *gl_main(void *arg)
     EGLint major = 0, minor = 0;
     initialize(dpy, &major, &minor);
     bindAPI(0x30A0);
-    int es = A.gl_version >= 3 ? 3 : 2;
-    const EGLint want[] = { 0x3040, es >= 3 ? 0x40 : 0x4, 0x3033, 0x4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
     EGLConfig cfg = NULL; EGLint ncfg = 0;
-    if (!chooseConfig(dpy, want, &cfg, 1, &ncfg) || ncfg < 1) { tl_log_line("javaapp: no EGL config"); return NULL; }
-    const EGLint ctx_attr[] = { 0x3098, es, EGL_NONE };
-    EGLContext ctx = createContext(dpy, cfg, NULL, ctx_attr);
+    const EGLint want3[] = { 0x3040, 0x40, 0x3033, 0x4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
+    const EGLint want2[] = { 0x3040, 0x4, 0x3033, 0x4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
+    bool es3 = chooseConfig(dpy, want3, &cfg, 1, &ncfg) && ncfg >= 1;
+    if (!es3 && (!chooseConfig(dpy, want2, &cfg, 1, &ncfg) || ncfg < 1)) { tl_log_line("javaapp: no EGL config"); return NULL; }
+    const EGLint ui_attr[] = { 0x3098, 2, EGL_NONE };
+    EGLContext ui = createContext(dpy, cfg, NULL, ui_attr), app = NULL;
     EGLSurface surf = createWindowSurface(dpy, cfg, tl_nwindow_get(), NULL);
-    if (!ctx || !surf || !makeCurrent(dpy, surf, surf, ctx)) { tl_log_line("javaapp: no GL context"); return NULL; }
+    if (!ui || !surf || !makeCurrent(dpy, surf, surf, ui)) { tl_log_line("javaapp: no GL context"); return NULL; }
     if (swapInterval) swapInterval(dpy, 1);
-    tl_log_line("javaapp: GL ES %d context ready, %dx%d", es, A.cfg.width, A.cfg.height);
+    overlay ov = { 0 };
+    ov_init(&ov);
+    void (*clearColor)(float, float, float, float) = gl_fn("glClearColor");
+    void (*clear)(uint32_t) = gl_fn("glClear");
+    tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
 
-    /* the GL10 and EGLConfig a renderer is handed */
-    jobj *gl10 = dvm_new_object(dvm_class_named("android/opengl/HuskGL10"));
-    dvm_slots(gl10);
-    tl_jclass *cfgc = dvm_class_named("javax/microedition/khronos/egl/HuskEGL$Config");
-    jobj *eglcfg = cfgc ? dvm_new_object(cfgc) : NULL;
-    if (eglcfg) dvm_slots(eglcfg);
-    jvalue p2[2] = { L(gl10), L(eglcfg) };
-    tl_jni_call(A.gl_renderer, "onSurfaceCreated", "(Ljavax/microedition/khronos/opengles/GL10;Ljavax/microedition/khronos/egl/EGLConfig;)V", p2);
-    if (tl_jni_pending()) log_pending("onSurfaceCreated");
-    jvalue p3[3] = { L(gl10), I(A.cfg.width), I(A.cfg.height) };
-    tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
-    if (tl_jni_pending()) log_pending("onSurfaceChanged");
-
+    jobj *gl10 = NULL;
+    jvalue p1[1];
     int64_t next = now_ns();
-    jvalue p1[1] = { L(gl10) };
     while (!atomic_load(&A.ended)) {
         if (atomic_load(&A.paused)) { usleep(20000); next = now_ns(); continue; }
-        jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
-        if (tl_jni_pending()) log_pending("a queued GL event");
-        if (draw.z || atomic_exchange(&A.render_requested, false)) {
-            tl_jni_call(A.gl_renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
-            if (tl_jni_pending()) log_pending("onDrawFrame");
+        bool drew = false;
+        /* the app's renderer, once its GLSurfaceView is on screen */
+        if (A.gl_renderer && !app) {
+            int es = A.gl_version >= 3 && es3 ? 3 : 2;
+            const EGLint attr[] = { 0x3098, es, EGL_NONE };
+            app = createContext(dpy, cfg, NULL, attr);
+            if (!app || !makeCurrent(dpy, surf, surf, app)) { tl_log_line("javaapp: no GL ES %d context for the app", es); A.gl_renderer = NULL; app = NULL; }
+            else {
+                tl_log_line("javaapp: the app's GL ES %d context is ready", es);
+                gl10 = dvm_new_object(dvm_class_named("android/opengl/HuskGL10"));
+                dvm_slots(gl10);
+                tl_jclass *cfgc = dvm_class_named("javax/microedition/khronos/egl/HuskEGL$Config");
+                jobj *eglcfg = cfgc ? dvm_new_object(cfgc) : NULL;
+                if (eglcfg) dvm_slots(eglcfg);
+                jvalue p2[2] = { L(gl10), L(eglcfg) };
+                tl_jni_call(A.gl_renderer, "onSurfaceCreated", "(Ljavax/microedition/khronos/opengles/GL10;Ljavax/microedition/khronos/egl/EGLConfig;)V", p2);
+                if (tl_jni_pending()) log_pending("onSurfaceCreated");
+                jvalue p3[3] = { L(gl10), I(A.cfg.width), I(A.cfg.height) };
+                tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
+                if (tl_jni_pending()) log_pending("onSurfaceChanged");
+                p1[0] = L(gl10);
+            }
+        }
+        const uint8_t *px; int fw, fh; bool any;
+        bool fresh = tl_ui_frame_take(&px, &fw, &fh, &any);
+        if (fresh) {
+            makeCurrent(dpy, surf, surf, ui);
+            if (any) ov_upload(&ov, px, fw, fh);
+            else ov.tw = ov.th = 0;
+            tl_ui_frame_done();
+        }
+        if (app) {
+            makeCurrent(dpy, surf, surf, app);
+            jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
+            if (tl_jni_pending()) log_pending("a queued GL event");
+            /* a new frame of views needs the scene under it again: what was swapped is gone */
+            if (draw.z || fresh || atomic_exchange(&A.render_requested, false)) {
+                tl_jni_call(A.gl_renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
+                if (tl_jni_pending()) log_pending("onDrawFrame");
+                drew = true;
+            }
+        }
+        if (drew || fresh) {
+            makeCurrent(dpy, surf, surf, ui);
+            if (!app) { clearColor(0, 0, 0, 1); clear(0x4000); }
+            if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);
         }
@@ -428,14 +690,15 @@ static bool pool_str(const uint8_t *pool, size_t sz, uint32_t idx, char *out, si
 }
 
 /* The launcher activity and package, from the binary manifest. */
-bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an)
+bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an, char *application, size_t apn)
 {
     tl_zip z; char err[160];
     if (!tl_zip_open(&z, apk, err, sizeof(err))) return false;
     bool ok = false;
     const tl_zip_entry *e = tl_zip_find(&z, "AndroidManifest.xml");
     const uint8_t *d; size_t len; bool owned = false;
-    char act[260] = "", found[260] = "";
+    char act[260] = "", found[260] = "", app[260] = "";
+    if (application && apn) application[0] = 0;
     if (e && tl_zip_data(&z, e, 8u << 20, &d, &len, &owned, err, sizeof(err)) && len > 8 && rd16le(d) == 0x0003) {
         const uint8_t *pool = NULL; size_t psz = 0;
         for (size_t off = rd16le(d + 2); off + 8 <= len; ) {
@@ -453,6 +716,7 @@ bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, 
                     if (!pool_str(pool, psz, rd32le(at + 4), an2, sizeof(an2))) continue;
                     if (rd32le(at + 8) != 0xFFFFFFFFu) pool_str(pool, psz, rd32le(at + 8), av, sizeof(av));
                     if (!strcmp(name, "manifest") && !strcmp(an2, "package")) snprintf(pkg, pn, "%s", av);
+                    if (!strcmp(name, "application") && !strcmp(an2, "name")) snprintf(app, sizeof(app), "%s", av);
                     if ((!strcmp(name, "activity") || !strcmp(name, "activity-alias")) && !strcmp(an2, "name")) snprintf(act, sizeof(act), "%s", av);
                     if (!strcmp(name, "activity-alias") && !strcmp(an2, "targetActivity")) snprintf(act, sizeof(act), "%s", av);
                     if (!strcmp(name, "category") && !strcmp(an2, "name") && !strcmp(av, "android.intent.category.LAUNCHER") && act[0] && !found[0]) snprintf(found, sizeof(found), "%s", act);
@@ -467,6 +731,12 @@ bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, 
         else snprintf(activity, an, "%s", found);
         ok = true;
     }
+    /* the app's Application subclass, created and its onCreate run before any activity */
+    if (app[0] && application && apn) {
+        if (app[0] == '.') snprintf(application, apn, "%s%s", pkg, app);
+        else if (!strchr(app, '.')) snprintf(application, apn, "%s.%s", pkg, app);
+        else snprintf(application, apn, "%s", app);
+    }
     if (owned) free((void *)d);
     tl_zip_close(&z);
     return ok;
@@ -476,9 +746,9 @@ static void *app_main(void *arg)
 {
     (void)arg;
     pthread_setname_np("main");
-    jvalue a = L(dvm_new_string_utf8(A.activity));
+    jvalue a[2] = { L(dvm_new_string_utf8(A.activity)), L(A.application[0] ? dvm_new_string_utf8(A.application) : NULL) };
     jvalue r;
-    if (!tl_dvm_call_static("husk/AppRunner", "run", "(Ljava/lang/String;)V", &a, &r)) {
+    if (!tl_dvm_call_static("husk/AppRunner", "run", "(Ljava/lang/String;Ljava/lang/String;)V", a, &r)) {
         char buf[800];
         tl_log_line("javaapp: the app's main thread ended with %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
         atomic_store(&A.ended, true);
@@ -492,17 +762,20 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     snprintf(A.apk, sizeof(A.apk), "%s", cfg->apk_path);
     snprintf(A.data, sizeof(A.data), "%s", cfg->data_dir);
     snprintf(A.ext, sizeof(A.ext), "%s/sdcard", cfg->data_dir);
+    snprintf(A.fwres, sizeof(A.fwres), "%s", cfg->framework_res ? cfg->framework_res : "");
+    for (int i = 0; i < 4; i++) A.insets[i] = cfg->insets[i];
     mkdir(A.data, 0755); mkdir(A.ext, 0755);
-    if (!tl_javaapp_manifest(cfg->apk_path, A.pkg, sizeof(A.pkg), A.activity, sizeof(A.activity))) {
+    if (!tl_javaapp_manifest(cfg->apk_path, A.pkg, sizeof(A.pkg), A.activity, sizeof(A.activity), A.application, sizeof(A.application))) {
         tl_log_line("javaapp: the manifest names no launcher activity");
         return false;
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
-    tl_log_line("javaapp: %s, launcher %s", A.pkg, A.activity);
+    tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); pthread_create(&A.gl_thread, &rt, gl_main, NULL); }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
     pthread_t t;
     return pthread_create(&t, &at, app_main, NULL) == 0;
@@ -517,6 +790,9 @@ void tl_javaapp_touch(int phase, int id, float x, float y)
 }
 void tl_javaapp_key(int code, bool down) { tl_javaapp_touch(4, code, down ? 1e-45f : 0.0f, 0); }
 void tl_javaapp_back(void) { tl_javaapp_touch(5, 0, 0, 0); }
-void tl_javaapp_set_paused(bool p) { atomic_store(&A.paused, p); }
+void tl_javaapp_set_paused(bool p)
+{
+    if (atomic_exchange(&A.paused, p) != p) tl_javaapp_touch(6, p ? 1 : 0, 0, 0);     /* the activity pauses and resumes with the host */
+}
 unsigned long tl_javaapp_frames(void) { return atomic_load(&A.frames); }
 bool tl_javaapp_ended(void) { return atomic_load(&A.ended); }

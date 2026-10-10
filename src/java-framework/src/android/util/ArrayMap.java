@@ -1,0 +1,19 @@
+package android.util;
+public final class ArrayMap<K, V> extends java.util.LinkedHashMap<K, V> {
+    public ArrayMap() {}
+    public ArrayMap(int cap) { super(Math.max(cap, 1)); }
+    public ArrayMap(ArrayMap<K, V> m) { super(m); }
+    public ArrayMap(java.util.Map<K, V> m) { super(m); }
+    private Object[] entries() { return entrySet().toArray(); }
+    @SuppressWarnings("unchecked") public K keyAt(int i) { return ((java.util.Map.Entry<K, V>) entries()[i]).getKey(); }
+    @SuppressWarnings("unchecked") public V valueAt(int i) { return ((java.util.Map.Entry<K, V>) entries()[i]).getValue(); }
+    public V setValueAt(int i, V v) { return put(keyAt(i), v); }
+    public V removeAt(int i) { return remove(keyAt(i)); }
+    public int indexOfKey(Object key) { int i = 0; for (K k : keySet()) { if (java.util.Objects.equals(k, key)) return i; i++; } return -1; }
+    public int indexOfValue(Object value) { int i = 0; for (V v : values()) { if (java.util.Objects.equals(v, value)) return i; i++; } return -1; }
+    public void ensureCapacity(int c) {}
+    public boolean containsAll(java.util.Collection<?> c) { return keySet().containsAll(c); }
+    public void putAll(ArrayMap<? extends K, ? extends V> m) { super.putAll(m); }
+    public boolean removeAll(java.util.Collection<?> c) { return keySet().removeAll(c); }
+    public boolean retainAll(java.util.Collection<?> c) { return keySet().retainAll(c); }
+}

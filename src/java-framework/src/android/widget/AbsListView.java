@@ -1,0 +1,584 @@
+package android.widget;
+
+import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.util.AttributeSet;
+import android.util.SparseBooleanArray;
+import android.view.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * The scrolling list core shared by ListView and GridView: children are the visible items only, scrolled by offsetting them,
+ * off-screen ones go to a recycler by view type, flings run on OverScroller, taps/long presses become item clicks, and the
+ * pressed item gets the list selector behind it. Subclasses fill: fillDown/fillUp from a position and an edge.
+ */
+public abstract class AbsListView extends AdapterView<ListAdapter> implements Filterable {
+    public static final int TRANSCRIPT_MODE_DISABLED = 0, TRANSCRIPT_MODE_NORMAL = 1, TRANSCRIPT_MODE_ALWAYS_SCROLL = 2;
+    public static final int CHOICE_MODE_NONE = 0, CHOICE_MODE_SINGLE = 1, CHOICE_MODE_MULTIPLE = 2, CHOICE_MODE_MULTIPLE_MODAL = 3;
+    public interface OnScrollListener {
+        int SCROLL_STATE_IDLE = 0, SCROLL_STATE_TOUCH_SCROLL = 1, SCROLL_STATE_FLING = 2;
+        void onScrollStateChanged(AbsListView view, int scrollState);
+        void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount);
+    }
+    public interface RecyclerListener { void onMovedToScrapHeap(View view); }
+    public interface MultiChoiceModeListener extends ActionMode.Callback { void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked); }
+    public interface SelectionBoundsAdjuster { void adjustListItemSelectionBounds(Rect bounds); }
+    public static class LayoutParams extends ViewGroup.LayoutParams {
+        int viewType; boolean recycledHeaderFooter, forceAdd; int scrappedFromPosition; long itemId = -1;
+        public LayoutParams(Context c, AttributeSet a) { super(c, a); }
+        public LayoutParams(int w, int h) { super(w, h); }
+        public LayoutParams(int w, int h, int viewType) { super(w, h); this.viewType = viewType; }
+        public LayoutParams(ViewGroup.LayoutParams p) { super(p); }
+    }
+
+    ListAdapter mAdapter;
+    AdapterDataSetObserver mDataSetObserver;
+    final RecycleBin mRecycler = new RecycleBin();
+    final Rect mListPadding = new Rect();
+    Drawable mSelector;
+    final Rect mSelectorRect = new Rect();
+    int mSelectorPosition = INVALID_POSITION;
+    boolean mDrawSelectorOnTop, mStackFromBottom, mSmoothScrollbarEnabled = true, mFastScrollEnabled, mTextFilterEnabled, mScrollingCacheEnabled;
+    int mTranscriptMode, mCacheColorHint;
+    int mChoiceMode = CHOICE_MODE_NONE;
+    SparseBooleanArray mCheckStates;
+    android.util.LongSparseArray<Integer> mCheckedIdStates;
+    int mCheckedItemCount;
+    MultiChoiceModeListener mMultiChoiceListener;
+    int mWidthMeasureSpec;
+    int mSyncTop; boolean mNeedSync;
+    private OnScrollListener mOnScrollListener;
+    private RecyclerListener mRecyclerListener;
+    private int mLastScrollState = OnScrollListener.SCROLL_STATE_IDLE;
+    private final OverScroller mScroller;
+    private VelocityTracker mVelocityTracker;
+    private int mTouchSlop, mMinVelocity, mMaxVelocity;
+    private int mTouchMode = TOUCH_MODE_REST, mMotionPosition = INVALID_POSITION, mActivePointerId = -1;
+    private float mMotionY, mLastY, mMotionX;
+    private static final int TOUCH_MODE_REST = -1, TOUCH_MODE_DOWN = 0, TOUCH_MODE_TAP = 1, TOUCH_MODE_DONE_WAITING = 2, TOUCH_MODE_SCROLL = 3, TOUCH_MODE_FLING = 4;
+    private Runnable mPendingCheckForTap, mPendingCheckForLongPress;
+    private boolean mLongPressed;
+    private final EdgeEffect mEdgeGlowTop, mEdgeGlowBottom;
+
+    public AbsListView(Context c) { this(c, null); }
+    public AbsListView(Context c, AttributeSet a) { this(c, a, android.R.attr.absListViewStyle); }
+    public AbsListView(Context c, AttributeSet a, int s) { this(c, a, s, 0); }
+    public AbsListView(Context c, AttributeSet attrs, int s, int r) {
+        super(c, attrs, s, r);
+        setClickable(true); setFocusableInTouchMode(true); setWillNotDraw(false); setAlwaysDrawnWithCacheEnabled(false); setScrollingCacheEnabled(true);
+        ViewConfiguration vc = ViewConfiguration.get(c);
+        mTouchSlop = vc.getScaledTouchSlop(); mMinVelocity = vc.getScaledMinimumFlingVelocity(); mMaxVelocity = vc.getScaledMaximumFlingVelocity();
+        mScroller = new OverScroller(c);
+        mEdgeGlowTop = new EdgeEffect(c); mEdgeGlowBottom = new EdgeEffect(c);
+        TypedArray a = c.obtainStyledAttributes(attrs, husk.S.AbsListView, s, r);
+        Drawable sel = null;
+        try { sel = a.getDrawable(husk.S.AbsListView_listSelector); } catch (RuntimeException e) {}
+        if (sel != null) setSelector(sel);
+        mDrawSelectorOnTop = a.getBoolean(husk.S.AbsListView_drawSelectorOnTop, false);
+        setStackFromBottom(a.getBoolean(husk.S.AbsListView_stackFromBottom, false));
+        setTranscriptMode(a.getInt(husk.S.AbsListView_transcriptMode, TRANSCRIPT_MODE_DISABLED));
+        setCacheColorHint(a.getColor(husk.S.AbsListView_cacheColorHint, 0));
+        setChoiceMode(a.getInt(husk.S.AbsListView_choiceMode, CHOICE_MODE_NONE));
+        mTextFilterEnabled = a.getBoolean(husk.S.AbsListView_textFilterEnabled, false);
+        a.recycle();
+    }
+    // ---- adapter
+    @Override public ListAdapter getAdapter() { return mAdapter; }
+    @Override public void setAdapter(ListAdapter adapter) {
+        if (mAdapter != null && mDataSetObserver != null) mAdapter.unregisterDataSetObserver(mDataSetObserver);
+        resetList();
+        mRecycler.clear();
+        mAdapter = adapter;
+        mOldSelectedPosition = INVALID_POSITION; mOldItemCount = mItemCount;
+        if (adapter != null) {
+            mItemCount = adapter.getCount();
+            mDataChanged = true;
+            mDataSetObserver = new AdapterDataSetObserver();
+            adapter.registerDataSetObserver(mDataSetObserver);
+            mRecycler.setViewTypeCount(adapter.getViewTypeCount());
+            if (adapter.hasStableIds() && mChoiceMode != CHOICE_MODE_NONE && mCheckedIdStates == null) mCheckedIdStates = new android.util.LongSparseArray<>();
+        } else mItemCount = 0;
+        if (mCheckStates != null) mCheckStates.clear();
+        if (mCheckedIdStates != null) mCheckedIdStates.clear();
+        checkFocus();
+        requestLayout();
+    }
+    void resetList() {
+        removeAllViewsInLayout();
+        mFirstPosition = 0; mDataChanged = false; mNeedSync = false; mSyncTop = 0;
+        mOldSelectedPosition = INVALID_POSITION; mSelectedPosition = INVALID_POSITION; mNextSelectedPosition = INVALID_POSITION;
+        mSelectorPosition = INVALID_POSITION; mSelectorRect.setEmpty();
+        invalidate();
+    }
+    // ---- attributes
+    public void setSelector(int resID) { setSelector(getContext().getDrawable(resID)); }
+    public void setSelector(Drawable sel) { if (mSelector != null) { mSelector.setCallback(null); unscheduleDrawable(mSelector); } mSelector = sel; if (sel != null) sel.setCallback(this); invalidate(); }
+    public Drawable getSelector() { return mSelector; }
+    public void setDrawSelectorOnTop(boolean t) { mDrawSelectorOnTop = t; }
+    public boolean isDrawSelectorOnTop() { return mDrawSelectorOnTop; }
+    public void setStackFromBottom(boolean s) { if (mStackFromBottom != s) { mStackFromBottom = s; requestLayout(); } }
+    public boolean isStackFromBottom() { return mStackFromBottom; }
+    public void setTranscriptMode(int m) { mTranscriptMode = m; }
+    public int getTranscriptMode() { return mTranscriptMode; }
+    public void setCacheColorHint(int c) { mCacheColorHint = c; }
+    public int getCacheColorHint() { return mCacheColorHint; }
+    public void setScrollingCacheEnabled(boolean e) { mScrollingCacheEnabled = e; }
+    public boolean isScrollingCacheEnabled() { return mScrollingCacheEnabled; }
+    public void setTextFilterEnabled(boolean e) { mTextFilterEnabled = e; }
+    public boolean isTextFilterEnabled() { return mTextFilterEnabled; }
+    public void setFilterText(String t) { if (mAdapter instanceof Filterable) ((Filterable) mAdapter).getFilter().filter(t); }
+    public void clearTextFilter() { setFilterText(null); }
+    public boolean hasTextFilter() { return false; }
+    public CharSequence getTextFilter() { return null; }
+    public Filter getFilter() { return mAdapter instanceof Filterable ? ((Filterable) mAdapter).getFilter() : null; }
+    public void setFastScrollEnabled(boolean e) { mFastScrollEnabled = e; }
+    public boolean isFastScrollEnabled() { return mFastScrollEnabled; }
+    public void setFastScrollAlwaysVisible(boolean v) {}
+    public boolean isFastScrollAlwaysVisible() { return false; }
+    public void setFastScrollStyle(int s) {}
+    public void setSmoothScrollbarEnabled(boolean e) { mSmoothScrollbarEnabled = e; }
+    public boolean isSmoothScrollbarEnabled() { return mSmoothScrollbarEnabled; }
+    public void setOnScrollListener(OnScrollListener l) { mOnScrollListener = l; invokeOnItemScrollListener(); }
+    public void setRecyclerListener(RecyclerListener l) { mRecyclerListener = l; }
+    public void setFriction(float f) { mScroller.setFriction(f); }
+    public void setVelocityScale(float s) {}
+    public void setEdgeEffectColor(int c) { mEdgeGlowTop.setColor(c); mEdgeGlowBottom.setColor(c); }
+    public void setBottomEdgeEffectColor(int c) { mEdgeGlowBottom.setColor(c); }
+    public void setTopEdgeEffectColor(int c) { mEdgeGlowTop.setColor(c); }
+    public void setNestedScrollingEnabled(boolean e) {}
+    public void setRemoteViewsAdapter(android.content.Intent i) {}
+    public void deferNotifyDataSetChanged() {}
+    public void reclaimViews(List<View> views) { int n = getChildCount(); for (int i = 0; i < n; i++) views.add(getChildAt(i)); mRecycler.reclaimScrapViews(views); removeAllViewsInLayout(); }
+    public View getSelectedView() { return mItemCount > 0 && mSelectedPosition >= 0 ? getChildAt(mSelectedPosition - mFirstPosition) : null; }
+    public int getListPaddingTop() { return mListPadding.top; } public int getListPaddingBottom() { return mListPadding.bottom; } public int getListPaddingLeft() { return mListPadding.left; } public int getListPaddingRight() { return mListPadding.right; }
+    // ---- choice
+    public int getChoiceMode() { return mChoiceMode; }
+    public void setChoiceMode(int m) {
+        mChoiceMode = m;
+        if (m != CHOICE_MODE_NONE) { if (mCheckStates == null) mCheckStates = new SparseBooleanArray(0); if (mCheckedIdStates == null && mAdapter != null && mAdapter.hasStableIds()) mCheckedIdStates = new android.util.LongSparseArray<>(0); }
+    }
+    public void setMultiChoiceModeListener(MultiChoiceModeListener l) { mMultiChoiceListener = l; }
+    public int getCheckedItemCount() { return mCheckedItemCount; }
+    public boolean isItemChecked(int p) { return mChoiceMode != CHOICE_MODE_NONE && mCheckStates != null && mCheckStates.get(p); }
+    public int getCheckedItemPosition() { if (mChoiceMode == CHOICE_MODE_SINGLE && mCheckStates != null && mCheckStates.size() == 1) return mCheckStates.keyAt(0); return INVALID_POSITION; }
+    public SparseBooleanArray getCheckedItemPositions() { return mChoiceMode != CHOICE_MODE_NONE ? mCheckStates : null; }
+    public long[] getCheckedItemIds() {
+        if (mChoiceMode == CHOICE_MODE_NONE || mCheckedIdStates == null || mAdapter == null) return new long[0];
+        long[] ids = new long[mCheckedIdStates.size()]; for (int i = 0; i < ids.length; i++) ids[i] = mCheckedIdStates.keyAt(i); return ids;
+    }
+    public void clearChoices() { if (mCheckStates != null) mCheckStates.clear(); if (mCheckedIdStates != null) mCheckedIdStates.clear(); mCheckedItemCount = 0; updateOnScreenCheckedViews(); }
+    public void setItemChecked(int position, boolean value) {
+        if (mChoiceMode == CHOICE_MODE_NONE) return;
+        if (mChoiceMode == CHOICE_MODE_MULTIPLE || mChoiceMode == CHOICE_MODE_MULTIPLE_MODAL) {
+            boolean old = mCheckStates.get(position);
+            mCheckStates.put(position, value);
+            if (mCheckedIdStates != null && mAdapter.hasStableIds()) { if (value) mCheckedIdStates.put(mAdapter.getItemId(position), position); else mCheckedIdStates.delete(mAdapter.getItemId(position)); }
+            if (old != value) mCheckedItemCount += value ? 1 : -1;
+        } else {
+            boolean updateIds = mCheckedIdStates != null && mAdapter.hasStableIds();
+            if (value || isItemChecked(position)) { mCheckStates.clear(); if (updateIds) mCheckedIdStates.clear(); }
+            if (value) { mCheckStates.put(position, true); if (updateIds) mCheckedIdStates.put(mAdapter.getItemId(position), position); mCheckedItemCount = 1; }
+            else if (mCheckStates.size() == 0 || !mCheckStates.valueAt(0)) mCheckedItemCount = 0;
+        }
+        if (!mInLayout && !mBlockLayoutRequests) updateOnScreenCheckedViews();
+    }
+    void updateOnScreenCheckedViews() {
+        final int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            final View child = getChildAt(i);
+            final int position = mFirstPosition + i;
+            if (child instanceof Checkable) ((Checkable) child).setChecked(mCheckStates != null && mCheckStates.get(position));
+            else child.setActivated(mCheckStates != null && mCheckStates.get(position));
+        }
+    }
+    @Override public boolean performItemClick(View view, int position, long id) {
+        boolean handled = false, dispatchItemClick = true;
+        if (mChoiceMode != CHOICE_MODE_NONE) {
+            handled = true;
+            boolean checkedStateChanged = false;
+            if (mChoiceMode == CHOICE_MODE_MULTIPLE || mChoiceMode == CHOICE_MODE_MULTIPLE_MODAL) { boolean checked = !mCheckStates.get(position, false); setItemChecked(position, checked); checkedStateChanged = true; }
+            else if (mChoiceMode == CHOICE_MODE_SINGLE) { boolean checked = !mCheckStates.get(position, false); if (checked) { setItemChecked(position, true); checkedStateChanged = true; } }
+            if (checkedStateChanged) updateOnScreenCheckedViews();
+        }
+        if (dispatchItemClick) handled |= super.performItemClick(view, position, id);
+        return handled;
+    }
+    boolean performLongPress(final View child, final int longPressPosition, final long longPressId) {
+        boolean handled = false;
+        if (mOnItemLongClickListener != null) handled = mOnItemLongClickListener.onItemLongClick(this, child, longPressPosition, longPressId);
+        if (!handled) { handled = super.showContextMenuForChild(this); }
+        if (handled) performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        return handled;
+    }
+    // ---- layout
+    @Override protected void onMeasure(int ws, int hs) {
+        if (mSelector == null) useDefaultSelector();
+        final Rect listPadding = mListPadding;
+        listPadding.left = mPaddingLeft; listPadding.top = mPaddingTop; listPadding.right = mPaddingRight; listPadding.bottom = mPaddingBottom;
+        if (mTranscriptMode == TRANSCRIPT_MODE_NORMAL) {
+            final int childCount = getChildCount(), listBottom = getHeight() - getPaddingBottom();
+            final View lastChild = getChildAt(childCount - 1);
+            mForceTranscriptScroll = mFirstPosition + childCount >= mOldItemCount && (lastChild == null || lastChild.getBottom() <= listBottom);
+        }
+    }
+    boolean mForceTranscriptScroll;
+    private void useDefaultSelector() {
+        android.util.TypedValue v = new android.util.TypedValue();
+        try { if (getContext().getTheme().resolveAttribute(android.R.attr.selectableItemBackground, v, true) && v.resourceId != 0) setSelector(getContext().getDrawable(v.resourceId)); } catch (RuntimeException e) {}
+        if (mSelector == null) setSelector(new android.graphics.drawable.ColorDrawable(0));
+    }
+    @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        mInLayout = true;
+        final int childCount = getChildCount();
+        if (changed) for (int i = 0; i < childCount; i++) getChildAt(i).forceLayout();
+        layoutChildren();
+        mInLayout = false;
+    }
+    @Override public void requestLayout() { if (!mBlockLayoutRequests && !mInLayout) super.requestLayout(); }
+    /** Lay the visible items out again from the data (subclasses). */
+    protected void layoutChildren() {}
+    abstract void fillGap(boolean down);
+    /** Items per row: scrolling drops whole rows only. */
+    int rowAlign() { return 1; }
+    abstract int findMotionRow(int y);
+    void handleDataChanged() {
+        int count = mItemCount;
+        if (count > 0) {
+            if (mTranscriptMode == TRANSCRIPT_MODE_ALWAYS_SCROLL || (mTranscriptMode == TRANSCRIPT_MODE_NORMAL && mForceTranscriptScroll && mOldItemCount < count)) { mFirstPosition = Integer.MAX_VALUE; mNeedSync = false; mScrollToEnd = true; return; }
+            if (mFirstPosition >= count) mFirstPosition = Math.max(0, count - 1);
+            if (mSelectedPosition >= count) mSelectedPosition = count - 1;
+            if (mNextSelectedPosition >= count) setNextSelectedPositionInt(count - 1);
+        } else { mFirstPosition = 0; mSelectedPosition = mNextSelectedPosition = INVALID_POSITION; }
+        if (mCheckStates != null && mCheckStates.size() > 0) { for (int i = mCheckStates.size() - 1; i >= 0; i--) if (mCheckStates.keyAt(i) >= count) mCheckStates.delete(mCheckStates.keyAt(i)); }
+    }
+    boolean mScrollToEnd;
+    /** Get (or make) the view for a position, from the recycler when one of its type is waiting. */
+    View obtainView(int position, boolean[] outMetadata) {
+        outMetadata[0] = false;
+        final View scrapView = mRecycler.getScrapView(position);
+        final View child = mAdapter.getView(position, scrapView, this);
+        if (scrapView != null) { if (child != scrapView) mRecycler.addScrapView(scrapView, position); else outMetadata[0] = true; }
+        setItemViewLayoutParams(child, position);
+        return child;
+    }
+    private void setItemViewLayoutParams(View child, int position) {
+        final ViewGroup.LayoutParams vlp = child.getLayoutParams();
+        LayoutParams lp;
+        if (vlp == null) lp = (LayoutParams) generateDefaultLayoutParams();
+        else if (!checkLayoutParams(vlp)) lp = (LayoutParams) generateLayoutParams(vlp);
+        else lp = (LayoutParams) vlp;
+        lp.viewType = mAdapter.getItemViewType(position);
+        if (mAdapter.hasStableIds()) lp.itemId = mAdapter.getItemId(position);
+        if (lp != vlp) child.setLayoutParams(lp);
+    }
+    void setupChildChecked(View child, int position) {
+        if (mChoiceMode != CHOICE_MODE_NONE && mCheckStates != null) { if (child instanceof Checkable) ((Checkable) child).setChecked(mCheckStates.get(position)); else child.setActivated(mCheckStates.get(position)); }
+    }
+    @Override protected ViewGroup.LayoutParams generateDefaultLayoutParams() { return new AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 0); }
+    @Override protected ViewGroup.LayoutParams generateLayoutParams(ViewGroup.LayoutParams p) { return new LayoutParams(p); }
+    @Override public LayoutParams generateLayoutParams(AttributeSet a) { return new AbsListView.LayoutParams(getContext(), a); }
+    @Override protected boolean checkLayoutParams(ViewGroup.LayoutParams p) { return p instanceof AbsListView.LayoutParams; }
+    // ---- scrolling
+    private void reportScrollStateChange(int s) { if (s != mLastScrollState && mOnScrollListener != null) { mLastScrollState = s; mOnScrollListener.onScrollStateChanged(this, s); } else mLastScrollState = s; }
+    void invokeOnItemScrollListener() { if (mOnScrollListener != null) mOnScrollListener.onScroll(this, mFirstPosition, getChildCount(), mItemCount); onScrollChanged(0, 0, 0, 0); }
+    /** Move the items by deltaY; returns true when an end was hit. */
+    boolean trackMotionScroll(int deltaY, int incrementalDeltaY) {
+        final int childCount = getChildCount();
+        if (childCount == 0) return true;
+        final int firstTop = getChildAt(0).getTop(), lastBottom = getChildAt(childCount - 1).getBottom();
+        final Rect listPadding = mListPadding;
+        final int spaceAbove = listPadding.top - firstTop, end = getHeight() - listPadding.bottom, spaceBelow = lastBottom - end;
+        final int height = getHeight() - mPaddingBottom - mPaddingTop;
+        if (incrementalDeltaY < 0) incrementalDeltaY = Math.max(-(height - 1), incrementalDeltaY); else incrementalDeltaY = Math.min(height - 1, incrementalDeltaY);
+        final int firstPosition = mFirstPosition;
+        final boolean cannotScrollDown = firstPosition == 0 && firstTop >= listPadding.top && incrementalDeltaY >= 0;
+        final boolean cannotScrollUp = firstPosition + childCount == mItemCount && lastBottom <= end && incrementalDeltaY <= 0;
+        if (cannotScrollDown || cannotScrollUp) return incrementalDeltaY != 0;
+        // clamp so the ends stop at the padding
+        if (incrementalDeltaY > 0 && firstPosition == 0) incrementalDeltaY = Math.min(incrementalDeltaY, spaceAbove);
+        if (incrementalDeltaY < 0 && firstPosition + childCount == mItemCount) incrementalDeltaY = Math.max(incrementalDeltaY, -spaceBelow);
+        final boolean down = incrementalDeltaY < 0;
+        int start = 0, count = 0;
+        if (down) {
+            int top = -incrementalDeltaY + listPadding.top;
+            for (int i = 0; i < childCount; i++) { final View child = getChildAt(i); if (child.getBottom() >= top) break; count++; }
+            count -= count % rowAlign();
+            for (int i = 0; i < count; i++) mRecycler.addScrapView(getChildAt(i), firstPosition + i);
+        } else {
+            int bottom = getHeight() - incrementalDeltaY - listPadding.bottom;
+            for (int i = childCount - 1; i >= 0; i--) { final View child = getChildAt(i); if (child.getTop() <= bottom) break; start = i; count++; mRecycler.addScrapView(child, firstPosition + i); }
+        }
+        mBlockLayoutRequests = true;
+        if (count > 0) { detachViewsFromParent(start, count); mRecycler.removeSkippedScrap(); }
+        offsetChildrenTopAndBottom(incrementalDeltaY);
+        if (down) mFirstPosition += count;
+        final int absIncrementalDeltaY = Math.abs(incrementalDeltaY);
+        if (spaceAbove < absIncrementalDeltaY || spaceBelow < absIncrementalDeltaY) fillGap(down);
+        mRecycler.fullyDetachScrapViews();
+        mBlockLayoutRequests = false;
+        if (mSelectorPosition != INVALID_POSITION) { View s = getChildAt(mSelectorPosition - mFirstPosition); if (s != null) positionSelector(s); else mSelectorRect.setEmpty(); }
+        invokeOnItemScrollListener();
+        invalidate();
+        return false;
+    }
+    void offsetChildrenTopAndBottom(int offset) { final int count = getChildCount(); for (int i = 0; i < count; i++) getChildAt(i).offsetTopAndBottom(offset); }
+    void detachViewsFromParent(int start, int count) { for (int i = start + count - 1; i >= start; i--) { View v = getChildAt(i); detachViewFromParent(i); if (v.isAttachedToWindow()) v.huskDetach(); } }
+    public void scrollListBy(int y) { trackMotionScroll(-y, -y); }
+    public boolean canScrollList(int direction) {
+        final int childCount = getChildCount();
+        if (childCount == 0) return false;
+        final int firstPosition = mFirstPosition;
+        final Rect listPadding = mListPadding;
+        if (direction > 0) { final int lastBottom = getChildAt(childCount - 1).getBottom(); return firstPosition + childCount < mItemCount || lastBottom > getHeight() - listPadding.bottom; }
+        final int firstTop = getChildAt(0).getTop();
+        return firstPosition > 0 || firstTop < listPadding.top;
+    }
+    @Override public boolean canScrollVertically(int direction) { return canScrollList(direction); }
+    public void smoothScrollBy(int distance, int duration) { startFling(0); mScroller.startScroll(0, 0, 0, distance, duration); mFlingLastY = 0; mTouchMode = TOUCH_MODE_FLING; postOnAnimation(mFlingRunnable); }
+    public void smoothScrollToPosition(int position) { smoothScrollToPositionFromTop(position, -1); }
+    public void smoothScrollToPosition(int position, int boundPosition) { smoothScrollToPosition(position); }
+    public void smoothScrollToPositionFromTop(int position, int offset, int duration) { smoothScrollToPositionFromTop(position, offset); }
+    public void smoothScrollToPositionFromTop(int position, int offset) {
+        View child = getChildAt(position - mFirstPosition);
+        if (child != null) {
+            int target = offset >= 0 ? offset + mListPadding.top : (child.getTop() < mListPadding.top ? mListPadding.top : child.getBottom() > getHeight() - mListPadding.bottom ? getHeight() - mListPadding.bottom - child.getHeight() : child.getTop());
+            smoothScrollBy(child.getTop() - target, 250);
+        } else setSelectionFromTopHusk(position, Math.max(0, offset));
+    }
+    void setSelectionFromTopHusk(int position, int y) { if (mAdapter == null) return; mFirstPosition = Math.max(0, Math.min(position, mItemCount - 1)); mSyncTop = y; mNeedSync = true; requestLayout(); }
+    private int mFlingLastY;
+    private final Runnable mFlingRunnable = new Runnable() {
+        @Override public void run() {
+            if (mTouchMode != TOUCH_MODE_FLING) return;
+            if (mItemCount == 0 || getChildCount() == 0) { endFling(); return; }
+            boolean more = mScroller.computeScrollOffset();
+            final int y = mScroller.getCurrY();
+            int delta = mFlingLastY - y;
+            boolean atEdge = delta != 0 && trackMotionScroll(delta, delta);
+            if (atEdge) { int v = (int) mScroller.getCurrVelocity(); if (delta > 0) mEdgeGlowTop.onAbsorb(v); else mEdgeGlowBottom.onAbsorb(v); invalidate(); endFling(); return; }
+            if (more) { mFlingLastY = y; postOnAnimation(this); }
+            else endFling();
+        }
+    };
+    private void startFling(int velocity) { removeCallbacks(mFlingRunnable); mTouchMode = TOUCH_MODE_FLING; mFlingLastY = 0; reportScrollStateChange(OnScrollListener.SCROLL_STATE_FLING); }
+    private void endFling() { mTouchMode = TOUCH_MODE_REST; removeCallbacks(mFlingRunnable); mScroller.abortAnimation(); reportScrollStateChange(OnScrollListener.SCROLL_STATE_IDLE); }
+    public void fling(int velocityY) { startFling(velocityY); mScroller.fling(0, 0, 0, velocityY, 0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE); postOnAnimation(mFlingRunnable); }
+    // ---- touch
+    @Override public boolean onInterceptTouchEvent(MotionEvent ev) {
+        final int action = ev.getActionMasked();
+        switch (action) {
+        case MotionEvent.ACTION_DOWN: {
+            int touchMode = mTouchMode;
+            mMotionX = ev.getX(); mMotionY = mLastY = ev.getY(); mActivePointerId = ev.getPointerId(0);
+            if (mVelocityTracker == null) mVelocityTracker = VelocityTracker.obtain(); else mVelocityTracker.clear();
+            mVelocityTracker.addMovement(ev);
+            if (touchMode == TOUCH_MODE_FLING) { endFling(); mTouchMode = TOUCH_MODE_SCROLL; return true; }
+            int motionPosition = findMotionRow((int) mMotionY);
+            if (motionPosition >= 0) { mMotionPosition = motionPosition; mTouchMode = TOUCH_MODE_DOWN; }
+            break;
+        }
+        case MotionEvent.ACTION_MOVE:
+            if (mTouchMode == TOUCH_MODE_DOWN || mTouchMode == TOUCH_MODE_TAP || mTouchMode == TOUCH_MODE_DONE_WAITING) {
+                int idx = ev.findPointerIndex(mActivePointerId); if (idx < 0) idx = 0;
+                float y = ev.getY(idx);
+                if (mVelocityTracker != null) mVelocityTracker.addMovement(ev);
+                if (startScrollIfNeeded(y)) return true;
+            }
+            break;
+        case MotionEvent.ACTION_CANCEL: case MotionEvent.ACTION_UP:
+            mTouchMode = TOUCH_MODE_REST; mActivePointerId = -1; recycleVelocityTracker(); clearPressed(); break;
+        }
+        return false;
+    }
+    private void recycleVelocityTracker() { if (mVelocityTracker != null) { mVelocityTracker.recycle(); mVelocityTracker = null; } }
+    private boolean startScrollIfNeeded(float y) {
+        final float deltaY = y - mMotionY;
+        if (Math.abs(deltaY) > mTouchSlop) {
+            clearPressed();
+            mTouchMode = TOUCH_MODE_SCROLL;
+            mLastY = y;
+            if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+            reportScrollStateChange(OnScrollListener.SCROLL_STATE_TOUCH_SCROLL);
+            return true;
+        }
+        return false;
+    }
+    private void clearPressed() {
+        removeCallbacks(mPendingCheckForTap); removeCallbacks(mPendingCheckForLongPress);
+        setPressed(false);
+        View c = getChildAt(mMotionPosition - mFirstPosition);
+        if (c != null) c.setPressed(false);
+        mSelectorPosition = INVALID_POSITION; mSelectorRect.setEmpty();
+        if (mSelector != null) mSelector.setState(StateSet_NOTHING);
+        invalidate();
+    }
+    private static final int[] StateSet_NOTHING = new int[0];
+    void positionSelector(View sel) { mSelectorRect.set(sel.getLeft(), sel.getTop(), sel.getRight(), sel.getBottom()); if (sel instanceof SelectionBoundsAdjuster) ((SelectionBoundsAdjuster) sel).adjustListItemSelectionBounds(mSelectorRect); if (mSelector != null) mSelector.setBounds(mSelectorRect); }
+    @Override public boolean onTouchEvent(MotionEvent ev) {
+        if (!isEnabled()) return isClickable() || isLongClickable();
+        if (mVelocityTracker == null) mVelocityTracker = VelocityTracker.obtain();
+        mVelocityTracker.addMovement(ev);
+        final int action = ev.getActionMasked();
+        switch (action) {
+        case MotionEvent.ACTION_DOWN: {
+            mActivePointerId = ev.getPointerId(0);
+            mMotionX = ev.getX(); mMotionY = mLastY = ev.getY();
+            if (mTouchMode == TOUCH_MODE_FLING) { endFling(); mTouchMode = TOUCH_MODE_SCROLL; break; }
+            if (mTouchMode == TOUCH_MODE_SCROLL) break;
+            final int motionPosition = findMotionRow((int) mMotionY);
+            if (!mDataChanged && motionPosition >= 0 && mAdapter != null && mAdapter.isEnabled(motionPosition)) {
+                mTouchMode = TOUCH_MODE_DOWN; mMotionPosition = motionPosition; mLongPressed = false;
+                if (mPendingCheckForTap == null) mPendingCheckForTap = this::checkForTap;
+                postDelayed(mPendingCheckForTap, ViewConfiguration.getTapTimeout());
+            } else { mTouchMode = TOUCH_MODE_DOWN; mMotionPosition = INVALID_POSITION; }
+            break;
+        }
+        case MotionEvent.ACTION_MOVE: {
+            int idx = ev.findPointerIndex(mActivePointerId); if (idx < 0) idx = 0;
+            final float y = ev.getY(idx);
+            switch (mTouchMode) {
+            case TOUCH_MODE_DOWN: case TOUCH_MODE_TAP: case TOUCH_MODE_DONE_WAITING: startScrollIfNeeded(y); break;
+            case TOUCH_MODE_SCROLL: {
+                int incremental = (int) (y - mLastY);
+                if (incremental != 0) {
+                    boolean atEdge = trackMotionScroll((int) (y - mMotionY), incremental);
+                    if (atEdge) { if (incremental > 0) mEdgeGlowTop.onPull(incremental / (float) getHeight()); else mEdgeGlowBottom.onPull(-incremental / (float) getHeight()); invalidate(); }
+                    mLastY = y;
+                }
+                break;
+            }
+            }
+            break;
+        }
+        case MotionEvent.ACTION_UP: {
+            switch (mTouchMode) {
+            case TOUCH_MODE_DOWN: case TOUCH_MODE_TAP: case TOUCH_MODE_DONE_WAITING: {
+                final int motionPosition = mMotionPosition;
+                final View child = getChildAt(motionPosition - mFirstPosition);
+                removeCallbacks(mPendingCheckForLongPress); removeCallbacks(mPendingCheckForTap);
+                if (child != null && !mLongPressed && !mDataChanged && mAdapter != null && motionPosition < mAdapter.getCount() && mAdapter.isEnabled(motionPosition)) {
+                    if (mTouchMode != TOUCH_MODE_TAP && mTouchMode != TOUCH_MODE_DONE_WAITING) showPressed(child, motionPosition);
+                    final long id = mAdapter.getItemId(motionPosition);
+                    postDelayed(() -> { clearPressed(); if (child.getParent() == this) performItemClick(child, motionPosition, id); }, ViewConfiguration.getPressedStateDuration());
+                } else clearPressed();
+                mTouchMode = TOUCH_MODE_REST;
+                break;
+            }
+            case TOUCH_MODE_SCROLL: {
+                final VelocityTracker vt = mVelocityTracker;
+                vt.computeCurrentVelocity(1000, mMaxVelocity);
+                final int initialVelocity = (int) vt.getYVelocity(mActivePointerId);
+                if (Math.abs(initialVelocity) > mMinVelocity && getChildCount() > 0 && canScrollList(initialVelocity < 0 ? 1 : -1)) fling(-initialVelocity);
+                else { mTouchMode = TOUCH_MODE_REST; reportScrollStateChange(OnScrollListener.SCROLL_STATE_IDLE); }
+                break;
+            }
+            default: mTouchMode = TOUCH_MODE_REST;
+            }
+            mEdgeGlowTop.onRelease(); mEdgeGlowBottom.onRelease();
+            mActivePointerId = -1; recycleVelocityTracker();
+            invalidate();
+            break;
+        }
+        case MotionEvent.ACTION_CANCEL:
+            mTouchMode = TOUCH_MODE_REST; clearPressed(); mEdgeGlowTop.onRelease(); mEdgeGlowBottom.onRelease(); recycleVelocityTracker(); mActivePointerId = -1;
+            reportScrollStateChange(OnScrollListener.SCROLL_STATE_IDLE);
+            break;
+        case MotionEvent.ACTION_POINTER_UP: {
+            int pi = ev.getActionIndex();
+            if (ev.getPointerId(pi) == mActivePointerId) { int n = pi == 0 ? 1 : 0; mActivePointerId = ev.getPointerId(n); mMotionY = mLastY = ev.getY(n); }
+            break;
+        }
+        case MotionEvent.ACTION_POINTER_DOWN: { int i = ev.getActionIndex(); mActivePointerId = ev.getPointerId(i); mMotionY = mLastY = ev.getY(i); break; }
+        }
+        return true;
+    }
+    private void showPressed(View child, int position) {
+        child.setPressed(true);
+        mSelectorPosition = position;
+        positionSelector(child);
+        if (mSelector != null) { mSelector.setState(new int[] { android.R.attr.state_pressed, android.R.attr.state_enabled }); mSelector.setHotspot(mMotionX, mMotionY); }
+        invalidate();
+    }
+    private void checkForTap() {
+        if (mTouchMode != TOUCH_MODE_DOWN) return;
+        mTouchMode = TOUCH_MODE_TAP;
+        final View child = getChildAt(mMotionPosition - mFirstPosition);
+        if (child != null && !child.hasExplicitFocusable()) {
+            showPressed(child, mMotionPosition);
+            if (isLongClickable() || mOnItemLongClickListener != null) {
+                final int pos = mMotionPosition;
+                mPendingCheckForLongPress = () -> {
+                    View c = getChildAt(pos - mFirstPosition);
+                    if (c != null && mTouchMode == TOUCH_MODE_TAP && !mDataChanged && mAdapter != null) {
+                        if (performLongPress(c, pos, mAdapter.getItemId(pos))) { mLongPressed = true; mTouchMode = TOUCH_MODE_REST; clearPressed(); }
+                        else mTouchMode = TOUCH_MODE_DONE_WAITING;
+                    }
+                };
+                postDelayed(mPendingCheckForLongPress, ViewConfiguration.getLongPressTimeout());
+            } else mTouchMode = TOUCH_MODE_DONE_WAITING;
+        }
+    }
+    // ---- drawing
+    @Override protected void dispatchDraw(Canvas c) {
+        boolean drawSel = mSelector != null && !mSelectorRect.isEmpty();
+        if (drawSel && !mDrawSelectorOnTop) { mSelector.setBounds(mSelectorRect); mSelector.draw(c); }
+        super.dispatchDraw(c);
+        if (drawSel && mDrawSelectorOnTop) { mSelector.setBounds(mSelectorRect); mSelector.draw(c); }
+    }
+    @Override public void draw(Canvas c) {
+        super.draw(c);
+        if (!mEdgeGlowTop.isFinished()) { int s = c.save(); c.translate(mPaddingLeft, 0); mEdgeGlowTop.setSize(getWidth() - mPaddingLeft - mPaddingRight, getHeight()); if (mEdgeGlowTop.draw(c)) invalidate(); c.restoreToCount(s); }
+        if (!mEdgeGlowBottom.isFinished()) { int s = c.save(); int w = getWidth() - mPaddingLeft - mPaddingRight; c.translate(-w + mPaddingLeft, getHeight()); c.rotate(180, w, 0); mEdgeGlowBottom.setSize(w, getHeight()); if (mEdgeGlowBottom.draw(c)) invalidate(); c.restoreToCount(s); }
+    }
+    @Override protected boolean verifyDrawable(Drawable dr) { return mSelector == dr || super.verifyDrawable(dr); }
+    @Override public void invalidateDrawable(Drawable d) { if (d == mSelector) invalidate(); else super.invalidateDrawable(d); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (mAdapter != null && mDataSetObserver == null) { mDataSetObserver = new AdapterDataSetObserver(); mAdapter.registerDataSetObserver(mDataSetObserver); mDataChanged = true; mOldItemCount = mItemCount; mItemCount = mAdapter.getCount(); } }
+    @Override protected void onDetachedFromWindow() { super.onDetachedFromWindow(); mRecycler.clear(); removeCallbacks(mFlingRunnable); if (mAdapter != null && mDataSetObserver != null) { mAdapter.unregisterDataSetObserver(mDataSetObserver); mDataSetObserver = null; } }
+    @Override protected int computeVerticalScrollExtent() { final int count = getChildCount(); return count > 0 ? count * 100 : 0; }
+    @Override protected int computeVerticalScrollOffset() { final int firstPosition = mFirstPosition, childCount = getChildCount(); if (firstPosition >= 0 && childCount > 0) { final View view = getChildAt(0); final int top = view.getTop(); int height = view.getHeight(); if (height > 0) return Math.max(firstPosition * 100 - (top * 100) / height, 0); } return 0; }
+    @Override protected int computeVerticalScrollRange() { return Math.max(mItemCount * 100, 0); }
+    public void setSelectionFromTop(int position, int y) { setSelectionFromTopHusk(position, y); }
+    @Override public CharSequence getAccessibilityClassName() { return AbsListView.class.getName(); }
+
+    /** Views off screen, by type, for adapters' convertView. */
+    class RecycleBin {
+        private ArrayList<View>[] mScrapViews;
+        private int mViewTypeCount;
+        private ArrayList<View> mCurrentScrap, mSkippedScrap;
+        @SuppressWarnings("unchecked") public void setViewTypeCount(int n) {
+            if (n < 1) throw new IllegalArgumentException("Can't have a viewTypeCount < 1");
+            ArrayList<View>[] scrapViews = new ArrayList[n];
+            for (int i = 0; i < n; i++) scrapViews[i] = new ArrayList<>();
+            mViewTypeCount = n; mCurrentScrap = scrapViews[0]; mScrapViews = scrapViews;
+        }
+        public boolean shouldRecycleViewType(int viewType) { return viewType >= 0; }
+        void clear() { if (mScrapViews != null) for (ArrayList<View> l : mScrapViews) l.clear(); if (mSkippedScrap != null) mSkippedScrap.clear(); }
+        View getScrapView(int position) {
+            if (mScrapViews == null) return null;
+            final int whichScrap = mAdapter.getItemViewType(position);
+            if (whichScrap < 0) return null;
+            ArrayList<View> l = mViewTypeCount == 1 ? mCurrentScrap : whichScrap < mScrapViews.length ? mScrapViews[whichScrap] : null;
+            if (l == null || l.isEmpty()) return null;
+            for (int i = l.size() - 1; i >= 0; i--) { View v = l.get(i); LayoutParams p = (LayoutParams) v.getLayoutParams(); if (p != null && p.scrappedFromPosition == position) return l.remove(i); }
+            return l.remove(l.size() - 1);
+        }
+        void addScrapView(View scrap, int position) {
+            final LayoutParams lp = (LayoutParams) scrap.getLayoutParams();
+            if (lp == null || mScrapViews == null) return;
+            lp.scrappedFromPosition = position;
+            final int viewType = lp.viewType;
+            if (!shouldRecycleViewType(viewType)) { if (viewType != ITEM_VIEW_TYPE_HEADER_OR_FOOTER) { if (mSkippedScrap == null) mSkippedScrap = new ArrayList<>(); mSkippedScrap.add(scrap); } return; }
+            scrap.setPressed(false);
+            if (mViewTypeCount == 1) mCurrentScrap.add(scrap); else if (viewType < mScrapViews.length) mScrapViews[viewType].add(scrap);
+            if (mRecyclerListener != null) mRecyclerListener.onMovedToScrapHeap(scrap);
+        }
+        void removeSkippedScrap() { if (mSkippedScrap == null) return; for (View v : mSkippedScrap) removeDetachedView(v, false); mSkippedScrap.clear(); }
+        void fullyDetachScrapViews() {}
+        void reclaimScrapViews(List<View> views) { if (mScrapViews != null) for (ArrayList<View> l : mScrapViews) views.addAll(l); }
+    }
+}

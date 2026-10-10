@@ -1,10 +1,28 @@
 package android.content;
-public class ClipboardManager {
-    private CharSequence text;
-    public CharSequence getText() { return text; }
-    public void setText(CharSequence t) { text = t; }
-    public boolean hasText() { return text != null && text.length() > 0; }
-    public ClipData getPrimaryClip() { return text == null ? null : ClipData.newPlainText("", text); }
-    public void setPrimaryClip(ClipData c) { text = c != null && c.getItemCount() > 0 ? c.getItemAt(0).getText() : null; }
-    public boolean hasPrimaryClip() { return text != null; }
+
+/** The clipboard: the host's (the iPhone's), as plain text. */
+public class ClipboardManager extends android.text.ClipboardManager {
+    public interface OnPrimaryClipChangedListener { void onPrimaryClipChanged(); }
+    private ClipData mLocal;
+    private final java.util.ArrayList<OnPrimaryClipChangedListener> mListeners = new java.util.ArrayList<>();
+    public ClipboardManager() {}
+    public void setPrimaryClip(ClipData c) {
+        mLocal = c;
+        if (c != null && c.getItemCount() > 0) { CharSequence t = c.getItemAt(0).coerceToText(null); husk.Native.setClipboard(t == null ? "" : t.toString()); }
+        for (OnPrimaryClipChangedListener l : new java.util.ArrayList<>(mListeners)) l.onPrimaryClipChanged();
+    }
+    public void clearPrimaryClip() { mLocal = null; husk.Native.setClipboard(""); }
+    public ClipData getPrimaryClip() {
+        String t = husk.Native.getClipboard();
+        if (t == null || t.isEmpty()) return mLocal;
+        if (mLocal != null && mLocal.getItemCount() > 0 && t.equals(String.valueOf(mLocal.getItemAt(0).coerceToText(null)))) return mLocal;
+        return ClipData.newPlainText("", t);
+    }
+    public ClipDescription getPrimaryClipDescription() { ClipData c = getPrimaryClip(); return c == null ? null : c.getDescription(); }
+    public boolean hasPrimaryClip() { ClipData c = getPrimaryClip(); return c != null; }
+    public void addPrimaryClipChangedListener(OnPrimaryClipChangedListener l) { mListeners.add(l); }
+    public void removePrimaryClipChangedListener(OnPrimaryClipChangedListener l) { mListeners.remove(l); }
+    @Override public CharSequence getText() { ClipData c = getPrimaryClip(); return c != null && c.getItemCount() > 0 ? c.getItemAt(0).coerceToText(null) : null; }
+    @Override public void setText(CharSequence t) { setPrimaryClip(ClipData.newPlainText(null, t)); }
+    @Override public boolean hasText() { CharSequence t = getText(); return t != null && t.length() > 0; }
 }

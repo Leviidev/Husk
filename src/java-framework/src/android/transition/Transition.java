@@ -1,0 +1,68 @@
+package android.transition;
+
+import android.animation.Animator;
+import android.animation.TimeInterpolator;
+import android.view.View;
+import android.view.ViewGroup;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Transitions are accepted and their listeners told they ran; the change itself is applied at once (no animation). */
+public abstract class Transition implements Cloneable {
+    public static final int MATCH_INSTANCE = 1, MATCH_NAME = 2, MATCH_ID = 3, MATCH_ITEM_ID = 4;
+    public interface TransitionListener { void onTransitionStart(Transition t); void onTransitionEnd(Transition t); void onTransitionCancel(Transition t); void onTransitionPause(Transition t); void onTransitionResume(Transition t); }
+    public static abstract class EpicenterCallback { public abstract android.graphics.Rect onGetEpicenter(Transition t); }
+    long mDuration = -1, mStartDelay = -1;
+    TimeInterpolator mInterpolator;
+    final ArrayList<TransitionListener> mListeners = new ArrayList<>();
+    final ArrayList<Integer> mTargetIds = new ArrayList<>();
+    final ArrayList<View> mTargets = new ArrayList<>();
+    public Transition() {}
+    public Transition(android.content.Context c, android.util.AttributeSet a) {}
+    public Transition setDuration(long d) { mDuration = d; return this; }
+    public long getDuration() { return mDuration; }
+    public Transition setStartDelay(long d) { mStartDelay = d; return this; }
+    public long getStartDelay() { return mStartDelay; }
+    public Transition setInterpolator(TimeInterpolator i) { mInterpolator = i; return this; }
+    public TimeInterpolator getInterpolator() { return mInterpolator; }
+    public String[] getTransitionProperties() { return null; }
+    public Animator createAnimator(ViewGroup root, TransitionValues start, TransitionValues end) { return null; }
+    public void setMatchOrder(int... m) {}
+    public abstract void captureStartValues(TransitionValues v);
+    public abstract void captureEndValues(TransitionValues v);
+    public Transition addTarget(int id) { mTargetIds.add(id); return this; }
+    public Transition addTarget(String name) { return this; }
+    public Transition addTarget(Class<?> c) { return this; }
+    public Transition addTarget(View v) { mTargets.add(v); return this; }
+    public Transition removeTarget(int id) { mTargetIds.remove((Integer) id); return this; }
+    public Transition removeTarget(String n) { return this; }
+    public Transition removeTarget(View v) { mTargets.remove(v); return this; }
+    public Transition removeTarget(Class<?> c) { return this; }
+    public Transition excludeTarget(int id, boolean e) { return this; }
+    public Transition excludeTarget(String n, boolean e) { return this; }
+    public Transition excludeChildren(int id, boolean e) { return this; }
+    public Transition excludeTarget(View v, boolean e) { return this; }
+    public Transition excludeChildren(View v, boolean e) { return this; }
+    public Transition excludeTarget(Class<?> c, boolean e) { return this; }
+    public Transition excludeChildren(Class<?> c, boolean e) { return this; }
+    public List<Integer> getTargetIds() { return mTargetIds; }
+    public List<View> getTargets() { return mTargets; }
+    public List<String> getTargetNames() { return null; }
+    public List<Class<?>> getTargetTypes() { return null; }
+    public TransitionValues getTransitionValues(View v, boolean start) { return null; }
+    public boolean isTransitionRequired(TransitionValues s, TransitionValues e) { return false; }
+    public Transition addListener(TransitionListener l) { mListeners.add(l); return this; }
+    public Transition removeListener(TransitionListener l) { mListeners.remove(l); return this; }
+    public void setEpicenterCallback(EpicenterCallback c) {}
+    public EpicenterCallback getEpicenterCallback() { return null; }
+    public android.graphics.Rect getEpicenter() { return null; }
+    public void setPathMotion(PathMotion m) {}
+    public PathMotion getPathMotion() { return null; }
+    public void setPropagation(TransitionPropagation p) {}
+    public TransitionPropagation getPropagation() { return null; }
+    public boolean canRemoveViews() { return false; }
+    public String getName() { return getClass().getName(); }
+    @Override public Transition clone() { try { return (Transition) super.clone(); } catch (CloneNotSupportedException e) { throw new RuntimeException(e); } }
+    /** Husk: tell the listeners it started and ended (nothing is animated). */
+    void huskRun() { for (TransitionListener l : new ArrayList<>(mListeners)) l.onTransitionStart(this); for (TransitionListener l : new ArrayList<>(mListeners)) l.onTransitionEnd(this); }
+}

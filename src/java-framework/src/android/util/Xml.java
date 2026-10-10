@@ -1,0 +1,21 @@
+package android.util;
+public class Xml {
+    public static final String FEATURE_RELAXED = "http://xmlpull.org/v1/doc/features.html#relaxed";
+    public enum Encoding { US_ASCII, UTF_8, UTF_16, ISO_8859_1 }
+    public static org.xmlpull.v1.XmlPullParser newPullParser() {
+        try { org.xmlpull.v1.XmlPullParser p = (org.xmlpull.v1.XmlPullParser) Class.forName("com.android.org.kxml2.io.KXmlParser").newInstance(); p.setFeature(org.xmlpull.v1.XmlPullParser.FEATURE_PROCESS_DOCDECL, true); p.setFeature(org.xmlpull.v1.XmlPullParser.FEATURE_PROCESS_NAMESPACES, true); return p; }
+        catch (Exception e) { throw new AssertionError(e); }
+    }
+    public static org.xmlpull.v1.XmlSerializer newSerializer() {
+        try { return (org.xmlpull.v1.XmlSerializer) Class.forName("com.android.org.kxml2.io.KXmlSerializer").newInstance(); } catch (Exception e) { throw new AssertionError(e); }
+    }
+    public static AttributeSet asAttributeSet(org.xmlpull.v1.XmlPullParser p) { return p instanceof AttributeSet ? (AttributeSet) p : new android.content.res.XmlAttrs(p); }
+    public static void parse(String xml, org.xml.sax.ContentHandler h) throws org.xml.sax.SAXException {
+        try { javax.xml.parsers.SAXParserFactory f = javax.xml.parsers.SAXParserFactory.newInstance(); org.xml.sax.XMLReader r = f.newSAXParser().getXMLReader(); r.setContentHandler(h); r.parse(new org.xml.sax.InputSource(new java.io.StringReader(xml))); }
+        catch (java.io.IOException | javax.xml.parsers.ParserConfigurationException e) { throw new org.xml.sax.SAXException(e); }
+    }
+    public static void parse(java.io.InputStream in, Encoding e, org.xml.sax.ContentHandler h) throws java.io.IOException, org.xml.sax.SAXException {
+        try { javax.xml.parsers.SAXParserFactory f = javax.xml.parsers.SAXParserFactory.newInstance(); org.xml.sax.XMLReader r = f.newSAXParser().getXMLReader(); r.setContentHandler(h); r.parse(new org.xml.sax.InputSource(in)); }
+        catch (javax.xml.parsers.ParserConfigurationException x) { throw new org.xml.sax.SAXException(x); }
+    }
+}

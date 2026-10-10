@@ -1,0 +1,32 @@
+package android.widget;
+
+import android.content.Context;
+import android.view.animation.AnimationUtils;
+import android.view.animation.Interpolator;
+
+public class Scroller {
+    private final OverScroller mS;
+    public Scroller(Context c) { this(c, null); }
+    public Scroller(Context c, Interpolator i) { this(c, i, true); }
+    public Scroller(Context c, Interpolator i, boolean flywheel) { mS = new OverScroller(c, i, flywheel); }
+    public final void setFriction(float f) { mS.setFriction(f); }
+    public final boolean isFinished() { return mS.isFinished(); }
+    public final void forceFinished(boolean f) { mS.forceFinished(f); }
+    public final int getDuration() { return mS.getDuration(); }
+    public final int getCurrX() { return mS.getCurrX(); }
+    public final int getCurrY() { return mS.getCurrY(); }
+    public float getCurrVelocity() { return mS.getCurrVelocity(); }
+    public final int getStartX() { return mS.getStartX(); }
+    public final int getStartY() { return mS.getStartY(); }
+    public final int getFinalX() { return mS.getFinalX(); }
+    public final int getFinalY() { return mS.getFinalY(); }
+    public boolean computeScrollOffset() { return mS.computeScrollOffset(); }
+    public void startScroll(int sx, int sy, int dx, int dy) { mS.startScroll(sx, sy, dx, dy); }
+    public void startScroll(int sx, int sy, int dx, int dy, int d) { mS.startScroll(sx, sy, dx, dy, d); }
+    public void fling(int sx, int sy, int vx, int vy, int minX, int maxX, int minY, int maxY) { mS.fling(sx, sy, vx, vy, minX, maxX, minY, maxY); }
+    public void abortAnimation() { mS.abortAnimation(); }
+    public void extendDuration(int e) { mS.extendDuration(e); }
+    public int timePassed() { return mS.timePassed(); }
+    public void setFinalX(int x) { mS.setFinalX(x); }
+    public void setFinalY(int y) { mS.setFinalY(y); }
+}

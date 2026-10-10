@@ -163,7 +163,7 @@ const tl_bionic_entry tl_tab_ldbl[] = {
     TL_WRAP("siginterrupt", b_posix_ok), TL_WRAP("sigpending", b_sigpending), TL_WRAP("sigwait", b_enosys),
     TL_WRAP("ttyname_r", b_ttyname_r), TL_WRAP("hstrerror", b_hstrerror), TL_WRAP("getprotobyname", b_null_lookup),
     TL_WRAP("getservbyport", b_null_lookup), TL_WRAP("getpwnam_r", b_getpwnam_r), TL_WRAP("mkfifo", b_eperm),
-    TL_WRAP("mknod", b_eperm), TL_WRAP("mknodat", b_eperm), TL_WRAP("posix_fadvise", b_posix_ok), TL_WRAP("posix_fallocate", b_posix_ok),
+    TL_WRAP("mknod", b_eperm), TL_WRAP("mknodat", b_eperm), TL_WRAP("posix_fadvise", b_posix_ok), TL_WRAP("posix_fallocate", b_posix_ok), TL_WRAP("posix_fallocate64", b_posix_ok),
     TL_WRAP("clock_settime", b_eperm),
     TL_END
 };

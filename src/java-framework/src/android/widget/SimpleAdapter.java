@@ -1,0 +1,49 @@
+package android.widget;
+
+import android.content.Context;
+import android.net.Uri;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import java.util.List;
+import java.util.Map;
+
+public class SimpleAdapter extends BaseAdapter implements Filterable {
+    public interface ViewBinder { boolean setViewValue(View view, Object data, String textRepresentation); }
+    private final int[] mTo;
+    private final String[] mFrom;
+    private ViewBinder mViewBinder;
+    private List<? extends Map<String, ?>> mData;
+    private final int mResource;
+    private int mDropDownResource;
+    private final LayoutInflater mInflater;
+    public SimpleAdapter(Context c, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) { mData = data; mResource = mDropDownResource = resource; mFrom = from; mTo = to; mInflater = LayoutInflater.from(c); }
+    public int getCount() { return mData.size(); }
+    public Object getItem(int p) { return mData.get(p); }
+    public long getItemId(int p) { return p; }
+    public View getView(int p, View cv, ViewGroup parent) { return create(p, cv, parent, mResource); }
+    public void setDropDownViewResource(int r) { mDropDownResource = r; }
+    @Override public View getDropDownView(int p, View cv, ViewGroup parent) { return create(p, cv, parent, mDropDownResource); }
+    private View create(int position, View cv, ViewGroup parent, int resource) { View v = cv == null ? mInflater.inflate(resource, parent, false) : cv; bindView(position, v); return v; }
+    private void bindView(int position, View view) {
+        final Map<String, ?> dataSet = mData.get(position);
+        if (dataSet == null) return;
+        for (int i = 0; i < mTo.length; i++) {
+            final View v = view.findViewById(mTo[i]);
+            if (v == null) continue;
+            final Object data = dataSet.get(mFrom[i]);
+            String text = data == null ? "" : data.toString();
+            boolean bound = mViewBinder != null && mViewBinder.setViewValue(v, data, text);
+            if (bound) continue;
+            if (v instanceof Checkable) { if (data instanceof Boolean) ((Checkable) v).setChecked((Boolean) data); else if (v instanceof TextView) ((TextView) v).setText(text); }
+            else if (v instanceof TextView) ((TextView) v).setText(text);
+            else if (v instanceof ImageView) { if (data instanceof Integer) ((ImageView) v).setImageResource((Integer) data); else try { ((ImageView) v).setImageResource(Integer.parseInt(text)); } catch (NumberFormatException e) { ((ImageView) v).setImageURI(Uri.parse(text)); } }
+        }
+    }
+    public ViewBinder getViewBinder() { return mViewBinder; }
+    public void setViewBinder(ViewBinder b) { mViewBinder = b; }
+    public void setViewImage(ImageView v, int value) { v.setImageResource(value); }
+    public void setViewImage(ImageView v, String value) { try { v.setImageResource(Integer.parseInt(value)); } catch (NumberFormatException e) { v.setImageURI(Uri.parse(value)); } }
+    public void setViewText(TextView v, String text) { v.setText(text); }
+    public Filter getFilter() { return new Filter() { protected FilterResults performFiltering(CharSequence c) { FilterResults r = new FilterResults(); r.values = mData; r.count = mData.size(); return r; } protected void publishResults(CharSequence c, FilterResults r) { notifyDataSetChanged(); } }; }
+}

@@ -1,0 +1,21 @@
+package android.view;
+public interface MenuItem {
+    int SHOW_AS_ACTION_NEVER = 0, SHOW_AS_ACTION_IF_ROOM = 1, SHOW_AS_ACTION_ALWAYS = 2, SHOW_AS_ACTION_WITH_TEXT = 4, SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW = 8;
+    interface OnMenuItemClickListener { boolean onMenuItemClick(MenuItem item); }
+    interface OnActionExpandListener { boolean onMenuItemActionExpand(MenuItem item); boolean onMenuItemActionCollapse(MenuItem item); }
+    int getItemId(); int getGroupId(); int getOrder(); MenuItem setTitle(CharSequence t); MenuItem setTitle(int r); CharSequence getTitle();
+    MenuItem setTitleCondensed(CharSequence t); CharSequence getTitleCondensed(); MenuItem setIcon(android.graphics.drawable.Drawable d); MenuItem setIcon(int r);
+    android.graphics.drawable.Drawable getIcon(); MenuItem setIntent(android.content.Intent i); android.content.Intent getIntent();
+    MenuItem setShortcut(char n, char a); MenuItem setNumericShortcut(char c); char getNumericShortcut(); MenuItem setAlphabeticShortcut(char c); char getAlphabeticShortcut();
+    MenuItem setCheckable(boolean c); boolean isCheckable(); MenuItem setChecked(boolean c); boolean isChecked(); MenuItem setVisible(boolean v); boolean isVisible();
+    MenuItem setEnabled(boolean e); boolean isEnabled(); boolean hasSubMenu(); SubMenu getSubMenu(); MenuItem setOnMenuItemClickListener(OnMenuItemClickListener l);
+    ContextMenu.ContextMenuInfo getMenuInfo(); void setShowAsAction(int a); MenuItem setShowAsActionFlags(int a); MenuItem setActionView(View v); MenuItem setActionView(int r);
+    View getActionView(); MenuItem setActionProvider(ActionProvider p); ActionProvider getActionProvider(); boolean expandActionView(); boolean collapseActionView();
+    boolean isActionViewExpanded(); MenuItem setOnActionExpandListener(OnActionExpandListener l);
+    default MenuItem setContentDescription(CharSequence c) { return this; } default CharSequence getContentDescription() { return null; }
+    default MenuItem setTooltipText(CharSequence t) { return this; } default CharSequence getTooltipText() { return null; }
+    default MenuItem setShortcut(char n, char a, int nm, int am) { return setShortcut(n, a); } default MenuItem setNumericShortcut(char c, int m) { return setNumericShortcut(c); }
+    default int getNumericModifiers() { return 0x1000; } default MenuItem setAlphabeticShortcut(char c, int m) { return setAlphabeticShortcut(c); } default int getAlphabeticModifiers() { return 0x1000; }
+    default MenuItem setIconTintList(android.content.res.ColorStateList t) { return this; } default android.content.res.ColorStateList getIconTintList() { return null; }
+    default MenuItem setIconTintMode(android.graphics.PorterDuff.Mode m) { return this; } default android.graphics.PorterDuff.Mode getIconTintMode() { return null; }
+}

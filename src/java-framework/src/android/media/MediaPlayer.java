@@ -6,6 +6,35 @@ public class MediaPlayer {
     public interface OnPreparedListener { void onPrepared(MediaPlayer mp); }
     public interface OnErrorListener { boolean onError(MediaPlayer mp, int what, int extra); }
     public interface OnSeekCompleteListener { void onSeekComplete(MediaPlayer mp); }
+    public interface OnInfoListener { boolean onInfo(MediaPlayer mp, int what, int extra); }
+    public interface OnBufferingUpdateListener { void onBufferingUpdate(MediaPlayer mp, int percent); }
+    public interface OnVideoSizeChangedListener { void onVideoSizeChanged(MediaPlayer mp, int w, int h); }
+    public interface OnTimedTextListener { void onTimedText(MediaPlayer mp, Object text); }
+    public static final int MEDIA_ERROR_UNKNOWN = 1, MEDIA_ERROR_SERVER_DIED = 100, MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK = 200, MEDIA_ERROR_IO = -1004, MEDIA_ERROR_MALFORMED = -1007, MEDIA_ERROR_UNSUPPORTED = -1010, MEDIA_ERROR_TIMED_OUT = -110;
+    public static final int MEDIA_INFO_UNKNOWN = 1, MEDIA_INFO_VIDEO_RENDERING_START = 3, MEDIA_INFO_BUFFERING_START = 701, MEDIA_INFO_BUFFERING_END = 702;
+    public static final int SEEK_PREVIOUS_SYNC = 0, SEEK_NEXT_SYNC = 1, SEEK_CLOSEST_SYNC = 2, SEEK_CLOSEST = 3;
+    public static final int VIDEO_SCALING_MODE_SCALE_TO_FIT = 1, VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING = 2;
+    public void setDisplay(android.view.SurfaceHolder h) {}
+    public void setSurface(android.view.Surface s) {}
+    public void setVideoScalingMode(int m) {}
+    public int getVideoWidth() { return 0; }
+    public int getVideoHeight() { return 0; }
+    public void setScreenOnWhilePlaying(boolean b) {}
+    public void setAudioSessionId(int id) {}
+    public int getAudioSessionId() { return 0; }
+    public void setAuxEffectSendLevel(float l) {}
+    public void attachAuxEffect(int id) {}
+    public void seekTo(long ms, int mode) { seekTo((int) ms); }
+    public void setNextMediaPlayer(MediaPlayer next) {}
+    public void setOnInfoListener(OnInfoListener l) {}
+    public void setOnBufferingUpdateListener(OnBufferingUpdateListener l) {}
+    public void setOnVideoSizeChangedListener(OnVideoSizeChangedListener l) {}
+    public void setDataSource(android.content.Context c, android.net.Uri u, java.util.Map<String, String> headers) {}
+    public void setDataSource(String path, java.util.Map<String, String> headers) {}
+    public void setPlaybackParams(PlaybackParams p) {}
+    public PlaybackParams getPlaybackParams() { return new PlaybackParams(); }
+    public static MediaPlayer create(android.content.Context c, android.net.Uri u, android.view.SurfaceHolder h) { return create(c, u); }
+    public static MediaPlayer create(android.content.Context c, int resId, AudioAttributes a, int session) { return create(c, resId); }
     private boolean playing, looping;
     private long startedAt, offset;
     private OnPreparedListener prepared;

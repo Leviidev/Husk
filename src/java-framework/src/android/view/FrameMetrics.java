@@ -1,0 +1,7 @@
+package android.view;
+public final class FrameMetrics {
+    public static final int UNKNOWN_DELAY_DURATION = 0, INPUT_HANDLING_DURATION = 1, ANIMATION_DURATION = 2, LAYOUT_MEASURE_DURATION = 3, DRAW_DURATION = 4, SYNC_DURATION = 5,
+        COMMAND_ISSUE_DURATION = 6, SWAP_BUFFERS_DURATION = 7, TOTAL_DURATION = 8, FIRST_DRAW_FRAME = 9, INTENDED_VSYNC_TIMESTAMP = 10, VSYNC_TIMESTAMP = 11, GPU_DURATION = 12, DEADLINE = 13;
+    public FrameMetrics(FrameMetrics o) {}
+    public long getMetric(int id) { return 0; }
+}

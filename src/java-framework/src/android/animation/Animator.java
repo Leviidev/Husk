@@ -1,0 +1,48 @@
+package android.animation;
+
+import java.util.ArrayList;
+
+public abstract class Animator implements Cloneable {
+    public static final long DURATION_INFINITE = -1;
+    public interface AnimatorListener {
+        default void onAnimationStart(Animator a, boolean isReverse) { onAnimationStart(a); }
+        default void onAnimationEnd(Animator a, boolean isReverse) { onAnimationEnd(a); }
+        void onAnimationStart(Animator a); void onAnimationEnd(Animator a); void onAnimationCancel(Animator a); void onAnimationRepeat(Animator a);
+    }
+    public interface AnimatorPauseListener { void onAnimationPause(Animator a); void onAnimationResume(Animator a); }
+    ArrayList<AnimatorListener> mListeners;
+    ArrayList<AnimatorPauseListener> mPauseListeners;
+    boolean mPaused;
+
+    public void start() {}
+    public void cancel() {}
+    public void end() {}
+    public void pause() { if (isStarted() && !mPaused) { mPaused = true; if (mPauseListeners != null) for (AnimatorPauseListener l : new ArrayList<>(mPauseListeners)) l.onAnimationPause(this); } }
+    public void resume() { if (mPaused) { mPaused = false; if (mPauseListeners != null) for (AnimatorPauseListener l : new ArrayList<>(mPauseListeners)) l.onAnimationResume(this); } }
+    public boolean isPaused() { return mPaused; }
+    public abstract long getStartDelay();
+    public abstract void setStartDelay(long d);
+    public abstract Animator setDuration(long d);
+    public abstract long getDuration();
+    public abstract void setInterpolator(TimeInterpolator i);
+    public TimeInterpolator getInterpolator() { return null; }
+    public abstract boolean isRunning();
+    public boolean isStarted() { return isRunning(); }
+    public long getTotalDuration() { long d = getDuration(); return d == DURATION_INFINITE ? DURATION_INFINITE : getStartDelay() + d; }
+    public void addListener(AnimatorListener l) { if (mListeners == null) mListeners = new ArrayList<>(); mListeners.add(l); }
+    public void removeListener(AnimatorListener l) { if (mListeners != null) mListeners.remove(l); }
+    public ArrayList<AnimatorListener> getListeners() { return mListeners; }
+    public void addPauseListener(AnimatorPauseListener l) { if (mPauseListeners == null) mPauseListeners = new ArrayList<>(); mPauseListeners.add(l); }
+    public void removePauseListener(AnimatorPauseListener l) { if (mPauseListeners != null) mPauseListeners.remove(l); }
+    public void removeAllListeners() { mListeners = null; mPauseListeners = null; }
+    public void setTarget(Object target) {}
+    public void setupStartValues() {}
+    public void setupEndValues() {}
+    public boolean canReverse() { return false; }
+    public void reverse() {}
+    @Override public Animator clone() {
+        try { Animator a = (Animator) super.clone(); if (mListeners != null) a.mListeners = new ArrayList<>(mListeners); if (mPauseListeners != null) a.mPauseListeners = new ArrayList<>(mPauseListeners); return a; }
+        catch (CloneNotSupportedException e) { throw new AssertionError(); }
+    }
+    ArrayList<AnimatorListener> listeners() { return mListeners == null ? new ArrayList<AnimatorListener>() : new ArrayList<>(mListeners); }
+}

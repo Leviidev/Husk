@@ -1,0 +1,8 @@
+package android.text.style;
+public class IconMarginSpan implements LeadingMarginSpan, LineHeightSpan {
+    private final android.graphics.Bitmap mBitmap; private final int mPad;
+    public IconMarginSpan(android.graphics.Bitmap b) { this(b, 0); } public IconMarginSpan(android.graphics.Bitmap b, int pad) { mBitmap = b; mPad = pad; }
+    public int getLeadingMargin(boolean first) { return mBitmap.getWidth() + mPad; }
+    public void drawLeadingMargin(android.graphics.Canvas c, android.graphics.Paint p, int x, int dir, int top, int baseline, int bottom, CharSequence text, int start, int end, boolean first, android.text.Layout l) { if (first) c.drawBitmap(mBitmap, x, top, p); }
+    public void chooseHeight(CharSequence t, int s, int e, int sv, int v, android.graphics.Paint.FontMetricsInt fm) {}
+}

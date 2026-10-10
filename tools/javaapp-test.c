@@ -92,6 +92,12 @@ static void do_swipe(float x1, float y1, float x2, float y2, long ms)
     for (int i = 1; i <= steps; i++) { sleep_ms(ms / steps); tl_javaapp_touch(1, 0, x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps); }
     tl_javaapp_touch(2, 0, x2, y2);
 }
+static char *g_clip;
+static void h_keyboard(int show, int type, int ime) { fprintf(stderr, "host: keyboard %s (input type %#x, ime %#x)\n", show ? "shown" : "hidden", type, ime); }
+static void h_set_clip(const char *t) { free(g_clip); g_clip = strdup(t); fprintf(stderr, "host: clipboard = %.60s\n", t); }
+static char *h_get_clip(void) { return g_clip ? strdup(g_clip) : NULL; }
+static void h_share(const char *t) { fprintf(stderr, "host: share %.80s\n", t); }
+static void h_orientation(int o) { fprintf(stderr, "host: orientation %d\n", o); }
 static void *control_thread(void *arg)
 {
     const char *path = arg;
@@ -111,6 +117,10 @@ static void *control_thread(void *arg)
                 else fprintf(stderr, "ctl: shot %s (frame %lu)\n", p, tl_javaapp_frames());
             }
             else if (sscanf(line, "key %ld", &ms) == 1) { tl_javaapp_key((int)ms, true); sleep_ms(60); tl_javaapp_key((int)ms, false); }
+            else if (!strncmp(line, "text ", 5)) { line[strcspn(line, "\n")] = 0; tl_javaapp_text(line + 5); }
+            else if (!strncmp(line, "del", 3)) tl_javaapp_text_delete();
+            else if (!strncmp(line, "enter", 5)) tl_javaapp_text_action();
+            else if (!strncmp(line, "back", 4)) tl_javaapp_back();
             else if (!strncmp(line, "pause", 5)) tl_javaapp_set_paused(true);
             else if (!strncmp(line, "resume", 6)) tl_javaapp_set_paused(false);
             else if (!strncmp(line, "quit", 4)) { fprintf(stderr, "ctl: quit\n"); fflush(stderr); _exit(0); }
@@ -151,7 +161,10 @@ static void *run(void *p)
     int w = argc > 4 ? atoi(argv[3]) : 804, h = argc > 4 ? atoi(argv[4]) : 1748;
     tl_javaapp_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
                               .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
-                              .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -6 };
+                              .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -6,
+                              .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",
+                              .show_keyboard = h_keyboard, .set_clipboard = h_set_clip, .get_clipboard = h_get_clip, .share = h_share, .set_orientation = h_orientation };
+    if (getenv("TL_INSETS")) sscanf(getenv("TL_INSETS"), "%d,%d,%d,%d", &cfg.insets[0], &cfg.insets[1], &cfg.insets[2], &cfg.insets[3]);
     if (!tl_javaapp_start(&cfg)) { fprintf(stderr, "javaapp: start failed\n"); _exit(1); }
     if (getenv("TL_CTL")) { static pthread_t ct; pthread_create(&ct, NULL, control_thread, getenv("TL_CTL")); }
     int secs = argc > 2 ? atoi(argv[2]) : 10;

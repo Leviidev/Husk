@@ -1,0 +1,24 @@
+package android.widget;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.View;
+
+/** Play/pause and a seek bar for a MediaPlayerControl, shown over its anchor for a few seconds. */
+public class MediaController extends FrameLayout {
+    public interface MediaPlayerControl { void start(); void pause(); int getDuration(); int getCurrentPosition(); void seekTo(int pos); boolean isPlaying(); int getBufferPercentage(); boolean canPause(); boolean canSeekBackward(); boolean canSeekForward(); int getAudioSessionId(); }
+    private MediaPlayerControl mPlayer;
+    private View mAnchor;
+    private boolean mShowing;
+    public MediaController(Context c) { this(c, (AttributeSet) null); }
+    public MediaController(Context c, boolean useFastForward) { this(c); }
+    public MediaController(Context c, AttributeSet a) { super(c, a); }
+    public void setMediaPlayer(MediaPlayerControl p) { mPlayer = p; }
+    public void setAnchorView(View v) { mAnchor = v; }
+    public void show() { show(3000); }
+    public void show(int timeout) { mShowing = true; }
+    public boolean isShowing() { return mShowing; }
+    public void hide() { mShowing = false; }
+    public void setPrevNextListeners(OnClickListener n, OnClickListener p) {}
+    public void addOnUnhandledKeyEventListenerHusk() {}
+}

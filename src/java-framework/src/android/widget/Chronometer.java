@@ -1,0 +1,63 @@
+package android.widget;
+
+import android.content.Context;
+import android.content.res.TypedArray;
+import android.os.SystemClock;
+import android.util.AttributeSet;
+
+public class Chronometer extends TextView {
+    public interface OnChronometerTickListener { void onChronometerTick(Chronometer c); }
+    private long mBase, mNow;
+    private boolean mVisible, mStarted, mRunning, mCountDown;
+    private String mFormat;
+    private OnChronometerTickListener mOnTick;
+    private final Runnable mTick = new Runnable() { @Override public void run() { if (mRunning) { updateText(SystemClock.elapsedRealtime()); dispatchChronometerTick(); postDelayed(mTick, 1000); } } };
+    public Chronometer(Context c) { this(c, null); }
+    public Chronometer(Context c, AttributeSet a) { this(c, a, 0); }
+    public Chronometer(Context c, AttributeSet a, int s) { this(c, a, s, 0); }
+    public Chronometer(Context c, AttributeSet attrs, int s, int r) {
+        super(c, attrs, s, r);
+        TypedArray a = c.obtainStyledAttributes(attrs, husk.S.Chronometer, s, r);
+        setFormat(a.getString(husk.S.Chronometer_format));
+        setCountDown(a.getBoolean(husk.S.Chronometer_countDown, false));
+        a.recycle();
+        mBase = SystemClock.elapsedRealtime();
+        updateText(mBase);
+    }
+    public void setCountDown(boolean c) { mCountDown = c; updateText(SystemClock.elapsedRealtime()); }
+    public boolean isCountDown() { return mCountDown; }
+    public boolean isTheFinalCountDown() { return false; }
+    public void setBase(long b) { mBase = b; dispatchChronometerTick(); updateText(SystemClock.elapsedRealtime()); }
+    public long getBase() { return mBase; }
+    public void setFormat(String f) { mFormat = f; }
+    public String getFormat() { return mFormat; }
+    public void setOnChronometerTickListener(OnChronometerTickListener l) { mOnTick = l; }
+    public OnChronometerTickListener getOnChronometerTickListener() { return mOnTick; }
+    public void start() { mStarted = true; updateRunning(); }
+    public void stop() { mStarted = false; updateRunning(); }
+    public void setStarted(boolean s) { mStarted = s; updateRunning(); }
+    @Override protected void onDetachedFromWindow() { super.onDetachedFromWindow(); mVisible = false; updateRunning(); }
+    @Override protected void onWindowVisibilityChanged(int v) { super.onWindowVisibilityChanged(v); mVisible = v == VISIBLE; updateRunning(); }
+    @Override protected void onVisibilityChanged(android.view.View v, int vis) { super.onVisibilityChanged(v, vis); updateRunning(); }
+    private synchronized void updateText(long now) {
+        mNow = now;
+        long seconds = mCountDown ? mBase - now : now - mBase;
+        seconds /= 1000;
+        boolean negative = false;
+        if (seconds < 0) { seconds = -seconds; negative = true; }
+        String text = android.text.format.DateUtils.formatElapsedTime(seconds);
+        if (negative) text = "−" + text;
+        if (mFormat != null) { try { text = String.format(mFormat, text); } catch (java.util.IllegalFormatException e) {} }
+        setText(text);
+    }
+    private void updateRunning() {
+        boolean running = mVisible && mStarted && isShown();
+        if (running != mRunning) {
+            if (running) { updateText(SystemClock.elapsedRealtime()); dispatchChronometerTick(); postDelayed(mTick, 1000); }
+            else removeCallbacks(mTick);
+            mRunning = running;
+        }
+    }
+    void dispatchChronometerTick() { if (mOnTick != null) mOnTick.onChronometerTick(this); }
+    @Override public CharSequence getAccessibilityClassName() { return Chronometer.class.getName(); }
+}

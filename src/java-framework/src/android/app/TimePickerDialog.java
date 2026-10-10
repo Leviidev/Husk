@@ -1,0 +1,25 @@
+package android.app;
+
+import android.content.Context;
+import android.content.DialogInterface;
+import android.widget.TimePicker;
+
+public class TimePickerDialog extends AlertDialog implements DialogInterface.OnClickListener, TimePicker.OnTimeChangedListener {
+    public interface OnTimeSetListener { void onTimeSet(TimePicker view, int hourOfDay, int minute); }
+    private final TimePicker mTimePicker;
+    private final OnTimeSetListener mListener;
+    public TimePickerDialog(Context c, OnTimeSetListener l, int hour, int minute, boolean is24) { this(c, 0, l, hour, minute, is24); }
+    public TimePickerDialog(Context c, int themeResId, OnTimeSetListener l, int hour, int minute, boolean is24) {
+        super(c, resolveTheme(c, themeResId));
+        mListener = l;
+        mTimePicker = new TimePicker(getContext());
+        mTimePicker.setIs24HourView(is24); mTimePicker.setHour(hour); mTimePicker.setMinute(minute);
+        mTimePicker.setOnTimeChangedListener(this);
+        setView(mTimePicker);
+        setButton(BUTTON_POSITIVE, getContext().getString(android.R.string.ok), this);
+        setButton(BUTTON_NEGATIVE, getContext().getString(android.R.string.cancel), this);
+    }
+    public void onTimeChanged(TimePicker v, int h, int m) {}
+    public void onClick(DialogInterface d, int which) { if (which == BUTTON_POSITIVE && mListener != null) mListener.onTimeSet(mTimePicker, mTimePicker.getHour(), mTimePicker.getMinute()); else if (which == BUTTON_NEGATIVE) cancel(); }
+    public void updateTime(int h, int m) { mTimePicker.setHour(h); mTimePicker.setMinute(m); }
+}

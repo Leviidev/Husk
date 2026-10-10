@@ -1,0 +1,188 @@
+package android.app;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import java.util.ArrayList;
+
+/** An activity's fragments: transactions applied at once (on the next message), a back stack of them, <fragment> tags in layouts. */
+public class FragmentManager {
+    public static final int POP_BACK_STACK_INCLUSIVE = 1;
+    public interface OnBackStackChangedListener { void onBackStackChanged(); }
+    public interface BackStackEntry { int getId(); String getName(); int getBreadCrumbTitleRes(); int getBreadCrumbShortTitleRes(); CharSequence getBreadCrumbTitle(); CharSequence getBreadCrumbShortTitle(); }
+    public static abstract class FragmentLifecycleCallbacks {}
+    private final Activity mActivity;
+    final ArrayList<Fragment> mAdded = new ArrayList<>();
+    final ArrayList<Tx> mBackStack = new ArrayList<>();
+    private final ArrayList<OnBackStackChangedListener> mListeners = new ArrayList<>();
+    FragmentManager(Activity a) { mActivity = a; }
+    public FragmentTransaction beginTransaction() { return new Tx(); }
+    public boolean executePendingTransactions() { return false; }
+    public Fragment findFragmentById(int id) { for (int i = mAdded.size() - 1; i >= 0; i--) { Fragment f = mAdded.get(i); if (f.mFragmentId == id || f.mContainerId == id) return f; } return null; }
+    public Fragment findFragmentByTag(String tag) { if (tag != null) for (int i = mAdded.size() - 1; i >= 0; i--) if (tag.equals(mAdded.get(i).mTag)) return mAdded.get(i); return null; }
+    public java.util.List<Fragment> getFragments() { return new ArrayList<>(mAdded); }
+    public int getBackStackEntryCount() { return mBackStack.size(); }
+    public BackStackEntry getBackStackEntryAt(int i) { return mBackStack.get(i); }
+    public void addOnBackStackChangedListener(OnBackStackChangedListener l) { mListeners.add(l); }
+    public void removeOnBackStackChangedListener(OnBackStackChangedListener l) { mListeners.remove(l); }
+    public void putFragment(Bundle b, String k, Fragment f) {}
+    public Fragment getFragment(Bundle b, String k) { return null; }
+    public Fragment.SavedState saveFragmentInstanceState(Fragment f) { return null; }
+    public boolean isDestroyed() { return mActivity.isDestroyed(); }
+    public boolean isStateSaved() { return false; }
+    public void registerFragmentLifecycleCallbacks(FragmentLifecycleCallbacks c, boolean r) {}
+    public void unregisterFragmentLifecycleCallbacks(FragmentLifecycleCallbacks c) {}
+    public void popBackStack() { mActivity.runOnUiThread(this::popBackStackImmediate); }
+    public boolean popBackStackImmediate() {
+        if (mBackStack.isEmpty()) return false;
+        Tx t = mBackStack.remove(mBackStack.size() - 1);
+        t.reverse();
+        for (OnBackStackChangedListener l : new ArrayList<>(mListeners)) l.onBackStackChanged();
+        return true;
+    }
+    public void popBackStack(String name, int flags) { mActivity.runOnUiThread(() -> popBackStackImmediate(name, flags)); }
+    public boolean popBackStackImmediate(String name, int flags) {
+        boolean any = false;
+        while (!mBackStack.isEmpty()) {
+            Tx t = mBackStack.get(mBackStack.size() - 1);
+            boolean match = name != null && name.equals(t.mName);
+            if (match && (flags & POP_BACK_STACK_INCLUSIVE) == 0) break;
+            popBackStackImmediate(); any = true;
+            if (match) break;
+            if (name == null) break;
+        }
+        return any;
+    }
+    public void popBackStack(int id, int flags) { popBackStackImmediate(); }
+    public boolean popBackStackImmediate(int id, int flags) { return popBackStackImmediate(); }
+
+    void addFragment(Fragment f, int containerId, String tag) {
+        f.mActivity = mActivity; f.mFragmentManager = this; f.mContainerId = containerId; if (f.mFragmentId == 0) f.mFragmentId = containerId; if (tag != null) f.mTag = tag;
+        f.mAdded = true; f.mRemoving = false;
+        mAdded.add(f);
+        f.onAttach((Context) mActivity); f.onAttach(mActivity);
+        mActivity.onAttachFragment(f);
+        f.onCreate(f.mArguments);
+        ViewGroup container = containerId != 0 ? (ViewGroup) mActivity.findViewById(containerId) : null;
+        f.mContainer = container;
+        View v = f.onCreateView(mActivity.getLayoutInflater(), container, null);
+        f.mView = v;
+        if (v != null) {
+            if (container != null && v.getParent() == null) container.addView(v);
+            f.onViewCreated(v, null);
+            if (f.mHidden) v.setVisibility(View.GONE);
+        }
+        f.onActivityCreated(null);
+        f.onViewStateRestored(null);
+        f.onStart(); f.mStarted = true;
+        if (mActivity.isResumed()) { f.onResume(); f.mResumed = true; }
+    }
+    void removeFragment(Fragment f) {
+        if (!mAdded.remove(f)) return;
+        f.mRemoving = true;
+        if (f.mResumed) { f.onPause(); f.mResumed = false; }
+        if (f.mStarted) { f.onStop(); f.mStarted = false; }
+        if (f.mView != null) { f.onDestroyView(); if (f.mView.getParent() instanceof ViewGroup) ((ViewGroup) f.mView.getParent()).removeView(f.mView); f.mView = null; }
+        f.onDestroy(); f.onDetach();
+        f.mAdded = false;
+    }
+    /** A <fragment class=... android:id=...> in a layout. */
+    public View huskInflateFragment(View parent, Context c, android.util.AttributeSet attrs) {
+        String cls = attrs.getAttributeValue(null, "class");
+        if (cls == null) cls = attrs.getAttributeValue("http://schemas.android.com/apk/res/android", "name");
+        int id = attrs.getAttributeResourceValue("http://schemas.android.com/apk/res/android", "id", 0);
+        String tag = attrs.getAttributeValue("http://schemas.android.com/apk/res/android", "tag");
+        Fragment f = Fragment.instantiate(c, cls);
+        f.mInLayout = true; f.mFragmentId = id;
+        f.onInflate(mActivity, attrs, null);
+        f.mActivity = mActivity; f.mFragmentManager = this; f.mTag = tag; f.mAdded = true;
+        mAdded.add(f);
+        f.onAttach((Context) mActivity); f.onAttach(mActivity);
+        f.onCreate(null);
+        View v = f.onCreateView(mActivity.getLayoutInflater(), parent instanceof ViewGroup ? (ViewGroup) parent : null, null);
+        if (v == null) throw new IllegalStateException("Fragment " + cls + " did not create a view.");
+        if (id != 0) v.setId(id);
+        if (tag != null) v.setTag(tag);
+        f.mView = v;
+        f.onViewCreated(v, null);
+        final Fragment ff = f;
+        mActivity.runOnUiThread(() -> { ff.onActivityCreated(null); ff.onStart(); ff.mStarted = true; if (mActivity.isResumed()) { ff.onResume(); ff.mResumed = true; } });
+        return v;
+    }
+
+    final class Tx extends FragmentTransaction implements BackStackEntry {
+        final ArrayList<Object[]> ops = new ArrayList<>();   /* {op, fragment, container, tag, removed fragments} */
+        boolean mAddToBackStack; String mName; boolean mCommitted;
+        private Tx op(int op, Fragment f, int container, String tag) { ops.add(new Object[] { op, f, container, tag, null }); return this; }
+        public FragmentTransaction add(Fragment f, String tag) { return op(0, f, 0, tag); }
+        public FragmentTransaction add(int c, Fragment f) { return op(0, f, c, null); }
+        public FragmentTransaction add(int c, Fragment f, String tag) { return op(0, f, c, tag); }
+        public FragmentTransaction replace(int c, Fragment f) { return op(1, f, c, null); }
+        public FragmentTransaction replace(int c, Fragment f, String tag) { return op(1, f, c, tag); }
+        public FragmentTransaction remove(Fragment f) { return op(2, f, 0, null); }
+        public FragmentTransaction hide(Fragment f) { return op(3, f, 0, null); }
+        public FragmentTransaction show(Fragment f) { return op(4, f, 0, null); }
+        public FragmentTransaction detach(Fragment f) { return op(2, f, 0, null); }
+        public FragmentTransaction attach(Fragment f) { return op(0, f, f.mContainerId, f.mTag); }
+        public FragmentTransaction setPrimaryNavigationFragment(Fragment f) { return this; }
+        public FragmentTransaction setReorderingAllowed(boolean r) { return this; }
+        public boolean isEmpty() { return ops.isEmpty(); }
+        public FragmentTransaction setCustomAnimations(int a, int b) { return this; }
+        public FragmentTransaction setCustomAnimations(int a, int b, int c, int d) { return this; }
+        public FragmentTransaction addSharedElement(View v, String n) { return this; }
+        public FragmentTransaction setTransition(int t) { return this; }
+        public FragmentTransaction setTransitionStyle(int s) { return this; }
+        public FragmentTransaction addToBackStack(String name) { mAddToBackStack = true; mName = name; return this; }
+        public boolean isAddToBackStackAllowed() { return true; }
+        public FragmentTransaction disallowAddToBackStack() { return this; }
+        public FragmentTransaction setBreadCrumbTitle(int r) { return this; } public FragmentTransaction setBreadCrumbTitle(CharSequence t) { return this; }
+        public FragmentTransaction setBreadCrumbShortTitle(int r) { return this; } public FragmentTransaction setBreadCrumbShortTitle(CharSequence t) { return this; }
+        public FragmentTransaction runOnCommit(Runnable r) { ops.add(new Object[] { 9, null, 0, null, r }); return this; }
+        public int commit() { mActivity.runOnUiThread(this::apply); return 0; }
+        public int commitAllowingStateLoss() { return commit(); }
+        public void commitNow() { apply(); }
+        public void commitNowAllowingStateLoss() { apply(); }
+        @SuppressWarnings("unchecked")
+        void apply() {
+            if (mCommitted) return;
+            mCommitted = true;
+            for (Object[] o : ops) {
+                int op = (Integer) o[0]; Fragment f = (Fragment) o[1]; int c = (Integer) o[2]; String tag = (String) o[3];
+                switch (op) {
+                case 0: addFragment(f, c, tag); break;
+                case 1: {
+                    ArrayList<Fragment> gone = new ArrayList<>();
+                    for (Fragment old : new ArrayList<>(mAdded)) if (old.mContainerId == c && old != f) { gone.add(old); removeFragment(old); }
+                    o[4] = gone;
+                    addFragment(f, c, tag);
+                    break;
+                }
+                case 2: removeFragment(f); break;
+                case 3: f.mHidden = true; if (f.mView != null) f.mView.setVisibility(View.GONE); f.onHiddenChanged(true); break;
+                case 4: f.mHidden = false; if (f.mView != null) f.mView.setVisibility(View.VISIBLE); f.onHiddenChanged(false); break;
+                case 9: ((Runnable) o[4]).run(); break;
+                }
+            }
+            if (mAddToBackStack) { mBackStack.add(this); for (OnBackStackChangedListener l : new ArrayList<>(mListeners)) l.onBackStackChanged(); }
+        }
+        @SuppressWarnings("unchecked")
+        void reverse() {
+            for (int i = ops.size() - 1; i >= 0; i--) {
+                Object[] o = ops.get(i);
+                int op = (Integer) o[0]; Fragment f = (Fragment) o[1];
+                switch (op) {
+                case 0: removeFragment(f); break;
+                case 1: removeFragment(f); if (o[4] != null) for (Fragment old : (ArrayList<Fragment>) o[4]) { old.mView = null; addFragment(old, old.mContainerId, old.mTag); } break;
+                case 2: addFragment(f, f.mContainerId, f.mTag); break;
+                case 3: f.mHidden = false; if (f.mView != null) f.mView.setVisibility(View.VISIBLE); break;
+                case 4: f.mHidden = true; if (f.mView != null) f.mView.setVisibility(View.GONE); break;
+                }
+            }
+        }
+        public int getId() { return mBackStack.indexOf(this); }
+        public String getName() { return mName; }
+        public int getBreadCrumbTitleRes() { return 0; } public int getBreadCrumbShortTitleRes() { return 0; }
+        public CharSequence getBreadCrumbTitle() { return null; } public CharSequence getBreadCrumbShortTitle() { return null; }
+    }
+}

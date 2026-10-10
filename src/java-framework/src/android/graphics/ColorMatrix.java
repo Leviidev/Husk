@@ -1,0 +1,17 @@
+package android.graphics;
+public class ColorMatrix {
+    private final float[] a = new float[20];
+    public ColorMatrix() { reset(); }
+    public ColorMatrix(float[] src) { System.arraycopy(src, 0, a, 0, 20); }
+    public ColorMatrix(ColorMatrix src) { System.arraycopy(src.a, 0, a, 0, 20); }
+    public final float[] getArray() { return a; }
+    public void reset() { java.util.Arrays.fill(a, 0); a[0] = a[6] = a[12] = a[18] = 1; }
+    public void set(ColorMatrix s) { System.arraycopy(s.a, 0, a, 0, 20); }
+    public void set(float[] s) { System.arraycopy(s, 0, a, 0, 20); }
+    public void setSaturation(float sat) { reset(); float i = 1 - sat, r = 0.213f * i, g = 0.715f * i, b = 0.072f * i; a[0] = r + sat; a[1] = g; a[2] = b; a[5] = r; a[6] = g + sat; a[7] = b; a[10] = r; a[11] = g; a[12] = b + sat; }
+    public void setScale(float r, float g, float b, float al) { java.util.Arrays.fill(a, 0); a[0] = r; a[6] = g; a[12] = b; a[18] = al; }
+    public void setRotate(int axis, float deg) {}
+    public void setConcat(ColorMatrix x, ColorMatrix y) {}
+    public void preConcat(ColorMatrix p) {}
+    public void postConcat(ColorMatrix p) {}
+}

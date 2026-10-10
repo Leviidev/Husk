@@ -382,6 +382,28 @@ static void bionic___assert2(const char *file, int line, const char *func, const
     abort();
 }
 
+/* fdsan: Android's file descriptor ownership checks. Owner tags are kept per descriptor and never enforced. */
+static _Atomic uint64_t g_fd_tags[4096];
+static uint64_t bionic_android_fdsan_create_owner_tag(int type, uint64_t tag) { return ((uint64_t)(type & 0xff) << 56) | (tag & 0x00ffffffffffffffull); }
+static void bionic_android_fdsan_exchange_owner_tag(int fd, uint64_t expected, uint64_t tag) { (void)expected; if (fd >= 0 && fd < 4096) atomic_store(&g_fd_tags[fd], tag); }
+static uint64_t bionic_android_fdsan_get_owner_tag(int fd) { return fd >= 0 && fd < 4096 ? atomic_load(&g_fd_tags[fd]) : 0; }
+static const char *bionic_android_fdsan_get_tag_type(uint64_t tag)
+{
+    static const char *const k[] = { "unowned", "FILE*", "DIR*", "unique_fd", "sqlite", "FileInputStream", "FileOutputStream", "RandomAccessFile", "ParcelFileDescriptor", "ART FdFile", "DatagramSocketImpl", "SocketImpl", "ZipArchive" };
+    unsigned t = (unsigned)(tag >> 56);
+    return t < sizeof(k) / sizeof(k[0]) ? k[t] : "native object of unknown type";
+}
+static uint64_t bionic_android_fdsan_get_tag_value(uint64_t tag) { return tag & 0x00ffffffffffffffull; }
+int tl_guest_close(int fd);
+static int bionic_android_fdsan_close_with_tag(int fd, uint64_t tag) { (void)tag; if (fd >= 0 && fd < 4096) atomic_store(&g_fd_tags[fd], 0); return tl_guest_close(fd); }
+static int g_fdsan_level;
+static int bionic_android_fdsan_get_error_level(void) { return g_fdsan_level; }
+static int bionic_android_fdsan_set_error_level(int l) { int o = g_fdsan_level; g_fdsan_level = l; return o; }
+static int bionic_android_fdsan_set_error_level_from_property(int l) { return bionic_android_fdsan_set_error_level(l); }
+static int bionic_tcdrain(int fd) { (void)fd; return 0; }
+static int bionic_tcsendbreak(int fd, int d) { (void)fd; (void)d; return 0; }
+static int bionic_munlock(const void *a, size_t l) { (void)a; (void)l; return 0; }
+
 static void bionic_android_set_abort_message(const char *msg) { tl_log_line("bionic: abort message: %s", msg ? msg : "(null)"); }
 
 static void bionic___libc_init(void) {}
@@ -697,6 +719,16 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("__stack_chk_fail", bionic___stack_chk_fail),
     TL_WRAP("__assert2", bionic___assert2),
     TL_WRAP("android_set_abort_message", bionic_android_set_abort_message),
+    TL_WRAP("android_fdsan_create_owner_tag", bionic_android_fdsan_create_owner_tag),
+    TL_WRAP("android_fdsan_exchange_owner_tag", bionic_android_fdsan_exchange_owner_tag),
+    TL_WRAP("android_fdsan_get_owner_tag", bionic_android_fdsan_get_owner_tag),
+    TL_WRAP("android_fdsan_get_tag_type", bionic_android_fdsan_get_tag_type),
+    TL_WRAP("android_fdsan_get_tag_value", bionic_android_fdsan_get_tag_value),
+    TL_WRAP("android_fdsan_close_with_tag", bionic_android_fdsan_close_with_tag),
+    TL_WRAP("android_fdsan_get_error_level", bionic_android_fdsan_get_error_level),
+    TL_WRAP("android_fdsan_set_error_level", bionic_android_fdsan_set_error_level),
+    TL_WRAP("android_fdsan_set_error_level_from_property", bionic_android_fdsan_set_error_level_from_property),
+    TL_WRAP("tcdrain", bionic_tcdrain), TL_WRAP("tcsendbreak", bionic_tcsendbreak), TL_WRAP("munlock", bionic_munlock),
     TL_WRAP("__libc_init", bionic___libc_init),
     TL_WRAP("__register_atfork", bionic___register_atfork),
     TL_WRAP("pthread_atfork", bionic_pthread_atfork),

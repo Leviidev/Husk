@@ -1,0 +1,53 @@
+package android.animation;
+
+import android.util.Property;
+
+public final class ObjectAnimator extends ValueAnimator {
+    private Object mTarget;
+    private String mPropertyName;
+    private Property mProperty;
+    private boolean mAutoCancel;
+    public ObjectAnimator() {}
+    private ObjectAnimator(Object target, String name) { mTarget = target; mPropertyName = name; }
+    private <T> ObjectAnimator(T target, Property<T, ?> p) { mTarget = target; mProperty = p; }
+    public static ObjectAnimator ofInt(Object t, String n, int... v) { ObjectAnimator a = new ObjectAnimator(t, n); a.setIntValues(v); return a; }
+    public static <T> ObjectAnimator ofInt(T t, Property<T, Integer> p, int... v) { ObjectAnimator a = new ObjectAnimator(t, p); a.setIntValues(v); return a; }
+    public static ObjectAnimator ofArgb(Object t, String n, int... v) { ObjectAnimator a = ofInt(t, n, v); a.setEvaluator(ArgbEvaluator.getInstance()); return a; }
+    public static <T> ObjectAnimator ofArgb(T t, Property<T, Integer> p, int... v) { ObjectAnimator a = ofInt(t, p, v); a.setEvaluator(ArgbEvaluator.getInstance()); return a; }
+    public static ObjectAnimator ofFloat(Object t, String n, float... v) { ObjectAnimator a = new ObjectAnimator(t, n); a.setFloatValues(v); return a; }
+    public static <T> ObjectAnimator ofFloat(T t, Property<T, Float> p, float... v) { ObjectAnimator a = new ObjectAnimator(t, p); a.setFloatValues(v); return a; }
+    public static ObjectAnimator ofFloat(Object t, String xName, String yName, android.graphics.Path path) { return ofFloat(t, xName, 0f); }
+    public static ObjectAnimator ofObject(Object t, String n, TypeEvaluator e, Object... v) { ObjectAnimator a = new ObjectAnimator(t, n); a.setObjectValues(v); a.setEvaluator(e); return a; }
+    public static <T, V> ObjectAnimator ofObject(T t, Property<T, V> p, TypeEvaluator<V> e, V... v) { ObjectAnimator a = new ObjectAnimator(t, p); a.setObjectValues(v); a.setEvaluator(e); return a; }
+    public static ObjectAnimator ofPropertyValuesHolder(Object t, PropertyValuesHolder... v) { ObjectAnimator a = new ObjectAnimator(); a.mTarget = t; a.setValues(v); return a; }
+    @Override public void setIntValues(int... v) {
+        if (mValues == null || mValues.length == 0) setValues(mProperty != null ? PropertyValuesHolder.ofInt(mProperty, v) : PropertyValuesHolder.ofInt(mPropertyName, v));
+        else super.setIntValues(v);
+    }
+    @Override public void setFloatValues(float... v) {
+        if (mValues == null || mValues.length == 0) setValues(mProperty != null ? PropertyValuesHolder.ofFloat(mProperty, v) : PropertyValuesHolder.ofFloat(mPropertyName, v));
+        else super.setFloatValues(v);
+    }
+    @Override public void setObjectValues(Object... v) {
+        if (mValues == null || mValues.length == 0) { PropertyValuesHolder h = PropertyValuesHolder.ofObject(mPropertyName, null, v); if (mProperty != null) h.setProperty(mProperty); setValues(h); }
+        else super.setObjectValues(v);
+    }
+    public void setPropertyName(String n) { mPropertyName = n; if (mValues != null && mValues.length > 0) mValues[0].setPropertyName(n); }
+    public void setProperty(Property p) { mProperty = p; if (mValues != null && mValues.length > 0) mValues[0].setProperty(p); }
+    public String getPropertyName() { return mPropertyName != null ? mPropertyName : mProperty != null ? mProperty.getName() : null; }
+    @Override public void setTarget(Object t) { if (mTarget != t) { if (isStarted()) cancel(); mTarget = t; mInitialized = false; } }
+    public Object getTarget() { return mTarget; }
+    public void setAutoCancel(boolean c) { mAutoCancel = c; }
+    @Override public ObjectAnimator setDuration(long d) { super.setDuration(d); return this; }
+    @Override void initAnimation() {
+        if (!mInitialized && mValues != null) for (PropertyValuesHolder h : mValues) h.setupStart(mTarget);
+        super.initAnimation();
+    }
+    @Override void animateValue(float f) {
+        super.animateValue(f);
+        if (mValues != null) for (PropertyValuesHolder h : mValues) h.apply(mTarget);
+    }
+    @Override public void setupStartValues() { initAnimation(); }
+    @Override public ObjectAnimator clone() { return (ObjectAnimator) super.clone(); }
+    @Override public String toString() { return "ObjectAnimator@" + Integer.toHexString(hashCode()) + ", target " + mTarget; }
+}

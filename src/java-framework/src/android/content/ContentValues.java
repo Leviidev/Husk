@@ -1,0 +1,44 @@
+package android.content;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+public final class ContentValues implements android.os.Parcelable {
+    private final HashMap<String, Object> mMap;
+    public ContentValues() { mMap = new HashMap<>(); }
+    public ContentValues(int size) { mMap = new HashMap<>(Math.max(size, 1)); }
+    public ContentValues(ContentValues from) { mMap = new HashMap<>(from.mMap); }
+    public void put(String k, String v) { mMap.put(k, v); }
+    public void putAll(ContentValues o) { mMap.putAll(o.mMap); }
+    public void put(String k, Byte v) { mMap.put(k, v); }
+    public void put(String k, Short v) { mMap.put(k, v); }
+    public void put(String k, Integer v) { mMap.put(k, v); }
+    public void put(String k, Long v) { mMap.put(k, v); }
+    public void put(String k, Float v) { mMap.put(k, v); }
+    public void put(String k, Double v) { mMap.put(k, v); }
+    public void put(String k, Boolean v) { mMap.put(k, v); }
+    public void put(String k, byte[] v) { mMap.put(k, v); }
+    public void putNull(String k) { mMap.put(k, null); }
+    public int size() { return mMap.size(); }
+    public boolean isEmpty() { return mMap.isEmpty(); }
+    public void remove(String k) { mMap.remove(k); }
+    public void clear() { mMap.clear(); }
+    public boolean containsKey(String k) { return mMap.containsKey(k); }
+    public Object get(String k) { return mMap.get(k); }
+    public String getAsString(String k) { Object v = mMap.get(k); return v != null ? v.toString() : null; }
+    public Long getAsLong(String k) { Object v = mMap.get(k); try { return v != null ? ((Number) v).longValue() : null; } catch (ClassCastException e) { try { return Long.valueOf(v.toString()); } catch (NumberFormatException n) { return null; } } }
+    public Integer getAsInteger(String k) { Object v = mMap.get(k); try { return v != null ? ((Number) v).intValue() : null; } catch (ClassCastException e) { try { return Integer.valueOf(v.toString()); } catch (NumberFormatException n) { return null; } } }
+    public Short getAsShort(String k) { Integer i = getAsInteger(k); return i == null ? null : i.shortValue(); }
+    public Byte getAsByte(String k) { Integer i = getAsInteger(k); return i == null ? null : i.byteValue(); }
+    public Double getAsDouble(String k) { Object v = mMap.get(k); try { return v != null ? ((Number) v).doubleValue() : null; } catch (ClassCastException e) { try { return Double.valueOf(v.toString()); } catch (NumberFormatException n) { return null; } } }
+    public Float getAsFloat(String k) { Double d = getAsDouble(k); return d == null ? null : d.floatValue(); }
+    public Boolean getAsBoolean(String k) { Object v = mMap.get(k); if (v instanceof Boolean) return (Boolean) v; if (v instanceof CharSequence) return Boolean.valueOf(v.toString()) || "1".equals(v.toString()); if (v instanceof Number) return ((Number) v).intValue() != 0; return null; }
+    public byte[] getAsByteArray(String k) { Object v = mMap.get(k); return v instanceof byte[] ? (byte[]) v : null; }
+    public Set<Map.Entry<String, Object>> valueSet() { return mMap.entrySet(); }
+    public Set<String> keySet() { return mMap.keySet(); }
+    public int describeContents() { return 0; }
+    @Override public boolean equals(Object o) { return o instanceof ContentValues && mMap.equals(((ContentValues) o).mMap); }
+    @Override public int hashCode() { return mMap.hashCode(); }
+    @Override public String toString() { StringBuilder b = new StringBuilder(); for (String k : mMap.keySet()) { if (b.length() > 0) b.append(' '); b.append(k).append('=').append(getAsString(k)); } return b.toString(); }
+}
