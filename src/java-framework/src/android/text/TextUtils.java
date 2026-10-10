@@ -48,7 +48,7 @@ public class TextUtils {
     public static int indexOf(CharSequence s, char c, int start) { for (int i = start; i < s.length(); i++) if (s.charAt(i) == c) return i; return -1; }
     public static int indexOf(CharSequence s, char c, int start, int end) { for (int i = start; i < end; i++) if (s.charAt(i) == c) return i; return -1; }
     public static int lastIndexOf(CharSequence s, char c) { return lastIndexOf(s, c, s.length() - 1); }
-    public static int lastIndexOf(CharSequence s, char c, int last) { for (int i = last; i >= 0; i--) if (s.charAt(i) == c) return i; return -1; }
+    public static int lastIndexOf(CharSequence s, char c, int last) { return lastIndexOf(s, c, 0, last); }
     public static int indexOf(CharSequence s, CharSequence n) { return s.toString().indexOf(n.toString()); }
     public static int indexOf(CharSequence s, CharSequence n, int start) { return s.toString().indexOf(n.toString(), start); }
     public static boolean regionMatches(CharSequence a, int ao, CharSequence b, int bo, int len) { for (int i = 0; i < len; i++) if (a.charAt(ao + i) != b.charAt(bo + i)) return false; return true; }

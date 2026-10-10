@@ -317,12 +317,12 @@ public class AudioManager {
     public void forceComputeCsdOnAllDevices(boolean p0) {}
     public void forceUseFrameworkMel(boolean p0) {}
     public void forceVolumeControlStream(int p0) {}
-    public int[] getActiveAssistantServicesUids() { return null; }
+    public int[] getActiveAssistantServicesUids() { return new int[0]; }
     public java.util.List getActivePlaybackConfigurations() { return new java.util.ArrayList(); }
     public java.util.List getActiveRecordingConfigurations() { return new java.util.ArrayList(); }
     public long getAdditionalOutputDeviceDelay(android.media.AudioDeviceInfo p0) { return 0L; }
     public int getAllowedCapturePolicy() { return (huskFill.get("AllowedCapturePolicy") instanceof Integer ? (Integer) huskFill.get("AllowedCapturePolicy") : 0); }
-    public int[] getAssistantServicesUids() { return null; }
+    public int[] getAssistantServicesUids() { return new int[0]; }
     public java.util.List getAudioDevicesForAttributes(android.media.AudioAttributes p0) { return new java.util.ArrayList(); }
     public int getAudioHwSyncForSession(int p0) { return 0; }
     public java.util.List getAvailableCommunicationDevices() { return new java.util.ArrayList(); }
@@ -363,7 +363,9 @@ public class AudioManager {
     public int getRingerModeInternal() { return (huskFill.get("RingerModeInternal") instanceof Integer ? (Integer) huskFill.get("RingerModeInternal") : 0); }
     public int getRouting(int p0) { return 0; }
     public float getRs2Value() { return (huskFill.get("Rs2Value") instanceof Float ? (Float) huskFill.get("Rs2Value") : 0f); }
-    public android.media.Spatializer getSpatializer() { return null; }
+    private android.media.Spatializer mSpatializer;
+    /** Android 12+ always has one; here it is never available or enabled */
+    public android.media.Spatializer getSpatializer() { if (mSpatializer == null) mSpatializer = new android.media.Spatializer(this); return mSpatializer; }
     public int getStreamMinVolumeInt(int p0) { return 0; }
     public int getStreamTypeAlias(int p0) { return 0; }
     public java.util.Set getSupportedDeviceTypes(int p0) { return new java.util.HashSet(); }

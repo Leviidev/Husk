@@ -171,6 +171,14 @@ static int bionic___system_property_read(const void *pi, char *name, char *value
     return (int)strlen(p->v);
 }
 
+/* __system_property_foreach: each property Husk answers, as a find() handle */
+static int bionic___system_property_foreach(void (*fn)(const void *pi, void *cookie), void *cookie)
+{
+    if (!fn) return -1;
+    for (size_t i = 0; i < sizeof(k_props) / sizeof(k_props[0]); i++) fn(&k_props[i], cookie);
+    return 0;
+}
+
 int tl_dns_servers(char out[][64], int max);
 
 static int bionic___system_property_get(const char *name, char *value)
@@ -699,7 +707,7 @@ static char **tl_environ_ptr(void) { return NULL; }
 const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("__errno", bionic___errno),
     TL_WRAP("__system_property_find", bionic___system_property_find),
-    TL_WRAP("__system_property_read", bionic___system_property_read),
+    TL_WRAP("__system_property_read", bionic___system_property_read), TL_WRAP("__system_property_foreach", bionic___system_property_foreach),
     TL_WRAP("__system_property_get", bionic___system_property_get),
     TL_WRAP("__system_property_read_callback", bionic___system_property_read_callback),
     TL_WRAP("__system_property_serial", bionic___system_property_serial),
