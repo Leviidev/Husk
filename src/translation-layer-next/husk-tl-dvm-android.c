@@ -310,6 +310,18 @@ static const tl_zip *apk_n(int n, const char **path)
 const char *tl_ld_queued_split(int i);
 void dvm_set_app_loader(jobj *loader);
 NAT(N_setAppClassLoader) { (void)self; (void)ret; dvm_set_app_loader(a[0].l); return true; }
+/* The NDK's ALooper for a Java Looper's thread: native code that asks for its UI thread's looper (ALooper_forThread) and watches
+ * file descriptors on it (Unity 6, GameActivity-style code) has its callbacks run between that thread's messages */
+NAT(N_looperPrepare) { (void)self; (void)a; (void)ret; void *(*prep)(int) = tl_bionic_find("ALooper_prepare"); if (prep) prep(0); return true; }
+NAT(N_looperPoll)
+{
+    (void)self; (void)a;
+    ret->j = 0;
+    void *(*cur)(void) = tl_bionic_find("ALooper_forThread");
+    int (*poll_all)(int, int *, int *, void **) = tl_bionic_find("ALooper_pollAll");
+    if (cur && poll_all && cur()) { poll_all(0, NULL, NULL, NULL); ret->z = true; }
+    return true;
+}
 NAT(N_splitPaths)
 {
     (void)self; (void)a;
@@ -454,6 +466,8 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "uptimeNanos", "()J", N_uptimeNanos },
     { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
     { "splitPaths", "()[Ljava/lang/String;", N_splitPaths },
+    { "nativeLooperPrepare", "()V", N_looperPrepare },
+    { "nativeLooperPoll", "()Z", N_looperPoll },
     { "setAppClassLoader", "(Ljava/lang/ClassLoader;)V", N_setAppClassLoader },
     { "apkFileFd", "(ILjava/lang/String;)J", N_apkFileFd },
     { "apkFileLength", "(ILjava/lang/String;)J", N_apkFileLength },
@@ -1054,8 +1068,20 @@ static void *app_main(void *arg)
     return NULL;
 }
 
+/* An empty file in the native library directory for each library the APKs carry: ClassLoader.findLibrary() and File.exists() checks
+ * find it (Unity asks the class loader where libil2cpp is), while loading still takes the library from the APK by its name. */
+static void stub_lib(const char *name, uint64_t size, void *dir)
+{
+    (void)size;
+    char p[1400]; snprintf(p, sizeof(p), "%s/%s", (const char *)dir, name);
+    struct stat st;
+    if (stat(p, &st) != 0) { int fd = open(p, O_CREAT | O_WRONLY, 0755); if (fd >= 0) close(fd); }
+}
+
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
+    /* stores into a library's executable view (data sharing a page with its code, as Unity's does) go through the writable one */
+    { void tl_codewrite_enable(void); tl_codewrite_enable(); }
     A.cfg = *cfg;
     snprintf(A.apk, sizeof(A.apk), "%s", cfg->apk_path);
     snprintf(A.data, sizeof(A.data), "%s", cfg->data_dir);
@@ -1073,6 +1099,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); pthread_create(&A.gl_thread, &rt, gl_main, NULL); }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
     pthread_t t;

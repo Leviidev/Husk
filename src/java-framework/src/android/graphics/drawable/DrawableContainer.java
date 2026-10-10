@@ -8,6 +8,10 @@ public class DrawableContainer extends Drawable implements Drawable.Callback {
     private int mAlpha = 255;
     private ColorFilter mFilter;
     public int addChild(Drawable d) { mChildren.add(d); if (d != null) { d.setCallback(this); d.setBounds(getBounds()); } return mChildren.size() - 1; }
+    private int mEnterFade, mExitFade;
+    /** Cross-fades between states: changes here are immediate, the durations kept for whoever asks. */
+    public void setEnterFadeDuration(int ms) { mEnterFade = ms; }
+    public void setExitFadeDuration(int ms) { mExitFade = ms; }
     public boolean selectDrawable(int i) {
         if (i == mCurIndex) return false;
         mCurIndex = i < mChildren.size() ? i : -1;

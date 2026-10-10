@@ -690,6 +690,13 @@ static jo new_object(jo cls, void *mid, int how, const jvalue *a, tl_va_list *ap
         jvalue args[40];
         if (how == 1) args_from_va(m, ap, args);
         const jvalue *use = how == 1 ? args : a;
+        /* new String(...) through JNI: ART makes it with StringFactory, as bytecode does. */
+        if (!strcmp(cls->klass.jc->name, "java/lang/String") && !strcmp(m->name, "<init>")) {
+            bool dvm_string_init(const char *sig, const jvalue *p, jvalue *ret);
+            jvalue r = {0};
+            tl_jni_unref(o);
+            return dvm_string_init(m->sig, use, &r) ? r.l : NULL;
+        }
         jvalue r = invoke(o, m, true, use);
         /* A constructor can stand in for the object it was given: String is not an ordinary object. */
         if (r.l && ((jobj *)r.l)->kind != TL_K_OBJECT) { tl_jni_unref(o); return r.l; }
@@ -809,9 +816,22 @@ const char *tl_jni_reflected_sig(const jobj *member)
     return !strcmp(member->cls->name, "java/lang/reflect/Field") ? ((const tl_jfield *)member->native)->sig : ((const tl_jmeth *)member->native)->sig;
 }
 
+/* With the Java runtime up, Method/Constructor/Field objects are its own (Class.getMethod and the like): their interpreter member
+ * is turned into the JNI id for it, and ids back into its objects */
+struct dvm_method; struct dvm_field;
+struct dvm_method *dvm_method_of_reflect(jo exe);
+jo dvm_make_executable(struct dvm_method *m);
+jo dvm_make_field_object(struct dvm_field *f);
+bool dvm_member_info(const void *member, bool field, tl_jclass **cls, const char **name, const char **sig, bool *is_static);
+void *dvm_field_of_jfield(tl_jclass *cls, const char *name, bool is_static);
 static void *jni_FromReflectedMethod(void *env, jo m)
 {
     (void)env;
+    if (tl_dvm && m && m->kind == TL_K_OBJECT) {
+        struct dvm_method *dm = dvm_method_of_reflect(m);
+        tl_jclass *c; const char *n, *sg; bool st;
+        if (dm && dvm_member_info(dm, false, &c, &n, &sg, &st)) return lookup_method(c, n, sg, st);
+    }
     if (!m || !m->native) { TRACE("jni: FromReflectedMethod(%s) -> NPE", m ? "no member" : "NULL"); tl_jni_throw("java/lang/NullPointerException", "reflected method is null"); return NULL; }
     TRACE("jni: FromReflectedMethod -> %s.%s%s", ((tl_jmeth *)m->native)->cls->name, ((tl_jmeth *)m->native)->name, ((tl_jmeth *)m->native)->sig);
     return m->native;
@@ -819,6 +839,10 @@ static void *jni_FromReflectedMethod(void *env, jo m)
 static void *jni_FromReflectedField(void *env, jo f)
 {
     (void)env;
+    if (tl_dvm && f && f->native && f->kind == TL_K_OBJECT && f->cls && f->cls->dvm) {
+        tl_jclass *c; const char *n, *sg; bool st;
+        if (dvm_member_info(f->native, true, &c, &n, &sg, &st)) return lookup_field(c, n, sg, st, true);
+    }
     if (!f || !f->native) { tl_jni_throw("java/lang/NullPointerException", "reflected field is null"); return NULL; }
     return f->native;
 }
@@ -826,11 +850,17 @@ static jo jni_ToReflectedMethod(void *env, jo cls, void *mid, uint8_t is_static)
 {
     (void)env; (void)cls; (void)is_static;
     tl_jmeth *m = mid;
+    if (tl_dvm && m && m->dvm) return dvm_make_executable(m->dvm);
     return m ? reflected(!strcmp(m->name, "<init>") ? "java/lang/reflect/Constructor" : "java/lang/reflect/Method", m) : NULL;
 }
 static jo jni_ToReflectedField(void *env, jo cls, void *fid, uint8_t is_static)
 {
     (void)env; (void)cls; (void)is_static;
+    if (tl_dvm && fid) {
+        tl_jfield *f = fid;
+        void *df = dvm_field_of_jfield(f->cls, f->name, f->is_static);
+        if (df) return dvm_make_field_object(df);
+    }
     return fid ? reflected("java/lang/reflect/Field", fid) : NULL;
 }
 
@@ -1086,7 +1116,12 @@ static void build_tables(void)
     g_vm.functions = g_vm_fns;
 }
 
-static uint8_t jni_ExceptionCheck(void *env) { (void)env; return t_pending != NULL; }
+static uint8_t jni_ExceptionCheck(void *env)
+{
+    static __thread jobj *t_seen;
+    if (t_pending && g_trace >= 1 && t_pending != t_seen) { t_seen = t_pending; jni_ExceptionDescribe(env); }
+    return t_pending != NULL;
+}
 
 void tl_jni_init(void)
 {

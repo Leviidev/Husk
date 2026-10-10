@@ -45,6 +45,8 @@ public final class DecorView extends FrameLayout {
         };
         return sFallback;
     }
+    /** The window's controller, before the decor is attached too (Android's PendingInsetsController). */
+    @Override public WindowInsetsController getWindowInsetsController() { WindowInsetsController c = super.getWindowInsetsController(); return c != null ? c : fallbackInsetsController(); }
     public void setCloseOnTouchOutside(boolean c) { mCloseOnTouchOutside = c; }
     public boolean closeOnTouchOutside() { return mCloseOnTouchOutside; }
     /** The window background; its padding (a Material dialog's InsetDrawable: the card inset from the window's edges) keeps the

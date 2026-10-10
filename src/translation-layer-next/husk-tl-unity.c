@@ -43,6 +43,12 @@ typedef int32_t (*onload_fn)(void *vm, void *reserved);
 static void *native_of(const char *cls, const char *name, const char *sig)
 {
     void *fn = tl_jni_native(cls, name, sig);
+    /* Unity 6 registers the player's lifecycle natives (nativeRender, nativePause, ...) on the class that hosts it in an
+     * activity, not on UnityPlayer itself */
+    if (!fn && !strcmp(cls, "com/unity3d/player/UnityPlayer")) {
+        fn = tl_jni_native("com/unity3d/player/UnityPlayerForActivityOrService", name, sig);
+        if (!fn) fn = tl_jni_native("com/unity3d/player/UnityPlayerForGameActivity", name, sig);
+    }
     if (!fn) tl_log_line("unity: native %s.%s%s was not registered", cls, name, sig);
     return fn;
 }
@@ -153,7 +159,9 @@ static void *unity_main(void *arg)
 bool tl_unity_run(void)
 {
     /* The UnityPlayer constructor's last native step before it starts the thread. */
-    NATIVE_VOID("initJni", "(Landroid/content/Context;)V", U.activity, 0);
+    /* Unity 6 adds the kind of host it runs in (0: an activity or service, 1: a GameActivity) */
+    if (tl_jni_native("com/unity3d/player/UnityPlayer", "initJni", "(Landroid/content/Context;)V")) NATIVE_VOID("initJni", "(Landroid/content/Context;)V", U.activity, 0);
+    else NATIVE_VOID("initJni", "(Landroid/content/Context;I)V", U.activity, 0);
     tl_log_line("unity: initJni done");
     /* The rest of the UnityPlayer constructor: the helpers it builds, whose constructors each call a
      * native that gives the engine its reference to the helper's Java class. Without these the engine

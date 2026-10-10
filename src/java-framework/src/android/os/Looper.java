@@ -17,7 +17,7 @@ public final class Looper {
         if (ev != null) s.deliver(ev);
     }
 
-    public static void prepare() { if (sThreadLocal.get() == null) sThreadLocal.set(new Looper()); }
+    public static void prepare() { if (sThreadLocal.get() == null) { sThreadLocal.set(new Looper()); husk.Native.nativeLooperPrepare(); } }
     public static void prepareMainLooper() { prepare(); sMain = myLooper(); }
     public static Looper getMainLooper() { return sMain; }
     public static Looper myLooper() { return sThreadLocal.get(); }

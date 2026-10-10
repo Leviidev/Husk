@@ -58,7 +58,8 @@ extension TLReport {
         // An app with Java code and no native code at all runs on Husk's own Java runtime
         if abis.isEmpty { return dexCount > 0 && webKind == nil ? .java : nil }
         if engine?.hasPrefix("Unity") == true { return .unity }
-        if engine == "Cocos" { return .cocos }
+        // the cocos2d-x driver is Geometry Dash's (FMOD, RobTop's activity); other cocos2d-x games run their Java activity on the Java runtime
+        if engine == "Cocos" { return libraries.contains(where: { $0.name == "libfmod.so" }) ? .cocos : .java }
         if engine == "Minecraft" { return .minecraft }
         if engine == "SDL" || engine == "Python" { return .sdl }
         if engine == "Unreal Engine" { return .ue4 }

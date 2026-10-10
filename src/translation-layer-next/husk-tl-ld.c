@@ -467,6 +467,24 @@ const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void 
     return sym_name(L, best);
 }
 
+/* /proc/self/maps as the app's code sees it: each library it loaded, at its address, under the path it was loaded by (Unity and
+ * IL2CPP find their own library there; crash reporters list them). */
+size_t tl_ld_maps(char *buf, size_t n, const char *libdir)
+{
+    size_t k = 0;
+    if (n) buf[0] = 0;
+    pthread_mutex_lock(&G.lock);
+    for (int i = 0; i < G.nlibs && k + 200 < n; i++) {
+        tl_lib *L = G.libs[i];
+        if (L->state < 2) continue;
+        uintptr_t lo = (uintptr_t)L->rx, hi = lo + L->npages * PAGE;
+        k += (size_t)snprintf(buf + k, n - k, "%lx-%lx r-xp 00000000 fd:00 %d %s/%s\n", (unsigned long)lo, (unsigned long)hi, 4000 + i,
+                              libdir, L->soname[0] ? L->soname : base_name(L->name));
+    }
+    pthread_mutex_unlock(&G.lock);
+    return k;
+}
+
 int tl_ld_iterate(tl_ld_phdr_cb cb, void *user)
 {
     int r = 0;

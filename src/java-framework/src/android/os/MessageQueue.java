@@ -28,15 +28,17 @@ public final class MessageQueue {
     synchronized boolean has(Handler h, int what) { for (Message p = head; p != null; p = p.next) if (p.target == h && p.what == what) return true; return false; }
     synchronized void quit() { quitting = true; notifyAll(); }
 
+    private boolean mNativeLooper;
     Message next(boolean main) {
         for (;;) {
             if (main) Looper.deliverInput();
+            mNativeLooper = husk.Native.nativeLooperPoll();
             synchronized (this) {
                 if (quitting) return null;
                 long now = SystemClock.uptimeMillis();
                 if (head != null && head.when <= now) { Message m = head; head = m.next; m.next = null; return m; }
                 long wait = head == null ? 8 : Math.min(8, head.when - now);
-                if (!main) wait = head == null ? 0 : Math.max(1, head.when - now);
+                if (!main) wait = head == null ? (mNativeLooper ? 8 : 0) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
                 try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
             }
         }

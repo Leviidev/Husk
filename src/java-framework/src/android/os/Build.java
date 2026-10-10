@@ -3,6 +3,14 @@ package android.os;
 public class Build {
     public static final String MODEL = "Pixel 8", MANUFACTURER = "Google", BRAND = "google", DEVICE = "shiba", PRODUCT = "shiba";
     public static final String HARDWARE = "husk", BOARD = "shiba", DISPLAY = "AP1A", ID = "AP1A", TAGS = "release-keys", TYPE = "user";
+    /* Android 12's system-on-chip fields: engines print them (Unity reads SOC_MODEL into its device info and cannot take null). */
+    public static final String SOC_MANUFACTURER = "Google", SOC_MODEL = "Tensor G3", SKU = "shiba", ODM_SKU = "shiba";
+    public static final String BRAND_FOR_ATTESTATION = BRAND, DEVICE_FOR_ATTESTATION = DEVICE, MANUFACTURER_FOR_ATTESTATION = MANUFACTURER,
+                               MODEL_FOR_ATTESTATION = MODEL, PRODUCT_FOR_ATTESTATION = PRODUCT;
+    public static final boolean IS_USER = true;
+    public static String getRadioVersion() { return ""; }
+    public static boolean is64BitAbi(String abi) { return abi != null && abi.contains("64"); }
+    public static boolean isBuildConsistent() { return true; }
     public static final String FINGERPRINT = "google/shiba/shiba:14/AP1A/1:user/release-keys", HOST = "husk", USER = "husk";
     public static final String SERIAL = "unknown", BOOTLOADER = "unknown", RADIO = "unknown";
     public static final String CPU_ABI = "arm64-v8a", CPU_ABI2 = "";
@@ -105,23 +113,13 @@ public class Build {
     public static final int BACKPORTED_FIX_STATUS_NOT_APPLICABLE = 2;
     public static final int BACKPORTED_FIX_STATUS_NOT_FIXED = 3;
     public static final int BACKPORTED_FIX_STATUS_UNKNOWN = 0;
-    public static java.lang.String BRAND_FOR_ATTESTATION;
-    public static java.lang.String DEVICE_FOR_ATTESTATION;
     public static final int HW_TIMEOUT_MULTIPLIER = 0;
     public static final boolean IS_ARC = false;
     public static final boolean IS_DEBUGGABLE = false;
     public static final boolean IS_EMULATOR = false;
     public static final boolean IS_ENG = false;
-    public static final boolean IS_USER = false;
     public static final boolean IS_USERDEBUG = false;
-    public static java.lang.String MANUFACTURER_FOR_ATTESTATION;
-    public static java.lang.String MODEL_FOR_ATTESTATION;
-    public static java.lang.String ODM_SKU;
     public static final boolean PERMISSIONS_REVIEW_REQUIRED = true;
-    public static java.lang.String PRODUCT_FOR_ATTESTATION;
-    public static java.lang.String SKU;
-    public static java.lang.String SOC_MANUFACTURER;
-    public static java.lang.String SOC_MODEL;
     public static final java.lang.String UNKNOWN = "unknown";
     public static final int VENDOR_API_2024_Q2 = 202404;
     public static void ensureFingerprintProperty() {}
@@ -130,9 +128,6 @@ public class Build {
     public static java.util.List getFingerprintedPartitions() { return new java.util.ArrayList(); }
     public static int getMajorSdkVersion(int p0) { return 0; }
     public static int getMinorSdkVersion(int p0) { return 0; }
-    public static java.lang.String getRadioVersion() { return null; }
-    public static boolean is64BitAbi(java.lang.String p0) { return false; }
-    public static boolean isBuildConsistent() { return false; }
     public static boolean isDebuggable() { return false; }
     public static int parseFullVersion(java.lang.String p0) { return 0; }
     // ---- end of generated members

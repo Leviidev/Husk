@@ -1116,6 +1116,22 @@ dvm_method *dvm_method_of_reflect(jobj *exe);
 dvm_method *dvm_method_of_reflect(jobj *exe) { return method_of(exe); }
 jobj *dvm_make_executable(dvm_method *m);
 jobj *dvm_make_executable(dvm_method *m) { return make_executable(m); }
+jobj *dvm_make_field_object(dvm_field *f);
+jobj *dvm_make_field_object(dvm_field *f) { return make_field(f); }
+bool dvm_member_info(const void *member, bool field, tl_jclass **cls, const char **name, const char **sig, bool *is_static);
+bool dvm_member_info(const void *member, bool field, tl_jclass **cls, const char **name, const char **sig, bool *is_static)
+{
+    if (!member) return false;
+    if (field) { const dvm_field *f = member; *cls = f->cls->jc; *name = f->name; *sig = f->type; *is_static = (f->flags & 8) != 0; }
+    else { const dvm_method *m = member; *cls = m->cls->jc; *name = m->name; *sig = m->sig; *is_static = (m->flags & 8) != 0; }
+    return true;
+}
+void *dvm_field_of_jfield(tl_jclass *cls, const char *name, bool is_static);
+void *dvm_field_of_jfield(tl_jclass *cls, const char *name, bool is_static)
+{
+    for (dvm_class *c = dvm_class_of(cls); c; c = c->super) { dvm_field *f = dvm_find_field(c, name, is_static); if (f) return f; }
+    return NULL;
+}
 dvm_field *dvm_field_of_reflect(jobj *f);
 dvm_field *dvm_field_of_reflect(jobj *f) { return field_of(f); }
 

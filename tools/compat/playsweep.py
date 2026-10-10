@@ -57,6 +57,8 @@ def main():
         abis = rep.get('abis') or []
         if abis and 'arm64-v8a' not in abis:
             rows.append({'pkg': pkg, 'engine': engine, 'harness': None, 'verdict': 'no arm64 code'}); print(pkg, 'no arm64 code'); continue
+        libs = [l['name'] for l in rep.get('libraries', []) if l.get('abi') == 'arm64-v8a']
+        if engine == 'Cocos' and 'libfmod.so' not in libs: engine = 'Java'          # the app's rule: other cocos2d-x games run on Java
         if engine in NATIVE:
             harness = NATIVE[engine]
             env['TL_SPLITS'] = ':'.join(splits)

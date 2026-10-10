@@ -166,6 +166,7 @@ typedef struct tl_elf_report {
     uint32_t imports;
     bool     exports_sdl_main;          /* SDL_main / SDL_Main, or SDLActivity natives: a game that carries SDL */
     bool     exports_native_activity;   /* ANativeActivity_onCreate */
+    bool     exports_jni_onload;        /* JNI_OnLoad */
     char     soname[96];
     int      needed_count;
     char     needed[TL_MAX_NEEDED][64];

@@ -112,6 +112,12 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         snprintf(buf, n, "0-%ld\n", (getenv("TL_NCPU") ? atol(getenv("TL_NCPU")) : sysconf(_SC_NPROCESSORS_ONLN)) - 1);
         return buf;
     }
+    if (!strcmp(path, "/proc/self/maps") || (!strncmp(path, "/proc/", 6) && strstr(path, "/maps") && !strcmp(strstr(path, "/maps"), "/maps"))) {
+        size_t tl_ld_maps(char *buf, size_t n, const char *libdir);
+        char dir[1024]; snprintf(dir, sizeof(dir), "%s/lib", tl_data_dir());
+        tl_ld_maps(buf, n, dir);
+        return buf;
+    }
     if (!strcmp(path, "/proc/self/status")) {
         snprintf(buf, n, "Name:\tapp_process64\nState:\tR (running)\nTgid:\t%d\nPid:\t%d\nPPid:\t1\nUid:\t10001\t10001\t10001\t10001\nThreads:\t8\nVmRSS:\t  300000 kB\n", getpid(), getpid());
         return buf;
@@ -122,7 +128,7 @@ static const char *synth_content(const char *path, char *buf, size_t n)
 /* A file for a path whose contents are made up (/proc/cpuinfo ...), or -1 when the path is real. */
 int tl_synth_open(const char *path)
 {
-    char content[8192];
+    static __thread char content[65536];
     const char *s = synth_content(path, content, sizeof(content));
     return s ? synth_file(s) : -1;
 }
@@ -419,7 +425,7 @@ void tl_atomic_closed(int fd)
 
 static int b_open(const char *path, int flags, unsigned mode)
 {
-    char buf[1024], content[8192];
+    char buf[1024]; static __thread char content[32768];
     jar_entry jar;
     if (jar_lookup(path, &jar)) {
         if (!jar.found || jar.dir || (flags & 3) != 0) { tl_set_guest_errno(jar.dir ? 21 : 2); ftrace_open_jar(path, -1); return -1; }

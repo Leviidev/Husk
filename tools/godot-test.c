@@ -140,6 +140,8 @@ int main(int argc, char **argv)
     char frames[] = "/Volumes/GTAV/husk2/tmp/husk-gframes-XXXXXX"; mkdtemp(frames);
     fprintf(stderr, "frames: %s\ndata: %s\n", frames, tmp);
     int w = argc > 4 ? atoi(argv[3]) : 1200, h = argc > 4 ? atoi(argv[4]) : 552;
+    /* TL_SPLITS: the app's split APKs, colon-separated (a Google Play install keeps libraries and asset packs in their own APKs) */
+    if (getenv("TL_SPLITS")) { void tl_ld_queue_split(const char *); char *sl = strdup(getenv("TL_SPLITS")); for (char *t = strtok(sl, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
     tl_godot_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE") ? getenv("TL_PACKAGE") : "com.godot.game",
                             .width = w, .height = h,
                             .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,

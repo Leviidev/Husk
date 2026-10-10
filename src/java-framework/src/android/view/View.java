@@ -943,7 +943,12 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     @Deprecated public void requestFitSystemWindows() { requestApplyInsets(); }
     protected boolean fitSystemWindows(Rect insets) { return false; }
     public void setWindowInsetsAnimationCallback(WindowInsetsAnimation.Callback cb) {}
-    public WindowInsetsController getWindowInsetsController() { return mRoot != null ? mRoot.insetsController() : null; }
+    public WindowInsetsController getWindowInsetsController() {
+        if (mRoot != null) return mRoot.insetsController();
+        // not attached yet (an activity's onCreate): its parents', up to the window's decor, which has one from the start
+        ViewParent p = getParent();
+        return p instanceof View ? ((View) p).getWindowInsetsController() : null;
+    }
     public void setSystemUiVisibility(int v) { mSystemUiVisibility = v; if (mRoot != null) mRoot.systemUiChanged(v); }
     public int getSystemUiVisibility() { return mSystemUiVisibility; }
     public int getWindowSystemUiVisibility() { return mRoot != null ? mRoot.systemUi() : mSystemUiVisibility; }
