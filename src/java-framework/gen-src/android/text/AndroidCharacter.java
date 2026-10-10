@@ -14,6 +14,13 @@ public class AndroidCharacter {
     public static void getDirectionalities(char[] p0, byte[] p1, int p2) {}
     public static int getEastAsianWidth(char p0) { return 0; }
     public static void getEastAsianWidths(char[] p0, int p1, int p2, byte[] p3) {}
-    public static char getMirror(char p0) { return '\0'; }
+    public static char getMirror(char c) {
+        switch (c) {
+        case '(': return ')'; case ')': return '('; case '[': return ']'; case ']': return '['; case '{': return '}'; case '}': return '{';
+        case '<': return '>'; case '>': return '<'; case '\u00ab': return '\u00bb'; case '\u00bb': return '\u00ab';
+        case '\u2039': return '\u203a'; case '\u203a': return '\u2039'; case '\u2264': return '\u2265'; case '\u2265': return '\u2264';
+        default: return c;
+        }
+    }
     public static boolean mirror(char[] p0, int p1, int p2) { return false; }
 }

@@ -244,7 +244,16 @@ public final class MotionEvent extends InputEvent {
     public static final int INVALID_POINTER_ID = -1;
     public static final int TOOL_TYPE_ERASER = 4;
     public static final int TOOL_TYPE_PALM = 5;
-    public static int axisFromString(java.lang.String p0) { return 0; }
+    private static final String[] AXIS_NAMES = { "AXIS_X", "AXIS_Y", "AXIS_PRESSURE", "AXIS_SIZE", "AXIS_TOUCH_MAJOR", "AXIS_TOUCH_MINOR", "AXIS_TOOL_MAJOR",
+            "AXIS_TOOL_MINOR", "AXIS_ORIENTATION", "AXIS_VSCROLL", "AXIS_HSCROLL", "AXIS_Z", "AXIS_RX", "AXIS_RY", "AXIS_RZ", "AXIS_HAT_X", "AXIS_HAT_Y",
+            "AXIS_LTRIGGER", "AXIS_RTRIGGER", "AXIS_THROTTLE", "AXIS_RUDDER", "AXIS_WHEEL", "AXIS_GAS", "AXIS_BRAKE", "AXIS_DISTANCE", "AXIS_TILT",
+            "AXIS_SCROLL", "AXIS_RELATIVE_X", "AXIS_RELATIVE_Y" };
+    public static int axisFromString(String s) {
+        if (s == null) return -1;
+        if (s.startsWith("AXIS_GENERIC_")) { try { int n = Integer.parseInt(s.substring(13)); return n >= 1 && n <= 16 ? 31 + n : -1; } catch (NumberFormatException e) { return -1; } }
+        for (int i = 0; i < AXIS_NAMES.length; i++) if (AXIS_NAMES[i].equals(s)) return i;
+        try { return Integer.parseInt(s); } catch (NumberFormatException e) { return -1; }
+    }
     public static java.lang.String axisToString(int p0) { return null; }
     public static java.lang.String buttonStateToString(int p0) { return null; }
     public static java.lang.String classificationToString(int p0) { return null; }

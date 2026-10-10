@@ -41,6 +41,73 @@ static const sl_iid *const g_SL_IID_ENGINE = &k_iid_engine, *const g_SL_IID_PLAY
                     *const g_SL_IID_BUFFERQUEUE = &k_iid_bq, *const g_SL_IID_ANDROIDSIMPLEBUFFERQUEUE = &k_iid_asbq,
                     *const g_SL_IID_ANDROIDCONFIGURATION = &k_iid_androidcfg, *const g_SL_IID_RECORD = &k_iid_record;
 
+/* the rest of the standard interface identifiers: GetInterface answers SL_RESULT_FEATURE_UNSUPPORTED for them, but a guest that looks
+ * them up (dlsym of the variable) must find one */
+static const sl_iid k_iid_x_null = { 0xec7178ec, 0xe5e1, 0x4432, 0xa3f4, { 0x46, 0x57, 0xe6, 0x79, 0x52, 0x10 } };
+static const sl_iid *const g_SL_IID_NULL = &k_iid_x_null;
+static const sl_iid k_iid_x_object = { 0x79216360, 0xddd7, 0x11db, 0xac16, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_OBJECT = &k_iid_x_object;
+static const sl_iid k_iid_x_enginecapabilities = { 0x8320d0a0, 0xddd5, 0x11db, 0xa1b1, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ENGINECAPABILITIES = &k_iid_x_enginecapabilities;
+static const sl_iid k_iid_x_audioiodevicecapabilities = { 0xb2564dc0, 0xddd3, 0x11db, 0xbd62, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_AUDIOIODEVICECAPABILITIES = &k_iid_x_audioiodevicecapabilities;
+static const sl_iid k_iid_x_outputmix = { 0x97750f60, 0xddd7, 0x11db, 0x92b1, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_OUTPUTMIX = &k_iid_x_outputmix;
+static const sl_iid k_iid_x_seek = { 0xd43135a0, 0xdddc, 0x11db, 0xb458, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_SEEK = &k_iid_x_seek;
+static const sl_iid k_iid_x_prefetchstatus = { 0x2a41ee80, 0xddd8, 0x11db, 0x8a77, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_PREFETCHSTATUS = &k_iid_x_prefetchstatus;
+static const sl_iid k_iid_x_playbackrate = { 0x2e3b2a40, 0xddda, 0x11db, 0xa349, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_PLAYBACKRATE = &k_iid_x_playbackrate;
+static const sl_iid k_iid_x_effectsend = { 0x56e7d200, 0xddd4, 0x11db, 0xaefb, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_EFFECTSEND = &k_iid_x_effectsend;
+static const sl_iid k_iid_x_metadataextraction = { 0xaa5b1f80, 0xddd6, 0x11db, 0xac8e, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_METADATAEXTRACTION = &k_iid_x_metadataextraction;
+static const sl_iid k_iid_x_audiodecodercapabilities = { 0x3fe5a3a0, 0xfcc6, 0x11db, 0x94ac, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_AUDIODECODERCAPABILITIES = &k_iid_x_audiodecodercapabilities;
+static const sl_iid k_iid_x_audioencodercapabilities = { 0xf52a340, 0xfcd1, 0x11db, 0xa993, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_AUDIOENCODERCAPABILITIES = &k_iid_x_audioencodercapabilities;
+static const sl_iid k_iid_x_environmentalreverb = { 0xc2e5d5f0, 0x94bd, 0x4763, 0x9cac, { 0x4e, 0x23, 0x4d, 0x06, 0x83, 0x9e } };
+static const sl_iid *const g_SL_IID_ENVIRONMENTALREVERB = &k_iid_x_environmentalreverb;
+static const sl_iid k_iid_x_presetreverb = { 0x47382d60, 0xddd8, 0x11db, 0xbf3a, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_PRESETREVERB = &k_iid_x_presetreverb;
+static const sl_iid k_iid_x_equalizer = { 0xbed4300, 0xddd6, 0x11db, 0x8f34, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_EQUALIZER = &k_iid_x_equalizer;
+static const sl_iid k_iid_x_bassboost = { 0x634f220, 0xddd4, 0x11db, 0xa0fc, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_BASSBOOST = &k_iid_x_bassboost;
+static const sl_iid k_iid_x_virtualizer = { 0x37cc2c00, 0xdddd, 0x11db, 0x8577, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_VIRTUALIZER = &k_iid_x_virtualizer;
+static const sl_iid k_iid_x_mutesolo = { 0x5a28ebe0, 0xddd8, 0x11db, 0xab09, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_MUTESOLO = &k_iid_x_mutesolo;
+static const sl_iid k_iid_x_metadatatraversal = { 0xc43662c0, 0xddd6, 0x11db, 0xa7ab, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_METADATATRAVERSAL = &k_iid_x_metadatatraversal;
+static const sl_iid k_iid_x_dynamicsource = { 0xc55cc100, 0x38b, 0x11dc, 0xbb45, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_DYNAMICSOURCE = &k_iid_x_dynamicsource;
+static const sl_iid k_iid_x_3dlocation = { 0x2b878020, 0xddd8, 0x11db, 0x8e9b, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_3DLOCATION = &k_iid_x_3dlocation;
+static const sl_iid k_iid_x_led = { 0x2cc1cd80, 0xddd6, 0x11db, 0x807e, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_LED = &k_iid_x_led;
+static const sl_iid k_iid_x_vibra = { 0x169a8d60, 0xdddd, 0x11db, 0x923d, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_VIBRA = &k_iid_x_vibra;
+static const sl_iid k_iid_x_midimessage = { 0xddf4a820, 0xddd6, 0x11db, 0xb174, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_MIDIMESSAGE = &k_iid_x_midimessage;
+static const sl_iid k_iid_x_androideffect = { 0xae12da60, 0x7ac0, 0x11df, 0xb3d5, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDEFFECT = &k_iid_x_androideffect;
+static const sl_iid k_iid_x_androideffectsend = { 0x7be462c0, 0xbc43, 0x11df, 0x8670, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDEFFECTSEND = &k_iid_x_androideffectsend;
+static const sl_iid k_iid_x_androideffectcapabilities = { 0x6a4f6d60, 0xb5e6, 0x11df, 0xbb3b, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDEFFECTCAPABILITIES = &k_iid_x_androideffectcapabilities;
+static const sl_iid k_iid_x_androidbufferqueuesource = { 0x7fc1a460, 0xeec1, 0x11e0, 0xa4c9, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDBUFFERQUEUESOURCE = &k_iid_x_androidbufferqueuesource;
+static const sl_iid k_iid_x_androidacousticechocancellation = { 0x7b491460, 0x8d4d, 0x11e0, 0xbd61, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDACOUSTICECHOCANCELLATION = &k_iid_x_androidacousticechocancellation;
+static const sl_iid k_iid_x_androidautomaticgaincontrol = { 0xa8abfe0, 0x654c, 0x11e0, 0xba26, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDAUTOMATICGAINCONTROL = &k_iid_x_androidautomaticgaincontrol;
+static const sl_iid k_iid_x_androidnoisesuppression = { 0x58b4b260, 0x8e06, 0x11e0, 0xaa8e, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDNOISESUPPRESSION = &k_iid_x_androidnoisesuppression;
+static const sl_iid k_iid_x_androidacousticechocancellation2 = { 0x7b491461, 0x8d4d, 0x11e0, 0xbd61, { 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b } };
+static const sl_iid *const g_SL_IID_ANDROIDACOUSTICECHOCANCELLATION2 = &k_iid_x_androidacousticechocancellation2;
+
 typedef struct { const void *const *vt; } sl_if;     /* an interface: the guest sees a pointer to the table pointer */
 
 #define MAX_QUEUE 16
@@ -251,5 +318,37 @@ const tl_bionic_entry tl_tab_opensles[] = {
     TL_WRAP("slCreateEngine", b_slCreateEngine),
     SLID(SL_IID_ENGINE), SLID(SL_IID_PLAY), SLID(SL_IID_VOLUME), SLID(SL_IID_BUFFERQUEUE), SLID(SL_IID_ANDROIDSIMPLEBUFFERQUEUE),
     SLID(SL_IID_ANDROIDCONFIGURATION), SLID(SL_IID_RECORD),
+    SLID(SL_IID_NULL),
+    SLID(SL_IID_OBJECT),
+    SLID(SL_IID_ENGINECAPABILITIES),
+    SLID(SL_IID_AUDIOIODEVICECAPABILITIES),
+    SLID(SL_IID_OUTPUTMIX),
+    SLID(SL_IID_SEEK),
+    SLID(SL_IID_PREFETCHSTATUS),
+    SLID(SL_IID_PLAYBACKRATE),
+    SLID(SL_IID_EFFECTSEND),
+    SLID(SL_IID_METADATAEXTRACTION),
+    SLID(SL_IID_AUDIODECODERCAPABILITIES),
+    SLID(SL_IID_AUDIOENCODERCAPABILITIES),
+    SLID(SL_IID_ENVIRONMENTALREVERB),
+    SLID(SL_IID_PRESETREVERB),
+    SLID(SL_IID_EQUALIZER),
+    SLID(SL_IID_BASSBOOST),
+    SLID(SL_IID_VIRTUALIZER),
+    SLID(SL_IID_MUTESOLO),
+    SLID(SL_IID_METADATATRAVERSAL),
+    SLID(SL_IID_DYNAMICSOURCE),
+    SLID(SL_IID_3DLOCATION),
+    SLID(SL_IID_LED),
+    SLID(SL_IID_VIBRA),
+    SLID(SL_IID_MIDIMESSAGE),
+    SLID(SL_IID_ANDROIDEFFECT),
+    SLID(SL_IID_ANDROIDEFFECTSEND),
+    SLID(SL_IID_ANDROIDEFFECTCAPABILITIES),
+    SLID(SL_IID_ANDROIDBUFFERQUEUESOURCE),
+    SLID(SL_IID_ANDROIDACOUSTICECHOCANCELLATION),
+    SLID(SL_IID_ANDROIDAUTOMATICGAINCONTROL),
+    SLID(SL_IID_ANDROIDNOISESUPPRESSION),
+    SLID(SL_IID_ANDROIDACOUSTICECHOCANCELLATION2),
     TL_END
 };

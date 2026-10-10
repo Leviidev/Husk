@@ -4,7 +4,8 @@ public class Process {
     public static final int THREAD_PRIORITY_DEFAULT = 0, THREAD_PRIORITY_BACKGROUND = 10, THREAD_PRIORITY_DISPLAY = -4,
         THREAD_PRIORITY_URGENT_DISPLAY = -8, THREAD_PRIORITY_AUDIO = -16, THREAD_PRIORITY_URGENT_AUDIO = -19, THREAD_PRIORITY_FOREGROUND = -2;
     public static int myPid() { return 4242; }
-    public static int myTid() { return 4242; }
+    /** the calling thread id: one per thread, as gettid() gives (the main thread is the process id) */
+    public static int myTid() { long id = Thread.currentThread().getId(); return id == 1 ? 4242 : 4242 + (int) id; }
     public static int myUid() { return 10100; }
     public static void setThreadPriority(int p) {}
     public static void setThreadPriority(int tid, int p) {}
@@ -116,7 +117,10 @@ public class Process {
     public static long getElapsedCpuTime() { return 0L; }
     public static int[] getExclusiveCores() { return null; }
     public static long getFreeMemory() { return 0L; }
-    public static int getGidForName(java.lang.String p0) { return 0; }
+    public static int getGidForName(String name) {
+        if (name == null) return -1;
+        switch (name) { case "root": return 0; case "system": return 1000; case "sdcard_rw": return 1015; case "media_rw": return 1023; case "inet": return 3003; case "everybody": return 9997; default: return -1; }
+    }
     public static long getMemAvailable() { return 0L; }
     public static long getMemFree() { return 0L; }
     public static int getParentPid(int p0) { return 0; }
@@ -134,7 +138,7 @@ public class Process {
     public static int getThreadGroupLeader(int p0) { return 0; }
     public static int getThreadScheduler(int p0) { return 0; }
     public static long getTotalMemory() { return 0L; }
-    public static int getUidForName(java.lang.String p0) { return 0; }
+    public static int getUidForName(String name) { return name == null ? -1 : "root".equals(name) ? 0 : "system".equals(name) ? 1000 : -1; }
     public static int getUidForPid(int p0) { return 0; }
     public static boolean isApplicationUid(int p0) { return false; }
     public static boolean isCoreUid(int p0) { return false; }

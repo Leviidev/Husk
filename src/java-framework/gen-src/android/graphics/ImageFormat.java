@@ -34,6 +34,16 @@ public class ImageFormat {
     public static final int YUY2 = 20;
     public static final int YV12 = 842094169;
     public ImageFormat() {}
-    public static int getBitsPerPixel(int p0) { return 0; }
+    public static int getBitsPerPixel(int f) {
+        switch (f) {
+        case 4: case 16: case 20: case 39: case 32: case 0x44363159: case 0x20363159: return 16;   /* RGB_565 NV16 YUY2 YUV_422_888 RAW_SENSOR DEPTH16 Y16 */
+        case 0x32315659: case 17: case 35: return 12;                                                /* YV12 NV21 YUV_420_888 */
+        case 0x20203859: return 8;                                                                   /* Y8 */
+        case 40: case 41: return 24;                                                                 /* YUV_444_888 FLEX_RGB_888 */
+        case 42: return 32;                                                                          /* FLEX_RGBA_8888 */
+        case 37: return 10; case 38: return 12;                                                      /* RAW10 RAW12 */
+        default: return -1;
+        }
+    }
     public static boolean isPublicFormat(int p0) { return false; }
 }

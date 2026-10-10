@@ -14,7 +14,7 @@ public class PixelFormat { public static final int UNKNOWN = 0, A_8 = 8, RGBA_F1
     public static final int YCbCr_422_SP = 16;
     public int bitsPerPixel;
     public int bytesPerPixel;
-    public static boolean formatHasAlpha(int p0) { return false; }
+    public static boolean formatHasAlpha(int f) { switch (f) { case 8: case 0xa: case 7: case 6: case 1: case 0x16: case 0x2b: case -3: case -2: return true; default: return false; } }
     public static java.lang.String formatToString(int p0) { return null; }
     public static void getPixelFormatInfo(int p0, android.graphics.PixelFormat p1) {}
     public static boolean isPublicFormat(int p0) { return false; }

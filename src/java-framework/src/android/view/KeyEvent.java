@@ -326,13 +326,24 @@ public class KeyEvent extends InputEvent {
     public static android.view.KeyEvent changeTimeRepeat(android.view.KeyEvent p0, long p1, int p2, int p3) { return null; }
     public static android.view.KeyEvent createFromParcelBody(android.os.Parcel p0) { return null; }
     public static int getDeadChar(int p0, int p1) { return 0; }
-    public static int getModifierMetaStateMask() { return 0; }
-    public static boolean isAltKey(int p0) { return false; }
-    public static boolean isMetaKey(int p0) { return false; }
-    public static boolean isSystemKey(int p0) { return false; }
+    public static int getModifierMetaStateMask() { return 0x770ff; }   /* META_MODIFIER_MASK: shift, alt, ctrl, meta, sym, function */
+    public static boolean isAltKey(int k) { return k == 57 || k == 58; }
+    public static boolean isMetaKey(int k) { return k == 117 || k == 118; }
+    public static boolean isSystemKey(int k) {
+        switch (k) {
+        case 82: case 2: case 3: case 4: case 5: case 6: case 24: case 25: case 164: case 91: case 26: case 79: case 126: case 127: case 85: case 86:
+        case 87: case 88: case 89: case 130: case 90: case 27: case 80: case 84: case 220: case 221: case 222: case 280: case 281: case 282: case 283: return true;
+        default: return false;
+        }
+    }
     public static boolean isVisibleBackgroundUserAllowedKey(int p0) { return false; }
-    public static boolean isWakeKey(int p0) { return false; }
-    public static int keyCodeFromString(java.lang.String p0) { return 0; }
+    public static boolean isWakeKey(int k) { return k == 27 || k == 82 || k == 225 || k == 224 || (k >= 265 && k <= 267); }
+    public static int keyCodeFromString(String s) {
+        if (s == null) return 0;
+        String name = s.startsWith("KEYCODE_") ? s : "KEYCODE_" + s;
+        try { java.lang.reflect.Field f = KeyEvent.class.getField(name); if (f.getType() == int.class) return f.getInt(null); } catch (Exception e) {}
+        try { int v = Integer.parseInt(s); return v >= 0 && v <= getMaxKeyCode() ? v : 0; } catch (NumberFormatException e) { return 0; }
+    }
     public static java.lang.String metaStateToString(int p0) { return null; }
     public static android.view.KeyEvent obtain(long p0, long p1, int p2, int p3, int p4, int p5, int p6, int p7, int p8, int p9, int p10, java.lang.String p11) { return null; }
     public static android.view.KeyEvent obtain(long p0, long p1, int p2, int p3, int p4, int p5, int p6, int p7, int p8, int p9, java.lang.String p10) { return null; }

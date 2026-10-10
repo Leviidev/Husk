@@ -166,20 +166,47 @@ public class TextUtils {
     public static final int UNDERLINE_SPAN = 6;
     public static final int URL_SPAN = 11;
     public static java.lang.CharSequence commaEllipsize(java.lang.CharSequence p0, android.text.TextPaint p1, float p2, java.lang.String p3, java.lang.String p4, android.text.TextDirectionHeuristic p5) { return null; }
-    public static boolean delimitedStringContains(java.lang.String p0, char p1, java.lang.String p2) { return false; }
+    public static boolean delimitedStringContains(String list, char d, String item) {
+        if (list == null || item == null || item.isEmpty()) return false;
+        for (String s : list.split(java.util.regex.Pattern.quote(String.valueOf(d)), -1)) if (s.equals(item)) return true;
+        return false;
+    }
     public static java.lang.CharSequence ellipsize(java.lang.CharSequence p0, android.text.TextPaint p1, float p2, android.text.TextUtils.TruncateAt p3, boolean p4, android.text.TextUtils.EllipsizeCallback p5, android.text.TextDirectionHeuristic p6, java.lang.String p7) { return null; }
     public static java.lang.String firstNotEmpty(java.lang.String p0, java.lang.String p1) { return null; }
     public static java.lang.String getEllipsisString(android.text.TextUtils.TruncateAt p0) { return null; }
-    public static int getOffsetAfter(java.lang.CharSequence p0, int p1) { return 0; }
-    public static int getOffsetBefore(java.lang.CharSequence p0, int p1) { return 0; }
+    public static int getOffsetAfter(CharSequence text, int offset) {
+        int len = text.length();
+        if (offset >= len - 1) return len;
+        char c = text.charAt(offset);
+        return Character.isHighSurrogate(c) && Character.isLowSurrogate(text.charAt(offset + 1)) ? offset + 2 : offset + 1;
+    }
+    public static int getOffsetBefore(CharSequence text, int offset) {
+        if (offset <= 1) return 0;
+        char c = text.charAt(offset - 1);
+        return Character.isLowSurrogate(c) && Character.isHighSurrogate(text.charAt(offset - 2)) ? offset - 2 : offset - 1;
+    }
     public static java.lang.CharSequence getReverse(java.lang.CharSequence p0, int p1, int p2) { return null; }
     public static boolean hasStyleSpan(android.text.Spanned p0) { return false; }
-    public static int indexOf(java.lang.CharSequence p0, java.lang.CharSequence p1, int p2, int p3) { return 0; }
-    public static boolean isNewline(int p0) { return false; }
-    public static boolean isPunctuation(int p0) { return false; }
-    public static boolean isWhitespace(int p0) { return false; }
-    public static boolean isWhitespaceExceptNewline(int p0) { return false; }
-    public static int lastIndexOf(java.lang.CharSequence p0, char p1, int p2, int p3) { return 0; }
+    public static int indexOf(CharSequence s, CharSequence needle, int start, int end) {
+        int n = needle.length();
+        if (n == 0) return start;
+        for (int i = Math.max(start, 0); i + n <= end && i + n <= s.length(); i++) {
+            int k = 0;
+            while (k < n && s.charAt(i + k) == needle.charAt(k)) k++;
+            if (k == n) return i;
+        }
+        return -1;
+    }
+    public static boolean isNewline(int c) { return c == 0x0a || c == 0x0b || c == 0x0c || c == 0x0d || c == 0x85 || c == 0x2028 || c == 0x2029; }
+    public static boolean isPunctuation(int c) { int t = Character.getType(c); return (t >= Character.DASH_PUNCTUATION && t <= Character.OTHER_PUNCTUATION) || t == Character.CONNECTOR_PUNCTUATION || t == Character.INITIAL_QUOTE_PUNCTUATION || t == Character.FINAL_QUOTE_PUNCTUATION; }
+    public static boolean isWhitespace(int c) { return Character.isWhitespace(c) || c == 0xa0 || c == 0x2007 || c == 0x202f; }
+    public static boolean isWhitespaceExceptNewline(int c) { return isWhitespace(c) && !isNewline(c); }
+    public static int lastIndexOf(CharSequence s, char c, int start, int last) {
+        if (last < 0) return -1;
+        if (last >= s.length()) last = s.length() - 1;
+        for (int i = last; i >= start; i--) if (s.charAt(i) == c) return i;
+        return -1;
+    }
     public static java.lang.CharSequence listEllipsize(android.content.Context p0, java.util.List p1, java.lang.String p2, android.text.TextPaint p3, float p4, int p5) { return null; }
     public static java.lang.Object[] removeEmptySpans(java.lang.Object[] p0, android.text.Spanned p1, java.lang.Class p2) { return null; }
     public static java.lang.String safeIntern(java.lang.String p0) { return null; }
