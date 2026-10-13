@@ -301,6 +301,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
             if geode != nil { HuskLog.log("geode", "loading Geode into the game") }
             started = husk_cocos_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .java:
+            // Java-driven engines can choose Vulkan for materials that have no GLES 3.0 variant.
+            if let fw = Bundle.main.privateFrameworksPath { husk_ue4_set_vulkan(fw + "/MoltenVK.framework/MoltenVK") }
             // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
             husk_java_set_night_mode(traitCollection.userInterfaceStyle == .dark ? 1 : 0)

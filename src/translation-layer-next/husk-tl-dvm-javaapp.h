@@ -19,6 +19,7 @@ typedef struct tl_javaapp_config {
     float density;                   /* pixels per dp */
     void *metal_layer;
     const char *angle_egl, *angle_gles;
+    const char *vulkan_library;      /* optional MoltenVK; Java surfaces use the host compositor */
     const char *frame_dir;           /* host tests: frames written here */
     int frame_every;
     void (*vibrate)(int ms);

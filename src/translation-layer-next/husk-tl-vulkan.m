@@ -24,6 +24,10 @@
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
 int tl_nwindow_height(void *window);
+void *tl_nwindow_texture(void *window);
+void tl_nwindow_post(void *window, const void *rgba, int w, int h, bool flip);
+__attribute__((weak)) bool tl_javaapp_compositing(void);
+__attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
 
 /* Only the parts of the Vulkan structures this layer reads or writes; they are the same on the guest and the host. */
 typedef struct { uint32_t sType; const void *pNext; uint32_t flags; const void *pApplicationInfo; uint32_t layerCount; const char *const *layers; uint32_t extCount; const char *const *exts; } vk_instance_ci;
@@ -31,6 +35,20 @@ typedef struct { uint32_t sType; const void *pNext; const char *appName; uint32_
 typedef struct { char name[256]; uint32_t specVersion; } vk_ext_props;
 typedef struct { uint32_t sType; const void *pNext; uint32_t flags; void *window; } vk_android_surface_ci;
 typedef struct { uint32_t sType; const void *pNext; uint32_t flags; const void *pLayer; } vk_metal_surface_ci;
+typedef struct {
+    uint32_t sType; const void *pNext; uint32_t flags; uint64_t surface;
+    uint32_t minImages, format, colorSpace, width, height, layers, usage, sharingMode, queueCount;
+    const uint32_t *queueIndices;
+    uint32_t transform, compositeAlpha, presentMode, clipped; uint64_t oldSwapchain;
+} vk_swapchain_ci;
+typedef struct {
+    uint32_t sType; const void *pNext; uint32_t waitCount; const uint64_t *waits;
+    uint32_t swapchainCount; const uint64_t *swapchains; const uint32_t *indices; int *results;
+} vk_present_info;
+typedef struct {
+    uint32_t sType; const void *pNext; uint32_t waitCount; const uint64_t *waits; const uint32_t *stages;
+    uint32_t commandCount; const void *commands; uint32_t signalCount; const uint64_t *signals;
+} vk_submit_info;
 
 #define VK_SUCCESS 0
 #define VK_INCOMPLETE 5
@@ -54,7 +72,113 @@ static struct {
     atomic_ulong frames;
 } V = { .once = PTHREAD_ONCE_INIT };
 
-static void *g_swapchain_layer;                               /* the layer the surface was made on, for the log */
+static CAMetalLayer *g_swapchain_layer;                        /* retain the last layer for asynchronous diagnostics */
+
+/* Java owns the visible layer. Presenting an engine's Vulkan swapchain on that
+ * same layer races the Java overlay renderer. Give it a separate drawable and
+ * feed the finished pixels to the existing compositor, just as EGL does. */
+@interface TLVulkanTarget : NSObject
+@property(nonatomic) void *window;
+@property(nonatomic) BOOL texture;
+@property(nonatomic, strong) CAMetalLayer *layer;
+@property(nonatomic, strong) id<MTLCommandQueue> readQueue;
+@property(nonatomic, strong) id<MTLBuffer> readBuffer;
+@property(nonatomic, strong) NSMutableData *pixels;
+@end
+@implementation TLVulkanTarget
+- (void)dealloc {
+    void (*release)(void *) = tl_bionic_find("ANativeWindow_release");
+    if (_window && release) release(_window);
+}
+@end
+@interface TLVulkanSwapchain : NSObject
+@property(nonatomic) void *device;
+@property(nonatomic, strong) TLVulkanTarget *target;
+@end
+@implementation TLVulkanSwapchain
+@end
+static NSMutableDictionary<NSNumber *, TLVulkanTarget *> *g_composite_surfaces;
+static NSMutableDictionary<NSNumber *, TLVulkanSwapchain *> *g_composite_swapchains;
+static pthread_mutex_t g_composite_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Vulkan drawables are top-down BGRA/RGBA, the Java compositor takes bottom-up
+ * RGBA. Private Metal textures must be copied to shared memory before a CPU read. */
+static int composite_present(void *queue, vk_present_info *info)
+{
+    if (!V.lib || !info || !info->swapchains || !info->indices) return VK_SUCCESS;
+    uint32_t count = info->swapchainCount;
+    const uint64_t *handles = info->swapchains;
+    const uint32_t *indices = info->indices;
+    bool composited = false;
+    pthread_mutex_lock(&g_composite_lock);
+    for (uint32_t i = 0; i < count; i++) if (g_composite_swapchains[@(handles[i])]) { composited = true; break; }
+    pthread_mutex_unlock(&g_composite_lock);
+    if (!composited) return VK_SUCCESS;
+    int (*wait_idle)(void *) = dlsym(V.lib, "vkQueueWaitIdle");
+    int (*submit)(void *, uint32_t, const vk_submit_info *, uint64_t) = dlsym(V.lib, "vkQueueSubmit");
+    int (*get_images)(void *, uint64_t, uint32_t *, uint64_t *) = dlsym(V.lib, "vkGetSwapchainImagesKHR");
+    void (*get_texture)(uint64_t, void **) = dlsym(V.lib, "vkGetMTLTextureMVK");
+    if (!wait_idle || !submit || !get_images || !get_texture) return -3;
+    /* Rendering can come from another queue. Consume the present waits before
+     * Metal reads the image, then present without waiting on them a second time. */
+    if (info->waitCount) {
+        uint32_t *stages = calloc(info->waitCount, sizeof(*stages));
+        if (!stages) return -1;
+        for (uint32_t i = 0; i < info->waitCount; i++) stages[i] = 0x10000; /* ALL_COMMANDS */
+        vk_submit_info wait = { .sType=4, .waitCount=info->waitCount, .waits=info->waits, .stages=stages };
+        int r = submit(queue, 1, &wait, 0); free(stages);
+        if (r != VK_SUCCESS) return r;
+        info->waitCount = 0; info->waits = NULL;
+    }
+    int ready = wait_idle(queue);
+    if (ready != VK_SUCCESS) return ready;
+    for (uint32_t i = 0; i < count; i++) { @autoreleasepool {
+        pthread_mutex_lock(&g_composite_lock);
+        TLVulkanSwapchain *swap = g_composite_swapchains[@(handles[i])];
+        pthread_mutex_unlock(&g_composite_lock);
+        if (!swap) continue;
+        uint32_t n = 0;
+        if (get_images(swap.device, handles[i], &n, NULL) != VK_SUCCESS || indices[i] >= n || n > 16) continue;
+        uint64_t images[16];
+        if (get_images(swap.device, handles[i], &n, images) != VK_SUCCESS || indices[i] >= n) continue;
+        void *raw = NULL; get_texture(images[indices[i]], &raw); if (!raw) continue;
+        id<MTLTexture> tex = (__bridge id<MTLTexture>)raw;
+        bool bgra = tex.pixelFormat == MTLPixelFormatBGRA8Unorm || tex.pixelFormat == MTLPixelFormatBGRA8Unorm_sRGB;
+        bool rgba = tex.pixelFormat == MTLPixelFormatRGBA8Unorm || tex.pixelFormat == MTLPixelFormatRGBA8Unorm_sRGB;
+        if ((!bgra && !rgba) || !tex.width || !tex.height || tex.width > 16384 || tex.height > 16384) continue;
+        TLVulkanTarget *target = swap.target;
+        @synchronized (target) {
+            NSUInteger w = tex.width, h = tex.height, stride = (w * 4 + 255) & ~255u;
+            if (!target.readQueue || target.readQueue.device != tex.device) {
+                target.readQueue = [tex.device newCommandQueue]; target.readBuffer = nil;
+            }
+            if (!target.readBuffer || target.readBuffer.length < stride * h)
+                target.readBuffer = [tex.device newBufferWithLength:stride * h options:MTLResourceStorageModeShared];
+            if (!target.readQueue || !target.readBuffer) continue;
+            id<MTLCommandBuffer> command = [target.readQueue commandBuffer];
+            id<MTLBlitCommandEncoder> blit = [command blitCommandEncoder];
+            [blit copyFromTexture:tex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0,0,0)
+                sourceSize:MTLSizeMake(w,h,1) toBuffer:target.readBuffer destinationOffset:0
+                destinationBytesPerRow:stride destinationBytesPerImage:stride*h];
+            [blit endEncoding]; [command commit]; [command waitUntilCompleted];
+            if (command.status != MTLCommandBufferStatusCompleted) continue;
+            if (!target.pixels) target.pixels = [NSMutableData data];
+            target.pixels.length = w * h * 4;
+            uint8_t *dest = target.pixels.mutableBytes; const uint8_t *src = target.readBuffer.contents;
+            for (NSUInteger y = 0; y < h; y++) {
+                uint8_t *row = dest + (target.texture ? y : h-1-y) * w * 4;
+                const uint8_t *source = src + y * stride;
+                for (NSUInteger x = 0; x < w; x++) {
+                    row[4*x] = source[4*x+(bgra?2:0)]; row[4*x+1] = source[4*x+1];
+                    row[4*x+2] = source[4*x+(bgra?0:2)]; row[4*x+3] = source[4*x+3];
+                }
+            }
+            if (target.texture) tl_nwindow_post(target.window, dest, (int)w, (int)h, false);
+            else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(dest, (int)w, (int)h);
+        }
+    }}
+    return VK_SUCCESS;
+}
 
 #define LOG(...) do { if (V.trace) tl_log_line(__VA_ARGS__); } while (0)
 
@@ -71,6 +195,7 @@ static void vk_load(void)
      * has no way back from VK_ERROR_DEVICE_LOST: DXVK reports it as a removed device and the game ends itself. Read once, when MoltenVK first needs its settings. */
     setenv("MVK_CONFIG_RESUME_LOST_DEVICE", "1", 0);
     V.lib = V.have_path ? dlopen(V.path, RTLD_NOW | RTLD_LOCAL) : RTLD_DEFAULT;
+    if (V.have_path && !V.lib) tl_log_line("vulkan: cannot load %s: %s", V.path, dlerror());
     V.gipa = V.lib ? (pfn_gipa)dlsym(V.lib, "vkGetInstanceProcAddr") : NULL;
     tl_log_line("vulkan: %s", V.gipa ? (V.have_path ? V.path : "MoltenVK linked into the process") : "MoltenVK not found");
 }
@@ -169,12 +294,40 @@ static int w_vkCreateAndroidSurfaceKHR(void *instance, const vk_android_surface_
 {
     pfn_create_metal_surface create = (pfn_create_metal_surface)V.gipa(instance, "vkCreateMetalSurfaceEXT");
     if (!create) return VK_ERROR_EXTENSION_NOT_PRESENT;
-    void *layer = layer_for(ci->window);
+    bool texture = tl_nwindow_texture(ci->window) != NULL;
+    bool composite = texture || (tl_javaapp_compositing && tl_javaapp_compositing());
+    TLVulkanTarget *target = nil;
+    void *layer;
+    if (composite) {
+        target = [TLVulkanTarget new]; target.window = ci->window; target.texture = texture;
+        void (*acquire)(void *) = tl_bionic_find("ANativeWindow_acquire");
+        if (acquire) acquire(ci->window);
+        target.layer = [CAMetalLayer layer]; target.layer.device = MTLCreateSystemDefaultDevice();
+        target.layer.frame = CGRectMake(0, 0, tl_nwindow_width(ci->window), tl_nwindow_height(ci->window));
+        target.layer.contentsScale = 1; target.layer.drawableSize = target.layer.bounds.size;
+        target.layer.framebufferOnly = NO;
+        layer = (__bridge void *)target.layer;
+    } else layer = layer_for(ci->window);
     vk_metal_surface_ci m = { VK_STYPE_METAL_SURFACE_CI, NULL, 0, layer };
     int r = create(instance, &m, alloc, surface);
+    if (r == VK_SUCCESS && target) {
+        pthread_mutex_lock(&g_composite_lock);
+        if (!g_composite_surfaces) g_composite_surfaces = [NSMutableDictionary dictionary];
+        g_composite_surfaces[@(*surface)] = target;
+        pthread_mutex_unlock(&g_composite_lock);
+    }
     tl_log_line("vulkan: surface on layer %p (%dx%d) -> %d", layer, tl_nwindow_width(ci->window), tl_nwindow_height(ci->window), r);
-    g_swapchain_layer = layer;
+    g_swapchain_layer = (__bridge CAMetalLayer *)layer;
     return r;
+}
+
+static void w_vkDestroySurfaceKHR(void *instance, uint64_t surface, const void *alloc)
+{
+    void (*destroy)(void *, uint64_t, const void *) = V.gipa(instance, "vkDestroySurfaceKHR");
+    if (destroy) destroy(instance, surface, alloc);
+    pthread_mutex_lock(&g_composite_lock);
+    [g_composite_surfaces removeObjectForKey:@(surface)];
+    pthread_mutex_unlock(&g_composite_lock);
 }
 
 #if TARGET_OS_OSX
@@ -302,12 +455,40 @@ static int w_vkCreateSwapchainKHR(void *device, const void *ci, const void *allo
     const uint8_t *c = ci; uint32_t minimg, fmt, cs, w, h, usage, alpha, mode;
     memcpy(&minimg, c + 32, 4); memcpy(&fmt, c + 36, 4); memcpy(&cs, c + 40, 4); memcpy(&w, c + 44, 4); memcpy(&h, c + 48, 4);
     memcpy(&usage, c + 56, 4); memcpy(&alpha, c + 84, 4); memcpy(&mode, c + 88, 4);
-    int r = real ? real(device, ci, alloc, out) : -3;
+    vk_swapchain_ci copy = *(const vk_swapchain_ci *)ci;
+    pthread_mutex_lock(&g_composite_lock);
+    bool composited = g_composite_surfaces[@(copy.surface)] != nil;
+    pthread_mutex_unlock(&g_composite_lock);
+    if (composited) copy.usage |= 0x1; /* VK_IMAGE_USAGE_TRANSFER_SRC_BIT: readback for Java */
+    int r = real ? real(device, &copy, alloc, out) : -3;
+    if (r == VK_SUCCESS) {
+        uint64_t surface; memcpy(&surface, c + 24, 8);
+        pthread_mutex_lock(&g_composite_lock);
+        TLVulkanTarget *target = g_composite_surfaces[@(surface)];
+        if (target) {
+            TLVulkanSwapchain *swap = [TLVulkanSwapchain new]; swap.device = device; swap.target = target;
+            if (!g_composite_swapchains) g_composite_swapchains = [NSMutableDictionary dictionary];
+            g_composite_swapchains[@(*out)] = swap;
+        }
+        pthread_mutex_unlock(&g_composite_lock);
+    }
     tl_log_line("vulkan: vkCreateSwapchainKHR %ux%u images %u format %u colorspace %u usage %#x compositeAlpha %u presentMode %u -> %d", w, h, minimg, fmt, cs, usage, alpha, mode, r);
     /* MoltenVK changes the layer from this thread, which has no run loop: make sure the changes are committed rather than waiting for a transaction nothing will flush. */
     [CATransaction flush];
-    log_layer_state(g_swapchain_layer, "after swapchain");
+    log_layer_state((__bridge void *)g_swapchain_layer, "after swapchain");
     return r;
+}
+
+static void w_vkDestroySwapchainKHR(void *device, uint64_t swapchain, const void *alloc)
+{
+    void (*destroy)(void *, uint64_t, const void *) = V.lib ? dlsym(V.lib, "vkDestroySwapchainKHR") : NULL;
+    if (destroy) destroy(device, swapchain, alloc);
+    pthread_mutex_lock(&g_composite_lock);
+    bool clear = g_composite_swapchains[@(swapchain)] && !g_composite_swapchains[@(swapchain)].target.texture;
+    [g_composite_swapchains removeObjectForKey:@(swapchain)];
+    for (TLVulkanSwapchain *swap in g_composite_swapchains.allValues) if (!swap.target.texture) clear = false;
+    pthread_mutex_unlock(&g_composite_lock);
+    if (clear && tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
 }
 
 typedef int (*pfn_acquire)(void *, uint64_t, uint64_t, uint64_t, uint64_t, uint32_t *);
@@ -328,10 +509,13 @@ static int w_vkQueuePresentKHR(void *queue, const void *info)
     static pfn_queue_present real;
     if (!real && V.lib) real = (pfn_queue_present)dlsym(V.lib, "vkQueuePresentKHR");
     unsigned long n = atomic_fetch_add(&V.frames, 1) + 1;
+    vk_present_info present = *(const vk_present_info *)info;
+    int composed = composite_present(queue, &present);
+    if (composed != VK_SUCCESS) return composed;
 #if TARGET_OS_OSX
     if (V.frame_dir[0] && n % (V.frame_every > 0 ? (unsigned)V.frame_every : 60u) == 0) capture_frame(queue, info);
 #endif
-    if (n == 3 || n == 60 || n == 400 || n == 3000) { probe_frame(queue, info, n); log_layer_state(g_swapchain_layer, "present"); }
+    if (n == 3 || n == 60 || n == 400 || n == 3000) { probe_frame(queue, info, n); log_layer_state((__bridge void *)g_swapchain_layer, "present"); }
     /* VK_GOOGLE_display_timing: the game may ask for each frame to appear at a time of its own choosing. MoltenVK hands that to Metal as an absolute time on the system's media
      * clock, which is not the clock an Android game counted its nanoseconds on, so a time that was "now" to the game can be hours away to Metal and the frame is never shown.
      * Frames are shown when they are ready instead. */
@@ -346,7 +530,7 @@ static int w_vkQueuePresentKHR(void *queue, const void *info)
             uint64_t zero = 0; memcpy(times + i * 16 + 8, &zero, 8);
         }
     }
-    int r = real ? real(queue, info) : -3;
+    int r = real ? real(queue, &present) : -3;
     { static atomic_int bad; if (r != VK_SUCCESS && atomic_fetch_add(&bad, 1) < 20) tl_log_line("vulkan: vkQueuePresentKHR #%lu -> %d", n, r); }
     { static int tr = -1; if (tr < 0) tr = getenv("TL_VK_TRACE") ? 1 : 0; if (tr && n <= 5) tl_log_line("vulkan: vkQueuePresentKHR #%lu -> %d", n, r); }
     return r;
@@ -705,8 +889,10 @@ static const struct { const char *name; void *fn; } k_over[] = {
     { "vkCreateInstance", w_vkCreateInstance },
     { "vkEnumerateInstanceExtensionProperties", w_vkEnumerateInstanceExtensionProperties },
     { "vkCreateAndroidSurfaceKHR", w_vkCreateAndroidSurfaceKHR },
+    { "vkDestroySurfaceKHR", w_vkDestroySurfaceKHR },
     { "vkQueuePresentKHR", w_vkQueuePresentKHR },
     { "vkCreateSwapchainKHR", w_vkCreateSwapchainKHR },
+    { "vkDestroySwapchainKHR", w_vkDestroySwapchainKHR },
     { "vkAcquireNextImageKHR", w_vkAcquireNextImageKHR },
     { "vkGetPhysicalDeviceFeatures", w_vkGetPhysicalDeviceFeatures },
     { "vkGetPhysicalDeviceFeatures2", w_vkGetPhysicalDeviceFeatures2 },

@@ -351,6 +351,7 @@ static void *launch_thread(void *arg)
             tl_javaapp_config cfg = {
                 .apk_path = A.apk, .data_dir = A.data, .package_name = A.package, .width = A.width, .height = A.height,
                 .density = g_java_density, .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL,
+                .vulkan_library = A.vulkan[0] ? A.vulkan : NULL,
                 .framework_res = fwres, .show_keyboard = g_java_host.keyboard, .set_clipboard = g_java_host.set_clipboard,
                 .get_clipboard = g_java_host.get_clipboard, .share = g_java_host.share, .set_orientation = g_java_host.orientation,
                 .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] }, .night_mode = g_java_night,

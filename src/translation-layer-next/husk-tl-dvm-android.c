@@ -24,6 +24,7 @@
 #include "husk-tl-egl.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-vulkan.h"
 
 void tl_nwindow_configure(int w, int h, void *layer);
 void *tl_nwindow_get(void);
@@ -1108,6 +1109,8 @@ static void stub_lib(const char *name, uint64_t size, void *dir)
 
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
+    if (cfg->vulkan_library && cfg->vulkan_library[0])
+        tl_vk_configure(cfg->vulkan_library, NULL, 0);
     /* stores into a library's executable view (data sharing a page with its code, as Unity's does) go through the writable one */
     { void tl_codewrite_enable(void); tl_codewrite_enable(); }
     A.cfg = *cfg;
