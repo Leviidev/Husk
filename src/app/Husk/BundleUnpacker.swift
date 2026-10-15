@@ -25,7 +25,7 @@ enum BundleUnpacker {
         return n.hasPrefix("config.") || n.hasPrefix("split_") || n.hasPrefix("asset_pack") || n.hasPrefix("base-") || n.hasPrefix("install_time")
     }
 
-    /// The order an app's APKs are given to the runtime in, which takes only four: the app itself, then what it cannot run without (its 64-bit libraries, its asset pack),
+    /// The fallback order when an APK's manifest cannot be read: the app itself, then its 64-bit libraries and asset packs,
     /// then the language and screen-density splits, which it does not need.
     ///
     /// `siblings` are the app's other APK names. Besides Android's own split names (config.*, split_*), a split may be named
@@ -42,6 +42,27 @@ enum BundleUnpacker {
         if n.contains("arm64") { return 1 }
         if n.hasPrefix("asset_pack") || n.hasPrefix("install_time") || (named && !n.contains(".config.")) { return 2 }
         return 3
+    }
+
+    /// Read each manifest once, before sorting. A manifest-confirmed base takes precedence over every filename guess;
+    /// a manifest-confirmed split can never be promoted to base just because it is named models.apk or textures.apk.
+    static func orderedAPKs(_ paths: [String], manifest: (String) -> Data?) -> [String] {
+        let names = paths.map { ($0 as NSString).lastPathComponent }
+        let ranked = paths.map { path -> (path: String, priority: Int) in
+            let name = (path as NSString).lastPathComponent
+            let fallback = rank(name, siblings: names)
+            let split = manifest(path).flatMap { ApkMetadata.isSplit($0) }
+            let priority: Int
+            switch split {
+            case false?: priority = -1
+            case true?: priority = fallback == 0 ? 2 : fallback
+            case nil: priority = fallback
+            }
+            return (path, priority)
+        }
+        return ranked.sorted {
+            $0.priority != $1.priority ? $0.priority < $1.priority : $0.path < $1.path
+        }.map { $0.path }
     }
 
     /// Copies every APK in `bundle` into `dir`. Returns their names.

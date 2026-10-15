@@ -62,6 +62,17 @@ enum ApkMetadata {
         return value
     }
 
+    /// nil means unreadable; false means a base APK, true means a split (including asset packs).
+    /// APK file names are arbitrary. Android identifies splits by the root manifest's `split` attribute.
+    static func isSplit(_ manifest: Data) -> Bool? {
+        guard let root = elements(manifest).first(where: { $0.name == "manifest" }),
+              let package = root.attributes.first(where: { $0.name == "package" }),
+              package.dataType == 0x03, let name = package.value, !name.isEmpty else { return nil }
+        guard let split = root.attributes.first(where: { $0.name == "split" }) else { return false }
+        guard split.dataType == 0x03, let value = split.value else { return nil }
+        return !value.isEmpty
+    }
+
     /// The app's versionCode, from the manifest's root element (an integer attribute).
     static func versionCode(_ manifest: Data) -> Int? {
         guard let root = elements(manifest).first(where: { $0.name == "manifest" }),
