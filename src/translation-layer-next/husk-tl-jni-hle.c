@@ -413,6 +413,19 @@ static int g_nonload;
 static pthread_mutex_t g_onload_mu = PTHREAD_MUTEX_INITIALIZER;
 static bool load_native_library(const char *base);
 bool tl_jni_load_library(const char *base) { return load_native_library(base); }
+/*
+ * A library carrying V8 (Cocos Creator's libcocos2djs.so): its JIT asks for code memory both writable and executable, which a phone
+ * never gives, and V8 does not fall back -- the mprotect is refused or the page comes back without write, and the engine dies as it
+ * starts (Top War: SIGBUS in libcocos2djs.so on the GL thread, right after "Initializing V8"). So it is told to run without one before
+ * anything starts it: --jitless, its interpreter and the builtins compiled into the library. TL_V8_JIT=1 leaves V8 as it is.
+ */
+static void v8_jitless(tl_lib *L, const char *base)
+{
+    void (*set_flags)(const char *) = (void (*)(const char *))tl_ld_sym(L, "_ZN2v82V818SetFlagsFromStringEPKc");
+    if (!set_flags || getenv("TL_V8_JIT")) return;
+    set_flags("--jitless");
+    tl_log_line("jni: %s carries V8: told to run without its JIT (--jitless)", base);
+}
 static bool load_native_library(const char *base)
 {
     tl_lib *L = tl_ld_load(base);
@@ -424,6 +437,7 @@ static bool load_native_library(const char *base)
     if (first && g_nonload < 96) g_onload_done[g_nonload++] = L;
     pthread_mutex_unlock(&g_onload_mu);
     if (first) {
+        v8_jitless(L, base);                             /* before its JNI_OnLoad, and so before anything can start V8 */
         /* found as ART's dlsym on the library's handle finds it: in the library or, failing that, in one it needs */
         tl_lib *owner = NULL;
         int32_t (*onload)(void *vm, void *reserved) = (int32_t (*)(void *, void *))tl_ld_sym_deep(L, "JNI_OnLoad", &owner);
