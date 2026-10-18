@@ -16,6 +16,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install build tools
         run: brew install meson ninja pkg-config xcodegen
+      - name: Install Python build dependencies
+        run: |
+          python3 -m venv "$RUNNER_TEMP/husk-python"
+          "$RUNNER_TEMP/husk-python/bin/python" -m pip install --disable-pip-version-check PyYAML
+          echo "$RUNNER_TEMP/husk-python/bin" >> "$GITHUB_PATH"
       - name: Build Husk IPA
         run: ./scripts/ci_build.sh build/Husk.ipa
       - name: Show build logs on failure
