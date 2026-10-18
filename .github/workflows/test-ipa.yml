@@ -6,7 +6,7 @@ on:
     branches: [fix/viper-sensor-api]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -63,3 +63,15 @@ jobs:
           path: build/Husk.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish test IPA to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="test-ipa-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" build/Husk.ipa \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Husk test IPA #${GITHUB_RUN_NUMBER}" \
+            --notes "Automated test build for the ViperGames Stickman Dismounting compatibility fix." \
+            --prerelease
