@@ -1,0 +1,25 @@
+name: Build test IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/viper-sensor-api]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Husk IPA
+        run: ./scripts/ci_build.sh build/Husk.ipa
+      - name: Upload test IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Husk-test-IPA
+          path: build/Husk.ipa
+          if-no-files-found: error
+          retention-days: 14

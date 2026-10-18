@@ -211,6 +211,58 @@ static void Display_getHeight(tl_jcall *c) { c->ret = vi(H.height); }
 static void Display_getName(tl_jcall *c) { c->ret = vl(STR("Built-in Screen")); }
 static void WindowManager_getDefaultDisplay(tl_jcall *c) { c->ret = vl(H.display); }
 
+/* Java's sensor query is used by Unity before it starts the game. Match Android's contract, but
+ * expose only motion sensors that the same CoreMotion backend can actually provide on this phone. */
+extern bool tl_sensor_available(int type);
+typedef struct { int type; const char *name, *string_type; float range, resolution; } tl_sensor_spec;
+static const tl_sensor_spec k_sensor_specs[] = {
+    { 1, "Accelerometer", "android.sensor.accelerometer", 156.9f, 0.0024f },
+    { 2, "Magnetometer", "android.sensor.magnetic_field", 4912.f, 0.15f },
+    { 4, "Gyroscope", "android.sensor.gyroscope", 34.9f, 0.0011f },
+    { 9, "Gravity", "android.sensor.gravity", 19.6f, 0.0024f },
+    { 10, "Linear Acceleration", "android.sensor.linear_acceleration", 156.9f, 0.0024f },
+    { 11, "Rotation Vector", "android.sensor.rotation_vector", 1.f, 5.96e-8f },
+    { 15, "Game Rotation Vector", "android.sensor.game_rotation_vector", 1.f, 5.96e-8f },
+};
+static jobj *k_sensor_objects[16];
+static const tl_sensor_spec *sensor_spec(int type)
+{
+    for (size_t i = 0; i < sizeof(k_sensor_specs) / sizeof(k_sensor_specs[0]); i++)
+        if (k_sensor_specs[i].type == type) return &k_sensor_specs[i];
+    return NULL;
+}
+static jobj *sensor_object(int type)
+{
+    const tl_sensor_spec *s = sensor_spec(type);
+    if (!s || !tl_sensor_available(type)) return NULL;
+    if (!k_sensor_objects[type]) {
+        jobj *o = make("android/hardware/Sensor");
+        set_int(o, "mType", type); set_str(o, "mName", s->name); set_str(o, "mStringType", s->string_type);
+        set_float(o, "mRange", s->range); set_float(o, "mResolution", s->resolution);
+        k_sensor_objects[type] = o;
+    }
+    return k_sensor_objects[type];
+}
+static void SensorManager_getDefaultSensor(tl_jcall *c) { c->ret = vl(sensor_object(c->args[0].i)); }
+static void SensorManager_getDefaultWakeSensor(tl_jcall *c)
+{
+    c->ret = vl(c->args[1].z ? NULL : sensor_object(c->args[0].i));
+}
+static void Sensor_getType(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mType", "I"); }
+static void Sensor_getName(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mName", "Ljava/lang/String;"); }
+static void Sensor_getStringType(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mStringType", "Ljava/lang/String;"); }
+static void Sensor_getMaximumRange(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mRange", "F"); }
+static void Sensor_getResolution(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mResolution", "F"); }
+static void Sensor_getVendor(tl_jcall *c) { c->ret = vl(STR("Apple")); }
+static void Sensor_getVersion(tl_jcall *c) { c->ret = vi(1); }
+static void Sensor_getPower(tl_jcall *c) { c->ret = vf(0.5f); }
+static void Sensor_getMinDelay(tl_jcall *c) { c->ret = vi(5000); }
+static void Sensor_getMaxDelay(tl_jcall *c) { c->ret = vi(200000); }
+static void Sensor_getId(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mType", "I"); }
+static void Sensor_false(tl_jcall *c) { c->ret = vz(0); }
+static void Sensor_getFifoCount(tl_jcall *c) { c->ret = vi(0); }
+static void Sensor_getReportingMode(tl_jcall *c) { c->ret = vi(0); }
+
 /* ----------------------------------------------------- package information */
 
 static void PM_getApplicationInfo(tl_jcall *c) { c->ret = vl(H.appinfo); }
@@ -1015,6 +1067,26 @@ static const tl_jhle k_hle[] = {
     M("android/view/Display", "getWidth", "()I", Display_getWidth), M("android/view/Display", "getHeight", "()I", Display_getHeight),
     M("android/view/Display", "getName", "()Ljava/lang/String;", Display_getName),
     M("android/view/WindowManager", "getDefaultDisplay", "()Landroid/view/Display;", WindowManager_getDefaultDisplay),
+    M("android/hardware/SensorManager", "getDefaultSensor", "(I)Landroid/hardware/Sensor;", SensorManager_getDefaultSensor),
+    M("android/hardware/SensorManager", "getDefaultSensor", "(IZ)Landroid/hardware/Sensor;", SensorManager_getDefaultWakeSensor),
+    M("android/hardware/Sensor", "getType", "()I", Sensor_getType),
+    M("android/hardware/Sensor", "getName", "()Ljava/lang/String;", Sensor_getName),
+    M("android/hardware/Sensor", "getStringType", "()Ljava/lang/String;", Sensor_getStringType),
+    M("android/hardware/Sensor", "getMaximumRange", "()F", Sensor_getMaximumRange),
+    M("android/hardware/Sensor", "getResolution", "()F", Sensor_getResolution),
+    M("android/hardware/Sensor", "getVendor", "()Ljava/lang/String;", Sensor_getVendor),
+    M("android/hardware/Sensor", "getVersion", "()I", Sensor_getVersion),
+    M("android/hardware/Sensor", "getPower", "()F", Sensor_getPower),
+    M("android/hardware/Sensor", "getMinDelay", "()I", Sensor_getMinDelay),
+    M("android/hardware/Sensor", "getMaxDelay", "()I", Sensor_getMaxDelay),
+    M("android/hardware/Sensor", "getId", "()I", Sensor_getId),
+    M("android/hardware/Sensor", "isWakeUpSensor", "()Z", Sensor_false),
+    M("android/hardware/Sensor", "isDynamicSensor", "()Z", Sensor_false),
+    M("android/hardware/Sensor", "isAdditionalInfoSupported", "()Z", Sensor_false),
+    M("android/hardware/Sensor", "isDirectChannelTypeSupported", "(I)Z", Sensor_false),
+    M("android/hardware/Sensor", "getFifoReservedEventCount", "()I", Sensor_getFifoCount),
+    M("android/hardware/Sensor", "getFifoMaxEventCount", "()I", Sensor_getFifoCount),
+    M("android/hardware/Sensor", "getReportingMode", "()I", Sensor_getReportingMode),
     M("android/content/pm/PackageManager", "getApplicationInfo", "(Ljava/lang/String;I)Landroid/content/pm/ApplicationInfo;", PM_getApplicationInfo),
     M("android/content/pm/PackageManager", "hasSystemFeature", "(Ljava/lang/String;)Z", PM_hasSystemFeature),
     M("android/content/pm/PackageManager", "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;", PM_getPackageInfo),

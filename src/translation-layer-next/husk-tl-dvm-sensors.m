@@ -121,6 +121,13 @@ static void restart(int type, double period)
 }
 #endif
 
+/* The translation-layer JNI facade uses the same CoreMotion availability as the DEX sensor manager. */
+bool tl_sensor_available(int type)
+{
+    ensure();
+    return type > 0 && type < T_MAX && available(type);
+}
+
 #define NAT(fn) static bool fn(jobj *self, const jvalue *a, jvalue *ret)
 static jvalue Z(bool b) { jvalue v; v.j = 0; v.z = b; return v; }
 static jvalue J(int64_t j) { jvalue v; v.j = j; return v; }
