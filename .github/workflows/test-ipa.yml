@@ -16,6 +16,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Husk IPA
         run: ./scripts/ci_build.sh build/Husk.ipa
+      - name: Show build logs on failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          logs = sorted(Path("build/logs").glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+          for path in logs[:3]:
+              print(f"\n--- {path} (last 120 lines) ---")
+              lines = path.read_text(errors="replace").splitlines()
+              print("\n".join(lines[-120:]))
+          PY
       - name: Upload test IPA
         uses: actions/upload-artifact@v4
         with:
