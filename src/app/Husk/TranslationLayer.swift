@@ -337,13 +337,7 @@ final class TranslationLayerStore: ObservableObject {
         let fm = FileManager.default
         guard let files = try? fm.contentsOfDirectory(atPath: dir.path) else { return nil }
         let names = files.filter { $0.lowercased().hasSuffix(".apk") }
-        let apks = names
-            .sorted { a, b in
-                // The base first: it is the one a game is started from, and the others are its splits and packs.
-                let ra = BundleUnpacker.rank(a, siblings: names), rb = BundleUnpacker.rank(b, siblings: names)
-                return ra != rb ? ra < rb : a < b
-            }
-            .map { dir.appendingPathComponent($0).path }
+        let apks = orderedAPKs(names.map { dir.appendingPathComponent($0).path })
         guard let first = apks.first else { return nil }
 
         let saved = try? String(contentsOf: dir.appendingPathComponent("label.txt"),
@@ -407,9 +401,9 @@ final class TranslationLayerStore: ObservableObject {
             return "Husk could not copy it: \(error.localizedDescription)"
         }
 
-        let apks = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
-            .filter { $0.hasSuffix(".apk") }.sorted()
-            .map { dir.appendingPathComponent($0).path }
+        let apks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.lowercased().hasSuffix(".apk") }
+            .map { dir.appendingPathComponent($0).path })
         describe(apks, into: dir)
         let json = scan(apks)
         try? Data(json.utf8).write(to: dir.appendingPathComponent("report.json"))
@@ -426,19 +420,8 @@ final class TranslationLayerStore: ObservableObject {
     nonisolated static let iconVersion = 3
 
     nonisolated private static func describe(_ apks: [String], into dir: URL, label wantLabel: Bool = true) {
-        // The base APK carries the label and the icon; a config split's
-        // manifest names neither. The base is usually called base.apk, and
-        // otherwise usually the biggest.
-        func size(_ path: String) -> Int {
-            ((try? FileManager.default.attributesOfItem(atPath: path)[.size]) as? NSNumber)?
-                .intValue ?? 0
-        }
-        let ordered = apks.sorted { a, b in
-            let aBase = (a as NSString).lastPathComponent == "base.apk"
-            let bBase = (b as NSString).lastPathComponent == "base.apk"
-            return aBase != bBase ? aBase : size(a) > size(b)
-        }
-        for apk in ordered {
+        // Use the same manifest-based order as launch: a large asset pack is not the base APK.
+        for apk in orderedAPKs(apks) {
             guard let manifest = entry(apk, "AndroidManifest.xml", limit: 8 << 20),
                   let arsc = entry(apk, "resources.arsc", limit: 64 << 20) else { continue }
             let info = ApkMetadata.read(manifest: manifest, resources: arsc)
@@ -524,6 +507,10 @@ final class TranslationLayerStore: ObservableObject {
         guard let bytes = husk_tl_read_entry(apk, name, limit, &length) else { return nil }
         defer { husk_tl_free(bytes) }
         return Data(bytes: bytes, count: length)
+    }
+
+    nonisolated private static func orderedAPKs(_ paths: [String]) -> [String] {
+        BundleUnpacker.orderedAPKs(paths) { entry($0, "AndroidManifest.xml", limit: 8 << 20) }
     }
 
     nonisolated static func scan(_ paths: [String]) -> String {
