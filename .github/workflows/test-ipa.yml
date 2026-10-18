@@ -10,31 +10,49 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
-    timeout-minutes: 360
+    runs-on: macos-26
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
-      - name: Install build tools
-        run: brew install meson ninja pkg-config xcodegen
-      - name: Install Python build dependencies
-        run: |
-          python3 -m venv "$RUNNER_TEMP/husk-python"
-          "$RUNNER_TEMP/husk-python/bin/python" -m pip install --disable-pip-version-check PyYAML
-          echo "$RUNNER_TEMP/husk-python/bin" >> "$GITHUB_PATH"
-      - name: Build Husk IPA
-        run: ./scripts/ci_build.sh build/Husk.ipa
-      - name: Show build logs on failure
-        if: failure()
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
 
-          logs = sorted(Path("build/logs").glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
-          for path in logs[:3]:
-              print(f"\n--- {path} (last 120 lines) ---")
-              lines = path.read_text(errors="replace").splitlines()
-              print("\n".join(lines[-120:]))
-          PY
+      - name: Select newest Xcode
+        run: |
+          XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          echo "Using $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Host tools
+        run: |
+          brew install meson ninja pkg-config xcodegen qemu bison flex gettext || true
+          /opt/homebrew/bin/python3 -m pip install --break-system-packages --user pyyaml mako packaging
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
+          ls /opt/homebrew/bin/meson /opt/homebrew/bin/ninja
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/sources
+            third_party/gpu
+            build/ios-arm64/sysroot
+          key: deps-${{ runner.os }}-${{ hashFiles('scripts/sources.sh', 'scripts/build_ios.sh', 'scripts/build_angle_ios.sh', 'scripts/build_gpu_ios.sh', 'patches/libslirp-v4.9.1.patch', 'patches/pixman-0.38.0.patch', 'patches/husk-epoxy-ios-egl-path.patch') }}
+
+      - name: Build Husk IPA
+        run: ./scripts/ci_build.sh "$PWD/build/Husk.ipa"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build/logs
+            /tmp/husk_ipa/build.log
+          if-no-files-found: ignore
+
       - name: Upload test IPA
         uses: actions/upload-artifact@v4
         with:
