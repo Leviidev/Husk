@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
+      - name: Install build tools
+        run: brew install meson ninja pkg-config xcodegen
       - name: Build Husk IPA
         run: ./scripts/ci_build.sh build/Husk.ipa
       - name: Show build logs on failure
