@@ -31,6 +31,9 @@ jobs:
           echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
           ls /opt/homebrew/bin/meson /opt/homebrew/bin/ninja
 
+      - name: Install Rust iOS target
+        run: rustup target add aarch64-apple-ios
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
