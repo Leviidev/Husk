@@ -150,13 +150,6 @@ targets:
         embed: true
         codeSign: true
         link: false
-      # The PS4 layer: Bachata-S4's core (branch husk) on husk-fex's FEXCore, as one dylib exporting husk_console_module_v1.
-      # Built by scripts/build_ps4_ios.sh. Embedded, not linked: it needs iOS 17.4 and is opened by path only there
-      # (PS4Store.moduleURL), by the console host (src/translation-layer-next/husk-console-host.c).
-      - framework: ../../build/ios-arm64/lib/libhuskps4.dylib
-        embed: true
-        codeSign: true
-        link: false
     preBuildScripts:
       - name: Stage guest image
         # The Phase 0 guest is far too large for git, so it is fetched rather than
@@ -232,6 +225,25 @@ targets:
           - "$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/lineage-vdb-seed.qcow2"
 
     postBuildScripts:
+      # PS4 support is an optional runtime module. Test builds for Android games
+      # do not need the private PS4/FEX source trees, but include the module when built locally.
+      - name: Embed optional PS4 translation layer
+        script: |
+          set -e
+          SRC="$SRCROOT/../../build/ios-arm64/lib/libhuskps4.dylib"
+          DST="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/libhuskps4.dylib"
+          if [ -f "$SRC" ]; then
+            mkdir -p "$(dirname "$DST")"
+            cp "$SRC" "$DST"
+            if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ] && [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+              codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$DST"
+            fi
+            echo "Embedded optional PS4 translation layer"
+          else
+            rm -f "$DST"
+            echo "PS4 translation layer not built; skipping"
+          fi
+        basedOnDependencyAnalysis: false
       - name: Embed StikJIT
         # The helper links StikJIT; it lives here, in the app's Frameworks,
         # because sideloaders re-sign frameworks there and left one inside the
