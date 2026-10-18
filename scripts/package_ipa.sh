@@ -125,14 +125,10 @@ elif [ -n "$EXE" ]; then
     printf "  ok       %-28s %s\n" "executable present" "$EXE"
 fi
 
-# Both dylibs must be embedded, or the app dies at launch with a dyld error.
-#
-# ANGLE is checked here because it was not, and an IPA shipped without it: the
-# app reached qemu_egl_init_dpy_cocoa and aborted with "Couldn't open
-# @rpath/libANGLE-shared.dylib". Everything else in this validation passed. A
-# check that covers one of two required libraries is a check that reports
-# success on a bundle that cannot launch.
-for lib in libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib libhuskps4.dylib; do
+# The QEMU and ANGLE dylibs are required at launch. The PS4 layer is an
+# optional module: Husk disables PS4 support when it is not embedded, and
+# building it needs separate FEXCore/Bachata-S4 source trees.
+for lib in libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib; do
     if [ ! -f "$APP/Frameworks/$lib" ]; then
         echo "  MISSING  Frameworks/$lib" >&2
         rc=1
@@ -141,6 +137,23 @@ for lib in libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib libhuskps4.dylib;
             "$(du -h "$APP/Frameworks/$lib" | cut -f1)"
     fi
 done
+
+# The PS4 layer is included only when its separate source trees were built.
+PS4_SOURCE="$HUSK_ROOT/build/ios-arm64/lib/libhuskps4.dylib"
+PS4_EMBEDDED="$APP/Frameworks/libhuskps4.dylib"
+if [ -f "$PS4_SOURCE" ]; then
+    if [ -f "$PS4_EMBEDDED" ]; then
+        printf "  ok       PS4 layer embedded          %s\n" "$(du -h "$PS4_EMBEDDED" | cut -f1)"
+    else
+        echo "  MISSING  Frameworks/libhuskps4.dylib (PS4 source exists)" >&2
+        rc=1
+    fi
+elif [ -e "$PS4_EMBEDDED" ]; then
+    echo "  MISMATCH stale PS4 layer in app without a matching source" >&2
+    rc=1
+else
+    echo "  ok       optional PS4 layer omitted"
+fi
 
 # Guest images, firmware, and blank disk seeds required by first launch.
 for f in vmlinuz-virt initramfs-virt husk-jit.js \
