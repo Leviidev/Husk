@@ -43,6 +43,9 @@ step "integrate Husk sources into QEMU, then rebuild it"
 step "guest kernel + firmware"
 ./scripts/fetch_phase0_guest.sh
 
+step "Lineage Android system resources + Java runtime"
+./scripts/prepare_android_assets.sh
+
 if [ ! -d build/ios-arm64/lib/MoltenVK.xcframework ]; then
     step "MoltenVK (Vulkan over Metal, for Unreal Engine games)"
     ./scripts/build_moltenvk_ios.sh

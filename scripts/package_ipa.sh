@@ -75,19 +75,21 @@ if ! grep -q "BUILD SUCCEEDED" "$DD/build.log"; then
 fi
 
 APP="$DD/Build/Products/Release-iphoneos/Husk.app"
+[ -d "$APP" ] || { echo "no app bundle at $APP" >&2; exit 1; }
 
 # The Java runtime in the app must be the one just built (build_java_runtime.sh): copied again here, and checked, so an IPA can
 # never carry an older one -- which looks exactly like Java fixes that did not work.
 JRT="$HUSK_ROOT/build/java-runtime"
-if [ -f "$JRT/husk-framework.dex" ]; then
-    rsync -a --delete "$JRT/" "$APP/java-runtime/"
-    if ! cmp -s "$JRT/husk-framework.dex" "$APP/java-runtime/husk-framework.dex"; then
-        echo "the app's Java framework is not build/java-runtime's; refusing to package" >&2
-        exit 1
-    fi
-    echo "==> java runtime: $(stat -f '%z bytes, %Sm' "$JRT/husk-framework.dex")"
+[ -s "$JRT/husk-framework.dex" ] || {
+    echo "build/java-runtime is missing; refusing to package an IPA whose Java apps cannot start" >&2
+    exit 1
+}
+rsync -a --delete "$JRT/" "$APP/java-runtime/"
+if ! cmp -s "$JRT/husk-framework.dex" "$APP/java-runtime/husk-framework.dex"; then
+    echo "the app's Java framework is not build/java-runtime's; refusing to package" >&2
+    exit 1
 fi
-[ -d "$APP" ] || { echo "no app bundle at $APP" >&2; exit 1; }
+echo "==> java runtime: $(stat -f '%z bytes, %Sm' "$JRT/husk-framework.dex")"
 
 # Stamp the build's identity into the bundle so its logs can name themselves.
 # A log from a stale install is otherwise indistinguishable from a log proving a
@@ -182,6 +184,36 @@ for f in "$APP/PlugIns/HuskJITHelper.appex/HuskJITHelper" \
 done
 
 [ $rc -eq 0 ] || { echo "==> bundle is not installable; refusing to package" >&2; exit 1; }
+
+# Java games cannot start without the boot jars and Android resources. The app
+# project used to treat these generated folders as optional, silently producing
+# an IPA that launched but failed every Java app at its splash screen.
+for f in \
+    java-runtime/com.android.art/javalib/core-oj.jar \
+    java-runtime/com.android.art/javalib/core-libart.jar \
+    java-runtime/com.android.art/javalib/okhttp.jar \
+    java-runtime/com.android.art/javalib/bouncycastle.jar \
+    java-runtime/com.android.art/javalib/apache-xml.jar \
+    java-runtime/com.android.i18n/javalib/core-icu4j.jar \
+    java-runtime/com.android.conscrypt/javalib/conscrypt.jar \
+    java-runtime/org.apache.http.legacy.jar \
+    java-runtime/framework-res.apk \
+    java-runtime/husk-framework.dex \
+    android-system/etc/fonts.xml \
+    android-system/etc/font_fallback.xml; do
+    if [ ! -s "$APP/$f" ]; then
+        echo "  MISSING  $f   <-- incomplete Android runtime; refusing to package" >&2
+        exit 1
+    fi
+done
+for dir in java-runtime/com.android.tzdata/etc java-runtime/com.android.art/lib64 \
+           java-runtime/com.android.i18n/etc/icu android-system/fonts android-system/cacerts; do
+    if [ ! -d "$APP/$dir" ] || [ -z "$(find "$APP/$dir" -type f -size +100c -print -quit)" ]; then
+        echo "  MISSING  $dir contents   <-- incomplete Android runtime; refusing to package" >&2
+        exit 1
+    fi
+done
+echo "  ok       Android Java runtime and system assets embedded"
 
 echo "==> packaging"
 # staged next to the build (DD), not in the system temp folder: a full startup disk made codesign fail with "internal error"

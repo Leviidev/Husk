@@ -25,11 +25,28 @@ jobs:
 
       - name: Host tools
         run: |
-          brew install meson ninja pkg-config xcodegen qemu bison flex gettext || true
+          brew install meson ninja pkg-config xcodegen qemu e2fsprogs bison flex gettext
           /opt/homebrew/bin/python3 -m pip install --break-system-packages --user pyyaml mako packaging
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
+          echo "DEBUGFS=$(brew --prefix e2fsprogs)/sbin/debugfs" >> "$GITHUB_ENV"
           ls /opt/homebrew/bin/meson /opt/homebrew/bin/ninja
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install D8
+        run: |
+          mkdir -p build/tools
+          curl -fL --retry 3 \
+            https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.5.35/r8-8.5.35.jar \
+            -o build/tools/r8.jar
+          jar tf build/tools/r8.jar | grep -q '^com/android/tools/r8/D8.class$'
+          echo "HUSK_JDK=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "HUSK_D8=$GITHUB_WORKSPACE/build/tools/r8.jar" >> "$GITHUB_ENV"
 
       - name: Install Rust iOS target
         run: rustup target add aarch64-apple-ios
@@ -42,6 +59,13 @@ jobs:
             third_party/gpu
             build/ios-arm64/sysroot
           key: deps-${{ runner.os }}-${{ hashFiles('scripts/sources.sh', 'scripts/build_ios.sh', 'scripts/build_angle_ios.sh', 'scripts/build_gpu_ios.sh', 'patches/libslirp-v4.9.1.patch', 'patches/pixman-0.38.0.patch', 'patches/husk-epoxy-ios-egl-path.patch') }}
+
+      - name: Cache Lineage system image
+        uses: actions/cache@v4
+        with:
+          path: build/android-guest/vda-*.qcow2
+          key: lineage-${{ runner.os }}-${{ hashFiles('src/app/Husk/GuestImage.swift') }}
+          restore-keys: lineage-${{ runner.os }}-
 
       - name: Build Husk IPA
         run: ./scripts/ci_build.sh "$PWD/build/Husk.ipa"
