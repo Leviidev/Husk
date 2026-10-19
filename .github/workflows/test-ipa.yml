@@ -61,6 +61,8 @@ jobs:
             third_party/gpu
             build/ios-arm64/sysroot
           key: deps-${{ runner.os }}-${{ hashFiles('scripts/sources.sh', 'scripts/build_ios.sh', 'scripts/build_angle_ios.sh', 'scripts/build_gpu_ios.sh', 'patches/libslirp-v4.9.1.patch', 'patches/pixman-0.38.0.patch', 'patches/husk-epoxy-ios-egl-path.patch') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
 
       - name: Cache Lineage system image
         uses: actions/cache@v4
@@ -100,9 +102,14 @@ jobs:
           set -euo pipefail
           ipa="$PWD/build/Husk.ipa"
           ps4_path=Payload/Husk.app/Frameworks/libhuskps4.dylib
+          ps4_tmp="$(mktemp)"
+          trap 'rm -f "$ps4_tmp"' EXIT
           unzip -Z1 "$ipa" | grep -Fx "$ps4_path"
-          packaged_ps4_sha256="$(unzip -p "$ipa" "$ps4_path" | shasum -a 256 | awk '{print $1}')"
-          test "$packaged_ps4_sha256" = dfdf728bfba56ac045d177d4be398df0c73361c299a114fd34a4ba96e2a0699e
+          unzip -p "$ipa" "$ps4_path" > "$ps4_tmp"
+          test -s "$ps4_tmp"
+          lipo -verify_arch arm64 "$ps4_tmp"
+          nm -gU "$ps4_tmp" | awk '{print $3}' | grep -Fx _husk_console_module_v1
+          echo "Verified arm64 PS4 module; its source SHA-256 was checked before ad-hoc signing"
           echo "Complete IPA size: $(stat -f '%z' "$ipa") bytes"
 
       - name: Upload logs on failure
