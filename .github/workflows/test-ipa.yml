@@ -67,8 +67,41 @@ jobs:
           key: lineage-${{ runner.os }}-${{ hashFiles('src/app/Husk/GuestImage.swift') }}
           restore-keys: lineage-${{ runner.os }}-
 
+      - name: Stage the verified PS4 runtime module
+        run: |
+          set -euo pipefail
+          upstream_ipa="$RUNNER_TEMP/Husk-upstream-3.0.ipa"
+          release_sha256=112a1ddbb3143ae25e80c18c5b195b6dfa5067d66cbf99d2188fc03f4ab0f61d
+          ps4_sha256=dfdf728bfba56ac045d177d4be398df0c73361c299a114fd34a4ba96e2a0699e
+          curl -fL --retry 3 --retry-delay 5 \
+            https://github.com/Leviidev/Husk/releases/download/3.0/Husk.ipa \
+            -o "$upstream_ipa"
+          printf '%s  %s\n' "$release_sha256" "$upstream_ipa" | shasum -a 256 -c -
+          mkdir -p build/ios-arm64/lib
+          ps4="$PWD/build/ios-arm64/lib/libhuskps4.dylib"
+          unzip -p "$upstream_ipa" Payload/Husk.app/Frameworks/libhuskps4.dylib > "$ps4"
+          actual_ps4_sha256="$(shasum -a 256 "$ps4" | awk '{print $1}')"
+          test "$actual_ps4_sha256" = "$ps4_sha256"
+          test "$(lipo -archs "$ps4")" = arm64
+          test "$(nm -gU "$ps4" | awk '{print $3}')" = _husk_console_module_v1
+          if nm -u "$ps4" | grep -q BreakGetJITMapping; then
+            echo "PS4 module still references BreakpointJIT" >&2
+            exit 1
+          fi
+          echo "Verified and staged the official Husk 3.0 PS4 module"
+
       - name: Build Husk IPA
         run: ./scripts/ci_build.sh "$PWD/build/Husk.ipa"
+
+      - name: Verify complete IPA payload
+        run: |
+          set -euo pipefail
+          ipa="$PWD/build/Husk.ipa"
+          ps4_path=Payload/Husk.app/Frameworks/libhuskps4.dylib
+          unzip -Z1 "$ipa" | grep -Fx "$ps4_path"
+          packaged_ps4_sha256="$(unzip -p "$ipa" "$ps4_path" | shasum -a 256 | awk '{print $1}')"
+          test "$packaged_ps4_sha256" = dfdf728bfba56ac045d177d4be398df0c73361c299a114fd34a4ba96e2a0699e
+          echo "Complete IPA size: $(stat -f '%z' "$ipa") bytes"
 
       - name: Upload logs on failure
         if: failure()
