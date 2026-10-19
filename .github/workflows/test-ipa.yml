@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-26-intel
+    runs-on: macos-26
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
