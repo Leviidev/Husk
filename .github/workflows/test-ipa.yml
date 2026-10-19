@@ -107,7 +107,7 @@ jobs:
           unzip -Z1 "$ipa" | grep -Fx "$ps4_path"
           unzip -p "$ipa" "$ps4_path" > "$ps4_tmp"
           test -s "$ps4_tmp"
-          lipo -verify_arch arm64 "$ps4_tmp"
+          lipo "$ps4_tmp" -verify_arch arm64
           nm -gU "$ps4_tmp" | awk '{print $3}' | grep -Fx _husk_console_module_v1
           echo "Verified arm64 PS4 module; its source SHA-256 was checked before ad-hoc signing"
           echo "Complete IPA size: $(stat -f '%z' "$ipa") bytes"
