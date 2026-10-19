@@ -22,6 +22,7 @@ jobs:
           sudo xcode-select -s "$XC/Contents/Developer"
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
+          xcodebuild -downloadComponent MetalToolchain
 
       - name: Host tools
         run: |
