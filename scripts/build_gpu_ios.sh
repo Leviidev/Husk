@@ -18,8 +18,10 @@ HUSK_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GPU="$HUSK_ROOT/third_party/gpu"
 PREFIX="$HUSK_ROOT/build/ios-arm64/sysroot"
 LOGS="$HUSK_ROOT/build/logs"
-MESON=/opt/homebrew/bin/meson
-NINJA=/opt/homebrew/bin/ninja
+MESON="${MESON:-$(command -v meson || true)}"
+NINJA="${NINJA:-$(command -v ninja || true)}"
+[ -x "$MESON" ] || { echo "meson not found on PATH" >&2; exit 1; }
+[ -x "$NINJA" ] || { echo "ninja not found on PATH" >&2; exit 1; }
 mkdir -p "$GPU" "$LOGS"
 
 EPOXY_COMMIT=bf98587477fe68d07b93319ece7b40a7d0e2eabe
