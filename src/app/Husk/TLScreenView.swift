@@ -38,6 +38,10 @@ final class TLScreenUIView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        // Seed the bridge from the real screen capability before the guest asks
+        // Android for its display mode. CADisplayLink replaces this with its
+        // measured cadence as soon as the first refresh callback arrives.
+        husk_tl_set_maximum_display_refresh_rate(Float(UIScreen.main.maximumFramesPerSecond))
         backgroundColor = .black
         // Several fingers reach the view so a three-finger tap can be seen; the game itself only ever gets the first.
         isMultipleTouchEnabled = true
@@ -94,15 +98,18 @@ final class TLScreenUIView: UIView {
         super.didMoveToWindow()
         link?.invalidate()
         link = nil
+        husk_tl_set_display_refresh_rate(0)
         statsTimer?.invalidate()
         statsTimer = nil
-        guard window != nil else { return }
+        guard let screen = window?.screen else { return }
 
-        // Tied to the display, not to a timer: a frame is shown on a refresh or
-        // not at all. Sixty is the game's own rate, and asking for no more lets a
-        // ProMotion screen settle at a rate that divides evenly into it.
+        let maximumRate = Float(screen.maximumFramesPerSecond)
+        husk_tl_set_maximum_display_refresh_rate(maximumRate)
+
+        // Follow the screen's refresh range. The callback records its actual
+        // cadence for the Android Display API, including ProMotion rate changes.
         let l = CADisplayLink(target: self, selector: #selector(refresh))
-        l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: maximumRate, preferred: maximumRate)
         l.add(to: .main, forMode: .common)
         link = l
 
@@ -112,6 +119,12 @@ final class TLScreenUIView: UIView {
     }
 
     @objc private func refresh() {
+        if let link {
+            let interval = link.targetTimestamp - link.timestamp
+            if interval > 0 {
+                husk_tl_set_display_refresh_rate(Float(1.0 / interval))
+            }
+        }
         var pixels: UnsafePointer<UInt8>?
         var w: Int32 = 0, h: Int32 = 0, stride: Int32 = 0, token: Int32 = -1
         let generation = husk_tl_frame_acquire(&pixels, &w, &h, &stride, &token)

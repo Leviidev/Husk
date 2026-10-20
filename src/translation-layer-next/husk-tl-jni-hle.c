@@ -6,6 +6,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-jni.h"
+#include "../translation-layer/husk-tl.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -204,11 +205,38 @@ static void fill_metrics(jobj *m)
 }
 static void Display_getMetrics(tl_jcall *c) { fill_metrics(c->args[0].l); }
 static void Display_getRotation(tl_jcall *c) { c->ret = vi(0); }
-static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
+static float display_refresh_rate(void)
+{
+    float rate = husk_tl_display_refresh_rate();
+    return rate > 0.0f ? rate : husk_tl_maximum_display_refresh_rate();
+}
+static jobj *display_mode(int id, float rate)
+{
+    jobj *mode = make("android/view/Display$Mode");
+    set_int(mode, "mModeId", id);
+    set_int(mode, "mPhysicalWidth", H.width);
+    set_int(mode, "mPhysicalHeight", H.height);
+    set_float(mode, "mRefreshRate", rate);
+    return mode;
+}
+static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(display_refresh_rate()); }
 static void Display_getDisplayId(tl_jcall *c) { c->ret = vi(0); }
 static void Display_getWidth(tl_jcall *c) { c->ret = vi(H.width); }
 static void Display_getHeight(tl_jcall *c) { c->ret = vi(H.height); }
 static void Display_getName(tl_jcall *c) { c->ret = vl(STR("Built-in Screen")); }
+static void Display_getMode(tl_jcall *c) { c->ret = vl(display_mode(1, display_refresh_rate())); }
+static void Display_getSupportedModes(tl_jcall *c)
+{
+    jobj *modes = tl_jni_new_obj_array(C("android/view/Display$Mode"), 1);
+    modes->oarr.v[0] = display_mode(1, display_refresh_rate());
+    tl_note_once("Display.getSupportedModes reports the current iOS display mode");
+    c->ret = vl(modes);
+}
+static void DisplayMode_getModeId(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mModeId", "I"); }
+static void DisplayMode_getPhysicalWidth(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mPhysicalWidth", "I"); }
+static void DisplayMode_getPhysicalHeight(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mPhysicalHeight", "I"); }
+static void DisplayMode_getRefreshRate(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mRefreshRate", "F"); }
+static void DisplayMode_getAlternativeRefreshRates(tl_jcall *c) { c->ret = vl(tl_jni_new_prim_array('F', 0)); }
 static void WindowManager_getDefaultDisplay(tl_jcall *c) { c->ret = vl(H.display); }
 
 /* ----------------------------------------------------- package information */
@@ -891,6 +919,7 @@ static const struct { const char *name, *super; } k_classes[] = {
     { "android/content/res/Configuration", "java/lang/Object" }, { "android/util/DisplayMetrics", "java/lang/Object" },
     { "android/content/pm/ApplicationInfo", "java/lang/Object" }, { "android/content/pm/PackageManager", "java/lang/Object" },
     { "android/content/pm/PackageInfo", "java/lang/Object" }, { "android/view/Display", "java/lang/Object" },
+    { "android/view/Display$Mode", "java/lang/Object" },
     { "android/view/WindowManager", "java/lang/Object" }, { "android/view/Window", "java/lang/Object" },
     { "android/os/Looper", "java/lang/Object" }, { "android/os/Handler", "java/lang/Object" },
     { "android/os/Build", "java/lang/Object" }, { "android/os/Build$VERSION", "java/lang/Object" },
@@ -1014,6 +1043,13 @@ static const tl_jhle k_hle[] = {
     M("android/view/Display", "getDisplayId", "()I", Display_getDisplayId),
     M("android/view/Display", "getWidth", "()I", Display_getWidth), M("android/view/Display", "getHeight", "()I", Display_getHeight),
     M("android/view/Display", "getName", "()Ljava/lang/String;", Display_getName),
+    M("android/view/Display", "getMode", "()Landroid/view/Display$Mode;", Display_getMode),
+    M("android/view/Display", "getSupportedModes", "()[Landroid/view/Display$Mode;", Display_getSupportedModes),
+    M("android/view/Display$Mode", "getModeId", "()I", DisplayMode_getModeId),
+    M("android/view/Display$Mode", "getPhysicalWidth", "()I", DisplayMode_getPhysicalWidth),
+    M("android/view/Display$Mode", "getPhysicalHeight", "()I", DisplayMode_getPhysicalHeight),
+    M("android/view/Display$Mode", "getRefreshRate", "()F", DisplayMode_getRefreshRate),
+    M("android/view/Display$Mode", "getAlternativeRefreshRates", "()[F", DisplayMode_getAlternativeRefreshRates),
     M("android/view/WindowManager", "getDefaultDisplay", "()Landroid/view/Display;", WindowManager_getDefaultDisplay),
     M("android/content/pm/PackageManager", "getApplicationInfo", "(Ljava/lang/String;I)Landroid/content/pm/ApplicationInfo;", PM_getApplicationInfo),
     M("android/content/pm/PackageManager", "hasSystemFeature", "(Ljava/lang/String;)Z", PM_hasSystemFeature),

@@ -91,6 +91,18 @@ void tl_log_line(const char *fmt, ...);
 /* A one-line note, once per distinct text, for things that are stubbed. */
 void tl_note_once(const char *what);
 
+/* Live host RAM values used to answer Android memory queries. */
+typedef struct tl_host_memory_info {
+    uint64_t total_bytes;
+    uint64_t free_bytes;
+    uint64_t available_bytes;
+    uint64_t cached_bytes;
+    uint64_t resident_bytes;
+    bool has_vm_stats;
+    bool has_resident_size;
+} tl_host_memory_info;
+bool tl_host_memory_info_read(tl_host_memory_info *out);
+
 #ifdef __cplusplus
 }
 #endif

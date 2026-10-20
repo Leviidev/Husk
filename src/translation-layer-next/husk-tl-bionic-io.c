@@ -22,6 +22,7 @@ const char *tl_ld_main_apk(void);
 #include <stdbool.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>
@@ -37,9 +38,13 @@ const char *tl_ld_main_apk(void);
 #include <sys/mount.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <mach/mach.h>
+#include <mach/mach_host.h>
+#include <mach/vm_statistics.h>
+#include <os/proc.h>
 #include <time.h>
 #include <search.h>
 #include <dlfcn.h>
@@ -98,6 +103,42 @@ static int synth_file_n(const void *content, size_t n)
     return fd;
 }
 
+bool tl_host_memory_info_read(tl_host_memory_info *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof(*out));
+
+    size_t size = sizeof(out->total_bytes);
+    if (sysctlbyname("hw.memsize", &out->total_bytes, &size, NULL, 0) != 0 || !out->total_bytes)
+        return false;
+
+    /* This is the current memory budget left to Husk itself, not a guessed
+     * fraction of the phone's physical RAM. */
+    out->available_bytes = os_proc_available_memory();
+
+    mach_task_basic_info_data_t task = {0};
+    mach_msg_type_number_t task_count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                  (task_info_t)&task, &task_count) == KERN_SUCCESS) {
+        out->resident_bytes = task.resident_size;
+        out->has_resident_size = true;
+    }
+
+    vm_statistics64_data_t vm = {0};
+    mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
+    if (host_statistics64(mach_host_self(), HOST_VM_INFO64,
+                          (host_info64_t)&vm, &count) == KERN_SUCCESS) {
+        uint64_t page_size = 0;
+        size = sizeof(page_size);
+        if (sysctlbyname("hw.pagesize", &page_size, &size, NULL, 0) == 0 && page_size) {
+            out->free_bytes = (uint64_t)vm.free_count * page_size;
+            out->cached_bytes = ((uint64_t)vm.inactive_count + vm.speculative_count) * page_size;
+            out->has_vm_stats = true;
+        }
+    }
+    return true;
+}
+
 static const char *synth_content(const char *path, char *buf, size_t n)
 {
     if (!strcmp(path, "/proc/cpuinfo")) {
@@ -111,7 +152,19 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         return buf;
     }
     if (!strcmp(path, "/proc/meminfo")) {
-        snprintf(buf, n, "MemTotal:       11722000 kB\nMemFree:         3000000 kB\nMemAvailable:    5000000 kB\nBuffers:           10000 kB\nCached:          2000000 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\n");
+        tl_host_memory_info memory;
+        if (!tl_host_memory_info_read(&memory)) return NULL;
+        tl_note_once("guest /proc/meminfo reads iOS physical, free, and app-available memory");
+        int used = snprintf(buf, n,
+                            "MemTotal:       %llu kB\nMemAvailable:   %llu kB\n",
+                            (unsigned long long)(memory.total_bytes / 1024),
+                            (unsigned long long)(memory.available_bytes / 1024));
+        if (memory.has_vm_stats && used > 0 && (size_t)used < n) {
+            snprintf(buf + used, n - (size_t)used,
+                     "MemFree:        %llu kB\nCached:         %llu kB\n",
+                     (unsigned long long)(memory.free_bytes / 1024),
+                     (unsigned long long)(memory.cached_bytes / 1024));
+        }
         return buf;
     }
     if (!strncmp(path, "/sys/devices/system/cpu/", 24) && (strstr(path, "/present") || strstr(path, "/possible") || strstr(path, "/online"))) {
@@ -125,7 +178,13 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         return buf;
     }
     if (!strcmp(path, "/proc/self/status")) {
-        snprintf(buf, n, "Name:\tapp_process64\nState:\tR (running)\nTgid:\t%d\nPid:\t%d\nPPid:\t1\nUid:\t10001\t10001\t10001\t10001\nThreads:\t8\nVmRSS:\t  300000 kB\n", getpid(), getpid());
+        tl_host_memory_info memory;
+        bool have_memory = tl_host_memory_info_read(&memory);
+        int used = snprintf(buf, n, "Name:\tapp_process64\nState:\tR (running)\nTgid:\t%d\nPid:\t%d\nPPid:\t1\nUid:\t10001\t10001\t10001\t10001\nThreads:\t8\n",
+                            getpid(), getpid());
+        if (have_memory && memory.has_resident_size && used > 0 && (size_t)used < n)
+            snprintf(buf + used, n - (size_t)used, "VmRSS:\t%llu kB\n",
+                     (unsigned long long)(memory.resident_bytes / 1024));
         return buf;
     }
     return NULL;

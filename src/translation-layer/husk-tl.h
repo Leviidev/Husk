@@ -92,6 +92,12 @@ uint64_t husk_tl_frame_acquire(const uint8_t **pixels, int *width, int *height,
                                int *stride_pixels, int *token);
 void husk_tl_frame_release(int token);
 
+/* Live refresh data from the iOS presentation display link. */
+void husk_tl_set_display_refresh_rate(float hz);
+void husk_tl_set_maximum_display_refresh_rate(float hz);
+float husk_tl_display_refresh_rate(void);
+float husk_tl_maximum_display_refresh_rate(void);
+
 /* How the last couple of seconds went, from the frame pump's own counters. */
 typedef struct husk_tl_perf {
     double fps;        /* frames the guest produced per second */
