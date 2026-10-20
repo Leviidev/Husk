@@ -46,9 +46,9 @@ enum Theme {
 
         var title: String {
             switch self {
-            case .system: return "System"
-            case .light: return "Light"
-            case .dark: return "Dark"
+            case .system: return L10n.tr("System")
+            case .light: return L10n.tr("Light")
+            case .dark: return L10n.tr("Dark")
             }
         }
 

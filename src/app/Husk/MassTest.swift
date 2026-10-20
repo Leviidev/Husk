@@ -76,8 +76,8 @@ final class MassTest: ObservableObject {
     // MARK: - Starting and stopping
 
     func start() {
-        guard let files = Self.apks(), !files.isEmpty else { status = "Put APKs in the DeveloperTesting folder first."; return }
-        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = "Close Husk and open it again to start: a game was already loaded in this run."; return }
+        guard let files = Self.apks(), !files.isEmpty else { status = L10n.tr("Put APKs in the DeveloperTesting folder first."); return }
+        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = L10n.tr("Close Husk and open it again to start: a game was already loaded in this run."); return }
         ranThisProcess = true
         state = State(queue: files, index: 0, results: [], appIDs: [:], launched: false, startedAt: Date())
         save()
@@ -96,8 +96,8 @@ final class MassTest: ObservableObject {
     /// A new test of only those.
     func retestFailures() {
         let files = failures
-        guard !files.isEmpty else { status = "No failures to retest."; return }
-        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = "Close Husk and open it again to start: a game was already loaded in this run."; return }
+        guard !files.isEmpty else { status = L10n.tr("No failures to retest."); return }
+        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = L10n.tr("Close Husk and open it again to start: a game was already loaded in this run."); return }
         ranThisProcess = true
         let ids = state?.appIDs ?? [:]
         state = State(queue: files, index: 0, results: [], appIDs: ids, launched: false, startedAt: Date())
@@ -148,7 +148,7 @@ final class MassTest: ObservableObject {
     private func runCurrent() {
         guard var s = state, s.index < s.queue.count else { writeReport(); shareResults = true; return }
         let file = s.queue[s.index]
-        status = "Testing \(s.index + 1) of \(s.queue.count): \(file)"
+        status = L10n.tr("Testing \(s.index + 1) of \(s.queue.count): \(file)")
         HuskLog.log("masstest", status)
         Task {
             // Taken into the library once; a later launch for the same APK (after a crash) finds it there.
@@ -303,33 +303,33 @@ struct MassTestView: View {
         List {
             Section {
                 if let files {
-                    Text(files.isEmpty ? "The DeveloperTesting folder is empty." : "\(files.count) apps in DeveloperTesting.")
+                    Text(files.isEmpty ? L10n.tr("The DeveloperTesting folder is empty.") : L10n.tr("\(files.count) apps in DeveloperTesting."))
                 } else {
-                    Text("Make a folder named DeveloperTesting in Husk's folder (Files > On My iPhone > Husk) and put the APKs to test in it: an APK each, or a folder per app with its base and split APKs.")
+                    Text(L10n.tr("Make a folder named DeveloperTesting in Husk's folder (Files > On My iPhone > Husk) and put the APKs to test in it: an APK each, or a folder per app with its base and split APKs."))
                         .foregroundStyle(.secondary)
                 }
                 if let s = test.state {
-                    Text(test.active ? "In progress: \(s.results.count) of \(s.queue.count) done." : "Last test: \(s.results.count) of \(s.queue.count) done.")
+                    Text(test.active ? L10n.tr("In progress: \(s.results.count) of \(s.queue.count) done.") : L10n.tr("Last test: \(s.results.count) of \(s.queue.count) done."))
                 }
                 if !test.status.isEmpty { Text(test.status).font(.caption).foregroundStyle(.secondary) }
             } footer: {
-                Text("Each app is played once JIT is on, watched for 15 seconds, and written down; then Husk closes. Open Husk again for the next one. At the end the results file is offered to share.")
+                Text(L10n.tr("Each app is played once JIT is on, watched for 15 seconds, and written down; then Husk closes. Open Husk again for the next one. At the end the results file is offered to share."))
             }
             Section {
                 if test.active {
-                    Button("Stop", role: .destructive) { test.stop() }
+                    Button(L10n.tr("Stop"), role: .destructive) { test.stop() }
                 } else {
-                    Button("Start Mass Test") { test.start() }.disabled((files ?? []).isEmpty)
+                    Button(L10n.tr("Start Mass Test")) { test.start() }.disabled((files ?? []).isEmpty)
                     if !test.failures.isEmpty {
-                        Button("Retest \(test.failures.count) Failures") { test.retestFailures() }
+                        Button(L10n.tr("Retest \(test.failures.count) Failures")) { test.retestFailures() }
                     }
                 }
                 if FileManager.default.fileExists(atPath: MassTest.resultsURL.path) {
-                    Button("Share Results") { test.writeReport(); share = true }
+                    Button(L10n.tr("Share Results")) { test.writeReport(); share = true }
                 }
             }
         }
-        .navigationTitle("Mass Test")
+        .navigationTitle(L10n.tr("Mass Test"))
         .huskForm()
         .sheet(isPresented: $share) { ShareSheet(items: [MassTest.resultsURL]) }
     }

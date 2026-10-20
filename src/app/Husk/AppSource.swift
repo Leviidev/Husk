@@ -101,7 +101,7 @@ final class SourceManager: ObservableObject {
     // Fetch a single source by URL
     func fetchSource(urlString: String) async {
         guard let url = URL(string: urlString) else {
-            fetchErrors[urlString] = "Invalid URL"
+            fetchErrors[urlString] = L10n.tr("Invalid URL")
             return
         }
 
@@ -119,9 +119,11 @@ final class SourceManager: ObservableObject {
                 var apps: [SourceApp] = []
                 for fApp in fdroid.apps {
                     guard let pkgs = fdroid.packages[fApp.packageName], let latest = pkgs.first else { continue }
-                    let loc = fApp.localized?["en-US"] ?? fApp.localized?.values.first
-                    let appName = fApp.name ?? loc?.name ?? fApp.packageName
-                    let appSummary = fApp.summary ?? loc?.summary ?? fApp.description ?? loc?.description ?? ""
+                    let prefersChinese = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+                    let loc = (prefersChinese ? fApp.localized?["zh-CN"] ?? fApp.localized?["zh-Hans"] : nil)
+                        ?? fApp.localized?["en-US"] ?? fApp.localized?.values.first
+                    let appName = loc?.name ?? fApp.name ?? fApp.packageName
+                    let appSummary = loc?.summary ?? fApp.summary ?? loc?.description ?? fApp.description ?? ""
                     let appIcon = fApp.icon ?? loc?.icon
                     let iconURL = appIcon.map { "\(baseURL)/icons/\($0)" } ?? ""
                     
@@ -148,7 +150,7 @@ final class SourceManager: ObservableObject {
                 let source = AppSource(name: simple.name, identifier: urlString, apps: apps)
                 upsert(source: source)
             } else {
-                fetchErrors[urlString] = "Unrecognized source format"
+                fetchErrors[urlString] = L10n.tr("Unrecognized source format")
                 HuskLog.log("sources", "Unrecognized format at \(urlString)")
             }
         } catch {

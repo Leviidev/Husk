@@ -80,14 +80,14 @@ final class GeodeSupport: ObservableObject {
     /// Download what is missing or out of date.
     func prepare(_ app: TLApp) async {
         if case .working = status[app.id] { return }
-        status[app.id] = .working("Finding the Geode release for this game…")
+        status[app.id] = .working(L10n.tr("Finding the Geode release for this game…"))
         do {
             let folder = Self.folder(app.id)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             guard let apk = app.apks.first,
                   let manifest = TranslationLayerStore.entry(apk, "AndroidManifest.xml", limit: 8 << 20),
                   let versionCode = ApkMetadata.versionCode(manifest) else {
-                throw GeodeError("Could not read this game's version.")
+                throw GeodeError(L10n.tr("Could not read this game's version."))
             }
 
             // Geode's index: the newest Geode release for this game version.
@@ -95,7 +95,7 @@ final class GeodeSupport: ObservableObject {
             let have = (try? String(contentsOf: Self.versionFile(app.id), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
             let haveResources = FileManager.default.fileExists(atPath: Self.resourcesZip(app.id).path)
             if have != release || !FileManager.default.fileExists(atPath: Self.releaseZip(app.id).path) || !haveResources {
-                status[app.id] = .working("Downloading Geode \(release)…")
+                status[app.id] = .working(L10n.tr("Downloading Geode \(release)…"))
                 try await Self.download(zipURL, to: Self.releaseZip(app.id))
                 // Its resources, from the release on GitHub. Geode 4 kept them inside the release zip and has no such file,
                 // so a missing one is not an error.
@@ -112,11 +112,11 @@ final class GeodeSupport: ObservableObject {
             }
 
             if Self.launcherOnDisk(app.id) == nil {
-                status[app.id] = .working("Downloading Geode's launcher…")
+                status[app.id] = .working(L10n.tr("Downloading Geode's launcher…"))
                 try? FileManager.default.removeItem(at: Self.launcherChecked(app.id))
                 try await Self.download(try await Self.launcherURL(), to: Self.launcherAPK(app.id))
                 guard Self.launcherUsable(Self.launcherAPK(app.id).path) else {
-                    throw GeodeError("Geode's launcher download has no 64-bit C++ runtime.")
+                    throw GeodeError(L10n.tr("Geode's launcher download has no 64-bit C++ runtime."))
                 }
                 try Data().write(to: Self.launcherChecked(app.id))
             }
@@ -149,7 +149,7 @@ final class GeodeSupport: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw GeodeError("\(url.host ?? "The server") did not answer (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+            throw GeodeError(L10n.tr("\(url.host ?? "The server") did not answer (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."))
         }
         return obj
     }
@@ -160,11 +160,11 @@ final class GeodeSupport: ObservableObject {
         let payload = obj["payload"] as? [String: Any] ?? obj
         guard let version = payload["version"] as? String,
               let downloads = payload["downloads"] as? [String: Any] else {
-            throw GeodeError("Geode has no release for this version of Geometry Dash.")
+            throw GeodeError(L10n.tr("Geode has no release for this version of Geometry Dash."))
         }
         let entry = downloads["android64"]
         let link = (entry as? String) ?? ((entry as? [String: Any])?["url"] as? String)
-        guard let link, let zip = URL(string: link) else { throw GeodeError("Geode's release has no Android build.") }
+        guard let link, let zip = URL(string: link) else { throw GeodeError(L10n.tr("Geode's release has no Android build.")) }
         return (version, zip)
     }
 
@@ -175,7 +175,7 @@ final class GeodeSupport: ObservableObject {
         let assets = obj["assets"] as? [[String: Any]] ?? []
         let apks = assets.compactMap { $0["browser_download_url"] as? String }.filter { $0.hasSuffix(".apk") }
         guard let link = apks.first(where: { !$0.contains("android32") && !$0.contains("armeabi") }), let url = URL(string: link) else {
-            throw GeodeError("Geode's launcher release has no 64-bit APK.")
+            throw GeodeError(L10n.tr("Geode's launcher release has no 64-bit APK."))
         }
         return url
     }
@@ -186,7 +186,7 @@ final class GeodeSupport: ObservableObject {
         req.setValue("Husk", forHTTPHeaderField: "User-Agent")
         let (tmp, response) = try await URLSession.shared.download(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw GeodeError("Download failed (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+            throw GeodeError(L10n.tr("Download failed (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."))
         }
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmp, to: dest)

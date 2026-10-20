@@ -86,23 +86,23 @@ final class QemuRunner: ObservableObject {
     /// bootanim exits. Evenly spaced numbers would race to 90% and then sit
     /// there, which is the specific thing progress bars are distrusted for.
     nonisolated(unsafe) static let bootMilestones: [(String, String, Int)] = [
-        ("Linux version",                 "Starting the Linux kernel",           5),
-        ("init: init first stage started","Android init, first stage",           10),
-        ("init: init second stage started","Android init, second stage",         15),
-        ("SELinux: policy loaded",        "Loading the security policy",         20),
-        ("apexd: activating",             "Activating system packages",          28),
-        ("servicemanager: Waiting",       "Starting system services",            35),
-        ("starting service 'vold'",       "Preparing storage",                   42),
-        ("starting service 'surfaceflinger'", "Starting the display server",     50),
-        ("starting service 'zygote'",     "Starting the Android runtime",        58),
+        ("Linux version",                 L10n.tr("Starting the Linux kernel"),           5),
+        ("init: init first stage started",L10n.tr("Android init, first stage"),           10),
+        ("init: init second stage started",L10n.tr("Android init, second stage"),         15),
+        ("SELinux: policy loaded",        L10n.tr("Loading the security policy"),         20),
+        ("apexd: activating",             L10n.tr("Activating system packages"),          28),
+        ("servicemanager: Waiting",       L10n.tr("Starting system services"),            35),
+        ("starting service 'vold'",       L10n.tr("Preparing storage"),                   42),
+        ("starting service 'surfaceflinger'", L10n.tr("Starting the display server"),     50),
+        ("starting service 'zygote'",     L10n.tr("Starting the Android runtime"),        58),
         // The LineageOS image sets ro.boot.nobootanim=1, so the bootanim milestones
         // below never fire. Without these, the bar sat at 58% for the whole second half
         // of a cold boot, which looked like a hang. Both appear on console once system_server is up.
-        ("sid=u:r:system_server:s0",      "Starting Android system services",    66),
-        ("ctl.stop for 'idmap2d'",        "Loading system overlays",             72),
-        ("starting service 'bootanim'",   "Boot animation running",              65),
-        ("Service 'bootanim' (pid",       "Compiling apps (this is the slow part)", 80),
-        ("sys.boot_completed=1",          "Android is up",                       100),
+        ("sid=u:r:system_server:s0",      L10n.tr("Starting Android system services"),    66),
+        ("ctl.stop for 'idmap2d'",        L10n.tr("Loading system overlays"),             72),
+        ("starting service 'bootanim'",   L10n.tr("Boot animation running"),              65),
+        ("Service 'bootanim' (pid",       L10n.tr("Compiling apps (this is the slow part)"), 80),
+        ("sys.boot_completed=1",          L10n.tr("Android is up"),                       100),
     ]
 
     /// How far through the boot the guest is, 0 to 100.
@@ -1783,7 +1783,7 @@ final class QemuRunner: ObservableObject {
                                 let r = QemuRunner.shared
                                 if percent > r.bootProgress { r.bootProgress = percent }
                                 r.setupMessage =
-                                    "\(r.bootProgress)%  ·  \(milestone)  ·  \(stamp) elapsed"
+                                    L10n.tr("\(r.bootProgress)%  ·  \(milestone)  ·  \(stamp) elapsed")
                             }
                             break
                         }

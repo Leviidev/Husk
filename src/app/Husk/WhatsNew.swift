@@ -15,24 +15,24 @@ enum WhatsNew {
     /// The version whose notes these are. A build of the same version shows nothing again.
     static let version = "3.0.0"
     static let items: [Item] = [
-        Item(symbol: "gamecontroller.fill", title: "A new Husk",
-             detail: "A console-style home: your games on a shelf, the one you pick fills the screen with its artwork, and Play is one tap away. Android and PS4 games side by side, a new library, in light or dark as Settings › Appearance says."),
-        Item(symbol: "playstation.logo", title: "PS4 games",
-             detail: "Add a PS4 game with the + button, as a fake package (.pkg), a folder of them, or an extracted game folder, and play it from your library. Updates install beside their game, shaders are kept between launches, and games that ask for a name bring up the keyboard."),
-        Item(symbol: "square.stack.3d.up.fill", title: "Hundreds more Android games",
-             detail: "Hundreds of newly working games on the compatibility list, unofficial ports like Sonic Robo Blast 2, Ring Racers, NetHack and PokeWilds, Flutter games that showed a blank screen draw again, Godot 4 games run, and Python games get online."),
-        Item(symbol: "arrow.down.circle.fill", title: "Complete Store downloads",
-             detail: "Games that keep their data in expansion files get them with the download, and games split into many pieces load."),
-        Item(symbol: "keyboard.fill", title: "Typing everywhere",
-             detail: "Text fields in Unity, Java, Flutter, cocos2d-x and SDL games bring up the keyboard."),
-        Item(symbol: "textformat", title: "Chinese, Japanese and Korean",
-             detail: "Download the fonts in Settings › Fonts, and games stop showing empty boxes."),
-        Item(symbol: "bolt.fill", title: "JIT on its own",
-             detail: "TrollStore installs turn JIT on at launch, and Husk says on screen when something can't start without it."),
+        Item(symbol: "gamecontroller.fill", title: L10n.tr("A new Husk"),
+             detail: L10n.tr("A console-style home: your games on a shelf, the one you pick fills the screen with its artwork, and Play is one tap away. Android and PS4 games side by side, a new library, in light or dark as Settings › Appearance says.")),
+        Item(symbol: "playstation.logo", title: L10n.tr("PS4 games"),
+             detail: L10n.tr("Add a PS4 game with the + button, as a fake package (.pkg), a folder of them, or an extracted game folder, and play it from your library. Updates install beside their game, shaders are kept between launches, and games that ask for a name bring up the keyboard.")),
+        Item(symbol: "square.stack.3d.up.fill", title: L10n.tr("Hundreds more Android games"),
+             detail: L10n.tr("Hundreds of newly working games on the compatibility list, unofficial ports like Sonic Robo Blast 2, Ring Racers, NetHack and PokeWilds, Flutter games that showed a blank screen draw again, Godot 4 games run, and Python games get online.")),
+        Item(symbol: "arrow.down.circle.fill", title: L10n.tr("Complete Store downloads"),
+             detail: L10n.tr("Games that keep their data in expansion files get them with the download, and games split into many pieces load.")),
+        Item(symbol: "keyboard.fill", title: L10n.tr("Typing everywhere"),
+             detail: L10n.tr("Text fields in Unity, Java, Flutter, cocos2d-x and SDL games bring up the keyboard.")),
+        Item(symbol: "textformat", title: L10n.tr("Chinese, Japanese and Korean"),
+             detail: L10n.tr("Download the fonts in Settings › Fonts, and games stop showing empty boxes.")),
+        Item(symbol: "bolt.fill", title: L10n.tr("JIT on its own"),
+             detail: L10n.tr("TrollStore installs turn JIT on at launch, and Husk says on screen when something can't start without it.")),
         Item(symbol: "iphone", title: "iOS 15",
-             detail: "Husk now runs on iOS 15.5 and later (PS4 games need iOS 17.4)."),
-        Item(symbol: "wrench.and.screwdriver.fill", title: "Fixes",
-             detail: "Android no longer crashes after its download, the full Android emulator moved into Settings with a warning, closing Husk from the app switcher isn't reported as a crash, and much more."),
+             detail: L10n.tr("Husk now runs on iOS 15.5 and later (PS4 games need iOS 17.4).")),
+        Item(symbol: "wrench.and.screwdriver.fill", title: L10n.tr("Fixes"),
+             detail: L10n.tr("Android no longer crashes after its download, the full Android emulator moved into Settings with a warning, closing Husk from the app switcher isn't reported as a crash, and much more.")),
     ]
 
     private static let seenKey = "husk.whatsNew.seen"
@@ -56,8 +56,8 @@ struct WhatsNewSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("What's New in Husk \(WhatsNew.version)").font(.largeTitle.weight(.bold))
-                        Text("A new look, PS4 games, and hundreds more Android games.").foregroundStyle(.secondary)
+                        Text(L10n.tr("What's New in Husk \(WhatsNew.version)")).font(.largeTitle.weight(.bold))
+                        Text(L10n.tr("A new look, PS4 games, and hundreds more Android games.")).foregroundStyle(.secondary)
                     }
                     .padding(.top, 36)
                     ForEach(WhatsNew.items) { item in
@@ -78,7 +78,7 @@ struct WhatsNewSheet: View {
                 .padding(.bottom, 20)
             }
             Button(action: done) {
-                Text("Continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8)
+                Text(L10n.tr("Continue")).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8)
             }
             .buttonStyle(.borderedProminent)
             .padding(.horizontal, 28)

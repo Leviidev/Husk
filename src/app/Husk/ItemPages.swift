@@ -113,14 +113,14 @@ struct GamePage: View {
     private var blockedBy: String? {
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), let apk = app.apks.first, loaded != apk
         else { return nil }
-        return store.apps.first { $0.apks.first == loaded }?.label ?? "Another game"
+        return store.apps.first { $0.apks.first == loaded }?.label ?? L10n.tr("Another game")
     }
 
     private var preflight: AppDiagnosis? { AppDiagnosis.preflight(app) }
 
     private var subtitle: String {
         if let used = LibraryItem.game(app).usedText { return used }
-        return runs ? "Ready to play" : "May not run on this iPhone"
+        return runs ? L10n.tr("Ready to play") : L10n.tr("May not run on this iPhone")
     }
 
     var body: some View {
@@ -129,14 +129,11 @@ struct GamePage: View {
                 PageHero(item: .game(app), subtitle: subtitle) { primary }
             } footer: {
                 if isGeodeLauncher {
-                    Text("This is Geode's Android launcher. On Husk, Geode runs inside Geometry Dash instead: turn it on here "
-                       + "(or in Geometry Dash's settings, under Mods), then start Geometry Dash and use Geode's button on its "
-                       + "main menu to get mods. This APK supplies a library Geode needs, so keep it.")
+                    Text(L10n.tr("This is Geode's Android launcher. On Husk, Geode runs inside Geometry Dash instead: turn it on here (or in Geometry Dash's settings, under Mods), then start Geometry Dash and use Geode's button on its main menu to get mods. This APK supplies a library Geode needs, so keep it."))
                 } else if let other = blockedBy {
-                    Text("\(other) is still loaded, and a game cannot be unloaded once it has started. Close Husk with the "
-                       + "button above, then open it again to play \(app.label).")
+                    Text(L10n.tr("\(other) is still loaded, and a game cannot be unloaded once it has started. Close Husk with the button above, then open it again to play \(app.label)."))
                 } else if !runs {
-                    Text("This APK has no 64-bit code Husk can run, so it will probably not start.")
+                    Text(L10n.tr("This APK has no 64-bit code Husk can run, so it will probably not start."))
                 }
             }
             .heroRow()
@@ -150,7 +147,7 @@ struct GamePage: View {
             }
             // why it stopped last time, until it plays again
             if let d = GameStatusStore.shared.diagnosis(app.id), d != preflight {
-                Section("Last Run") {
+                Section(L10n.tr("Last Run")) {
                     AppDiagnosisCard(diagnosis: d, showsEvidence: true)
                         .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
                 }
@@ -161,7 +158,7 @@ struct GamePage: View {
             }
 
             if !ShowcaseStore.shared.pictures(for: app.packageName).isEmpty {
-                Section("Screenshots") {
+                Section(L10n.tr("Screenshots")) {
                     ShowcaseGallery(package: app.packageName)
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 }
@@ -169,42 +166,42 @@ struct GamePage: View {
 
             Section {
                 HuskLink(value: LibraryRoute.gameSettings(app.id)) {
-                    Label("Game Settings", systemImage: "slider.horizontal.3")
+                    Label(L10n.tr("Game Settings"), systemImage: "slider.horizontal.3")
                 }
                 HuskLink(value: LibraryRoute.gameReport(app.id)) {
-                    Label("Technical Details", systemImage: "cpu")
+                    Label(L10n.tr("Technical Details"), systemImage: "cpu")
                 }
             }
 
             if !isGeodeLauncher {
                 Section {
-                    Button { backUp() } label: { Label("Back Up Saves", systemImage: "square.and.arrow.up") }
+                    Button { backUp() } label: { Label(L10n.tr("Back Up Saves"), systemImage: "square.and.arrow.up") }
                         .disabled(savesBusy || !SaveBackup.hasData(app))
-                    Button { pickRestore() } label: { Label("Restore Saves", systemImage: "clock.arrow.circlepath") }
+                    Button { pickRestore() } label: { Label(L10n.tr("Restore Saves"), systemImage: "clock.arrow.circlepath") }
                         .disabled(savesBusy || loadedNow)
                 } header: {
-                    Text("Saves")
+                    Text(L10n.tr("Saves"))
                 } footer: {
                     if let savesMessage { Text(savesMessage) }
-                    else if loadedNow { Text("\(app.label) has been started in this run of Husk. Close Husk and open it again to restore saves.") }
-                    else { Text("A backup is a .zip of everything \(app.label) has saved in Husk, to keep in Files or move to another device.") }
+                    else if loadedNow { Text(L10n.tr("\(app.label) has been started in this run of Husk. Close Husk and open it again to restore saves.")) }
+                    else { Text(L10n.tr("A backup is a .zip of everything \(app.label) has saved in Husk, to keep in Files or move to another device.")) }
                 }
             }
 
-            Section("About") {
-                LabeledContent("Runs With", value: app.report?.runnerName ?? "Unknown")
+            Section(L10n.tr("About")) {
+                LabeledContent(L10n.tr("Runs With"), value: app.report?.runnerName ?? L10n.tr("Unknown"))
                 if let st = GameStatusStore.shared.status(app.id) {
-                    LabeledContent("Last Result") {
+                    LabeledContent(L10n.tr("Last Result")) {
                         Label(st.result.label, systemImage: st.result.symbol).foregroundStyle(st.result.color)
                     }
                 }
-                LabeledContent("Last Played", value: app.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
-                LabeledContent("Size", value: fileBytes(app.apks))
+                LabeledContent(L10n.tr("Last Played"), value: app.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? L10n.tr("Never"))
+                LabeledContent(L10n.tr("Size"), value: fileBytes(app.apks))
             }
 
             Section {
                 Button(role: .destructive) { confirmRemove = true } label: {
-                    Label("Remove Game", systemImage: "trash")
+                    Label(L10n.tr("Remove Game"), systemImage: "trash")
                 }
             }
         }
@@ -216,14 +213,14 @@ struct GamePage: View {
         .sheet(item: Binding(get: { backupFile.map(IdentifiedURL.init) }, set: { backupFile = $0?.url })) { f in
             ShareSheet(items: [f.url])
         }
-        .confirmationDialog("Replace \(app.label)'s saves?", isPresented: Binding(get: { confirmRestore != nil }, set: { if !$0 { confirmRestore = nil } }),
+        .confirmationDialog(L10n.tr("Replace \(app.label)'s saves?"), isPresented: Binding(get: { confirmRestore != nil }, set: { if !$0 { confirmRestore = nil } }),
                             titleVisibility: .visible) {
-            Button("Replace", role: .destructive) { if let url = confirmRestore { restore(url) } }
+            Button(L10n.tr("Replace"), role: .destructive) { if let url = confirmRestore { restore(url) } }
         } message: {
-            Text("What \(app.label) has saved now is replaced by the backup. Back up first if you want to keep it.")
+            Text(L10n.tr("What \(app.label) has saved now is replaced by the backup. Back up first if you want to keep it."))
         }
-        .confirmationDialog("Close Husk?", isPresented: $confirmQuit, titleVisibility: .visible) {
-            Button("Close Husk") {
+        .confirmationDialog(L10n.tr("Close Husk?"), isPresented: $confirmQuit, titleVisibility: .visible) {
+            Button(L10n.tr("Close Husk")) {
                 // The game that is loaded is closed with Husk, which is the normal way out for it, not a crash; and this
                 // one starts by itself when Husk is opened again.
                 Router.shared.switchTo(app.id)
@@ -232,15 +229,15 @@ struct GamePage: View {
                 exit(0)
             }
         } message: {
-            Text("\(blockedBy ?? "The other game") is still loaded and only one game can run per session. Husk closes; open it again and \(app.label) starts by itself.")
+            Text(L10n.tr("\(blockedBy ?? L10n.tr("Another game")) is still loaded and only one game can run per session. Husk closes; open it again and \(app.label) starts by itself."))
         }
-        .confirmationDialog("Remove \(app.label)?", isPresented: $confirmRemove, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) {
+        .confirmationDialog(L10n.tr("Remove \(app.label)?"), isPresented: $confirmRemove, titleVisibility: .visible) {
+            Button(L10n.tr("Remove"), role: .destructive) {
                 dismiss()
                 store.remove(app)
             }
         } message: {
-            Text("The game and everything it saved here are deleted from Husk.")
+            Text(L10n.tr("The game and everything it saved here are deleted from Husk."))
         }
         .id(jit.attachGeneration)
         .onAppear {
@@ -317,7 +314,7 @@ struct GamePage: View {
             await MainActor.run {
                 savesBusy = false
                 switch result {
-                case .success(let n): savesMessage = "Restored \(n) file\(n == 1 ? "" : "s") from \(url.lastPathComponent)."
+                case .success(let n): savesMessage = L10n.tr("Restored \(n) file\(n == 1 ? "" : "s") from \(url.lastPathComponent).")
                 case .failure(let e): savesMessage = e.localizedDescription
                 }
             }
@@ -333,7 +330,7 @@ struct GamePage: View {
     private var primary: some View {
         if isGeodeLauncher {
             if let gd = geometryDash {
-                BigButton(title: TLAppSettings.load(gd.id).geode ? "Geode Is On for Geometry Dash" : "Turn On Geode for Geometry Dash",
+                BigButton(title: TLAppSettings.load(gd.id).geode ? L10n.tr("Geode Is On for Geometry Dash") : L10n.tr("Turn On Geode for Geometry Dash"),
                           systemImage: "puzzlepiece.extension.fill", prominent: !TLAppSettings.load(gd.id).geode) {
                     var s = TLAppSettings.load(gd.id)
                     s.geode = true
@@ -341,19 +338,19 @@ struct GamePage: View {
                     Task { await GeodeSupport.shared.prepare(gd) }
                 }
             } else {
-                BigButton(title: "Add Geometry Dash First", systemImage: "plus", prominent: false) { }.disabled(true)
+                BigButton(title: L10n.tr("Add Geometry Dash First"), systemImage: "plus", prominent: false) { }.disabled(true)
             }
         } else if blockedBy != nil {
-            BigButton(title: "Close Husk to Play", systemImage: "xmark.circle", prominent: false) { confirmQuit = true }
+            BigButton(title: L10n.tr("Close Husk to Play"), systemImage: "xmark.circle", prominent: false) { confirmQuit = true }
         } else if !Launcher.jitOn {
             if jit.busy {
-                HStack(spacing: 10) { ProgressView(); Text(jit.status ?? "Turning on JIT…").foregroundStyle(.secondary) }
+                HStack(spacing: 10) { ProgressView(); Text(jit.status ?? L10n.tr("Turning on JIT…")).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity).frame(height: 50)
             } else {
-                BigButton(title: "Turn On JIT to Play", systemImage: "bolt.fill", action: turnOnJIT)
+                BigButton(title: L10n.tr("Turn On JIT to Play"), systemImage: "bolt.fill", action: turnOnJIT)
             }
         } else {
-            BigButton(title: runs ? "Play" : "Try to Run", systemImage: "play.fill", prominent: runs) { play() }
+            BigButton(title: runs ? L10n.tr("Play") : L10n.tr("Try to Run"), systemImage: "play.fill", prominent: runs) { play() }
         }
     }
 }
@@ -373,8 +370,8 @@ struct PS4GamePage: View {
     private var blockedBy: String? {
         if Router.shared.androidStarted { return "Android" }   // QEMU holds the JIT region the PS4 layer needs
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != game.libraryID else { return nil }
-        if loaded.hasPrefix("ps4:") { return PS4Store.shared.game(String(loaded.dropFirst(4)))?.title ?? "Another game" }
-        return TranslationLayerStore.shared.apps.first { $0.apks.first == loaded }?.label ?? "Another game"
+        if loaded.hasPrefix("ps4:") { return PS4Store.shared.game(String(loaded.dropFirst(4)))?.title ?? L10n.tr("Another game") }
+        return TranslationLayerStore.shared.apps.first { $0.apks.first == loaded }?.label ?? L10n.tr("Another game")
     }
 
     private var subtitle: String {
@@ -389,32 +386,32 @@ struct PS4GamePage: View {
             if !PS4Store.available {
                 Section {
                     Text(PS4Store.moduleURL == nil
-                         ? "This build of Husk does not include the PS4 layer."
-                         : "PS4 games need iOS 17.4 or later.")
+                         ? L10n.tr("This build of Husk does not include the PS4 layer.")
+                         : L10n.tr("PS4 games need iOS 17.4 or later."))
                         .foregroundStyle(.secondary)
                 }
             }
-            Section("About") {
-                LabeledContent("Runs With", value: "Husk's PS4 layer")
-                LabeledContent("Title ID", value: game.titleID)
-                if let v = game.version { LabeledContent("Version", value: v) }
-                LabeledContent("Last Played", value: game.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
-                LabeledContent("Folder", value: "PS4 Games/" + game.folder.lastPathComponent)
+            Section(L10n.tr("About")) {
+                LabeledContent(L10n.tr("Runs With"), value: L10n.tr("Husk's PS4 layer"))
+                LabeledContent(L10n.tr("Title ID"), value: game.titleID)
+                if let v = game.version { LabeledContent(L10n.tr("Version"), value: v) }
+                LabeledContent(L10n.tr("Last Played"), value: game.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? L10n.tr("Never"))
+                LabeledContent(L10n.tr("Folder"), value: "PS4 Games/" + game.folder.lastPathComponent)
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(game.title)
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $playing) { PS4PlayView(game: game) }
-        .confirmationDialog("Close Husk?", isPresented: $confirmQuit, titleVisibility: .visible) {
-            Button("Close Husk") {
+        .confirmationDialog(L10n.tr("Close Husk?"), isPresented: $confirmQuit, titleVisibility: .visible) {
+            Button(L10n.tr("Close Husk")) {
                 Router.shared.switchTo(game.libraryID)
                 CrashReport.gameEnded()
                 HuskLog.flushNow()
                 exit(0)
             }
         } message: {
-            Text("\(blockedBy ?? "The other game") is still loaded and only one game can run per session. Husk closes; open it again and \(game.title) starts by itself.")
+            Text(L10n.tr("\(blockedBy ?? L10n.tr("Another game")) is still loaded and only one game can run per session. Husk closes; open it again and \(game.title) starts by itself."))
         }
         .id(jit.attachGeneration)
         .onAppear {
@@ -427,18 +424,18 @@ struct PS4GamePage: View {
     @ViewBuilder
     private var primary: some View {
         if !PS4Store.available {
-            BigButton(title: "Can't Play Here", systemImage: "xmark.octagon", prominent: false) { }.disabled(true)
+            BigButton(title: L10n.tr("Can't Play Here"), systemImage: "xmark.octagon", prominent: false) { }.disabled(true)
         } else if blockedBy != nil {
-            BigButton(title: "Close Husk to Play", systemImage: "xmark.circle", prominent: false) { confirmQuit = true }
+            BigButton(title: L10n.tr("Close Husk to Play"), systemImage: "xmark.circle", prominent: false) { confirmQuit = true }
         } else if !Launcher.jitOn {
             if jit.busy {
-                HStack(spacing: 10) { ProgressView(); Text(jit.status ?? "Turning on JIT…").foregroundStyle(.secondary) }
+                HStack(spacing: 10) { ProgressView(); Text(jit.status ?? L10n.tr("Turning on JIT…")).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity).frame(height: 50)
             } else {
-                BigButton(title: "Turn On JIT to Play", systemImage: "bolt.fill", action: turnOnJIT)
+                BigButton(title: L10n.tr("Turn On JIT to Play"), systemImage: "bolt.fill", action: turnOnJIT)
             }
         } else {
-            BigButton(title: "Play", systemImage: "play.fill") { playing = true }
+            BigButton(title: L10n.tr("Play"), systemImage: "play.fill") { playing = true }
         }
     }
 }
@@ -464,84 +461,84 @@ struct AndroidAppPage: View {
     var body: some View {
         List {
             Section {
-                PageHero(item: item, subtitle: item.usedText ?? "Runs inside Android") { primary }
+                PageHero(item: item, subtitle: item.usedText ?? L10n.tr("Runs inside Android")) { primary }
             } footer: {
                 if router.pendingAndroidLaunch == app.name, !host.isReady {
-                    Text("\(live.label) opens by itself once Android has started.")
+                    Text(L10n.tr("\(live.label) opens by itself once Android has started."))
                 }
             }
             .heroRow()
 
             if !ShowcaseStore.shared.pictures(for: app.name).isEmpty {
-                Section("Screenshots") {
+                Section(L10n.tr("Screenshots")) {
                     ShowcaseGallery(package: app.name)
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 }
             }
 
-            Section("About") {
-                LabeledContent("Version", value: live.version ?? "—")
-                LabeledContent("Size", value: live.sizeBytes.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "—")
-                LabeledContent("Package", value: live.name)
-                if let b = live.bitness { LabeledContent("Architecture", value: b) }
+            Section(L10n.tr("About")) {
+                LabeledContent(L10n.tr("Version"), value: live.version ?? "—")
+                LabeledContent(L10n.tr("Size"), value: live.sizeBytes.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "—")
+                LabeledContent(L10n.tr("Package"), value: live.name)
+                if let b = live.bitness { LabeledContent(L10n.tr("Architecture"), value: b) }
             }
 
             Section {
                 Button { router.openFiles(at: "/sdcard/Android/data/\(app.name)") } label: {
-                    Label("Open in Files", systemImage: "folder")
+                    Label(L10n.tr("Open in Files"), systemImage: "folder")
                 }
                 .disabled(!canOpen)
                 Button { appInfo() } label: {
-                    Label("Android App Info", systemImage: "info.circle")
+                    Label(L10n.tr("Android App Info"), systemImage: "info.circle")
                 }
                 .disabled(!canOpen)
                 Button { UIPasteboard.general.string = app.name } label: {
-                    Label("Copy Package Name", systemImage: "doc.on.doc")
+                    Label(L10n.tr("Copy Package Name"), systemImage: "doc.on.doc")
                 }
             }
 
             Section {
                 Button(role: .destructive) { confirmUninstall = true } label: {
-                    Label("Uninstall", systemImage: "trash")
+                    Label(L10n.tr("Uninstall"), systemImage: "trash")
                 }
                 .disabled(!canOpen)
             } footer: {
-                if !canOpen { Text("Start Android to uninstall or look inside the app.") }
+                if !canOpen { Text(L10n.tr("Start Android to uninstall or look inside the app.")) }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(live.label)
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Uninstall \(live.label)?", isPresented: $confirmUninstall, titleVisibility: .visible) {
-            Button("Uninstall", role: .destructive) {
+        .confirmationDialog(L10n.tr("Uninstall \(live.label)?"), isPresented: $confirmUninstall, titleVisibility: .visible) {
+            Button(L10n.tr("Uninstall"), role: .destructive) {
                 host.uninstall(app.name)
                 dismiss()
             }
         } message: {
-            Text("Its data goes with it.")
+            Text(L10n.tr("Its data goes with it."))
         }
     }
 
     @ViewBuilder
     private var primary: some View {
         if canOpen {
-            BigButton(title: "Open", systemImage: "play.fill") {
+            BigButton(title: L10n.tr("Open"), systemImage: "play.fill") {
                 host.launch(app.name) { router.openGuest() }
             }
         } else if router.androidStarted {
             VStack(spacing: 10) {
-                BigButton(title: "Starting Android…", systemImage: "hourglass", prominent: false) { }
+                BigButton(title: L10n.tr("Starting Android…"), systemImage: "hourglass", prominent: false) { }
                     .disabled(true)
                 if runner.bootProgress > 0 { ProgressView(value: Double(runner.bootProgress), total: 100) }
             }
         } else if guest.state == .ready {
-            BigButton(title: Launcher.jitOn ? "Start Android and Open" : "Turn On JIT", systemImage: Launcher.jitOn ? "play.fill" : "bolt.fill") {
+            BigButton(title: Launcher.jitOn ? L10n.tr("Start Android and Open") : L10n.tr("Turn On JIT"), systemImage: Launcher.jitOn ? "play.fill" : "bolt.fill") {
                 if Launcher.jitOn { router.pendingAndroidLaunch = app.name }
                 router.startAndroid()
             }
         } else {
             HuskLink(value: LibraryRoute.androidSystem) {
-                Label("Get Android First", systemImage: "arrow.down.circle")
+                Label(L10n.tr("Get Android First"), systemImage: "arrow.down.circle")
                     .font(.system(.headline, design: .rounded))
                     .frame(maxWidth: .infinity).frame(height: 50)
                     .foregroundStyle(.white)
@@ -589,26 +586,25 @@ struct AndroidSystemPage: View {
 
             if host.isReady {
                 Section {
-                    Button { router.openFiles(at: FilesTab.root) } label: { Label("Files", systemImage: "folder") }
+                    Button { router.openFiles(at: FilesTab.root) } label: { Label(L10n.tr("Files"), systemImage: "folder") }
                     Button { runner.saveState(reason: "asked from the Android page") } label: {
-                        Label(runner.isSavingState ? "Saving…" : "Save Android Now", systemImage: "externaldrive.badge.checkmark")
+                        Label(runner.isSavingState ? L10n.tr("Saving…") : L10n.tr("Save Android Now"), systemImage: "externaldrive.badge.checkmark")
                     }
                     .disabled(runner.isSavingState)
                 } footer: {
-                    Text("Saving keeps Android exactly as it is, so the next start skips booting.")
+                    Text(L10n.tr("Saving keeps Android exactly as it is, so the next start skips booting."))
                 }
             }
 
-            Section("Settings") {
-                NavigationLink { PerformanceSettings() } label: { Label("Performance", systemImage: "speedometer") }
-                NavigationLink { InputSettings() } label: { Label("Input", systemImage: "hand.tap") }
-                NavigationLink { NetworkSettings() } label: { Label("Network", systemImage: "globe") }
-                NavigationLink { SavedMachineSettings() } label: { Label("Saved Machine", systemImage: "externaldrive") }
+            Section(L10n.tr("Settings")) {
+                NavigationLink { PerformanceSettings() } label: { Label(L10n.tr("Performance"), systemImage: "speedometer") }
+                NavigationLink { InputSettings() } label: { Label(L10n.tr("Input"), systemImage: "hand.tap") }
+                NavigationLink { NetworkSettings() } label: { Label(L10n.tr("Network"), systemImage: "globe") }
+                NavigationLink { SavedMachineSettings() } label: { Label(L10n.tr("Saved Machine"), systemImage: "externaldrive") }
             }
 
             Section {
-                Text("Android runs fully emulated, so it is slower than games on the translation layer. Use it for apps "
-                   + "Husk cannot run directly, like Termux or app stores.")
+                Text(L10n.tr("Android runs fully emulated, so it is slower than games on the translation layer. Use it for apps Husk cannot run directly, like Termux or app stores."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -621,16 +617,16 @@ struct AndroidSystemPage: View {
 
     private var status: String {
         if running {
-            if host.isReady { return "Running" }
-            return runner.setupMessage ?? (runner.bootProgress > 0 ? "Starting · \(runner.bootProgress)%" : "Starting…")
+            if host.isReady { return L10n.tr("Running") }
+            return runner.setupMessage ?? (runner.bootProgress > 0 ? L10n.tr("Starting · \(runner.bootProgress)%") : L10n.tr("Starting…"))
         }
         switch guest.state {
-        case .missing: return "Not downloaded yet"
+        case .missing: return L10n.tr("Not downloaded yet")
         case .downloading(_, let received, let total):
-            return "Downloading · \(bytes(received)) of \(total > 0 ? bytes(total) : "…")"
-        case .installing: return "Installing…"
-        case .failed: return "Something went wrong"
-        case .ready: return Launcher.jitOn ? "Ready to start" : "Needs JIT to start"
+            return L10n.tr("Downloading · \(bytes(received)) of \(total > 0 ? bytes(total) : "…")")
+        case .installing: return L10n.tr("Installing…")
+        case .failed: return L10n.tr("Something went wrong")
+        case .ready: return Launcher.jitOn ? L10n.tr("Ready to start") : L10n.tr("Needs JIT to start")
         }
     }
 
@@ -643,7 +639,7 @@ struct AndroidSystemPage: View {
     private var note: String? {
         guard !running else { return nil }
         switch guest.state {
-        case .missing: return "Husk's Android runtime is about 760 MB. Android itself follows once it is installed."
+        case .missing: return L10n.tr("Husk's Android runtime is about 760 MB. Android itself follows once it is installed.")
         case .failed(let message): return message
         default: return nil
         }
@@ -653,30 +649,30 @@ struct AndroidSystemPage: View {
     private var primary: some View {
         if running {
             if host.isReady {
-                BigButton(title: "Open Android", systemImage: "play.fill") { open() }
+                BigButton(title: L10n.tr("Open Android"), systemImage: "play.fill") { open() }
             } else {
-                BigButton(title: "Watch It Start", systemImage: "eye", prominent: false) { open() }
+                BigButton(title: L10n.tr("Watch It Start"), systemImage: "eye", prominent: false) { open() }
             }
         } else {
             switch guest.state {
             case .missing:
-                BigButton(title: "Download Android", systemImage: "arrow.down.circle") {
+                BigButton(title: L10n.tr("Download Android"), systemImage: "arrow.down.circle") {
                     // Claim the JIT region before the download: it takes a while, and StikDebug lets go by the end of it.
                     JITBootstrap.prewarm()
                     guest.download()
                 }
             case .downloading:
-                BigButton(title: "Cancel Download", systemImage: "xmark", prominent: false) { guest.cancel() }
+                BigButton(title: L10n.tr("Cancel Download"), systemImage: "xmark", prominent: false) { guest.cancel() }
             case .installing:
                 ProgressView().frame(height: 50)
             case .failed:
-                BigButton(title: "Try Again", systemImage: "arrow.clockwise") { JITBootstrap.prewarm(); guest.download() }
+                BigButton(title: L10n.tr("Try Again"), systemImage: "arrow.clockwise") { JITBootstrap.prewarm(); guest.download() }
             case .ready:
                 if jit.busy {
-                    HStack(spacing: 10) { ProgressView(); Text(jit.status ?? "Turning on JIT…").foregroundStyle(.secondary) }
+                    HStack(spacing: 10) { ProgressView(); Text(jit.status ?? L10n.tr("Turning on JIT…")).foregroundStyle(.secondary) }
                         .frame(maxWidth: .infinity).frame(height: 50)
                 } else {
-                    BigButton(title: Launcher.jitOn ? "Start Android" : "Turn On JIT", systemImage: Launcher.jitOn ? "power" : "bolt.fill") {
+                    BigButton(title: Launcher.jitOn ? L10n.tr("Start Android") : L10n.tr("Turn On JIT"), systemImage: Launcher.jitOn ? "power" : "bolt.fill") {
                         router.startAndroid()
                     }
                 }

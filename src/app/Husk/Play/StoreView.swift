@@ -18,21 +18,21 @@ struct StoreView: View {
                 if !manager.isSignedIn {
                     signedOutState
                 } else if manager.isLoading && manager.featuredApps.isEmpty && !manager.isSearching {
-                    ProgressView("Connecting to Google Play…")
+                    ProgressView(L10n.tr("Connecting to Google Play…"))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     storeContent
                 }
             }
             .background(Theme.backdrop)
-            .navigationTitle("Store")
+            .navigationTitle(L10n.tr("Store"))
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search Google Play")
+            .searchable(text: $searchText, prompt: L10n.tr("Search Google Play"))
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !manager.downloadProgress.isEmpty {
                         Button { Router.shared.showDownloads = true } label: {
-                            Label("\(manager.downloadProgress.count) Downloading", systemImage: "arrow.down.circle")
+                            Label(L10n.tr("\(manager.downloadProgress.count) Downloading"), systemImage: "arrow.down.circle")
                                 .labelStyle(.titleAndIcon)
                                 .font(.subheadline.weight(.semibold))
                         }
@@ -40,7 +40,7 @@ struct StoreView: View {
                     if manager.isSignedIn {
                         Menu {
                             if let s = manager.session {
-                                Text(s.isAnonymous ? "Guest Account (Aurora)" : s.email)
+                                Text(s.isAnonymous ? L10n.tr("Guest Account (Aurora)") : s.email)
                                     .font(.caption)
                                 if s.isAnonymous {
                                     Text(s.email).font(.caption2).foregroundStyle(.secondary)
@@ -50,7 +50,7 @@ struct StoreView: View {
                             Button(role: .destructive) {
                                 manager.signOut()
                             } label: {
-                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                                Label(L10n.tr("Sign Out"), systemImage: "rectangle.portrait.and.arrow.right")
                             }
                         } label: {
                             Image(systemName: manager.session?.isAnonymous == true ? "person.badge.shield.checkmark" : "person.crop.circle")
@@ -61,15 +61,15 @@ struct StoreView: View {
                             Button {
                                 Task { await manager.signInAsGuest() }
                             } label: {
-                                Label("Use Guest Account (Aurora)", systemImage: "person.crop.circle.badge.checkmark")
+                                Label(L10n.tr("Use Guest Account (Aurora)"), systemImage: "person.crop.circle.badge.checkmark")
                             }
                             Button {
                                 showSignIn = true
                             } label: {
-                                Label("Sign In with Google", systemImage: "person.badge.key")
+                                Label(L10n.tr("Sign In with Google"), systemImage: "person.badge.key")
                             }
                         } label: {
-                            Text("Sign In")
+                            Text(L10n.tr("Sign In"))
                                 .font(.subheadline.weight(.semibold))
                         }
                     }
@@ -90,11 +90,11 @@ struct StoreView: View {
                     }
                 } catch {}
             }
-            .alert("Error", isPresented: Binding(
+            .alert(L10n.tr("Error"), isPresented: Binding(
                 get: { manager.errorMessage != nil },
                 set: { if !$0 { manager.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { manager.errorMessage = nil }
+                Button(L10n.tr("OK"), role: .cancel) { manager.errorMessage = nil }
             } message: {
                 Text(manager.errorMessage ?? "")
             }
@@ -112,11 +112,11 @@ struct StoreView: View {
                 .foregroundStyle(Color.accentColor)
 
             VStack(spacing: 8) {
-                Text("Google Play Store")
+                Text(L10n.tr("Google Play Store"))
                     .font(.title2.weight(.bold))
                     .foregroundStyle(Theme.text)
 
-                Text("Browse and download apps using an anonymous Aurora guest account, or sign in with your Google account.")
+                Text(L10n.tr("Browse and download apps using an anonymous Aurora guest account, or sign in with your Google account."))
                     .font(.subheadline)
                     .foregroundStyle(Theme.textDim)
                     .multilineTextAlignment(.center)
@@ -126,7 +126,7 @@ struct StoreView: View {
             if manager.isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
-                    Text(manager.statusMessage ?? "Signing in…")
+                    Text(manager.statusMessage ?? L10n.tr("Signing in…"))
                         .font(.footnote)
                         .foregroundStyle(Theme.textDim)
                 }
@@ -141,7 +141,7 @@ struct StoreView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "person.crop.circle.badge.checkmark")
-                            Text("Use Guest Account")
+                            Text(L10n.tr("Use Guest Account"))
                         }
                         .font(.headline)
                         .frame(maxWidth: 240)
@@ -156,7 +156,7 @@ struct StoreView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "person.badge.key")
-                            Text("Sign In with Google")
+                            Text(L10n.tr("Sign In with Google"))
                         }
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: 240)
@@ -182,12 +182,12 @@ struct StoreView: View {
                     if manager.isSearching {
                         HStack {
                             Spacer()
-                            ProgressView("Searching…")
+                            ProgressView(L10n.tr("Searching…"))
                             Spacer()
                         }
                         .padding(.vertical, 12)
                     } else if manager.searchResults.isEmpty {
-                        Text("No apps found for \"\(debouncedSearchText)\".")
+                        Text(L10n.tr("No apps found for \"\(debouncedSearchText)\"."))
                             .font(.subheadline)
                             .foregroundStyle(Theme.textDim)
                             .padding(.vertical, 8)
@@ -197,7 +197,7 @@ struct StoreView: View {
                         }
                     }
                 } header: {
-                    Text("Search Results")
+                    Text(L10n.tr("Search Results"))
                 }
             } else {
                 if !manager.featuredApps.isEmpty {
@@ -206,11 +206,11 @@ struct StoreView: View {
                             appRow(app)
                         }
                     } header: {
-                        Text("Featured Apps")
+                        Text(L10n.tr("Featured Apps"))
                     }
                 } else {
                     Section {
-                        Text("No featured apps available. Try searching above.")
+                        Text(L10n.tr("No featured apps available. Try searching above."))
                             .font(.subheadline)
                             .foregroundStyle(Theme.textDim)
                     }
@@ -307,12 +307,12 @@ struct StoreView: View {
                     .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("Stop Download")
+                .accessibilityLabel(L10n.tr("Stop Download"))
             } else {
                 Button {
                     manager.downloadAndInstall(app: app)
                 } label: {
-                    Text(app.isFree ? "GET" : app.formattedPrice)
+                    Text(app.isFree ? L10n.tr("GET") : app.formattedPrice)
                         .font(.subheadline.weight(.bold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
@@ -371,14 +371,14 @@ struct PlayAppDetailSheet: View {
 
                     // Metrics row
                     HStack {
-                        metricItem(title: "Rating", value: app.rating > 0 ? String(format: "%.1f ★", app.rating) : "N/A")
+                        metricItem(title: L10n.tr("Rating"), value: app.rating > 0 ? String(format: "%.1f ★", app.rating) : L10n.tr("N/A"))
                         Spacer()
-                        metricItem(title: "Downloads", value: app.downloads.isEmpty ? "—" : app.downloads)
+                        metricItem(title: L10n.tr("Downloads"), value: app.downloads.isEmpty ? "—" : app.downloads)
                         Spacer()
-                        metricItem(title: "Version", value: app.versionString.isEmpty ? "Current" : app.versionString)
+                        metricItem(title: L10n.tr("Version"), value: app.versionString.isEmpty ? L10n.tr("Current") : app.versionString)
                         if app.sizeBytes > 0 {
                             Spacer()
-                            metricItem(title: "Size", value: ByteCountFormatter.string(fromByteCount: app.sizeBytes, countStyle: .file))
+                            metricItem(title: L10n.tr("Size"), value: ByteCountFormatter.string(fromByteCount: app.sizeBytes, countStyle: .file))
                         }
                     }
                     .padding(.horizontal, 8)
@@ -387,7 +387,7 @@ struct PlayAppDetailSheet: View {
                     if !app.screenshotURLs.isEmpty {
                         Divider()
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Preview")
+                            Text(L10n.tr("Preview"))
                                 .font(.headline)
                                 .foregroundStyle(Theme.text)
 
@@ -413,7 +413,7 @@ struct PlayAppDetailSheet: View {
                     if !app.summary.isEmpty {
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("About this app")
+                            Text(L10n.tr("About this app"))
                                 .font(.headline)
                                 .foregroundStyle(Theme.text)
 
@@ -430,7 +430,7 @@ struct PlayAppDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L10n.tr("Done")) { dismiss() }
                 }
             }
         }
@@ -444,10 +444,10 @@ struct PlayAppDetailSheet: View {
             if isDownloading || progress != nil {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text(progress.map { "Downloading… \(Int($0 * 100))%" } ?? "Downloading…")
+                    Text(progress.map { L10n.tr("Downloading… \(Int($0 * 100))%") } ?? L10n.tr("Downloading…"))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.textDim)
-                    Button("Cancel", role: .destructive) { manager.cancelDownload(app.id) }
+                    Button(L10n.tr("Cancel"), role: .destructive) { manager.cancelDownload(app.id) }
                         .font(.caption.weight(.semibold))
                         .buttonStyle(.borderless)
                 }
@@ -456,7 +456,7 @@ struct PlayAppDetailSheet: View {
                     manager.downloadAndInstall(app: app)
                     dismiss()
                 } label: {
-                    Text(app.isFree ? "GET" : app.formattedPrice)
+                    Text(app.isFree ? L10n.tr("GET") : app.formattedPrice)
                         .font(.headline)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 6)

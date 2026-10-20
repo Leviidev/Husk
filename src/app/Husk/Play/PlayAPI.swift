@@ -48,7 +48,7 @@ enum PlayAPI {
     /// Obtains an anonymous guest token from Aurora's token dispenser server.
     static func fetchAuroraGuestSession(dispenserURL: String = defaultDispenserURL) async throws -> PlaySession {
         guard let url = URL(string: dispenserURL) else {
-            throw PlayError("Invalid dispenser URL: \(dispenserURL)")
+            throw PlayError(L10n.tr("Invalid dispenser URL: \(dispenserURL)"))
         }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -89,12 +89,12 @@ enum PlayAPI {
 
         // The dispenser is a free service of the Aurora Store project; when Google refuses its shared accounts it answers 5xx for
         // hours, so the message says what is down and that signing in still works
-        let unavailable = "The anonymous login service (Aurora's token dispenser) is not working right now"
-        let advice = "Sign in with a Google account instead, or try again later."
+        let unavailable = L10n.tr("The anonymous login service (Aurora's token dispenser) is not working right now")
+        let advice = L10n.tr("Sign in with a Google account instead, or try again later.")
         let data: Data, response: URLResponse
         do { (data, response) = try await urlSession.data(for: req) } catch { throw PlayError("\(unavailable) (\(error.localizedDescription)). \(advice)") }
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw PlayError("\(unavailable) (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)). \(advice)")
+            throw PlayError(L10n.tr("\(unavailable) (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)). \(advice)"))
         }
 
         struct DispenserResponse: Decodable {
@@ -108,7 +108,7 @@ enum PlayAPI {
 
         let decoded = try JSONDecoder().decode(DispenserResponse.self, from: data)
         guard let bearer = decoded.authToken ?? decoded.auth, !bearer.isEmpty else {
-            throw PlayError("Aurora token dispenser returned an empty auth token.")
+            throw PlayError(L10n.tr("Aurora token dispenser returned an empty auth token."))
         }
 
         let email = decoded.email ?? "anonymous@auroraoss.com"
@@ -171,7 +171,7 @@ enum PlayAPI {
         let (data, response) = try await urlSession.data(for: req)
         let kv = parseKeyValues(data)
         guard (response as? HTTPURLResponse)?.statusCode == 200, let token = kv["Token"], !token.isEmpty else {
-            throw PlayError("Google did not accept the sign-in (\(kv["Error"] ?? "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")).")
+            throw PlayError(L10n.tr("Google did not accept the sign-in (\(kv["Error"] ?? "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"))."))
         }
         return token
     }
@@ -207,7 +207,7 @@ enum PlayAPI {
         let (data, response) = try await urlSession.data(for: req)
         let kv = parseKeyValues(data)
         guard (response as? HTTPURLResponse)?.statusCode == 200, let token = kv["Auth"], !token.isEmpty else {
-            throw PlayError("Google Play would not open a session (\(kv["Error"] ?? "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")).")
+            throw PlayError(L10n.tr("Google Play would not open a session (\(kv["Error"] ?? "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"))."))
         }
         return token
     }
@@ -224,10 +224,10 @@ enum PlayAPI {
         req.httpBody = PlayDevice.checkinRequest()
         let (data, response) = try await urlSession.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw PlayError("Google did not register the device (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+            throw PlayError(L10n.tr("Google did not register the device (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."))
         }
         let reply = ProtoMessage(data)
-        guard let id = reply.uint64(7), id != 0 else { throw PlayError("Google registered the device but gave it no id.") }
+        guard let id = reply.uint64(7), id != 0 else { throw PlayError(L10n.tr("Google registered the device but gave it no id.")) }
         return (String(id, radix: 16), reply.string(12) ?? "")
     }
 
@@ -277,10 +277,10 @@ enum PlayAPI {
         let (data, response) = try await urlSession.data(for: req)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let wrapper = ProtoMessage(data)
-        if status == 401 { throw PlayError("Google Play's session has ended; signing in again.") }
+        if status == 401 { throw PlayError(L10n.tr("Google Play's session has ended; signing in again.")) }
         guard status == 200 else {
             let message = wrapper.message(5)?.string(1) ?? "HTTP \(status)"    // ServerCommands.displayErrorMessage
-            throw PlayError("Google Play said no: \(message)")
+            throw PlayError(L10n.tr("Google Play said no: \(message)"))
         }
         if let payload = wrapper.message(1), !payload.fields.isEmpty { return payload }
         return wrapper.message(3)?.message(2)?.message(1) ?? ProtoMessage(Data())
@@ -336,7 +336,7 @@ enum PlayAPI {
             }
 
             // Offer / Price: field 8
-            var price = "Free"
+            var price = L10n.tr("Free")
             var isFree = true
             if let offer = doc.messages(8).first {
                 if let p = offer.string(7), !p.isEmpty {
@@ -705,13 +705,13 @@ enum PlayAPI {
         let delivResp = payload.message(21)
         let status = delivResp?.int(1) ?? 1
         if status == 2 {
-            throw PlayError("Google Play reported app is incompatible with this device profile (status 2).")
+            throw PlayError(L10n.tr("Google Play reported app is incompatible with this device profile (status 2)."))
         } else if status == 3 {
-            throw PlayError("App requires purchase or license before download.")
+            throw PlayError(L10n.tr("App requires purchase or license before download."))
         }
 
         guard let deliveryDataMsg = delivResp?.message(2) else {
-            throw PlayError("Google Play did not return download information.")
+            throw PlayError(L10n.tr("Google Play did not return download information."))
         }
 
         if ProcessInfo.processInfo.environment["HUSK_PLAY_DUMP"] != nil {
@@ -795,7 +795,7 @@ enum PlayAPI {
         }
 
         guard !downloadsToMake.isEmpty else {
-            throw PlayError("No download URLs available for \(packageName).")
+            throw PlayError(L10n.tr("No download URLs available for \(packageName)."))
         }
 
         let totalExpectedBytes = downloadsToMake.reduce(Int64(0)) { $0 + max(0, $1.size) }
@@ -819,7 +819,7 @@ enum PlayAPI {
             let status = try await FileStreamer.download(req, to: fileDest)
             guard status == 200 else {
                 try? FileManager.default.removeItem(at: fileDest)
-                throw PlayError("Failed to download \(item.name) (HTTP \(status))")
+                throw PlayError(L10n.tr("Failed to download \(item.name) (HTTP \(status))"))
             }
             downloadedFiles.append(fileDest)
 

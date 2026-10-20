@@ -17,8 +17,8 @@ struct DownloadsTab: View {
                 Section {
                     if downloads.jobs.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("No downloads").font(.headline)
-                            Text("Add a link to an APK or a file, or the address a computer gives you when it shares a folder.")
+                            Text(L10n.tr("No downloads")).font(.headline)
+                            Text(L10n.tr("Add a link to an APK or a file, or the address a computer gives you when it shares a folder."))
                                 .font(.subheadline).foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 6)
@@ -29,45 +29,45 @@ struct DownloadsTab: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(store.downloadTitles[pkg] ?? pkg).font(.headline).lineLimit(1)
                                 ProgressView(value: store.downloadProgress[pkg] ?? 0)
-                                Text("From the Store").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.tr("From the Store")).font(.caption).foregroundStyle(.secondary)
                             }
                             Button(role: .destructive) { store.cancelDownload(pkg) } label: {
                                 Image(systemName: "xmark.circle.fill").font(.title2)
                             }
                             .buttonStyle(.borderless)
-                            .accessibilityLabel("Cancel Download")
+                            .accessibilityLabel(L10n.tr("Cancel Download"))
                         }
                         .padding(.vertical, 4)
                     }
                     ForEach(downloads.jobs) { job in
                         DownloadRow(job: job, speed: downloads.speed)
                             .swipeActions {
-                                Button(role: .destructive) { downloads.remove(job.id) } label: { Label("Remove", systemImage: "trash") }
+                                Button(role: .destructive) { downloads.remove(job.id) } label: { Label(L10n.tr("Remove"), systemImage: "trash") }
                             }
                     }
                 } header: {
                     HStack {
-                        Text("Downloads")
+                        Text(L10n.tr("Downloads"))
                         Spacer()
                         if downloads.jobs.contains(where: \.complete) {
-                            Button("Clear Finished") { downloads.clearFinished() }.font(.caption).textCase(nil)
+                            Button(L10n.tr("Clear Finished")) { downloads.clearFinished() }.font(.caption).textCase(nil)
                         }
                     }
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if downloads.liveActivitiesOff {
-                            Text("Live Activities are off for Husk, so downloads don't show on the Lock Screen or in the Dynamic Island. Turn them on in Settings › Husk › Live Activities.")
+                            Text(L10n.tr("Live Activities are off for Husk, so downloads don't show on the Lock Screen or in the Dynamic Island. Turn them on in Settings › Husk › Live Activities."))
                                 .foregroundStyle(.orange)
                         }
-                        if let free = Downloads.freeSpace() { Text("\(Downloads.bytes(free)) free on this device.") }
+                        if let free = Downloads.freeSpace() { Text(L10n.tr("\(Downloads.bytes(free)) free on this device.")) }
                     }
                 }
             }
-            .navigationTitle("Downloads")
+            .navigationTitle(L10n.tr("Downloads"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L10n.tr("Done")) { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
-                    Button { adding = true } label: { Label("Add", systemImage: "plus") }
+                    Button { adding = true } label: { Label(L10n.tr("Add"), systemImage: "plus") }
                 }
             }
             .sheet(isPresented: $adding) { AddDownloadSheet() }
@@ -75,23 +75,23 @@ struct DownloadsTab: View {
     }
 
     @ViewBuilder private var updatesSection: some View {
-        Section("Updates") {
+        Section(L10n.tr("Updates")) {
             if let release = updates.available {
                 HStack {
                     Label("Husk \(release.version)", systemImage: "arrow.down.app.fill")
                     Spacer()
-                    Button("View") { UIApplication.shared.open(release.page) }.buttonStyle(.bordered)
+                    Button(L10n.tr("View")) { UIApplication.shared.open(release.page) }.buttonStyle(.bordered)
                 }
             }
             if guest.update.isSomething {
                 HStack {
                     Label(guest.update.title, systemImage: "shippingbox.fill")
                     Spacer()
-                    Button("Download") { guest.applyUpdate() }.buttonStyle(.bordered)
+                    Button(L10n.tr("Download")) { guest.applyUpdate() }.buttonStyle(.bordered)
                 }
             }
             if updates.available == nil && !guest.update.isSomething {
-                Label("Everything is up to date", systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                Label(L10n.tr("Everything is up to date"), systemImage: "checkmark.circle").foregroundStyle(.secondary)
             }
         }
     }
@@ -104,17 +104,17 @@ private struct DownloadRow: View {
     private var fraction: Double { job.total > 0 ? min(1, Double(job.received) / Double(job.total)) : 0 }
 
     private var status: String {
-        if job.complete { return job.kind == .apk ? "Added to the library" : job.kind == .folder ? "In Shared Storage" : "In Shared Storage" }
-        if job.paused { return "Paused · \(Downloads.bytes(job.received)) of \(Downloads.bytes(job.total))" }
-        if let err = job.files.first(where: { $0.error != nil })?.error { return "Stopped: \(err)" }
-        var s = "\(Downloads.bytes(job.received)) of \(Downloads.bytes(job.total))"
-        if job.files.count > 1 { s += " · \(job.filesDone)/\(job.files.count) files" }
+        if job.complete { return job.kind == .apk ? L10n.tr("Added to the library") : job.kind == .folder ? L10n.tr("In Shared Storage") : L10n.tr("In Shared Storage") }
+        if job.paused { return L10n.tr("Paused · \(Downloads.bytes(job.received)) of \(Downloads.bytes(job.total))") }
+        if let err = job.files.first(where: { $0.error != nil })?.error { return L10n.tr("Stopped: \(err)") }
+        var s = L10n.tr("\(Downloads.bytes(job.received)) of \(Downloads.bytes(job.total))")
+        if job.files.count > 1 { s += L10n.tr(" · \(job.filesDone)/\(job.files.count) files") }
         if speed > 1 {
             s += " · \(Downloads.bytes(Int64(speed)))/s"
             let left = Double(job.total - job.received) / speed
             if left.isFinite, left > 0 {
                 let f = DateComponentsFormatter(); f.allowedUnits = left > 3600 ? [.hour, .minute] : [.minute, .second]; f.unitsStyle = .abbreviated
-                if let t = f.string(from: left) { s += " · \(t) left" }
+                if let t = f.string(from: left) { s += L10n.tr(" · \(t) left") }
             }
         }
         return s
@@ -138,7 +138,7 @@ private struct DownloadRow: View {
                         Image(systemName: "xmark.circle.fill").font(.title2)
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel("Cancel Download")
+                    .accessibilityLabel(L10n.tr("Cancel Download"))
                 }
             }
             if !job.complete { ProgressView(value: fraction) }
@@ -166,25 +166,25 @@ private struct AddDownloadSheet: View {
                     if let problem = downloads.problem { Text(problem).foregroundStyle(.orange) }
                 }
                 Section {
-                    Text("An APK is added to your library when it finishes. Anything else goes into the Shared Storage folder, which games see as their phone storage.")
-                    Text("To send a whole folder from a computer on the same Wi‑Fi, run this on it and enter the address it shows:")
+                    Text(L10n.tr("An APK is added to your library when it finishes. Anything else goes into the Shared Storage folder, which games see as their phone storage."))
+                    Text(L10n.tr("To send a whole folder from a computer on the same Wi‑Fi, run this on it and enter the address it shows:"))
                     Text("python3 serve-folder.py <folder>")
                         .font(.system(.footnote, design: .monospaced))
                         .textSelection(.enabled)
-                    Text("serve-folder.py is in Husk's repository, under tools. The folder's contents land at the top of Shared Storage, so serve the folder that holds what a game expects there.")
+                    Text(L10n.tr("serve-folder.py is in Husk's repository, under tools. The folder's contents land at the top of Shared Storage, so serve the folder that holds what a game expects there."))
                 } header: {
-                    Text("How it works")
+                    Text(L10n.tr("How it works"))
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }
-            .navigationTitle("Add Download")
+            .navigationTitle(L10n.tr("Add Download"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L10n.tr("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if working { ProgressView() } else {
-                        Button("Download") {
+                        Button(L10n.tr("Download")) {
                             working = true
                             Task {
                                 await downloads.add(link: link)

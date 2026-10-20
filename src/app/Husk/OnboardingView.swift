@@ -77,10 +77,10 @@ struct OnboardingView: View {
                     Button { go(back: true) } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
-                            Text("Back")
+                            Text(L10n.tr("Back"))
                         }
                     }
-                    .accessibilityLabel("Back")
+                    .accessibilityLabel(L10n.tr("Back"))
                 }
                 Spacer()
             }
@@ -99,7 +99,7 @@ struct OnboardingView: View {
             if step != .ask {
                 VStack(spacing: 14) {
                     dots
-                    Button(step == .tour && tourPage == Self.tour.count - 1 ? "Start Using Husk" : "Continue") { next() }
+                    Button(step == .tour && tourPage == Self.tour.count - 1 ? L10n.tr("Start Using Husk") : L10n.tr("Continue")) { next() }
                         .buttonStyle(PrimaryButtonStyle())
                 }
                 .padding(.horizontal, 28)
@@ -165,16 +165,16 @@ struct OnboardingView: View {
         switch step {
         case .welcome: welcome
         case .language:
-            picker(symbol: "globe", title: "Language",
-                   subtitle: "The language apps and games inside Husk see. Husk itself follows your iPhone.",
+            picker(symbol: "globe", title: L10n.tr("Language"),
+                   subtitle: L10n.tr("The language apps and games inside Husk see. Husk itself follows your iPhone."),
                    rows: Self.languages, selection: $language)
         case .region:
-            picker(symbol: "map.fill", title: "Region",
-                   subtitle: "For apps that ask for your country.",
+            picker(symbol: "map.fill", title: L10n.tr("Region"),
+                   subtitle: L10n.tr("For apps that ask for your country."),
                    rows: Self.regions, selection: $region)
         case .timeZone:
-            picker(symbol: "clock.fill", title: "Time Zone",
-                   subtitle: "For apps that show local times.",
+            picker(symbol: "clock.fill", title: L10n.tr("Time Zone"),
+                   subtitle: L10n.tr("For apps that show local times."),
                    rows: Self.timeZones, selection: $timeZone)
         case .options: options
         case .jit: jitPage
@@ -207,12 +207,12 @@ struct OnboardingView: View {
         VStack(spacing: 18) {
             Spacer()
             HuskMark(size: 110)
-            Text("Welcome to Husk")
+            Text(L10n.tr("Welcome to Husk"))
                 .font(.system(size: 34, weight: .bold))
-            Text("Android and PS4 games, on your iPhone.")
+            Text(L10n.tr("Android and PS4 games, on your iPhone."))
                 .font(.title3).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Text("A few quick choices first. Everything here can be changed later in Settings.")
+            Text(L10n.tr("A few quick choices first. Everything here can be changed later in Settings."))
                 .font(.callout).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 36)
@@ -226,7 +226,7 @@ struct OnboardingView: View {
         let shown = rows.filter { matches(query, $0.name, $0.id) }
         return VStack(spacing: 16) {
             header(symbol, title, subtitle)
-            SearchField(text: $query, prompt: "Search")
+            SearchField(text: $query, prompt: L10n.tr("Search"))
                 .padding(.horizontal, 20)
             ScrollViewReader { proxy in
                 ScrollView {
@@ -262,16 +262,16 @@ struct OnboardingView: View {
     private var options: some View {
         ScrollView {
             VStack(spacing: 16) {
-                header("slider.horizontal.3", "Make It Yours", "All optional. You can change these any time in Settings.")
+                header("slider.horizontal.3", L10n.tr("Make It Yours"), L10n.tr("All optional. You can change these any time in Settings."))
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Appearance").font(.headline)
-                    Picker("Appearance", selection: $appearance) {
+                    Text(L10n.tr("Appearance")).font(.headline)
+                    Picker(L10n.tr("Appearance"), selection: $appearance) {
                         ForEach(Theme.Appearance.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: appearance) { Theme.apply($0) }
-                    Text("Accent Colour").font(.headline).padding(.top, 4)
+                    Text(L10n.tr("Accent Colour")).font(.headline).padding(.top, 4)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
                         ForEach(AppTheme.presets) { preset in
                             let selected = preset.color.themeHex == theme.accentColor.themeHex
@@ -288,18 +288,17 @@ struct OnboardingView: View {
                 .padding(16)
                 .huskCard()
 
-                choice(icon: "bolt.fill", title: "Start Android When Husk Opens",
-                       detail: "Off by default. The full Android emulator is experimental: starting it on launch can cause unwanted "
-                             + "bugs, freezes and crashes, and slows every launch. Games and apps don't need it.",
+                choice(icon: "bolt.fill", title: L10n.tr("Start Android When Husk Opens"),
+                       detail: L10n.tr("Off by default. The full Android emulator is experimental: starting it on launch can cause unwanted bugs, freezes and crashes, and slows every launch. Games and apps don't need it."),
                        isOn: $autoStart, caution: true)
-                choice(icon: "rectangle.landscape.rotate", title: "Landscape Android Screen",
-                       detail: "For the Android emulator: games fill a landscape screen, portrait apps get letterboxed.",
+                choice(icon: "rectangle.landscape.rotate", title: L10n.tr("Landscape Android Screen"),
+                       detail: L10n.tr("For the Android emulator: games fill a landscape screen, portrait apps get letterboxed."),
                        isOn: $landscape)
-                choice(icon: "speaker.wave.2.fill", title: "Android Sound",
-                       detail: "Adds a sound device to the emulator. It can't be saved while this is on, so it boots from cold.",
+                choice(icon: "speaker.wave.2.fill", title: L10n.tr("Android Sound"),
+                       detail: L10n.tr("Adds a sound device to the emulator. It can't be saved while this is on, so it boots from cold."),
                        isOn: $sound)
-                choice(icon: "externaldrive.badge.checkmark", title: "Save Android Automatically",
-                       detail: "Saves the emulator once it settles, so later starts take seconds.",
+                choice(icon: "externaldrive.badge.checkmark", title: L10n.tr("Save Android Automatically"),
+                       detail: L10n.tr("Saves the emulator once it settles, so later starts take seconds."),
                        isOn: $autoSave)
             }
             .padding(.horizontal, 20)
@@ -327,29 +326,28 @@ struct OnboardingView: View {
 
     /// What the JIT page says is already in place, if anything.
     private var jitState: String? {
-        if JITBootstrap.ready { return "JIT is on." }
-        if jit.method == .stikDebug { return "Husk will use StikDebug." }
-        if jit.method == .trollStore { return "Husk will use TrollStore." }
+        if JITBootstrap.ready { return L10n.tr("JIT is on.") }
+        if jit.method == .stikDebug { return L10n.tr("Husk will use StikDebug.") }
+        if jit.method == .trollStore { return L10n.tr("Husk will use TrollStore.") }
         switch jit.pairingSource {
-        case .onDevice: return "Paired on this device."
-        case .imported: return "Pairing file imported."
+        case .onDevice: return L10n.tr("Paired on this device.")
+        case .imported: return L10n.tr("Pairing file imported.")
         case nil: return nil
         }
     }
 
     private var jitPage: some View {
         VStack(spacing: 18) {
-            header("bolt.fill", "Turn On JIT",
-                   "Games need JIT, which iOS only grants to an attached debugger. StikJIT is built into Husk and turns it on from "
-                 + "inside the app, with no computer. StikDebug and TrollStore work too.")
+            header("bolt.fill", L10n.tr("Turn On JIT"),
+                   L10n.tr("Games need JIT, which iOS only grants to an attached debugger. StikJIT is built into Husk and turns it on from inside the app, with no computer. StikDebug and TrollStore work too."))
             if let state = jitState {
                 Label(state, systemImage: "checkmark.circle.fill")
                     .font(.callout.weight(.medium)).foregroundStyle(.green)
             }
-            Button(jitState == nil ? "Set Up StikJIT Now" : "Change JIT Setup") { settingUpJIT = true }
+            Button(jitState == nil ? L10n.tr("Set Up StikJIT Now") : L10n.tr("Change JIT Setup")) { settingUpJIT = true }
                 .font(.body.weight(.semibold))
                 .foregroundStyle(Theme.accent)
-            Text("You can skip this: Husk asks again when a game needs it, and it is in Settings › JIT & Sideload.")
+            Text(L10n.tr("You can skip this: Husk asks again when a game needs it, and it is in Settings › JIT & Sideload."))
                 .font(.footnote).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 36)
@@ -360,16 +358,16 @@ struct OnboardingView: View {
     private var ask: some View {
         VStack(spacing: 18) {
             Spacer()
-            header("map.circle.fill", "Would you like a walkthrough?", "A quick look at how Husk works: where your games are, how to add more, and where the settings live.")
+            header("map.circle.fill", L10n.tr("Would you like a walkthrough?"), L10n.tr("A quick look at how Husk works: where your games are, how to add more, and where the settings live."))
             Spacer()
             VStack(spacing: 12) {
-                Button("Show Me Around") {
+                Button(L10n.tr("Show Me Around")) {
                     forward = true
                     tourPage = 0
                     withAnimation(.snappy) { step = .tour }
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                Button("Not Now") { finish() }
+                Button(L10n.tr("Not Now")) { finish() }
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -382,22 +380,18 @@ struct OnboardingView: View {
     private struct TourCard { let symbol: String; let title: String; let text: String }
 
     private static let tour: [TourCard] = [
-        TourCard(symbol: "house.fill", title: "Home",
-                 text: "Your games on a shelf, the last one played first. Tap a game to pick it and its artwork fills the screen; tap it "
-                     + "again, or press Play, to start it. The ⋯ button has its settings and more."),
-        TourCard(symbol: "square.grid.2x2.fill", title: "Library",
-                 text: "Everything you have added, by platform. Use All, Android and PS4 to filter, search by name, and long-press any "
-                     + "game for its options. The dot shows how it runs: green plays, orange opens, red is broken."),
-        TourCard(symbol: "plus.circle.fill", title: "Adding Games",
-                 text: "Tap + to add an Android APK or bundle (.xapk, .apkm, .apks), or a PS4 game: a fake package (.pkg), a folder of "
-                     + "them, or an extracted game folder. You can also share files to Husk from Files or Safari."),
-        TourCard(symbol: "cart.fill", title: "Store",
-                 text: "Browse and download Android apps from Google Play, with a guest account or your own, and see how each runs in Husk."),
-        TourCard(symbol: "bolt.fill", title: "Settings & JIT",
-                 text: "Games need JIT. Turn it on from Home or Settings › JIT & Sideload. Settings also has performance, appearance, "
-                     + "input, and the optional full Android emulator."),
-        TourCard(symbol: "questionmark.circle.fill", title: "Help",
-                 text: "Stuck? Settings › Help answers the common problems, and a game that crashes Husk leaves a report to share."),
+        TourCard(symbol: "house.fill", title: L10n.tr("Home"),
+                 text: L10n.tr("Your games on a shelf, the last one played first. Tap a game to pick it and its artwork fills the screen; tap it again, or press Play, to start it. The ⋯ button has its settings and more.")),
+        TourCard(symbol: "square.grid.2x2.fill", title: L10n.tr("Library"),
+                 text: L10n.tr("Everything you have added, by platform. Use All, Android and PS4 to filter, search by name, and long-press any game for its options. The dot shows how it runs: green plays, orange opens, red is broken.")),
+        TourCard(symbol: "plus.circle.fill", title: L10n.tr("Adding Games"),
+                 text: L10n.tr("Tap + to add an Android APK or bundle (.xapk, .apkm, .apks), or a PS4 game: a fake package (.pkg), a folder of them, or an extracted game folder. You can also share files to Husk from Files or Safari.")),
+        TourCard(symbol: "cart.fill", title: L10n.tr("Store"),
+                 text: L10n.tr("Browse and download Android apps from Google Play, with a guest account or your own, and see how each runs in Husk.")),
+        TourCard(symbol: "bolt.fill", title: L10n.tr("Settings & JIT"),
+                 text: L10n.tr("Games need JIT. Turn it on from Home or Settings › JIT & Sideload. Settings also has performance, appearance, input, and the optional full Android emulator.")),
+        TourCard(symbol: "questionmark.circle.fill", title: L10n.tr("Help"),
+                 text: L10n.tr("Stuck? Settings › Help answers the common problems, and a game that crashes Husk leaves a report to share.")),
     ]
 
     private func tourCard(_ card: TourCard) -> some View {

@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+"NSLocalNetworkUsageDescription" = "Husk uses the local network to pair with this iPhone for JIT, without a computer.";

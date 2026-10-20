@@ -7,6 +7,7 @@ options:
     # iOS 16 SwiftUI the screens use.
     iOS: "15.5"
   createIntermediateGroups: true
+  developmentLanguage: en
 
 settings:
   base:
@@ -275,6 +276,9 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: HuskJITHelper
+      - path: Shared
+        excludes:
+          - HuskDownloadActivity.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(HUSK_BUNDLE_IDENTIFIER).JITHelper

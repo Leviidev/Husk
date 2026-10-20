@@ -167,8 +167,8 @@ private struct AppWindow: View {
             WebAppSurface(app: app)
         } else if let other = blockedBy {
             VStack(spacing: 6) {
-                Text("Another game is already loaded").font(.subheadline.weight(.semibold))
-                Text("\(other) was started in this session. Close Husk completely and open it again to run \(app.label).")
+                Text(L10n.tr("Another game is already loaded")).font(.subheadline.weight(.semibold))
+                Text(L10n.tr("\(other) was started in this session. Close Husk completely and open it again to run \(app.label)."))
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             .foregroundStyle(.white)
@@ -184,7 +184,7 @@ private struct AppWindow: View {
                                 Text(model.statusText).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                             } else {
                                 ProgressView().tint(.white)
-                                Text("Starting \(app.label)…").font(.caption).foregroundStyle(.white.opacity(0.7))
+                                Text(L10n.tr("Starting \(app.label)…")).font(.caption).foregroundStyle(.white.opacity(0.7))
                             }
                         }
                         .allowsHitTesting(false)
@@ -195,17 +195,17 @@ private struct AppWindow: View {
 
     private var titleBar: some View {
         HStack(spacing: 8) {
-            light(.red, "xmark", "Close") { windows.close() }
-            light(.yellow, "minus", "Minimise") { windows.minimize() }
+            light(.red, "xmark", L10n.tr("Close")) { windows.close() }
+            light(.yellow, "minus", L10n.tr("Minimise")) { windows.minimize() }
             light(.green, windows.maximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
-                  windows.maximized ? "Restore" : "Maximise") { windows.toggleMaximized() }
+                  windows.maximized ? L10n.tr("Restore") : L10n.tr("Maximise")) { windows.toggleMaximized() }
             Spacer(minLength: 6)
             if app.screenEngine == .flutter || app.report?.webKind != nil {
                 Button { if app.report?.webKind != nil { WebAppRuntime.runtime(for: app)?.back() } else { husk_flutter_back() } } label: {
                     Image(systemName: "chevron.backward").font(.system(size: 13, weight: .semibold)).frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Back")
+                .accessibilityLabel(L10n.tr("Back"))
             }
             ItemIcon(item: .game(app), size: 18)
             Text(app.label).font(.footnote.weight(.semibold)).lineLimit(1)
@@ -266,7 +266,7 @@ private struct AppWindow: View {
                     }
                     .onEnded { _ in startFrame = nil }
             )
-            .accessibilityLabel("Resize")
+            .accessibilityLabel(L10n.tr("Resize"))
     }
 }
 
@@ -305,11 +305,11 @@ private struct WindowDock: View {
                     }
             )
             .contextMenu {
-                Button { windows.restore() } label: { Label("Show", systemImage: "macwindow") }
-                Button(role: .destructive) { windows.close() } label: { Label("Close", systemImage: "xmark") }
+                Button { windows.restore() } label: { Label(L10n.tr("Show"), systemImage: "macwindow") }
+                Button(role: .destructive) { windows.close() } label: { Label(L10n.tr("Close"), systemImage: "xmark") }
             }
-            .accessibilityLabel("\(app.label), minimised")
-            .accessibilityHint("Shows the window again")
+            .accessibilityLabel(L10n.tr("\(app.label), minimised"))
+            .accessibilityHint(L10n.tr("Shows the window again"))
     }
 }
 

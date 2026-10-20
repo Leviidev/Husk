@@ -128,9 +128,9 @@ private struct PS4Surface: UIViewRepresentable {
     var statusText: String {
         if let error { return error }
         switch UInt32(state) {
-        case HUSK_CONSOLE_IDLE.rawValue, HUSK_CONSOLE_BOOTING.rawValue: return "Starting…"
-        case HUSK_CONSOLE_STOPPED.rawValue: return "The game has ended."
-        case HUSK_CONSOLE_FAILED.rawValue: return "The game could not start. Its log is in the game's Technical Details."
+        case HUSK_CONSOLE_IDLE.rawValue, HUSK_CONSOLE_BOOTING.rawValue: return L10n.tr("Starting…")
+        case HUSK_CONSOLE_STOPPED.rawValue: return L10n.tr("The game has ended.")
+        case HUSK_CONSOLE_FAILED.rawValue: return L10n.tr("The game could not start. Its log is in the game's Technical Details.")
         default: return ""
         }
     }
@@ -238,14 +238,14 @@ enum PS4Keyboard {
         }
         while let p = top.presentedViewController { top = p }
         HuskLog.log("ps4", "the game asked for text (\(title.isEmpty ? "no title" : title), up to \(maxChars) characters)")
-        let alert = UIAlertController(title: title.isEmpty ? "Enter Text" : title, message: nil, preferredStyle: .alert)
+        let alert = UIAlertController(title: title.isEmpty ? L10n.tr("Enter Text") : title, message: nil, preferredStyle: .alert)
         alert.addTextField {
             $0.text = initial
             $0.autocorrectionType = .no
             $0.clearButtonMode = .whileEditing
         }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in done(ctx, nil) })
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak alert] _ in
+        alert.addAction(UIAlertAction(title: L10n.tr("Cancel"), style: .cancel) { _ in done(ctx, nil) })
+        alert.addAction(UIAlertAction(title: L10n.tr("OK"), style: .default) { [weak alert] _ in
             var text = alert?.textFields?.first?.text ?? ""
             if maxChars > 0, text.count > maxChars { text = String(text.prefix(maxChars)) }
             text.withCString { done(ctx, $0) }

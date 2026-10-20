@@ -104,7 +104,7 @@ struct AppDetailView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Label(canOpen ? "Launch" : "Starting Android…",
+                        Label(canOpen ? L10n.tr("Launch") : L10n.tr("Starting Android…"),
                               systemImage: canOpen ? "play.fill" : "hourglass")
                             .font(.headline)
                         Spacer()
@@ -115,25 +115,25 @@ struct AppDetailView: View {
                 .disabled(!canOpen)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             } footer: {
-                if !host.isReady { Text("It opens as soon as Android answers.") }
+                if !host.isReady { Text(L10n.tr("It opens as soon as Android answers.")) }
             }
 
             Section {
-                LabeledContent("Version", value: live.version ?? "—")
-                LabeledContent("Size", value: live.sizeBytes.map(Self.bytes) ?? "—")
-                LabeledContent("Last Used", value: live.lastUsed.map(Self.when) ?? "Never from Husk")
+                LabeledContent(L10n.tr("Version"), value: live.version ?? "—")
+                LabeledContent(L10n.tr("Size"), value: live.sizeBytes.map(Self.bytes) ?? "—")
+                LabeledContent(L10n.tr("Last Used"), value: live.lastUsed.map(Self.when) ?? L10n.tr("Never from Husk"))
             }
 
             Section {
                 Button { router.openFiles(at: "/sdcard/Android/data/\(app.name)") } label: {
-                    Label("Open in Files", systemImage: "folder")
+                    Label(L10n.tr("Open in Files"), systemImage: "folder")
                 }
                 Button { appInfo() } label: {
-                    Label("App Info", systemImage: "info.circle")
+                    Label(L10n.tr("App Info"), systemImage: "info.circle")
                 }
                 .disabled(!canOpen)
                 Button(role: .destructive) { confirmUninstall = true } label: {
-                    Label("Uninstall", systemImage: "trash")
+                    Label(L10n.tr("Uninstall"), systemImage: "trash")
                 }
                 .disabled(!canOpen)
             }
@@ -142,16 +142,15 @@ struct AppDetailView: View {
         .navigationTitle(live.label)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { menu } }
-        .confirmationDialog("Uninstall \(live.label)?", isPresented: $confirmUninstall,
+        .confirmationDialog(L10n.tr("Uninstall \(live.label)?"), isPresented: $confirmUninstall,
                             titleVisibility: .visible) {
-            Button("Uninstall", role: .destructive) {
+            Button(L10n.tr("Uninstall"), role: .destructive) {
                 host.uninstall(app.name)
                 dismiss()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L10n.tr("Cancel"), role: .cancel) { }
         } message: {
-            Text("Its data goes with it. Save Android afterwards or the change is "
-               + "lost on the next launch.")
+            Text(L10n.tr("Its data goes with it. Save Android afterwards or the change is lost on the next launch."))
         }
     }
 
@@ -161,14 +160,14 @@ struct AppDetailView: View {
         Menu {
             Button {
                 UIPasteboard.general.string = app.name
-            } label: { Label("Copy Package Name", systemImage: "doc.on.doc") }
+            } label: { Label(L10n.tr("Copy Package Name"), systemImage: "doc.on.doc") }
             Button { appInfo() } label: {
-                Label("Show in Android Settings", systemImage: "gearshape")
+                Label(L10n.tr("Show in Android Settings"), systemImage: "gearshape")
             }
             .disabled(!canOpen)
             Divider()
             Button(role: .destructive) { confirmUninstall = true } label: {
-                Label("Uninstall", systemImage: "trash")
+                Label(L10n.tr("Uninstall"), systemImage: "trash")
             }
             .disabled(!canOpen)
         } label: {
@@ -188,7 +187,9 @@ struct AppDetailView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 6) {
-                    if let c = live.category { Tag(text: c) }
+                    if let c = live.category {
+                        Tag(text: ["Game": L10n.tr("Game"), "App": L10n.tr("App"), "Tool": L10n.tr("Tool")][c] ?? c)
+                    }
                     if let b = live.bitness { Tag(text: b) }
                 }
                 .padding(.top, 2)
@@ -218,14 +219,9 @@ struct AppDetailView: View {
 
     static func when(_ date: Date) -> String {
         let f = DateFormatter()
-        if Calendar.current.isDateInToday(date) {
-            f.dateFormat = "'Today,' h:mm a"
-        } else if Calendar.current.isDateInYesterday(date) {
-            f.dateFormat = "'Yesterday,' h:mm a"
-        } else {
-            f.dateStyle = .medium
-            f.timeStyle = .none
-        }
+        f.doesRelativeDateFormatting = true
+        f.dateStyle = .medium
+        f.timeStyle = Calendar.current.isDateInToday(date) || Calendar.current.isDateInYesterday(date) ? .short : .none
         return f.string(from: date)
     }
 }

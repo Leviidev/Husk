@@ -97,15 +97,14 @@ extension TLReport {
         let flagged = libraries.filter { $0.abi == "arm64-v8a" && $0.status != "ok" }.count
         let total = libraries.filter { $0.abi == "arm64-v8a" }.count
         var text = nativeEngine == .flutter
-            ? "A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself."
+            ? L10n.tr("A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself.")
             : nativeEngine == .java && engine != "libGDX"
-            ? "An Android app. Husk runs its code on its own Java runtime" + (total > 0 ? " and loads its \(total) arm64 libraries itself." : ".")
-            : "A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself."
-        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += " It is a landscape game: Husk turns the screen for it." }
-        else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot || nativeEngine == .gamemaker { text += " Husk turns the screen the way the game asks for." }
+            ? L10n.tr("An Android app. Husk runs its code on its own Java runtime") + (total > 0 ? L10n.tr(" and loads its \(total) arm64 libraries itself.") : ".")
+            : L10n.tr("A \(nativeEngineName) game. It runs through Husk's native runtime, which loads its \(total) arm64 libraries itself.")
+        if nativeEngine == .cocos || nativeEngine == .minecraft || nativeEngine == .ue4 || nativeEngine == .gta { text += L10n.tr(" It is a landscape game: Husk turns the screen for it.") }
+        else if nativeEngine == .sdl || nativeEngine == .nativeactivity || nativeEngine == .godot || nativeEngine == .gamemaker { text += L10n.tr(" Husk turns the screen the way the game asks for.") }
         if flagged > 0 {
-            text += " \(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, "
-                  + "except for optional anti-tamper code, which it leaves out."
+            text += L10n.tr(" \(flagged) of them use tricks the older loader could not handle; the native runtime handles those too, except for optional anti-tamper code, which it leaves out.")
         }
         return text
     }
@@ -279,8 +278,8 @@ final class TranslationLayerStore: ObservableObject {
 
     func add(_ urls: [URL], move: Bool = false) {
         guard !urls.isEmpty, busy == nil else { return }
-        busy = urls.count == 1 ? "Adding \(urls[0].lastPathComponent)…"
-                               : "Adding \(urls.count) APKs…"
+        busy = urls.count == 1 ? L10n.tr("Adding \(urls[0].lastPathComponent)…")
+                               : L10n.tr("Adding \(urls.count) APKs…")
         Task.detached(priority: .userInitiated) {
             let failure = Self.ingest(urls, move: move)
             await MainActor.run {
@@ -404,7 +403,7 @@ final class TranslationLayerStore: ObservableObject {
         } catch {
             try? fm.removeItem(at: dir)
             HuskLog.log("tl", "FAILED to add: \(error.localizedDescription)")
-            return "Husk could not copy it: \(error.localizedDescription)"
+            return L10n.tr("Husk could not copy it: \(error.localizedDescription)")
         }
 
         let apks = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
@@ -457,7 +456,7 @@ final class TranslationLayerStore: ObservableObject {
                 if iconEntry.hasSuffix(".xml") {
                     if let image = adaptiveIcon(apk, xml: iconEntry, resources: arsc), let png = image.pngData() {
                         try? png.write(to: dir.appendingPathComponent("icon.png"))
-                        drawn = "\(iconEntry) (adaptive, composed)"
+                        drawn = L10n.tr("\(iconEntry) (adaptive, composed)")
                     }
                 } else if let data = entry(apk, iconEntry, limit: 16 << 20), let png = UIImage(data: data)?.pngData() {
                     try? png.write(to: dir.appendingPathComponent("icon.png"))
@@ -551,7 +550,7 @@ struct TLChecksView: View {
             progressSection
         }
         .huskForm()
-        .navigationTitle("Device Checks")
+        .navigationTitle(L10n.tr("Device Checks"))
     }
 
     private var checksSection: some View {
@@ -573,32 +572,29 @@ struct TLChecksView: View {
             Button {
                 store.runChecks()
             } label: {
-                Label(store.checking ? "Checking…"
-                      : store.checks.isEmpty ? "Run checks" : "Run again",
+                Label(store.checking ? L10n.tr("Checking…")
+                      : store.checks.isEmpty ? L10n.tr("Run checks") : L10n.tr("Run again"),
                       systemImage: "stethoscope")
             }
             .disabled(store.checking)
         } header: {
-            Text("This iPhone")
+            Text(L10n.tr("This iPhone"))
         } footer: {
-            Text("Android's native code expects things of the processor and of memory "
-               + "that only the phone can answer -- above all, whether a library's code "
-               + "can run with its data writable right beside it. Enable JIT first, or "
-               + "the memory checks are skipped. The results go to the console too.")
+            Text(L10n.tr("Android's native code expects things of the processor and of memory that only the phone can answer -- above all, whether a library's code can run with its data writable right beside it. Enable JIT first, or the memory checks are skipped. The results go to the console too."))
         }
     }
 
     private var progressSection: some View {
         Section {
-            DetailRow(label: "App reports", value: "working", mono: false)
-            DetailRow(label: "Device checks", value: "working", mono: false)
-            DetailRow(label: "Library loader", value: "working", mono: false)
-            DetailRow(label: "Android runtime", value: "Unity, cocos2d-x, GameActivity, SDL3", mono: false)
-            DetailRow(label: "Opening apps", value: "Unity, cocos2d-x, Minecraft and SDL3 games", mono: false)
+            DetailRow(label: L10n.tr("App reports"), value: "working", mono: false)
+            DetailRow(label: L10n.tr("Device checks"), value: "working", mono: false)
+            DetailRow(label: L10n.tr("Library loader"), value: "working", mono: false)
+            DetailRow(label: L10n.tr("Android runtime"), value: "Unity, cocos2d-x, GameActivity, SDL3", mono: false)
+            DetailRow(label: L10n.tr("Opening apps"), value: L10n.tr("Unity, cocos2d-x, Minecraft and SDL3 games"), mono: false)
         } header: {
-            Text("Where it stands")
+            Text(L10n.tr("Where it stands"))
         } footer: {
-            Text("The plan, in order, is docs/04-translation-layer.md in Husk's source.")
+            Text(L10n.tr("The plan, in order, is docs/04-translation-layer.md in Husk's source."))
         }
     }
 }
@@ -610,11 +606,11 @@ private struct TLCheckTag: View {
 
     var body: some View {
         switch status {
-        case "pass":    Tag(text: "Pass", tint: Theme.good)
-        case "fail":    Tag(text: "Fail", tint: .red)
-        case "warn":    Tag(text: "Partly", tint: .orange)
-        case "skip":    Tag(text: "Skipped")
-        default:        Tag(text: "Info", tint: Theme.accent)
+        case "pass":    Tag(text: L10n.tr("Pass"), tint: Theme.good)
+        case "fail":    Tag(text: L10n.tr("Fail"), tint: .red)
+        case "warn":    Tag(text: L10n.tr("Partly"), tint: .orange)
+        case "skip":    Tag(text: L10n.tr("Skipped"))
+        default:        Tag(text: L10n.tr("Info"), tint: Theme.accent)
         }
     }
 }
@@ -636,12 +632,12 @@ final class TLAttemptRunner: ObservableObject {
     private var timer: Timer?
 
     var statusText: String {
-        if isRunning { return "Running Attempt..." }
-        guard let code = exitCode else { return "Ready" }
+        if isRunning { return L10n.tr("Running Attempt...") }
+        guard let code = exitCode else { return L10n.tr("Ready") }
         switch code {
-        case 2:  return "Success: The guest drew frames!"
-        case 1:  return "Loaded: Native libraries loaded (no draw)"
-        default: return "Refused: Could not execute"
+        case 2:  return L10n.tr("Success: The guest drew frames!")
+        case 1:  return L10n.tr("Loaded: Native libraries loaded (no draw)")
+        default: return L10n.tr("Refused: Could not execute")
         }
     }
 
@@ -657,12 +653,12 @@ final class TLAttemptRunner: ObservableObject {
 
     var subStatusText: String {
         if isRunning {
-            return "\(frameCount) frame(s) posted · driving lifecycle"
+            return L10n.tr("\(frameCount) frame(s) posted · driving lifecycle")
         }
         if let code = exitCode {
-            return "Exit code \(code) · \(frameCount) frame(s) drawn"
+            return L10n.tr("Exit code \(code) · \(frameCount) frame(s) drawn")
         }
-        return "Not started"
+        return L10n.tr("Not started")
     }
 
     private var pollTicks: Int = 0
@@ -810,11 +806,11 @@ struct TLClassicAttemptView: View {
                     if !runner.isRunning, runner.frameCount == 0 {
                         VStack(spacing: 10) {
                             if runner.isDone {
-                                Text("The game stopped").font(.headline).foregroundStyle(.white)
-                                Button("Run Again") { runner.start(apks: app.apks) }.buttonStyle(.borderedProminent)
+                                Text(L10n.tr("The game stopped")).font(.headline).foregroundStyle(.white)
+                                Button(L10n.tr("Run Again")) { runner.start(apks: app.apks) }.buttonStyle(.borderedProminent)
                             } else {
                                 ProgressView().tint(.white)
-                                Text("Starting \(app.label)…").font(.subheadline).foregroundStyle(.white.opacity(0.7))
+                                Text(L10n.tr("Starting \(app.label)…")).font(.subheadline).foregroundStyle(.white.opacity(0.7))
                             }
                         }
                     }
@@ -828,7 +824,7 @@ struct TLClassicAttemptView: View {
             if hint {
                 VStack {
                     Spacer()
-                    Text("Tap with three fingers to show the interface")
+                    Text(L10n.tr("Tap with three fingers to show the interface"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -860,7 +856,7 @@ struct TLClassicAttemptView: View {
     private var bar: some View {
         HStack(spacing: 12) {
             Button { runner.stop(); dismiss() } label: {
-                Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
+                Label(L10n.tr("Close"), systemImage: "xmark").font(.system(size: 13, weight: .semibold))
             }
             .tint(.white)
             Circle().fill(runner.statusColor).frame(width: 7, height: 7)
@@ -869,12 +865,12 @@ struct TLClassicAttemptView: View {
             Spacer()
             if devInfo {
                 Button { withAnimation(.snappy(duration: 0.25)) { showLog.toggle() } } label: {
-                    Text(showLog ? "Hide log" : "Log").font(.system(size: 12, weight: .semibold))
+                    Text(showLog ? L10n.tr("Hide log") : L10n.tr("Log")).font(.system(size: 12, weight: .semibold))
                 }
                 .tint(.white)
             }
             Button { toggleInterface() } label: {
-                Label("Hide", systemImage: "eye.slash").font(.system(size: 12, weight: .semibold))
+                Label(L10n.tr("Hide"), systemImage: "eye.slash").font(.system(size: 12, weight: .semibold))
             }
             .tint(.white)
         }
@@ -886,7 +882,7 @@ struct TLClassicAttemptView: View {
     private var logPanel: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                Text(runner.logText.isEmpty ? "Starting…" : runner.logText)
+                Text(runner.logText.isEmpty ? L10n.tr("Starting…") : runner.logText)
                     .font(.technical(10))
                     .foregroundStyle(.white.opacity(0.85))
                     .frame(maxWidth: .infinity, alignment: .leading)

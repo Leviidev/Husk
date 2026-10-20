@@ -23,6 +23,7 @@
 		0CFC78E800ABA22AA65D873D /* HuskFilePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6146DAE69D6D6462FB1FB771 /* HuskFilePicker.swift */; };
 		0DAAE0E82288A651F11827CB /* HuskDownloadActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25DB1D606431C481B06C7337 /* HuskDownloadActivity.swift */; };
 		0EC1E9FBD9A5014FB1AA9334 /* husk-tl-sdl.c in Sources */ = {isa = PBXBuildFile; fileRef = C48A155D03D70E7DC8411ED5 /* husk-tl-sdl.c */; };
+		0F1ED1C32CB6A5CE0B0C2B4D /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C5E90083877367F31558E2 /* Localization.swift */; };
 		0FA2BBF68B30B5630789922B /* husk-tl-json.c in Sources */ = {isa = PBXBuildFile; fileRef = 242DD6EEB7DA97455CD76826 /* husk-tl-json.c */; };
 		12F633F698047D7DED62A51D /* husk-tl-gameactivity.c in Sources */ = {isa = PBXBuildFile; fileRef = CFAB9C41A483CA08C1037AAC /* husk-tl-gameactivity.c */; };
 		13E70642DCB1EB118EB6B9CF /* husk-tl-egl.c in Sources */ = {isa = PBXBuildFile; fileRef = 6990DECA802D2C4493C28A4A /* husk-tl-egl.c */; };
@@ -93,9 +94,11 @@
 		5A16FA25E013C8B240A5E342 /* husk-tl-dvm-jvm.c in Sources */ = {isa = PBXBuildFile; fileRef = 8BE75C276770496B7712F36A /* husk-tl-dvm-jvm.c */; };
 		5C20168883D258DF9715F6D9 /* AppDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F2A4FC567A4CCC74209DD4 /* AppDetailView.swift */; };
 		5E4B0292717DAE8B0CAA99E4 /* QemuRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E91A601F16886103BC482AB /* QemuRunner.swift */; };
+		5F6892D2CA19C743C9AFB937 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = DDDE4BC292DF535A44DDB354 /* InfoPlist.strings */; };
 		60DF5AC57C0225BEE8C9FB3A /* icon-dark.png in Resources */ = {isa = PBXBuildFile; fileRef = EA7240C2BD49C9F0CF7CB3DF /* icon-dark.png */; };
 		61B170D2F117D85F651CD6E6 /* icon-cleardark.png in Resources */ = {isa = PBXBuildFile; fileRef = E3A701AA76E485A6CE15F106 /* icon-cleardark.png */; };
 		622DA3EB6E956A9ED06CF55C /* husk-tl-probe.c in Sources */ = {isa = PBXBuildFile; fileRef = E4D1C81CB49D39A7D865A0DA /* husk-tl-probe.c */; };
+		6334DE1B0447C8C6B93817DD /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C5E90083877367F31558E2 /* Localization.swift */; };
 		6A8A2290222C62C81EBF2E3E /* husk-tl-bionic-pthread.c in Sources */ = {isa = PBXBuildFile; fileRef = C2150DD286E82127CB5B7C8B /* husk-tl-bionic-pthread.c */; };
 		6CA4A4E301BCB015E19AF7A8 /* AppWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8F4838EC0E68E364143E79 /* AppWindows.swift */; };
 		6EE0DCCC80014D645AC6E23A /* Geode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9736391C1BCE43667293DB7B /* Geode.swift */; };
@@ -103,6 +106,7 @@
 		70AAC964808B173B7E8E395B /* husk-tl-va.c in Sources */ = {isa = PBXBuildFile; fileRef = 23EF05EC9B3D8A0E6E8FC720 /* husk-tl-va.c */; };
 		70AF7E999105691EB51B54FD /* JITSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83275C7FEF2DEB950028D914 /* JITSetup.swift */; };
 		7197DC98582596A2FE390FF2 /* husk-tl-bionic-sys.c in Sources */ = {isa = PBXBuildFile; fileRef = ABC0FA8EF2530487F1EE6499 /* husk-tl-bionic-sys.c */; };
+		7702DACCD640A2E69823A0E2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 265D957D9966A8475C704630 /* Localizable.strings */; };
 		79606C9B3D5AF0CEADE3482D /* GuestImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 771B4FD56CABC214FEED6DFE /* GuestImage.swift */; };
 		7A7A40B3B76C8BA2D7262907 /* husk-tl-egl-es31.inc in Resources */ = {isa = PBXBuildFile; fileRef = CE99D9E12CB5823C669D9CBC /* husk-tl-egl-es31.inc */; };
 		7CA02F2FB22207E86499451E /* DownloadsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2F367C3774A342D33D245F /* DownloadsWidget.swift */; };
@@ -134,6 +138,7 @@
 		A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */ = {isa = PBXBuildFile; fileRef = 98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */; };
 		A687EB34AE28E4CBBA4136BF /* husk-tl-geode.c in Sources */ = {isa = PBXBuildFile; fileRef = 9235AEC134C86769DDF7E880 /* husk-tl-geode.c */; };
 		A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */ = {isa = PBXBuildFile; fileRef = DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */; };
+		A70B99C997A39099C77230EF /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 265D957D9966A8475C704630 /* Localizable.strings */; };
 		A7FBE49898024C7B1D03E018 /* husk-tl-sound.c in Sources */ = {isa = PBXBuildFile; fileRef = 91DE2675795B851A4C47ED9E /* husk-tl-sound.c */; };
 		AAF3739690794B605F5D7CAE /* husk-tl-dexindex.c in Sources */ = {isa = PBXBuildFile; fileRef = AA12F6AB59959C0162BB8928 /* husk-tl-dexindex.c */; };
 		AC5C07974C7A8658358A55C9 /* husk-tl-a64.c in Sources */ = {isa = PBXBuildFile; fileRef = 3ADCEA1477DA816D867C1EBB /* husk-tl-a64.c */; };
@@ -154,6 +159,7 @@
 		BF3B75F24D911729EFB2E8A6 /* husk-tl-gtasa.c in Sources */ = {isa = PBXBuildFile; fileRef = FCBE4C5BD3BC5033100C968E /* husk-tl-gtasa.c */; };
 		C1A4C57DAA6BFD79AAE5FD88 /* JITBuiltIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C233A62FB57030C0818489 /* JITBuiltIn.swift */; };
 		C561B0A164BC213A2A56D9C9 /* husk-tl-zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 9E133BDBB6CB711003066815 /* husk-tl-zip.c */; };
+		C97AE9162A9DFB979AC1393E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 265D957D9966A8475C704630 /* Localizable.strings */; };
 		CDA36696EE466B42197CA324 /* husk-tl-flutter-plugins.c in Sources */ = {isa = PBXBuildFile; fileRef = 2346959933B43E1D70ECDFC8 /* husk-tl-flutter-plugins.c */; };
 		CEA21B89D80905F908AEF47D /* husk-tl-bionic-str.c in Sources */ = {isa = PBXBuildFile; fileRef = 42C4CB582E3E0D917E2DBB4C /* husk-tl-bionic-str.c */; };
 		D0C1B402D90EE4224DB8422E /* husk-tl-sdl-apps.c in Sources */ = {isa = PBXBuildFile; fileRef = 2284FD76BFBDA116B1181F5F /* husk-tl-sdl-apps.c */; };
@@ -162,6 +168,7 @@
 		D3FC03CCE41C4AB9A969AA6E /* husk-tl-dvm-gles10ext.c in Sources */ = {isa = PBXBuildFile; fileRef = 60B6DEB5B27C73D8E79DC5BA /* husk-tl-dvm-gles10ext.c */; };
 		D61EF536158A8495F2B0CE79 /* JITSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5894E74BA308222C01AEE311 /* JITSetupView.swift */; };
 		D6E9F96BE6AF7C985488D030 /* VirtualPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F570EB6EAB321272B32955C /* VirtualPad.swift */; };
+		DD217F583BCCB0ABAFC1CC6C /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C5E90083877367F31558E2 /* Localization.swift */; };
 		DD78A64F53CD2C615EB004B3 /* LICENSE-idevice-MIT.txt in Resources */ = {isa = PBXBuildFile; fileRef = A45038B8E06A02311695BE90 /* LICENSE-idevice-MIT.txt */; };
 		DFF5B4345D574C8ECC39122F /* SaveBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D01B6F6F9B57E73E4B319F2 /* SaveBackup.swift */; };
 		E165A4CCFD518F67D08A4696 /* husk-tl-bionic-ndk.c in Sources */ = {isa = PBXBuildFile; fileRef = FF5A120A4E0B3EE166D789C4 /* husk-tl-bionic-ndk.c */; };
@@ -251,6 +258,7 @@
 		02BDBFFD3329C33172416AEB /* husk-tl-ld.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-ld.h"; sourceTree = "<group>"; };
 		036699CBF5693E75237EF112 /* PlayDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayDevice.swift; sourceTree = "<group>"; };
 		0384223FE1CD6D8C7C3A22A0 /* PlayStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayStoreManager.swift; sourceTree = "<group>"; };
+		03C5E90083877367F31558E2 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		0544BF1DEA0D119A8C350588 /* husk-console-abi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-console-abi.h"; sourceTree = "<group>"; };
 		08B65F9A6BAA4E2376A0CBD8 /* husk-tl-shim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-shim.c"; sourceTree = "<group>"; };
 		0BF5756DFAA31BA30063664B /* FAQTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FAQTab.swift; sourceTree = "<group>"; };
@@ -360,6 +368,7 @@
 		6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootScreen.swift; sourceTree = "<group>"; };
 		7087E37F05675CE3FD4EDEE2 /* ItemPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemPages.swift; sourceTree = "<group>"; };
 		7104A621330A81BD69495520 /* husk-tl-internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-internal.h"; sourceTree = "<group>"; };
+		715E318BE9AA61D4FD4237F1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		71DD2E2A2A0B0AB86EE783DD /* Compat15.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Compat15.swift; sourceTree = "<group>"; };
 		766F6F7816E672E83CFFE47D /* PipeShim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PipeShim.c; sourceTree = "<group>"; };
 		771B4FD56CABC214FEED6DFE /* GuestImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestImage.swift; sourceTree = "<group>"; };
@@ -379,6 +388,7 @@
 		85D8F83C8952092997CE071C /* husk-tl-jni-security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-security.c"; sourceTree = "<group>"; };
 		86A6E743652A606829BC044B /* husk-tl-prefs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-prefs.c"; sourceTree = "<group>"; };
 		893986FED6A489EB5F1CB56A /* husk-tl-sound.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-sound.h"; sourceTree = "<group>"; };
+		8A2B1D554E7A34057C1AD56D /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8BE75C276770496B7712F36A /* husk-tl-dvm-jvm.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-jvm.c"; sourceTree = "<group>"; };
 		900EFFFFB083CADE3666D0A4 /* husk-tl-dvm-gles11ext.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-dvm-gles11ext.c"; sourceTree = "<group>"; };
 		91DE2675795B851A4C47ED9E /* husk-tl-sound.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-sound.c"; sourceTree = "<group>"; };
@@ -386,6 +396,7 @@
 		9235AEC134C86769DDF7E880 /* husk-tl-geode.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-geode.c"; sourceTree = "<group>"; };
 		92BB8B6B5EA2FAE7198451C0 /* GoogleSignInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInSheet.swift; sourceTree = "<group>"; };
 		9545A76356E04E05C3174FA8 /* husk-tl-va.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-va.h"; sourceTree = "<group>"; };
+		9562F9E4D002E364CA6268FD /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		95865DA863ED1D2635023E54 /* husk-tl-gamemaker.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gamemaker.c"; sourceTree = "<group>"; };
 		9651633AB1B5F444EB71B286 /* AppDiagnosis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiagnosis.swift; sourceTree = "<group>"; };
 		96F492FB5CD1D4A0B2D79E12 /* Protobuf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protobuf.swift; sourceTree = "<group>"; };
@@ -439,6 +450,7 @@
 		D08FCD7F480D6E2F65F26636 /* husk-tl-elf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-elf.c"; sourceTree = "<group>"; };
 		D0A9148DED6969D97D56406C /* LICENSES-rppairing-crates.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSES-rppairing-crates.txt"; sourceTree = "<group>"; };
 		D50A30F186B58956276C9B24 /* husk-tl-framework.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-framework.c"; sourceTree = "<group>"; };
+		D55A71017C0404DEC65F9A46 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D67BAEC1C73D45640DAA22C8 /* husk-tl-dvm-javaapp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-dvm-javaapp.h"; sourceTree = "<group>"; };
 		D6F6414E03E6D7DC976A7E4D /* husk-tl-vulkan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-vulkan.h"; sourceTree = "<group>"; };
 		D75738ACF768F1D3A21A19C7 /* husk-tl-dvm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-dvm.h"; sourceTree = "<group>"; };
@@ -581,6 +593,7 @@
 				4BD91E5537023860BD27A855 /* WebApp.swift */,
 				146A928FB0D632B3FC9E4328 /* WebAppViews.swift */,
 				FAB8BAA1A1D0AB19EBD6F784 /* WhatsNew.swift */,
+				DDDE4BC292DF535A44DDB354 /* InfoPlist.strings */,
 				C4F386333533DE96E20410F7 /* Play */,
 				FA84FD81F71FF2ACDEB879A5 /* Resources */,
 			);
@@ -637,6 +650,8 @@
 			isa = PBXGroup;
 			children = (
 				25DB1D606431C481B06C7337 /* HuskDownloadActivity.swift */,
+				03C5E90083877367F31558E2 /* Localization.swift */,
+				265D957D9966A8475C704630 /* Localizable.strings */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -853,6 +868,7 @@
 			buildConfigurationList = 66F3C884C06FB959088D801A /* Build configuration list for PBXNativeTarget "HuskDownloadsWidget" */;
 			buildPhases = (
 				53410D0F2D70345D69B9884B /* Sources */,
+				2D6E3EC6F0983540B1926656 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -870,6 +886,7 @@
 			buildConfigurationList = EAE14B964398F5D21053AC59 /* Build configuration list for PBXNativeTarget "HuskJITHelper" */;
 			buildPhases = (
 				6EF7ED4658C7B5F891B70541 /* Sources */,
+				442FCAD8722BD1ADE99625EC /* Resources */,
 				23F0338B4C1A9AD45F8C348B /* Frameworks */,
 			);
 			buildRules = (
@@ -934,6 +951,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 1E59FB82FCE9A2CABD19395C;
 			minimizedProjectReferenceProxies = 1;
@@ -950,14 +968,24 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		2D6E3EC6F0983540B1926656 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A70B99C997A39099C77230EF /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		38EFBD1C571AB7D069663D9B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				38A9F59D462DE5A28D3F579D /* Assets.xcassets in Resources */,
+				5F6892D2CA19C743C9AFB937 /* InfoPlist.strings in Resources */,
 				FA8097D8E118A8CE8DBCF763 /* LICENSE-StikJIT-MPL-2.0.txt in Resources */,
 				DD78A64F53CD2C615EB004B3 /* LICENSE-idevice-MIT.txt in Resources */,
 				1D576C7E088182B888F811BB /* LICENSES-rppairing-crates.txt in Resources */,
+				7702DACCD640A2E69823A0E2 /* Localizable.strings in Resources */,
 				50A3A90912B5C9D90B87D9BF /* cacert.pem in Resources */,
 				E2C01F517E73992A29E22EC2 /* husk-jit.js in Resources */,
 				7A7A40B3B76C8BA2D7262907 /* husk-tl-egl-es31.inc in Resources */,
@@ -968,6 +996,14 @@
 				03C7BA933706E9F45DD7A8EE /* icon-tinteddark.png in Resources */,
 				B7335D9F68CE6EAF0E3D9825 /* icon-tintedlight.png in Resources */,
 				EF4D3972DFB4447D5FDDF0AE /* stb_vorbis.inc in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		442FCAD8722BD1ADE99625EC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C97AE9162A9DFB979AC1393E /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1026,6 +1062,7 @@
 			files = (
 				7CA02F2FB22207E86499451E /* DownloadsWidget.swift in Sources */,
 				E8F0828C2C030D26E891E528 /* HuskDownloadActivity.swift in Sources */,
+				0F1ED1C32CB6A5CE0B0C2B4D /* Localization.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1035,6 +1072,7 @@
 			files = (
 				E8E067635E072083A772DADE /* HuskJITHelper.swift in Sources */,
 				4B9909AA3D98168EA99BF2D1 /* HuskJITMessages.swift in Sources */,
+				DD217F583BCCB0ABAFC1CC6C /* Localization.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1090,6 +1128,7 @@
 				70AF7E999105691EB51B54FD /* JITSetup.swift in Sources */,
 				D61EF536158A8495F2B0CE79 /* JITSetupView.swift in Sources */,
 				538ED3B97F9BC9511F1386E7 /* Launcher.swift in Sources */,
+				6334DE1B0447C8C6B93817DD /* Localization.swift in Sources */,
 				2BB97B7AE3D1994ABB4A67A0 /* MassTest.swift in Sources */,
 				D1DB4D94478AB7DD95E1A24E /* OnboardingView.swift in Sources */,
 				4120162000445ADEF19BFBB4 /* PS4Library.swift in Sources */,
@@ -1221,6 +1260,27 @@
 			targetProxy = B46C1000D9E3B58BC33CE884 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		265D957D9966A8475C704630 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D55A71017C0404DEC65F9A46 /* en */,
+				8A2B1D554E7A34057C1AD56D /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		DDDE4BC292DF535A44DDB354 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				715E318BE9AA61D4FD4237F1 /* en */,
+				9562F9E4D002E364CA6268FD /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		1954F0CFDD99CE9750546785 /* Release */ = {

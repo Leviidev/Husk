@@ -88,11 +88,11 @@ final class IncomingFiles: ObservableObject {
     /// it. Only fake packages (fPKG) and homebrew open; a retail package is refused with a message saying so.
     private func installPS4Packages(_ files: [URL]) {
         guard PS4Store.available, let module = PS4Store.moduleURL else {
-            AndroidHost.shared.say("Can't install PS4 games here", PS4Store.moduleURL == nil ? "This copy of Husk doesn't have the PS4 layer." : "PS4 games need iOS 17.4 or later.", good: false)
+            AndroidHost.shared.say(L10n.tr("Can't install PS4 games here"), PS4Store.moduleURL == nil ? L10n.tr("This copy of Husk doesn't have the PS4 layer.") : L10n.tr("PS4 games need iOS 17.4 or later."), good: false)
             return
         }
         let progress = PackageProgress { [weak self] text in self?.preparing = text }
-        preparing = "Installing \(files[0].lastPathComponent)…"
+        preparing = L10n.tr("Installing \(files[0].lastPathComponent)…")
         Task.detached(priority: .userInitiated) {
             let fm = FileManager.default
             try? fm.createDirectory(at: PS4Store.root, withIntermediateDirectories: true)
@@ -101,12 +101,12 @@ final class IncomingFiles: ObservableObject {
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let name = url.deletingPathExtension().lastPathComponent
-                progress.begin(files.count == 1 ? "Installing \(name)" : "Installing \(name) (\(i + 1) of \(files.count))")
+                progress.begin(files.count == 1 ? L10n.tr("Installing \(name)") : L10n.tr("Installing \(name) (\(i + 1) of \(files.count))"))
                 // Unpacked, a game takes at least its package's size.
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
                 if let free = try? PS4Store.root.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage,
                    free < size {
-                    failed.append((name, "needs \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) free"))
+                    failed.append((name, L10n.tr("needs \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) free")))
                     continue
                 }
                 // Into a hidden folder on the same volume, so the library never lists a half-installed game.
@@ -131,12 +131,12 @@ final class IncomingFiles: ObservableObject {
                 if isUpdate { try? fm.removeItem(at: dest) }
                 guard !fm.fileExists(atPath: dest.path) else {
                     try? fm.removeItem(at: temp)
-                    failed.append((sfo?.title ?? name, "is already installed"))
+                    failed.append((sfo?.title ?? name, L10n.tr("is already installed")))
                     continue
                 }
                 do {
                     try fm.moveItem(at: temp, to: dest)
-                    installed.append(isUpdate ? "\(sfo?.title ?? titleID) update" : sfo?.title ?? titleID)
+                    installed.append(isUpdate ? L10n.tr("\(sfo?.title ?? titleID) update") : sfo?.title ?? titleID)
                     HuskLog.log("ps4", "installed \(url.lastPathComponent) as \(dest.lastPathComponent)")
                 } catch {
                     try? fm.removeItem(at: temp)
@@ -148,9 +148,9 @@ final class IncomingFiles: ObservableObject {
                 PS4Store.shared.reload()
                 if let first = failed.first {
                     let (what, why) = first
-                    AndroidHost.shared.say("Could not install \(what)", why.prefix(1).uppercased() + why.dropFirst() + (failed.count > 1 ? " (and \(failed.count - 1) more)" : ""), good: false)
+                    AndroidHost.shared.say(L10n.tr("Could not install \(what)"), why.prefix(1).uppercased() + why.dropFirst() + (failed.count > 1 ? L10n.tr(" (and \(failed.count - 1) more)") : ""), good: false)
                 } else if !installed.isEmpty {
-                    AndroidHost.shared.say(installed.count == 1 ? "Installed \(installed[0])" : "Installed \(installed.count) PS4 packages", "It's in your library.")
+                    AndroidHost.shared.say(installed.count == 1 ? L10n.tr("Installed \(installed[0])") : L10n.tr("Installed \(installed.count) PS4 packages"), L10n.tr("It's in your library."))
                 }
             }
         }
@@ -158,7 +158,7 @@ final class IncomingFiles: ObservableObject {
 
     /// Copies PS4 game folders into Documents/PS4 Games (off the main thread: they are gigabytes) and shows them in the library.
     private func importPS4(_ folders: [URL]) {
-        preparing = folders.count == 1 ? "Importing \(folders[0].lastPathComponent)…" : "Importing \(folders.count) PS4 games…"
+        preparing = folders.count == 1 ? L10n.tr("Importing \(folders[0].lastPathComponent)…") : L10n.tr("Importing \(folders.count) PS4 games…")
         Task.detached(priority: .userInitiated) {
             let fm = FileManager.default
             try? fm.createDirectory(at: PS4Store.root, withIntermediateDirectories: true)
@@ -187,7 +187,7 @@ final class IncomingFiles: ObservableObject {
 
     /// Copy files to Husk's own folder, off the main thread -- a game can be gigabytes -- then hand back the copies.
     private func take(_ urls: [URL], then: @escaping @MainActor ([URL]) -> Void) {
-        preparing = urls.count == 1 ? "Preparing \(urls[0].lastPathComponent)…" : "Preparing \(urls.count) files…"
+        preparing = urls.count == 1 ? L10n.tr("Preparing \(urls[0].lastPathComponent)…") : L10n.tr("Preparing \(urls.count) files…")
         Task.detached(priority: .userInitiated) {
             var copies: [URL] = []
             for url in urls {
@@ -255,18 +255,18 @@ struct IncomingChooser: View {
 
     private var title: String {
         guard let first = incoming.waiting.first else { return "" }
-        return incoming.waiting.count == 1 ? first.lastPathComponent : "\(incoming.waiting.count) files"
+        return incoming.waiting.count == 1 ? first.lastPathComponent : L10n.tr("\(incoming.waiting.count) files")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Add to Husk").font(.title2.weight(.bold))
+                Text(L10n.tr("Add to Husk")).font(.title2.weight(.bold))
                 Text(title).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
             }
 
-            choice(icon: "bolt.fill", title: "Translation Layer",
-                   detail: "Runs the game directly on your iPhone, without starting Android. Best for games.") {
+            choice(icon: "bolt.fill", title: L10n.tr("Translation Layer"),
+                   detail: L10n.tr("Runs the game directly on your iPhone, without starting Android. Best for games.")) {
                 incoming.sendToTranslationLayer()
             }
             choice(icon: "apps.iphone", title: "Android",
@@ -274,7 +274,7 @@ struct IncomingChooser: View {
                 incoming.sendToAndroid()
             }
 
-            Button("Cancel", role: .cancel) { incoming.discard() }
+            Button(L10n.tr("Cancel"), role: .cancel) { incoming.discard() }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 2)
         }
@@ -282,9 +282,9 @@ struct IncomingChooser: View {
     }
 
     private var androidDetail: String {
-        if host.isReady { return "Installs it into Android, where any app can run." }
-        if guest.state == .ready { return "Installs it into Android the next time Android starts." }
-        return "Installs it into Android once Android is downloaded and started."
+        if host.isReady { return L10n.tr("Installs it into Android, where any app can run.") }
+        if guest.state == .ready { return L10n.tr("Installs it into Android the next time Android starts.") }
+        return L10n.tr("Installs it into Android once Android is downloaded and started.")
     }
 
     private func choice(icon: String, title: String, detail: String, action: @escaping () -> Void) -> some View {

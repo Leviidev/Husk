@@ -52,19 +52,19 @@ struct ContentView: View {
             // why it appears instantly rather than reloading.
             TabView(selection: tabSelection) {
                 HomeView()
-                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tabItem { Label(L10n.tr("Home"), systemImage: "house.fill") }
                     .tag(HuskTab.home)
 
                 LibraryScreen()
-                    .tabItem { Label("Library", systemImage: "square.grid.2x2.fill") }
+                    .tabItem { Label(L10n.tr("Library"), systemImage: "square.grid.2x2.fill") }
                     .tag(HuskTab.library)
 
                 StoreView()
-                    .tabItem { Label("Store", systemImage: "cart.fill") }
+                    .tabItem { Label(L10n.tr("Store"), systemImage: "cart.fill") }
                     .tag(HuskTab.store)
 
                 SettingsTab()
-                    .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                    .tabItem { Label(L10n.tr("Settings"), systemImage: "gearshape.fill") }
                     .tag(HuskTab.settings)
             }
             .opacity(showGuestScreen && started && runner.isRunning ? 0 : 1)
@@ -134,12 +134,11 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showLogs) { LogView() }
-        .alert("Start Android?", isPresented: $confirmAndroid) {
-            Button("Start") { startFromLibrary() }
-            Button("Cancel", role: .cancel) {}
+        .alert(L10n.tr("Start Android?"), isPresented: $confirmAndroid) {
+            Button(L10n.tr("Start")) { startFromLibrary() }
+            Button(L10n.tr("Cancel"), role: .cancel) {}
         } message: {
-            Text("Full Android emulation is experimental. It is slow, takes minutes to start, and can freeze or crash Husk. "
-               + "Games and apps run much better in the Translation Layer.")
+            Text(L10n.tr("Full Android emulation is experimental. It is slow, takes minutes to start, and can freeze or crash Husk. Games and apps run much better in the Translation Layer."))
         }
         // A game that ended Husk last time: say so, with its report.
         .sheet(item: Binding(get: { showOnboarding ? nil : crash.pending }, set: { crash.pending = $0 }),
@@ -151,16 +150,16 @@ struct ContentView: View {
             WhatsNewSheet { WhatsNew.markSeen(); showWhatsNew = false }
         }
         // A newer Husk is on GitHub.
-        .alert("Husk \(updates.available?.version ?? "") Is Available", isPresented: Binding(
+        .alert(L10n.tr("Husk \(updates.available?.version ?? "") Is Available"), isPresented: Binding(
                 get: { updates.available != nil && !showOnboarding && !showWhatsNew && crash.pending == nil },
                 set: { if !$0 { updates.dismiss() } })) {
-            Button("View Release") {
+            Button(L10n.tr("View Release")) {
                 if let page = updates.available?.page { UIApplication.shared.open(page) }
                 updates.dismiss()
             }
-            Button("Not Now", role: .cancel) { updates.dismiss() }
+            Button(L10n.tr("Not Now"), role: .cancel) { updates.dismiss() }
         } message: {
-            Text("You have \(AppUpdates.current). The new version's IPA is on its release page.")
+            Text(L10n.tr("You have \(AppUpdates.current). The new version's IPA is on its release page."))
         }
         .task { await updates.check() }
         .task { await CompatibilityStore.shared.refresh() }
@@ -168,13 +167,13 @@ struct ContentView: View {
         .sheet(isPresented: $router.showDownloads) { DownloadsTab() }
         // Pictures for the apps here: read the index on launch and whenever the set of apps changes.
         .task(id: showcasePackages) { showcase.refresh(for: showcasePackages) }
-        .alert("Metadata Updated", isPresented: Binding(get: { showcase.shouldAsk && !showOnboarding },
+        .alert(L10n.tr("Metadata Updated"), isPresented: Binding(get: { showcase.shouldAsk && !showOnboarding },
                                                          set: { if !$0 { showcase.asked() } })) {
-            Button("Download") { showcase.downloadUpdates() }
-            Button("Not Now", role: .cancel) { showcase.asked() }
+            Button(L10n.tr("Download")) { showcase.downloadUpdates() }
+            Button(L10n.tr("Not Now"), role: .cancel) { showcase.asked() }
         } message: {
             let n = showcase.updates.count
-            Text("Metadata for \(n) of your app\(n == 1 ? "" : "s") has been updated. Would you like to download the updates?")
+            Text(L10n.tr("Metadata for \(n) of your app\(n == 1 ? "" : "s") has been updated. Would you like to download the updates?"))
         }
         // An APK shared to Husk: where does it go?
         .sheet(isPresented: Binding(get: { !incoming.waiting.isEmpty },
@@ -201,8 +200,8 @@ struct ContentView: View {
         .alert(guest.update.title, isPresented: Binding(
                 get: { guest.update.isSomething },
                 set: { if !$0 { guest.dismissUpdate() } })) {
-            Button("Download") { guest.applyUpdate() }
-            Button("Not now", role: .cancel) { guest.dismissUpdate() }
+            Button(L10n.tr("Download")) { guest.applyUpdate() }
+            Button(L10n.tr("Not now"), role: .cancel) { guest.dismissUpdate() }
         } message: {
             Text(guest.update.detail)
         }
@@ -343,8 +342,8 @@ struct ContentView: View {
                 HuskLog.log("jit", "refusing to start QEMU: no trap servicer is "
                                  + "answering and MAP_JIT does not execute here")
                 // Said on screen too: a Start button that silently does nothing reads as a hang (#122).
-                host.say("Android can't start without JIT",
-                         JITBootstrap.lastFailure ?? "Husk could not get executable memory. Turn JIT on again (Settings > JIT) and retry.",
+                host.say(L10n.tr("Android can't start without JIT"),
+                         JITBootstrap.lastFailure ?? L10n.tr("Husk could not get executable memory. Turn JIT on again (Settings > JIT) and retry."),
                          good: false)
                 booting = false
                 return
@@ -425,7 +424,7 @@ struct GuestScreenView: View {
                     ProgressView(value: Double(runner.bootProgress), total: 100)
                         .progressViewStyle(.linear)
                         .frame(width: 200)
-                    Text(runner.setupMessage ?? "Starting Android…")
+                    Text(runner.setupMessage ?? L10n.tr("Starting Android…"))
                         .font(.caption2).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -474,7 +473,7 @@ struct GuestScreenView: View {
 
                         Menu {
                             Button { onBack() } label: {
-                                Label("Back to Husk", systemImage: "chevron.left")
+                                Label(L10n.tr("Back to Husk"), systemImage: "chevron.left")
                             }
                             // Android's own Home key, over the bridge. Three-button
                             // navigation is not drawn in this guest, so without it
@@ -485,7 +484,7 @@ struct GuestScreenView: View {
                                         "input keyevent KEYCODE_HOME", timeout: 20)
                                     HuskLog.log("ui", "sent HOME to Android")
                                 }
-                            } label: { Label("Home", systemImage: "house") }
+                            } label: { Label(L10n.tr("Home"), systemImage: "house") }
                             // Android will not reshape its panel, so when an app
                             // asks for landscape it turns its own composition
                             // inside a portrait frame. This turns it back.
@@ -493,19 +492,19 @@ struct GuestScreenView: View {
                                 HuskGLView.rotated.toggle()
                                 rotated = HuskGLView.rotated
                             } label: {
-                                Label(rotated ? "Unrotate picture" : "Rotate picture",
+                                Label(rotated ? L10n.tr("Unrotate picture") : L10n.tr("Rotate picture"),
                                       systemImage: "rotate.right")
                             }
                             Divider()
                             Button {
                                 QemuRunner.shared.saveState(reason: "asked from full screen")
                             } label: {
-                                Label(runner.isSavingState ? "Saving…" : "Save Android",
+                                Label(runner.isSavingState ? L10n.tr("Saving…") : L10n.tr("Save Android"),
                                       systemImage: "externaldrive.badge.checkmark")
                             }
                             .disabled(runner.isSavingState)
                             Button { showLogs = true } label: {
-                                Label("Console", systemImage: "terminal")
+                                Label(L10n.tr("Console"), systemImage: "terminal")
                             }
                         } label: {
                             Image(systemName: "ellipsis")
@@ -572,12 +571,12 @@ struct LogView: View {
                     }
                 }
             }
-            .navigationTitle("Logs")
+            .navigationTitle(L10n.tr("Logs"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if isSheet {
-                        Button("Done") { dismiss() }
+                        Button(L10n.tr("Done")) { dismiss() }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -633,7 +632,7 @@ struct ControlsSheet: View {
             Theme.backdrop
             VStack(spacing: 16) {
                 HStack {
-                    Text("Controls")
+                    Text(L10n.tr("Controls"))
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(Theme.text)
                     Spacer()
@@ -648,24 +647,23 @@ struct ControlsSheet: View {
                 }
 
                 RowGroup {
-                    row("hand.tap.fill", "Touch", on: true, available: true)
+                    row("hand.tap.fill", L10n.tr("Touch"), on: true, available: true)
                     RowDivider()
                     Button {
                         keyboard.toggle()
                         HuskLog.log("kbd", "keyboard \(keyboard ? "shown" : "hidden")")
                         dismiss()
                     } label: {
-                        row("keyboard", "Keyboard", on: keyboard, available: true)
+                        row("keyboard", L10n.tr("Keyboard"), on: keyboard, available: true)
                     }
                     .buttonStyle(.plain)
                     RowDivider()
-                    row("gamecontroller", "Gamepad", on: false, available: false)
+                    row("gamecontroller", L10n.tr("Gamepad"), on: false, available: false)
                     RowDivider()
-                    row("computermouse", "Mouse", on: false, available: false)
+                    row("computermouse", L10n.tr("Mouse"), on: false, available: false)
                 }
 
-                Text("Touch always works. A gamepad and a pointer are not wired "
-                   + "through to Android yet.")
+                Text(L10n.tr("Touch always works. A gamepad and a pointer are not wired through to Android yet."))
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textDim)
                     .multilineTextAlignment(.center)
@@ -695,7 +693,7 @@ struct ControlsSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.accent)
             } else if !available {
-                Text("Not yet").font(.system(size: 12)).foregroundStyle(Theme.textDim)
+                Text(L10n.tr("Not yet")).font(.system(size: 12)).foregroundStyle(Theme.textDim)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)

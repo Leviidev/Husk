@@ -46,10 +46,10 @@ final class CompatibilityStore: ObservableObject {
         case works, opens, broken, protected
         var label: String {
             switch self {
-            case .works: return "Works"
-            case .opens: return "Opens"
-            case .broken: return "Doesn\u{2019}t Work"
-            case .protected: return "Protected"
+            case .works: return L10n.tr("Works")
+            case .opens: return L10n.tr("Opens")
+            case .broken: return L10n.tr("Doesn\u{2019}t Work")
+            case .protected: return L10n.tr("Protected")
             }
         }
         var symbol: String {
@@ -70,10 +70,10 @@ final class CompatibilityStore: ObservableObject {
         }
         var explanation: String {
             switch self {
-            case .works: return "Runs and plays or works normally."
-            case .opens: return "Starts and shows its screens, but has not been fully tested or has problems."
-            case .broken: return "Crashes or closes while starting."
-            case .protected: return "Refuses to run outside a real Android phone (anti-cheat, anti-tamper or DRM). Husk does not get around that."
+            case .works: return L10n.tr("Runs and plays or works normally.")
+            case .opens: return L10n.tr("Starts and shows its screens, but has not been fully tested or has problems.")
+            case .broken: return L10n.tr("Crashes or closes while starting.")
+            case .protected: return L10n.tr("Refuses to run outside a real Android phone (anti-cheat, anti-tamper or DRM). Husk does not get around that.")
             }
         }
     }
@@ -141,11 +141,11 @@ final class CompatibilityStore: ObservableObject {
     }
     static var jitMethod: String {
         switch JITCoordinator.shared.resolvedMethod {
-        case .builtIn: return "StikJIT (built in)"
+        case .builtIn: return L10n.tr("StikJIT (built in)")
         case .stikDebug: return "StikDebug"
         case .trollStore: return "TrollStore"
-        case .jailbreak: return "Jailbreak"
-        case .automatic: return "Other"
+        case .jailbreak: return L10n.tr("Jailbreak")
+        case .automatic: return L10n.tr("Other")
         }
     }
     static var build: String { (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "" }
@@ -179,7 +179,7 @@ final class CompatibilityStore: ObservableObject {
         }
         guard (200..<300).contains(http.statusCode) else {
             let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-            throw NSError(domain: "Compatibility", code: 1, userInfo: [NSLocalizedDescriptionKey: message ?? "The compatibility list could not be reached."])
+            throw NSError(domain: "Compatibility", code: 1, userInfo: [NSLocalizedDescriptionKey: message ?? L10n.tr("The compatibility list could not be reached.")])
         }
         HuskLog.log("compat", "reported \(package): \(status.rawValue)")
         markAsked(package)
@@ -244,18 +244,18 @@ struct CompatibilitySection: View {
                 }
                 .padding(.vertical, 2)
                 if entry.community.reports > 0 {
-                    LabeledContent("Player Reports", value: "\(entry.community.reports)")
+                    LabeledContent(L10n.tr("Player Reports"), value: "\(entry.community.reports)")
                 }
             } else {
-                Text("Not on the list yet. Be the first to say how it runs.")
+                Text(L10n.tr("Not on the list yet. Be the first to say how it runs."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
-            Button { reporting = subject } label: { Label("Report How It Ran", systemImage: "square.and.pencil") }
-            Link(destination: compat.pageURL(subject.package)) { Label("Open on antiweb.lol", systemImage: "safari") }
+            Button { reporting = subject } label: { Label(L10n.tr("Report How It Ran"), systemImage: "square.and.pencil") }
+            Link(destination: compat.pageURL(subject.package)) { Label(L10n.tr("Open on antiweb.lol"), systemImage: "safari") }
         } header: {
-            Text("Compatibility")
+            Text(L10n.tr("Compatibility"))
         } footer: {
-            if entry?.official != nil { Text("Tested by the Husk team on an iPhone.") }
+            if entry?.official != nil { Text(L10n.tr("Tested by the Husk team on an iPhone.")) }
         }
     }
 }
@@ -279,7 +279,7 @@ struct CompatReportSheet: View {
                     ForEach([CompatibilityStore.Status.works, .opens, .broken], id: \.self) { s in
                         Button { status = s } label: {
                             HStack {
-                                Label(s == .opens ? "Opens, but Has Problems" : s.label, systemImage: s.symbol)
+                                Label(s == .opens ? L10n.tr("Opens, but Has Problems") : s.label, systemImage: s.symbol)
                                     .foregroundStyle(.primary)
                                 Spacer()
                                 if status == s { Image(systemName: "checkmark").foregroundStyle(.tint) }
@@ -287,46 +287,46 @@ struct CompatReportSheet: View {
                         }
                     }
                 } header: {
-                    Text(subject.afterPlaying ? "How did \(subject.name) run?" : "How does \(subject.name) run?")
+                    Text(subject.afterPlaying ? L10n.tr("How did \(subject.name) run?") : L10n.tr("How does \(subject.name) run?"))
                 }
-                Section("Notes") {
+                Section(L10n.tr("Notes")) {
                     if #available(iOS 16, *) {
-                        TextField("What worked, what didn\u{2019}t, how far you got", text: $notes, axis: .vertical)
+                        TextField(L10n.tr("What worked, what didn\u{2019}t, how far you got"), text: $notes, axis: .vertical)
                             .lineLimit(3...8)
                     } else {
                         TextEditor(text: $notes).frame(minHeight: 80)
                     }
                 }
                 Section {
-                    TextField("Anonymous", text: $author)
+                    TextField(L10n.tr("Anonymous"), text: $author)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Your Name")
+                    Text(L10n.tr("Your Name"))
                 } footer: {
-                    Text("Sent with it: \(CompatibilityStore.device), iOS \(UIDevice.current.systemVersion), Husk build \(CompatibilityStore.build), JIT from \(CompatibilityStore.jitMethod). It shows on antiweb.lol for everyone.")
+                    Text(L10n.tr("Sent with it: \(CompatibilityStore.device), iOS \(UIDevice.current.systemVersion), Husk build \(CompatibilityStore.build), JIT from \(CompatibilityStore.jitMethod). It shows on antiweb.lol for everyone."))
                 }
                 Section {
-                    Toggle("Attach my log", isOn: $attachLog)
+                    Toggle(L10n.tr("Attach my log"), isOn: $attachLog)
                 } footer: {
-                    Text("Your Husk log helps the developer see what went wrong. Only moderators can read it.")
+                    Text(L10n.tr("Your Husk log helps the developer see what went wrong. Only moderators can read it."))
                 }
                 if let error {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle(sent ? "Thanks!" : "Report")
+            .navigationTitle(sent ? L10n.tr("Thanks!") : L10n.tr("Report"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(subject.afterPlaying ? "Not Now" : "Cancel") {
+                    Button(subject.afterPlaying ? L10n.tr("Not Now") : L10n.tr("Cancel")) {
                         if subject.afterPlaying { CompatibilityStore.shared.markAsked(subject.package) }
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if sending { ProgressView() } else {
-                        Button("Send") { send() }.disabled(status == nil)
+                        Button(L10n.tr("Send")) { send() }.disabled(status == nil)
                     }
                 }
             }

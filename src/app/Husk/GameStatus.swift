@@ -15,9 +15,9 @@ final class GameStatusStore: ObservableObject {
 
         var label: String {
             switch self {
-            case .plays: return "Plays"
-            case .crashed: return "Crashed last time"
-            case .failed: return "Did not start"
+            case .plays: return L10n.tr("Plays")
+            case .crashed: return L10n.tr("Crashed last time")
+            case .failed: return L10n.tr("Did not start")
             }
         }
         var symbol: String {

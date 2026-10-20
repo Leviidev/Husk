@@ -319,7 +319,7 @@ final class GuestImage: ObservableObject {
         let fm = FileManager.default
         guard let attrs = try? fm.attributesOfItem(atPath: path),
               let size = (attrs[.size] as? NSNumber)?.int64Value else {
-            return (nil, "file is missing")
+            return (nil, L10n.tr("file is missing"))
         }
         guard size >= minimumPlausibleSize else {
             // Show a little of it: when this fires the content is usually a short
@@ -328,19 +328,18 @@ final class GuestImage: ObservableObject {
             if size > 0, size < 512,
                let d = fm.contents(atPath: path),
                let text = String(data: d, encoding: .utf8) {
-                hint = " — content was: \(text.trimmingCharacters(in: .whitespacesAndNewlines))"
+                hint = L10n.tr(" — content was: \(text.trimmingCharacters(in: .whitespacesAndNewlines))")
             }
-            return (nil, "only \(size) bytes, expected at least "
-                        + "\(minimumPlausibleSize / (1024 * 1024)) MB\(hint)")
+            return (nil, L10n.tr("only \(size) bytes, expected at least \(minimumPlausibleSize / (1024 * 1024)) MB\(hint)"))
         }
         guard let fh = FileHandle(forReadingAtPath: path),
               let head = try? fh.read(upToCount: 4), head.count == 4 else {
-            return (nil, "could not read the file header")
+            return (nil, L10n.tr("could not read the file header"))
         }
         try? fh.close()
         guard Array(head) == qcow2Magic else {
             let hex = head.map { String(format: "%02x", $0) }.joined(separator: " ")
-            return (nil, "not a qcow2 image (header was \(hex), expected 51 46 49 fb)")
+            return (nil, L10n.tr("not a qcow2 image (header was \(hex), expected 51 46 49 fb)"))
         }
         return (size, nil)
     }
@@ -399,7 +398,7 @@ final class GuestImage: ObservableObject {
         if let why = check.problem {
             HuskLog.log("guest", "existing guest disk is INVALID (\(why)); removing it")
             try? FileManager.default.removeItem(atPath: diskPath)
-            state = .failed("The runtime on disk is not a valid image (\(why)). Tap to retry.")
+            state = .failed(L10n.tr("The runtime on disk is not a valid image (\(why)). Tap to retry."))
         } else {
             HuskLog.log("guest", "guest disk present and valid: \(check.size ?? 0) bytes")
             state = .ready
@@ -443,7 +442,7 @@ final class GuestImage: ObservableObject {
         if !fm.fileExists(atPath: firmwarePath) {
             guard let src = Bundle.main.path(forResource: "edk2-aarch64-code", ofType: "fd") else {
                 throw NSError(domain: "husk", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "edk2-aarch64-code.fd missing from the app bundle"])
+                    NSLocalizedDescriptionKey: L10n.tr("edk2-aarch64-code.fd missing from the app bundle")])
             }
             // Copied rather than used in place: pflash wants a plain file and the
             // bundle is read-only, and keeping both volumes together in Documents
@@ -477,7 +476,7 @@ final class GuestImage: ObservableObject {
             // starting from empty anyway.
             guard let seed = Bundle.main.path(forResource: "lineage-efi-vars-seed", ofType: "fd") else {
                 throw NSError(domain: "husk", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "lineage-efi-vars-seed.fd missing from the app bundle"])
+                    NSLocalizedDescriptionKey: L10n.tr("lineage-efi-vars-seed.fd missing from the app bundle")])
             }
             try? fm.removeItem(atPath: varsPath)
             try fm.copyItem(atPath: seed, toPath: varsPath)
@@ -513,7 +512,7 @@ final class GuestImage: ObservableObject {
                 // missing resource must not turn an upgrade into a missing disk.
                 guard let seed = Bundle.main.path(forResource: "lineage-vdb-seed", ofType: "qcow2") else {
                     throw NSError(domain: "husk", code: 3, userInfo: [
-                        NSLocalizedDescriptionKey: "lineage-vdb-seed.qcow2 missing from the app bundle"])
+                        NSLocalizedDescriptionKey: L10n.tr("lineage-vdb-seed.qcow2 missing from the app bundle")])
                 }
                 HuskLog.log("guest", "userdata seed \(seededWith ?? "unversioned") -> \(seedVersion); "
                                    + "starting from a clean partition")
@@ -526,7 +525,7 @@ final class GuestImage: ObservableObject {
         if !fm.fileExists(atPath: userdataPath) {
             guard let seed = Bundle.main.path(forResource: "lineage-vdb-seed", ofType: "qcow2") else {
                 throw NSError(domain: "husk", code: 3, userInfo: [
-                    NSLocalizedDescriptionKey: "lineage-vdb-seed.qcow2 missing from the app bundle"])
+                    NSLocalizedDescriptionKey: L10n.tr("lineage-vdb-seed.qcow2 missing from the app bundle")])
             }
             try fm.copyItem(atPath: seed, toPath: userdataPath)
             try seedVersion.write(to: seedStamp, atomically: true, encoding: .utf8)
@@ -575,7 +574,7 @@ final class GuestImage: ObservableObject {
         }
         if let short = snapshotSpaceShortfall() {
             HuskLog.log("guest", "not fetching the pre-booted snapshot: \(short)")
-            failed("Not enough free space for the pre-booted snapshot: \(short).")
+            failed(L10n.tr("Not enough free space for the pre-booted snapshot: \(short)."))
             return
         }
         isFetchingSnapshot = true
@@ -595,9 +594,7 @@ final class GuestImage: ObservableObject {
                         if let want = self.manifest?.snapshot.sha256, want != joined.digest {
                             try? FileManager.default.removeItem(at: joined.url)
                             self.isFetchingSnapshot = false
-                            self.failed("The snapshot did not match the release "
-                                      + "(sha256 \(joined.digest.prefix(12)), expected "
-                                      + "\(want.prefix(12))).")
+                            self.failed(L10n.tr("The snapshot did not match the release (sha256 \(joined.digest.prefix(12)), expected \(want.prefix(12)))."))
                             return
                         }
                         self.finishedSnapshot(tempURL: joined.url, digest: joined.digest)
@@ -642,7 +639,7 @@ final class GuestImage: ObservableObject {
                 try? FileManager.default.removeItem(at: dest)
                 try? FileManager.default.removeItem(atPath: self.snapshotStampPath)
                 DispatchQueue.main.async {
-                    self.state = .failed("Could not unpack the snapshot: \(error.localizedDescription)")
+                    self.state = .failed(L10n.tr("Could not unpack the snapshot: \(error.localizedDescription)"))
                 }
             }
         }
@@ -715,7 +712,7 @@ final class GuestImage: ObservableObject {
         else { return nil }
         guard free < need else { return nil }
         let gb = { (b: Int64) in String(format: "%.1f GB", Double(b) / 1e9) }
-        return "it needs \(gb(need)) free and the device has \(gb(free))"
+        return L10n.tr("it needs \(gb(need)) free and the device has \(gb(free))")
     }
 
     /// The staging files of a download or unpack that a previous run did not live to finish: gigabytes in tmp that iOS only
@@ -771,7 +768,7 @@ final class GuestImage: ObservableObject {
         var head = try input.read(upToCount: 10) ?? Data()
         guard head.count == 10, head[0] == 0x1f, head[1] == 0x8b, head[2] == 8 else {
             throw NSError(domain: "husk", code: 1, userInfo:
-                [NSLocalizedDescriptionKey: "not a gzip file"])
+                [NSLocalizedDescriptionKey: L10n.tr("not a gzip file")])
         }
         let flg = head[3]
         if flg & 0x04 != 0 {                                  // FEXTRA
@@ -792,7 +789,7 @@ final class GuestImage: ObservableObject {
         guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE,
                                       COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
             throw NSError(domain: "husk", code: 2, userInfo:
-                [NSLocalizedDescriptionKey: "inflate init failed"])
+                [NSLocalizedDescriptionKey: L10n.tr("inflate init failed")])
         }
         defer { compression_stream_destroy(&stream) }
 
@@ -819,7 +816,7 @@ final class GuestImage: ObservableObject {
                     if st == COMPRESSION_STATUS_END { finished = true; break }
                     if st == COMPRESSION_STATUS_ERROR {
                         throw NSError(domain: "husk", code: 3, userInfo:
-                            [NSLocalizedDescriptionKey: "inflate failed"])
+                            [NSLocalizedDescriptionKey: L10n.tr("inflate failed")])
                     }
                 } while stream.src_size > 0 || (last && !finished)
             }
@@ -845,7 +842,7 @@ final class GuestImage: ObservableObject {
             try? FileManager.default.removeItem(at: tempURL)
             HuskLog.log("guest", "image rejected: sha256 \(got.prefix(12)) but the "
                                + "release says \(want.prefix(12))")
-            state = .failed("The downloaded image did not match the release. Tap to retry.")
+            state = .failed(L10n.tr("The downloaded image did not match the release. Tap to retry."))
             return
         }
         // Validate BEFORE installing, so a bad download never becomes the thing
@@ -854,7 +851,7 @@ final class GuestImage: ObservableObject {
         if let why = check.problem {
             try? FileManager.default.removeItem(at: tempURL)
             HuskLog.log("guest", "downloaded file rejected: \(why)")
-            state = .failed("Download did not produce a disk image: \(why)")
+            state = .failed(L10n.tr("Download did not produce a disk image: \(why)"))
             return
         }
         let size = check.size ?? 0
@@ -937,10 +934,10 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
            !(200...299).contains(http.statusCode) {
             let body = (try? String(contentsOf: location, encoding: .utf8))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let detail = body.isEmpty ? "" : " — server said: \(body.prefix(200))"
+            let detail = body.isEmpty ? "" : L10n.tr(" — server said: \(body.prefix(200))")
             let url = downloadTask.originalRequest?.url?.absoluteString ?? "?"
             Task { @MainActor in
-                self.owner?.failed("HTTP \(http.statusCode) from \(url)\(detail)")
+                self.owner?.failed(L10n.tr("HTTP \(http.statusCode) from \(url)\(detail)"))
             }
             return
         }
@@ -954,7 +951,7 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             try FileManager.default.moveItem(at: location, to: stable)
         } catch {
             Task { @MainActor in
-                self.owner?.failed("could not stage download: \(error.localizedDescription)")
+                self.owner?.failed(L10n.tr("could not stage download: \(error.localizedDescription)"))
             }
             return
         }
@@ -1052,8 +1049,8 @@ private final class SnapshotFetcher: NSObject, URLSessionDownloadDelegate {
         // looking exactly like the file that was asked for.
         if let http = downloadTask.response as? HTTPURLResponse,
            !(200...299).contains(http.statusCode) {
-            fail("HTTP \(http.statusCode) fetching "
-               + (downloadTask.originalRequest?.url?.lastPathComponent ?? "a snapshot part"))
+            fail(L10n.tr("HTTP \(http.statusCode) fetching ")
+               + (downloadTask.originalRequest?.url?.lastPathComponent ?? L10n.tr("a snapshot part")))
             return
         }
         do {
@@ -1068,7 +1065,7 @@ private final class SnapshotFetcher: NSObject, URLSessionDownloadDelegate {
                 bytesDone += Int64(chunk.count)
             }
         } catch {
-            fail("could not join snapshot part \(index + 1): \(error.localizedDescription)")
+            fail(L10n.tr("could not join snapshot part \(index + 1): \(error.localizedDescription)"))
             return
         }
         try? FileManager.default.removeItem(at: location)

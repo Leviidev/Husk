@@ -24,7 +24,7 @@ enum HuskFilePicker {
         live = coordinator
         guard let top = topController() else {
             live = nil
-            onFail?("There is no screen to show the file picker on.")
+            onFail?(L10n.tr("There is no screen to show the file picker on."))
             onCancel?()
             return
         }

@@ -12,9 +12,9 @@ struct TLAppSettings: Codable, Equatable {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .auto: return "Automatic"
-            case .landscape: return "Landscape"
-            case .portrait: return "Portrait"
+            case .auto: return L10n.tr("Automatic")
+            case .landscape: return L10n.tr("Landscape")
+            case .portrait: return L10n.tr("Portrait")
             }
         }
     }
@@ -25,18 +25,18 @@ struct TLAppSettings: Codable, Equatable {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .low: return "Low"
-            case .medium: return "Medium"
-            case .high: return "High"
-            case .native: return "Native"
+            case .low: return L10n.tr("Low")
+            case .medium: return L10n.tr("Medium")
+            case .high: return L10n.tr("High")
+            case .native: return L10n.tr("Native")
             }
         }
         var detail: String {
             switch self {
-            case .low: return "1 pixel per point. Fastest."
-            case .medium: return "1.5 pixels per point."
-            case .high: return "2 pixels per point. The default."
-            case .native: return "Every pixel the screen has. Sharpest, and heaviest."
+            case .low: return L10n.tr("1 pixel per point. Fastest.")
+            case .medium: return L10n.tr("1.5 pixels per point.")
+            case .high: return L10n.tr("2 pixels per point. The default.")
+            case .native: return L10n.tr("Every pixel the screen has. Sharpest, and heaviest.")
             }
         }
         @MainActor var scale: CGFloat {
@@ -56,9 +56,9 @@ struct TLAppSettings: Codable, Equatable {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .auto: return "Automatic"
-            case .always: return "Always"
-            case .never: return "Never"
+            case .auto: return L10n.tr("Automatic")
+            case .always: return L10n.tr("Always")
+            case .never: return L10n.tr("Never")
             }
         }
     }
@@ -70,9 +70,9 @@ struct TLAppSettings: Codable, Equatable {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .auto: return "Default"
-            case .window: return "Window"
-            case .fullScreen: return "Full Screen"
+            case .auto: return L10n.tr("Default")
+            case .window: return L10n.tr("Window")
+            case .fullScreen: return L10n.tr("Full Screen")
             }
         }
     }
@@ -168,7 +168,7 @@ struct TLAppSettingsView: View {
             Section {
                 HStack(spacing: 14) {
                     AppIcon(path: app.iconPath, size: 52)
-                    TextField("Name", text: $name)
+                    TextField(L10n.tr("Name"), text: $name)
                         .focused($nameFocused)
                         .submitLabel(.done)
                         .onSubmit { rename() }
@@ -176,45 +176,42 @@ struct TLAppSettingsView: View {
                 }
                 .padding(.vertical, 2)
             } footer: {
-                Text("What the game is called in Husk. The game itself is not changed.")
+                Text(L10n.tr("What the game is called in Husk. The game itself is not changed."))
             }
 
             Section {
-                Picker("Orientation", selection: $settings.orientation) {
+                Picker(L10n.tr("Orientation"), selection: $settings.orientation) {
                     ForEach(TLAppSettings.Orientation.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Resolution", selection: $settings.resolution) {
+                Picker(L10n.tr("Resolution"), selection: $settings.resolution) {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Performance readout", isOn: $settings.showStats)
-                Toggle("Keep the screen on", isOn: $settings.keepAwake)
+                Toggle(L10n.tr("Performance readout"), isOn: $settings.showStats)
+                Toggle(L10n.tr("Keep the screen on"), isOn: $settings.keepAwake)
             } header: {
-                Text("Display")
+                Text(L10n.tr("Display"))
             } footer: {
-                Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again.")
+                Text(L10n.tr("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already running in this session needs Husk closed and opened again."))
             }
 
             Section {
-                Picker("Open In", selection: $settings.window) {
+                Picker(L10n.tr("Open In"), selection: $settings.window) {
                     ForEach(TLAppSettings.WindowMode.allCases) { m in
-                        Text(m == .auto ? "Default (\(AppWindows.defaultWindowed ? "Window" : "Full Screen"))" : m.title).tag(m)
+                        Text(m == .auto ? L10n.tr("Default (\(AppWindows.defaultWindowed ? L10n.tr("Window") : L10n.tr("Full Screen")))") : m.title).tag(m)
                     }
                 }
             } header: {
-                Text("Multitasking")
+                Text(L10n.tr("Multitasking"))
             } footer: {
-                Text("In a window, \(app.label) runs over Husk: move it by its title bar, resize it from the corner, and minimise it to "
-                   + "the dock at the edge of the screen while you use the rest of Husk.")
+                Text(L10n.tr("In a window, \(app.label) runs over Husk: move it by its title bar, resize it from the corner, and minimise it to the dock at the edge of the screen while you use the rest of Husk."))
             }
 
             Section {
-                Toggle("Hide the interface", isOn: $settings.cleanView)
+                Toggle(L10n.tr("Hide the interface"), isOn: $settings.cleanView)
             } header: {
-                Text("Screenshots")
+                Text(L10n.tr("Screenshots"))
             } footer: {
-                Text("The game starts with nothing over it: no bar, no controller, no readout. Tap with three fingers at once to bring "
-                   + "the bar back, and again to hide it. The Hide button in the bar does the same while playing.")
+                Text(L10n.tr("The game starts with nothing over it: no bar, no controller, no readout. Tap with three fingers at once to bring the bar back, and again to hide it. The Hide button in the bar does the same while playing."))
             }
 
             if app.packageName == GeodeSupport.gamePackage {
@@ -222,58 +219,54 @@ struct TLAppSettingsView: View {
                     Toggle("Geode", isOn: $settings.geode)
                     if settings.geode { geodeStatus }
                 } header: {
-                    Text("Mods")
+                    Text(L10n.tr("Mods"))
                 } footer: {
-                    Text("Geode is the mod loader for Geometry Dash. With it on, Husk downloads Geode for this version of the "
-                       + "game, and mods are found and installed in the game itself, from Geode's button on the main menu. "
-                       + "Applies the next time the game starts.")
+                    Text(L10n.tr("Geode is the mod loader for Geometry Dash. With it on, Husk downloads Geode for this version of the game, and mods are found and installed in the game itself, from Geode's button on the main menu. Applies the next time the game starts."))
                 }
             }
 
             Section {
-                Picker("On-screen controller", selection: $settings.pad) {
+                Picker(L10n.tr("On-screen controller"), selection: $settings.pad) {
                     ForEach(TLAppSettings.PadMode.allCases) { Text($0.title).tag($0) }
                 }
                 if settings.pad != .never {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Opacity")
+                        Text(L10n.tr("Opacity"))
                         Slider(value: $settings.padOpacity, in: 0.3...1)
                     }
-                    Toggle("Vibrate on a press", isOn: $settings.haptics)
+                    Toggle(L10n.tr("Vibrate on a press"), isOn: $settings.haptics)
                 }
             } header: {
-                Text("Controller")
+                Text(L10n.tr("Controller"))
             } footer: {
-                Text("Automatic offers the controller for games that cannot be played without one (Unreal Engine games), when no real "
-                   + "controller is connected. Always offers it for any game that understands one. A paired controller is always used.")
+                Text(L10n.tr("Automatic offers the controller for games that cannot be played without one (Unreal Engine games), when no real controller is connected. Always offers it for any game that understands one. A paired controller is always used."))
             }
 
             Section {
                 Button { AppClip.generate(for: app) } label: {
-                    Label("Generate App Clip", systemImage: "apps.iphone.badge.plus")
+                    Label(L10n.tr("Generate App Clip"), systemImage: "apps.iphone.badge.plus")
                 }
             } header: {
-                Text("Home Screen")
+                Text(L10n.tr("Home Screen"))
             } footer: {
-                Text("Puts \(app.label) on your Home Screen with its own icon. Tapping it opens Husk straight into the game. Husk "
-                   + "downloads a profile: open Settings, tap Profile Downloaded, then Install.")
+                Text(L10n.tr("Puts \(app.label) on your Home Screen with its own icon. Tapping it opens Husk straight into the game. Husk downloads a profile: open Settings, tap Profile Downloaded, then Install."))
             }
 
             Section {
-                DetailRow(label: "Saved by the game", value: dataSize, mono: false)
+                DetailRow(label: L10n.tr("Saved by the game"), value: dataSize, mono: false)
                 Button(role: .destructive) { confirmReset = true } label: {
-                    Label("Reset Game Data", systemImage: "arrow.counterclockwise")
+                    Label(L10n.tr("Reset Game Data"), systemImage: "arrow.counterclockwise")
                 }
                 .disabled(inUse || dataDirs.isEmpty)
             } header: {
-                Text("Data")
+                Text(L10n.tr("Data"))
             } footer: {
-                Text(inUse ? "The game is loaded in this session. Close Husk completely and open it again to reset its data."
-                           : "Deletes what the game saved and downloaded here: saves, settings and caches. The game itself stays.")
+                Text(inUse ? L10n.tr("The game is loaded in this session. Close Husk completely and open it again to reset its data.")
+                           : L10n.tr("Deletes what the game saved and downloaded here: saves, settings and caches. The game itself stays."))
             }
         }
         .huskForm()
-        .navigationTitle("Settings")
+        .navigationTitle(L10n.tr("Settings"))
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: settings) { $0.save(app.id) }
         .onChange(of: settings.geode) { on in
@@ -282,15 +275,15 @@ struct TLAppSettingsView: View {
         .onChange(of: nameFocused) { focused in if !focused { rename() } }
         .onDisappear { rename() }
         .task { dataSize = await Self.measure(dataDirs) }
-        .confirmationDialog("Reset the data of \(app.label)?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("Reset Game Data", role: .destructive) {
+        .confirmationDialog(L10n.tr("Reset the data of \(app.label)?"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(L10n.tr("Reset Game Data"), role: .destructive) {
                 for dir in dataDirs { try? FileManager.default.removeItem(at: dir) }
                 HuskLog.log("tl", "reset the data of \(app.label)")
                 Task { dataSize = await Self.measure(dataDirs) }
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L10n.tr("Cancel"), role: .cancel) { }
         } message: {
-            Text("Saves, settings and caches the game made here are deleted.")
+            Text(L10n.tr("Saves, settings and caches the game made here are deleted."))
         }
     }
 
@@ -298,15 +291,15 @@ struct TLAppSettingsView: View {
     private var geodeStatus: some View {
         switch geode.current(app) {
         case .idle:
-            Button("Download Geode") { Task { await geode.prepare(app) } }
+            Button(L10n.tr("Download Geode")) { Task { await geode.prepare(app) } }
         case .working(let what):
             HStack(spacing: 10) { ProgressView(); Text(what).foregroundStyle(.secondary) }
         case .ready(let version):
-            LabeledContent("Geode", value: "v\(version), ready")
+            LabeledContent("Geode", value: L10n.tr("v\(version), ready"))
         case .failed(let why):
             VStack(alignment: .leading, spacing: 6) {
                 Text(why).font(.footnote).foregroundStyle(.orange)
-                Button("Try Again") { Task { await geode.prepare(app) } }
+                Button(L10n.tr("Try Again")) { Task { await geode.prepare(app) } }
             }
         }
     }

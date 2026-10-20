@@ -12,8 +12,8 @@ extension TLReport {
     /// What runs it, in words.
     var runnerName: String {
         if runsOnNativeRuntime { return nativeEngineName }
-        if let web = webKind { return "\(web.name) (web app)" }
-        return canRun ? "Java (Husk's interpreter)" : "None"
+        if let web = webKind { return L10n.tr("\(web.name) (web app)") }
+        return canRun ? L10n.tr("Java (Husk's interpreter)") : L10n.tr("None")
     }
 }
 
@@ -53,24 +53,24 @@ struct TLTechnicalView: View {
 
     var body: some View {
         List {
-            Section("Runtime") {
-                row("Runs With", report?.runnerName ?? "Not scanned")
-                row("Package", app.packageName ?? "—", mono: true)
-                row("Architectures", report.map { $0.abis.isEmpty ? "None (Java only)" : $0.abis.joined(separator: ", ") } ?? "—")
+            Section(L10n.tr("Runtime")) {
+                row(L10n.tr("Runs With"), report?.runnerName ?? L10n.tr("Not scanned"))
+                row(L10n.tr("Package"), app.packageName ?? "—", mono: true)
+                row(L10n.tr("Architectures"), report.map { $0.abis.isEmpty ? L10n.tr("None (Java only)") : $0.abis.joined(separator: ", ") } ?? "—")
                 if let summary = report?.displaySummary {
                     Text(summary).font(.footnote).foregroundStyle(.secondary)
                 }
             }
 
-            Section("Package") {
+            Section(L10n.tr("Package")) {
                 ForEach(app.apks, id: \.self) { apk in
                     row((apk as NSString).lastPathComponent, size(of: apk), mono: true)
                 }
                 if let r = report {
-                    row("Java Code", r.dexCount == 0 ? "None" : "\(r.dexCount) DEX file\(r.dexCount == 1 ? "" : "s"), \(bytes(r.dexBytes))")
-                    row("Android Libraries Used", "\(r.systemLibraries.count)")
+                    row(L10n.tr("Java Code"), r.dexCount == 0 ? L10n.tr("None") : L10n.tr("\(r.dexCount) DEX file\(r.dexCount == 1 ? "" : "s"), \(bytes(r.dexBytes))"))
+                    row(L10n.tr("Android Libraries Used"), "\(r.systemLibraries.count)")
                 }
-                row("Saved Data", dataSize)
+                row(L10n.tr("Saved Data"), dataSize)
             }
 
             if !arm64.isEmpty {
@@ -87,9 +87,9 @@ struct TLTechnicalView: View {
                         .padding(.vertical, 2)
                     }
                 } header: {
-                    Text("Native Libraries (\(arm64.count))")
+                    Text(L10n.tr("Native Libraries (\(arm64.count))"))
                 } footer: {
-                    Text("How each 64-bit library maps onto the iPhone: its relocations, the instructions Husk rewrites, and anything the loader works around.")
+                    Text(L10n.tr("How each 64-bit library maps onto the iPhone: its relocations, the instructions Husk rewrites, and anything the loader works around."))
                 }
             }
 
@@ -103,19 +103,19 @@ struct TLTechnicalView: View {
                             .padding(.vertical, 4)
                     }
                     .frame(maxHeight: 320)
-                    Button { sharing = true } label: { Label("Share Log", systemImage: "square.and.arrow.up") }
+                    Button { sharing = true } label: { Label(L10n.tr("Share Log"), systemImage: "square.and.arrow.up") }
                 } else {
-                    Text(log == nil ? "Reading…" : "No log yet. It is written the first time the game runs.")
+                    Text(log == nil ? L10n.tr("Reading…") : L10n.tr("No log yet. It is written the first time the game runs."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             } header: {
-                Text("Last Run")
+                Text(L10n.tr("Last Run"))
             } footer: {
-                Text("The end of the log from the last time the game started. Share it when reporting a problem.")
+                Text(L10n.tr("The end of the log from the last time the game started. Share it when reporting a problem."))
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Technical Details")
+        .navigationTitle(L10n.tr("Technical Details"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             let url = logURL, dir = app.dataDirectory
@@ -132,7 +132,7 @@ struct TLTechnicalView: View {
                 return (text, total)
             }.value
             log = text
-            dataSize = total == 0 ? "Nothing yet" : bytes(total)
+            dataSize = total == 0 ? L10n.tr("Nothing yet") : bytes(total)
         }
         .sheet(isPresented: $sharing) { ShareSheet(items: [logURL]) }
     }
@@ -150,13 +150,13 @@ struct TLTechnicalView: View {
 
     private func libraryDetail(_ lib: TLLibrary) -> String {
         var parts: [String] = []
-        if let r = lib.relocations { parts.append("\(r) relocations") }
-        if let t = lib.tpidrReads, t > 0 { parts.append("\(t) thread-register reads") }
-        if let s = lib.svc, s > 0 { parts.append("\(s) system calls") }
-        if let c = lib.conflictPages, c > 0 { parts.append("\(c) shared code/data pages") }
-        if lib.tls == true { parts.append("thread-local storage") }
+        if let r = lib.relocations { parts.append(L10n.tr("\(r) relocations")) }
+        if let t = lib.tpidrReads, t > 0 { parts.append(L10n.tr("\(t) thread-register reads")) }
+        if let s = lib.svc, s > 0 { parts.append(L10n.tr("\(s) system calls")) }
+        if let c = lib.conflictPages, c > 0 { parts.append(L10n.tr("\(c) shared code/data pages")) }
+        if lib.tls == true { parts.append(L10n.tr("thread-local storage")) }
         if !lib.notes.isEmpty { parts.append(contentsOf: lib.notes) }
-        return parts.isEmpty ? (lib.status == "ok" ? "Loads as it is" : lib.status) : parts.joined(separator: " · ")
+        return parts.isEmpty ? (lib.status == "ok" ? L10n.tr("Loads as it is") : lib.status) : parts.joined(separator: " · ")
     }
 
     private func size(of path: String) -> String {

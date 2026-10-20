@@ -78,7 +78,7 @@ final class PlayStoreManager: ObservableObject {
     func signIn(email: String, oauthToken: String) async {
         isLoading = true
         errorMessage = nil
-        statusMessage = "Exchanging token with Google…"
+        statusMessage = L10n.tr("Exchanging token with Google…")
 
         do {
             // 1. Trade oauth_token for aasToken
@@ -86,18 +86,18 @@ final class PlayStoreManager: ObservableObject {
             var s = PlaySession(email: email, aasToken: aas)
 
             // 2. Checkin (register device)
-            statusMessage = "Registering device with Google Play…"
+            statusMessage = L10n.tr("Registering device with Google Play…")
             let (gsfID, consistency) = try await PlayAPI.checkin()
             s.gsfID = gsfID
             s.consistencyToken = consistency
 
             // 3. Acquire bearer token for Play Store
-            statusMessage = "Authorizing Google Play session…"
+            statusMessage = L10n.tr("Authorizing Google Play session…")
             let bearer = try await PlayAPI.playToken(s)
             s.bearer = bearer
 
             // 4. Upload device config (Pixel 8)
-            statusMessage = "Uploading device profile…"
+            statusMessage = L10n.tr("Uploading device profile…")
             let configToken = try await PlayAPI.uploadDeviceConfig(s)
             s.deviceConfigToken = configToken
 
@@ -121,7 +121,7 @@ final class PlayStoreManager: ObservableObject {
     func signInAsGuest(customDispenserURL: String? = nil) async {
         isLoading = true
         errorMessage = nil
-        statusMessage = "Connecting to Aurora guest server…"
+        statusMessage = L10n.tr("Connecting to Aurora guest server…")
 
         do {
             let url = customDispenserURL ?? PlayAPI.defaultDispenserURL
@@ -251,7 +251,7 @@ final class PlayStoreManager: ObservableObject {
                 self.downloadTasks[pkg] = nil
                 self.downloadTitles.removeValue(forKey: pkg)
                 if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled { return }
-                self.errorMessage = "Failed to download \(app.title): \(error.localizedDescription)"
+                self.errorMessage = L10n.tr("Failed to download \(app.title): \(error.localizedDescription)")
                 HuskLog.log("store", "Download error for \(pkg): \(error.localizedDescription)")
             }
         }

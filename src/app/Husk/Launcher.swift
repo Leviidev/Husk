@@ -97,8 +97,8 @@ enum LibraryItem: Identifiable, Hashable {
         guard let date = lastUsed else { return nil }
         let rel = RelativeDateTimeFormatter()
         rel.unitsStyle = .full
-        let ago = date.timeIntervalSinceNow > -60 ? "just now" : rel.localizedString(for: date, relativeTo: Date())
-        return (isGame ? "Played " : "Opened ") + ago
+        let ago = date.timeIntervalSinceNow > -60 ? L10n.tr("just now") : rel.localizedString(for: date, relativeTo: Date())
+        return (isGame ? L10n.tr("Played ") : L10n.tr("Opened ")) + ago
     }
 }
 
@@ -108,9 +108,9 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .all: return "All"
-        case .games: return "Games"
-        case .apps: return "Apps"
+        case .all: return L10n.tr("All")
+        case .games: return L10n.tr("Games")
+        case .apps: return L10n.tr("Apps")
         }
     }
 }
@@ -266,21 +266,21 @@ struct HomeView: View {
                         .buttonStyle(CardButtonStyle())
                         .id(item.id)
                         .accessibilityLabel(item.title)
-                        .accessibilityHint(isSelected ? (item.isGame ? "Plays it" : "Opens it") : "Selects it")
+                        .accessibilityHint(isSelected ? (item.isGame ? L10n.tr("Plays it") : L10n.tr("Opens it")) : L10n.tr("Selects it"))
                         .libraryItemMenu(item) { router.home.append($0) }
                     }
                     if items.count > 1 {
                         Button { router.tab = .library } label: {
                             VStack(spacing: 6) {
                                 Image(systemName: "square.grid.2x2.fill").font(.system(size: 20, weight: .semibold))
-                                Text("All").font(.system(size: 12, weight: .semibold))
+                                Text(L10n.tr("All")).font(.system(size: 12, weight: .semibold))
                             }
                             .foregroundStyle(Console.text.opacity(0.8))
                             .frame(width: 72, height: 72)
                             .background(Console.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
                         .buttonStyle(CardButtonStyle())
-                        .accessibilityLabel("Open the Library")
+                        .accessibilityLabel(L10n.tr("Open the Library"))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -325,10 +325,10 @@ struct HomeView: View {
             }
             HStack(spacing: 10) {
                 Button { Launcher.play(item) { router.home.append($0) } } label: {
-                    Label(item.isGame ? "Play" : "Open", systemImage: item.isGame ? "play.fill" : "arrow.up.forward.app.fill")
+                    Label(item.isGame ? L10n.tr("Play") : L10n.tr("Open"), systemImage: item.isGame ? "play.fill" : "arrow.up.forward.app.fill")
                 }
                 .buttonStyle(ConsolePlayButtonStyle())
-                .accessibilityLabel((item.isGame ? "Play " : "Open ") + item.title)
+                .accessibilityLabel((item.isGame ? L10n.tr("Play ") : L10n.tr("Open ")) + item.title)
                 HomeMoreButton(item: item)
             }
             .padding(.top, 10)
@@ -347,7 +347,7 @@ struct HomeView: View {
             .map(\.0)
         if !added.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Recently added")
+                Text(L10n.tr("Recently added"))
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Console.text)
                     .padding(.horizontal, 20)
@@ -372,16 +372,16 @@ struct HomeView: View {
     private var empty: some View {
         if router.platform != .all, !Launcher.items(store: store, host: host).isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text(router.platform == .ps4 ? "No PS4 games yet" : "No Android games or apps yet")
+                Text(router.platform == .ps4 ? L10n.tr("No PS4 games yet") : L10n.tr("No Android games or apps yet"))
                     .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(Console.text)
                 Text(router.platform == .ps4
-                     ? "Put an extracted PS4 game folder in Files, in Husk's PS4 Games folder, or add one with the + in the menu."
-                     : "Add an APK or a bundle from the menu, or share one to Husk.")
+                     ? L10n.tr("Put an extracted PS4 game folder in Files, in Husk's PS4 Games folder, or add one with the + in the menu.")
+                     : L10n.tr("Add an APK or a bundle from the menu, or share one to Husk."))
                     .font(.subheadline)
                     .foregroundStyle(Console.textDim)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Show All") { router.platform = .all }
+                Button(L10n.tr("Show All")) { router.platform = .all }
                     .buttonStyle(ConsolePlayButtonStyle())
                     .padding(.top, 6)
             }
@@ -522,7 +522,7 @@ private struct HomeMoreButton: View {
                 .frame(width: 52, height: 52)
                 .background(Console.raised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .accessibilityLabel("More for \(item.title)")
+        .accessibilityLabel(L10n.tr("More for \(item.title)"))
         .removeItemDialog(item, isPresented: $confirmRemove)
     }
 }
@@ -535,15 +535,15 @@ private struct HomeAvatar: View {
 
     var body: some View {
         Menu {
-            Button { router.addSomething() } label: { Label("Add a Game or App", systemImage: "plus") }
-            Button { router.showDownloads = true } label: { Label("Downloads", systemImage: "arrow.down.circle") }
-            Button { router.showFiles = true } label: { Label("Files", systemImage: "folder") }
+            Button { router.addSomething() } label: { Label(L10n.tr("Add a Game or App"), systemImage: "plus") }
+            Button { router.showDownloads = true } label: { Label(L10n.tr("Downloads"), systemImage: "arrow.down.circle") }
+            Button { router.showFiles = true } label: { Label(L10n.tr("Files"), systemImage: "folder") }
             Divider()
             Button { JITNotice.toggle(jit) } label: {
-                Label(Launcher.jitOn ? "JIT On (\(JITNotice.via(jit)))" : "Turn On JIT", systemImage: "bolt.fill")
+                Label(Launcher.jitOn ? L10n.tr("JIT On (\(JITNotice.via(jit)))") : L10n.tr("Turn On JIT"), systemImage: "bolt.fill")
             }
             .disabled(jit.busy)
-            Button { router.tab = .settings } label: { Label("Settings", systemImage: "gearshape") }
+            Button { router.tab = .settings } label: { Label(L10n.tr("Settings"), systemImage: "gearshape") }
         } label: {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "person.fill")
@@ -559,7 +559,7 @@ private struct HomeAvatar: View {
                     .offset(x: 1, y: -1)
             }
         }
-        .accessibilityLabel("Menu")
+        .accessibilityLabel(L10n.tr("Menu"))
     }
 }
 
@@ -586,13 +586,13 @@ private struct JITNotice: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("JIT is off").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-                        Text(jit.busy ? (jit.status ?? "Turning on…") : "Games need it. Tap to turn it on.")
+                        Text(L10n.tr("JIT is off")).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+                        Text(jit.busy ? (jit.status ?? L10n.tr("Turning on…")) : L10n.tr("Games need it. Tap to turn it on."))
                             .font(.system(size: 12)).foregroundStyle(Console.textDim).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                     if jit.busy { ProgressView() } else {
-                        Text("Turn On")
+                        Text(L10n.tr("Turn On"))
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 12).frame(height: 28)
@@ -625,11 +625,11 @@ private struct DownloadsNotice: View {
             let total = running.reduce(Int64(0)) { $0 + $1.total }
             let got = running.reduce(Int64(0)) { $0 + $1.received }
             let pct = total > 0 ? " · \(Int(Double(got) / Double(total) * 100))%" : ""
-            return "\(running.count) downloading\(pct)"
+            return L10n.tr("\(running.count) downloading\(pct)")
         }
-        if downloads.jobs.contains(where: \.failed) { return "A download failed" }
-        if let release = updates.available { return "Husk \(release.version) is out" }
-        if guest.update.isSomething { return "Android update ready" }
+        if downloads.jobs.contains(where: \.failed) { return L10n.tr("A download failed") }
+        if let release = updates.available { return L10n.tr("Husk \(release.version) is out") }
+        if guest.update.isSomething { return L10n.tr("Android update ready") }
         return nil
     }
 
@@ -665,17 +665,15 @@ private struct WelcomeCard: View {
                 .frame(width: 60, height: 60)
                 .background(Console.raised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 6) {
-                Text("Add your first game")
+                Text(L10n.tr("Add your first game"))
                     .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(Console.text)
-                Text("Pick an APK or a bundle (.xapk, .apkm, .apks), or share one to Husk from Files or Safari. Games run "
-                   + "straight on your iPhone. Other apps run inside Android. PS4 games are extracted folders put in "
-                   + "Husk's PS4 Games folder.")
+                Text(L10n.tr("Pick an APK or a bundle (.xapk, .apkm, .apks), or share one to Husk from Files or Safari. Games run straight on your iPhone. Other apps run inside Android. PS4 games are extracted folders put in Husk's PS4 Games folder."))
                     .font(.subheadline)
                     .foregroundStyle(Console.textDim)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button { router.addSomething() } label: { Text("Add a Game or App") }
+            Button { router.addSomething() } label: { Text(L10n.tr("Add a Game or App")) }
                 .buttonStyle(ConsolePlayButtonStyle())
         }
         .padding(20)
@@ -798,7 +796,7 @@ struct LibraryScreen: View {
                         PlatformChips(selection: $router.platform)
                         Spacer(minLength: 0)
                         Menu {
-                            Picker("Show", selection: $router.libraryFilter) {
+                            Picker(L10n.tr("Show"), selection: $router.libraryFilter) {
                                 ForEach(LibraryFilter.allCases) { Text($0.title).tag($0) }
                             }
                         } label: {
@@ -808,9 +806,9 @@ struct LibraryScreen: View {
                                 .foregroundStyle(router.libraryFilter == .all ? Console.textDim : Theme.accent)
                                 .frame(width: 36, height: 36)
                         }
-                        .accessibilityLabel("Games or Apps")
+                        .accessibilityLabel(L10n.tr("Games or Apps"))
                     }
-                    SearchField(text: $query, prompt: "Search games and apps")
+                    SearchField(text: $query, prompt: L10n.tr("Search games and apps"))
                     if let busy = store.busy { BusyStrip(text: busy) }
                     if let busy = host.busy { BusyStrip(text: busy) }
 
@@ -825,12 +823,12 @@ struct LibraryScreen: View {
                     if router.platform != .android {
                         section("PlayStation 4", playstation,
                                 empty: router.platform == .ps4 && query.isEmpty
-                                    ? (PS4Store.available ? "Put an extracted game folder in Husk's PS4 Games folder in Files."
-                                                          : "PS4 games need iOS 17.4 or later.")
+                                    ? (PS4Store.available ? L10n.tr("Put an extracted game folder in Husk's PS4 Games folder in Files.")
+                                                          : L10n.tr("PS4 games need iOS 17.4 or later."))
                                     : nil)
                     }
                     if router.platform != .ps4 {
-                        section("Android", android, empty: query.isEmpty && router.libraryFilter == .all ? "Add a game with the + button." : nil)
+                        section("Android", android, empty: query.isEmpty && router.libraryFilter == .all ? L10n.tr("Add a game with the + button.") : nil)
                     }
                     if !query.isEmpty, items.isEmpty { NoResults(query: query) }
                 }
@@ -841,12 +839,12 @@ struct LibraryScreen: View {
             .huskHideScrollIndicators()
             .huskDismissKeyboardOnScroll()
             .background(Console.page.ignoresSafeArea())
-            .navigationTitle("Library")
+            .navigationTitle(L10n.tr("Library"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { router.addSomething() } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Add a Game or App")
+                        .accessibilityLabel(L10n.tr("Add a Game or App"))
                 }
             }
             .libraryDestinations()
@@ -887,12 +885,12 @@ struct LibraryScreen: View {
         switch item {
         case .game(let g):
             if g.packageName == GeodeSupport.launcherPackage { return "Geode" }
-            return g.report?.canRun == true ? nil : "May not run"
+            return g.report?.canRun == true ? nil : L10n.tr("May not run")
         case .android:
-            if AndroidHost.shared.isReady { return "Running" }
-            return guest.state == .ready ? nil : "Not installed"
-        case .app: return "Emulator"
-        case .ps4: return PS4Store.available ? nil : "Needs iOS 17.4"
+            if AndroidHost.shared.isReady { return L10n.tr("Running") }
+            return guest.state == .ready ? nil : L10n.tr("Not installed")
+        case .app: return L10n.tr("Emulator")
+        case .ps4: return PS4Store.available ? nil : L10n.tr("Needs iOS 17.4")
         }
     }
 }
@@ -983,19 +981,19 @@ struct LibraryItemActions: View {
 
     var body: some View {
         Button { Launcher.play(item, push: push) } label: {
-            Label(item.isGame ? "Play" : "Open", systemImage: item.isGame ? "play.fill" : "arrow.up.forward.app")
+            Label(item.isGame ? L10n.tr("Play") : L10n.tr("Open"), systemImage: item.isGame ? "play.fill" : "arrow.up.forward.app")
         }
         if showsDetails, !item.runsInAndroid {
-            Button { push(item.route) } label: { Label("Details", systemImage: "info.circle") }
+            Button { push(item.route) } label: { Label(L10n.tr("Details"), systemImage: "info.circle") }
         }
         if case .game(let g) = item {
-            Button { push(.gameSettings(g.id)) } label: { Label("Settings", systemImage: "slider.horizontal.3") }
+            Button { push(.gameSettings(g.id)) } label: { Label(L10n.tr("Settings"), systemImage: "slider.horizontal.3") }
             Divider()
-            Button(role: .destructive) { askRemove() } label: { Label("Remove", systemImage: "trash") }
+            Button(role: .destructive) { askRemove() } label: { Label(L10n.tr("Remove"), systemImage: "trash") }
         } else if case .app(let p) = item, AndroidHost.shared.isReady {
             Divider()
-            Button(role: .destructive) { askRemove() } label: { Label("Uninstall", systemImage: "trash") }
-                .accessibilityHint("Removes \(p.label) from Android")
+            Button(role: .destructive) { askRemove() } label: { Label(L10n.tr("Uninstall"), systemImage: "trash") }
+                .accessibilityHint(L10n.tr("Removes \(p.label) from Android"))
         }
     }
 }
@@ -1020,11 +1018,11 @@ private struct RemoveItemDialog: ViewModifier {
             }
     }
 
-    private var removeVerb: String { if case .app = item { return "Uninstall" }; return "Remove" }
+    private var removeVerb: String { if case .app = item { return L10n.tr("Uninstall") }; return L10n.tr("Remove") }
     private var removeTitle: String { "\(removeVerb) \(item.title)?" }
     private var removeMessage: String {
-        if case .app = item { return "It is uninstalled from Android, with its data." }
-        return "Its files and saved progress are deleted from Husk."
+        if case .app = item { return L10n.tr("It is uninstalled from Android, with its data.") }
+        return L10n.tr("Its files and saved progress are deleted from Husk.")
     }
 }
 
@@ -1106,14 +1104,14 @@ struct SearchField: View {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Clear")
+                    .accessibilityLabel(L10n.tr("Clear"))
                 }
             }
             .padding(.horizontal, 10)
             .frame(height: 38)
             .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             if focused {
-                Button("Cancel") { text = ""; focused = false }
+                Button(L10n.tr("Cancel")) { text = ""; focused = false }
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -1127,8 +1125,8 @@ struct NoResults: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 28, weight: .light)).foregroundStyle(.secondary)
-            Text("No Results").font(.headline)
-            Text("Nothing here is called “\(query)”.").font(.subheadline).foregroundStyle(.secondary)
+            Text(L10n.tr("No Results")).font(.headline)
+            Text(L10n.tr("Nothing here is called “\(query)”.")).font(.subheadline).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
@@ -1174,6 +1172,6 @@ private struct LibraryRouteView: View {
 
 private struct GoneView: View {
     var body: some View {
-        Text("This was removed.").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+        Text(L10n.tr("This was removed.")).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

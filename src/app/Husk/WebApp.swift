@@ -318,14 +318,14 @@ final class WebAppRuntime: NSObject {
             ok(["type": "loadstop"], keep: true)
         case ("Notification", "alert"):
             dialog(title: args[safe: 1] as? String, message: args[safe: 0] as? String ?? "",
-                   buttons: [(args[safe: 2] as? String) ?? "OK"]) { [weak self] _, _ in self?.cordovaResult(id, success: true, nil) }
+                   buttons: [(args[safe: 2] as? String) ?? L10n.tr("OK")]) { [weak self] _, _ in self?.cordovaResult(id, success: true, nil) }
         case ("Notification", "confirm"):
-            let labels = (args[safe: 2] as? [String]) ?? ["OK", "Cancel"]
+            let labels = (args[safe: 2] as? [String]) ?? [L10n.tr("OK"), L10n.tr("Cancel")]
             dialog(title: args[safe: 1] as? String, message: args[safe: 0] as? String ?? "", buttons: labels) { [weak self] i, _ in
                 self?.cordovaResult(id, success: true, i + 1)
             }
         case ("Notification", "prompt"):
-            let labels = (args[safe: 2] as? [String]) ?? ["OK", "Cancel"]
+            let labels = (args[safe: 2] as? [String]) ?? [L10n.tr("OK"), L10n.tr("Cancel")]
             dialog(title: args[safe: 1] as? String, message: args[safe: 0] as? String ?? "", buttons: labels,
                    field: args[safe: 3] as? String ?? "") { [weak self] i, text in
                 self?.cordovaResult(id, success: true, ["buttonIndex": i + 1, "input1": text ?? ""])
@@ -493,7 +493,7 @@ extension WebAppRuntime: WKUIDelegate, WKNavigationDelegate {
                 completionHandler(answer)
                 return
             }
-            dialog(title: nil, message: prompt, buttons: ["OK", "Cancel"], field: defaultText ?? "") { i, text in
+            dialog(title: nil, message: prompt, buttons: [L10n.tr("OK"), L10n.tr("Cancel")], field: defaultText ?? "") { i, text in
                 completionHandler(i == 0 ? text : nil)
             }
         }
@@ -501,12 +501,12 @@ extension WebAppRuntime: WKUIDelegate, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                              initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
-        MainActor.assumeIsolated { dialog(title: nil, message: message, buttons: ["OK"]) { _, _ in completionHandler() } }
+        MainActor.assumeIsolated { dialog(title: nil, message: message, buttons: [L10n.tr("OK")]) { _, _ in completionHandler() } }
     }
 
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
                              initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
-        MainActor.assumeIsolated { dialog(title: nil, message: message, buttons: ["OK", "Cancel"]) { i, _ in completionHandler(i == 0) } }
+        MainActor.assumeIsolated { dialog(title: nil, message: message, buttons: [L10n.tr("OK"), L10n.tr("Cancel")]) { i, _ in completionHandler(i == 0) } }
     }
 
     /// target=_blank and window.open: the link opens outside, as Android's WebView hands it to the browser.

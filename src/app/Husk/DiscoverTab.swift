@@ -15,13 +15,13 @@ struct DiscoverView: View {
     var body: some View {
         Group {
             if manager.isLoading && manager.sources.isEmpty {
-                ProgressView("Fetching Repositories…")
+                ProgressView(L10n.tr("Fetching Repositories…"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if manager.sources.isEmpty {
-                EmptyState(title: "No Repositories",
-                           message: "Add a source to start discovering apps.",
+                EmptyState(title: L10n.tr("No Repositories"),
+                           message: L10n.tr("Add a source to start discovering apps."),
                            systemImage: "tray",
-                           actionTitle: "Add Source",
+                           actionTitle: L10n.tr("Add Source"),
                            action: { showingAddSource = true })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -29,22 +29,22 @@ struct DiscoverView: View {
             }
         }
         .background(Theme.backdrop)
-        .navigationTitle("Discover")
+        .navigationTitle(L10n.tr("Discover"))
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search \(totalAppCount) apps")
+        .searchable(text: $searchText, prompt: L10n.tr("Search \(totalAppCount) apps"))
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { Task { await manager.fetchSources() } } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label(L10n.tr("Refresh"), systemImage: "arrow.clockwise")
                 }
                 Menu {
                     Button { showingAddSource = true } label: {
-                        Label("Add Source", systemImage: "plus")
+                        Label(L10n.tr("Add Source"), systemImage: "plus")
                     }
                     Button { showingSources = true } label: {
-                        Label("Manage Repositories", systemImage: "list.bullet")
+                        Label(L10n.tr("Manage Repositories"), systemImage: "list.bullet")
                     }
-                } label: { Label("Repositories", systemImage: "ellipsis.circle") }
+                } label: { Label(L10n.tr("Repositories"), systemImage: "ellipsis.circle") }
             }
         }
         .sheet(isPresented: $showingSources) { sourcesSheet }
@@ -80,7 +80,7 @@ struct DiscoverView: View {
                             }
                         } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
                     }
-                } header: { Text("Could Not Load") }
+                } header: { Text(L10n.tr("Could Not Load")) }
             }
         }
         .listStyle(.insetGrouped)
@@ -109,7 +109,7 @@ struct DiscoverView: View {
             Text(source.name)
         } footer: {
             if debouncedSearchText.isEmpty && apps.count > 50 {
-                Text("Search to see \(apps.count - 50) more apps.")
+                Text(L10n.tr("Search to see \(apps.count - 50) more apps."))
             }
         }
     }
@@ -140,7 +140,7 @@ struct DiscoverView: View {
             let progress = manager.downloadProgress[app.bundleIdentifier]
 
             if isInstalled {
-                Button("Open") {
+                Button(L10n.tr("Open")) {
                     let intent = "am start -n \(app.bundleIdentifier)/\(app.bundleIdentifier).MainActivity"
                     _ = try? GuestBridge.shared.shell(intent, timeout: 5)
                 }
@@ -156,7 +156,7 @@ struct DiscoverView: View {
                 }
                 .frame(width: 28, height: 28)
             } else {
-                Button("Get") { manager.downloadAndInstall(app: app) }
+                Button(L10n.tr("Get")) { manager.downloadAndInstall(app: app) }
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.capsule)
             }
@@ -174,12 +174,12 @@ struct DiscoverView: View {
                     TextField("https://f-droid.org/repo/index-v1.json", text: $newSourceURL)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 } header: {
-                    Text("Source URL")
+                    Text(L10n.tr("Source URL"))
                 } footer: {
-                    Text("Paste any F-Droid-compatible repository index URL.")
+                    Text(L10n.tr("Paste any F-Droid-compatible repository index URL."))
                 }
 
-                Section("Presets") {
+                Section(L10n.tr("Presets")) {
                     ForEach([
                         ("F-Droid", "https://f-droid.org/repo/index-v1.json"),
                         ("IzzyOnDroid", "https://apt.izzysoft.de/fdroid/repo/index-v1.json"),
@@ -200,14 +200,14 @@ struct DiscoverView: View {
                     }
                 }
             }
-            .navigationTitle("Add Source")
+            .navigationTitle(L10n.tr("Add Source"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { newSourceURL = ""; showingAddSource = false }
+                    Button(L10n.tr("Cancel")) { newSourceURL = ""; showingAddSource = false }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add") {
+                    Button(L10n.tr("Add")) {
                         let url = newSourceURL
                         newSourceURL = ""
                         showingAddSource = false
@@ -231,20 +231,20 @@ struct DiscoverView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             if let source = manager.sources.first(where: { $0.identifier == url }) {
                                 Text(source.name).font(.body.weight(.medium))
-                                Text("\(source.apps.count) apps").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.tr("\(source.apps.count) apps")).font(.caption).foregroundStyle(.secondary)
                             }
                             Text(url).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                         }
                         .padding(.vertical, 2)
                     }
                     .onDelete { manager.sourceURLs.remove(atOffsets: $0) }
-                } header: { Text("Active Repositories") }
+                } header: { Text(L10n.tr("Active Repositories")) }
             }
-            .navigationTitle("Repositories")
+            .navigationTitle(L10n.tr("Repositories"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { showingSources = false }
+                    Button(L10n.tr("Done")) { showingSources = false }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSources = false; showingAddSource = true } label: {
