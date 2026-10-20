@@ -253,7 +253,8 @@ static sv *device_info(void)
     /* disk and memory: the real ones, from the app's data volume and the device */
     struct statfs fs; int64_t disk_total = 0, disk_free = 0;
     if (statfs(g_data, &fs) == 0) { disk_total = (int64_t)fs.f_blocks * fs.f_bsize; disk_free = (int64_t)fs.f_bavail * fs.f_bsize; }
-    int64_t ram = 0; size_t rl = sizeof(ram); sysctlbyname("hw.memsize", &ram, &rl, NULL, 0);
+    tl_host_memory_info memory = {0};
+    tl_host_memory_info_read(&memory);
     struct timespec now; clock_gettime(CLOCK_REALTIME, &now);
     sv *m = sv_map(nk + 14);
     size_t i = 0;
@@ -270,8 +271,8 @@ static sv *device_info(void)
     sv_map_set(m, i++, sv_string("time"), sv_int((int64_t)now.tv_sec * 1000));
     sv_map_set(m, i++, sv_string("totalDiskSize"), sv_int(disk_total));
     sv_map_set(m, i++, sv_string("freeDiskSize"), sv_int(disk_free));
-    sv_map_set(m, i++, sv_string("physicalRamSize"), sv_int(ram / (1024 * 1024)));
-    sv_map_set(m, i++, sv_string("availableRamSize"), sv_int(ram / (2 * 1024 * 1024)));
+    sv_map_set(m, i++, sv_string("physicalRamSize"), sv_int((int64_t)(memory.total_bytes / (1024 * 1024))));
+    sv_map_set(m, i++, sv_string("availableRamSize"), sv_int((int64_t)(memory.available_bytes / (1024 * 1024))));
     return m;
 }
 

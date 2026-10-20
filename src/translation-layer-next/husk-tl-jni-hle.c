@@ -6,6 +6,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-jni.h"
+#include "../translation-layer/husk-tl.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -204,35 +205,53 @@ static void fill_metrics(jobj *m)
 }
 static void Display_getMetrics(tl_jcall *c) { fill_metrics(c->args[0].l); }
 static void Display_getRotation(tl_jcall *c) { c->ret = vi(0); }
-static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
+static float display_refresh_rate(void)
+{
+    float rate = husk_tl_display_refresh_rate();
+    return rate > 0.0f ? rate : husk_tl_maximum_display_refresh_rate();
+}
+static jobj *display_mode(int id, float rate)
+{
+    jobj *mode = make("android/view/Display$Mode");
+    set_int(mode, "mModeId", id);
+    set_int(mode, "mPhysicalWidth", H.width);
+    set_int(mode, "mPhysicalHeight", H.height);
+    set_float(mode, "mRefreshRate", rate);
+    return mode;
+}
+static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(display_refresh_rate()); }
 static void Display_getDisplayId(tl_jcall *c) { c->ret = vi(0); }
 static void Display_getWidth(tl_jcall *c) { c->ret = vi(H.width); }
 static void Display_getHeight(tl_jcall *c) { c->ret = vi(H.height); }
 static void Display_getName(tl_jcall *c) { c->ret = vl(STR("Built-in Screen")); }
 static void Display_isHdr(tl_jcall *c) { c->ret = vz(0); }
 static void Display_getAppVsyncOffsetNanos(tl_jcall *c) { c->ret.j = 0; }
-static void Display_getPresentationDeadlineNanos(tl_jcall *c) { c->ret.j = 16666667; }
+static void Display_getPresentationDeadlineNanos(tl_jcall *c)
+{
+    float rate = display_refresh_rate();
+    c->ret.j = rate > 0.0f ? (int64_t)(1000000000.0 / rate) : 0;
+}
 static void Window_setFlags(tl_jcall *c) { (void)c; }
 static void Display_getSupportedRefreshRates(tl_jcall *c)
 {
     jobj *rates = tl_jni_new_prim_array('F', 1);
-    ((float *)rates->arr.data)[0] = 60.f;
+    ((float *)rates->arr.data)[0] = display_refresh_rate();
     c->ret = vl(rates);
 }
-static void Display_getMode(tl_jcall *c) { c->ret = vl(make("android/view/Display$Mode")); }
+static void Display_getMode(tl_jcall *c) { c->ret = vl(display_mode(1, display_refresh_rate())); }
 static void Display_getSupportedModes(tl_jcall *c)
 {
-    /* Unity takes the maximum refresh rate from this array during startup. A null JNI
-     * result turns into an empty managed sequence and Enumerable.Max throws. */
+    /* Unity takes the maximum refresh rate from this array during startup. Keep
+     * the Android API contract nonempty and report the measured iOS display cadence. */
     jobj *modes = tl_jni_new_obj_array(C("android/view/Display$Mode"), 1);
-    modes->oarr.v[0] = make("android/view/Display$Mode");
-    tl_note_once("Display.getSupportedModes returned one 60 Hz mode");
+    modes->oarr.v[0] = display_mode(1, display_refresh_rate());
+    tl_note_once("Display.getSupportedModes returned the live iOS display refresh rate");
     c->ret = vl(modes);
 }
-static void DisplayMode_getModeId(tl_jcall *c) { c->ret = vi(1); }
-static void DisplayMode_getPhysicalWidth(tl_jcall *c) { c->ret = vi(H.width); }
-static void DisplayMode_getPhysicalHeight(tl_jcall *c) { c->ret = vi(H.height); }
-static void DisplayMode_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
+static void DisplayMode_getModeId(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mModeId", "I"); }
+static void DisplayMode_getPhysicalWidth(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mPhysicalWidth", "I"); }
+static void DisplayMode_getPhysicalHeight(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mPhysicalHeight", "I"); }
+static void DisplayMode_getRefreshRate(tl_jcall *c) { c->ret = tl_jni_get_field(c->self, "mRefreshRate", "F"); }
 static void DisplayMode_getAlternativeRefreshRates(tl_jcall *c) { c->ret = vl(tl_jni_new_prim_array('F', 0)); }
 static void WindowManager_getDefaultDisplay(tl_jcall *c) { c->ret = vl(H.display); }
 

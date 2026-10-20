@@ -137,12 +137,12 @@ typedef struct { long uptime; unsigned long loads[3], totalram, freeram, sharedr
 static int bionic_sysinfo(guest_sysinfo *si)
 {
     memset(si, 0, sizeof(*si));
-    uint64_t mem = 0; size_t len = sizeof(mem);
-    sysctlbyname("hw.memsize", &mem, &len, NULL, 0);
+    tl_host_memory_info memory;
+    if (!tl_host_memory_info_read(&memory) || !memory.has_vm_stats) { tl_set_guest_errno(5); return -1; }
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
     si->uptime = ts.tv_sec;
-    si->totalram = (unsigned long)mem;
-    si->freeram = (unsigned long)(mem / 4);
+    si->totalram = (unsigned long)memory.total_bytes;
+    si->freeram = (unsigned long)memory.free_bytes;
     si->mem_unit = 1;
     si->procs = 1;
     return 0;
@@ -534,8 +534,12 @@ static long bionic_sysconf(int name)
     case 38:   return 1024;                                  /* _SC_IOV_MAX */
     case 39: case 40: return 16384;                          /* _SC_PAGESIZE / _SC_PAGE_SIZE */
     case 96: case 97: return getenv("TL_NCPU") ? atol(getenv("TL_NCPU")) : (long)sysconf(_SC_NPROCESSORS_ONLN);   /* _SC_NPROCESSORS_CONF / ONLN */
-    case 98: { uint64_t m = 0; size_t l = sizeof(m); sysctlbyname("hw.memsize", &m, &l, NULL, 0); return (long)(m / 16384); }
-    case 99: { uint64_t m = 0; size_t l = sizeof(m); sysctlbyname("hw.memsize", &m, &l, NULL, 0); return (long)(m / 16384 / 2); }
+    case 98: case 99: {
+        tl_host_memory_info memory;
+        if (!tl_host_memory_info_read(&memory)) { tl_set_guest_errno(5); return -1; }
+        uint64_t bytes = name == 98 ? memory.total_bytes : memory.available_bytes;
+        return (long)(bytes / 16384); /* Android guest page size */
+    }
     case 100:  return 200809;                                /* _SC_MONOTONIC_CLOCK */
     case 0x4a: return 16384;                                 /* _SC_THREAD_STACK_MIN-ish */
     default:

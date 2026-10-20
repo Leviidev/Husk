@@ -467,6 +467,39 @@ void husk_tl_frame_release(int token)
 /* The pump publishes its counters here once a second; Swift reads them. */
 static husk_tl_perf g_perf;
 
+/* iOS publishes these from the main-thread CADisplayLink; Unity reads them
+ * from the guest thread while answering Android Display queries. */
+static atomic_uint g_display_refresh_millihz;
+static atomic_uint g_max_display_refresh_millihz;
+
+static unsigned refresh_millihz(float hz)
+{
+    if (!(hz > 0.0f) || hz > 1000.0f) return 0;
+    return (unsigned)(hz * 1000.0f + 0.5f);
+}
+
+void husk_tl_set_display_refresh_rate(float hz)
+{
+    atomic_store_explicit(&g_display_refresh_millihz, refresh_millihz(hz), memory_order_relaxed);
+}
+
+void husk_tl_set_maximum_display_refresh_rate(float hz)
+{
+    atomic_store_explicit(&g_max_display_refresh_millihz, refresh_millihz(hz), memory_order_relaxed);
+}
+
+float husk_tl_display_refresh_rate(void)
+{
+    unsigned current = atomic_load_explicit(&g_display_refresh_millihz, memory_order_relaxed);
+    if (!current) current = atomic_load_explicit(&g_max_display_refresh_millihz, memory_order_relaxed);
+    return (float)current / 1000.0f;
+}
+
+float husk_tl_maximum_display_refresh_rate(void)
+{
+    return (float)atomic_load_explicit(&g_max_display_refresh_millihz, memory_order_relaxed) / 1000.0f;
+}
+
 void husk_tl_perf_snapshot(husk_tl_perf *out)
 {
     if (!out) return;
