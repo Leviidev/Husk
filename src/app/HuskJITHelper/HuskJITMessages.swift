@@ -19,21 +19,24 @@ struct HuskJITRequest: Codable, Sendable {
     let targetPID: Int32?
     let pairingData: Data?
     let scriptBase64: String?
+    /// The port the device is currently advertising for RemotePairing. iOS picks
+    /// a new one when it boots; nil means StikJIT's default.
+    let rsdPort: UInt16?
 
-    static func prepare(pairingData: Data) -> HuskJITRequest {
+    static func prepare(pairingData: Data, rsdPort: UInt16? = nil) -> HuskJITRequest {
         HuskJITRequest(operation: .prepare, targetPID: nil,
-                       pairingData: pairingData, scriptBase64: nil)
+                       pairingData: pairingData, scriptBase64: nil, rsdPort: rsdPort)
     }
 
     static func enable(targetPID: Int32, pairingData: Data,
-                       scriptBase64: String) -> HuskJITRequest {
+                       scriptBase64: String, rsdPort: UInt16? = nil) -> HuskJITRequest {
         HuskJITRequest(operation: .enable, targetPID: targetPID,
-                       pairingData: pairingData, scriptBase64: scriptBase64)
+                       pairingData: pairingData, scriptBase64: scriptBase64, rsdPort: rsdPort)
     }
 
     static var resetDDI: HuskJITRequest {
         HuskJITRequest(operation: .resetDDI, targetPID: nil,
-                       pairingData: nil, scriptBase64: nil)
+                       pairingData: nil, scriptBase64: nil, rsdPort: nil)
     }
 
     struct Response: Codable, Sendable {

@@ -16,6 +16,10 @@ private enum HuskJITWork {
         let root = manager.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("StikJIT", isDirectory: true)
         let paths = DDIPaths.default(in: root)
+        var configuration = StikJIT.Configuration.default
+        if let rsdPort = request.rsdPort {
+            configuration.rsdPort = rsdPort
+        }
 
         do {
             try manager.createDirectory(at: root, withIntermediateDirectories: true)
@@ -36,7 +40,7 @@ private enum HuskJITWork {
             switch request.operation {
             case .prepare:
                 let readiness = StikJIT.prepareDevice(
-                    pairingFile: pairingURL, paths: paths,
+                    pairingFile: pairingURL, paths: paths, configuration: configuration,
                     progress: { NSLog("[HuskJIT] prepare: %@", String(describing: $0)) })
                 switch readiness {
                 case .ready(let security):
@@ -60,6 +64,7 @@ private enum HuskJITWork {
                     targetPID: targetPID,
                     pairingFile: pairingURL,
                     ddiPaths: paths,
+                    configuration: configuration,
                     script: .customBase64(scriptBase64),
                     forceScript: true,
                     preparationProgress: { NSLog("[HuskJIT] prepare: %@", String(describing: $0)) },

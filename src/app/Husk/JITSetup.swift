@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
+import Network
 import SwiftUI
 import UIKit
 
@@ -282,20 +283,22 @@ final class JITCoordinator: ObservableObject {
         error = nil
         connectionProblem = nil
         status = "Checking LocalDevVPN and the Developer Disk Image…"
-        HuskBuiltInJIT.send(.prepare(pairingData: pairing)) { [weak self] result in
-            guard let self else { return }
-            busy = false
-            switch result {
-            case .success(let response):
-                txmPresent = response.txmPresent
-                prepared = response.success
-                status = response.success ? response.message : nil
-                error = response.success ? nil : helperFailure(response.message)
-                log("setup check \(response.success ? "passed" : "failed"): \(response.message)")
-            case .failure(let failure):
-                prepared = false
-                status = nil
-                error = failure.localizedDescription
+        RemotePairingPortDiscovery.resolve { port in
+            HuskBuiltInJIT.send(.prepare(pairingData: pairing, rsdPort: port)) { [weak self] result in
+                guard let self else { return }
+                busy = false
+                switch result {
+                case .success(let response):
+                    txmPresent = response.txmPresent
+                    prepared = response.success
+                    status = response.success ? response.message : nil
+                    error = response.success ? nil : helperFailure(response.message)
+                    log("setup check \(response.success ? "passed" : "failed"): \(response.message)")
+                case .failure(let failure):
+                    prepared = false
+                    status = nil
+                    error = failure.localizedDescription
+                }
             }
         }
     }
@@ -332,28 +335,30 @@ final class JITCoordinator: ObservableObject {
             }
         }
 
-        HuskBuiltInJIT.send(
-            .enable(targetPID: getpid(), pairingData: pairing, scriptBase64: script),
-            started: { [weak self] in
-                self?.status = "Waiting for the helper to attach…"
-                readiness = Self.waitForDebugger { attached in
-                    finish(attached ? nil : "The helper did not attach within 90 seconds. "
-                                          + "Check that LocalDevVPN is connected, then try again.")
-                }
-            },
-            completion: { [weak self] result in
-                // The helper replies once Husk detaches, or when attaching failed.
-                switch result {
-                case .success(let response):
-                    self?.txmPresent = response.txmPresent
-                    HuskLog.log("jit", "helper: \(response.message)")
-                    if !response.success {
-                        finish(self?.helperFailure(response.message) ?? response.message)
+        RemotePairingPortDiscovery.resolve { port in
+            HuskBuiltInJIT.send(
+                .enable(targetPID: getpid(), pairingData: pairing, scriptBase64: script, rsdPort: port),
+                started: { [weak self] in
+                    self?.status = "Waiting for the helper to attach…"
+                    readiness = Self.waitForDebugger { attached in
+                        finish(attached ? nil : "The helper did not attach within 90 seconds. "
+                                              + "Check that LocalDevVPN is connected, then try again.")
                     }
-                case .failure(let failure):
-                    finish(failure.localizedDescription)
-                }
-            })
+                },
+                completion: { [weak self] result in
+                    // The helper replies once Husk detaches, or when attaching failed.
+                    switch result {
+                    case .success(let response):
+                        self?.txmPresent = response.txmPresent
+                        HuskLog.log("jit", "helper: \(response.message)")
+                        if !response.success {
+                            finish(self?.helperFailure(response.message) ?? response.message)
+                        }
+                    case .failure(let failure):
+                        finish(failure.localizedDescription)
+                    }
+                })
+        }
     }
 
     func resetDDI() {
@@ -428,3 +433,133 @@ enum LocalDevVPN {
         UIApplication.shared.open(installed ? connect : appStore)
     }
 }
+
+/// The device advertises RemotePairing on a port it picks at boot, while
+/// StikJIT defaults to the old fixed 49152. Find the advertised port so
+/// Built-in StikJIT keeps working after the device restarts.
+enum RemotePairingPortDiscovery {
+    private static let serviceType = "_remotepairing._tcp"
+    private static let queue = DispatchQueue(label: "com.husk.app.remotepairing-discovery", qos: .utility)
+    private static let lock = NSLock()
+    private static var cachedPort: UInt16?
+    private static var lastFailure: Date?
+
+    /// Calls back on the main thread. nil means the helper should use StikJIT's
+    /// default.
+    static func resolve(timeout: TimeInterval = 3, completion: @escaping (UInt16?) -> Void) {
+        lock.lock()
+        if let cachedPort {
+            lock.unlock()
+            DispatchQueue.main.async { completion(cachedPort) }
+            return
+        }
+        if let lastFailure, Date().timeIntervalSince(lastFailure) < 30 {
+            lock.unlock()
+            DispatchQueue.main.async { completion(nil) }
+            return
+        }
+        lock.unlock()
+
+        queue.async {
+            let port = discover(timeout: timeout)
+            lock.lock()
+            if let port {
+                cachedPort = port
+                lastFailure = nil
+            } else {
+                lastFailure = Date()
+            }
+            lock.unlock()
+            HuskLog.log("jit", "RemotePairing port "
+                        + (port.map { String($0) } ?? "not found; using StikJIT's default"))
+            DispatchQueue.main.async { completion(port) }
+        }
+    }
+
+    private static func discover(timeout: TimeInterval) -> UInt16? {
+        let parameters = NWParameters.tcp
+        parameters.includePeerToPeer = true
+        let browser = NWBrowser(for: .bonjour(type: serviceType, domain: nil), using: parameters)
+
+        let semaphore = DispatchSemaphore(value: 0)
+        let resultLock = NSLock()
+        var finished = false
+        var resolvedPort: UInt16?
+        var pendingConnection: NWConnection?
+
+        func finish(_ port: UInt16?) {
+            resultLock.lock()
+            if !finished {
+                finished = true
+                resolvedPort = port
+                semaphore.signal()
+            }
+            resultLock.unlock()
+        }
+
+        func hasFinished() -> Bool {
+            resultLock.lock()
+            defer { resultLock.unlock() }
+            return finished
+        }
+
+        browser.browseResultsChangedHandler = { results, _ in
+            guard !hasFinished() else { return }
+
+            let preferred = results.first { result in
+                result.interfaces.contains { $0.name == "lo0" }
+            } ?? results.first
+            guard let result = preferred, case .service = result.endpoint else { return }
+
+            resultLock.lock()
+            let alreadyConnecting = pendingConnection != nil
+            if !alreadyConnecting {
+                pendingConnection = NWConnection(to: result.endpoint, using: parameters)
+            }
+            let connection = pendingConnection
+            resultLock.unlock()
+
+            guard !alreadyConnecting, let connection else { return }
+
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    if let remoteEndpoint = connection.currentPath?.remoteEndpoint,
+                       case .hostPort(_, let port) = remoteEndpoint {
+                        finish(port.rawValue)
+                    } else {
+                        finish(nil)
+                    }
+                case .failed, .cancelled:
+                    finish(nil)
+                default:
+                    break
+                }
+            }
+            connection.start(queue: queue)
+        }
+
+        browser.stateUpdateHandler = { state in
+            switch state {
+            case .failed, .cancelled:
+                finish(nil)
+            default:
+                break
+            }
+        }
+
+        browser.start(queue: queue)
+        _ = semaphore.wait(timeout: .now() + timeout)
+        browser.cancel()
+
+        resultLock.lock()
+        let connectionToCancel = pendingConnection
+        resultLock.unlock()
+        connectionToCancel?.cancel()
+
+        resultLock.lock()
+        defer { resultLock.unlock() }
+        return resolvedPort
+    }
+}
+
