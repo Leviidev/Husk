@@ -146,39 +146,6 @@ private final class HelperRequest {
         let item = NSExtensionItem()
         item.userInfo = [HuskJITRequest.itemKey: data]
         shim.beginExtensionRequest(withInputItems: [item]) { [weak self] uuid in
-                HuskLog.log(
-                    "jit-helper",
-                    "beginExtensionRequest completion: uuid=\(String(describing: uuid)), operation=\(request.operation.rawValue)"
-                )
-            
-                DispatchQueue.main.async {
-                    MainActor.assumeIsolated {
-                        guard let self else {
-                            HuskLog.log("jit-helper", "completion received, but HelperRequest no longer exists")
-                            return
-                        }
-            
-                        guard let uuid else {
-                            HuskLog.log(
-                                "jit-helper",
-                                "START FAILED: completion returned nil; identifier=\(identifier)"
-                            )
-                            self.end(.failure(Self.error(
-                                7,
-                                "Husk's JIT helper did not start. Reinstall Husk, and keep its app extensions if your sideloader asks."
-                            )))
-                            return
-                        }
-            
-                        HuskLog.log(
-                            "jit-helper",
-                            "STARTED: identifier=\(identifier), pid=\(self.shim.pid(forRequestIdentifier: uuid))"
-                        )
-            
-                        started()
-                    }
-                }
-            }
             DispatchQueue.main.async { MainActor.assumeIsolated {
                 guard let self else { return }
                 guard let uuid else {
