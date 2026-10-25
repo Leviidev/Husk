@@ -272,8 +272,12 @@ static void Mode_getPhysicalHeight(tl_jcall *c) { c->ret = vi(H.height); }
 static void Mode_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
 static void Display_isWideColorGamut(tl_jcall *c) { c->ret = vz(0); }
 static void Display_isHdr(tl_jcall *c) { c->ret = vz(0); }
-static void Display_getAppVsyncOffsetNanos(tl_jcall *c) { c->ret.j = 0; }
-static void Display_getPresentationDeadlineNanos(tl_jcall *c) { c->ret.j = 1000000; }
+/* When vsync reaches the app and the compositor, as a 60 Hz phone has it: a 1 ms app offset, a deadline 5 ms short of the period.
+ * Swappy (Unity's frame pacing) takes the compositor's offset to be period - (deadline - 1 ms) - app offset and keeps its own vsync
+ * clock by it: these give it 5 ms. With both at zero, as unimplemented methods left them, it was 17.7 ms, longer than a frame; its
+ * estimate of the period grew without end, and a game sank from 60 to under 10 frames a second within a minute. */
+static void Display_getAppVsyncOffsetNanos(tl_jcall *c) { c->ret.j = 1000000; }
+static void Display_getPresentationDeadlineNanos(tl_jcall *c) { c->ret.j = 1000000000ll / 60 - 5000000; }
 static void Window_setFlags(tl_jcall *c) { (void)c; }
 static void Window_getDecorView(tl_jcall *c) { c->ret = vl(H.activity); }
 static void UnityPlayer_getLaunchURL(tl_jcall *c) { c->ret = vl(STR("")); }

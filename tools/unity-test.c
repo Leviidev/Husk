@@ -294,6 +294,19 @@ static void install_probes(void)
     for (size_t i = 0; i < sizeof(ps) / sizeof(ps[0]); i++) if (!tl_ld_probe(L, ps[i].off, ps[i].cb)) fprintf(stderr, "probe at %#llx failed\n", (unsigned long long)ps[i].off);
 }
 
+/* TL_FPS=1: the frame rate every five seconds (TL_FRAME_EVERY=100000 keeps frame dumps from slowing it). */
+static void *fps_thread(void *arg)
+{
+    (void)arg;
+    for (unsigned long last = tl_unity_frames();; ) {
+        sleep(5);
+        unsigned long f = tl_unity_frames();
+        fprintf(stderr, "fps: %.1f (frame %lu)\n", (f - last) / 5.0, f);
+        last = f;
+    }
+    return NULL;
+}
+
 /* TL_TOUCH="ms:phase:id:x,y;..." replays touches at those times (ms since start); phase 0 down, 1 move, 2 up. */
 static void *touch_script(void *arg)
 {
@@ -405,7 +418,7 @@ int main(int argc, char **argv)
     if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
     tl_unity_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE") ? getenv("TL_PACKAGE") : "com.kiloo.subwaysurf", .width = argc > 4 ? atoi(argv[3]) : 540, .height = argc > 4 ? atoi(argv[4]) : 1200,
                             .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
-                            .frame_dir = frames, .frame_every = getenv("TL_CTL") ? -6 : 30 };
+                            .frame_dir = frames, .frame_every = getenv("TL_FRAME_EVERY") ? atoi(getenv("TL_FRAME_EVERY")) : getenv("TL_CTL") ? -6 : 30 };
     g_frame_dir = frames;
     tl_audio_install();   /* as the app does: the game's sound goes to the speakers (TL_AUDIO_MUTE=1 for a silent run) */
     if (!tl_unity_start(&cfg)) { fprintf(stderr, "unity: start failed\n"); return 1; }
@@ -418,6 +431,7 @@ int main(int argc, char **argv)
     if (getenv("TL_PAD")) tl_pad_connect(0, "Xbox Wireless Controller");
     if (getenv("TL_CTL")) { tl_unity_set_keyboard_handler(keyboard_request); static pthread_t ct; pthread_create(&ct, NULL, control_thread, getenv("TL_CTL")); }
     if (getenv("TL_TOUCH")) { static pthread_t tt; pthread_create(&tt, NULL, touch_script, getenv("TL_TOUCH")); }
+    if (getenv("TL_FPS")) { static pthread_t ft; pthread_create(&ft, NULL, fps_thread, NULL); }
     if (getenv("TL_MONITOR")) { tl_ld_iterate(find_unity, NULL); pthread_t mt; pthread_create(&mt, NULL, monitor, NULL); }
     int secs = argc > 2 ? atoi(argv[2]) : 5;
     if (getenv("TL_STOP_AT")) { sleep((unsigned)atoi(getenv("TL_STOP_AT"))); raise(SIGSTOP); }
