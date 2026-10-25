@@ -1385,8 +1385,9 @@ bool tl_mm_address_space_short(void)
     return v;
 }
 
-/* The address space this process has mapped, outside the shared system libraries, and how much of it is the guest's own
- * anonymous memory: what a game's log needs to tell a phone out of address space from one out of memory. */
+/* The address space this process has mapped, outside the shared system libraries and the kernel's guard over the addresses it
+ * may never use (hundreds of GiB above its limit), and how much of it is the guest's own anonymous memory: what a game's log
+ * needs to tell a phone out of address space from one out of memory. */
 size_t tl_mm_address_space_used(size_t *guest)
 {
     size_t total = 0;
@@ -1394,7 +1395,7 @@ size_t tl_mm_address_space_used(size_t *guest)
         vm_size_t sz = 0; natural_t depth = 0;
         vm_region_submap_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_SUBMAP_INFO_COUNT_64;
         if (vm_region_recurse_64(mach_task_self(), &a, &sz, &depth, (vm_region_recurse_info_t)&info, &cnt) != KERN_SUCCESS) break;
-        if (!info.is_submap) total += sz;
+        if (!info.is_submap && !(info.user_tag == VM_MEMORY_GUARD && info.max_protection == VM_PROT_NONE)) total += sz;
         a += sz;
     }
     if (guest) *guest = anon_total();
