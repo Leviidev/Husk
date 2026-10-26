@@ -1088,10 +1088,49 @@ static void mm_trace(const char *what, void *a, size_t l, long x, long y)
 static struct { uintptr_t base; size_t len, real; } g_phantom[4];
 static int g_nphantom;
 
+/* Reserve before JIT aliases fragment the available aligned address range.
+ * This owns address space only; guest commits still happen on demand. */
+static vm_address_t g_compressed_heap;
+static pthread_mutex_t g_compressed_heap_lock = PTHREAD_MUTEX_INITIALIZER;
+void husk_prepare_compressed_heap(void)
+{
+    pthread_mutex_lock(&g_compressed_heap_lock);
+    if (!g_compressed_heap) {
+        vm_address_t address = 0;
+        kern_return_t kr = vm_map(mach_task_self(), &address, PHANTOM_HALF,
+            PHANTOM_HALF - 1, VM_FLAGS_ANYWHERE, MACH_PORT_NULL, 0, FALSE,
+            VM_PROT_NONE, VM_PROT_ALL, VM_INHERIT_COPY);
+        if (kr == KERN_SUCCESS) g_compressed_heap = address;
+    }
+    pthread_mutex_unlock(&g_compressed_heap_lock);
+}
+void husk_release_unused_compressed_heap(void)
+{
+    pthread_mutex_lock(&g_compressed_heap_lock);
+    if (g_compressed_heap && vm_deallocate(mach_task_self(), g_compressed_heap, PHANTOM_HALF) == KERN_SUCCESS)
+        g_compressed_heap = 0;
+    pthread_mutex_unlock(&g_compressed_heap_lock);
+}
+static bool compressed_heap_request(size_t len)
+{
+    /* V8 asks for 8 GiB; Dart omits the final host page from that request. */
+    return len == 2 * PHANTOM_HALF || len == 2 * PHANTOM_HALF - (size_t)getpagesize();
+}
+
 static void *phantom_reserve(size_t len)
 {
-    if (len != 2 * PHANTOM_HALF || g_nphantom >= 4) return MAP_FAILED;
-    void *res = MAP_FAILED;
+    if (!compressed_heap_request(len) || g_nphantom >= 4) return MAP_FAILED;
+    pthread_mutex_lock(&g_compressed_heap_lock);
+    vm_address_t address = g_compressed_heap;
+    g_compressed_heap = 0; /* ownership transfers to g_phantom below */
+    pthread_mutex_unlock(&g_compressed_heap_lock);
+    if (!address) {
+        if (vm_map(mach_task_self(), &address, PHANTOM_HALF, PHANTOM_HALF - 1,
+                   VM_FLAGS_ANYWHERE, MACH_PORT_NULL, 0, FALSE,
+                   VM_PROT_NONE, VM_PROT_ALL, VM_INHERIT_COPY) != KERN_SUCCESS)
+            address = 0;
+    }
+    void *res = address ? (void *)address : MAP_FAILED;
     /* Reserve 5 GiB, which holds an aligned 4 GiB only when it starts in the first GiB of an alignment period. Mappings come one after
      * another, so a miss is kept (it moves the next one on by a GiB) and given back once there is a hit. */
     void *held[8]; int nheld = 0;
@@ -1222,7 +1261,7 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
     bool refuse = len > max_map && (flags & 0x20) && !(flags & 0x10);
     if (refuse) { tl_log_line("mm: refusing %#zx bytes (TL_MM_MAX_GIB)", len); errno = ENOMEM; }
     bool shifted = !(flags & 0x20) && fd >= 0 && (off & (getpagesize() - 1)) != 0 && (off & 4095) == 0;
-    void *r = refuse || (force_phantom && len == 2 * PHANTOM_HALF && prot == 0 && (flags & 0x20) && !(flags & 0x10)) ? MAP_FAILED
+    void *r = refuse || (force_phantom && compressed_heap_request(len) && prot == 0 && (flags & 0x20) && !(flags & 0x10)) ? MAP_FAILED
             : shifted ? shifted_file_map(addr, len, prot_filter(prot, "mmap"), df, fd, off)
             : mmap(addr, len, prot_filter(prot, "mmap"), df, (flags & 0x20) ? -1 : fd, off);
     if (r == MAP_FAILED && (errno == ENOMEM || force_phantom) && prot == 0 && (flags & 0x20) && !(flags & 0x10)) { r = phantom_reserve(len); if (r != MAP_FAILED) errno = 0; }

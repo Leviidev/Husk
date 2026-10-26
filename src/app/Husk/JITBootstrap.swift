@@ -9,6 +9,11 @@ import os
 private func csops(_ pid: Int32, _ ops: Int32,
                    _ useraddr: UnsafeMutableRawPointer?, _ usersize: Int) -> Int32
 
+@_silgen_name("husk_prepare_compressed_heap")
+private func prepareCompressedHeap()
+@_silgen_name("husk_release_unused_compressed_heap")
+private func releaseUnusedCompressedHeap()
+
 private let CS_OPS_STATUS = Int32(0)
 private let CS_DEBUGGED = UInt32(0x10000000)
 
@@ -92,7 +97,9 @@ enum JITBootstrap {
         }
         HuskLog.log("jit", "claiming \(jitBytes / (1024 * 1024)) MiB of JIT memory now, "
                          + "before the guest download -- StikDebug does not stay attached")
+        prepareCompressedHeap()
         let ok = husk_ios_jit_prewarm(jitBytes)
+        if !ok { releaseUnusedCompressedHeap() }
         if ok {
             prewarmed = true
             lastFailure = nil
