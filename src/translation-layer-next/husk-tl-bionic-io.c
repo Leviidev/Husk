@@ -168,11 +168,23 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
     if (g_sysfonts[0]) {
-        if (!strncmp(path, "/system/fonts", 13) && (path[13] == 0 || path[13] == '/')) {
-            snprintf(buf, n, "%s/fonts%s", g_sysfonts, path + 13);
-            if (g_extrafonts[0] && path[13] == '/' && access(buf, F_OK) != 0) {
+        const char *font_suffix = NULL;
+        if (!strncmp(path, "/system/fonts", 13) && (path[13] == 0 || path[13] == '/'))
+            font_suffix = path + 13;
+        /* Java uses its writable data directory as ANDROID_ROOT. Skia joins that
+         * root with /fonts; route just that subtree through the same system and
+         * downloaded-font lookup, without changing Java's environment or data paths. */
+        const char *root = getenv("ANDROID_ROOT");
+        size_t root_len = root ? strlen(root) : 0;
+        if (!font_suffix && root_len && !strncmp(path, root, root_len) &&
+            !strncmp(path + root_len, "/fonts", 6) &&
+            (path[root_len + 6] == 0 || path[root_len + 6] == '/'))
+            font_suffix = path + root_len + 6;
+        if (font_suffix) {
+            snprintf(buf, n, "%s/fonts%s", g_sysfonts, font_suffix);
+            if (g_extrafonts[0] && font_suffix[0] == '/' && access(buf, F_OK) != 0) {
                 char extra[1100];
-                snprintf(extra, sizeof(extra), "%s%s", g_extrafonts, path + 13);
+                snprintf(extra, sizeof(extra), "%s%s", g_extrafonts, font_suffix);
                 if (access(extra, F_OK) == 0) snprintf(buf, n, "%s", extra);
             }
             return buf;
