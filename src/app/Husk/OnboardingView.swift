@@ -431,6 +431,7 @@ struct OnboardingView: View {
         if preferred.hasPrefix("zh-Hant") || preferred.hasPrefix("zh-TW") || preferred.hasPrefix("zh-HK") { return "zh-Hant" }
         if preferred.hasPrefix("zh") { return "zh-Hans" }
         if preferred.hasPrefix("pt-BR") { return "pt-BR" }
+        if preferred.hasPrefix("ja") { return "ja" }
         let code = Locale.current.huskLanguageCode ?? "en"
         return languages.contains { $0.id == code } ? code : "en"
     }
