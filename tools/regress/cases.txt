@@ -5,6 +5,8 @@
 # $VARIABLES; a case whose APK is not there is skipped, not failed. ANGLE comes from TL_ANGLE_EGL/TL_ANGLE_GLES (the
 # harnesses default to the copy inside Steam's Chromium Embedded Framework on this Mac).
 subway     | unity-test | ~/Documents/Subway+Surfers_3.69.2_APKPure.apk                | 55 | 804 1748 |
+# pvz-va: a Unity 2022 game in the address space a phone without extended virtual addressing leaves it (TL_MM_TOTAL_GIB)
+pvz-va     | unity-test | $HUSK_PVZ                                                    | 60 | 1748 804 | TL_PACKAGE=com.LanPiaoPiao.PlantsVsZombiesRH TL_MM_TOTAL_GIB=4 | Using 'Default' Allocator
 fruitninja | unity-test | $HUSK_FRUITNINJA/com.halfbrick.fruitninjafree.apk             | 50 | 1748 804 | TL_PACKAGE=com.halfbrick.fruitninjafree TL_SPLITS=$HUSK_FRUITNINJA/com.halfbrick.fruitninjafree.config.arm64_v8a.apk:$HUSK_FRUITNINJA/com.halfbrick.fruitninjafree.UnityDataAssetPack.apk | I/Unity: [PlayFab]
 gd         | cocos-test | ~/Documents/Geometry-Dash-APK-2.207-Thegeometrydash.net.apk  | 25 | 1748 804 |
 gd-geode   | cocos-test | $HUSK_GEODE_GD                                               | 30 | 1748 804 | TL_GEODE=$HUSK_GEODE_ZIP TL_GEODE_LAUNCHER=$HOME/Downloads/geode-launcher-v1.8.0.apk TL_START_THREAD=1 TL_START_THREAD_KEEP=1 | Loading non-early mods

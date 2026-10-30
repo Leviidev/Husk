@@ -1040,15 +1040,46 @@ static struct { uintptr_t addr; size_t len; } g_anon[MAX_ANON];
 static int g_nanon;
 static pthread_mutex_t g_anon_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* [addr, addr+len) is no longer what it was: cut out of the mappings above. */
+static void anon_cut_locked(uintptr_t addr, size_t len)
+{
+    uintptr_t end = addr + len;
+    for (int i = 0; i < g_nanon; i++) {
+        uintptr_t a = g_anon[i].addr, e = a + g_anon[i].len;
+        if (addr >= e || end <= a) continue;
+        if (addr > a && end < e) {                                    /* a hole in the middle: the part after it goes on the end */
+            if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = end; g_anon[g_nanon].len = e - end; g_nanon++; }
+            g_anon[i].len = addr - a;
+        } else if (addr > a) g_anon[i].len = addr - a;
+        else if (end < e) { g_anon[i].addr = end; g_anon[i].len = e - end; }
+        else { g_anon[i] = g_anon[--g_nanon]; i--; }
+    }
+}
+
 static void anon_add(void *addr, size_t len)
 {
     pthread_mutex_lock(&g_anon_lock);
-    for (int i = 0; i < g_nanon; i++) {                      /* replace anything this overlaps */
-        uintptr_t a = g_anon[i].addr, e = a + g_anon[i].len;
-        if ((uintptr_t)addr < e && (uintptr_t)addr + len > a) { g_anon[i] = g_anon[--g_nanon]; i--; }
-    }
+    anon_cut_locked((uintptr_t)addr, len);                   /* replace what this overlaps */
     if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = (uintptr_t)addr; g_anon[g_nanon].len = len; g_nanon++; }
     pthread_mutex_unlock(&g_anon_lock);
+}
+
+/* The guest unmapped [addr, addr+len). */
+static void anon_remove(uintptr_t addr, size_t len)
+{
+    pthread_mutex_lock(&g_anon_lock);
+    anon_cut_locked(addr, len);
+    pthread_mutex_unlock(&g_anon_lock);
+}
+
+/* All the guest has mapped for itself, in bytes of address space. */
+static size_t anon_total(void)
+{
+    size_t t = 0;
+    pthread_mutex_lock(&g_anon_lock);
+    for (int i = 0; i < g_nanon; i++) t += g_anon[i].len;
+    pthread_mutex_unlock(&g_anon_lock);
+    return t;
 }
 
 static void anon_zap(uintptr_t addr, size_t len)
@@ -1235,6 +1266,67 @@ static bool shifted_unmap(void *a, int *ret)
     pthread_mutex_unlock(&g_shifted_lock);
     return false;
 }
+/* A Mac imitating a phone's address space. TL_MM_MAX_GIB: a bigger single mapping is refused, as an 8 GiB one is on an iPhone
+ * app without the extended-virtual-addressing entitlement. TL_MM_TOTAL_GIB (fractions allowed): a mapping is refused once all
+ * the guest has mapped for itself would pass that much -- a phone's limit is on the whole process, and the game has what Husk
+ * leaves of it. TL_MM_PHANTOM: an 8 GiB reservation is refused, whatever its size limit. */
+static size_t mm_max_map(void)
+{
+    static size_t v = (size_t)-2;
+    if (v == (size_t)-2) v = getenv("TL_MM_MAX_GIB") ? (size_t)atoi(getenv("TL_MM_MAX_GIB")) << 30 : (size_t)-1;
+    return v;
+}
+static size_t mm_max_total(void)
+{
+    static size_t v = (size_t)-2;
+    if (v == (size_t)-2) v = getenv("TL_MM_TOTAL_GIB") ? (size_t)(atof(getenv("TL_MM_TOTAL_GIB")) * (double)(1u << 30)) : (size_t)-1;
+    return v;
+}
+static bool mm_force_phantom(void)
+{
+    static int v = -1;
+    if (v < 0) v = getenv("TL_MM_PHANTOM") != NULL;
+    return v;
+}
+
+/* Whether this process is short of address space: an iOS app without the extended-virtual-addressing entitlement (a sideloaded
+ * one, re-signed by its user's team) has a few GiB of it all told, and is refused an 8 GiB reservation; with it, an app has
+ * 64 GiB. A 16 GiB one tells them apart with room to spare either way. Engines whose allocators reserve far more than they use
+ * (Unity's) are set up to take less. A Mac imitating a phone (above) is short too. */
+bool tl_mm_address_space_short(void)
+{
+    static int v = -1;
+    if (v >= 0) return v;
+    const size_t probe = (size_t)16 << 30;
+    if (mm_max_map() < probe || mm_max_total() != (size_t)-1 || mm_force_phantom()) v = 1;
+    else {
+        int e = errno;
+        void *p = mmap(NULL, probe, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        v = p == MAP_FAILED;
+        if (p != MAP_FAILED) munmap(p, probe);
+        errno = e;
+    }
+    tl_log_line("mm: a 16 GiB reservation is %s here: %s address space", v ? "refused" : "allowed", v ? "little" : "plenty of");
+    return v;
+}
+
+/* The address space this process has mapped, outside the shared system libraries and the kernel's guard over the addresses it
+ * may never use (hundreds of GiB above its limit), and how much of it is the guest's own anonymous memory: what a game's log
+ * needs to tell a phone out of address space from one out of memory. */
+size_t tl_mm_address_space_used(size_t *guest)
+{
+    size_t total = 0;
+    for (vm_address_t a = 0;;) {
+        vm_size_t sz = 0; natural_t depth = 0;
+        vm_region_submap_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_SUBMAP_INFO_COUNT_64;
+        if (vm_region_recurse_64(mach_task_self(), &a, &sz, &depth, (vm_region_recurse_info_t)&info, &cnt) != KERN_SUCCESS) break;
+        if (!info.is_submap && !(info.user_tag == VM_MEMORY_GUARD && info.max_protection == VM_PROT_NONE)) total += sz;
+        a += sz;
+    }
+    if (guest) *guest = anon_total();
+    return total;
+}
+
 void *tl_ld_map_code(const char *path, uint64_t off, size_t len, void *at);
 static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long off)
 {
@@ -1283,12 +1375,15 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
     if (flags & 0x10)   df |= MAP_FIXED;
     if (flags & 0x20)   df |= MAP_ANON;
     TL_ERRNO_BEGIN();
-    static int force_phantom = -1;
-    if (force_phantom < 0) force_phantom = getenv("TL_MM_PHANTOM") != NULL;          /* a Mac pretending to be a phone */
-    static size_t max_map = (size_t)-2;                                              /* TL_MM_MAX_GIB: refuse bigger single mappings, as a phone does */
-    if (max_map == (size_t)-2) max_map = getenv("TL_MM_MAX_GIB") ? (size_t)atoi(getenv("TL_MM_MAX_GIB")) << 30 : (size_t)-1;
-    bool refuse = len > max_map && (flags & 0x20) && !(flags & 0x10);
-    if (refuse) { tl_log_line("mm: refusing %#zx bytes (TL_MM_MAX_GIB)", len); errno = ENOMEM; }
+    bool force_phantom = mm_force_phantom();
+    bool refuse = false;
+    if ((flags & 0x20) && !(flags & 0x10)) {
+        if (len > mm_max_map()) { tl_log_line("mm: refusing %#zx bytes (TL_MM_MAX_GIB)", len); refuse = true; }
+        else if (mm_max_total() != (size_t)-1 && anon_total() + len > mm_max_total()) {
+            tl_log_line("mm: refusing %#zx bytes: %#zx mapped already (TL_MM_TOTAL_GIB)", len, anon_total()); refuse = true;
+        }
+        if (refuse) errno = ENOMEM;
+    }
     bool shifted = !(flags & 0x20) && fd >= 0 && (off & (getpagesize() - 1)) != 0 && (off & 4095) == 0;
     void *r = refuse || (force_phantom && compressed_heap_request(len) && prot == 0 && (flags & 0x20) && !(flags & 0x10)) ? MAP_FAILED
             : shifted ? shifted_file_map(addr, len, prot_filter(prot, "mmap"), df, fd, off)
@@ -1314,7 +1409,9 @@ static int b_munmap(void *a, size_t l)
     { int sr; if (shifted_unmap(a, &sr)) { mm_trace("munmap", a, l, sr, errno); return sr; } }
     size_t real = phantom_clamp((uintptr_t)a, l);
     if (real == 0) return 0;                                 /* the half of a phantom range that was never mapped */
-    TL_ERRNO_BEGIN(); int r = munmap(a, real); TL_ERRNO_END(); mm_trace("munmap", a, real, r, errno); return r;
+    TL_ERRNO_BEGIN(); int r = munmap(a, real); TL_ERRNO_END(); mm_trace("munmap", a, real, r, errno);
+    if (r == 0) anon_remove((uintptr_t)a, real);
+    return r;
 }
 /* Whether a range is inside memory the guest mapped for itself (not a library's own pages). */
 static bool anon_contains(uintptr_t addr, size_t len)
@@ -1393,6 +1490,7 @@ static void *b_mremap(void *old, size_t olds, size_t news, int flags, void *newa
     anon_add(n, news);
     memcpy(n, old, olds < news ? olds : news);
     munmap(old, olds);
+    anon_remove((uintptr_t)old, olds);
     return n;
 }
 

@@ -23,6 +23,7 @@ void tl_hle_configure(const char *pkg, const char *apk, const char *data, int w,
 jobj *tl_hle_activity(void);
 void tl_set_data_dir(const char *dir);
 void tl_nwindow_configure(int w, int h, void *layer);
+void tl_hle_set_intent_extra(const char *key, const char *val);
 
 static struct {
     tl_unity_config cfg;
@@ -56,6 +57,30 @@ static void *native_of(const char *cls, const char *name, const char *sig)
     return fn;
 }
 
+/*
+ * The player's command line, which it reads from the launch intent's "unity" extra (initJni: getIntent().getExtras()).
+ *
+ * Unity's own allocators (its Dynamic Heap: 2022.3 does this) give each of their heaps a 256 MiB region of address space,
+ * reserved as twice that and trimmed to an aligned half, and another region when one fills. A game at its menu holds 16 of
+ * them, 4 GiB, with a few hundred MiB in use. An iOS app without the extended-virtual-addressing entitlement has a few GiB of
+ * address space all told, of which Husk's JIT region takes 1 GiB, so such a game dies loading its assets: an mmap of
+ * 0x1fffc000 bytes fails, then "Could not allocate memory: System out of memory!". Its boot.config memorysetup-* settings
+ * size the blocks inside a region, not the regions. -systemallocator has the player use malloc, which takes address space as
+ * memory is used, and leaves 4 of the regions (1 GiB). Where address space is plentiful the player keeps its own allocators.
+ * TL_UNITY_SYSTEM_ALLOCATOR=1|0 decides instead; TL_UNITY_ARGS adds arguments of its own.
+ */
+static void set_command_line(void)
+{
+    const char *force = getenv("TL_UNITY_SYSTEM_ALLOCATOR");
+    bool sys = force ? atoi(force) != 0 : tl_mm_address_space_short();
+    char line[512];
+    snprintf(line, sizeof(line), "%s%s%s", sys ? "-systemallocator" : "", sys && getenv("TL_UNITY_ARGS") ? " " : "",
+             getenv("TL_UNITY_ARGS") ? getenv("TL_UNITY_ARGS") : "");
+    if (!line[0]) return;
+    tl_hle_set_intent_extra("unity", line);
+    tl_log_line("unity: command line \"%s\"%s", line, sys ? " (malloc for the engine's memory: Unity's own allocators reserve more address space than there is)" : "");
+}
+
 bool tl_unity_start(const tl_unity_config *cfg)
 {
     U.cfg = *cfg;
@@ -72,6 +97,7 @@ bool tl_unity_start(const tl_unity_config *cfg)
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     tl_jni_init();
     tl_hle_configure(cfg->package_name, cfg->apk_path, cfg->data_dir, cfg->width, cfg->height);
+    set_command_line();
     tl_jni_hle_install();
     keyboard_install();
 

@@ -110,7 +110,9 @@ final class CrashReport: ObservableObject {
         } else if lines.contains(where: { $0.contains("the game could not be started") || $0.contains("native: launch refused") }) {
             cause = .startFailed
         }
-        if let d = AppDiagnosis.fromLog(lines.joined(separator: "\n")) { cause = .diagnosed(d) }
+        // The native output too: what a game said as it died (an engine giving up) is there, and may not be in husk.log yet
+        let native = (try? Data(contentsOf: HuskLog.previousNativeLogURL)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        if let d = AppDiagnosis.fromLog(lines.joined(separator: "\n") + "\n" + native) { cause = .diagnosed(d) }
         let time = (info["time"] as? Double).map { Date(timeIntervalSince1970: $0) }
         pending = Report(game: info["label"] as? String ?? "A game", appID: info["id"] as? String ?? "",
                          cause: cause, when: time, excerpt: Array(Self.interesting(lines).suffix(14)))

@@ -4,7 +4,9 @@
  *
  *   unity-test <apk> [seconds]
  *
- * Environment: TL_JNI_TRACE=1|2 (log JNI lookups / every call), TL_SKIP=a.so,...
+ * Environment: TL_JNI_TRACE=1|2 (log JNI lookups / every call), TL_SKIP=a.so,..., TL_DATA=dir (a data dir kept between runs),
+ * TL_MM_TOTAL_GIB=n (the address space of a phone without extended virtual addressing), TL_UNITY_SYSTEM_ALLOCATOR=1|0,
+ * TL_UNITY_ARGS="-arg ..." (the player's command line).
  */
 #include <mach/mach.h>
 #include <mach/mach_vm.h>
@@ -16,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <sys/ucontext.h>
 #include <unistd.h>
 
@@ -25,6 +28,7 @@
 #include "husk-tl-gamepad.h"
 #include "husk-tl-xmem.h"
 #include "husk-tl-audio.h"
+#include "husk-tl-bionic.h"
 
 static void dump_pushes(void);
 
@@ -284,6 +288,19 @@ static void install_probes(void)
     for (size_t i = 0; i < sizeof(ps) / sizeof(ps[0]); i++) if (!tl_ld_probe(L, ps[i].off, ps[i].cb)) fprintf(stderr, "probe at %#llx failed\n", (unsigned long long)ps[i].off);
 }
 
+/* TL_FPS=1: the frame rate every five seconds (TL_FRAME_EVERY=100000 keeps frame dumps from slowing it). */
+static void *fps_thread(void *arg)
+{
+    (void)arg;
+    for (unsigned long last = tl_unity_frames();; ) {
+        sleep(5);
+        unsigned long f = tl_unity_frames();
+        fprintf(stderr, "fps: %.1f (frame %lu)\n", (f - last) / 5.0, f);
+        last = f;
+    }
+    return NULL;
+}
+
 /* TL_TOUCH="ms:phase:id:x,y;..." replays touches at those times (ms since start); phase 0 down, 1 move, 2 up. */
 static void *touch_script(void *arg)
 {
@@ -352,7 +369,8 @@ static void *control_thread(void *arg)
             else if (sscanf(line, "shot %399s", p) == 1) {
                 char cmd[900]; snprintf(cmd, sizeof(cmd), "sips -s format png '%s/latest.bmp' --out '%s' >/dev/null 2>&1", g_frame_dir, p);
                 if (system(cmd)) fprintf(stderr, "ctl: shot failed\n");
-                else fprintf(stderr, "ctl: shot %s (frame %lu)\n", p, tl_unity_frames());
+                else { size_t g = 0, va = tl_mm_address_space_used(&g);
+                       fprintf(stderr, "ctl: shot %s (frame %lu, %.2f GiB of address space mapped, %.2f GiB by the game)\n", p, tl_unity_frames(), va / 1073741824.0, g / 1073741824.0); }
             }
             else if (!strncmp(line, "quit", 4)) { fprintf(stderr, "ctl: quit\n"); fflush(stderr); _exit(0); }
         }
@@ -382,17 +400,19 @@ int main(int argc, char **argv)
     { struct sigaction sd; memset(&sd, 0, sizeof(sd)); sd.sa_sigaction = on_dump; sd.sa_flags = SA_SIGINFO | SA_ONSTACK; sigemptyset(&sd.sa_mask); sigaction(SIGUSR2, &sd, NULL); }
     tl_ld_set_verbosity(getenv("TL_VERBOSE") ? atoi(getenv("TL_VERBOSE")) : 1);
     tl_jni_set_trace(getenv("TL_JNI_TRACE") ? atoi(getenv("TL_JNI_TRACE")) : 1);
-    char tmp[] = "/Volumes/GTAV/husk2/tmp/husk-unity-XXXXXX";
-    mkdtemp(tmp);
+    char tmp[600] = "/Volumes/GTAV/husk2/tmp/husk-unity-XXXXXX";
+    if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); }
+    else if (!mkdtemp(tmp)) { snprintf(tmp, sizeof(tmp), "/tmp/husk-unity-XXXXXX"); mkdtemp(tmp); }
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
     char egl[600], gles[600]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
-    char frames[] = "/Volumes/GTAV/husk2/tmp/husk-frames-XXXXXX"; mkdtemp(frames);
+    static char frames[64] = "/Volumes/GTAV/husk2/tmp/husk-frames-XXXXXX";
+    if (!mkdtemp(frames)) { snprintf(frames, sizeof(frames), "/tmp/husk-frames-XXXXXX"); mkdtemp(frames); }
     fprintf(stderr, "frames: %s\n", frames);
     /* TL_SPLITS: the app's split APKs, colon-separated (a Google Play install: libraries and asset packs in their own APKs) */
     if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
     tl_unity_config cfg = { .apk_path = argv[1], .data_dir = tmp, .package_name = getenv("TL_PACKAGE") ? getenv("TL_PACKAGE") : "com.kiloo.subwaysurf", .width = argc > 4 ? atoi(argv[3]) : 540, .height = argc > 4 ? atoi(argv[4]) : 1200,
                             .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
-                            .frame_dir = frames, .frame_every = getenv("TL_CTL") ? -6 : 30 };
+                            .frame_dir = frames, .frame_every = getenv("TL_FRAME_EVERY") ? atoi(getenv("TL_FRAME_EVERY")) : getenv("TL_CTL") ? -6 : 30 };
     g_frame_dir = frames;
     tl_audio_install();   /* as the app does: the game's sound goes to the speakers (TL_AUDIO_MUTE=1 for a silent run) */
     if (!tl_unity_start(&cfg)) { fprintf(stderr, "unity: start failed\n"); return 1; }
@@ -405,6 +425,7 @@ int main(int argc, char **argv)
     if (getenv("TL_PAD")) tl_pad_connect(0, "Xbox Wireless Controller");
     if (getenv("TL_CTL")) { tl_unity_set_keyboard_handler(keyboard_request); static pthread_t ct; pthread_create(&ct, NULL, control_thread, getenv("TL_CTL")); }
     if (getenv("TL_TOUCH")) { static pthread_t tt; pthread_create(&tt, NULL, touch_script, getenv("TL_TOUCH")); }
+    if (getenv("TL_FPS")) { static pthread_t ft; pthread_create(&ft, NULL, fps_thread, NULL); }
     if (getenv("TL_MONITOR")) { tl_ld_iterate(find_unity, NULL); pthread_t mt; pthread_create(&mt, NULL, monitor, NULL); }
     int secs = argc > 2 ? atoi(argv[2]) : 5;
     if (getenv("TL_STOP_AT")) { sleep((unsigned)atoi(getenv("TL_STOP_AT"))); raise(SIGSTOP); }

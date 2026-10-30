@@ -19,6 +19,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <zlib.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <mach/thread_policy.h>
 
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
@@ -180,6 +183,8 @@ static int choreo_run(int fd, int events, void *data)
     chcb *rev = NULL;
     while (due) { chcb *n = due->next; due->next = rev; rev = due; due = n; }
     tl_choreo_frame fd_ = { now, now + VSYNC_NS - 2000000, now + 2 * VSYNC_NS };
+    { static int tr = -1; if (tr < 0) tr = getenv("TL_CHOREO_TRACE") ? 1 : 0;
+      if (tr) { int nd = 0; for (chcb *x = rev; x; x = x->next) nd++; tl_log_line("choreographer: deliver %d at vsync %lld (late %.2f ms)", nd, (long long)now, (mono_ns() - now) / 1e6); } }
     for (chcb *cb = rev; cb;) {
         chcb *n = cb->next;
         if (cb->kind == 0) ((void (*)(long, void *))cb->fn)((long)now, cb->data);
@@ -195,6 +200,19 @@ static void *choreo_clock(void *arg)
 {
     (void)arg;
     pthread_setname_np("husk-vsync");
+    /* On time, as a display's vsync is: a plain thread's sleep is coalesced and wakes up to half a frame late (0-8 ms, on a Mac
+     * and an iPad alike). Swappy, Unity's frame pacing, keeps its own vsync clock by when these callbacks arrive and lets late ones
+     * pull its idea of the frame period up, so with that jitter it runs slower and slower: a game at 60 frames a second at first
+     * falls to under 20 within minutes. A time-constraint thread, as an audio or display thread is, wakes within 50 us. */
+    {
+        mach_timebase_info_data_t tb; mach_timebase_info(&tb);
+        thread_time_constraint_policy_data_t p = {
+            .period = (uint32_t)((uint64_t)VSYNC_NS * tb.denom / tb.numer), .computation = (uint32_t)(500000ull * tb.denom / tb.numer),
+            .constraint = (uint32_t)(2000000ull * tb.denom / tb.numer), .preemptible = 1 };
+        kern_return_t kr = thread_policy_set(pthread_mach_thread_np(pthread_self()), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&p,
+                                             THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+        if (kr != KERN_SUCCESS) tl_log_line("choreographer: the vsync clock could not have a time-constraint thread (%d); its ticks may come late", kr);
+    }
     int64_t next = mono_ns();
     for (;;) {
         next += VSYNC_NS;

@@ -170,7 +170,9 @@ static void *heartbeat_thread(void *arg)
         if (tick < 40) usleep(500000); else sleep(3);          /* twice a second for the first twenty seconds */
         unsigned long f = engine_frames();
 #if TARGET_OS_IPHONE
-        tl_log_line("unity: alive: %lu frames (+%lu), %zu MiB left before jetsam", f, f - last, os_proc_available_memory() >> 20);
+        size_t guest_va = 0, va = tl_mm_address_space_used(&guest_va);
+        tl_log_line("unity: alive: %lu frames (+%lu), %zu MiB left before jetsam, %.1f GiB of address space mapped (%.1f GiB by the game)",
+                    f, f - last, os_proc_available_memory() >> 20, va / 1073741824.0, guest_va / 1073741824.0);
 #else
         tl_log_line("unity: alive: %lu frames (+%lu)", f, f - last);
 #endif

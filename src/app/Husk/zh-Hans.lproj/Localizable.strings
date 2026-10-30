@@ -237,6 +237,7 @@
 "Or get it from" = "或者从这里获取";
 "Orientation" = "方向";
 "Other Ways to Turn On JIT" = "开启 JIT 的其他方式";
+"Out of address space" = "地址空间不足";
 "PS4 games need iOS 17.4 or later." = "PS4 游戏需要 iOS 17.4 或更高版本。";
 "Package" = "包名";
 "Pad" = "手柄";
@@ -356,6 +357,7 @@
 "The end of the log from the last time the game started. Share it when reporting a problem." = "游戏上次启动时日志的末尾。报告问题时请分享它。";
 "The game and everything it saved here are deleted from Husk." = "游戏及其在这里保存的所有内容都会从 Husk 中删除。";
 "The game is loaded in this session. Close Husk completely and open it again to reset its data." = "游戏已在本次运行中加载。请完全关闭 Husk 后重新打开，再重置它的数据。";
+"The game ran out of address space, not memory: iOS refused to set aside more addresses for it. An app without the extended virtual addressing entitlement gets only a few GB of addresses, and installs re-signed with your own Apple account or team often lose that entitlement. Install Husk with it kept, then start the game again." = "游戏耗尽的是地址空间，而不是内存：iOS 拒绝再为它预留地址。没有“扩展虚拟寻址”（extended virtual addressing）权限的应用只能使用几 GB 的地址，而用你自己的 Apple 账户或团队重新签名的安装常常会丢失这项权限。请以保留该权限的方式安装 Husk，然后重新启动游戏。";
 "The game stopped" = "游戏已停止";
 "The pairing file stays in Husk's Documents folder and is only sent to Husk's own helper." = "配对文件保存在 Husk 的“文稿”文件夹中，只会发送给 Husk 自己的助手。";
 "The plan, in order, is docs/04-translation-layer.md in Husk's source." = "计划的先后顺序见 Husk 源码中的 docs/04-translation-layer.md。";

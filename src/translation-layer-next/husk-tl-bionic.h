@@ -61,6 +61,12 @@ extern void (*tl_guest_exit_hook)(int status);   /* set by an app host: exit() f
 void *tl_bionic_find(const char *name);
 bool  tl_bionic_is_system_lib(const char *soname);
 
+/* Whether the process is short of address space (an iOS app without the extended-virtual-addressing entitlement):
+ * husk-tl-bionic-io.c. */
+bool  tl_mm_address_space_short(void);
+/* The address space mapped outside the shared system libraries; *guest (if given): the guest's own anonymous part. */
+size_t tl_mm_address_space_used(size_t *guest);
+
 /* ----------------------------------------------------------------- errno */
 
 /*
