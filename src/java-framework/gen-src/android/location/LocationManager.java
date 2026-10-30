@@ -55,9 +55,13 @@ public class LocationManager {
     public void clearTestProviderStatus(java.lang.String p0) {}
     public void flushGnssBatch() {}
     public android.os.PackageTagsList getAdasAllowlist() { return (android.os.PackageTagsList) huskProps.get("AdasAllowlist"); }
-    public java.util.List getAllProviders() { return (huskProps.get("AllProviders") != null ? (java.util.List) huskProps.get("AllProviders") : new java.util.ArrayList()); }
+    public java.util.List getAllProviders() {
+        java.util.ArrayList l = new java.util.ArrayList();
+        l.add(GPS_PROVIDER); l.add(NETWORK_PROVIDER); l.add(PASSIVE_PROVIDER); l.add(FUSED_PROVIDER);
+        return l;
+    }
     public java.lang.String[] getBackgroundThrottlingWhitelist() { return (java.lang.String[]) huskProps.get("BackgroundThrottlingWhitelist"); }
-    public java.lang.String getBestProvider(android.location.Criteria p0, boolean p1) { return null; }
+    public java.lang.String getBestProvider(android.location.Criteria p0, boolean p1) { return GPS_PROVIDER; }
     public void getCurrentLocation(android.location.LocationRequest p0, android.os.CancellationSignal p1, java.util.concurrent.Executor p2, java.util.function.Consumer p3) {}
     public void getCurrentLocation(java.lang.String p0, android.location.LocationRequest p1, android.os.CancellationSignal p2, java.util.concurrent.Executor p3, java.util.function.Consumer p4) {}
     public void getCurrentLocation(java.lang.String p0, android.os.CancellationSignal p1, java.util.concurrent.Executor p2, java.util.function.Consumer p3) {}
@@ -76,18 +80,18 @@ public class LocationManager {
     public android.location.LocationProvider getProvider(java.lang.String p0) { return null; }
     public java.util.List getProviderPackages(java.lang.String p0) { return new java.util.ArrayList(); }
     public android.location.provider.ProviderProperties getProviderProperties(java.lang.String p0) { return null; }
-    public java.util.List getProviders(android.location.Criteria p0, boolean p1) { return new java.util.ArrayList(); }
-    public java.util.List getProviders(boolean p0) { return new java.util.ArrayList(); }
-    public boolean hasProvider(java.lang.String p0) { return false; }
+    public java.util.List getProviders(android.location.Criteria p0, boolean p1) { return getAllProviders(); }
+    public java.util.List getProviders(boolean p0) { return getAllProviders(); }
+    public boolean hasProvider(java.lang.String p0) { return p0 != null && getAllProviders().contains(p0); }
     public void injectGnssMeasurementCorrections(android.location.GnssMeasurementCorrections p0) {}
     public boolean injectLocation(android.location.Location p0) { return false; }
     public boolean isAdasGnssLocationEnabled() { return (huskProps.get("AdasGnssLocationEnabled") instanceof Boolean ? (Boolean) huskProps.get("AdasGnssLocationEnabled") : false); }
     public boolean isAutomotiveGnssSuspended() { return (huskProps.get("AutomotiveGnssSuspended") instanceof Boolean ? (Boolean) huskProps.get("AutomotiveGnssSuspended") : false); }
     public boolean isExtraLocationControllerPackageEnabled() { return (huskProps.get("ExtraLocationControllerPackageEnabled") instanceof Boolean ? (Boolean) huskProps.get("ExtraLocationControllerPackageEnabled") : false); }
-    public boolean isLocationEnabled() { return (huskProps.get("LocationEnabled") instanceof Boolean ? (Boolean) huskProps.get("LocationEnabled") : false); }
-    public boolean isLocationEnabledForUser(android.os.UserHandle p0) { return false; }
-    public boolean isProviderEnabled(java.lang.String p0) { return false; }
-    public boolean isProviderEnabledForUser(java.lang.String p0, android.os.UserHandle p1) { return false; }
+    public boolean isLocationEnabled() { return true; }
+    public boolean isLocationEnabledForUser(android.os.UserHandle p0) { return true; }
+    public boolean isProviderEnabled(java.lang.String p0) { return p0 != null && getAllProviders().contains(p0); }
+    public boolean isProviderEnabledForUser(java.lang.String p0, android.os.UserHandle p1) { return isProviderEnabled(p0); }
     public boolean isProviderPackage(java.lang.String p0) { return false; }
     public boolean isProviderPackage(java.lang.String p0, java.lang.String p1) { return false; }
     public boolean isProviderPackage(java.lang.String p0, java.lang.String p1, java.lang.String p2) { return false; }

@@ -13,26 +13,20 @@ enum WhatsNew {
     }
 
     /// The version whose notes these are. A build of the same version shows nothing again.
-    static let version = "3.0.0"
+    static let version = "3.3"
     static let items: [Item] = [
-        Item(symbol: "gamecontroller.fill", title: "A new Husk",
-             detail: "A console-style home: your games on a shelf, the one you pick fills the screen with its artwork, and Play is one tap away. Android and PS4 games side by side, a new library, in light or dark as Settings › Appearance says."),
-        Item(symbol: "playstation.logo", title: "PS4 games",
-             detail: "Add a PS4 game with the + button, as a fake package (.pkg), a folder of them, or an extracted game folder, and play it from your library. Updates install beside their game, shaders are kept between launches, and games that ask for a name bring up the keyboard."),
-        Item(symbol: "square.stack.3d.up.fill", title: "Hundreds more Android games",
-             detail: "Hundreds of newly working games on the compatibility list, unofficial ports like Sonic Robo Blast 2, Ring Racers, NetHack and PokeWilds, Flutter games that showed a blank screen draw again, Godot 4 games run, and Python games get online."),
-        Item(symbol: "arrow.down.circle.fill", title: "Complete Store downloads",
-             detail: "Games that keep their data in expansion files get them with the download, and games split into many pieces load."),
-        Item(symbol: "keyboard.fill", title: "Typing everywhere",
-             detail: "Text fields in Unity, Java, Flutter, cocos2d-x and SDL games bring up the keyboard."),
-        Item(symbol: "textformat", title: "Chinese, Japanese and Korean",
-             detail: "Download the fonts in Settings › Fonts, and games stop showing empty boxes."),
-        Item(symbol: "bolt.fill", title: "JIT on its own",
-             detail: "TrollStore installs turn JIT on at launch, and Husk says on screen when something can't start without it."),
-        Item(symbol: "iphone", title: "iOS 15",
-             detail: "Husk now runs on iOS 15.5 and later (PS4 games need iOS 17.4)."),
+        Item(symbol: "bolt.slash.fill", title: "Play without JIT",
+             detail: "More games convert and sign their libraries on the device. One library that cannot convert no longer stops the rest, certificates from SideStore, AltStore or a .p12 import more reliably, and converted libraries are signed again after this update."),
+        Item(symbol: "shippingbox.fill", title: "More Android apps",
+             detail: "Java apps pick up missing platform classes from AOSP when framework.jar is bundled, jobs and boot receivers actually start, and Wi-Fi, location and settings answer as a running phone would."),
+        Item(symbol: "folder.fill", title: "Importing files",
+             detail: "The in-app file picker for Android apps can be used more than once in a session."),
+        Item(symbol: "arrow.triangle.2.circlepath", title: "Switch apps without restarting",
+             detail: "Leave one Android app or game and start another without closing Husk. Java apps reset fully; native engines are stopped and their libraries forgotten first."),
+        Item(symbol: "cpu", title: "32-bit ARM apps",
+             detail: "APKs that only ship armeabi-v7a libraries are translated to arm64 and run through the same translation layer as 64-bit apps."),
         Item(symbol: "wrench.and.screwdriver.fill", title: "Fixes",
-             detail: "Android no longer crashes after its download, the full Android emulator moved into Settings with a warning, closing Husk from the app switcher isn't reported as a crash, and much more."),
+             detail: "Certificate import, leftover store passwords on a .p12, and the file picker after the first pick."),
     ]
 
     private static let seenKey = "husk.whatsNew.seen"
@@ -57,7 +51,7 @@ struct WhatsNewSheet: View {
                 VStack(alignment: .leading, spacing: 26) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("What's New in Husk \(WhatsNew.version)").font(.largeTitle.weight(.bold))
-                        Text("A new look, PS4 games, and hundreds more Android games.").foregroundStyle(.secondary)
+                        Text("Play without JIT, more Java apps, a working file picker, and switch apps without restarting.").foregroundStyle(.secondary)
                     }
                     .padding(.top, 36)
                     ForEach(WhatsNew.items) { item in

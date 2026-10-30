@@ -1106,6 +1106,11 @@ static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, in
     __atomic_add_fetch(&g_natives_generation, 1, __ATOMIC_RELEASE);
     return 0;
 }
+int32_t tl_jni_register_one(jobj *cls, const char *name, const char *sig, void *fn)
+{
+    native_method m = { .name = name, .sig = sig, .fn = fn };
+    return jni_RegisterNatives(NULL, cls, &m, 1);
+}
 /* Bumped by every RegisterNatives: a method's cached native is looked up again after one (a later registration wins, as in ART). */
 unsigned tl_jni_natives_generation(void) { return __atomic_load_n(&g_natives_generation, __ATOMIC_ACQUIRE); }
 static int32_t jni_UnregisterNatives(void *env, jo cls) { (void)env; (void)cls; return 0; }
@@ -1235,6 +1240,25 @@ void tl_jni_each_declared(void (*fn)(tl_jclass *jc))
     pthread_mutex_unlock(&g_lock);
     for (int i = 0; i < n; i++) fn(list[i]);
     free(list);
+}
+
+void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user)
+{
+    pthread_mutex_lock(&g_lock);
+    for (int b = 0; b < NBUCKETS; b++) {
+        tl_jclass **pp = &g_classes[b];
+        while (*pp) {
+            if (drop(*pp, user)) {
+                tl_jclass *c = *pp;
+                *pp = c->next;
+                c->dvm = NULL;
+                c->nmeths = 0;
+                c->nfields = 0;
+                c->next = NULL;
+            } else pp = &(*pp)->next;
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
 }
 
 tl_jclass *tl_jni_find_declared(const char *name)

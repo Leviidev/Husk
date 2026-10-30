@@ -313,21 +313,21 @@ public class UserManager {
     public boolean isSameProfileGroup(int p0, int p1) { return false; }
     public boolean isSameProfileGroup(android.os.UserHandle p0, android.os.UserHandle p1) { return false; }
     public boolean isSettingRestrictedForUser(java.lang.String p0, int p1, java.lang.String p2, int p3) { return false; }
-    public boolean isUserAdmin(int p0) { return false; }
+    public boolean isUserAdmin(int p0) { return true; }
     public boolean isUserEphemeral(int p0) { return false; }
-    public boolean isUserForeground() { return false; }
+    public boolean isUserForeground() { return true; }
     public boolean isUserNameSet() { return false; }
     public boolean isUserOfType(java.lang.String p0) { return false; }
-    public boolean isUserRunning(int p0) { return false; }
-    public boolean isUserRunning(android.os.UserHandle p0) { return false; }
-    public boolean isUserRunningOrStopping(android.os.UserHandle p0) { return false; }
+    public boolean isUserRunning(int p0) { return true; }
+    public boolean isUserRunning(android.os.UserHandle p0) { return true; }
+    public boolean isUserRunningOrStopping(android.os.UserHandle p0) { return true; }
     public boolean isUserSwitcherEnabled() { return false; }
     public boolean isUserSwitcherEnabled(boolean p0) { return false; }
     public boolean isUserTypeEnabled(java.lang.String p0) { return false; }
-    public boolean isUserUnlocked(int p0) { return false; }
-    public boolean isUserUnlocked(android.os.UserHandle p0) { return false; }
-    public boolean isUserUnlockingOrUnlocked(int p0) { return false; }
-    public boolean isUserUnlockingOrUnlocked(android.os.UserHandle p0) { return false; }
+    public boolean isUserUnlocked(int p0) { return true; }
+    public boolean isUserUnlocked(android.os.UserHandle p0) { return true; }
+    public boolean isUserUnlockingOrUnlocked(int p0) { return true; }
+    public boolean isUserUnlockingOrUnlocked(android.os.UserHandle p0) { return true; }
     public boolean isUserVisible() { return false; }
     public boolean isVisibleBackgroundUsersOnDefaultDisplaySupported() { return false; }
     public boolean isVisibleBackgroundUsersSupported() { return false; }

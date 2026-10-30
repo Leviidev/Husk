@@ -77,5 +77,8 @@ tl_jfield *tl_jni_field(tl_jclass *cls, const char *name, const char *sig, bool 
 jvalue *tl_jni_field_slot(jobj *o, tl_jfield *f);
 tl_jclass *tl_jni_find_declared(const char *name);   /* already declared, or NULL */
 void tl_jni_each_declared(void (*fn)(tl_jclass *jc));
+/* Unlink classes for which drop returns true, so a later lookup can declare them from a new DEX. */
+void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user);
+int32_t tl_jni_register_one(jobj *cls, const char *name, const char *sig, void *fn);
 
 #endif

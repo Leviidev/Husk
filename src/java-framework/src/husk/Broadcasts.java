@@ -12,6 +12,12 @@ public final class Broadcasts {
     public static Intent register(BroadcastReceiver r, IntentFilter f) {
         synchronized (sReceivers) { sReceivers.add(new Object[] { r, f }); }
         if (f != null && f.hasAction(Intent.ACTION_BATTERY_CHANGED)) return android.os.BatteryManager.huskStickyIntent();
+        if (f != null && f.hasAction(android.net.ConnectivityManager.CONNECTIVITY_ACTION)) {
+            Intent i = new Intent(android.net.ConnectivityManager.CONNECTIVITY_ACTION);
+            i.putExtra(android.net.ConnectivityManager.EXTRA_NETWORK_INFO, new android.net.NetworkInfo());
+            i.putExtra(android.net.ConnectivityManager.EXTRA_NO_CONNECTIVITY, false);
+            return i;
+        }
         return null;
     }
     public static void unregister(BroadcastReceiver r) { synchronized (sReceivers) { for (int i = sReceivers.size() - 1; i >= 0; i--) if (sReceivers.get(i)[0] == r) sReceivers.remove(i); } }

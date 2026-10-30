@@ -41,6 +41,26 @@ public class ContentResolver {
         case "mms-sms": case "downloads": case "user_dictionary": case "com.android.externalstorage.documents": case "com.android.providers.media.documents":
         case "com.android.providers.downloads.documents": case "telephony": case "icc":
             return new android.database.MatrixCursor(proj != null ? proj : new String[] { "_id" });
+        case "settings": {
+            String[] cols = proj != null ? proj : new String[] { "name", "value" };
+            android.database.MatrixCursor c = new android.database.MatrixCursor(cols);
+            String path = u.getPath();
+            if (path != null) {
+                String[] segs = path.split("/");
+                if (segs.length >= 3) {
+                    String table = segs[1], name = segs[2], v = android.provider.Settings.huskGet(table, name);
+                    if (v != null) {
+                        Object[] row = new Object[cols.length];
+                        for (int i = 0; i < cols.length; i++) {
+                            if ("value".equals(cols[i])) row[i] = v;
+                            else row[i] = name;
+                        }
+                        c.addRow(row);
+                    }
+                }
+            }
+            return c;
+        }
         default: return null;
         }
     }

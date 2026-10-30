@@ -16,5 +16,34 @@ fi
 "$JDK/bin/java" -cp "$D8" com.android.tools.r8.D8 --min-api 26 --output "$TMP" "$TMP/classes.jar"
 mkdir -p "$(dirname "$OUT")"
 mv "$TMP/classes.dex" "$OUT"
+
+# Core dex: handwritten src/ only (and nested types of those classes). Generated
+# gen-src stubs stay out so AOSP framework.jar can define them when it is on the
+# boot path. Nested stubs of a handwritten outer class stay here so Activity$Foo
+# still matches Husk's Activity.
+CORE="${OUT%.dex}-core.dex"
+python3 - "$HERE/src" "$TMP/classes" "$TMP/core-classes" <<'PY'
+import os, shutil, sys
+src, classes, dest = sys.argv[1:4]
+os.makedirs(dest, exist_ok=True)
+kept = 0
+for dirpath, _, files in os.walk(classes):
+    for name in files:
+        if not name.endswith(".class"):
+            continue
+        rel = os.path.relpath(os.path.join(dirpath, name), classes)
+        outer = rel[:-6].split("$", 1)[0]
+        if os.path.isfile(os.path.join(src, outer + ".java")):
+            out = os.path.join(dest, rel)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            shutil.copy2(os.path.join(dirpath, name), out)
+            kept += 1
+print(kept)
+PY
+(cd "$TMP/core-classes" && "$JDK/bin/jar" cf "$TMP/core.jar" .)
+mkdir -p "$TMP/core-out"
+"$JDK/bin/java" -cp "$D8" com.android.tools.r8.D8 --min-api 26 --output "$TMP/core-out" "$TMP/core.jar"
+mv "$TMP/core-out/classes.dex" "$CORE"
 rm -rf "$TMP"
 echo "built $OUT"
+echo "built $CORE"

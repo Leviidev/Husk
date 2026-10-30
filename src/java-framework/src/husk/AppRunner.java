@@ -26,6 +26,21 @@ public final class AppRunner {
     private static long downTime;
     private static boolean sPausedByHost;
 
+    /** Another APK is about to start: forget this app's activities, loader and factory. */
+    public static void resetSession() {
+        sStack.clear();
+        sApp = null;
+        sHandler = null;
+        down = 0;
+        downTime = 0;
+        sPausedByHost = false;
+        sLoader = null;
+        sAdopted = null;
+        sFactory = android.app.AppComponentFactory.DEFAULT;
+        Looper.setInputSink(null);
+        Manifest.reset();
+    }
+
     private static ClassLoader sLoader;
     /** The app's class loader, as Android gives every app: a PathClassLoader over its APK and splits. Its classes say they come from
      *  it (Class.getClassLoader), and resources in the APKs are found through it. */
@@ -109,6 +124,11 @@ public final class AppRunner {
         Looper.setInputSink(AppRunner::deliver);
         applyInsets();
         app.onCreate();
+        /* as the system after boot: receivers in the manifest hear the device is up and the user is present, so WorkManager
+           and the app's own start-up jobs run before the first activity */
+        Broadcasts.send(app, new Intent(Intent.ACTION_BOOT_COMPLETED));
+        Broadcasts.send(app, new Intent(Intent.ACTION_LOCKED_BOOT_COMPLETED));
+        Broadcasts.send(app, new Intent("android.intent.action.USER_UNLOCKED"));
         Manifest.Component launcher = Manifest.activity(activityClass);
         Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         // started through the launcher's alias, the activity's component is the alias (Android compares that, not the class, when

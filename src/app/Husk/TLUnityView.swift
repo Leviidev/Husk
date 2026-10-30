@@ -5,8 +5,8 @@ import QuartzCore
 import AVFoundation
 import UniformTypeIdentifiers
 
-/// The engines the native runtime drives. Both draw into a CAMetalLayer through ANGLE, and both are one game per
-/// process: an engine cannot be unloaded once it has started.
+/// The engines the native runtime drives. Both draw into a CAMetalLayer through ANGLE. Starting a different APK
+/// stops the current session first.
 enum TLNativeEngine {
     case unity     // Subway Surfers and other Unity games: portrait, driven by UnityPlayer's own thread
     case cocos     // Geometry Dash and other cocos2d-x games: landscape, driven by a GL thread of our own
@@ -256,11 +256,16 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let ca = Bundle.main.path(forResource: "cacert", ofType: "pem") ?? ""
         try? FileManager.default.createDirectory(atPath: dataDir, withIntermediateDirectories: true)
         let layerPtr = Unmanaged.passUnretained(layer).toOpaque()
-        if husk_unity_state() != Int32(HUSK_UNITY_IDLE) {
-            // Already started this run: the engine cannot be loaded twice, so just show it again.
-            HuskLog.log("tl", "unity: already started; resuming")
-            if engine == .java { attachWebHost(fresh: false) }
-            return
+        let loaded = husk_native_loaded_apk().map { String(cString: $0) }
+        let st = husk_unity_state()
+        if st != Int32(HUSK_UNITY_IDLE) {
+            if loaded == apk, st == Int32(HUSK_UNITY_RUNNING) {
+                HuskLog.log("tl", "unity: already started; resuming")
+                if engine == .java { attachWebHost(fresh: false) }
+                return
+            }
+            HuskLog.log("tl", "native: stopping the previous app so \(apk) can start")
+            husk_native_unload()
         }
         // The game plays through the silent switch, like the guest's own audio, and mixes with other audio. Unity games too:
         // they used to be left out, from before they had sound, and played through a session that was never set up.
@@ -549,7 +554,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_java_set_document_picker { mimeTypes, multiple in
             let types = TLUnityUIView.contentTypes(mimeTypes.map { String(cString: $0) } ?? "*/*")
             DispatchQueue.main.async {
-                HuskFilePicker.present(types: types, multiple: multiple != 0, onPick: { urls in
+                HuskFilePicker.present(types: types, multiple: multiple != 0, asCopy: true, onPick: { urls in
                     // copies in a folder of their own: the app reads them by path, long after the picker's access ends
                     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("picked/\(UUID().uuidString)", isDirectory: true)
                     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -596,6 +601,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     /// A Flutter app closed itself (back on its first screen): whatever shows it closes.
     static let appClosedItself = Notification.Name("husk.tl.appClosedItself")
+    /// The current translation-layer session was stopped so another app can start.
+    static let huskStopPlaying = Notification.Name("husk.stopPlaying")
 
     /// The game's own requests, from its GL thread: 0 toggles, 1 shows, 2 hides.
     static func installKeyboardHandler() {
@@ -861,12 +868,6 @@ struct TLCocosAttemptView: View {
     /// A game that has no touch controls of its own, found once it is running.
     private var wantsController: Bool { model.state == Int32(HUSK_UNITY_RUNNING) && husk_native_wants_controller() }
 
-    /// Another game is already loaded in this session, and an engine cannot be loaded twice.
-    private var blockedBy: String? {
-        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != app.apks.first else { return nil }
-        return (loaded as NSString).lastPathComponent
-    }
-
     private func toggleInterface() {
         withAnimation(.easeInOut(duration: 0.15)) { uiHidden.toggle() }
         if uiHidden { showHint() }
@@ -881,16 +882,7 @@ struct TLCocosAttemptView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             Group {
-                if let other = blockedBy {
-                    VStack(spacing: 8) {
-                        Text("Another game is already loaded")
-                            .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-                        Text("\(other) was started in this session, and a game cannot be unloaded once it has started. Close Husk completely and open it again to run \(app.label).")
-                            .font(.system(size: 13)).foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center).frame(maxWidth: 460)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let apk = app.apks.first {
+                if let apk = app.apks.first {
                     // The game always has the whole screen: it is told its size once, as it starts, so nothing may take space from it.
                     // The bar and the log are drawn over it instead, and hiding them shows everything underneath.
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,

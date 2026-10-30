@@ -37,6 +37,8 @@ typedef struct tl_lib tl_lib;
 /* Where libraries come from: the APKs' lib/arm64-v8a/ directories. */
 #define TL_LD_MAX_APKS 48   /* a big game ships a dozen asset-pack splits besides its config ones (Disney Speedstorm: 16) */
 bool tl_ld_add_apk(const char *path);
+/* Forget the current app's APKs and libraries so another app can load. Runtime (system) libraries stay. */
+void tl_ld_reset_session(void);
 /* A split APK of the app about to start; added right after its base APK, whichever engine adds that. */
 void tl_ld_queue_split(const char *path);
 const char *tl_ld_queued_split(int index);              /* NULL past the last */
@@ -50,6 +52,7 @@ void tl_ld_interpose(const char *name, void *fn);
 
 /* Whether one of the APKs carries this arm64 library (an engine is told by the libraries it ships). */
 bool tl_ld_has_lib(const char *name);
+bool tl_ld_is_arm32(const tl_lib *lib);
 int tl_ld_apk_libs(void (*cb)(const char *name, uint64_t size, void *user), void *user);
 
 /*

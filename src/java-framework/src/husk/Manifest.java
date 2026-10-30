@@ -35,6 +35,16 @@ public final class Manifest {
         if (n.indexOf('.') < 0) return packageName + "." + n;
         return n;
     }
+    /** Another APK is about to start in this process: forget this one. */
+    public static synchronized void reset() {
+        sRead = false;
+        packageName = applicationClass = versionName = appComponentFactory = null;
+        installLocation = -1; versionCode = 0; minSdk = 21; targetSdk = 34; appTheme = appLabel = appIcon = appFlags = 0;
+        debuggable = largeHeap = false; hardwareAccelerated = extractNativeLibs = true;
+        appMetaData = new Bundle();
+        activities.clear(); services.clear(); receivers.clear(); providers.clear();
+        permissions.clear(); libraries.clear();
+    }
     public static synchronized void read() {
         if (sRead) return;
         sRead = true;

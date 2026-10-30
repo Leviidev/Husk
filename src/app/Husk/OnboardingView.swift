@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// What Husk asks on a first install, and remembers.
 ///
@@ -58,7 +59,11 @@ struct OnboardingView: View {
     @AppStorage(Theme.Appearance.key) private var appearance = Theme.Appearance.system
     @ObservedObject private var theme = AppTheme.shared
     @ObservedObject private var jit = JITCoordinator.shared
+    @ObservedObject private var certificate = SigningCertificate.shared
+    @AppStorage(JITLess.key) private var jitless = false
     @State private var settingUpJIT = false
+    @State private var pickedP12: Data?
+    @State private var p12Password = ""
 
     var body: some View {
         ZStack {
@@ -66,6 +71,30 @@ struct OnboardingView: View {
             setup
         }
         .sheet(isPresented: $settingUpJIT) { JITSetupFlow() }
+        .sheet(isPresented: Binding(get: { pickedP12 != nil }, set: { if !$0 { pickedP12 = nil } })) {
+            NavigationView {
+                Form {
+                    Section {
+                        SecureField("Password", text: $p12Password)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    } footer: {
+                        Text("Enter the password for the private key. Leave it blank if no password is required.")
+                    }
+                }
+                .navigationTitle("Certificate Password")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { pickedP12 = nil } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Import") {
+                            if let data = pickedP12 { certificate.importP12(data, password: p12Password) }
+                            pickedP12 = nil
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // MARK: frame
@@ -342,22 +371,69 @@ struct OnboardingView: View {
     }
 
     private var jitPage: some View {
-        VStack(spacing: 18) {
-            header("bolt.fill", "Turn On JIT",
-                   "Games need JIT, which iOS only grants to an attached debugger. StikJIT is built into Husk and turns it on from "
-                 + "inside the app, with no computer. StikDebug and TrollStore work too.")
-            if let state = jitState {
-                Label(state, systemImage: "checkmark.circle.fill")
-                    .font(.callout.weight(.medium)).foregroundStyle(.green)
+        ScrollView {
+            VStack(spacing: 18) {
+                header("bolt.fill", "How Games Run",
+                       "Most games need JIT, or Play without JIT with your sideload certificate.")
+                if let state = jitState {
+                    Label(state, systemImage: "checkmark.circle.fill")
+                        .font(.callout.weight(.medium)).foregroundStyle(.green)
+                }
+                Button(jitState == nil ? "Set Up StikJIT Now" : "Change JIT Setup") { settingUpJIT = true }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Button {
+                        jitless = true
+                    } label: {
+                        HStack {
+                            Text("Play without JIT")
+                                .font(.body.weight(.semibold))
+                            Spacer()
+                            if jitless { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                        }
+                    }
+                    .foregroundStyle(Theme.accent)
+                    Text("Import the certificate SideStore or AltStore installed Husk with, or a .p12.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if let info = certificate.info {
+                        Text("Certificate: team \(info.teamID).")
+                            .font(.caption).foregroundStyle(.green)
+                    }
+                    ForEach(SigningCertificate.Store.allCases) { store in
+                        Button("Import from \(store.title)") {
+                            jitless = true
+                            certificate.requestFromStore(store)
+                        }
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    }
+                    Button("Import .p12 File") {
+                        jitless = true
+                        HuskFilePicker.present(types: [.pkcs12, .data], multiple: false, asCopy: true, onPick: { urls in
+                            guard let url = urls.first else { return }
+                            let scoped = url.startAccessingSecurityScopedResource()
+                            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                            guard let data = try? Data(contentsOf: url) else { certificate.lastError = "That file could not be read."; return }
+                            p12Password = ""
+                            pickedP12 = data
+                        }, onFail: { certificate.lastError = $0 })
+                    }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    if let why = certificate.lastError {
+                        Text(why).font(.caption).foregroundStyle(.orange)
+                    }
+                }
+                .padding(.horizontal, 28)
+
+                Text("You can skip this: Husk asks again when a game needs it. JIT is in Settings › JIT & Sideload, Play without JIT is next to it.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
             }
-            Button(jitState == nil ? "Set Up StikJIT Now" : "Change JIT Setup") { settingUpJIT = true }
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Theme.accent)
-            Text("You can skip this: Husk asks again when a game needs it, and it is in Settings › JIT & Sideload.")
-                .font(.footnote).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
-            Spacer()
+            .padding(.bottom, 16)
         }
     }
 
@@ -398,7 +474,7 @@ struct OnboardingView: View {
         TourCard(symbol: "cart.fill", title: "Store",
                  text: "Browse and download Android apps from Google Play, with a guest account or your own, and see how each runs in Husk."),
         TourCard(symbol: "bolt.fill", title: "Settings & JIT",
-                 text: "Games need JIT. Turn it on from Home or Settings › JIT & Sideload. Settings also has performance, appearance, "
+                 text: "Games need JIT, or Play without JIT with a certificate. Both are in Settings. Settings also has performance, appearance, "
                      + "input, and the optional full Android emulator."),
         TourCard(symbol: "questionmark.circle.fill", title: "Help",
                  text: "Stuck? Settings › Help answers the common problems, and a game that crashes Husk leaves a report to share."),

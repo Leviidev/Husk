@@ -91,13 +91,8 @@ if [ -f "$JRT/husk-framework.dex" ]; then
     echo "==> java runtime: $(stat -f '%z bytes, %Sm' "$JRT/husk-framework.dex")"
 fi
 [ -d "$APP" ] || { echo "no app bundle at $APP" >&2; exit 1; }
-# Android libraries made into dylibs ahead of time (Husk 3.2's JIT-less mode; tools/elf2macho-test.c <lib.so> build/aot/ --ios):
-# they go in Frameworks, where every installer signs them with the app.
-AOT="$HUSK_ROOT/build/aot"
-if ls "$AOT"/aot-*.dylib >/dev/null 2>&1; then
-    cp "$AOT"/aot-*.dylib "$APP/Frameworks/"
-    echo "==> JIT-less dylibs: $(ls "$AOT"/aot-*.dylib | wc -l | tr -d ' ') ($(du -ch "$AOT"/aot-*.dylib | tail -1 | cut -f1))"
-fi
+# Do not copy build/aot/*.dylib into the IPA. Those are converted Android game
+# libraries from local testing; shipping them is distributing the game.
 
 # Stamp the build's identity into the bundle so its logs can name themselves.
 # A log from a stale install is otherwise indistinguishable from a log proving a

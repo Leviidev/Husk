@@ -18,6 +18,8 @@ public final class Native {
     /** The NDK looper of this thread: made with the Java one, and its callbacks run between messages. */
     public static native void nativeLooperPrepare();
     public static native boolean nativeLooperPoll();
+    /** True when Husk is stopping this app so another can start. */
+    public static native boolean sessionEnded();
     /** Class.getClassLoader for the app's own classes. */
     public static native void setAppClassLoader(ClassLoader loader);
     public static native String dataDir();

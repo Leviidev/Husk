@@ -4,7 +4,7 @@ import SwiftUI
 extension TLReport {
     /// Whether Husk will try to run it at all. A game with an engine Husk has a driver for runs on the native runtime; one
     /// without (Flappy Bird is plain Java with a couple of AndroidX helper libraries) runs on Husk's own Java interpreter.
-    /// Only an APK with no 64-bit code, or one Husk could not read, is out of reach.
+    /// Only an APK with no ARM code, or one Husk could not read, is out of reach.
     var canRun: Bool {
         runsOnNativeRuntime || webKind != nil || ["java", "native", "nativeWithWork"].contains(verdict)
     }
@@ -49,7 +49,7 @@ struct TLTechnicalView: View {
 
     private var report: TLReport? { app.report }
     private var logURL: URL { app.dataDirectory.appendingPathComponent("native-run.log") }
-    private var arm64: [TLLibrary] { (report?.libraries ?? []).filter { $0.abi == "arm64-v8a" } }
+    private var arm64: [TLLibrary] { (report?.libraries ?? []).filter { $0.abi == "arm64-v8a" || $0.abi == "armeabi-v7a" || $0.abi == "armeabi" } }
 
     var body: some View {
         HuskPageList {

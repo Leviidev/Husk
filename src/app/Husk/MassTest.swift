@@ -1,11 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// The developer mass test: every APK in a folder the user makes in Husk's Files folder, `DeveloperTesting`, tried one per launch
-/// of Husk (one game per run is all Husk can load). Each launch takes the next APK in, waits for JIT and a few seconds more, plays
-/// it, watches it for a while, writes down what happened -- it runs, it started and then stopped, it never started, or Husk itself
-/// went down with it (found on the next launch) -- and closes Husk. The user opens Husk again for the next one. At the end the
-/// results, with each app's diagnosis and the end of its log, are one file to share.
+/// The developer mass test: every APK in a folder the user makes in Husk's Files folder, `DeveloperTesting`, tried in turn in this
+/// run of Husk. Each APK is imported, played, watched, written down -- it runs, it started and then stopped, it never started, or
+/// Husk itself went down with it (found on the next launch) -- then the session is cleared so the next APK can start. A crash still
+/// resumes on the following launch. At the end the results, with each app's diagnosis and the end of its log, are one file to share.
 @MainActor
 final class MassTest: ObservableObject {
     static let shared = MassTest()
@@ -77,7 +76,8 @@ final class MassTest: ObservableObject {
 
     func start() {
         guard let files = Self.apks(), !files.isEmpty else { status = "Put APKs in the DeveloperTesting folder first."; return }
-        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = "Close Husk and open it again to start: a game was already loaded in this run."; return }
+        guard !ranThisProcess else { status = "A test is already running in this session."; return }
+        if husk_native_loaded_apk() != nil { husk_native_unload() }
         ranThisProcess = true
         state = State(queue: files, index: 0, results: [], appIDs: [:], launched: false, startedAt: Date())
         save()
@@ -97,7 +97,8 @@ final class MassTest: ObservableObject {
     func retestFailures() {
         let files = failures
         guard !files.isEmpty else { status = "No failures to retest."; return }
-        guard !ranThisProcess, husk_native_loaded_apk() == nil else { status = "Close Husk and open it again to start: a game was already loaded in this run."; return }
+        guard !ranThisProcess else { status = "A test is already running in this session."; return }
+        if husk_native_loaded_apk() != nil { husk_native_unload() }
         ranThisProcess = true
         let ids = state?.appIDs ?? [:]
         state = State(queue: files, index: 0, results: [], appIDs: ids, launched: false, startedAt: Date())
@@ -216,7 +217,7 @@ final class MassTest: ObservableObject {
         }
     }
 
-    /// Writes one app's result and closes Husk, so the next launch is a fresh process for the next app.
+    /// Writes one app's result, stops its session, and starts the next APK in this run of Husk.
     private func record(file: String, app: TLApp?, outcome: String, frames: UInt, seconds: Double, diagnosis: String? = nil) {
         guard var s = state else { return }
         var log: [String] = []
@@ -233,8 +234,9 @@ final class MassTest: ObservableObject {
         HuskLog.log("masstest", "\(file): \(outcome)")
         HuskLog.flushNow()
         CrashReport.gameEnded()
-        // A moment for the files to land, then out: one app per run of Husk.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { exit(0) }
+        NotificationCenter.default.post(name: TLUnityUIView.huskStopPlaying, object: nil)
+        husk_native_unload()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.runCurrent() }
     }
 
     // MARK: - Files

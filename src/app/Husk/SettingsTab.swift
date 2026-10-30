@@ -557,7 +557,6 @@ struct JITLessSettings: View {
         HuskForm {
             Section {
                 Toggle("Play without JIT", isOn: $jitless)
-                DetailRow(label: "Prebuilt games", value: JITLess.libraryCount > 0 ? "Geometry Dash" : "none in this build", mono: false)
                 if cacheBytes > 0 {
                     DetailRow(label: "Converted games", value: ByteCountFormatter.string(fromByteCount: cacheBytes, countStyle: .file), mono: false)
                     Button(role: .destructive) {
@@ -584,7 +583,7 @@ struct JITLessSettings: View {
                     } label: { Label("Import from \(store.title)", systemImage: "arrow.down.circle") }
                 }
                 Button {
-                    HuskFilePicker.present(types: [.pkcs12, .data], multiple: false, onPick: { urls in
+                    HuskFilePicker.present(types: [.pkcs12, .data], multiple: false, asCopy: true, onPick: { urls in
                         guard let url = urls.first else { return }
                         let scoped = url.startAccessingSecurityScopedResource()
                         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -609,8 +608,11 @@ struct JITLessSettings: View {
             NavigationView {
                 Form {
                     Section {
-                        SecureField("Password (empty if none)", text: $p12Password)
-                            .textContentType(.password)
+                        SecureField("Password", text: $p12Password)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    } footer: {
+                        Text("Enter the password for the private key. Leave it blank if no password is required.")
                     }
                 }
                 .navigationTitle("Certificate Password")

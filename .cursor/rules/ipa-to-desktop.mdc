@@ -1,0 +1,16 @@
+---
+description: After Husk app changes, package IPA to Desktop, then commit and push
+alwaysApply: true
+---
+
+# IPA, commit, push
+
+After a change that belongs in the iOS app (translation layer, Swift UI, signing, engines), package it without being asked:
+
+```
+./scripts/package_ipa.sh
+```
+
+That writes `~/Desktop/Husk.ipa`. Also package `~/Desktop/Husk.tipa` only when they ask for TrollStore / TIPA.
+
+Then commit the source (never the IPA) and `git push origin` the current branch. Do not add a GitHub/Cursor `Co-authored-by` trailer. If a hook injects one, rewrite the commit with `git commit-tree` so the message has none. Never force-push `main`.

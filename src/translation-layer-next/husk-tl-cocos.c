@@ -372,5 +372,6 @@ bool tl_cocos_ended(void) { return atomic_load(&U.ended); }
 void tl_cocos_stop(void)
 {
     atomic_store(&U.stop, true);
-    if (U.thread_started) pthread_join(U.thread, NULL);
+    if (U.thread_started) { pthread_join(U.thread, NULL); U.thread_started = false; }
+    atomic_store(&U.stop, false);
 }

@@ -10,6 +10,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "husk-tl-arm32.h"
 #include "husk-tl-bionic.h"
 #include "husk-tl-dexindex.h"
 #include "husk-tl-egl.h"
@@ -17,6 +18,8 @@
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-xmem.h"
+
+void *tl_nwindow_get(void);
 
 void tl_jni_hle_install(void);
 void tl_hle_configure(const char *pkg, const char *apk, const char *data, int w, int h);
@@ -49,6 +52,75 @@ static void load_library(const char *name)
 
 static void register_pad_sink(void);
 
+static void gput32(uint32_t va, uint32_t v)
+{
+    uint8_t *p = tl_a32_host(va);
+    if (p) memcpy(p, &v, 4);
+}
+static uint32_t gget32(uint32_t va)
+{
+    uint32_t v = 0;
+    uint8_t *p = tl_a32_host(va);
+    if (p) memcpy(&v, p, 4);
+    return v;
+}
+static uint32_t gstrcpy(const char *s)
+{
+    size_t n = strlen(s) + 1;
+    uint32_t p = tl_a32_alloc((uint32_t)n);
+    if (p && tl_a32_host(p)) memcpy(tl_a32_host(p), s, n);
+    return p;
+}
+
+/* Pocket Edition before GameActivity: ANativeActivity_onCreate in libminecraftpe. */
+static bool start_old_pe(void *env, jobj *activity)
+{
+    tl_lib *mc = tl_ld_find_lib("libminecraftpe.so");
+    void *on_create = mc ? tl_ld_sym(mc, "ANativeActivity_onCreate") : NULL;
+    if (!tl_a32_is_fn(on_create)) {
+        tl_log_line("minecraft: ANativeActivity_onCreate is %s", on_create ? "not 32-bit" : "missing");
+        return false;
+    }
+    tl_log_line("minecraft: Pocket Edition 32-bit NativeActivity");
+    void *reg = tl_ld_sym(mc, "Java_com_mojang_minecraftpe_MainActivity_nativeRegisterThis");
+    if (tl_a32_is_fn(reg)) {
+        tl_log_line("minecraft: nativeRegisterThis");
+        tl_a32_call(tl_a32_va(reg), tl_a32_env_va(), tl_a32_ref(activity), 0, 0);
+    }
+    uint32_t cb = tl_a32_alloc(18 * 4);
+    uint32_t na = tl_a32_alloc(40);
+    if (!cb || !na) { tl_log_line("minecraft: no guest space for NativeActivity"); return false; }
+    char files[600], ext[700], obb[600];
+    snprintf(files, sizeof(files), "%s/files", G.data);
+    snprintf(obb, sizeof(obb), "%s/obb", G.data);
+    snprintf(ext, sizeof(ext), "%s/sdcard/Android/data/%s/files", G.data, G.pkg);
+    void *(*from_java)(void *, void *) = tl_bionic_find("AAssetManager_fromJava");
+    void *am = from_java ? from_java(env, tl_hle_assets()) : NULL;
+    gput32(na + 0, cb);
+    gput32(na + 4, tl_a32_vm_va());
+    gput32(na + 8, tl_a32_env_va());
+    gput32(na + 12, tl_a32_ref(activity));
+    gput32(na + 16, gstrcpy(files));
+    gput32(na + 20, gstrcpy(ext));
+    gput32(na + 24, 19);
+    gput32(na + 28, 0);
+    gput32(na + 32, tl_a32_intern_host(am));
+    gput32(na + 36, gstrcpy(obb));
+    tl_log_line("minecraft: ANativeActivity_onCreate");
+    tl_a32_call(tl_a32_va(on_create), na, 0, 0, 0);
+    uint32_t win = tl_a32_intern_host(tl_nwindow_get());
+    uint32_t on_start = gget32(cb + 0), on_resume = gget32(cb + 4);
+    uint32_t on_focus = gget32(cb + 24), on_win = gget32(cb + 28), on_resize = gget32(cb + 32);
+    if (on_start) tl_a32_call(on_start, na, 0, 0, 0);
+    if (on_resume) tl_a32_call(on_resume, na, 0, 0, 0);
+    if (on_win) { tl_log_line("minecraft: onNativeWindowCreated"); tl_a32_call(on_win, na, win, 0, 0); }
+    if (on_resize) tl_a32_call(on_resize, na, win, 0, 0);
+    if (on_focus) tl_a32_call(on_focus, na, 1, 0, 0);
+    tl_log_line("minecraft: Pocket Edition lifecycle delivered");
+    G.handle = 1;
+    return true;
+}
+
 bool tl_ga_start(const tl_ga_config *cfg)
 {
     G.cfg = *cfg;
@@ -79,9 +151,11 @@ bool tl_ga_start(const tl_ga_config *cfg)
     tl_hle_set_activity(G.activity);
     tl_mc_set_activity(G.activity);
 
-    /* MainActivity.<clinit>: the libraries it loads, each running its JNI_OnLoad. */
+    /* MainActivity.<clinit>: Pocket Edition 1.1.x has fmod + minecraftpe only; Bedrock also ships MediaDecoders. */
     static const char *const libs[] = { "fmod", "MediaDecoders_Android", "minecraftpe", NULL };
     for (int i = 0; libs[i]; i++) {
+        char so[64]; snprintf(so, sizeof(so), "lib%s.so", libs[i]);
+        if (!tl_ld_has_lib(so)) { tl_log_line("minecraft: no %s in the APK, skipping", so); continue; }
         load_library(libs[i]);
         if (tl_jni_pending()) { tl_log_line("minecraft: loading lib%s.so failed", libs[i]); return false; }
     }
@@ -92,8 +166,12 @@ bool tl_ga_start(const tl_ga_config *cfg)
      */
     {
         tl_lib *mc = tl_ld_find_lib("libminecraftpe.so");
-        void (*set_flags)(const char *) = mc ? (void (*)(const char *))tl_ld_sym(mc, "_ZN2v82V818SetFlagsFromStringEPKc") : NULL;
-        if (set_flags) { set_flags("--jitless"); tl_log_line("minecraft: V8 set to run without a JIT"); }
+        void *set_flags = mc ? tl_ld_sym(mc, "_ZN2v82V818SetFlagsFromStringEPKc") : NULL;
+        if (set_flags && !tl_a32_is_fn(set_flags)) {
+            ((void (*)(const char *))set_flags)("--jitless");
+            tl_log_line("minecraft: V8 set to run without a JIT");
+        } else if (set_flags)
+            tl_log_line("minecraft: V8 is 32-bit; not calling SetFlagsFromString as arm64");
         else tl_log_line("minecraft: V8's flag setter is not exported; the game's JavaScript may need executable memory");
     }
     tl_log_line("minecraft: libraries loaded (%zu of %zu MiB of executable memory used)", tl_xmem_used() >> 20, tl_xmem_size() >> 20);
@@ -154,7 +232,11 @@ static void *ui_main(void *arg)
     init_fn init = (init_fn)native_of(CLS_GA, "initializeNativeCode",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;[BLandroid/content/res/Configuration;)J",
         "Java_com_google_androidgamesdk_GameActivity_initializeNativeCode");
-    if (!init) return NULL;
+    if (!init || tl_a32_is_fn((void *)init)) {
+        if (start_old_pe(env, activity)) goto pe_loop;
+        tl_log_line("minecraft: neither GameActivity nor Pocket Edition NativeActivity started");
+        return NULL;
+    }
     char files[600], obb[600], ext[700];
     snprintf(files, sizeof(files), "%s/files", G.data);
     snprintf(obb, sizeof(obb), "%s/obb", G.data);
@@ -195,8 +277,10 @@ static void *ui_main(void *arg)
     if (focus) focus(env, activity, G.handle, 1);
     tl_log_line("minecraft: focus gained");
 
+pe_loop:
     /* The message loop: the looper serves what the game's native glue registered on it (its main-work pipe), and
      * the jobs posted with tl_ga_post run in between. */
+    ;
     int (*poll_once)(int, int *, int *, void **) = tl_bionic_find("ALooper_pollOnce");
     for (;;) {
         poll_once(50, NULL, NULL, NULL);

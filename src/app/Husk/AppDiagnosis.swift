@@ -57,7 +57,7 @@ struct AppDiagnosis: Identifiable, Equatable {
         }
         if r.verdict == "noArm64" {
             return AppDiagnosis(kind: .unsupportedCPU, title: "Not supported: wrong kind of CPU code",
-                                detail: r.summary + " iPhones run 64-bit ARM (arm64) code. Look for an arm64 or universal build of this app.",
+                                detail: r.summary + " Husk runs ARM (arm64 and 32-bit ARM translated to arm64). Look for an ARM build of this app.",
                                 evidence: "ABIs: " + r.abis.joined(separator: ", "))
         }
         if app.apks.count == 1, let base = app.apks.first, husk_apk_split_required(base) != 0 {

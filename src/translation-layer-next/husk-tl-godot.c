@@ -396,4 +396,9 @@ void tl_godot_quit(void) { tl_log_line("godot: the game asked to quit"); atomic_
 void tl_godot_set_paused(bool paused) { atomic_store(&U.paused, paused); }
 unsigned long tl_godot_frames(void) { return atomic_load(&U.frames); }
 bool tl_godot_ended(void) { return atomic_load(&U.ended); }
-void tl_godot_stop(void) { atomic_store(&U.stop, true); if (U.thread_started) pthread_join(U.thread, NULL); }
+void tl_godot_stop(void)
+{
+    atomic_store(&U.stop, true);
+    if (U.thread_started) { pthread_join(U.thread, NULL); U.thread_started = false; }
+    atomic_store(&U.stop, false);
+}

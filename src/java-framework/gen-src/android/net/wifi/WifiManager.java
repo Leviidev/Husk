@@ -388,10 +388,10 @@ public class WifiManager {
         w.huskProps.put("NetworkId", Integer.valueOf(-1)); w.huskProps.put("Rssi", Integer.valueOf(-55)); w.huskProps.put("LinkSpeed", Integer.valueOf(433));
         return w;
     }
-    public java.lang.String getCountryCode() { return (java.lang.String) huskProps.get("CountryCode"); }
-    public android.net.Network getCurrentNetwork() { return (android.net.Network) huskProps.get("CurrentNetwork"); }
+    public java.lang.String getCountryCode() { return "us"; }
+    public android.net.Network getCurrentNetwork() { return new android.net.Network(); }
     public java.lang.String getCurrentNetworkWpsNfcConfigurationToken() { return (java.lang.String) huskProps.get("CurrentNetworkWpsNfcConfigurationToken"); }
-    public android.net.DhcpInfo getDhcpInfo() { return (android.net.DhcpInfo) huskProps.get("DhcpInfo"); }
+    public android.net.DhcpInfo getDhcpInfo() { return new android.net.DhcpInfo(); }
     public boolean getEnableAutoJoinWhenAssociated() { return (huskProps.get("EnableAutoJoinWhenAssociated") instanceof Boolean ? (Boolean) huskProps.get("EnableAutoJoinWhenAssociated") : false); }
     public java.lang.String[] getFactoryMacAddresses() { return (java.lang.String[]) huskProps.get("FactoryMacAddresses"); }
     public void getLastCallerInfoForApi(int p0, java.util.concurrent.Executor p1, java.util.function.BiConsumer p2) {}
@@ -461,7 +461,7 @@ public class WifiManager {
     public boolean isPasspointTermsAndConditionsSupported() { return (huskProps.get("PasspointTermsAndConditionsSupported") instanceof Boolean ? (Boolean) huskProps.get("PasspointTermsAndConditionsSupported") : false); }
     public boolean isPortableHotspotSupported() { return (huskProps.get("PortableHotspotSupported") instanceof Boolean ? (Boolean) huskProps.get("PortableHotspotSupported") : false); }
     public boolean isPreferredNetworkOffloadSupported() { return (huskProps.get("PreferredNetworkOffloadSupported") instanceof Boolean ? (Boolean) huskProps.get("PreferredNetworkOffloadSupported") : false); }
-    public boolean isScanAlwaysAvailable() { return (huskProps.get("ScanAlwaysAvailable") instanceof Boolean ? (Boolean) huskProps.get("ScanAlwaysAvailable") : false); }
+    public boolean isScanAlwaysAvailable() { return true; }
     public boolean isScanThrottleEnabled() { return (huskProps.get("ScanThrottleEnabled") instanceof Boolean ? (Boolean) huskProps.get("ScanThrottleEnabled") : false); }
     public boolean isStaApConcurrencySupported() { return (huskProps.get("StaApConcurrencySupported") instanceof Boolean ? (Boolean) huskProps.get("StaApConcurrencySupported") : false); }
     public boolean isStaBridgedApConcurrencySupported() { return (huskProps.get("StaBridgedApConcurrencySupported") instanceof Boolean ? (Boolean) huskProps.get("StaBridgedApConcurrencySupported") : false); }
@@ -483,7 +483,7 @@ public class WifiManager {
     public boolean isWifiApEnabled() { return (huskProps.get("WifiApEnabled") instanceof Boolean ? (Boolean) huskProps.get("WifiApEnabled") : false); }
     public boolean isWifiAwareSupported() { return (huskProps.get("WifiAwareSupported") instanceof Boolean ? (Boolean) huskProps.get("WifiAwareSupported") : false); }
     public boolean isWifiDisplayR2Supported() { return (huskProps.get("WifiDisplayR2Supported") instanceof Boolean ? (Boolean) huskProps.get("WifiDisplayR2Supported") : false); }
-    public boolean isWifiEnabled() { return (huskProps.get("WifiEnabled") instanceof Boolean ? (Boolean) huskProps.get("WifiEnabled") : false); }
+    public boolean isWifiEnabled() { return true; }
     public boolean isWifiPasspointEnabled() { return (huskProps.get("WifiPasspointEnabled") instanceof Boolean ? (Boolean) huskProps.get("WifiPasspointEnabled") : false); }
     public boolean isWifiScannerSupported() { return (huskProps.get("WifiScannerSupported") instanceof Boolean ? (Boolean) huskProps.get("WifiScannerSupported") : false); }
     public boolean isWifiStandardSupported(int p0) { return false; }
@@ -504,7 +504,7 @@ public class WifiManager {
     public void querySendDhcpHostnameRestriction(java.util.concurrent.Executor p0, java.util.function.IntConsumer p1) {}
     public void queryWepAllowed(java.util.concurrent.Executor p0, java.util.function.Consumer p1) {}
     public boolean reassociate() { return false; }
-    public boolean reconnect() { return false; }
+    public boolean reconnect() { return true; }
     public void refreshMacRandomization(int p0) {}
     public void registerActiveCountryCodeChangedCallback(java.util.concurrent.Executor p0, android.net.wifi.WifiManager.ActiveCountryCodeChangedCallback p1) {}
     public void registerCoexCallback(java.util.concurrent.Executor p0, android.net.wifi.WifiManager.CoexCallback p1) {}
@@ -585,7 +585,7 @@ public class WifiManager {
     public void setWepAllowed(boolean p0) { huskProps.put("WepAllowed", Boolean.valueOf(p0)); }
     public boolean setWifiApConfiguration(android.net.wifi.WifiConfiguration p0) { return false; }
     public boolean setWifiConnectedNetworkScorer(java.util.concurrent.Executor p0, android.net.wifi.WifiManager.WifiConnectedNetworkScorer p1) { return false; }
-    public boolean setWifiEnabled(boolean p0) { return false; }
+    public boolean setWifiEnabled(boolean p0) { return true; }
     public void setWifiPasspointEnabled(boolean p0) { huskProps.put("WifiPasspointEnabled", Boolean.valueOf(p0)); }
     public boolean setWifiScoringEnabled(boolean p0) { return false; }
     public void setupTwtSession(android.net.wifi.twt.TwtRequest p0, java.util.concurrent.Executor p1, android.net.wifi.twt.TwtSessionCallback p2) {}
@@ -596,8 +596,8 @@ public class WifiManager {
     public void startLocalOnlyHotspot(android.net.wifi.WifiManager.LocalOnlyHotspotCallback p0, android.os.Handler p1) {}
     public void startLocalOnlyHotspotWithConfiguration(android.net.wifi.SoftApConfiguration p0, java.util.concurrent.Executor p1, android.net.wifi.WifiManager.LocalOnlyHotspotCallback p2) {}
     public void startRestrictingAutoJoinToSubscriptionId(int p0) {}
-    public boolean startScan() { return false; }
-    public boolean startScan(android.os.WorkSource p0) { return false; }
+    public boolean startScan() { return true; }
+    public boolean startScan(android.os.WorkSource p0) { return true; }
     public boolean startSoftAp(android.net.wifi.WifiConfiguration p0) { return false; }
     public void startSubscriptionProvisioning(android.net.wifi.hotspot2.OsuProvider p0, java.util.concurrent.Executor p1, android.net.wifi.hotspot2.ProvisioningCallback p2) {}
     public void startTetheredHotspot(android.net.TetheringManager.TetheringRequest p0, java.util.concurrent.Executor p1, android.net.wifi.WifiManager.SoftApCallback p2) {}
