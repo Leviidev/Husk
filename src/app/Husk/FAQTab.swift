@@ -114,7 +114,7 @@ enum FAQ {
             Item(question: "An app will not open",
                  answer: "Open its page in the Library. Husk says why it stopped:\n"
                        + "• **Protected app:** it checks that it is on a real Android phone, or uses anti-cheat or DRM. Husk does not get around these.\n"
-                       + "• **Wrong kind of CPU code:** the APK only has 32-bit code. Find an arm64 (arm64-v8a) version.\n"
+                       + "• **Wrong kind of CPU code:** the APK only has x86 or another non-ARM architecture. Find an ARM (arm64-v8a or armeabi-v7a) version.\n"
                        + "• **Incomplete app or missing game data:** the APK needs its split files or an OBB. Import the full .apks, .xapk or .apkm.\n"
                        + "• **Needs Google:** the app requires a Google account or Play services Husk cannot provide.\n"
                        + "• **Uses something Husk does not have yet:** share the report so it can be added."),

@@ -4,8 +4,8 @@
  *
  * Starting is asynchronous: the engine takes seconds to load, and the UI must stay up
  * meanwhile. The progress is in the log (husk_tl_attempt_log) and in husk_unity_state.
- * An engine cannot be unloaded, so a game that has been started stays loaded for the life
- * of the process; leaving its screen pauses it.
+ * Leaving a game's screen pauses it. Starting a different APK stops the current session
+ * first (Java apps reset; native engines are asked to quit and their libraries are forgotten).
  */
 #ifndef HUSK_TL_UNITY_APP_H
 #define HUSK_TL_UNITY_APP_H
@@ -21,7 +21,7 @@ enum { HUSK_UNITY_IDLE = 0, HUSK_UNITY_STARTING = 1, HUSK_UNITY_RUNNING = 2, HUS
 /*
  * Start the game in `apk`. `metal_layer` is the CAMetalLayer it draws into, `width`/`height` its
  * size in pixels. `angle_dylib` is the bundled libANGLE-shared.dylib; `ca_bundle` a PEM file of root
- * certificates. Returns false if a game is already started or the arguments are unusable.
+ * certificates. Returns false if a launch is already in progress or the arguments are unusable.
  */
 bool husk_unity_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                        const char *angle_dylib, const char *ca_bundle);
@@ -160,8 +160,10 @@ void husk_gamepad_connect(int slot, const char *name);
 void husk_gamepad_disconnect(int slot);
 void husk_gamepad_update(int slot, unsigned buttons, float lx, float ly, float rx, float ry, float lt, float rt);
 
-/* The APK of the game started this session, or NULL. An engine cannot be loaded twice, nor two games at once. */
+/* The APK of the game started this session, or NULL when none is loaded. */
 const char *husk_native_loaded_apk(void);
+/* Stop the current app and forget its libraries so another APK can start without restarting Husk. */
+void husk_native_unload(void);
 
 /* Whether the running game has no touch controls of its own and wants the on-screen controller (a PC game through DXVK). */
 bool husk_native_wants_controller(void);

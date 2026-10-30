@@ -64,6 +64,25 @@ public final class Services {
         return true;
     }
     public static void unbind(ServiceConnection conn) { sBound.remove(conn); }
+    /** JobScheduler: start the JobService named on the job and call onStartJob on the main thread. */
+    public static void runJob(android.app.job.JobInfo j) {
+        if (j == null || j.getService() == null) return;
+        final android.content.ComponentName cn = j.getService();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Manifest.Component c = null;
+                for (Manifest.Component s : Manifest.services) if (s.name.equals(cn.getClassName())) { c = s; break; }
+                if (c == null) { c = new Manifest.Component(); c.name = cn.getClassName(); c.kind = "service"; c.enabled = true; }
+                Service s = create(c);
+                if (s instanceof android.app.job.JobService) {
+                    android.app.job.JobParameters p = new android.app.job.JobParameters();
+                    p.huskJobId = j.getId();
+                    p.huskExtras = j.getExtras();
+                    ((android.app.job.JobService) s).onStartJob(p);
+                } else s.onStartCommand(new Intent().setComponent(cn), 0, 1);
+            } catch (Throwable t) { android.util.Log.e("Husk", "job " + cn.getClassName() + " failed", t); }
+        });
+    }
 
     /** A system service by name, or null for those Husk has nothing for. */
     public static Object system(String name, Context c) {
@@ -90,6 +109,8 @@ public final class Services {
         case Context.JOB_SCHEDULER_SERVICE: return new android.app.job.JobScheduler.Impl();
         case Context.APP_OPS_SERVICE: return new android.app.AppOpsManager();
         case Context.INPUT_SERVICE: return new android.hardware.input.InputManager();
+        case Context.WIFI_SERVICE: return new android.net.wifi.WifiManager(c, null);
+        case Context.LOCATION_SERVICE: return new android.location.LocationManager(c, null);
         default: return null;
         }
     }

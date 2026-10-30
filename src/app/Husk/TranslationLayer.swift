@@ -53,8 +53,8 @@ extension TLReport {
     /// The engine the native runtime drives this app with, if it can: Unity (IL2CPP) games and cocos2d-x games.
     var nativeEngine: TLNativeEngine? {
         guard ok else { return nil }
-        // Native code for other CPUs only (32-bit ARM, x86): nothing here can run it
-        if !abis.isEmpty && !abis.contains("arm64-v8a") { return nil }
+        // Native code for other CPUs only (x86, MIPS): nothing here can run it. 32-bit ARM is translated.
+        if !abis.isEmpty && !abis.contains("arm64-v8a") && !abis.contains("armeabi-v7a") && !abis.contains("armeabi") { return nil }
         // An app with Java code and no native code at all runs on Husk's own Java runtime
         if abis.isEmpty { return dexCount > 0 && webKind == nil ? .java : nil }
         // Unity 6 runs through its own Java activity (UnityPlayerForActivityOrService), on the Java runtime
@@ -94,8 +94,8 @@ extension TLReport {
 
     var displaySummary: String {
         guard runsOnNativeRuntime else { return summary }
-        let flagged = libraries.filter { $0.abi == "arm64-v8a" && $0.status != "ok" }.count
-        let total = libraries.filter { $0.abi == "arm64-v8a" }.count
+        let flagged = libraries.filter { ($0.abi == "arm64-v8a" || $0.abi == "armeabi-v7a" || $0.abi == "armeabi") && $0.status != "ok" }.count
+        let total = libraries.filter { $0.abi == "arm64-v8a" || $0.abi == "armeabi-v7a" || $0.abi == "armeabi" }.count
         var text = nativeEngine == .flutter
             ? "A Flutter app. Its engine and its compiled Dart run natively through Husk's translation layer, which loads its \(total) arm64 libraries itself."
             : nativeEngine == .java && engine != "libGDX"

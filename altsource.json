@@ -30,6 +30,24 @@
       ],
       "versions": [
         {
+          "version": "3.3",
+          "buildVersion": "148",
+          "date": "2026-10-31T16:15:00Z",
+          "localizedDescription": "## Husk 3.3\nPlay without JIT converts more games (one failed library no longer stops the rest). Java apps get further: jobs, boot receivers, Wi-Fi and location. The in-app file picker can be used more than once. Certificate import from SideStore/AltStore and .p12 matches Feather's empty-password handling.\n",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa",
+          "size": 140697147,
+          "minOSVersion": "15.5"
+        },
+        {
+          "version": "3.2.1",
+          "buildVersion": "147",
+          "date": "2026-10-31T02:50:00Z",
+          "localizedDescription": "## Husk 3.2.1\nFixes importing the signing certificate from SideStore/AltStore and from a .p12 file (Play without JIT).\n",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.2.1/Husk.ipa",
+          "size": 140697147,
+          "minOSVersion": "15.5"
+        },
+        {
           "version": "3.0.0",
           "buildVersion": "129",
           "date": "2026-10-17T21:30:11Z",

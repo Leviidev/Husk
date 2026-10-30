@@ -64,7 +64,7 @@ public final class Documents extends ContentProvider {
         Activity caller = sCaller;
         int request = sRequest;
         sCaller = null;
-        if (caller == null || request < 0) return;
+        if (caller == null) return;
         if (!answer || sPicked.isEmpty()) { caller.huskActivityResult(request, Activity.RESULT_CANCELED, null); return; }
         Intent data = new Intent();
         Uri first = uriFor(new File(sPicked.get(0)));
@@ -81,6 +81,8 @@ public final class Documents extends ContentProvider {
         return new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(AUTHORITY).appendPath("document").appendPath(f.getAbsolutePath()).build();
     }
     private static File fileOf(Uri u) {
+        String enc = u.getEncodedPath();
+        if (enc != null && enc.startsWith("/document/")) return new File(Uri.decode(enc.substring("/document/".length())));
         java.util.List<String> seg = u.getPathSegments();
         return seg.size() >= 2 ? new File(seg.get(seg.size() - 1)) : new File(u.getPath());
     }

@@ -29,7 +29,7 @@ enum PlayDevice {
     static let screenHeight = 2400
     static let screenDensity = 420
     static let glEsVersion = 0x0003_0002                 // OpenGL ES 3.2
-    static let platforms = ["arm64-v8a"]
+    static let platforms = ["arm64-v8a", "armeabi-v7a", "armeabi"]
     static let simOperator = "310260"
     static let cellOperator = "310260"
 

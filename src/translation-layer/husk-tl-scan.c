@@ -325,6 +325,11 @@ char *husk_tl_scan(const char *const *paths, int count)
             abis[abi] = true;
             note_engine(&eng, file);
             if (abi != ABI_ARM64) {
+                if (abi == 1 || abi == 2) {
+                    memset(rep, 0, sizeof(*rep));
+                    rep->ok = true;
+                    write_library(&j, base_name(paths[p]), abi, file, e, rep);
+                }
                 continue;
             }
             nameset_add(own, file);
@@ -403,17 +408,18 @@ char *husk_tl_scan(const char *const *paths, int count)
         snprintf(summary, sizeof(summary), "arm64 native code, but %d of %d librar%s "
                  "need%s extra work from the loader.", arm64_trouble, arm64_libs,
                  arm64_libs == 1 ? "y" : "ies", arm64_trouble == 1 ? "s" : "");
+    } else if (abis[1] || abis[2]) {
+        verdict = "native";
+        snprintf(summary, sizeof(summary), "32-bit ARM native code. Husk translates it "
+                 "to arm64 the same way it loads arm64 libraries.");
     } else {
         verdict = "noArm64";
-        bool arm32 = abis[1] || abis[2], x86 = abis[3] || abis[4];
-        if (arm32 && !x86) {
-            snprintf(summary, sizeof(summary), "Native code for 32-bit ARM only. iPhones "
-                     "cannot run 32-bit ARM code at all, so this would need a CPU emulator.");
-        } else if (x86 && !arm32) {
+        bool x86 = abis[3] || abis[4];
+        if (x86) {
             snprintf(summary, sizeof(summary), "Native code for x86 only, which would "
                      "need an x86 translator such as FEXCore.");
         } else {
-            snprintf(summary, sizeof(summary), "Native code, but none of it for arm64.");
+            snprintf(summary, sizeof(summary), "Native code, but none of it for ARM.");
         }
     }
 

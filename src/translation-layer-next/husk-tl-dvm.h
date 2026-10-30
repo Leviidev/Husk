@@ -26,8 +26,12 @@ extern "C" {
 
 /* Start the runtime with these boot class path entries (.jar/.apk/.dex files, searched in order). Call after tl_jni_init. */
 bool tl_dvm_start(const char *const *boot, int nboot);
+/* True when a boot/app dex already defines this JNI class name (no <clinit>). */
+bool tl_dvm_defines_class(const char *jni_name);
 /* Add an app's DEX files (every classesN.dex in the APK), after the boot class path. */
 bool tl_dvm_add_apk(const char *apk);
+/* Drop every DEX added after the boot class path, so another app can load. The runtime stays up. */
+void tl_dvm_drop_app(void);
 bool tl_dvm_running(void);
 /* libcore's own native libraries (libjavacore.so, libopenjdk.so and what they need), from this folder (the ART APEX's lib64). */
 bool tl_dvm_load_natives(const char *libdir);

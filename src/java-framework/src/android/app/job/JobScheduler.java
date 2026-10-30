@@ -6,7 +6,11 @@ public abstract class JobScheduler {
     /** Jobs are kept but not run: Husk runs one app in the foreground. */
     public static final class Impl extends JobScheduler {
         private final java.util.HashMap<Integer, JobInfo> mJobs = new java.util.HashMap<>();
-        public int schedule(JobInfo j) { mJobs.put(j.getId(), j); return RESULT_SUCCESS; }
+        public int schedule(JobInfo j) {
+            mJobs.put(j.getId(), j);
+            husk.Services.runJob(j);
+            return RESULT_SUCCESS;
+        }
         public int enqueue(JobInfo j, JobWorkItem w) { return schedule(j); }
         public void cancel(int id) { mJobs.remove(id); } public void cancelAll() { mJobs.clear(); }
         public java.util.List<JobInfo> getAllPendingJobs() { return new java.util.ArrayList<>(mJobs.values()); }
@@ -37,7 +41,7 @@ public abstract class JobScheduler {
     public static final int PENDING_JOB_REASON_USER = 15;
     public static final long THROW_ON_INVALID_DATA_TRANSFER_IMPLEMENTATION = 255371817L;
     public static java.lang.String sanitizeNamespace(java.lang.String p0) { return null; }
-    public boolean canRunUserInitiatedJobs() { return false; }
+    public boolean canRunUserInitiatedJobs() { return true; }
     public void cancelInAllNamespaces() {}
     public java.util.List getAllJobSnapshots() { return new java.util.ArrayList(); }
     public int getPendingJobReason(int p0) { return 0; }
@@ -47,6 +51,6 @@ public abstract class JobScheduler {
     public java.util.List getStartedJobs() { return new java.util.ArrayList(); }
     public boolean hasRunUserInitiatedJobsPermission(java.lang.String p0, int p1) { return false; }
     public void notePendingUserRequestedAppStop(java.lang.String p0, int p1, java.lang.String p2) {}
-    public int scheduleAsPackage(android.app.job.JobInfo p0, java.lang.String p1, int p2, java.lang.String p3) { return 0; }
+    public int scheduleAsPackage(android.app.job.JobInfo p0, java.lang.String p1, int p2, java.lang.String p3) { return schedule(p0); }
     // ---- end of generated members
 }

@@ -17,6 +17,7 @@
 #include "husk-tl-egl.h"
 #include "husk-tl-gamepad.h"
 #include "husk-tl-jni.h"
+#include "husk-tl-arm32.h"
 #include "husk-tl-ld.h"
 
 void tl_jni_hle_install(void);
@@ -195,7 +196,7 @@ bool tl_unity_start(const tl_unity_config *cfg)
     tl_ld_init(main_lib);
     onload_fn onload = (onload_fn)tl_ld_sym(main_lib, "JNI_OnLoad");
     if (!onload) { tl_log_line("unity: libmain.so has no JNI_OnLoad"); return false; }
-    int32_t ver = onload(tl_jni_vm(), NULL);
+    int32_t ver = tl_a32_is_fn((void *)onload) ? tl_a32_jni_onload(main_lib) : onload(tl_jni_vm(), NULL);
     tl_log_line("unity: libmain JNI_OnLoad -> %#x", ver);
     if (tl_jni_pending()) { tl_log_line("unity: an exception is pending after libmain's JNI_OnLoad"); return false; }
 
@@ -586,5 +587,6 @@ void tl_unity_poke(int signo) { if (U.thread_started) pthread_kill(U.thread, sig
 void tl_unity_stop(void)
 {
     atomic_store(&U.stop, true);
-    if (U.thread_started) pthread_join(U.thread, NULL);
+    if (U.thread_started) { pthread_join(U.thread, NULL); U.thread_started = false; }
+    atomic_store(&U.stop, false);
 }

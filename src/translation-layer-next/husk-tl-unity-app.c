@@ -39,6 +39,7 @@ static char g_geode_zip[1024], g_geode_launcher[1024];
 #include "husk-tl-gamemaker.h"
 #include "husk-tl-dvm.h"
 #include "husk-tl-dvm-javaapp.h"
+#include "husk-tl-aosp.h"
 #include "husk-tl-nativeactivity.h"
 #include "husk-tl-gtasa.h"
 #include "husk-tl-vulkan.h"
@@ -185,7 +186,7 @@ static void *heartbeat_thread(void *arg)
                           nm, (unsigned long long)seen, (unsigned long long)tl_va_clobber.x21, (unsigned long long)tl_va_clobber.mask);
           } }
         if ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended())) atomic_store(&A.state, HUSK_UNITY_ENDED);
-        if (atomic_load(&A.state) == HUSK_UNITY_ENDED || atomic_load(&A.state) == HUSK_UNITY_FAILED) return NULL;
+        { int st = atomic_load(&A.state); if (st == HUSK_UNITY_ENDED || st == HUSK_UNITY_FAILED || st == HUSK_UNITY_IDLE) return NULL; }
     }
 }
 
@@ -251,16 +252,12 @@ static bool manifest_launcher_activity(const char *apk, const char *package, cha
 static void *java_boot(void *arg)
 {
     bool *ok = arg;
+    if (tl_dvm_running()) { *ok = true; return NULL; }
     const char *r = g_java_root;
-    static const char *const jars[] = { "core-oj", "core-libart", "okhttp", "bouncycastle", "apache-xml" };
-    static char paths[10][1200];
-    const char *boot[10]; int nb = 0;
-    for (int i = 0; i < 5; i++) { snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.art/javalib/%s.jar", r, jars[i]); boot[nb] = paths[nb]; nb++; }
-    snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.i18n/javalib/core-icu4j.jar", r); boot[nb] = paths[nb]; nb++;
-    snprintf(paths[nb], sizeof(paths[nb]), "%s/com.android.conscrypt/javalib/conscrypt.jar", r); boot[nb] = paths[nb]; nb++;
-    snprintf(paths[nb], sizeof(paths[nb]), "%s/husk-framework.dex", r); boot[nb] = paths[nb]; nb++;
-    /* Apache HttpClient, which Android gives apps that target 27 or lower (or ask for it in their manifest) */
-    snprintf(paths[nb], sizeof(paths[nb]), "%s/org.apache.http.legacy.jar", r); boot[nb] = paths[nb]; nb++;
+    static char paths[20][1200];
+    const char *boot[20];
+    int nb = husk_aosp_boot_jars(r, paths, 20, boot);
+    if (husk_aosp_using()) husk_aosp_start_system();
     char v[1200];
     snprintf(v, sizeof(v), "%s/com.android.art", r); setenv("ANDROID_ART_ROOT", v, 1);
     snprintf(v, sizeof(v), "%s/com.android.i18n", r); setenv("ANDROID_I18N_ROOT", v, 1);
@@ -273,6 +270,10 @@ static void *java_boot(void *arg)
     snprintf(v, sizeof(v), "%s/com.android.conscrypt/lib64", r); tl_ld_add_search_dir(v);
     snprintf(v, sizeof(v), "%s/com.android.art/lib64", r);
     if (!tl_dvm_load_natives(v)) tl_log_line("java: libcore's natives did not all load");
+    if (husk_aosp_using()) {
+        snprintf(v, sizeof(v), "%s/aosp/lib64", r); tl_ld_add_search_dir(v);
+        snprintf(v, sizeof(v), "%s/lib64", r); tl_ld_add_search_dir(v);
+    }
     *ok = true;
     return NULL;
 }
@@ -421,11 +422,37 @@ static void *launch_thread(void *arg)
     for (;;) pause();
 }
 
+void husk_native_unload(void)
+{
+    int st = atomic_load(&A.state);
+    if (st == HUSK_UNITY_IDLE) return;
+    for (int i = 0; i < 200 && atomic_load(&A.state) == HUSK_UNITY_STARTING; i++) usleep(50000);
+    st = atomic_load(&A.state);
+    if (st == HUSK_UNITY_IDLE) return;
+    husk_unity_set_paused(true);
+    if (A.engine == ENGINE_JAVA) tl_javaapp_stop();
+    else if (A.engine == ENGINE_COCOS) tl_cocos_stop();
+    else if (A.engine == ENGINE_GODOT) tl_godot_stop();
+    else if (A.engine == ENGINE_UNITY) tl_unity_stop();
+    if (tl_dvm_running()) tl_dvm_drop_app();
+    tl_ld_reset_session();
+    A.nextra = 0;
+    A.apk[0] = 0;
+    atomic_store(&A.state, HUSK_UNITY_IDLE);
+    tl_log_line("native: session cleared; another app can start");
+}
+
 static bool launch(int engine, const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                    const char *angle_dylib, const char *ca_bundle)
 {
     int expected = HUSK_UNITY_IDLE;
     if (!apk || !data_dir || !metal_layer || width <= 0 || height <= 0 || !angle_dylib) return false;
+    int st = atomic_load(&A.state);
+    if (st == HUSK_UNITY_STARTING) return false;
+    if (st != HUSK_UNITY_IDLE) {
+        if (st == HUSK_UNITY_RUNNING && A.apk[0] && !strcmp(A.apk, apk)) return false;
+        husk_native_unload();
+    }
     if (!atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_STARTING)) return false;
     A.engine = engine;
     snprintf(A.apk, sizeof(A.apk), "%s", apk);

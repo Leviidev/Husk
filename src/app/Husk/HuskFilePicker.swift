@@ -13,13 +13,20 @@ import UniformTypeIdentifiers
 enum HuskFilePicker {
     private static var live: Coordinator?
 
-    static func present(types: [UTType] = [.item], multiple: Bool = true,
+    static func present(types: [UTType] = [.item], multiple: Bool = true, asCopy: Bool = false,
                         onPick: @escaping ([URL]) -> Void, onFail: ((String) -> Void)? = nil,
                         onCancel: (() -> Void)? = nil) {
-        guard live == nil else { onCancel?(); return }
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: false)
+        if let previous = live {
+            previous.replace()
+            live = nil
+            if let shown = previous.picker, shown.presentingViewController != nil {
+                shown.dismiss(animated: false)
+            }
+        }
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: asCopy)
         picker.allowsMultipleSelection = multiple
-        let coordinator = Coordinator(onPick: onPick, onCancel: onCancel)
+        if #available(iOS 16.0, *) { picker.shouldShowFileExtensions = true }
+        let coordinator = Coordinator(picker: picker, onPick: onPick, onCancel: onCancel)
         picker.delegate = coordinator
         live = coordinator
         guard let top = topController() else {
@@ -40,35 +47,70 @@ enum HuskFilePicker {
         return top
     }
 
+    private static func clear(_ coordinator: Coordinator) {
+        if live === coordinator { live = nil }
+    }
+
     private final class Coordinator: NSObject, UIDocumentPickerDelegate {
         let onPick: ([URL]) -> Void
         let onCancel: (() -> Void)?
-        init(onPick: @escaping ([URL]) -> Void, onCancel: (() -> Void)?) { self.onPick = onPick; self.onCancel = onCancel }
+        weak var picker: UIDocumentPickerViewController?
+        private var finished = false
+        init(picker: UIDocumentPickerViewController, onPick: @escaping ([URL]) -> Void, onCancel: (() -> Void)?) {
+            self.picker = picker
+            self.onPick = onPick
+            self.onCancel = onCancel
+        }
+
+        func replace() {
+            guard !finished else { return }
+            finished = true
+            onCancel?()
+        }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             HuskLog.log("ui", "file picker: \(urls.count) picked: " + urls.map(\.lastPathComponent).joined(separator: ", "))
-            HuskFilePicker.live = nil
-            let finish = { [onPick, onCancel] in
-                if urls.isEmpty { onCancel?(); return }
-                onPick(urls)
-            }
-            Self.afterDismiss(controller, finish)
+            finishPick(controller, urls)
+        }
+
+        /// iOS 14 and some later builds call only the singular method.
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
+            HuskLog.log("ui", "file picker: picked \(url.lastPathComponent)")
+            finishPick(controller, [url])
         }
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             HuskLog.log("ui", "file picker: cancelled")
-            HuskFilePicker.live = nil
+            finishCancel()
+        }
+
+        private func finishPick(_ controller: UIDocumentPickerViewController, _ urls: [URL]) {
+            guard !finished else { return }
+            finished = true
+            let pick = onPick
+            let cancel = onCancel
+            Self.afterPickerGone(controller) {
+                HuskFilePicker.clear(self)
+                if urls.isEmpty { cancel?(); return }
+                pick(urls)
+            }
+        }
+
+        private func finishCancel() {
+            guard !finished else { return }
+            finished = true
+            HuskFilePicker.clear(self)
             onCancel?()
         }
 
-        /// The system dismisses the picker after this delegate returns. A SwiftUI sheet
-        /// presented in the same turn is attached to the picker and vanishes with it.
-        private static func afterDismiss(_ controller: UIViewController, _ work: @escaping () -> Void) {
+        /// The system usually dismisses the picker itself. Dismiss only that controller, never its presenter:
+        /// dismissing the presenter after the first pick tore down the game and the next import did nothing.
+        private static func afterPickerGone(_ controller: UIViewController, _ work: @escaping () -> Void) {
             let run = { DispatchQueue.main.async(execute: work) }
-            if let presenter = controller.presentingViewController {
-                presenter.dismiss(animated: true, completion: run)
+            if controller.presentingViewController != nil, !controller.isBeingDismissed {
+                controller.dismiss(animated: true, completion: run)
             } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: run)
+                run()
             }
         }
     }

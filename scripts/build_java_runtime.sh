@@ -23,4 +23,8 @@ for l in libjavacrypto libcrypto libssl; do copy com.android.conscrypt/lib64/$l.
 cp "${HTTP_LEGACY:-/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar}" "$OUT/org.apache.http.legacy.jar"
 # the platform's resources (themes, styles, layouts, drawables), from the same system image, without what an iPhone never picks
 python3 "$R/tools/strip_framework_res.py" "${FRAMEWORK_RES:-/Volumes/GTAV/husk2/aosp/fw/framework-res.apk}" "$OUT/framework-res.apk"
+# Optional AOSP framework.jar (not in git). When present, Java apps prefer it over husk-framework.dex.
+if [ "${HUSK_AOSP:-}" != "0" ]; then
+    "$R/scripts/copy_aosp_bundle.sh" "${ANDROID_SYSROOT:-/Volumes/GTAV/husk2/root/system}" "$OUT/aosp" || true
+fi
 du -sh "$OUT"

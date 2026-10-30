@@ -6,8 +6,8 @@ import UIKit
 /// usable while it runs. The window has a title bar to drag it by, a corner to resize it from, and close / minimise / maximise
 /// buttons; minimised, it waits in a dock at the edge of the screen.
 ///
-/// LiveContainer runs each app in a process of its own and can show several. Husk's engines run in Husk's process and one per run
-/// (an engine cannot be unloaded), so there is one window at a time; closing it pauses the app, as leaving full screen does.
+/// LiveContainer runs each app in a process of its own and can show several. Husk's engines share this process; opening a
+/// different app stops the current session first. Closing the window pauses the app, as leaving full screen does.
 @MainActor final class AppWindows: ObservableObject {
     static let shared = AppWindows()
 
@@ -34,7 +34,13 @@ import UIKit
     @Published var dockLeft = false
 
     func open(_ app: TLApp) {
-        if self.app?.id != app.id { frame = nil; maximized = false }
+        if let current = self.app, current.id != app.id {
+            if current.report?.webKind != nil { WebAppRuntime.close(current) }
+            else if husk_native_loaded_apk() != nil { husk_native_unload() }
+            frame = nil; maximized = false
+        } else if self.app?.id != app.id {
+            frame = nil; maximized = false
+        }
         self.app = app
         withAnimation(.snappy(duration: 0.25)) { minimized = false }
         TranslationLayerStore.shared.markPlayed(app)
@@ -43,7 +49,6 @@ import UIKit
     /// Close the window; with an app given, only when it is that app's.
     func close(_ only: TLApp? = nil) {
         if let only, app?.id != only.id { return }
-        // A web app can be closed for real, as LiveContainer ends an app; a native engine stays loaded, paused.
         if let app, app.report?.webKind != nil { WebAppRuntime.close(app) }
         withAnimation(.snappy(duration: 0.2)) { app = nil; minimized = false }
     }
@@ -113,12 +118,6 @@ private struct AppWindow: View {
         return f
     }
 
-    /// Another app's engine is loaded in this run, and an engine cannot be loaded twice.
-    private var blockedBy: String? {
-        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != app.apks.first else { return nil }
-        return (loaded as NSString).lastPathComponent
-    }
-
     var body: some View {
         let f = frame
         VStack(spacing: 0) {
@@ -165,15 +164,6 @@ private struct AppWindow: View {
     @ViewBuilder private var content: some View {
         if app.report?.webKind != nil {
             WebAppSurface(app: app)
-        } else if let other = blockedBy {
-            VStack(spacing: 6) {
-                Text("Another game is already loaded").font(.subheadline.weight(.semibold))
-                Text("\(other) was started in this session. Close Husk completely and open it again to run \(app.label).")
-                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }
-            .foregroundStyle(.white)
-            .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let apk = app.apks.first {
             TLWindowScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: app.nativeDataDir,
                            engine: app.screenEngine, portrait: portrait, scale: settings.resolution.scale)

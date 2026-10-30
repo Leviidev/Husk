@@ -20,6 +20,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-arm32.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-dexindex.h"
 
@@ -470,7 +471,7 @@ static void install_build(void)
     BS("HARDWARE", "shiba"); BS("BOARD", "shiba"); BS("ID", "UP1A.231105.001"); BS("DISPLAY", "UP1A.231105.001");
     BS("TYPE", "user"); BS("TAGS", "release-keys"); BS("HOST", "abfarm"); BS("USER", "android-build");
     BS("FINGERPRINT", "google/shiba/shiba:14/UP1A.231105.001/11000000:user/release-keys"); BS("BOOTLOADER", "unknown");
-    BS("CPU_ABI", "arm64-v8a"); BS("CPU_ABI2", ""); BS("SOC_MODEL", "Tensor G3"); BS("SOC_MANUFACTURER", "Google");
+    BS("CPU_ABI", "arm64-v8a"); BS("CPU_ABI2", "armeabi-v7a"); BS("SOC_MODEL", "Tensor G3"); BS("SOC_MANUFACTURER", "Google");
     #undef BS
     v.l = STR("14"); tl_jni_set_static("android/os/Build$VERSION", "RELEASE", "Ljava/lang/String;", v);
     v.l = STR("REL"); tl_jni_set_static("android/os/Build$VERSION", "CODENAME", "Ljava/lang/String;", v);
@@ -547,7 +548,9 @@ static bool load_native_library(const char *base)
             pthread_mutex_unlock(&g_onload_mu);
         }
         if (onload) {
-            int32_t ver = onload(tl_jni_vm(), NULL);
+            int32_t ver = tl_a32_is_fn((void *)onload)
+                ? tl_a32_jni_onload(owner ? owner : L)
+                : onload(tl_jni_vm(), NULL);
             tl_log_line("jni: %s JNI_OnLoad -> %#x", base, ver);
         }
     }

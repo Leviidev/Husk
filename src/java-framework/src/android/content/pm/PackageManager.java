@@ -85,6 +85,7 @@ public class PackageManager {
     public static final class ComponentInfoFlags { private final long v; private ComponentInfoFlags(long v) { this.v = v; } public static ComponentInfoFlags of(long v) { return new ComponentInfoFlags(v); } public long getValue() { return v; } }
     public static final class ResolveInfoFlags { private final long v; private ResolveInfoFlags(long v) { this.v = v; } public static ResolveInfoFlags of(long v) { return new ResolveInfoFlags(v); } public long getValue() { return v; } }
     public ApplicationInfo getApplicationInfo(String pkg, int flags) throws NameNotFoundException {
+        if ("android".equals(pkg)) return getPackageInfo("android", flags).applicationInfo;
         if (husk.GooglePackages.is(pkg)) return husk.GooglePackages.applicationInfo(pkg);
         if (!mine(pkg)) throw new NameNotFoundException(pkg);
         return ApplicationInfo.self();
@@ -104,26 +105,50 @@ public class PackageManager {
     public ProviderInfo resolveContentProvider(String authority, int flags) { for (husk.Manifest.Component p : husk.Manifest.providers) if (p.authorities != null && java.util.Arrays.asList(p.authorities.split(";")).contains(authority)) return provider(p); return null; }
     public List<ProviderInfo> queryContentProviders(String process, int uid, int flags) { ArrayList<ProviderInfo> l = new ArrayList<>(); for (husk.Manifest.Component p : husk.Manifest.providers) l.add(provider(p)); return l; }
     public boolean hasSystemFeature(String name) { return hasSystemFeature(name, 0); }
+    /* Pixel-like: apps refuse to start when a common phone feature is missing. TV/watch/car stay false. */
+    private static final String[] FEATURES_YES = {
+        FEATURE_TOUCHSCREEN, FEATURE_TOUCHSCREEN_MULTITOUCH, FEATURE_TOUCHSCREEN_MULTITOUCH_DISTINCT, FEATURE_TOUCHSCREEN_MULTITOUCH_JAZZHAND,
+        FEATURE_FAKETOUCH, FEATURE_SCREEN_PORTRAIT, FEATURE_SCREEN_LANDSCAPE, FEATURE_WIFI, FEATURE_AUDIO_OUTPUT,
+        "android.hardware.audio.low_latency",
+        FEATURE_OPENGLES_EXTENSION_PACK, FEATURE_SENSOR_ACCELEROMETER, FEATURE_SENSOR_GYROSCOPE, FEATURE_SENSOR_COMPASS,
+        FEATURE_INPUT_METHODS, FEATURE_GAMEPAD, FEATURE_CAMERA, FEATURE_CAMERA_ANY, FEATURE_CAMERA_FRONT, FEATURE_CAMERA_FLASH, FEATURE_CAMERA_AUTOFOCUS,
+        FEATURE_MICROPHONE, FEATURE_LOCATION, FEATURE_LOCATION_GPS, "android.hardware.location.network",
+        FEATURE_BLUETOOTH, FEATURE_BLUETOOTH_LE, FEATURE_WEBVIEW, FEATURE_PICTURE_IN_PICTURE, "android.software.autofill",
+        FEATURE_HOME_SCREEN, FEATURE_BACKUP, FEATURE_PRINTING, FEATURE_APP_WIDGETS, FEATURE_LIVE_WALLPAPER,
+        FEATURE_SECURE_LOCK_SCREEN, FEATURE_DEVICE_ADMIN, FEATURE_MANAGED_USERS, FEATURE_TELEPHONY,
+        "android.software.midi", "android.hardware.ram.normal", FEATURE_HARDWARE_KEYSTORE, "android.software.connectionservice",
+        FEATURE_VULKAN_HARDWARE_LEVEL, FEATURE_VULKAN_HARDWARE_VERSION, "android.software.opengles.deqp.level",
+        FEATURE_ACTIVITIES_ON_SECONDARY_DISPLAYS, FEATURE_FREEFORM_WINDOW_MANAGEMENT,
+    };
     public boolean hasSystemFeature(String name, int version) {
         if (name == null) return false;
-        if (name.startsWith("android.hardware.touchscreen") || name.equals(FEATURE_FAKETOUCH) || name.equals(FEATURE_SCREEN_PORTRAIT) || name.equals(FEATURE_SCREEN_LANDSCAPE)) return true;
-        if (name.equals(FEATURE_WIFI) || name.equals(FEATURE_AUDIO_OUTPUT) || name.equals(FEATURE_OPENGLES_EXTENSION_PACK) || name.equals(FEATURE_SENSOR_ACCELEROMETER)) return true;
-        if (name.equals(FEATURE_INPUT_METHODS) || name.equals(FEATURE_GAMEPAD)) return true;
+        if (name.startsWith("android.hardware.touchscreen") || name.startsWith("android.hardware.faketouch")
+                || name.startsWith("android.hardware.camera") || name.startsWith("android.hardware.wifi")
+                || name.startsWith("android.hardware.opengles") || name.startsWith("android.hardware.vulkan")
+                || name.startsWith("android.hardware.sensor.accelerometer") || name.startsWith("android.hardware.audio")
+                || name.startsWith("android.software.webview") || name.startsWith("android.software.opengles"))
+            return true;
+        if (name.equals(FEATURE_LEANBACK) || name.equals(FEATURE_TELEVISION) || name.equals(FEATURE_WATCH)
+                || name.equals(FEATURE_AUTOMOTIVE) || name.equals(FEATURE_PC) || name.equals(FEATURE_EMBEDDED)
+                || name.equals(FEATURE_NFC) || name.equals("android.hardware.consumerir") || name.equals(FEATURE_FINGERPRINT)
+                || name.equals("android.hardware.biometrics.face") || name.equals("android.hardware.biometrics.iris")
+                || name.equals("android.hardware.ethernet") || name.equals("android.software.live_tv")
+                || name.equals("android.software.leanback_only"))
+            return false;
+        for (String y : FEATURES_YES) if (y.equals(name)) return true;
         return false;
     }
-    /* As a phone lists them: the features hasSystemFeature says yes to, and one unnamed entry carrying the device's OpenGL ES version
-     * (engines such as KorGE pick their GL context version from it, and take ES 1 when it is missing). */
     public FeatureInfo[] getSystemAvailableFeatures() {
-        String[] names = { "android.hardware.touchscreen", "android.hardware.touchscreen.multitouch", "android.hardware.touchscreen.multitouch.distinct",
-                           FEATURE_FAKETOUCH, FEATURE_SCREEN_PORTRAIT, FEATURE_SCREEN_LANDSCAPE, FEATURE_WIFI, FEATURE_AUDIO_OUTPUT,
-                           FEATURE_OPENGLES_EXTENSION_PACK, FEATURE_SENSOR_ACCELEROMETER, FEATURE_INPUT_METHODS, FEATURE_GAMEPAD };
-        FeatureInfo[] f = new FeatureInfo[names.length + 1];
-        for (int i = 0; i < names.length; i++) { f[i] = new FeatureInfo(); f[i].name = names[i]; }
-        f[names.length] = new FeatureInfo();
-        f[names.length].reqGlEsVersion = ConfigurationInfo.huskDevice().reqGlEsVersion;
+        FeatureInfo[] f = new FeatureInfo[FEATURES_YES.length + 1];
+        for (int i = 0; i < FEATURES_YES.length; i++) { f[i] = new FeatureInfo(); f[i].name = FEATURES_YES[i]; }
+        f[FEATURES_YES.length] = new FeatureInfo();
+        f[FEATURES_YES.length].reqGlEsVersion = ConfigurationInfo.huskDevice().reqGlEsVersion;
         return f;
     }
-    public String[] getSystemSharedLibraryNames() { return new String[0]; }
+    public String[] getSystemSharedLibraryNames() {
+        return new String[] { "android.test.base", "android.test.mock", "android.test.runner", "org.apache.http.legacy",
+                              "android.ext.shared", "javax.obex" };
+    }
     public int checkPermission(String perm, String pkg) { return PERMISSION_GRANTED; }
     public boolean isPermissionRevokedByPolicy(String perm, String pkg) { return false; }
     public PermissionInfo getPermissionInfo(String name, int flags) throws NameNotFoundException { PermissionInfo p = new PermissionInfo(); p.name = name; return p; }
@@ -186,9 +211,20 @@ public class PackageManager {
         return c == null ? null : new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(pkg, c.name);
     }
     public Intent getLeanbackLaunchIntentForPackage(String pkg) { return null; }
-    public List<PackageInfo> getInstalledPackages(int flags) { ArrayList<PackageInfo> l = new ArrayList<>(); try { l.add(getPackageInfo(husk.Native.packageName(), flags)); } catch (NameNotFoundException e) {} return l; }
+    public List<PackageInfo> getInstalledPackages(int flags) {
+        ArrayList<PackageInfo> l = new ArrayList<>();
+        try { l.add(getPackageInfo(husk.Native.packageName(), flags)); } catch (NameNotFoundException e) {}
+        try { l.add(getPackageInfo("android", flags)); } catch (NameNotFoundException e) {}
+        for (String g : new String[] { husk.GooglePackages.GMS, husk.GooglePackages.VENDING, husk.GooglePackages.GSF, husk.GooglePackages.WEBVIEW })
+            try { l.add(getPackageInfo(g, flags)); } catch (NameNotFoundException e) {}
+        return l;
+    }
     public List<PackageInfo> getInstalledPackages(PackageInfoFlags flags) { return getInstalledPackages(0); }
-    public List<ApplicationInfo> getInstalledApplications(int flags) { ArrayList<ApplicationInfo> l = new ArrayList<>(); l.add(ApplicationInfo.self()); return l; }
+    public List<ApplicationInfo> getInstalledApplications(int flags) {
+        ArrayList<ApplicationInfo> l = new ArrayList<>();
+        for (PackageInfo p : getInstalledPackages(flags)) if (p.applicationInfo != null) l.add(p.applicationInfo);
+        return l;
+    }
     public String[] getPackagesForUid(int uid) { return new String[] { husk.Native.packageName() }; }
     public String getNameForUid(int uid) { return husk.Native.packageName(); }
     public int getPackageUid(String pkg, int flags) throws NameNotFoundException { if (husk.GooglePackages.is(pkg)) return husk.GooglePackages.applicationInfo(pkg).uid; if (!mine(pkg)) throw new NameNotFoundException(pkg); return android.os.Process.myUid(); }
@@ -717,9 +753,9 @@ public class PackageManager {
     public android.graphics.drawable.Drawable getApplicationBanner(java.lang.String p0) { return null; }
     public boolean getApplicationHiddenSettingAsUser(java.lang.String p0, android.os.UserHandle p1) { return false; }
     public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, int p1, int p2) { return null; }
-    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, int p1, android.os.UserHandle p2) { return null; }
-    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, android.content.pm.PackageManager.ApplicationInfoFlags p1, int p2) { return null; }
-    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, android.content.pm.PackageManager.ApplicationInfoFlags p1, android.os.UserHandle p2) { return null; }
+    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, int p1, android.os.UserHandle p2) { try { return getApplicationInfo(p0, p1); } catch (NameNotFoundException e) { return null; } }
+    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, android.content.pm.PackageManager.ApplicationInfoFlags p1, int p2) { try { return getApplicationInfo(p0, p1); } catch (NameNotFoundException e) { return null; } }
+    public android.content.pm.ApplicationInfo getApplicationInfoAsUser(java.lang.String p0, android.content.pm.PackageManager.ApplicationInfoFlags p1, android.os.UserHandle p2) { try { return getApplicationInfo(p0, p1); } catch (NameNotFoundException e) { return null; } }
     public android.graphics.drawable.Drawable getApplicationLogo(java.lang.String p0) { return null; }
     public android.content.pm.ArchivedPackageInfo getArchivedPackage(java.lang.String p0) { return null; }
     public java.lang.String getAttentionServicePackageName() { return null; }
@@ -736,12 +772,12 @@ public class PackageManager {
     public android.content.ComponentName getHomeActivities(java.util.List p0) { return null; }
     public java.lang.String getIncidentReportApproverPackageName() { return null; }
     public int getInstallReason(java.lang.String p0, android.os.UserHandle p1) { return 0; }
-    public java.util.List getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags p0) { return new java.util.ArrayList(); }
-    public java.util.List getInstalledApplicationsAsUser(int p0, int p1) { return new java.util.ArrayList(); }
-    public java.util.List getInstalledApplicationsAsUser(android.content.pm.PackageManager.ApplicationInfoFlags p0, int p1) { return new java.util.ArrayList(); }
+    public java.util.List getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags p0) { return getInstalledApplications(p0 == null ? 0 : (int) p0.getValue()); }
+    public java.util.List getInstalledApplicationsAsUser(int p0, int p1) { return getInstalledApplications(p0); }
+    public java.util.List getInstalledApplicationsAsUser(android.content.pm.PackageManager.ApplicationInfoFlags p0, int p1) { return getInstalledApplications(p0); }
     public java.util.List getInstalledModules(int p0) { return new java.util.ArrayList(); }
-    public java.util.List getInstalledPackagesAsUser(int p0, int p1) { return new java.util.ArrayList(); }
-    public java.util.List getInstalledPackagesAsUser(android.content.pm.PackageManager.PackageInfoFlags p0, int p1) { return new java.util.ArrayList(); }
+    public java.util.List getInstalledPackagesAsUser(int p0, int p1) { return getInstalledPackages(p0); }
+    public java.util.List getInstalledPackagesAsUser(android.content.pm.PackageManager.PackageInfoFlags p0, int p1) { return getInstalledPackages(p0); }
     public java.lang.String getInstantAppAndroidId(java.lang.String p0, android.os.UserHandle p1) { return null; }
     public byte[] getInstantAppCookie() { return (byte[]) huskFill.get("InstantAppCookie"); }
     public int getInstantAppCookieMaxBytes() { return 0; }
@@ -753,7 +789,7 @@ public class PackageManager {
     public android.content.pm.InstrumentationInfo getInstrumentationInfo(android.content.ComponentName p0, int p1) { return null; }
     public java.util.List getIntentFilterVerifications(java.lang.String p0) { return new java.util.ArrayList(); }
     public int getIntentVerificationStatusAsUser(java.lang.String p0, int p1) { return 0; }
-    public android.content.Intent getLaunchIntentForPackage(java.lang.String p0, boolean p1) { return null; }
+    public android.content.Intent getLaunchIntentForPackage(java.lang.String p0, boolean p1) { return getLaunchIntentForPackage(p0); }
     public android.content.IntentSender getLaunchIntentSenderForPackage(java.lang.String p0) { return null; }
     public java.util.Set getMimeGroup(java.lang.String p0) { return new java.util.HashSet(); }
     public int getMoveStatus(int p0) { return 0; }
@@ -848,10 +884,10 @@ public class PackageManager {
     public java.util.List queryContentProviders(java.lang.String p0, int p1, android.content.pm.PackageManager.ComponentInfoFlags p2) { return new java.util.ArrayList(); }
     public java.util.List queryContentProviders(java.lang.String p0, int p1, android.content.pm.PackageManager.ComponentInfoFlags p2, java.lang.String p3) { return new java.util.ArrayList(); }
     public java.util.List queryInstrumentation(java.lang.String p0, int p1) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, int p1, int p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, int p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
+    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, int p1, int p2) { return queryIntentActivities(p0, p1); }
+    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, int p1, android.os.UserHandle p2) { return queryIntentActivities(p0, p1); }
+    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return queryIntentActivities(p0, p1); }
+    public java.util.List queryIntentActivitiesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, android.os.UserHandle p2) { return queryIntentActivities(p0, p1); }
     public java.util.List queryIntentActivityOptions(android.content.ComponentName p0, java.util.List p1, android.content.Intent p2, android.content.pm.PackageManager.ResolveInfoFlags p3) { return new java.util.ArrayList(); }
     public java.util.List queryIntentActivityOptions(android.content.ComponentName p0, android.content.Intent[] p1, android.content.Intent p2, int p3) { return new java.util.ArrayList(); }
     public java.util.List queryIntentContentProviders(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1) { return new java.util.ArrayList(); }
@@ -859,11 +895,11 @@ public class PackageManager {
     public java.util.List queryIntentContentProvidersAsUser(android.content.Intent p0, int p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
     protected java.util.List queryIntentContentProvidersAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return new java.util.ArrayList(); }
     public java.util.List queryIntentContentProvidersAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentServices(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, int p1, int p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, int p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return new java.util.ArrayList(); }
-    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, android.os.UserHandle p2) { return new java.util.ArrayList(); }
+    public java.util.List queryIntentServices(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1) { return queryIntentServices(p0, p1 == null ? 0 : (int) p1.getValue()); }
+    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, int p1, int p2) { return queryIntentServices(p0, p1); }
+    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, int p1, android.os.UserHandle p2) { return queryIntentServices(p0, p1); }
+    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return queryIntentServices(p0, p1); }
+    public java.util.List queryIntentServicesAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, android.os.UserHandle p2) { return queryIntentServices(p0, p1); }
     public java.util.List queryPermissionsByGroup(java.lang.String p0, int p1) { return new java.util.ArrayList(); }
     public java.util.List queryProviderProperty(java.lang.String p0) { return new java.util.ArrayList(); }
     public java.util.List queryReceiverProperty(java.lang.String p0) { return new java.util.ArrayList(); }

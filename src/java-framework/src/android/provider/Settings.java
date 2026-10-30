@@ -952,7 +952,7 @@ public final class Settings {
         public static void getMovedToSystemSettings(java.util.Set p0) {}
         public static void getPublicSettings(java.util.Set p0, java.util.Set p1, android.util.ArrayMap p2) {}
         public static java.lang.String getString(android.content.ContentResolver p0, java.lang.String p1) { return huskGet("global", p1); }
-        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return null; }
+        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return getString(p0, p1); }
         public static android.net.Uri getUriFor(java.lang.String p0) { return android.net.Uri.parse("content://settings/" + "global" + "/" + p0); }
         public static boolean isValidZenMode(int p0) { return false; }
         public static boolean putFloat(android.content.ContentResolver p0, java.lang.String p1, float p2) { return huskPut("global", p1, String.valueOf(p2)); }
@@ -1816,21 +1816,21 @@ public final class Settings {
         public static void getCloneToManagedProfileSettings(java.util.Set p0) {}
         public static float getFloat(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("secure", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Float.parseFloat(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static float getFloat(android.content.ContentResolver p0, java.lang.String p1, float p2) { String v = huskGet("secure", p1); try { return v == null ? p2 : Float.parseFloat(v); } catch (NumberFormatException e) { return p2; } }
-        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, float p2, int p3) { return 0f; }
-        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0f; }
+        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, float p2, int p3) { return getFloat(p0, p1, p2); }
+        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getFloat(p0, p1); } catch (SettingNotFoundException e) { return 0f; } }
         public static int getInt(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("secure", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Integer.parseInt(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static int getInt(android.content.ContentResolver p0, java.lang.String p1, int p2) { String v = huskGet("secure", p1); try { return v == null ? p2 : Integer.parseInt(v); } catch (NumberFormatException e) { return p2; } }
-        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0; }
-        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2, int p3) { return 0; }
+        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getInt(p0, p1); } catch (SettingNotFoundException e) { return 0; } }
+        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2, int p3) { return getInt(p0, p1, p2); }
         public static long getLong(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("secure", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Long.parseLong(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static long getLong(android.content.ContentResolver p0, java.lang.String p1, long p2) { String v = huskGet("secure", p1); try { return v == null ? p2 : Long.parseLong(v); } catch (NumberFormatException e) { return p2; } }
-        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0L; }
-        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, long p2, int p3) { return 0L; }
+        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getLong(p0, p1); } catch (SettingNotFoundException e) { return 0L; } }
+        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, long p2, int p3) { return getLong(p0, p1, p2); }
         public static void getMovedToGlobalSettings(java.util.Set p0) {}
         public static void getMovedToSystemSettings(java.util.Set p0) {}
         public static void getPublicSettings(java.util.Set p0, java.util.Set p1, android.util.ArrayMap p2) {}
         public static java.lang.String getString(android.content.ContentResolver p0, java.lang.String p1) { return huskGet("secure", p1); }
-        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return null; }
+        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return getString(p0, p1); }
         public static android.net.Uri getUriFor(java.lang.String p0) { return android.net.Uri.parse("content://settings/" + "secure" + "/" + p0); }
         public static boolean isLocationProviderEnabled(android.content.ContentResolver p0, java.lang.String p1) { return false; }
         public static boolean putFloat(android.content.ContentResolver p0, java.lang.String p1, float p2) { return huskPut("secure", p1, String.valueOf(p2)); }
@@ -2096,16 +2096,16 @@ public final class Settings {
         public static void getConfiguration(android.content.ContentResolver p0, android.content.res.Configuration p1) {}
         public static float getFloat(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("system", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Float.parseFloat(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static float getFloat(android.content.ContentResolver p0, java.lang.String p1, float p2) { String v = huskGet("system", p1); try { return v == null ? p2 : Float.parseFloat(v); } catch (NumberFormatException e) { return p2; } }
-        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, float p2, int p3) { return 0f; }
-        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0f; }
+        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, float p2, int p3) { return getFloat(p0, p1, p2); }
+        public static float getFloatForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getFloat(p0, p1); } catch (SettingNotFoundException e) { return 0f; } }
         public static int getInt(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("system", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Integer.parseInt(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static int getInt(android.content.ContentResolver p0, java.lang.String p1, int p2) { String v = huskGet("system", p1); try { return v == null ? p2 : Integer.parseInt(v); } catch (NumberFormatException e) { return p2; } }
-        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0; }
-        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2, int p3) { return 0; }
+        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getInt(p0, p1); } catch (SettingNotFoundException e) { return 0; } }
+        public static int getIntForUser(android.content.ContentResolver p0, java.lang.String p1, int p2, int p3) { return getInt(p0, p1, p2); }
         public static long getLong(android.content.ContentResolver p0, java.lang.String p1) throws android.provider.Settings.SettingNotFoundException { String v = huskGet("system", p1); if (v == null) throw new SettingNotFoundException(p1); try { return Long.parseLong(v); } catch (NumberFormatException e) { throw new SettingNotFoundException(p1); } }
         public static long getLong(android.content.ContentResolver p0, java.lang.String p1, long p2) { String v = huskGet("system", p1); try { return v == null ? p2 : Long.parseLong(v); } catch (NumberFormatException e) { return p2; } }
-        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return 0L; }
-        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, long p2, int p3) { return 0L; }
+        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { try { return getLong(p0, p1); } catch (SettingNotFoundException e) { return 0L; } }
+        public static long getLongForUser(android.content.ContentResolver p0, java.lang.String p1, long p2, int p3) { return getLong(p0, p1, p2); }
         public static void getMovedToGlobalSettings(java.util.Set p0) {}
         public static void getMovedToSecureSettings(java.util.Set p0) {}
         public static void getNonLegacyMovedKeys(java.util.HashSet p0) {}
@@ -2113,7 +2113,7 @@ public final class Settings {
         public static boolean getShowGTalkServiceStatus(android.content.ContentResolver p0) { return false; }
         public static boolean getShowGTalkServiceStatusForUser(android.content.ContentResolver p0, int p1) { return false; }
         public static java.lang.String getString(android.content.ContentResolver p0, java.lang.String p1) { return huskGet("system", p1); }
-        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return null; }
+        public static java.lang.String getStringForUser(android.content.ContentResolver p0, java.lang.String p1, int p2) { return getString(p0, p1); }
         public static android.net.Uri getUriFor(java.lang.String p0) { return android.net.Uri.parse("content://settings/" + "system" + "/" + p0); }
         public static boolean hasInterestingConfigurationChanges(int p0) { return false; }
         public static boolean putConfiguration(android.content.ContentResolver p0, android.content.res.Configuration p1) { return false; }
@@ -2167,7 +2167,7 @@ public final class Settings {
         try (java.io.FileOutputStream o = new java.io.FileOutputStream(f)) { o.write(id.getBytes("UTF-8")); } catch (java.io.IOException e) {}
         return id;
     }
-    static synchronized String huskGet(String table, String name) {
+    public static synchronized String huskGet(String table, String name) {
         if (!sLoaded) { sLoaded = true; huskDefaults(); }
         return sValues.get(table + "/" + name);
     }
