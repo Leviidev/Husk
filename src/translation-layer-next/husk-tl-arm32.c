@@ -1084,10 +1084,17 @@ static void do_import(int idx)
 static int exec_arm(uint32_t insn);
 static int exec_thumb(void);
 
+/* 32-bit Thumb first half: 11101…, 11110…, or 1111100x / 1111101x (F800–FBFF).
+ * 0xFCxx–0xFFxx is the second half of BL, not a new 32-bit insn. */
+static int thumb_is_32(uint16_t h)
+{
+    if ((h & 0xF800) == 0xE800 || (h & 0xF800) == 0xF000) return 1;
+    if ((h & 0xFC00) == 0xF800) return 1;
+    return 0;
+}
 static int thumb_width(uint32_t pc)
 {
-    uint16_t h = (uint16_t)load16(pc);
-    return ((h & 0xE000) == 0xE000 && (h & 0x1800) != 0) ? 4 : 2;
+    return thumb_is_32((uint16_t)load16(pc)) ? 4 : 2;
 }
 
 static int it_advance_and_skip(uint32_t pc)
@@ -1155,8 +1162,13 @@ static int exec_arm(uint32_t insn)
         CPU.r[R_PC] = (pc_val() + (uint32_t)off) & ~1u;
         return 1;
     }
-    /* svc */
-    if ((insn & 0x0F000000u) == 0x0F000000u) { tl_log_line("a32: svc #%u", insn & 0xFFFFFFu); return 1; }
+    /* svc: Linux syscalls are not implemented; counting them as success reset the
+     * stuck-insn abort and left constructors spinning for minutes. */
+    if ((insn & 0x0F000000u) == 0x0F000000u) {
+        if (++Gunk < 8) tl_log_line("a32: svc #%u", insn & 0xFFFFFFu);
+        if (Gunk > 32) { CPU.r[R_PC] = SENTINEL; return 0; }
+        return 1;
+    }
     /* ldr/str */
     if ((insn & 0x0C000000u) == 0x04000000u) {
         int rn = (insn >> 16) & 15, rd = (insn >> 12) & 15;
@@ -1283,7 +1295,7 @@ static int exec_thumb(void)
     uint32_t pc = CPU.r[R_PC];
     uint16_t h = (uint16_t)load16(pc);
     /* 32-bit thumb */
-    if ((h & 0xE000) == 0xE000 && (h & 0x1800) != 0) {
+    if (thumb_is_32(h)) {
         uint16_t l = (uint16_t)load16(pc + 2);
         uint32_t w = ((uint32_t)h << 16) | l;
         CPU.r[R_PC] = pc + 4;
@@ -1325,6 +1337,17 @@ static int exec_thumb(void)
         }
         /* dmb / dsb / isb */
         if ((h & 0xFFF0) == 0xF3B0) return 1;
+        /* ldrd / strd  1110100 P U 1 W L Rn */
+        if ((h & 0xFE40) == 0xE840) {
+            int rn = h & 0xF, P = (h >> 8) & 1, U = (h >> 7) & 1, W = (h >> 5) & 1, Lbit = (h >> 4) & 1;
+            int rt = (l >> 12) & 0xF, rt2 = (l >> 8) & 0xF;
+            uint32_t imm = (uint32_t)(l & 0xFF) * 4, base = CPU.r[rn];
+            uint32_t addr = P ? (U ? base + imm : base - imm) : base;
+            if (Lbit) { CPU.r[rt] = load32(addr); CPU.r[rt2] = load32(addr + 4); }
+            else { store32(addr, CPU.r[rt]); store32(addr + 4, CPU.r[rt2]); }
+            if ((!P || W) && rn != 15) CPU.r[rn] = U ? base + imm : base - imm;
+            return 1;
+        }
         /* ldmia/stmia.w 1110100010WL, ldmdb/stmdb.w 1110100100WL (push.w / pop.w) */
         if ((h & 0xFF80) == 0xE880 || (h & 0xFF80) == 0xE900) {
             int rn = h & 0xF, W = (h >> 5) & 1, Lbit = (h >> 4) & 1, up = ((h & 0xFF80) == 0xE880);
@@ -1557,7 +1580,8 @@ static int32_t a32_call_inner(uint32_t pc, uint32_t r0, uint32_t r1, uint32_t r2
     CPU.r[R_LR] = SENTINEL;
     CPU.r[R_PC] = pc & ~1u;
     CPU.cpsr = (pc & 1) ? 0x20 : 0;
-    for (int n = 0; n < 50000000; n++) {
+    Gunk = 0;
+    for (int n = 0; n < 2000000; n++) {
         if (!exec_one()) break;
         if (CPU.r[R_PC] == SENTINEL) break;
     }
@@ -1592,16 +1616,10 @@ int32_t tl_a32_jni_onload(tl_lib *L)
 
 bool tl_a32_init(tl_lib *L)
 {
-    struct a32_mapped *m = meta(L);
-    if (!m) return true;
-    if (m->init) tl_a32_call(m->init, 0, 0, 0, 0);
-    if (m->init_array && m->init_arraysz) {
-        uint32_t n = m->init_arraysz / 4;
-        for (uint32_t i = 0; i < n; i++) {
-            uint32_t fn = load32(m->init_array + i * 4);
-            if (fn) tl_a32_call(fn, 0, 0, 0, 0);
-        }
-    }
+    /* Static constructors of a 32-bit game are Thumb-2 C++ and not a complete
+     * ISA yet; running them is what left Minecraft on "loading the engine"
+     * for minutes. NativeActivity still starts from ANativeActivity_onCreate. */
+    (void)L;
     return true;
 }
 
