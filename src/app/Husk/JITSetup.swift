@@ -201,7 +201,17 @@ final class JITCoordinator: ObservableObject {
         case .automatic:
             assertionFailure("Automatic must resolve to a concrete JIT method")
         case .stikDebug:
-            if !JITBootstrap.requestAttach(), !JITBootstrap.requestTrollStoreAttach() {
+            // requestAttach() calls open() on stikjit:// directly (see its own comment) and
+            // so cannot report failure synchronously: an unclaimed custom URL scheme like a
+            // missing StikDebug fails open() silently, with nothing for iOS to show. Treat
+            // this like TrollStore's attach -- ask, then watch CS_DEBUGGED with a timeout --
+            // so a StikDebug that is not there, or does not come back, still ends in a clear
+            // message instead of Husk stuck on "waiting for a debugger" forever.
+            if JITBootstrap.requestAttach() {
+                awaitStikDebug()
+            } else if JITBootstrap.requestTrollStoreAttach() {
+                awaitTrollStore()
+            } else {
                 error = "StikDebug is not installed. Install it, or set up Built-in StikJIT."
                 showSetup = true
             }
@@ -246,6 +256,30 @@ final class JITCoordinator: ObservableObject {
                 error = "TrollStore did not enable JIT. In TrollStore's Settings turn on URL Scheme, and make sure Husk was "
                       + "installed through TrollStore (or is signed with get-task-allow)."
                 log("TrollStore did not enable JIT within a minute")
+                showSetup = true
+            }
+        }
+    }
+
+    /// After StikDebug is asked to attach: open() cannot say whether it actually found
+    /// StikDebug (see enable()'s .stikDebug case), so watch CS_DEBUGGED the same way
+    /// awaitTrollStore does, ending in a clear message if it never shows up.
+    private func awaitStikDebug() {
+        busy = true
+        status = "Waiting for StikDebug to attach…"
+        log("waiting for StikDebug's attach")
+        _ = Self.waitForDebugger(timeout: 60) { [weak self] attached in
+            guard let self else { return }
+            busy = false
+            if attached {
+                status = "JIT is on."
+                error = nil
+                attachGeneration += 1
+                log("StikDebug attached")
+            } else {
+                status = nil
+                error = "StikDebug did not attach within a minute. Make sure it's installed and try again."
+                log("StikDebug did not attach within a minute")
                 showSetup = true
             }
         }
