@@ -20,6 +20,8 @@ int husk_aosp_boot_jars(const char *java_root, char (*paths)[1200], int max, con
 void husk_aosp_start_system(void);
 bool husk_aosp_using(void);
 const char *husk_aosp_framework_path(const char *java_root, char *out, int cap);
+/* The running APK and the Metal surface, so WMS/AMS Binder replies are not zeros. */
+void husk_aosp_set_session(const char *package, int width, int height);
 
 #ifdef __cplusplus
 }

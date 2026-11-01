@@ -8,7 +8,7 @@ SYS="${1:-${ANDROID_SYSROOT:-/Volumes/GTAV/husk2/root/system}}"
 OUT="${2:-$R/build/java-runtime/aosp}"
 mkdir -p "$OUT"
 copied=0
-for j in framework.jar framework-graphics.jar ext.jar telephony-common.jar voip-common.jar ims-common.jar services.jar; do
+for j in framework.jar framework-graphics.jar ext.jar telephony-common.jar voip-common.jar ims-common.jar services.jar framework-connectivity.jar tethering.jar; do
     if [ -f "$SYS/framework/$j" ]; then
         cp "$SYS/framework/$j" "$OUT/$j"
         copied=$((copied + 1))

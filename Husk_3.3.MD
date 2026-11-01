@@ -17,6 +17,7 @@
 | **B3 Boot path** | optional `framework.jar` after `husk-framework.dex` | missing `android.*` classes come from AOSP; AppRunner still starts the APK | done |
 | **B4 system_server slice** | ActivityManager / PackageManager / WindowManager over Binder | those names resolve for `ServiceManager.getService` | done |
 | **B5 Default** | more apps, not a pure AOSP boot | Husk UI/lifecycle stays first; AOSP fills classes Husk does not define | done |
+| **B6 Binder replies** | ping / INTERFACE / display / power / package answers, not 64 zeros | `run_binder.sh` INTERFACE on `activity` returns `IActivityManager` | done |
 
 ## How to turn it on
 
@@ -44,7 +45,7 @@ Without `framework.jar`, the fat `husk-framework.dex` (core + generated stubs) s
 
 That is the compatibility win: Play/F-Droid apps that reference platform classes our stand-ins never included get real AOSP bytecode, without losing the lifecycle and GL path that already works.
 
-A full AOSP `ActivityThread` boot (no Husk `android.app.Activity`) is a later switch, after AssetManager/Surface/AMS parcels are real.
+Binder services now answer ping, `INTERFACE_TRANSACTION`, screen size, “interactive”, and permission-granted. That is enough for AOSP stubs to construct. Typed `PackageInfo` / `Configuration` parcels and a full `ActivityThread` boot are still later.
 
 ## Constraints
 

@@ -1186,6 +1186,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
         return false;
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
+    husk_aosp_set_session(A.pkg, cfg->width, cfg->height);
     tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
