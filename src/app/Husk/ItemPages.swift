@@ -136,8 +136,17 @@ struct GamePage: View {
     /// JIT-less mode converting and signing this game's libraries before it starts
     @State private var preparing: String?
     @State private var prepareFailed: String?
+    @State private var confirmQuit = false
 
     private var runs: Bool { app.report?.canRun == true }
+
+    /// Another session is still in this process: Play would have to unload it, which is what made games slow and crash.
+    private var blockedBy: String? {
+        if Router.shared.androidStarted { return "Android" }
+        let apk = app.apks.first
+        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != apk else { return nil }
+        return Self.name(ofLoaded: loaded)
+    }
 
     private var compatSubject: CompatSubject? {
         app.packageName.map { CompatSubject(package: $0, name: app.label, isGame: LibraryItem.game(app).isGame, iconPath: app.iconPath) }
@@ -262,6 +271,16 @@ struct GamePage: View {
         } message: {
             Text(prepareFailed ?? "")
         }
+        .confirmationDialog("Close Husk?", isPresented: $confirmQuit, titleVisibility: .visible) {
+            Button("Close Husk") {
+                Router.shared.switchTo(app.id)
+                CrashReport.gameEnded()
+                HuskLog.flushNow()
+                exit(0)
+            }
+        } message: {
+            Text("\(blockedBy ?? "The other game") is still loaded and only one game can run per session. Husk closes; open it again and \(app.label) starts by itself.")
+        }
         .confirmationDialog("Remove \(app.label)?", isPresented: $confirmRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 dismiss()
@@ -273,7 +292,7 @@ struct GamePage: View {
         .id(jit.attachGeneration)
         .onAppear {
             // Kept until JIT is on: this page is rebuilt when it attaches (.id above), and plays then.
-            guard Router.shared.autoPlay == app.id, Launcher.jitOn || JITLess.enabled else { return }
+            guard Router.shared.autoPlay == app.id, blockedBy == nil, Launcher.jitOn || JITLess.enabled else { return }
             Router.shared.autoPlay = nil
             play()
         }
@@ -321,9 +340,6 @@ struct GamePage: View {
 
     /// Full screen, or in a window over Husk when Multitasking says so for this app.
     private func start() {
-        let apk = app.apks.first
-        let loaded = husk_native_loaded_apk().map { String(cString: $0) }
-        if let loaded, loaded != apk { husk_native_unload() }
         if app.report?.runsOnNativeRuntime == true || app.report?.webKind != nil, AppWindows.opensInWindow(app) {
             AppWindows.shared.open(app)
         } else {
@@ -336,6 +352,16 @@ struct GamePage: View {
     private var loadedNow: Bool {
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }) else { return false }
         return loaded == app.apks.first
+    }
+
+    fileprivate static func name(ofLoaded loaded: String) -> String {
+        if loaded.hasPrefix("ps4:") {
+            return PS4Store.shared.game(String(loaded.dropFirst(4)))?.title ?? "Another game"
+        }
+        if let other = TranslationLayerStore.shared.apps.first(where: { $0.apks.first == loaded }) {
+            return other.label
+        }
+        return "Another game"
     }
 
     private func backUp() {
@@ -396,6 +422,8 @@ struct GamePage: View {
         } else if let preparing {
             HStack(spacing: 10) { ProgressView(); Text(preparing).foregroundStyle(.secondary).lineLimit(1) }
                 .frame(maxWidth: .infinity).frame(height: 50)
+        } else if blockedBy != nil {
+            BigButton(title: "Close Husk to Play", systemImage: "xmark.circle", prominent: false) { confirmQuit = true }
         } else if !Launcher.jitOn && !JITLess.enabled {
             if jit.busy {
                 HStack(spacing: 10) { ProgressView(); Text(jit.status ?? "Turning on JIT…").foregroundStyle(.secondary) }
@@ -420,18 +448,14 @@ struct PS4GamePage: View {
 
     private var item: LibraryItem { .ps4(game) }
 
-    /// QEMU Android, or another PS4 game, still holds the JIT region. An Android translation-layer game is stopped first.
+    /// QEMU Android, or another game, still holds this process.
     private var blockedBy: String? {
         if Router.shared.androidStarted { return "Android" }
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != game.libraryID else { return nil }
-        if loaded.hasPrefix("ps4:") { return PS4Store.shared.game(String(loaded.dropFirst(4)))?.title ?? "Another game" }
-        return nil
+        return GamePage.name(ofLoaded: loaded)
     }
 
     private func playPS4() {
-        if let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), !loaded.hasPrefix("ps4:") {
-            husk_native_unload()
-        }
         playing = true
     }
 

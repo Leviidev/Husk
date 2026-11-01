@@ -451,6 +451,10 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
     if (st == HUSK_UNITY_STARTING) return false;
     if (st != HUSK_UNITY_IDLE) {
         if (st == HUSK_UNITY_RUNNING && A.apk[0] && !strcmp(A.apk, apk)) return false;
+        if (A.apk[0] && strcmp(A.apk, apk) != 0) {
+            tl_log_line("native: %s is still loaded; close Husk to start %s", A.apk, apk);
+            return false;
+        }
         husk_native_unload();
     }
     if (!atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_STARTING)) return false;

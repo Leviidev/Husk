@@ -6,8 +6,8 @@ import UIKit
 /// usable while it runs. The window has a title bar to drag it by, a corner to resize it from, and close / minimise / maximise
 /// buttons; minimised, it waits in a dock at the edge of the screen.
 ///
-/// LiveContainer runs each app in a process of its own and can show several. Husk's engines share this process; opening a
-/// different app stops the current session first. Closing the window pauses the app, as leaving full screen does.
+/// LiveContainer runs each app in a process of its own and can show several. Husk's engines share this process, so a
+/// different native game needs Husk closed first. Closing the window pauses the app, as leaving full screen does.
 @MainActor final class AppWindows: ObservableObject {
     static let shared = AppWindows()
 
@@ -36,7 +36,6 @@ import UIKit
     func open(_ app: TLApp) {
         if let current = self.app, current.id != app.id {
             if current.report?.webKind != nil { WebAppRuntime.close(current) }
-            else if husk_native_loaded_apk() != nil { husk_native_unload() }
             frame = nil; maximized = false
         } else if self.app?.id != app.id {
             frame = nil; maximized = false
