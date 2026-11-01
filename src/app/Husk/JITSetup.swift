@@ -201,7 +201,14 @@ final class JITCoordinator: ObservableObject {
         case .automatic:
             assertionFailure("Automatic must resolve to a concrete JIT method")
         case .stikDebug:
-            if !JITBootstrap.requestAttach(), !JITBootstrap.requestTrollStoreAttach() {
+            // requestAttach() calls open() on stikjit:// and cannot report failure
+            // synchronously: an unclaimed scheme fails open() silently. Wait for
+            // CS_DEBUGGED so a missing StikDebug still ends in a clear message.
+            if JITBootstrap.requestAttach() {
+                awaitStikDebug()
+            } else if JITBootstrap.requestTrollStoreAttach() {
+                awaitTrollStore()
+            } else {
                 error = "StikDebug is not installed. Install it, or set up Built-in StikJIT."
                 showSetup = true
             }
@@ -246,6 +253,29 @@ final class JITCoordinator: ObservableObject {
                 error = "TrollStore did not enable JIT. In TrollStore's Settings turn on URL Scheme, and make sure Husk was "
                       + "installed through TrollStore (or is signed with get-task-allow)."
                 log("TrollStore did not enable JIT within a minute")
+                showSetup = true
+            }
+        }
+    }
+
+    /// After StikDebug is asked to attach: open() cannot say whether it found StikDebug,
+    /// so watch CS_DEBUGGED the same way awaitTrollStore does.
+    private func awaitStikDebug() {
+        busy = true
+        status = "Waiting for StikDebug to attach…"
+        log("waiting for StikDebug's attach")
+        _ = Self.waitForDebugger(timeout: 60) { [weak self] attached in
+            guard let self else { return }
+            busy = false
+            if attached {
+                status = "JIT is on."
+                error = nil
+                attachGeneration += 1
+                log("StikDebug attached")
+            } else {
+                status = nil
+                error = "StikDebug did not attach within a minute. Make sure it's installed and try again."
+                log("StikDebug did not attach within a minute")
                 showSetup = true
             }
         }
