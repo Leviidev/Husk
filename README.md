@@ -33,10 +33,10 @@ Sideload with SideStore, AltStore, or TrollStore. iOS 15.5 or later.
 
 **Guide:** [itslevii.dev/docs/install](https://itslevii.dev/docs/install)
 
-Add this source in SideStore or AltStore (Sources › +):
+Add this source in SideStore or AltStore (Sources › +). It also lists AetherPS4, Utsuro, Podium and Fathom:
 
 ```
-https://raw.githubusercontent.com/Leviidev/Husk/main/altsource.json
+https://itslevii.dev/repo.json
 ```
 
 Or download `Husk.ipa` from [Releases](https://github.com/Leviidev/Husk/releases).

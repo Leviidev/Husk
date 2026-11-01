@@ -1,13 +1,17 @@
 {
-  "name": "Husk",
-  "identifier": "com.leviidev.husk.source",
-  "subtitle": "Android apps and games on your iPhone.",
-  "description": "The official source for Husk. Add it to SideStore, AltStore or another sideloader to install Husk and get its updates.",
+  "name": "itslevii",
+  "identifier": "dev.itslevii.source",
+  "subtitle": "Husk, AetherPS4, Utsuro, Podium and Fathom.",
+  "description": "Leviidev's apps. Add this source in SideStore or AltStore to install them and get updates.",
   "iconURL": "https://raw.githubusercontent.com/Leviidev/Husk/main/src/app/Husk/Assets.xcassets/AppIcon.appiconset/Icon-Default.png",
-  "website": "https://github.com/Leviidev/Husk",
+  "website": "https://itslevii.dev",
   "tintColor": "#5865F2",
   "featuredApps": [
-    "com.husk.app"
+    "com.husk.app",
+    "com.aether.ps4ios",
+    "com.utsuro.app",
+    "com.leviidev.podium",
+    "app.fathom.emulator"
   ],
   "apps": [
     {
@@ -15,10 +19,10 @@
       "bundleIdentifier": "com.husk.app",
       "developerName": "Leviidev",
       "subtitle": "Android apps and PS4 games on your iPhone.",
-      "localizedDescription": "Husk runs Android apps and games, and PlayStation 4 games, on iPhone. Its Translation Layer runs games made with Unity, Unreal, Godot, Flutter, cocos2d-x, SDL and more natively, a full Android system is there for everything else, and its PS4 layer plays fake packages and game folders (iOS 17.4+). Husk needs JIT: StikDebug, its built-in StikJIT, TrollStore or a jailbreak.",
+      "localizedDescription": "Husk runs Android apps and games, and PlayStation 4 games, on iPhone. Its Translation Layer runs games made with Unity, Unreal, Godot, Flutter, cocos2d-x, SDL and more natively, a full Android system is there for everything else, and its PS4 layer plays fake packages and game folders (iOS 17.4+). Husk needs JIT: StikDebug, its built-in StikJIT, TrollStore or a jailbreak \u2014 or Play without JIT after you import a certificate.",
       "iconURL": "https://raw.githubusercontent.com/Leviidev/Husk/main/src/app/Husk/Assets.xcassets/AppIcon.appiconset/Icon-Default.png",
       "tintColor": "#5865F2",
-      "category": "games",
+      "category": "utilities",
       "screenshots": [
         "https://raw.githubusercontent.com/Leviidev/Husk/main/Screenshots/beach-buggy-racing-2.jpeg",
         "https://raw.githubusercontent.com/Leviidev/Husk/main/Screenshots/game-settings.png",
@@ -31,39 +35,60 @@
       "versions": [
         {
           "version": "3.3",
-          "buildVersion": "148",
-          "date": "2026-10-31T16:15:00Z",
-          "localizedDescription": "## Husk 3.3\nPlay without JIT converts more games (one failed library no longer stops the rest). Java apps get further: jobs, boot receivers, Wi-Fi and location. The in-app file picker can be used more than once. Certificate import from SideStore/AltStore and .p12 matches Feather's empty-password handling.\n",
+          "date": "2026-11-01T01:43:51Z",
+          "localizedDescription": "## Play without JIT\nMore games convert and sign their libraries on the device. One library that cannot convert no longer stops the rest. Certificates from SideStore, AltStore, or a `.p12` import more reliably, and converted libraries are signed again after this update.\n\n## More Android apps\nJava apps pick up missing platform classes from AOSP when `framework.jar` is bundled. Jobs and boot receivers actually start, and Wi-Fi, location, and settings answer as a running phone would.\n\n## Importing files\nThe in-app file picker for Android apps can be used more than once in a session.\n\n## 32-bit ARM apps\nAPKs that only ship `armeabi-v7a` libraries are translated to arm64. This path is still incomplete (Minecraft PE is the current test case).\n\n## Fixes\nCertificate import, leftover store passwords on a `.p12`, the file picker after the first pick, game pages on iOS 15, and StikDebug when Husk is inside a container app.",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa",
-          "size": 140697147,
-          "minOSVersion": "15.5"
+          "size": 142239082,
+          "minOSVersion": "15.5",
+          "buildVersion": "148"
         },
         {
           "version": "3.2.1",
-          "buildVersion": "147",
-          "date": "2026-10-31T02:50:00Z",
-          "localizedDescription": "## Husk 3.2.1\nFixes importing the signing certificate from SideStore/AltStore and from a .p12 file (Play without JIT).\n",
+          "date": "2026-10-31T02:58:46Z",
+          "localizedDescription": "Fixed certificate importing bug for 3.2 JIT-less",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.2.1/Husk.ipa",
           "size": 140697147,
           "minOSVersion": "15.5"
         },
         {
-          "version": "3.0.0",
-          "buildVersion": "129",
-          "date": "2026-10-17T21:30:11Z",
-          "localizedDescription": "## Welcome to Husk 3.0.\nThe biggest Husk release yet: a new console-style look, PlayStation 4 games, and hundreds more Android games.\n## A new Husk\n- Console-style home screen and a new library\n- Light and dark mode\n- An iOS-style setup on your first 3.0 launch\n## PlayStation 4 games (iOS 17.4+, JIT)\n- Add fake packages (.pkg) or game folders with the + button\n- Tested: Bloodborne, Minecraft PS4 Edition, Sonic Mania\n- Shaders kept between launches\n## Android\n- 366 newly working games (488 working in all), see antiweb.lol\n- Unofficial ports: Sonic Robo Blast 2, Ring Racers, NetHack, PokeWilds, Unciv\n- Flutter, Godot 4 and Python games\n## Also\n- Reports can attach your Husk log\n- Runs on iOS 15.5 and later\n- Lots of fixes\n## Known issues\n- Bloodborne runs, but well below full speed\n## Links:\n- Discord: https://discord.gg/xApMHWAzkh\n- X Profile: https://x.com/leviidev01\n- Compatibility list: https://antiweb.lol",
+          "version": "3.2",
+          "date": "2026-10-31T01:00:44Z",
+          "localizedDescription": "## What's new?\r\n\r\nPlay without JIT: Most translation-layer games run with no debugger and no StikJIT. Turn it on in Settings -> Play without JIT.\r\n\r\n- Import the certificate SideStore or AltStore installed Husk with, or a `.p12`\r\n- The first time you open a game, Husk converts its libraries. After that it starts like normal\r\n- StikJIT is still there if you want it\r\n\r\n### Games\r\n\r\n- Unity 6 games get further (Flying Gorilla, Deep Rock Galactic Survivor, and others)\r\n- Games that ask for OpenGL ES 3.1 don't fall over on launch\r\n- Unity games that load Firebase / extra plugins through `UnityPlayer.loadLibrary` start\r\n- Minecraft's huge libraries load\r\n- Python-for-Android games convert their bundled libraries too\r\n- Games that try to JIT their own code (LuaJIT, PCRE2) fall back the way they do on a phone, instead of needing Husk's JIT\r\n\r\n### Also\r\n\r\n- Starting full Android makes you wait five seconds on the warning. It's still the emulator. Don't use it for games\r\n- Compatibility reports wait if the site is down, then send\r\n- Certificate passwords (including empty ones) actually work\r\n- Lots of fixes under Play without JIT so Unity and C++ games don't die on the first exception\r\n\r\n## Known Issues\r\n\r\n- Some games still need JIT (ones that generate code at runtime, including a few with their own anti-tamper)\r\n- Hollow Knight and Cuphead still have no sound\r\n- Some games (Disco Elysium, Muse Dash) don't take touch input\r\n- 32-bit only apps don't run\r\n- The first convert of a big game can take a while and some disk\r\n- Full Android is still slow and crashy. Use Play without JIT / the translation layer for games\r\n\r\n## Final notes\r\n\r\nThank you all for your repeated support over the past few weeks with Husk \u2764\ufe0f . I hope you like this new JIT-less release <3\r\n\r\n## Links:\r\n\r\n- Website: https://itslevii.dev\r\n- Discord: https://itslevii.dev/discord\r\n- X Profile: https://x.com/leviidev01\r\n- Discord User: @Leviidev\r\n\r\nFull Changelog: https://github.com/Leviidev/Husk/compare/3.1...main",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.2/Husk.ipa",
+          "size": 140692009,
+          "minOSVersion": "15.5"
+        },
+        {
+          "version": "3.1",
+          "date": "2026-10-27T21:36:06Z",
+          "localizedDescription": "## What's new?\r\n- New UI, all over\r\n    - New Home, Library, Store and game pages\r\n    - Every screen, Settings included, uses the same navy look\r\n- Husk accounts\r\n    - Sign in from the top of Settings\r\n    - Your profile, playtime and library sync with itslevii.dev\r\n- New Import screen: APK, split APKs (.xapk, .apkm, .apks), OBBs and PS4 game folders. On iPad you can drag files onto it.\r\n- Small icon size for the library\r\n- Chinese (Simplified) for all of Husk. The language you pick in setup is used by Husk and your apps.\r\n### Store\r\n- New app page\r\n    - Proper descriptions (bold, lists, links)\r\n    - Short counts, like 1B+ downloads and 37M reviews\r\n    - Tap screenshots to view them full screen, with zoom\r\n    - Trailers, What's New, Highlights, tags and developer links\r\n- Store downloads can be stopped, and show in Downloads\r\n### Android\r\n- Keyboard button for apps and games. Typing works even when there's no text box.\r\n- In-app file picker: when an app asks for a file, the iOS file picker opens\r\n- Fullscreen games are centered and use the whole screen (Plants vs. Zombies and more)\r\n- Cocos Creator games start\r\n- Godot 4.7 games can save\r\n- Flutter apps find their fonts\r\n- .NET apps run much further\r\n- Apps protected with Dex2C work\r\n- Android system pop-ups (Bluetooth, NFC\u2026) don't break apps anymore\r\n- XAPKs with OBB files inside install correctly\r\n- Battery, 24-hour clock, time zone and language follow your phone\r\n### Also\r\n- TrollStore and Dopamine on iOS 15\u201316 get JIT even when iOS refuses the usual way\r\n- The TrollStore build opens on devices it didn't before\r\n- Built-in StikJIT finds the pairing port by itself\r\n- Crash reports tell you when iOS closed Husk for using too much memory\r\n- Compatibility list and accounts moved to https://itslevii.dev\r\n- Lots of fixes\r\n\r\n## What's Changed\r\n* fix: Bypass W^X restrictions by @azyarashi in https://github.com/Leviidev/Husk/pull/74\r\n* Fix base APK selection using split manifests by @TakatoSey in https://github.com/Leviidev/Husk/pull/106\r\n* Cocos Creator games start: V8 runs without its JIT (--jitless) by @stellar099 in https://github.com/Leviidev/Husk/pull/113\r\n* Godot 4.7: answer the directory/file handlers for the objects the engine holds by @xinerqu in https://github.com/Leviidev/Husk/pull/151\r\n* fix: discover the dynamic RemotePairing port for Built-in StikJIT by @cklsit in https://github.com/Leviidev/Husk/pull/153\r\n* Fix Flutter font discovery under the Java Android root by @muzhi1991 in https://github.com/Leviidev/Husk/pull/179\r\n* Reserve aligned compressed-heap space before JIT prewarming by @muzhi1991 in https://github.com/Leviidev/Husk/pull/180\r\n\r\n## New Contributors\r\n* @TakatoSey made their first contribution in https://github.com/Leviidev/Husk/pull/106\r\n* @stellar099 made their first contribution in https://github.com/Leviidev/Husk/pull/113\r\n* @xinerqu made their first contribution in https://github.com/Leviidev/Husk/pull/151\r\n* @cklsit made their first contribution in https://github.com/Leviidev/Husk/pull/153\r\n* @muzhi1991 made their first contribution in https://github.com/Leviidev/Husk/pull/179\r\n\r\n## Known Issues\r\n- Hollow Knight and Cuphead have no sound\r\n- Some games (Disco Elysium, Muse Dash) don't take touch input\r\n- 32-bit only apps don't run\r\n\r\n## Final notes\r\nThank you all, especially everyone who sent a PR this time. Enjoy \u2764\ufe0f\r\n\r\n## Links:\r\n- Website: https://itslevii.dev\r\n- Discord: https://itslevii.dev/discord\r\n- X Profile: https://x.com/leviidev01\r\n- Discord User: @leviidev\r\n\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/3.0...3.1",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.1/Husk.ipa",
+          "size": 140540013,
+          "minOSVersion": "15.5"
+        },
+        {
+          "version": "3.0",
+          "date": "2026-10-17T21:34:58Z",
+          "localizedDescription": "## Husk 3.0\r\nThe coolest and biggest Husk release yet. Hundreds of new Android games, PS4 support, and more.\r\n\r\n## What's new?\r\n- Console-style home screen\r\n- New library UI\r\n- Proper first run\r\n    - Contains full setup guide + optional walkthrough\r\n### PS4 Games\r\n- Add a game with the + button. Either a PKG, a folder of PKG's, or an extracted game folder. Updates install with their game.\r\n- Tested: Bloodborne, Minecraft: PlayStation 4 Edition, Sonic Mania\r\n- Shaders are kept inbetween launches with Shader Cache\r\n- If a game requires keyboard input, it'll open the iOS keyboard\r\n### Android\r\n- 366 newly working games - view in compatibility list\r\n- Unofficial ports: Sonic Robo Blast 2, Nethack, PokeWilds and more\r\n- GoDot 4\r\n- Store downloads include OBB files\r\n- Typing works in all games\r\n- Optional language fonts (chinese, japanese, etc)\r\n### Also\r\n- Lots of fixes\r\n- TrollStore JIT fully complete\r\n- iOS 15.5 support\r\n## Known Issues\r\n- Bloodborne runs, but very poorly.\r\n- Some Unity 6 games can render slowly\r\n## Final notes\r\nThank you all. Enjoy \u2764\ufe0f \r\n\r\nDiscord Server: https://discord.gg/xApMHWAzkh",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.0/Husk.ipa",
           "size": 140126095,
           "minOSVersion": "15.5"
         },
         {
-          "version": "2.0.0",
-          "buildVersion": "109",
+          "version": "2.0",
           "date": "2026-10-11T22:41:49Z",
-          "localizedDescription": "## Welcome to Husk 2.0.\r\nI’ve been working hard over the past few days, and I’m glad to say, Husk 2.0 is out! You’ll enjoy it, a lot.\r\n## What’s new?\r\n- Christmas Decoration\r\n- In-app help feature\r\n- Window manager\r\n- New UI\r\n- Removed downloads tab\r\n## New App Support\r\n- Over 150+ games and apps, now running on Husk.\r\n## Notes:\r\nThank you all for the continuous support, It’s been a good few months, and I’m just amazed at how big Husk got. Thank you so much, and enjoy Husk 2.0. There is more to come.\r\n## Links:\r\n- Discord: https://discord.gg/xApMHWAzkh\r\n- X Profile: https://x.com/leviidev01\r\n- Discord User: @leviidev",
+          "localizedDescription": "## Welcome to Husk 2.0.\r\nI\u2019ve been working hard over the past few days, and I\u2019m glad to say, Husk 2.0 is out! You\u2019ll enjoy it, a lot.\r\n## What\u2019s new?\r\n- Christmas Decoration\r\n- In-app help feature\r\n- Window manager\r\n- New UI\r\n- Removed downloads tab\r\n## New App Support\r\n- Over 150+ games and apps, now running on Husk.\r\n## Notes:\r\nThank you all for the continuous support, It\u2019s been a good few months, and I\u2019m just amazed at how big Husk got. Thank you so much, and enjoy Husk 2.0. There is more to come.\r\n## Links:\r\n- Discord: https://discord.gg/xApMHWAzkh\r\n- X Profile: https://x.com/leviidev01\r\n- Discord User: @leviidev\r\n\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/1.1.0...2.0",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/2.0/Husk.ipa",
           "size": 110921859,
-          "minOSVersion": "16.0"
+          "minOSVersion": "15.5"
+        },
+        {
+          "version": "1.1.0",
+          "date": "2026-10-09T09:47:21Z",
+          "localizedDescription": "## Game Support\r\n- Grand Theft Auto 5 (unofficial)\r\n\r\n## What's Changed\r\n* fix: support TrollStore by @azyarashi in https://github.com/Leviidev/Husk/pull/68\r\n* feat: downloading tab, direct http or local ip by @Leviidev \r\n\r\n## New Contributors\r\n* @azyarashi made their first contribution in https://github.com/Leviidev/Husk/pull/68\r\n\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/1.0.1...1.1.0\r\n\r\n## Links:\r\nDiscord Server: https://discord.gg/xApMHWAzkh\r\nX: https://x.com/leviidev01\r\nDiscord: @leviidev",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/1.1.0/Husk.ipa",
+          "size": 54385494,
+          "minOSVersion": "15.5"
         },
         {
           "version": "1.0.1",
@@ -71,7 +96,7 @@
           "localizedDescription": "## What's new?\r\n- Fixes a failure on logging into Google Accounts, (MissingDroidGuard)\r\n\r\n## Notes:\r\nCheck out Husk 1.0.0 release notes for all new features.\r\n\r\n## Links:\r\nDiscord Server: https://discord.gg/xApMHWAzkh\r\nX: https://x.com/leviidev01\r\nDiscord: @leviidev",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/1.0.1/Husk.ipa",
           "size": 55925239,
-          "minOSVersion": "16.0"
+          "minOSVersion": "15.5"
         },
         {
           "version": "1.0.0",
@@ -79,7 +104,7 @@
           "localizedDescription": "## What's new?\r\n- GoDot Engine\r\n- Google Play Store\r\n- Google Play Services\r\n- Fix File Picker (certificate sideloaded)\r\n- Customize Virtual Pad\r\n- Geode Mod Support (Geometry Dash)\r\n- Save Backup / Restore\r\n- Crash Screen (report issues easily)\r\n- Issue Template for GitHub\r\n- Switching Games w/o restart with Translation Layer\r\n- What's new UI on first startup\r\n- Typing in Minecraft\r\n- Compatibility Labels for games\r\n- JIT on startup (toggle)\r\n- TrollStore/Dopamine JIT support\r\n- Stop asking for android image, (toggle)\r\n- Having dev logs open then closing it has the screen perm locked to that bad position until restart\r\n- iOS 16+ support (used to be like 17.4+ or sum idk)\r\n- Other stuff I forgot\r\n\r\n## Notes:\r\nThis is Husk's first, actual stable release. This is the best release so far, and you will most definitely enjoy it.\r\nI really wanted to delay the release, because I had something big coming with it, but I just didn't want to. Husk 1.0 is the first stable release, and thats the spotlight. I hope you like it <3\r\n\r\n## Links:\r\nDiscord Server: https://discord.gg/xApMHWAzkh\r\nX: https://x.com/leviidev01\r\nDiscord: @leviidev",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/1.0.0/Husk.ipa",
           "size": 47559993,
-          "minOSVersion": "16.0"
+          "minOSVersion": "15.5"
         },
         {
           "version": "0.9.0",
@@ -87,62 +112,6 @@
           "localizedDescription": "## What's new?\r\n- Sound for Unity and Java games\r\n- Turn on JIT at launch with a setting (StikJIT)\r\n- Share apps to Husk and import it (skips the file picker bugs)\r\n- New App User Interface\r\n- Game details for each game (screenshots, etc).\r\n\r\n## Info\r\nHusk's first stable release (1.0.0), is right around the corner. It will probably be the best release, fixing issues for almost all devices, but it is not out yet. This IPA may not work, and that is ok. It will be fixed soon, just open a GitHub issue",
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.9.0/Husk.ipa",
           "size": 46958334,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.8.1",
-          "date": "2026-10-07T11:26:52Z",
-          "localizedDescription": "## What’s new?\r\n- TrollStore/Dopamine JIT support (beta)\r\n- Per-app settings for Translation Layer Games\r\n- UI Revamp\r\n- Bug fixes\r\n## Notes:\r\nIf a game is failing to launch now, but it ran in the previous release, clear the data for the app in app settings. Your GlobalSave file may have nothing in it.",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.8.1/Husk.ipa",
-          "size": 46728037,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.8.0",
-          "date": "2026-10-06T21:57:43Z",
-          "localizedDescription": "## What's new?\r\n- Touch Screen Gamepad for all games\r\n## New game support\r\n### Major:\r\n- Minecraft: Dungeons\r\n- GTA: San Andreas\r\n- Super Tux Kart\r\n### Minor\r\n- Rocks'n'Diamonds\r\n- Brogue CE\r\n- Infra Arcana\r\n- Dungeon Crawl Stone Soup\r\n- Anarch RE\r\n- Pekka Kana 2\r\n- Cat a shooter\r\n- Principia\r\n- Open Golf\r\n- Li-Ri\r\n- RTTT\r\n- Box Smasher\r\n- Alex vs Bus",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.8.0/Husk.ipa",
-          "size": 46478895,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.7.0",
-          "date": "2026-10-06T03:36:02Z",
-          "localizedDescription": "## What’s new?\r\n* Built-in StikJIT: pair on the device and enable JIT without a second app by @danperks in https://github.com/Leviidev/Husk/pull/37\r\n* Wi-Fi support for all games\r\n* UI Revamp: Now fully built with Swift\r\n* Moved Translation layer to the main 4 tabs, replacing the Discover tab\r\n## New game support\r\n* Beach Buggy Racing 2 - 60 FPS\r\n## New Contributors\r\n* @danperks made their first contribution in https://github.com/Leviidev/Husk/pull/37\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/0.6.1...0.7.0\r\nDiscord server: https://discord.gg/xApMHWAzkh",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.7.0/Husk.ipa",
-          "size": 44993209,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.6.1",
-          "date": "2026-10-05T11:16:32Z",
-          "localizedDescription": "## What’s new?\r\n- WiFi support for Unity Games\r\n- Geometry Dash support\r\n- Minecraft Support\r\n## Notes\r\nThis release only edits the Android Translation Layer. The fully emulated android OS has not been changed this build.",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.6.1/Husk.ipa",
-          "size": 40885768,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.6.0",
-          "date": "2026-10-04T23:36:46Z",
-          "localizedDescription": "## What's new?\r\n- Implementation for the experimental Android Translation Layer\r\n    - You can test it by going to: Settings -> Android Translation Layer -> Add APK -> Chosen APK -> Run Translation Layer Attempt\r\n    - It currently can 100% emulate Flappy Bird and Subway 60 FPS\r\n## Credits\r\nOriginal Android Translation Layer: https://gitlab.com/android_translation_layer/android_translation_layer",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.6.0/Husk.ipa",
-          "size": 40778819,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.5.1",
-          "date": "2026-10-04T02:00:07Z",
-          "localizedDescription": "## What's new?\r\n- Fixed iOS26 JIT crashes\r\n- Fixed a fatal pipe2 crash, (added fallback)\r\n## Credits\r\n@Yaryk007 - made the HuskPatch repo where I got the iOS26 JIT fixes :)\r\n\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/0.5.0...0.5.1",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.5.1/Husk.ipa",
-          "size": 40386325,
-          "minOSVersion": "16.4"
-        },
-        {
-          "version": "0.5.0",
-          "date": "2026-10-01T23:46:10Z",
-          "localizedDescription": "## What's Changed\r\n* Fix guest seed packaging and snapshot preservation by @creeper4004 in https://github.com/Leviidev/Husk/pull/29\r\n* Add a light mode (Settings › Appearance) by @hernan0078 in https://github.com/Leviidev/Husk/pull/30\r\n* Fixed UI bugs by @Leviidev \r\n\r\n## New Contributors\r\n* @creeper4004 made their first contribution in https://github.com/Leviidev/Husk/pull/29\r\n* @hernan0078 made their first contribution in https://github.com/Leviidev/Husk/pull/30\r\n\r\n**Full Changelog**: https://github.com/Leviidev/Husk/compare/0.4.1...0.5.0",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.5.0/Husk.ipa",
-          "size": 40279923,
           "minOSVersion": "16.4"
         }
       ],
@@ -157,6 +126,103 @@
           "NSLocalNetworkUsageDescription": "Husk uses the local network to pair with this iPhone for JIT, without a computer."
         }
       }
+    },
+    {
+      "name": "AetherPS4",
+      "bundleIdentifier": "com.aether.ps4ios",
+      "developerName": "Leviidev",
+      "subtitle": "PS4 emulator for iPhone and iPad.",
+      "localizedDescription": "AetherPS4 is a PlayStation 4 emulator for iOS and iPadOS: a standalone app plus the emulator core.",
+      "iconURL": "https://raw.githubusercontent.com/Leviidev/AetherPS4/main/AetherPS4-iOS/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+      "tintColor": "#003087",
+      "category": "games",
+      "versions": [
+        {
+          "version": "1.2",
+          "date": "2026-09-12T02:48:11Z",
+          "localizedDescription": "## What's Changed\r\n* Prevent iOS crash on first launch in a fresh sandbox by @hernan0078 in https://github.com/Leviidev/AetherPS4/pull/5\r\n* Add 'Continue Anyway' button to SetupCheckView by @itsjaylmao in https://github.com/Leviidev/AetherPS4/pull/7\r\n* Improve iOS runtime compatibility and startup feedback by @hernan0078 in https://github.com/Leviidev/AetherPS4/pull/6\r\n* Replace Minecraft with Rocket League in README by @itsjaylmao in https://github.com/Leviidev/AetherPS4/pull/9\r\n\r\n## New Contributors\r\n* @hernan0078 made their first contribution in https://github.com/Leviidev/AetherPS4/pull/5\r\n* @itsjaylmao made their first contribution in https://github.com/Leviidev/AetherPS4/pull/7\r\n\r\n**Full Changelog**: https://github.com/Leviidev/AetherPS4/compare/v1.0.1...v1.2",
+          "downloadURL": "https://github.com/Leviidev/AetherPS4/releases/download/v1.2/AetherPS4-iOS.ipa",
+          "size": 34208394,
+          "minOSVersion": "17.4"
+        },
+        {
+          "version": "1.0.1_release",
+          "date": "2026-08-30T03:12:11Z",
+          "localizedDescription": "This release contains many new updates improving the user experience! Here's what we added\r\n\r\n## Minor updates\r\n- New app logo\r\n- Setup Screen (lets you know if jit is attached and if memory entitlement is working\r\n- Search for games\r\n## Major updates\r\n- Improved boot time\r\n- Added support for many games with unimplemented functions\r\n   - This does NOT guarantee your game will load. All this did was add unadded functions to the app, meaning if an app had an unadded function it would crash, now hopefully adding support for more games.\r\n- Stopped using imgui for aetherps4 loading (using swift now)\r\n- Added touch screen overlay to control game\r\n\r\n\r\n## Info\r\n### Supported games\r\nSonic Mania - \u2705 Running\r\n2048 (Homebrew) - \u2705 Running\r\nJourney  - \u2705 Running\r\n### Warning\r\nThis app is an experimental build of AetherPS4. AetherPS4 is based off shadPS4, all credits go to them for making the emulator, this project would not be possible without them. This app was also made with the support of Claude, an AI assistant for coding. If you guys have any issues please report it in the GitHub. You can also direct message me on Discord (@ripchase), or DM me on Reddit (u/cultural-order-5549).\r\n\r\n## AetherPS4 has a Discord Server, please join if you can (https://discord.gg/xApMHWAzkh). Thanks for using this app, I really appreciate it \u2764\ufe0f",
+          "downloadURL": "https://github.com/Leviidev/AetherPS4/releases/download/v1.0.1_release/AetherPS4-iOS.ipa",
+          "size": 33931355,
+          "minOSVersion": "17.4"
+        },
+        {
+          "version": "1.0.0",
+          "date": "2026-08-22T01:40:34Z",
+          "localizedDescription": "Hey everyone! I present to you AetherPS4 v1.0.0!\r\n\r\n## Requirements\r\nHere's what you'll need to get the app working\r\n- StikDebug\r\n- Preferred Sideloading tool\r\n- iOS/iPadOS (26+)\r\n## Setup\r\nFirst, meet all requirements. Then, sideload the app onto your preferred device. Open ```StikDebug``` and hold click onto the application, you will see a context menu and you must press ```Assign Script```. When the menu shows up press ```universal.js```, this is required or it will NOT work. Then, open the app. Import your .pkg file of the game (must be .pkg, extracted will not work as of right now). When you import your .pkg, you will know it worked when the metadata of the game gets loaded. If it doesn't show the metadata of the game, try refreshing. If it still doesn't show up then you have an invalid .pkg file. Press onto the game and click launch game. The game will take ```1 minute and 30 seconds``` to load, and it will hang for about 30 seconds. Do not close the app or you will have to restart the loading process. Once the game loads, you MUST use an ```external controller```. If you do not use a external controller it will NOT work since we have not added touchscreen overlay.\r\n## Tested Games\r\n### Key:\r\n\u2705 - Running\r\n\u26a0\ufe0f - Untested\r\n\ud83d\udeab - Crashed / Doesn't load\r\n### Games:\r\n\u2705 - Sonic Mania\r\n\u26a0\ufe0f - Minecraft: PS4 Edition\r\n\r\n## Other\r\nThis app will be regularly updated, and I hope you enjoy\r\n\u26a0\ufe0f This app was made with support from AI tools. I used Claude to help me work on this app. If you have any questions open a github issue. I hope you enjoy!",
+          "downloadURL": "https://github.com/Leviidev/AetherPS4/releases/download/v1.0.0/AetherPS4-iOS.ipa",
+          "size": 30207728,
+          "minOSVersion": "17.4"
+        }
+      ]
+    },
+    {
+      "name": "Utsuro",
+      "bundleIdentifier": "com.utsuro.app",
+      "developerName": "Leviidev",
+      "subtitle": "Alpha \u2014 Xbox One games on iPhone.",
+      "localizedDescription": "Utsuro runs Xbox One games on iOS and iPadOS. This is an alpha release: Minecraft Xbox One Edition, Rocket League and Sonic Mania have been shown to start; expect bugs.",
+      "iconURL": "https://raw.githubusercontent.com/Leviidev/Utsuro/main/ios/Utsuro/Assets.xcassets/AppIcon.appiconset/icon.png",
+      "tintColor": "#107C10",
+      "category": "games",
+      "beta": true,
+      "versions": [
+        {
+          "version": "0.1.0-alpha",
+          "date": "2026-10-22T12:54:28Z",
+          "localizedDescription": "## Games Running\n- Minecraft: Xbox One Edition\n- Rocket League\n- Sonic Mania\n## Info\nThis is an alpha release, bugs may occur.\n\nDiscord:  https://discord.gg/xApMHWAzkh",
+          "downloadURL": "https://github.com/Leviidev/Utsuro/releases/download/0.1.0-alpha/Utsuro-alpha.ipa",
+          "size": 5327283,
+          "minOSVersion": "17.4"
+        }
+      ]
+    },
+    {
+      "name": "Podium",
+      "bundleIdentifier": "com.leviidev.podium",
+      "developerName": "Leviidev",
+      "subtitle": "A classic iPod Touch on a modern iPhone.",
+      "localizedDescription": "Podium is a classic iPod Touch emulator. It currently targets iOS 6.1.6 on the iPod Touch (4th generation); other software versions and devices can be tried.",
+      "iconURL": "https://raw.githubusercontent.com/Leviidev/Podium/main/Podium/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "tintColor": "#8E8E93",
+      "category": "entertainment",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "date": "2026-10-01T22:23:47Z",
+          "localizedDescription": "Welcome to Podium 0.1.0!\r\n\r\nPodium is a iPod Touch emulator for iOS and currently **only** emulates iOS 6.1.6 with the iPod Touch (4th gen.). You can try other software versions and devices, but are probably going to fail as they aren't compatible. I hope you enjoy this release, and remember for JIT, you **must** use **universal.js** in StikDebug. TrollStore / Dopamine support soon.",
+          "downloadURL": "https://github.com/Leviidev/Podium/releases/download/0.1.0/Podium_v0.1.0.ipa",
+          "size": 5193178,
+          "minOSVersion": "17.0"
+        }
+      ]
+    },
+    {
+      "name": "Fathom",
+      "bundleIdentifier": "app.fathom.emulator",
+      "developerName": "Leviidev",
+      "subtitle": "An x86-64 PC emulator for iPhone.",
+      "localizedDescription": "Fathom is an x86-64 PC emulator for iOS. It runs guest code through FEXCore. 2048 and tic-tac-toe ship as sample programs.",
+      "iconURL": "https://raw.githubusercontent.com/Leviidev/Fathom/main/Fathom/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+      "tintColor": "#0E7490",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "date": "2026-09-14T23:13:23Z",
+          "localizedDescription": "An x86-64 PC emulator for iOS, running guest code on FEXCore.\n\n2048 and tic tac toe both run. Add them from the Library tab and play with the on-screen arrow keys.\n\n**Downloads**\n- `Fathom.ipa` - the app, unsigned, for sideloading. Needs StikDebug attached for JIT.\n- `tictactoe` - arrows move, Enter places, against a minimax bot that cannot be beaten.\n- `play2048` - arrows slide the board.\n\nCopy the two game binaries into Fathom's Programs folder, or import them from the Library tab.",
+          "downloadURL": "https://github.com/Leviidev/Fathom/releases/download/v1.0.0/Fathom.ipa",
+          "size": 1175175,
+          "minOSVersion": "18.0"
+        }
+      ]
     }
   ],
   "news": []
