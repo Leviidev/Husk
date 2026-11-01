@@ -21,8 +21,6 @@ enum WhatsNew {
              detail: "Java apps pick up missing platform classes from AOSP when framework.jar is bundled, jobs and boot receivers actually start, and Wi-Fi, location and settings answer as a running phone would."),
         Item(symbol: "folder.fill", title: "Importing files",
              detail: "The in-app file picker for Android apps can be used more than once in a session."),
-        Item(symbol: "arrow.triangle.2.circlepath", title: "Switch apps without restarting",
-             detail: "Leave one Android app or game and start another without closing Husk. Java apps reset fully; native engines are stopped and their libraries forgotten first."),
         Item(symbol: "cpu", title: "32-bit ARM apps",
              detail: "APKs that only ship armeabi-v7a libraries are translated to arm64 and run through the same translation layer as 64-bit apps."),
         Item(symbol: "wrench.and.screwdriver.fill", title: "Fixes",
@@ -51,7 +49,7 @@ struct WhatsNewSheet: View {
                 VStack(alignment: .leading, spacing: 26) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("What's New in Husk \(WhatsNew.version)").font(.largeTitle.weight(.bold))
-                        Text("Play without JIT, more Java apps, a working file picker, and switch apps without restarting.").foregroundStyle(.secondary)
+                        Text("Play without JIT, more Java apps, and a working file picker.").foregroundStyle(.secondary)
                     }
                     .padding(.top, 36)
                     ForEach(WhatsNew.items) { item in

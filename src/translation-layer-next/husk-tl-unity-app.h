@@ -162,7 +162,7 @@ void husk_gamepad_update(int slot, unsigned buttons, float lx, float ly, float r
 
 /* The APK of the game started this session, or NULL when none is loaded. */
 const char *husk_native_loaded_apk(void);
-/* Stop the current app and forget its libraries so another APK can start without restarting Husk. */
+/* Stop the current app and forget its libraries. User-facing Play does not switch games this way. */
 void husk_native_unload(void);
 
 /* Whether the running game has no touch controls of its own and wants the on-screen controller (a PC game through DXVK). */
