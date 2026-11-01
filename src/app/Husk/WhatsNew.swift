@@ -24,7 +24,7 @@ enum WhatsNew {
         Item(symbol: "cpu", title: "32-bit ARM apps",
              detail: "APKs that only ship armeabi-v7a libraries are translated to arm64 and run through the same translation layer as 64-bit apps."),
         Item(symbol: "wrench.and.screwdriver.fill", title: "Fixes",
-             detail: "Certificate import, leftover store passwords on a .p12, and the file picker after the first pick."),
+             detail: "Certificate import, leftover store passwords on a .p12, the file picker after the first pick, game pages on iOS 15, and StikDebug when Husk is inside a container app."),
     ]
 
     private static let seenKey = "husk.whatsNew.seen"
@@ -49,7 +49,6 @@ struct WhatsNewSheet: View {
                 VStack(alignment: .leading, spacing: 26) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("What's New in Husk \(WhatsNew.version)").font(.largeTitle.weight(.bold))
-                        Text("Play without JIT, more Java apps, and a working file picker.").foregroundStyle(.secondary)
                     }
                     .padding(.top, 36)
                     ForEach(WhatsNew.items) { item in

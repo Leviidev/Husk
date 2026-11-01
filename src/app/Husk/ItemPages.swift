@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
+import UIKit
 
 // MARK: - the top of every page
 
@@ -10,6 +11,11 @@ private struct PageHero<Action: View>: View {
     let subtitle: String
     var facts: [(symbol: String, text: String)] = []
     @ViewBuilder var action: Action
+
+    /// playstation.logo is iOS 16+; a missing symbol on iOS 15 can blank the chip row.
+    private static var psSymbol: String {
+        UIImage(systemName: "playstation.logo") != nil ? "playstation.logo" : "gamecontroller.fill"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -28,7 +34,7 @@ private struct PageHero<Action: View>: View {
                             .minimumScaleFactor(0.7)
                     }
                     HStack(spacing: 8) {
-                        PageChip(text: item.platformShort, symbol: item.isPS4 ? "playstation.logo" : "iphone", tint: .white)
+                        PageChip(text: item.platformShort, symbol: item.isPS4 ? Self.psSymbol : "iphone", tint: .white)
                         if let st = item.status {
                             PageChip(text: st == .plays ? "Works Great" : st.label, symbol: "checkmark.seal.fill", tint: st.color)
                         }
@@ -173,6 +179,7 @@ struct GamePage: View {
         HuskPageList {
             Section {
                 PageHero(item: .game(app), subtitle: subtitle, facts: gameFacts) { primary }
+                    .heroRow()
             } footer: {
                 if isGeodeLauncher {
                     Text("This is Geode's Android launcher. On Husk, Geode runs inside Geometry Dash instead: turn it on here "
@@ -182,7 +189,6 @@ struct GamePage: View {
                     Text("This APK has no ARM code Husk can run, so it will probably not start.")
                 }
             }
-            .heroRow()
 
             // what the files say before it starts: a damaged APK, the wrong CPU, a missing piece, protection that refuses Husk
             if let d = preflight {
@@ -554,12 +560,12 @@ struct AndroidAppPage: View {
         HuskPageList {
             Section {
                 PageHero(item: item, subtitle: item.usedText ?? "Runs inside Android") { primary }
+                    .heroRow()
             } footer: {
                 if router.pendingAndroidLaunch == app.name, !host.isReady {
                     Text("\(live.label) opens by itself once Android has started.")
                 }
             }
-            .heroRow()
 
             if !ShowcaseStore.shared.pictures(for: app.name).isEmpty {
                 Section("Screenshots") {
@@ -671,10 +677,10 @@ struct AndroidSystemPage: View {
                         if let progress { ProgressView(value: progress) }
                     }
                 }
+                .heroRow()
             } footer: {
                 if let note { Text(note) }
             }
-            .heroRow()
 
             if host.isReady {
                 Section {

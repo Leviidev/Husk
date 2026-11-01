@@ -343,7 +343,10 @@ enum JITBootstrap {
             return false
         }
 
-        var url = "stikjit://enable-jit?bundle-id=\(bundleID)"
+        // pid, not just bundle-id: StikDebug's bundle-id path launches that id via installd.
+        // A LiveContainer guest has no such record; only the container is installed. The pid
+        // path attaches to this already-running process. bundle-id stays as the fallback.
+        var url = "stikjit://enable-jit?bundle-id=\(bundleID)&pid=\(getpid())"
 
         // Sending the script inline makes Husk self-contained. StikDebug accepts
         // script-data unconditionally (HomeView.handleExternalURL), so we do not
@@ -363,16 +366,16 @@ enum JITBootstrap {
             return false
         }
 
-        guard UIApplication.shared.canOpenURL(launchURL) else {
-            HuskLog.log("jit", "FAIL: cannot open stikjit:// -- StikDebug is not "
-                             + "installed, or LSApplicationQueriesSchemes is missing "
-                             + "the 'stikjit' entry in Info.plist")
-            return false
-        }
-
-        HuskLog.log("jit", "opening stikjit:// for bundle \(bundleID); "
+        // Not canOpenURL first: that needs LSApplicationQueriesSchemes for 'stikjit', which is
+        // checked against whichever app iOS actually installed — a container app hosting Husk
+        // fails the query even when StikDebug is installed. open() has no such restriction.
+        HuskLog.log("jit", "opening stikjit:// for bundle \(bundleID), pid \(getpid()); "
                          + "Husk will be backgrounded and relaunched after attach")
-        UIApplication.shared.open(launchURL)
+        UIApplication.shared.open(launchURL, options: [:]) { success in
+            if !success {
+                HuskLog.log("jit", "FAIL: open(stikjit://) did not succeed -- StikDebug is not installed")
+            }
+        }
         return true
     }
 
