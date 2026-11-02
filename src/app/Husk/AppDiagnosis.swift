@@ -10,7 +10,7 @@ import SwiftUI
 struct AppDiagnosis: Identifiable, Equatable {
     enum Kind: String {
         case badAPK, unsupportedCPU, missingSplits, protected, needsGoogle, missingFeature, javaCrash, nativeCrash, closedItself,
-             missingFunction, noProgress, noJIT
+             missingFunction, noProgress, noJIT, outOfAddressSpace
     }
     let id = UUID()
     let kind: Kind
@@ -34,6 +34,7 @@ struct AppDiagnosis: Identifiable, Equatable {
         case .javaCrash, .nativeCrash: return "exclamationmark.triangle.fill"
         case .noProgress: return "hourglass"
         case .noJIT: return "bolt.slash"
+        case .outOfAddressSpace: return "memorychip"
         }
     }
 
@@ -110,6 +111,22 @@ struct AppDiagnosis: Identifiable, Equatable {
                                 detail: "Android and this app share the memory Husk runs translated code in, and together they do not fit. "
                                     + "Close Husk and open it again, then start only the app (or only Android).",
                                 evidence: l)
+        }
+
+        // Out of address space, not memory: a reservation of address space was refused (an allocator's PROT_NONE mmap failing with
+        // ENOMEM), and the engine gave up. Unity's own allocators reserve 256 MiB regions, as 512 MiB each, far ahead of use; an iOS
+        // app without the extended-virtual-addressing entitlement has a few GiB of address space, and installs re-signed with their
+        // user's own team often lose it. What follows the refusal (a crash, iOS closing Husk) follows from it.
+        if let i = lines.firstIndex(where: { $0.contains("mmap FAILED") && $0.contains(" prot=0 ") && $0.contains("errno=12") }),
+           let oom = lines[i...].first(where: { $0.contains("System out of memory!") }) {
+            return AppDiagnosis(kind: .outOfAddressSpace, title: String(localized: "Out of address space"),
+                                detail: String(localized: """
+                                        The game ran out of address space, not memory: iOS refused to set aside more addresses for it. An app \
+                                        without the extended virtual addressing entitlement gets only a few GB of addresses, and installs \
+                                        re-signed with your own Apple account or team often lose that entitlement. Install Husk with it kept, \
+                                        then start the game again.
+                                        """),
+                                evidence: lines[i] + "\n" + oom)
         }
 
         // A native crash: the runtime's crash handler names the library the bad instruction was in
