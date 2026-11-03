@@ -108,7 +108,7 @@ void tl_note_once(const char *what)
 static const struct { const char *k, *v; } k_props[] = {
     { "ro.build.version.sdk", "34" }, { "ro.build.version.release", "14" },
     { "ro.build.version.release_or_codename", "14" }, { "ro.build.version.codename", "REL" },
-    { "ro.build.version.incremental", "11000000" }, { "ro.build.version.security_patch", "2024-05-05" },
+    { "ro.build.version.incremental", "11000000" }, { "ro.build.version.security_patch", "2026-10-05" },
     { "ro.build.id", "UP1A.231105.001" }, { "ro.build.display.id", "UP1A.231105.001" },
     { "ro.build.type", "user" }, { "ro.build.tags", "release-keys" },
     { "ro.build.fingerprint", "google/shiba/shiba:14/UP1A.231105.001/11000000:user/release-keys" },

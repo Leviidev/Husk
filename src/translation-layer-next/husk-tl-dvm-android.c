@@ -1180,7 +1180,9 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
        getExternalFilesDir() (Sims FreePlay's zip-slip guard refused all its game data), and on iOS the container is /var/...,
        which is /private/var/... once resolved */
     mkdir(cfg->data_dir, 0755);
-    { char canon[PATH_MAX]; snprintf(A.data, sizeof(A.data), "%s", realpath(cfg->data_dir, canon) ? canon : cfg->data_dir); }
+    /* ...unless that path has a space, which an Android data path never has: Qt splits its library list on them (a Mac volume
+       name has one) */
+    { char canon[PATH_MAX]; snprintf(A.data, sizeof(A.data), "%s", realpath(cfg->data_dir, canon) && !strchr(canon, ' ') ? canon : cfg->data_dir); }
     snprintf(A.ext, sizeof(A.ext), "%s/sdcard", A.data);
     snprintf(A.fwres, sizeof(A.fwres), "%s", cfg->framework_res ? cfg->framework_res : "");
     for (int i = 0; i < 4; i++) A.insets[i] = cfg->insets[i];

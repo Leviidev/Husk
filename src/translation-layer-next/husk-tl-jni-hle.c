@@ -476,7 +476,7 @@ static void install_build(void)
     v.l = STR("14"); tl_jni_set_static("android/os/Build$VERSION", "RELEASE", "Ljava/lang/String;", v);
     v.l = STR("REL"); tl_jni_set_static("android/os/Build$VERSION", "CODENAME", "Ljava/lang/String;", v);
     v.l = STR("11000000"); tl_jni_set_static("android/os/Build$VERSION", "INCREMENTAL", "Ljava/lang/String;", v);
-    v.l = STR("2024-05-05"); tl_jni_set_static("android/os/Build$VERSION", "SECURITY_PATCH", "Ljava/lang/String;", v);
+    v.l = STR("2026-10-05"); tl_jni_set_static("android/os/Build$VERSION", "SECURITY_PATCH", "Ljava/lang/String;", v);
     v.j = 0; v.i = 34; tl_jni_set_static("android/os/Build$VERSION", "SDK_INT", "I", v);
     v.j = 0; v.i = 34; tl_jni_set_static("android/os/Build$VERSION", "PREVIEW_SDK_INT", "I", v);
     v.j = 0; v.l = STR("mounted"); tl_jni_set_static("android/os/Environment", "MEDIA_MOUNTED", "Ljava/lang/String;", v);
