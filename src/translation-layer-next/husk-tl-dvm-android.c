@@ -41,7 +41,7 @@ static struct {
     jobj *gl_view, *gl_renderer;
     int gl_version;
     pthread_t gl_thread, app_thread;
-    bool gl_started, app_started;
+    bool gl_started, app_started, gl_thread_started;   /* gl_started: the app's GLSurfaceView renderer was handed over (N_startGL) */
     jobj *content;
     char fwres[1024];
     tl_zip fwres_zip; bool fwres_tried, fwres_ok;
@@ -1165,7 +1165,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     atomic_store(&A.ended, false);
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
-    A.qn = 0; A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL;
+    A.qn = 0; A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL; A.gl_started = false;
     /* stores into a library's executable view (data sharing a page with its code, as Unity's does) go through the writable one */
     { void tl_codewrite_enable(void); tl_codewrite_enable(); }
     A.cfg = *cfg;
@@ -1176,8 +1176,12 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
        its 310/320 es shaders down), as it would otherwise refuse to start */
     { int tl_manifest_gles(const char *); void tl_egl_es3_claim(int); int gv = tl_manifest_gles(cfg->apk_path);
       if (gv >= 0x30001) { tl_egl_es3_claim(gv & 0xffff); tl_log_line("egl: the manifest asks for OpenGL ES 3.%d: the driver is described so", gv & 0xffff); } }
-    snprintf(A.data, sizeof(A.data), "%s", cfg->data_dir);
-    snprintf(A.ext, sizeof(A.ext), "%s/sdcard", cfg->data_dir);
+    /* the data folder as its canonical path: apps check where a file lands with getCanonicalPath() against getFilesDir() or
+       getExternalFilesDir() (Sims FreePlay's zip-slip guard refused all its game data), and on iOS the container is /var/...,
+       which is /private/var/... once resolved */
+    mkdir(cfg->data_dir, 0755);
+    { char canon[PATH_MAX]; snprintf(A.data, sizeof(A.data), "%s", realpath(cfg->data_dir, canon) ? canon : cfg->data_dir); }
+    snprintf(A.ext, sizeof(A.ext), "%s/sdcard", A.data);
     snprintf(A.fwres, sizeof(A.fwres), "%s", cfg->framework_res ? cfg->framework_res : "");
     for (int i = 0; i < 4; i++) A.insets[i] = cfg->insets[i];
     mkdir(A.data, 0755); mkdir(A.ext, 0755);
@@ -1190,17 +1194,16 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
-    { void tl_set_data_dir(const char *dir); tl_set_data_dir(cfg->data_dir); }
+    { void tl_set_data_dir(const char *dir); tl_set_data_dir(A.data); }
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
-    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); pthread_create(&A.gl_thread, &rt, gl_main, NULL); }
+    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
     A.app_started = pthread_create(&A.app_thread, &at, app_main, NULL) == 0;
-    A.gl_started = true;
     return A.app_started;
 }
 
@@ -1208,7 +1211,8 @@ void tl_javaapp_stop(void)
 {
     atomic_store(&A.ended, true);
     if (A.app_started) { pthread_join(A.app_thread, NULL); A.app_started = false; }
-    if (A.gl_started) { pthread_join(A.gl_thread, NULL); A.gl_started = false; }
+    if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+    A.gl_started = false;
     A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL;
     pthread_mutex_lock(&A.q_lock); A.qn = 0; pthread_mutex_unlock(&A.q_lock);
     jvalue r;
