@@ -375,8 +375,58 @@ static bool opt_to_darwin(int level, int name, int *dlevel, int *dname)
 static int b_setsockopt(int fd, int level, int name, const void *val, socklen_t len)
 {
     int dl, dn;
+    /* multicast options whose Linux structs Darwin lays out differently (Java's MulticastSocket, UPnP/SSDP: yaacc) */
+    if ((level == 0 || level == 41) && (name == 42 || name == 45) && val && len >= 8 + 2) {
+        /* MCAST_JOIN_GROUP / MCAST_LEAVE_GROUP: Linux struct group_req { u32 interface; (pad); sockaddr_storage group at 8 };
+           Darwin's is packed, the group at 4, and its sockaddr has sa_len */
+        uint8_t gr[4 + sizeof(struct sockaddr_storage)] = {0};
+        memcpy(gr, val, 4);
+        struct sockaddr_storage ss;
+        socklen_t sl = sa_to_darwin((const uint8_t *)val + 8, len - 8, &ss);
+        if (!sl) { tl_set_guest_errno(22 /* EINVAL */); return -1; }
+        memcpy(gr + 4, &ss, sizeof(ss));
+        TL_ERRNO_BEGIN(); int r = setsockopt(fd, level == 0 ? IPPROTO_IP : IPPROTO_IPV6, name == 42 ? 80 /* MCAST_JOIN_GROUP */ : 81, gr, sizeof(gr)); TL_ERRNO_END();
+        return r;
+    }
+    if (level == 0 && name == 32 && val && len >= 12) {
+        /* IP_MULTICAST_IF with Linux's struct ip_mreqn { multiaddr, address, int ifindex }: by index, else by address */
+        int idx; memcpy(&idx, (const uint8_t *)val + 8, 4);
+        struct sockaddr_storage ss; socklen_t sl = sizeof(ss);
+        bool v6 = getsockname(fd, (struct sockaddr *)&ss, &sl) == 0 && ss.ss_family == AF_INET6;
+        TL_ERRNO_BEGIN();
+        int r = v6 ? (idx ? setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF, &idx, sizeof(idx)) : 0)   /* on an IPv6 socket, by index */
+              : idx ? setsockopt(fd, IPPROTO_IP, 0x42 /* IP_MULTICAST_IFINDEX */, &idx, sizeof(idx))
+                    : setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (const uint8_t *)val + 4, 4);
+        int e = errno;
+        TL_ERRNO_END();
+        NTRACE("setsockopt(fd %d, IP_MULTICAST_IF index %d, %s socket) -> %d errno %d", fd, idx, v6 ? "v6" : "v4", r, r < 0 ? e : 0);
+        return r;
+    }
+    if (level == 0 && (name == 33 || name == 34) && val && len >= 1) {
+        /* IP_MULTICAST_TTL / LOOP, a byte (libcore's setsockoptByte) or an int. Java's sockets are IPv6 ones, where Linux takes the
+           IPv4 options and Darwin refuses them: there they are the IPv6 options (hop limit, loop), which take an int. */
+        int v = len >= 4 ? *(const int *)val : *(const uint8_t *)val;
+        struct sockaddr_storage ss; socklen_t sl = sizeof(ss);
+        bool v6 = getsockname(fd, (struct sockaddr *)&ss, &sl) == 0 && ss.ss_family == AF_INET6;
+        TL_ERRNO_BEGIN();
+        int r;
+        if (v6) r = setsockopt(fd, IPPROTO_IPV6, name == 33 ? IPV6_MULTICAST_HOPS : IPV6_MULTICAST_LOOP, &v, sizeof(v));
+        else { unsigned char c = (unsigned char)v; r = setsockopt(fd, IPPROTO_IP, name == 33 ? IP_MULTICAST_TTL : IP_MULTICAST_LOOP, &c, 1);
+               if (r < 0) r = setsockopt(fd, IPPROTO_IP, name == 33 ? IP_MULTICAST_TTL : IP_MULTICAST_LOOP, &v, sizeof(v)); }
+        int e = errno;
+        TL_ERRNO_END();
+        NTRACE("setsockopt(fd %d, IP multicast %d = %d, %s socket) -> %d errno %d", fd, name, v, v6 ? "v6" : "v4", r, r < 0 ? e : 0);
+        return r;
+    }
+    if (level == 0 && (name == 35 || name == 36) && val && len >= 12) {
+        /* IP_ADD/DROP_MEMBERSHIP with an ip_mreqn: Darwin takes the ip_mreq at its start */
+        TL_ERRNO_BEGIN(); int r = setsockopt(fd, IPPROTO_IP, name == 35 ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, val, 8); TL_ERRNO_END();
+        return r;
+    }
     if (!opt_to_darwin(level, name, &dl, &dn)) return 0;            /* an option with no Darwin counterpart: accepted and ignored */
-    TL_ERRNO_BEGIN(); int r = setsockopt(fd, dl, dn, val, len); TL_ERRNO_END(); return r;
+    TL_ERRNO_BEGIN(); int r = setsockopt(fd, dl, dn, val, len); int e = errno; TL_ERRNO_END();
+    NTRACE("setsockopt(fd %d, level %d, opt %d, len %u) -> %d errno %d", fd, level, name, (unsigned)len, r, r < 0 ? e : 0);
+    return r;
 }
 
 static int b_getsockopt(int fd, int level, int name, void *val, socklen_t *len)

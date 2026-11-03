@@ -26,6 +26,9 @@ public final class KeyStoreProvider extends Provider {
         for (String a : new String[] { "AES", "HmacSHA1", "HmacSHA224", "HmacSHA256", "HmacSHA384", "HmacSHA512", "DESede" }) put("KeyGenerator." + a, SecretGen.class.getName() + "$" + a.replace("Hmac", "H"));
         put("KeyPairGenerator.RSA", PairGen.class.getName() + "$RSA");
         put("KeyPairGenerator.EC", PairGen.class.getName() + "$EC");
+        for (String a : new String[] { "AES", "HmacSHA1", "HmacSHA224", "HmacSHA256", "HmacSHA384", "HmacSHA512", "DESede" }) put("SecretKeyFactory." + a, SecretFactory.class.getName());
+        put("KeyFactory.RSA", PairFactory.class.getName() + "$RSA");
+        put("KeyFactory.EC", PairFactory.class.getName() + "$EC");
     }
 
     private static boolean sInstalled;
@@ -176,6 +179,52 @@ public final class KeyStoreProvider extends Provider {
         }
         public static final class RSA extends PairGen { public RSA() { super("RSA"); } }
         public static final class EC extends PairGen { public EC() { super("EC"); } }
+    }
+
+    /** The KeyInfo of a key of the store's (found by identity, else by its encoding), for the factories' getKeySpec. */
+    static android.security.keystore.KeyInfo infoOf(Key key) throws java.security.spec.InvalidKeySpecException {
+        String alias = null; Entry found = null;
+        synchronized (KeyStoreProvider.class) {
+            for (Map.Entry<String, Entry> me : huskKeys().entrySet()) {
+                Key k = me.getValue().secretOrPrivate;
+                if (k == key || (k != null && key.getEncoded() != null && Arrays.equals(k.getEncoded(), key.getEncoded()))) { alias = me.getKey(); found = me.getValue(); break; }
+            }
+        }
+        if (found == null) throw new java.security.spec.InvalidKeySpecException("not a key of the AndroidKeyStore");
+        int size = 0;
+        if (key instanceof java.security.interfaces.RSAKey) size = ((java.security.interfaces.RSAKey) key).getModulus().bitLength();
+        else if (key instanceof java.security.interfaces.ECKey) size = ((java.security.interfaces.ECKey) key).getParams().getCurve().getField().getFieldSize();
+        else if (key.getEncoded() != null) size = key.getEncoded().length * 8;
+        /* a software key (SECURITY_LEVEL_SOFTWARE), made here (ORIGIN_GENERATED), for every purpose, no user authentication */
+        return new android.security.keystore.KeyInfo(alias, false, 1, size, null, null, null, 0x7f, new String[0], new String[0],
+            new String[0], new String[0], false, 0, 0, false, false, false, false, false, false, 0, -1);
+    }
+    public static class SecretFactory extends javax.crypto.SecretKeyFactorySpi {
+        @Override protected SecretKey engineGenerateSecret(java.security.spec.KeySpec spec) throws java.security.spec.InvalidKeySpecException {
+            throw new java.security.spec.InvalidKeySpecException("AndroidKeyStore keys are made by its KeyGenerator");
+        }
+        @Override protected java.security.spec.KeySpec engineGetKeySpec(SecretKey key, Class spec) throws java.security.spec.InvalidKeySpecException {
+            if (spec == null || !spec.isAssignableFrom(android.security.keystore.KeyInfo.class)) throw new java.security.spec.InvalidKeySpecException("only KeyInfo: " + spec);
+            return infoOf(key);
+        }
+        @Override protected SecretKey engineTranslateKey(SecretKey key) { return key; }
+    }
+    public static class PairFactory extends java.security.KeyFactorySpi {
+        private final String mAlg;
+        PairFactory(String alg) { mAlg = alg; }
+        @Override protected PublicKey engineGeneratePublic(java.security.spec.KeySpec spec) throws java.security.spec.InvalidKeySpecException {
+            try { return KeyFactory.getInstance(mAlg).generatePublic(spec); } catch (NoSuchAlgorithmException e) { throw new java.security.spec.InvalidKeySpecException(e); }
+        }
+        @Override protected PrivateKey engineGeneratePrivate(java.security.spec.KeySpec spec) throws java.security.spec.InvalidKeySpecException {
+            throw new java.security.spec.InvalidKeySpecException("AndroidKeyStore private keys are made by its KeyPairGenerator");
+        }
+        @Override protected <T extends java.security.spec.KeySpec> T engineGetKeySpec(Key key, Class<T> spec) throws java.security.spec.InvalidKeySpecException {
+            if (spec != null && spec.isAssignableFrom(android.security.keystore.KeyInfo.class)) return spec.cast(infoOf(key));
+            try { return KeyFactory.getInstance(mAlg).getKeySpec(key, spec); } catch (NoSuchAlgorithmException e) { throw new java.security.spec.InvalidKeySpecException(e); }
+        }
+        @Override protected Key engineTranslateKey(Key key) { return key; }
+        public static final class RSA extends PairFactory { public RSA() { super("RSA"); } }
+        public static final class EC extends PairFactory { public EC() { super("EC"); } }
     }
 
     /**

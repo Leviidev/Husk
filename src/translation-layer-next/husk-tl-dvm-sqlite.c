@@ -5,6 +5,8 @@
  * connection are registered here too (apps name them in their schemas).
  */
 #include <sqlite3.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -47,8 +49,23 @@ NAT(S_open)
     char resolved[1024];
     extern const char *tl_path_resolve(const char *path, char *buf, size_t n);
     if (path && strcmp(path, ":memory:")) path = tl_path_resolve(path, resolved, sizeof(resolved));
+    /* a WAL-mode file opened read-only: this SQLite cannot without its -shm file (CANTOPEN on the first statement), Android's can.
+       It is opened for writing and set query_only, which refuses every write as a read-only connection does (Defide's bundled
+       133 MB WAL database). */
+    bool wal_ro = false;
+    if ((flags & SQLITE_OPEN_READONLY) && path && strcmp(path, ":memory:")) {
+        FILE *f = fopen(path, "rb"); unsigned char h[20];
+        if (f) {
+            if (fread(h, 1, 20, f) == 20 && !memcmp(h, "SQLite format 3", 16) && h[18] == 2 && h[19] == 2 && access(path, W_OK) == 0) {
+                char shm[1100]; snprintf(shm, sizeof(shm), "%s-shm", path);
+                if (access(shm, F_OK) != 0) { wal_ro = true; flags = (flags & ~SQLITE_OPEN_READONLY) | SQLITE_OPEN_READWRITE; }
+            }
+            fclose(f);
+        }
+    }
     sqlite3 *db = NULL;
     int rc = sqlite3_open_v2(path ? path : ":memory:", &db, flags, NULL);
+    if (rc == SQLITE_OK && wal_ro) sqlite3_exec(db, "PRAGMA query_only=1", NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
         snprintf(g_open_error, sizeof(g_open_error), "%s (code %d)", db ? sqlite3_errmsg(db) : sqlite3_errstr(rc), rc);
         if (db) sqlite3_close(db);
