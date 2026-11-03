@@ -126,9 +126,9 @@ public final class AppRunner {
         app.onCreate();
         /* as the system after boot: receivers in the manifest hear the device is up and the user is present, so WorkManager
            and the app's own start-up jobs run before the first activity */
-        Broadcasts.send(app, new Intent(Intent.ACTION_BOOT_COMPLETED));
-        Broadcasts.send(app, new Intent(Intent.ACTION_LOCKED_BOOT_COMPLETED));
-        Broadcasts.send(app, new Intent("android.intent.action.USER_UNLOCKED"));
+        Broadcasts.send(app, new Intent(Intent.ACTION_BOOT_COMPLETED), true);
+        Broadcasts.send(app, new Intent(Intent.ACTION_LOCKED_BOOT_COMPLETED), true);
+        Broadcasts.send(app, new Intent("android.intent.action.USER_UNLOCKED"), true);
         Manifest.Component launcher = Manifest.activity(activityClass);
         Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         // started through the launcher's alias, the activity's component is the alias (Android compares that, not the class, when

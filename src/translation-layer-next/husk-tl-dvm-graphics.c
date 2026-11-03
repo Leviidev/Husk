@@ -580,7 +580,19 @@ static void add_rrect8(CGMutablePathRef p, const CGAffineTransform *t, float l, 
     /* corners: top-left, top-right, bottom-right, bottom-left, each (rx, ry), as Android's addRoundRect(float[]) */
     float w = r - l, h = b - tp;
     float rx[4], ry[4];
-    for (int i = 0; i < 4; i++) { rx[i] = fminf(fmaxf(rad[2 * i], 0), w / 2); ry[i] = fminf(fmaxf(rad[2 * i + 1], 0), h / 2); }
+    /* as Skia's SkRRect: a corner with a zero radius is square, and radii too large for a side are all scaled by one factor so
+       each side's two fit (a radius larger than the height makes a pill, not an ellipse: Material buttons, Picsart) */
+    for (int i = 0; i < 4; i++) {
+        rx[i] = fmaxf(rad[2 * i], 0); ry[i] = fmaxf(rad[2 * i + 1], 0);
+        if (rx[i] == 0 || ry[i] == 0) rx[i] = ry[i] = 0;
+    }
+    float sc = 1;
+    if (rx[0] + rx[1] > w) sc = fminf(sc, w / (rx[0] + rx[1]));
+    if (rx[3] + rx[2] > w) sc = fminf(sc, w / (rx[3] + rx[2]));
+    if (ry[0] + ry[3] > h) sc = fminf(sc, h / (ry[0] + ry[3]));
+    if (ry[1] + ry[2] > h) sc = fminf(sc, h / (ry[1] + ry[2]));
+    if (w <= 0 || h <= 0) sc = 0;
+    for (int i = 0; i < 4; i++) { rx[i] *= sc; ry[i] *= sc; }
     const float k = 0.5522847f;
     (void)ccw;
     CGPathMoveToPoint(p, t, l + rx[0], tp);

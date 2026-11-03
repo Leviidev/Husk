@@ -5,7 +5,7 @@ package android.net.http;
 public abstract class HttpEngine {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     protected HttpEngine() {}
-    public static android.net.http.HttpEngine.Builder builder(android.content.Context p0) { return null; }
+    public static android.net.http.HttpEngine.Builder builder(android.content.Context p0) { return new android.net.http.HttpEngine.Builder(p0); }
     public static java.lang.String getVersionString() { return null; }
     public static void preload() {}
     public void bindToNetwork(android.net.Network p0) {}

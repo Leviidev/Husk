@@ -7,7 +7,7 @@ public class ConnectionMigrationOptions {
     public static final int MIGRATION_OPTION_DISABLED = 2;
     public static final int MIGRATION_OPTION_ENABLED = 1;
     public static int MIGRATION_OPTION_UNSPECIFIED;
-    public static android.net.http.ConnectionMigrationOptions.Builder builder() { return null; }
+    public static android.net.http.ConnectionMigrationOptions.Builder builder() { return new android.net.http.ConnectionMigrationOptions.Builder(); }
     public int getAllowNonDefaultNetworkUsage() { return (huskProps.get("AllowNonDefaultNetworkUsage") instanceof Integer ? (Integer) huskProps.get("AllowNonDefaultNetworkUsage") : 0); }
     public int getDefaultNetworkMigration() { return (huskProps.get("DefaultNetworkMigration") instanceof Integer ? (Integer) huskProps.get("DefaultNetworkMigration") : 0); }
     public int getPathDegradationMigration() { return (huskProps.get("PathDegradationMigration") instanceof Integer ? (Integer) huskProps.get("PathDegradationMigration") : 0); }

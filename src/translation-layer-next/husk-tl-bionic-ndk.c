@@ -6,6 +6,7 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -14,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 #include <time.h>
 #include <sys/stat.h>
@@ -898,6 +900,89 @@ KEY(AMEDIAFORMAT_KEY_PROFILE, "profile")
 KEY(AMEDIAFORMAT_KEY_LEVEL, "level")
 KEY(AMEDIAFORMAT_KEY_BITRATE_MODE, "bitrate-mode")
 
+/* ---------------------------------------------------------------- system fonts (API 29) */
+
+/*
+ * ASystemFontIterator lists the system's font files and AFontMatcher picks one for a run of text. Firefox calls them straight
+ * (behind __builtin_available(android 29)), so a missing one is a call to address 0 from its font thread. The fonts are the ones
+ * the app carries as /system/fonts; an AFont's path is that guest path, which file calls resolve. Weight and style come from the
+ * file name (Roboto-BoldItalic.ttf), which is how Android's own fonts are named.
+ */
+typedef struct { char path[300]; uint16_t weight; bool italic; } tl_afont;
+typedef struct { char **names; int n, at; } tl_afont_iter;
+typedef struct { uint16_t weight; bool italic; } tl_afont_matcher;
+
+const char *tl_path_resolve(const char *path, char *buf, size_t n);
+
+static bool font_file(const char *n)
+{
+    size_t l = strlen(n);
+    return l > 4 && (!strcasecmp(n + l - 4, ".ttf") || !strcasecmp(n + l - 4, ".otf") || !strcasecmp(n + l - 4, ".ttc"));
+}
+static tl_afont *afont_new(const char *name)
+{
+    tl_afont *f = calloc(1, sizeof(*f));
+    if (!f) return NULL;
+    snprintf(f->path, sizeof(f->path), "/system/fonts/%s", name);
+    static const struct { const char *w; uint16_t v; } weights[] = {
+        { "Thin", 100 }, { "ExtraLight", 200 }, { "Light", 300 }, { "Medium", 500 }, { "SemiBold", 600 },
+        { "ExtraBold", 800 }, { "Bold", 700 }, { "Black", 900 } };
+    f->weight = 400;
+    for (size_t i = 0; i < sizeof(weights) / sizeof(weights[0]); i++) if (strstr(name, weights[i].w)) { f->weight = weights[i].v; break; }
+    f->italic = strstr(name, "Italic") != NULL;
+    return f;
+}
+static void *b_ASystemFontIterator_open(void)
+{
+    char buf[1100];
+    const char *dir = tl_path_resolve("/system/fonts", buf, sizeof(buf));
+    DIR *d = opendir(dir);
+    if (!d) return NULL;
+    tl_afont_iter *it = calloc(1, sizeof(*it));
+    struct dirent *e;
+    int cap = 0;
+    while (it && (e = readdir(d))) {
+        if (!font_file(e->d_name)) continue;
+        if (it->n == cap) { cap = cap ? cap * 2 : 64; char **nn = realloc(it->names, (size_t)cap * sizeof(char *)); if (!nn) break; it->names = nn; }
+        it->names[it->n++] = strdup(e->d_name);
+    }
+    closedir(d);
+    return it;
+}
+static void *b_ASystemFontIterator_next(tl_afont_iter *it) { return it && it->at < it->n ? afont_new(it->names[it->at++]) : NULL; }
+static void b_ASystemFontIterator_close(tl_afont_iter *it)
+{
+    if (!it) return;
+    for (int i = 0; i < it->n; i++) free(it->names[i]);
+    free(it->names); free(it);
+}
+static void b_AFont_close(tl_afont *f) { free(f); }
+static const char *b_AFont_getFontFilePath(const tl_afont *f) { return f ? f->path : NULL; }
+static uint16_t b_AFont_getWeight(const tl_afont *f) { return f ? f->weight : 400; }
+static bool b_AFont_isItalic(const tl_afont *f) { return f && f->italic; }
+static const char *b_AFont_getLocale(const tl_afont *f) { (void)f; return NULL; }
+static size_t b_AFont_getCollectionIndex(const tl_afont *f) { (void)f; return 0; }
+static size_t b_AFont_getAxisCount(const tl_afont *f) { (void)f; return 0; }
+static uint32_t b_AFont_getAxisTag(const tl_afont *f, uint32_t i) { (void)f; (void)i; return 0; }
+static float b_AFont_getAxisValue(const tl_afont *f, uint32_t i) { (void)f; (void)i; return 0; }
+static void *b_AFontMatcher_create(void) { tl_afont_matcher *m = calloc(1, sizeof(*m)); if (m) m->weight = 400; return m; }
+static void b_AFontMatcher_destroy(tl_afont_matcher *m) { free(m); }
+static void b_AFontMatcher_setStyle(tl_afont_matcher *m, uint16_t weight, bool italic) { if (m) { m->weight = weight; m->italic = italic; } }
+static void b_AFontMatcher_setLocales(tl_afont_matcher *m, const char *l) { (void)m; (void)l; }
+static void b_AFontMatcher_setFamilyVariant(tl_afont_matcher *m, uint32_t v) { (void)m; (void)v; }
+/* the whole run in Roboto, in the weight and style asked for when the bundle has it */
+static void *b_AFontMatcher_match(const tl_afont_matcher *m, const char *family, const uint16_t *text, uint32_t len, uint32_t *run)
+{
+    (void)family; (void)text;
+    if (run) *run = len;
+    bool bold = m && m->weight >= 600, italic = m && m->italic;
+    const char *name = bold ? (italic ? "Roboto-BoldItalic.ttf" : "Roboto-Bold.ttf") : (italic ? "Roboto-Italic.ttf" : "Roboto-Regular.ttf");
+    char guest[300], buf[1100];
+    snprintf(guest, sizeof(guest), "/system/fonts/%s", name);
+    if (access(tl_path_resolve(guest, buf, sizeof(buf)), F_OK) != 0) name = "Roboto-Regular.ttf";
+    return afont_new(name);
+}
+
 #define MEDIA_NULL(n)  TL_WRAP(n, b_media_null)
 #define MEDIA_ERRF(n)  TL_WRAP(n, b_media_err)
 #define MEDIA_DATA(n)  TL_DATA(#n, &g_##n)
@@ -908,6 +993,16 @@ const tl_bionic_entry tl_tab_ndk[] = {
     TL_DIRECT(inflate), TL_DIRECT(inflateEnd), TL_DIRECT(inflateInit2_), TL_DIRECT(inflateInit_), TL_DIRECT(zError),
     TL_DIRECT(compressBound), TL_DIRECT(zlibVersion), TL_DIRECT(compress), TL_DIRECT(compress2), TL_DIRECT(uncompress), TL_DIRECT(crc32), TL_DIRECT(adler32),
     TL_DIRECT(inflateReset), TL_DIRECT(inflateReset2), TL_DIRECT(deflateReset), TL_DIRECT(inflateSync), TL_DIRECT(deflateParams), TL_DIRECT(deflateSetDictionary), TL_DIRECT(inflateSetDictionary),
+    /* system fonts */
+    TL_WRAP("ASystemFontIterator_open", b_ASystemFontIterator_open), TL_WRAP("ASystemFontIterator_next", b_ASystemFontIterator_next),
+    TL_WRAP("ASystemFontIterator_close", b_ASystemFontIterator_close), TL_WRAP("AFont_close", b_AFont_close),
+    TL_WRAP("AFont_getFontFilePath", b_AFont_getFontFilePath), TL_WRAP("AFont_getWeight", b_AFont_getWeight),
+    TL_WRAP("AFont_isItalic", b_AFont_isItalic), TL_WRAP("AFont_getLocale", b_AFont_getLocale),
+    TL_WRAP("AFont_getCollectionIndex", b_AFont_getCollectionIndex), TL_WRAP("AFont_getAxisCount", b_AFont_getAxisCount),
+    TL_WRAP("AFont_getAxisTag", b_AFont_getAxisTag), TL_WRAP("AFont_getAxisValue", b_AFont_getAxisValue),
+    TL_WRAP("AFontMatcher_create", b_AFontMatcher_create), TL_WRAP("AFontMatcher_destroy", b_AFontMatcher_destroy),
+    TL_WRAP("AFontMatcher_setStyle", b_AFontMatcher_setStyle), TL_WRAP("AFontMatcher_setLocales", b_AFontMatcher_setLocales),
+    TL_WRAP("AFontMatcher_setFamilyVariant", b_AFontMatcher_setFamilyVariant), TL_WRAP("AFontMatcher_match", b_AFontMatcher_match),
     /* looper */
     TL_WRAP("ALooper_prepare", b_ALooper_prepare), TL_WRAP("ALooper_forThread", b_ALooper_forThread),
     TL_WRAP("ALooper_acquire", b_ALooper_acquire), TL_WRAP("ALooper_release", b_ALooper_release),

@@ -10,6 +10,24 @@ public class Html {
         FROM_HTML_SEPARATOR_LINE_BREAK_PARAGRAPH = 1, FROM_HTML_SEPARATOR_LINE_BREAK_HEADING = 2, FROM_HTML_SEPARATOR_LINE_BREAK_LIST_ITEM = 4, FROM_HTML_SEPARATOR_LINE_BREAK_LIST = 8,
         FROM_HTML_SEPARATOR_LINE_BREAK_DIV = 16, FROM_HTML_SEPARATOR_LINE_BREAK_BLOCKQUOTE = 32, FROM_HTML_OPTION_USE_CSS_COLORS = 256;
     public interface ImageGetter { android.graphics.drawable.Drawable getDrawable(String source); }
+    /* the reader a TagHandler is handed: never null on Android (TagSoup's parser), and handlers check it (Slack's) */
+    private static final org.xml.sax.XMLReader READER = new org.xml.sax.XMLReader() {
+        private org.xml.sax.ContentHandler mContent; private org.xml.sax.ErrorHandler mError; private org.xml.sax.EntityResolver mEntity; private org.xml.sax.DTDHandler mDtd;
+        public boolean getFeature(String n) { return false; }
+        public void setFeature(String n, boolean v) {}
+        public Object getProperty(String n) { return null; }
+        public void setProperty(String n, Object v) {}
+        public void setEntityResolver(org.xml.sax.EntityResolver r) { mEntity = r; }
+        public org.xml.sax.EntityResolver getEntityResolver() { return mEntity; }
+        public void setDTDHandler(org.xml.sax.DTDHandler h) { mDtd = h; }
+        public org.xml.sax.DTDHandler getDTDHandler() { return mDtd; }
+        public void setContentHandler(org.xml.sax.ContentHandler h) { mContent = h; }
+        public org.xml.sax.ContentHandler getContentHandler() { return mContent; }
+        public void setErrorHandler(org.xml.sax.ErrorHandler h) { mError = h; }
+        public org.xml.sax.ErrorHandler getErrorHandler() { return mError; }
+        public void parse(org.xml.sax.InputSource in) {}
+        public void parse(String systemId) {}
+    };
     public interface TagHandler { void handleTag(boolean opening, String tag, Editable output, org.xml.sax.XMLReader xmlReader); }
     private Html() {}
     @Deprecated public static Spanned fromHtml(String source) { return fromHtml(source, FROM_HTML_MODE_LEGACY, null, null); }
@@ -42,15 +60,15 @@ public class Html {
                     if (block && out.length() > 0 && out.charAt(out.length() - 1) != '\n') { out.append('\n'); if (name.equals("p") || name.matches("h[1-6]")) out.append('\n'); }
                     if (name.equals("li")) { /* bullet added as a span on close */ }
                     if (!selfClosing) open.push(new Object[] { name, out.length(), attrs });
-                    if (handler != null && !isKnown(name)) handler.handleTag(true, name, out, null);
+                    if (handler != null && !isKnown(name)) handler.handleTag(true, name, out, READER);
                 } else {
                     Object[] o = null;
                     for (Object[] x : open) if (x[0].equals(name)) { o = x; break; }
-                    if (o == null) { if (handler != null) handler.handleTag(false, name, out, null); continue; }
+                    if (o == null) { if (handler != null) handler.handleTag(false, name, out, READER); continue; }
                     while (!open.isEmpty()) { Object[] t = open.pop(); if (t == o) break; }
                     int st = (Integer) o[1], en = out.length();
                     apply(out, name, (String) o[2], st, en);
-                    if (handler != null && !isKnown(name)) handler.handleTag(false, name, out, null);
+                    if (handler != null && !isKnown(name)) handler.handleTag(false, name, out, READER);
                     if (block && out.length() > 0 && out.charAt(out.length() - 1) != '\n') { out.append('\n'); if (name.equals("p") || name.matches("h[1-6]")) out.append('\n'); }
                 }
                 lastWasSpace = out.length() == 0 || out.charAt(out.length() - 1) == '\n';

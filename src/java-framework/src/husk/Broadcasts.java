@@ -21,7 +21,11 @@ public final class Broadcasts {
         return null;
     }
     public static void unregister(BroadcastReceiver r) { synchronized (sReceivers) { for (int i = sReceivers.size() - 1; i >= 0; i--) if (sReceivers.get(i)[0] == r) sReceivers.remove(i); } }
-    public static void send(Context from, Intent i) {
+    public static void send(Context from, Intent i) { send(from, i, false); }
+    /** system: a broadcast Husk makes up as the system would (boot completed at every start, where a phone sends it once after
+     *  boot, in the background): a receiver throwing on it is logged rather than ending the app the user opened (Gmail's
+     *  TimeZoneDataBaseUpgradeReceiver) */
+    public static void send(Context from, Intent i, boolean system) {
         final Context ctx = AppRunner.application() != null ? AppRunner.application() : from;
         ArrayList<BroadcastReceiver> targets = new ArrayList<>();
         synchronized (sReceivers) { for (Object[] e : sReceivers) if (((IntentFilter) e[1]).hasAction(i.getAction())) targets.add((BroadcastReceiver) e[0]); }
@@ -32,6 +36,9 @@ public final class Broadcasts {
             try { targets.add((BroadcastReceiver) Class.forName(c.name, true, AppRunner.classLoader()).newInstance()); } catch (Throwable t) { android.util.Log.w("Husk", "receiver " + c.name + ": " + t); }
         }
         Handler h = new Handler(Looper.getMainLooper());
-        for (BroadcastReceiver r : targets) h.post(() -> r.onReceive(ctx, i));
+        for (BroadcastReceiver r : targets) h.post(() -> {
+            if (!system) { r.onReceive(ctx, i); return; }
+            try { r.onReceive(ctx, i); } catch (RuntimeException e) { android.util.Log.w("Husk", "receiver " + r.getClass().getName() + " threw on " + i.getAction(), e); }
+        });
     }
 }

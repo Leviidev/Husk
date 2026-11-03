@@ -86,6 +86,8 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
         /* onPostCreate comes after the first onStart (ActivityThread.handleStartActivity): fragments' views exist by then, and
            JSettlers reaches the Toolbar one of them made its action bar */
         mPostCreate = !mFinished; mPostCreateState = state;
+        /* the window has its decor by now (JankStats, which Slack attaches in onActivityPostCreated, requires one) */
+        getWindow().getDecorView();
         each(c -> c.onActivityPostCreated(this, state));
     }
     public final void huskStart() {

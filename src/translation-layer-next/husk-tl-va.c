@@ -2,6 +2,7 @@
 #include "husk-tl-va.h"
 #include "husk-tl-bionic.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -275,6 +276,10 @@ int tl_format_wide(wchar_t *out, size_t cap, const wchar_t *fmt, tl_va_list *ap)
 {
     /* Narrow the format (ASCII conversions), format, widen the result. */
     size_t fl = fmt ? wcslen(fmt) : 0;
+    /* a format char that is no code point fails as bionic's does (EILSEQ, nothing written): Office, built with 2-byte wchar_t,
+       hands libc's swprintf L"%d" as UTF-16 (0x640025 read as one 4-byte char) and a 5-unit buffer the 4-byte output overran */
+    for (size_t i = 0; i < fl; i++)
+        if ((uint32_t)fmt[i] > 0x10FFFF || ((uint32_t)fmt[i] >= 0xD800 && (uint32_t)fmt[i] < 0xE000)) { errno = EILSEQ; return -1; }
     char *nf = malloc(fl * 4 + 1);
     size_t k = 0;
     for (size_t i = 0; i < fl; i++) k += utf8_encode((uint32_t)fmt[i], nf + k);

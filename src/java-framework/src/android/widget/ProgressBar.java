@@ -39,6 +39,7 @@ public class ProgressBar extends View {
         try { id = a.getDrawable(husk.S.ProgressBar_indeterminateDrawable); } catch (RuntimeException e) {}
         // the platform's own indeterminate drawables are animated vectors Husk draws itself; take the app's
         if (id != null && !(id instanceof Animatable) || id instanceof AnimationDrawable) { mIndeterminateDrawable = id; mAppIndeterminate = true; id.setCallback(this); }
+        mThemeIndeterminate = id;
         mMinWidth = a.getDimensionPixelSize(husk.S.ProgressBar_minWidth, mMinWidth);
         mMaxWidth = a.getDimensionPixelSize(husk.S.ProgressBar_maxWidth, mMaxWidth);
         mMinHeight = a.getDimensionPixelSize(husk.S.ProgressBar_minHeight, mMinHeight);
@@ -60,7 +61,13 @@ public class ProgressBar extends View {
     private float dp(float v) { return v * getResources().getDisplayMetrics().density; }
     public synchronized boolean isIndeterminate() { return mIndeterminate; }
     public synchronized void setIndeterminate(boolean i) { if ((!mOnlyIndeterminate || i) && i != mIndeterminate) { mIndeterminate = i; if (i) startAnimation(); else stopAnimation(); invalidate(); } }
-    public Drawable getIndeterminateDrawable() { return mIndeterminateDrawable; }
+    /* never null, as on Android (Flipboard tints it): the one drawn, else the theme's that Husk draws its own spinner in place of */
+    private Drawable mThemeIndeterminate;
+    public Drawable getIndeterminateDrawable() {
+        if (mIndeterminateDrawable != null) return mIndeterminateDrawable;
+        if (mThemeIndeterminate == null) mThemeIndeterminate = new android.graphics.drawable.ColorDrawable(0);
+        return mThemeIndeterminate;
+    }
     public void setIndeterminateDrawable(Drawable d) { if (mIndeterminateDrawable != null) mIndeterminateDrawable.setCallback(null); mIndeterminateDrawable = d; mAppIndeterminate = d != null; if (d != null) d.setCallback(this); requestLayout(); invalidate(); }
     public void setIndeterminateDrawableTiled(Drawable d) { setIndeterminateDrawable(d); }
     public void setIndeterminateTintList(ColorStateList t) { mIndeterminateTint = t; invalidate(); }

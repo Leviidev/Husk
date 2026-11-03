@@ -7,7 +7,7 @@ public final class DnsOptions {
     public static final int DNS_OPTION_DISABLED = 2;
     public static final int DNS_OPTION_ENABLED = 1;
     public static int DNS_OPTION_UNSPECIFIED;
-    public static android.net.http.DnsOptions.Builder builder() { return null; }
+    public static android.net.http.DnsOptions.Builder builder() { return new android.net.http.DnsOptions.Builder(); }
     public int getPersistHostCache() { return (huskProps.get("PersistHostCache") instanceof Integer ? (Integer) huskProps.get("PersistHostCache") : 0); }
     public java.time.Duration getPersistHostCachePeriod() { return (java.time.Duration) huskProps.get("PersistHostCachePeriod"); }
     public int getPreestablishConnectionsToStaleDnsResults() { return (huskProps.get("PreestablishConnectionsToStaleDnsResults") instanceof Integer ? (Integer) huskProps.get("PreestablishConnectionsToStaleDnsResults") : 0); }
@@ -28,7 +28,7 @@ public final class DnsOptions {
     }
     public static class StaleDnsOptions {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.net.http.DnsOptions.StaleDnsOptions.Builder builder() { return null; }
+        public static android.net.http.DnsOptions.StaleDnsOptions.Builder builder() { return new android.net.http.DnsOptions.StaleDnsOptions.Builder(); }
         public int getAllowCrossNetworkUsage() { return (huskProps.get("AllowCrossNetworkUsage") instanceof Integer ? (Integer) huskProps.get("AllowCrossNetworkUsage") : 0); }
         public java.time.Duration getFreshLookupTimeout() { return (java.time.Duration) huskProps.get("FreshLookupTimeout"); }
         public java.time.Duration getMaxExpiredDelay() { return (java.time.Duration) huskProps.get("MaxExpiredDelay"); }

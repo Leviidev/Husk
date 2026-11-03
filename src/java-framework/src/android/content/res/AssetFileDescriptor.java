@@ -11,7 +11,11 @@ public class AssetFileDescriptor implements Closeable {
     private android.os.ParcelFileDescriptor pfd;
     public AssetFileDescriptor(android.os.ParcelFileDescriptor fd, long start, long length) { this(null, fd.getFileDescriptor(), start, length); pfd = fd; }
     public AssetFileDescriptor(android.os.ParcelFileDescriptor fd, long start, long length, android.os.Bundle extras) { this(fd, start, length); }
-    public android.os.ParcelFileDescriptor getParcelFileDescriptor() { return pfd; }
+    /** an asset's descriptor is the APK's, shared: the caller gets a dup of it to detach or close (Chromium's ApkAssets does) */
+    public android.os.ParcelFileDescriptor getParcelFileDescriptor() {
+        if (pfd == null && fd != null) try { pfd = android.os.ParcelFileDescriptor.dup(fd); } catch (IOException e) { }
+        return pfd;
+    }
     public android.os.Bundle getExtras() { return null; }
     public FileDescriptor getFileDescriptor() { return fd; }
     public long getStartOffset() { return start; }

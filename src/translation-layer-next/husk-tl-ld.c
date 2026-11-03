@@ -173,6 +173,11 @@ static struct {
 /* Serialises load/init. Recursive, as a linker's lock has to be: a library's constructor may dlopen another (Geode's constructors
  * dlopen the game they hook), on the thread that is already inside the loader. */
 static pthread_mutex_t g_big = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+/* The table is added to under g_big and read without it (tl_ld_covers, from any thread): a library is published after its
+ * slot is written (release), and readers take the count with acquire, so a reader never sees a count whose slot is not yet
+ * written (Picsart: a thread in tl_ld_covers read a NULL library while another loaded libpilibs.so). */
+static inline int nlibs_acq(void) { return __atomic_load_n(&G.nlibs, __ATOMIC_ACQUIRE); }
+static inline void publish_lib(tl_lib *L) { int n = G.nlibs; G.libs[n] = L; __atomic_store_n(&G.nlibs, n + 1, __ATOMIC_RELEASE); }
 
 void tl_ld_set_verbosity(int v) { G.verbosity = v; }
 void tl_ld_set_environment(char **argv, char **envp) { G.argv = argv; G.envp = envp; }
@@ -236,7 +241,7 @@ void tl_ld_reset_session(void)
     memset(g_apk_paths, 0, sizeof(g_apk_paths));
     memset(g_splits, 0, sizeof(g_splits));
     int keep = 0;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         if (L->system) G.libs[keep++] = L;
         else { L->name[0] = 0; L->soname[0] = 0; }
@@ -476,7 +481,7 @@ static tl_lib *find_loaded_ns(const char *name, int ns)
 {
     const char *b = base_name(name);
     tl_lib *sys = NULL;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *l = G.libs[i];
         if (strcmp(l->name, name) && strcmp(l->soname, name) && strcmp(base_name(l->name), b) && strcmp(l->soname, b)) continue;
         if (!l->system) { if (ns != NS_SYSTEM) return l; }
@@ -582,7 +587,7 @@ void *tl_ld_sym(tl_lib *lib, const char *name)
         const elf_sym *s = lib_find(lib, name);
         return s ? sym_value(lib, s) : NULL;
     }
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         if (G.libs[i]->arm32) {
             void *p = tl_a32_sym(G.libs[i], name);
             if (p) return p;
@@ -620,7 +625,7 @@ void *tl_ld_lib_base(const tl_lib *L) { return L ? (void *)(L->rx - L->base_vadd
 tl_lib *tl_ld_lib_of(const void *addr)
 {
     const uint8_t *a = addr;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         size_t span = L->npages * PAGE;
         if ((a >= L->rx && a < L->rx + span) || (a >= L->rw && a < L->rw + span)) return L;
@@ -633,7 +638,7 @@ void *tl_ld_aot_writable(const void *addr, size_t bytes)
 {
     if (!addr || bytes == 0) return NULL;
     const uint8_t *a = addr;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         if (!L->aot || !L->dup) continue;
         size_t span = L->npages * PAGE;
@@ -651,7 +656,7 @@ void *tl_ld_aot_exec(const void *addr)
 {
     if (!addr) return NULL;
     const uint8_t *a = addr;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         if (!L->aot || !L->dup) continue;
         size_t span = L->npages * PAGE;
@@ -667,7 +672,7 @@ void *tl_ld_aot_exec(const void *addr)
 bool tl_ld_aot_contains(const void *addr)
 {
     const uint8_t *a = addr;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         if (!L->aot) continue;
         size_t span = (L->npages + L->nstub + 2) * PAGE;
@@ -681,7 +686,7 @@ bool tl_ld_covers(const void *addr, size_t bytes)
 {
     if (!addr || bytes == 0) return false;
     const uint8_t *lo = addr, *hi = lo + bytes;
-    for (int i = 0; i < G.nlibs; i++) {
+    for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
         size_t span = (L->npages + L->nstub + 2) * PAGE;
         if (L->rx && lo < L->rx + span && hi > L->rx) return true;
@@ -725,7 +730,7 @@ void *tl_ld_map_code(const char *path, uint64_t off, size_t len, void *at)
     const char *want = base_name(path);
     void *r = NULL;
     pthread_mutex_lock(&G.lock);
-    for (int i = 0; i < G.nlibs && !r; i++) {
+    for (int i = 0; i < nlibs_acq() && !r; i++) {
         tl_lib *L = G.libs[i];
         if (!L->aot) continue;
         /* the file may be a copy the app made, named after the library (JNA's lib_arm64-v8a_libjnidispatch.so) */
@@ -754,7 +759,7 @@ size_t tl_ld_maps(char *buf, size_t n, const char *libdir)
     size_t k = 0;
     if (n) buf[0] = 0;
     pthread_mutex_lock(&G.lock);
-    for (int i = 0; i < G.nlibs && k + 200 < n; i++) {
+    for (int i = 0; i < nlibs_acq() && k + 200 < n; i++) {
         tl_lib *L = G.libs[i];
         if (L->state < 2) continue;
         uintptr_t lo = (uintptr_t)L->rx, hi = lo + L->npages * PAGE;
@@ -768,7 +773,7 @@ size_t tl_ld_maps(char *buf, size_t n, const char *libdir)
 int tl_ld_iterate(tl_ld_phdr_cb cb, void *user)
 {
     int r = 0;
-    for (int i = 0; i < G.nlibs && !r; i++) {
+    for (int i = 0; i < nlibs_acq() && !r; i++) {
         tl_lib *L = G.libs[i];
         if (L->state < 2) continue;
         r = cb((uintptr_t)(L->rx - L->base_vaddr), L->name, L->phdr, L->phnum, user);
@@ -2368,7 +2373,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
         snprintf(A->soname, sizeof(A->soname), "%s", name);
         A->arm32 = true;
         A->state = 2;
-        G.libs[G.nlibs++] = A;
+        publish_lib(A);
         return A;
     }
     if (flen < sizeof(*eh) || memcmp(file, "\x7f""ELF", 4) != 0 || eh->e_ident[4] != 2 || eh->e_ident[5] != 1
@@ -2626,7 +2631,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     L->nsyms = count_dynsyms(L);
     L->ncache = dynsym_bound(L, L->nsyms);
     if (L->ncache) L->symcache = calloc(L->ncache, sizeof(uint64_t));
-    if (!g_aot.on) G.libs[G.nlibs++] = L;
+    if (!g_aot.on) publish_lib(L);
     return L;
 }
 

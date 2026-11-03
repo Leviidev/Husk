@@ -4,7 +4,7 @@ package android.net.http;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class QuicOptions {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.net.http.QuicOptions.Builder builder() { return null; }
+    public static android.net.http.QuicOptions.Builder builder() { return new android.net.http.QuicOptions.Builder(); }
     public java.util.Set getAllowedQuicHosts() { return (huskProps.get("AllowedQuicHosts") != null ? (java.util.Set) huskProps.get("AllowedQuicHosts") : new java.util.HashSet()); }
     public java.lang.String getHandshakeUserAgent() { return (java.lang.String) huskProps.get("HandshakeUserAgent"); }
     public java.time.Duration getIdleConnectionTimeout() { return (java.time.Duration) huskProps.get("IdleConnectionTimeout"); }

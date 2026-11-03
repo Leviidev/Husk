@@ -1188,8 +1188,15 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     for (int i = 0; i < 4; i++) A.insets[i] = cfg->insets[i];
     mkdir(A.data, 0755); mkdir(A.ext, 0755);
     if (!tl_javaapp_manifest(cfg->apk_path, A.pkg, sizeof(A.pkg), A.activity, sizeof(A.activity), A.application, sizeof(A.application))) {
-        tl_log_line("javaapp: the manifest names no launcher activity");
-        return false;
+        /* a feature split can declare the launcher (Chromium's: the "chrome" split has the Main alias) */
+        const char *tl_ld_queued_split(int i);
+        bool got = false;
+        for (int i = 0; !got && tl_ld_queued_split(i); i++) {
+            char spkg[260] = "";
+            got = tl_javaapp_manifest(tl_ld_queued_split(i), spkg, sizeof(spkg), A.activity, sizeof(A.activity), NULL, 0);
+            if (got && !A.pkg[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", spkg);
+        }
+        if (!got) { tl_log_line("javaapp: the manifest names no launcher activity"); return false; }
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
     husk_aosp_set_session(A.pkg, cfg->width, cfg->height);

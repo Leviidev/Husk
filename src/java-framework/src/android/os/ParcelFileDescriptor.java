@@ -29,9 +29,14 @@ public class ParcelFileDescriptor implements Parcelable, Closeable {
             return new ParcelFileDescriptor(raf.getFD(), raf, f);
         } catch (FileNotFoundException e) { throw e; } catch (IOException e) { throw new FileNotFoundException(e.toString()); }
     }
-    public static ParcelFileDescriptor dup(FileDescriptor fd) throws IOException { return new ParcelFileDescriptor(fd, null, null); }
-    public static ParcelFileDescriptor fromFd(int fd) throws IOException { FileDescriptor f = new FileDescriptor(); try { java.lang.reflect.Field d = FileDescriptor.class.getDeclaredField("descriptor"); d.setAccessible(true); d.setInt(f, fd); } catch (Exception e) {} return new ParcelFileDescriptor(f, null, null); }
-    public static ParcelFileDescriptor adoptFd(int fd) { try { return fromFd(fd); } catch (IOException e) { return null; } }
+    /** a real dup, as on Android: closing (or detaching and closing) the copy leaves the original open (Chromium's ApkAssets closes the APK's) */
+    public static ParcelFileDescriptor dup(FileDescriptor fd) throws IOException {
+        try { return new ParcelFileDescriptor((FileDescriptor) Class.forName("android.system.Os").getMethod("dup", FileDescriptor.class).invoke(null, fd), null, null); }
+        catch (java.lang.reflect.InvocationTargetException e) { throw new IOException(String.valueOf(e.getCause())); }
+        catch (ReflectiveOperationException e) { return new ParcelFileDescriptor(fd, null, null); }
+    }
+    public static ParcelFileDescriptor fromFd(int fd) throws IOException { FileDescriptor f = new FileDescriptor(); try { java.lang.reflect.Field d = FileDescriptor.class.getDeclaredField("descriptor"); d.setAccessible(true); d.setInt(f, fd); } catch (Exception e) {} return dup(f); }
+    public static ParcelFileDescriptor adoptFd(int fd) { FileDescriptor f = new FileDescriptor(); try { java.lang.reflect.Field d = FileDescriptor.class.getDeclaredField("descriptor"); d.setAccessible(true); d.setInt(f, fd); } catch (Exception e) {} return new ParcelFileDescriptor(f, null, null); }
     public static ParcelFileDescriptor[] createPipe() throws IOException { throw new IOException("pipes are not supported"); }
     public static ParcelFileDescriptor[] createReliablePipe() throws IOException { return createPipe(); }
     public ParcelFileDescriptor dup() throws IOException { return new ParcelFileDescriptor(mFd, null, mFile); }

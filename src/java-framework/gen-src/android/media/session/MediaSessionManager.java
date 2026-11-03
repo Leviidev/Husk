@@ -68,7 +68,14 @@ public final class MediaSessionManager {
         void onDefaultRemoteSessionChanged(android.media.session.MediaSession.Token p0);
         void onVolumeChanged(android.media.session.MediaSession.Token p0, int p1);
     }
-    public static abstract class RemoteUserInfo {
-        protected RemoteUserInfo() {}
+    /* a value: the package, pid and uid of a controller (Deezer makes one for itself) */
+    public static final class RemoteUserInfo {
+        private final String mPackage; private final int mPid, mUid;
+        public RemoteUserInfo(String packageName, int pid, int uid) { mPackage = packageName; mPid = pid; mUid = uid; }
+        public String getPackageName() { return mPackage; }
+        public int getPid() { return mPid; }
+        public int getUid() { return mUid; }
+        @Override public boolean equals(Object o) { if (!(o instanceof RemoteUserInfo)) return false; RemoteUserInfo r = (RemoteUserInfo) o; return java.util.Objects.equals(mPackage, r.mPackage) && mPid == r.mPid && mUid == r.mUid; }
+        @Override public int hashCode() { return java.util.Objects.hash(mPackage, mPid, mUid); }
     }
 }

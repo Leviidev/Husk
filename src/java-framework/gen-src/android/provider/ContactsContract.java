@@ -369,7 +369,7 @@ public final class ContactsContract {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public static final java.lang.String CONTENT_DIRECTORY = "suggestions";
             public static final java.lang.String PARAMETER_MATCH_NAME = "name";
-            public static android.provider.ContactsContract.Contacts.AggregationSuggestions.Builder builder() { return null; }
+            public static android.provider.ContactsContract.Contacts.AggregationSuggestions.Builder builder() { return new android.provider.ContactsContract.Contacts.AggregationSuggestions.Builder(); }
             protected AggregationSuggestions() {}
             public static final class Builder {
                 private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

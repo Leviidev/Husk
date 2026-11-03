@@ -116,10 +116,14 @@ public abstract class Uri implements Comparable<Uri>, android.os.Parcelable {
     private static final class StringUri extends Uri {
         private final String s;
         private int cachedSsi = -2, cachedFsi = -2;
-        StringUri(String s) { if (s == null) throw new NullPointerException("uriString"); this.s = s; }
+        /* built by a Builder with no opaque part: hierarchical, as Android's HierarchicalUri, even when its path does not start with /
+           (Fresco's res:123 has the path "123") */
+        private final boolean built;
+        StringUri(String s) { this(s, false); }
+        StringUri(String s, boolean hierarchical) { if (s == null) throw new NullPointerException("uriString"); this.s = s; built = hierarchical; }
         private int ssi() { if (cachedSsi != -2) return cachedSsi; int len = s.length(); for (int i = 0; i < len; i++) { char c = s.charAt(i); if (c == ':') return cachedSsi = i; if (c == '/' || c == '?' || c == '#') return cachedSsi = -1; } return cachedSsi = -1; }
         private int fsi() { if (cachedFsi != -2) return cachedFsi; return cachedFsi = s.indexOf('#', Math.max(ssi(), 0)); }
-        public boolean isHierarchical() { int i = ssi(); if (i == -1) return true; if (s.length() == i + 1) return false; return s.charAt(i + 1) == '/'; }
+        public boolean isHierarchical() { if (built) return true; int i = ssi(); if (i == -1) return true; if (s.length() == i + 1) return false; return s.charAt(i + 1) == '/'; }
         public boolean isRelative() { return ssi() == -1; }
         public String getScheme() { int i = ssi(); return i == -1 ? null : s.substring(0, i); }
         public String getEncodedSchemeSpecificPart() { int st = ssi() + 1, f = fsi(); return f == -1 ? s.substring(st) : s.substring(st, f); }
@@ -207,7 +211,7 @@ public abstract class Uri implements Comparable<Uri>, android.os.Parcelable {
                 if (query != null) b.append('?').append(query);
             }
             if (fragment != null) b.append('#').append(fragment);
-            return new StringUri(b.toString());
+            return new StringUri(b.toString(), opaque == null);
         }
         @Override public String toString() { return build().toString(); }
     }

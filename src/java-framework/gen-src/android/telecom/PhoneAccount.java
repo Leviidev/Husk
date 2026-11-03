@@ -42,7 +42,7 @@ public final class PhoneAccount implements android.os.Parcelable {
     public static final java.lang.String SCHEME_SIP = "sip";
     public static final java.lang.String SCHEME_TEL = "tel";
     public static final java.lang.String SCHEME_VOICEMAIL = "voicemail";
-    public static android.telecom.PhoneAccount.Builder builder(android.telecom.PhoneAccountHandle p0, java.lang.CharSequence p1) { return null; }
+    public static android.telecom.PhoneAccount.Builder builder(android.telecom.PhoneAccountHandle p0, java.lang.CharSequence p1) { return new android.telecom.PhoneAccount.Builder(p0, p1); }
     public java.lang.String capabilitiesToString() { return null; }
     public int describeContents() { return 0; }
     public android.telecom.PhoneAccountHandle getAccountHandle() { return (android.telecom.PhoneAccountHandle) huskProps.get("AccountHandle"); }

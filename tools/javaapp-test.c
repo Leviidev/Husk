@@ -100,6 +100,12 @@ static void on_crash(int sig, siginfo_t *info, void *uctx)
     for (int i = 0; i < 29; i += 4)
         fprintf(stderr, "  x%d=%#llx x%d=%#llx x%d=%#llx x%d=%#llx\n", i, ss->__x[i], i + 1, ss->__x[i + 1], i + 2, i + 2 < 29 ? ss->__x[i + 2] : 0, i + 3, i + 3 < 29 ? ss->__x[i + 3] : 0);
     fprintf(stderr, "  sp=%#llx fp=%#llx\n", ss->__sp, ss->__fp);
+    /* a register naming readable text (an abort or panic message: Gecko's MOZ_CRASH has it in x2) */
+    for (int i = 0; i < 29; i++) {
+        char t[161]; int n = 0;
+        for (; n < 160; n++) { uint8_t c; if (!safe_read((uintptr_t)ss->__x[i] + n, &c, 1) || c == 0) break; if (c < 0x20 && c != '\n' && c != '\t') { n = -1; break; } t[n] = (char)(c == '\n' ? ' ' : c); }
+        if (n >= 6) { t[n] = 0; fprintf(stderr, "  x%d -> \"%s\"\n", i, t); }
+    }
     { void tl_dvm_print_stack(FILE *, int); tl_dvm_print_stack(stderr, 24); }
     fflush(stderr);
     _exit(139);

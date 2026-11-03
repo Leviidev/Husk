@@ -707,8 +707,23 @@ static void *dlopen_impl(const char *path, int flags)
 }
 
 static void *bionic_dlsym(void *handle, const char *name);
-static void *bionic_loader_android_dlopen_ext(const char *path, int flags, const void *info, const void *caller) { (void)info; (void)caller; return bionic_dlopen(path, flags); }
-static void *bionic_android_dlopen_ext(const char *path, int flags, const void *info) { (void)info; return bionic_dlopen(path, flags); }
+/*
+ * android_dlopen_ext with ANDROID_DLEXT_RESERVED_ADDRESS: the library must be loaded into the space the caller reserved, and the caller
+ * reads it there (Chromium's linker finds the RELRO from the headers at the reservation's start). Husk's loader puts a library where it
+ * puts every library (its code is rewritten), so it cannot, and the call fails as bionic's does when a library does not fit: Chromium
+ * then loads with the system linker. A _HINT only (0x2) lets the library go anywhere.
+ */
+static void *bionic_dlopen_ext(const char *path, int flags, const void *info)
+{
+    const uint64_t *dlext_flags = info;
+    if (dlext_flags && (*dlext_flags & 1)) {
+        dl_fail("dlopen failed: \"%s\" cannot be loaded at a reserved address here", path ? path : "(null)");
+        return NULL;
+    }
+    return bionic_dlopen(path, flags);
+}
+static void *bionic_loader_android_dlopen_ext(const char *path, int flags, const void *info, const void *caller) { (void)caller; return bionic_dlopen_ext(path, flags, info); }
+static void *bionic_android_dlopen_ext(const char *path, int flags, const void *info) { return bionic_dlopen_ext(path, flags, info); }
 static void *bionic_loader_dlsym(void *handle, const char *name, const void *caller) { (void)caller; return bionic_dlsym(handle, name); }
 static void *bionic_loader_dlvsym(void *handle, const char *name, const char *ver, const void *caller) { (void)ver; (void)caller; return bionic_dlsym(handle, name); }
 
