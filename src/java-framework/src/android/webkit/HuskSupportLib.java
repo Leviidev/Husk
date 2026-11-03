@@ -18,7 +18,11 @@ import java.util.concurrent.Callable;
 public final class HuskSupportLib {
     private static final String TAG = "WebView";
     private static final String BOUNDARY = "org.chromium.support_lib_boundary.";
-    private static final String[] FEATURES = { "WEB_MESSAGE_LISTENER", "DOCUMENT_START_SCRIPT", "DOCUMENT_START_SCRIPT:1", "MULTI_PROCESS" };
+    private static final String[] FEATURES = { "WEB_MESSAGE_LISTENER", "DOCUMENT_START_SCRIPT", "DOCUMENT_START_SCRIPT:1", "MULTI_PROCESS",
+        "GET_WEB_VIEW_CLIENT", "GET_WEB_CHROME_CLIENT",
+        /* WebSettingsCompat: kept per WebSettings and read back (settings()); the page is not darkened or pre-rastered for them */
+        "OFF_SCREEN_PRERASTER", "SAFE_BROWSING_ENABLE", "DISABLED_ACTION_MODE_MENU_ITEMS", "FORCE_DARK", "FORCE_DARK_BEHAVIOR",
+        "ALGORITHMIC_DARKENING", "REQUESTED_WITH_HEADER_ALLOW_LIST", "ENTERPRISE_AUTHENTICATION_APP_LINK_POLICY", "ATTRIBUTION_BEHAVIOR" };
     private static final Object NONE = new Object();
     private static final Handler sMain = new Handler(Looper.getMainLooper());
     private static final boolean TRACE = System.getenv("TL_WEB_CONSOLE") != null;     /* listener traffic in the log too */
@@ -60,8 +64,45 @@ public final class HuskSupportLib {
                 case "getSupportedFeatures": return FEATURES.clone();
                 case "createWebView": return provider((WebView) a[0]);
                 case "getStatics": return STATICS;
+                case "getWebkitToCompatConverter": return CONVERTER;
                 }
                 return NONE;
+            }
+        };
+    }
+
+
+    /* WebSettings -> its WebSettingsBoundaryInterface: setX stores, getX/isX reads back (AOSP's defaults before a set) */
+    private static final java.util.Map<WebSettings, InvocationHandler> sSettings = new java.util.WeakHashMap<>();
+    private static final InvocationHandler CONVERTER = new Boundary() {
+        Object call(String n, Object[] a) {
+            if (n.equals("convertSettings") && a.length == 1 && a[0] instanceof WebSettings) {
+                synchronized (sSettings) { InvocationHandler h = sSettings.get(a[0]); if (h == null) sSettings.put((WebSettings) a[0], h = settings()); return h; }
+            }
+            return NONE;
+        }
+    };
+    private static InvocationHandler settings() {
+        final java.util.HashMap<String, Object> v = new java.util.HashMap<>();
+        v.put("SafeBrowsingEnabled", Boolean.TRUE); v.put("ForceDark", 1); v.put("ForceDarkBehavior", 2);
+        v.put("EnterpriseAuthenticationAppLinkPolicyEnabled", Boolean.TRUE); v.put("AttributionBehavior", 1);
+        return (proxy, m, a) -> {
+            String n = m.getName();
+            if (a == null) a = new Object[0];
+            if (n.equals("hashCode") && a.length == 0) return System.identityHashCode(v);
+            if (n.equals("equals") && a.length == 1) return a[0] == proxy;
+            if (n.equals("toString") && a.length == 0) return "HuskWebSettingsCompat";
+            synchronized (v) {
+                if (n.startsWith("set") && a.length == 1) { v.put(n.substring(3), a[0]); return null; }
+                String k = n.startsWith("get") ? n.substring(3) : n.startsWith("is") ? n.substring(2) : null;
+                Class<?> t = m.getReturnType();
+                if (k != null && a.length == 0) {
+                    Object r = v.get(k);
+                    if (r != null) return r;
+                    if (java.util.Set.class.isAssignableFrom(t)) return new java.util.HashSet<>();
+                    if (java.util.Map.class.isAssignableFrom(t)) return new java.util.HashMap<>();
+                }
+                return zero(t);
             }
         };
     }
