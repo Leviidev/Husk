@@ -3,6 +3,7 @@
 #include "husk-tl-nativeactivity.h"
 
 #include <dirent.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -215,7 +216,11 @@ bool tl_na_start(const tl_ga_config *cfg)
 {
     N.cfg = *cfg;
     snprintf(N.apk, sizeof(N.apk), "%s", cfg->apk_path);
-    snprintf(N.data, sizeof(N.data), "%s", cfg->data_dir);
+    /* the data folder as its canonical path, as the Java driver has it: a game that changes into its files folder and checks getcwd()
+       against it (Inner Breeze) sees /private/var/... for /var/... (iOS) or /private/tmp/... (the Mac) and gives up. Unless that path has a
+       space, which an Android data path never has. */
+    mkdir(cfg->data_dir, 0755);
+    { char canon[PATH_MAX]; snprintf(N.data, sizeof(N.data), "%s", realpath(cfg->data_dir, canon) && !strchr(canon, ' ') ? canon : cfg->data_dir); }
     snprintf(N.pkg, sizeof(N.pkg), "%s", cfg->package_name);
     N.cfg.apk_path = N.apk; N.cfg.data_dir = N.data; N.cfg.package_name = N.pkg;
     if (cfg->frame_dir) { snprintf(N.frame_dir, sizeof(N.frame_dir), "%s", cfg->frame_dir); N.cfg.frame_dir = N.frame_dir; }
