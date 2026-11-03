@@ -915,6 +915,13 @@ static void svc_signal(int sig, siginfo_t *si, void *ucv)
     ucontext_t *uc = ucv;
     uint64_t pc = (uint64_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss);
     if (sig == SIGILL && pc && *(const uint32_t *)pc == SVC_MARK) { svc_answer(uc, pc, pc + 4); return; }
+    /* a trapped floating-point exception (EC 0x2c): the guest turned FPCR's trap enables on (Colorful's SDL_mixer divides and
+       traps on inexact). Android's cores ignore those bits, Apple's do not: they are cleared and the instruction runs again. */
+    if (sig == SIGILL && ((uc->uc_mcontext->__es.__esr >> 26) & 0x3f) == 0x2c) {
+        static int said; if (!said++) tl_log_line("ld: the guest enabled floating-point traps (fpcr %#x): turned off, as on Android", (unsigned)uc->uc_mcontext->__ns.__fpcr);
+        uc->uc_mcontext->__ns.__fpcr &= ~0x9f00u;
+        return;
+    }
     if (sig == SIGSYS && pc >= 4 && *(const uint32_t *)(pc - 4) == 0xD4000001u) {
         static int said; if (!said++) tl_log_line("ld: a raw svc in code the loader never saw (pc %#llx): answered as Linux", (unsigned long long)pc);
         svc_answer(uc, pc - 4, pc); return;
@@ -931,10 +938,11 @@ static void svc_signals_install(void)
     sigaction(SIGSYS, &sa, &g_prev_sys);
     sigaction(SIGILL, &sa, &g_prev_ill);
 }
+static pthread_once_t g_svc_once = PTHREAD_ONCE_INIT;
+void tl_ld_trap_signals(void) { pthread_once(&g_svc_once, svc_signals_install); }
 void tl_ld_mark_svcs(void *addr, size_t len)
 {
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    pthread_once(&once, svc_signals_install);
+    tl_ld_trap_signals();
     uint32_t *w = addr; size_t n = len / 4, marked = 0;
     for (size_t i = 0; i < n; i++) if (w[i] == 0xD4000001u) { w[i] = SVC_MARK; marked++; }
     if (marked) { static int said; if (said++ < 4) tl_log_line("ld: %zu raw svc in generated code at %p marked", marked, addr); }
@@ -2345,6 +2353,7 @@ static void fill_data_slots(tl_lib *L)
 
 static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
 {
+    tl_ld_trap_signals();       /* raw svc and floating-point traps from the guest's code are answered (svc_signal) */
     /* Mix/copy decisions and the dylib's stub count must see the AOT folder before aot_import runs,
      * otherwise a Mac harness that only sets TL_AOT_DIR in the environment disagrees with the dylib
      * (which was built with g_aot.on) and refuses to load. The app sets the folder itself. */
