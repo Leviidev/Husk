@@ -81,6 +81,9 @@ static void on_crash(int sig, siginfo_t *info, void *uctx)
     describe("pc", (void *)ss->__pc);
     describe("lr", (void *)ss->__lr);
     if (info->si_addr) describe("fault", info->si_addr);
+    { uint32_t w = 0; bool ok = safe_read((uintptr_t)ss->__pc, &w, 4);   /* what was run: a loader rewrite, a trap, a real instruction */
+      fprintf(stderr, "  insn   %s%08x  si_code %d  esr %#x  fpsr %#x  fpcr %#x\n", ok ? "" : "?", w, info->si_code,
+              (unsigned)uc->uc_mcontext->__es.__esr, (unsigned)uc->uc_mcontext->__ns.__fpsr, (unsigned)uc->uc_mcontext->__ns.__fpcr); }
     uintptr_t fp = ss->__fp;
     for (int i = 0; i < 16 && fp && (fp & 7) == 0; i++) {
         uint64_t fr[2];

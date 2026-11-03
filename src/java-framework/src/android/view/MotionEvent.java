@@ -229,7 +229,7 @@ public final class MotionEvent extends InputEvent {
     public static final int CLASSIFICATION_NONE = 0;
     public static final int CLASSIFICATION_PINCH = 5;
     public static final int CLASSIFICATION_TWO_FINGER_SWIPE = 3;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MotionEvent.class);
     public static final int FLAG_CANCELED = 32;
     public static final int FLAG_HOVER_EXIT_PENDING = 4;
     public static final int FLAG_INJECTED_FROM_ACCESSIBILITY_TOOL = 4096;

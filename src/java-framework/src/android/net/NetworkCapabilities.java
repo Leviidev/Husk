@@ -14,7 +14,7 @@ public final class NetworkCapabilities implements android.os.Parcelable {
     public NetworkCapabilities() {}
     private final java.util.HashMap<String, Object> huskFill = new java.util.HashMap<>();
     public static final long CONNECTIVITY_MANAGED_CAPABILITIES = 17498112L;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkCapabilities.class);
     public static final int LINK_BANDWIDTH_UNSPECIFIED = 0;
     public static final int MAX_TRANSPORT = 10;
     public static final int MIN_TRANSPORT = 0;

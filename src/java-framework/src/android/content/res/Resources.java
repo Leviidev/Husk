@@ -116,6 +116,7 @@ public class Resources {
     public void getValue(String name, TypedValue out, boolean resolveRefs) { int id = getIdentifier(name, "string", null); getValue(id, out, resolveRefs); }
 
     /** A bag (style, array, plurals, attr): its items with parents' first; null when the id is not a bag. */
+    private static final ThreadLocal<java.util.HashSet<Integer>> sBagBusy = ThreadLocal.withInitial(java.util.HashSet::new);
     public Bag huskBag(int id) {
         if (id == 0) return null;
         HashMap<Integer, Bag> cache = bagCache();
@@ -126,8 +127,13 @@ public class Resources {
         if (e == null || !e.complex()) return null;
         Bag b = new Bag();
         int parent = t.bagParent(e);
-        if (parent != 0 && parent != id) {
-            Bag pb = huskBag(parent);
+        /* a parent chain that comes back to a style being resolved (A -> B -> A once configurations are picked): the loop is cut
+           there, rather than recursing until the stack runs out (Open2Share's preferences, Night Dream's layout) */
+        java.util.HashSet<Integer> busy = sBagBusy.get();
+        if (parent != 0 && parent != id && !busy.contains(parent)) {
+            busy.add(id);
+            Bag pb;
+            try { pb = huskBag(parent); } finally { busy.remove(id); }
             if (pb != null) { for (int i = 0; i < pb.n; i++) b.put(pb.keys[i], pb.types[i], pb.data[i], pb.strings[i], pb.dens[i]); }
         }
         int n = t.bagCount(e);

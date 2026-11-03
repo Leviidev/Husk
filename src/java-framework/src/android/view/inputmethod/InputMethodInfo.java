@@ -5,7 +5,7 @@ public class InputMethodInfo {
     public static final java.lang.String ACTION_IME_LANGUAGE_SETTINGS = "android.view.inputmethod.action.IME_LANGUAGE_SETTINGS";
     public static final java.lang.String ACTION_STYLUS_HANDWRITING_SETTINGS = "android.view.inputmethod.action.STYLUS_HANDWRITING_SETTINGS";
     public static final int COMPONENT_NAME_MAX_LENGTH = 1000;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InputMethodInfo.class);
     public static final int MAX_IMES_PER_PACKAGE = 20;
     public InputMethodInfo(android.content.Context p0, android.content.pm.ResolveInfo p1) { this(); }
     public InputMethodInfo(android.content.Context p0, android.content.pm.ResolveInfo p1, java.util.List p2) { this(); }

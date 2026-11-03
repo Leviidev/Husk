@@ -652,7 +652,9 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
     public int getTotalPaddingBottom() { return getExtendedPaddingBottom() + bottomVerticalOffset(); }
 
     // ---- layout
-    private void relayout() { mLayoutDirty = true; mHintLayout = null; requestLayout(); invalidate(); }
+    /* before the first layout there is nothing drawn to invalidate, and AOSP does not (checkForRelayout runs only with an mLayout):
+       a view overriding invalidate() to set its own text (Night Dream's clock) would otherwise recurse while it is inflated */
+    private void relayout() { mLayoutDirty = true; mHintLayout = null; requestLayout(); if (mLayout != null) invalidate(); }
     private int desiredWidth(CharSequence t) { return t == null ? 0 : (int) Math.ceil(Layout.getDesiredWidth(t, mTextPaint)); }
     private Layout makeLayout(CharSequence text, int width, boolean hint) {
         if (width < 0) width = 0;

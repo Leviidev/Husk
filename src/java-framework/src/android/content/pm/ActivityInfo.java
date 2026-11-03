@@ -48,7 +48,7 @@ public class ActivityInfo extends ComponentInfo implements android.os.Parcelable
     public static final int CONTENT_URI_PERMISSION_READ_AND_WRITE = 4;
     public static final int CONTENT_URI_PERMISSION_READ_OR_WRITE = 3;
     public static final int CONTENT_URI_PERMISSION_WRITE = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ActivityInfo.class);
     public static final int DOCUMENT_LAUNCH_ALWAYS = 2;
     public static final int DOCUMENT_LAUNCH_INTO_EXISTING = 1;
     public static final int DOCUMENT_LAUNCH_NEVER = 3;

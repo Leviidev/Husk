@@ -60,6 +60,8 @@ public final class DecorView extends FrameLayout {
         requestLayout();
     }
     @Override protected boolean verifyDrawable(Drawable who) { return who == mBackground || super.verifyDrawable(who); }
+    /* the window background is the decor's background on Android: apps animate its layers (Bitcoin Wallet's enter fade) */
+    @Override public Drawable getBackground() { Drawable b = super.getBackground(); return b != null ? b : mBackground; }
 
     /** The views between the decor and the content: an action bar when asked for, then the content frame. */
     public FrameLayout makeContent(boolean actionBar, CharSequence title) {

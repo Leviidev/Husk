@@ -18,7 +18,7 @@ public final class UserHandle implements Parcelable {
     public static final int AID_ROOT = 0;
     public static final int AID_SHARED_GID_START = 50000;
     public static android.os.UserHandle ALL = new android.os.UserHandle(-1);
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UserHandle.class);
     public static android.os.UserHandle CURRENT = new android.os.UserHandle(-2);
     public static android.os.UserHandle CURRENT_OR_SELF = new android.os.UserHandle(-3);
     public static final int ERR_GID = -1;

@@ -86,7 +86,7 @@ public class ApplicationInfo extends PackageItemInfo implements android.os.Parce
     public static final int AUTO_REVOKE_ALLOWED = 0;
     public static final int AUTO_REVOKE_DISALLOWED = 2;
     public static final int AUTO_REVOKE_DISCOURAGED = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApplicationInfo.class);
     public static final int GWP_ASAN_ALWAYS = 1;
     public static final int GWP_ASAN_DEFAULT = -1;
     public static final int GWP_ASAN_NEVER = 0;

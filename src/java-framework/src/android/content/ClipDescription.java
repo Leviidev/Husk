@@ -16,7 +16,7 @@ public class ClipDescription implements android.os.Parcelable {
     public static final int CLASSIFICATION_COMPLETE = 3;
     public static final int CLASSIFICATION_NOT_COMPLETE = 1;
     public static final int CLASSIFICATION_NOT_PERFORMED = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ClipDescription.class);
     public static final java.lang.String EXTRA_ACTIVITY_OPTIONS = "android.intent.extra.ACTIVITY_OPTIONS";
     public static final java.lang.String EXTRA_HIDE_DRAG_SOURCE_TASK_ID = "android.intent.extra.HIDE_DRAG_SOURCE_TASK_ID";
     public static final java.lang.String EXTRA_IS_REMOTE_DEVICE = "android.content.extra.IS_REMOTE_DEVICE";

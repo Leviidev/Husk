@@ -257,7 +257,8 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
     public LayoutInflater getLayoutInflater() { return getWindow().getLayoutInflater(); }
     public MenuInflater getMenuInflater() { return new MenuInflater(this); }
     public ActionBar getActionBar() { initWindowDecorActionBar(); return mActionBar; }
-    public void setActionBar(android.widget.Toolbar t) { if (t != null) t.setTitle(getTitle()); }
+    /* as AOSP: the toolbar is the action bar from now on (Bitcoin Wallet sets the up button through getActionBar() next) */
+    public void setActionBar(android.widget.Toolbar t) { mActionBar = t != null ? new husk.ToolbarActionBar(this, t) : null; }
     public void setTitle(CharSequence t) { mTitle = t; onTitleChanged(t, mTitleColor); }
     public void setTitle(int id) { setTitle(getText(id)); }
     public void setTitleColor(int c) { mTitleColor = c; }

@@ -59,7 +59,7 @@ public class KeyCharacterMap {
     public static final int BUILT_IN_KEYBOARD = 0;
     public static final int COMBINING_ACCENT = -2147483648;
     public static final int COMBINING_ACCENT_MASK = 2147483647;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(KeyCharacterMap.class);
     public static final char HEX_INPUT = (char) 61184;
     public static final int MODIFIER_BEHAVIOR_CHORDED = 0;
     public static final int MODIFIER_BEHAVIOR_CHORDED_OR_TOGGLED = 1;

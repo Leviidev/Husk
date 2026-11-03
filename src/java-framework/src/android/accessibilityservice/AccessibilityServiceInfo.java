@@ -14,7 +14,7 @@ public class AccessibilityServiceInfo {
     public static final int CAPABILITY_CAN_REQUEST_TOUCH_EXPLORATION = 2;
     public static final int CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT = 1;
     public static final int CAPABILITY_CAN_TAKE_SCREENSHOT = 128;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityServiceInfo.class);
     public static final int DEFAULT = 1;
     public static final int FLAG_ENABLE_ACCESSIBILITY_VOLUME = 128;
     public static final int FLAG_FORCE_DIRECT_BOOT_AWARE = 65536;

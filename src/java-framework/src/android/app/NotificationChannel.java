@@ -16,7 +16,7 @@ public final class NotificationChannel implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskFill = new java.util.HashMap<>();
     public static final int ALLOW_BUBBLE_OFF = 0;
     public static final int ALLOW_BUBBLE_ON = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NotificationChannel.class);
     public static final int DEFAULT_ALLOW_BUBBLE = -1;
     public static final java.lang.String EDIT_CONVERSATION = "conversation";
     public static final java.lang.String EDIT_IMPORTANCE = "importance";
