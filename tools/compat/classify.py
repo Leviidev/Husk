@@ -11,6 +11,9 @@ from playsweep import summarise
 def signature(log):
     """The first thing in a log that explains a failure, reduced to something shared across apps."""
     # Google Play's own protection (PairIP): a license check Husk can't pass, or its VM refusing to run. Not a Husk bug.
+    # nothing to open: a tile, widget or keyboard with no launcher icon, on a phone too
+    if 'the manifest names no launcher activity' in log:
+        return 'not launchable: no launcher activity'
     if 'com.pairip.licensecheck.LicenseActivity' in log or 'libpairipcore.so' in log and '=== CRASH' in log:
         return 'protected: Play license check (PairIP)'
     for line in log.splitlines():
@@ -49,6 +52,10 @@ def verdict(log, frames, sweep_dir, pkg, min_frames=30):
         return sig
     if frames >= min_frames or (frames > 0 and drew_something(sweep_dir, pkg)):
         return 'works'
+    # an anti-tamper layer linked into the engine (libunity needs libanort): its constructor waits forever, or its own code makes raw
+    # system calls the kernel refuses. Free Fire, Vita Studio's and Oakever's games.
+    if 'libanort.so' in log and not frames:
+        return 'protected: libanort anti-tamper'
     return sig or ('opens (%d frames)' % frames if frames else 'no frames, no error')
 
 def main():

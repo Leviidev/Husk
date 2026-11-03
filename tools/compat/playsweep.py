@@ -11,9 +11,9 @@ Writes <out>/<pkg>.log and <pkg>.png per app and <out>/summary.json; prints one 
 import time, argparse, glob, json, os, re, subprocess, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-BIN = '/Volumes/GTAV/husk2/bin'
+BIN = os.environ.get('HUSK_BIN', '/Volumes/GTAV/husk2/bin')
 JAVA = os.environ.get('HUSK_JAVAAPP', '/Volumes/GTAV/husk2/java/javaapp-test')
-SCAN = '/Volumes/GTAV/husk2/tl-scan'
+SCAN = os.environ.get('HUSK_SCAN', '/Volumes/GTAV/husk2/tl-scan')
 # the harness of the driver the app picks for each engine (TranslationLayer.swift's nativeEngine)
 NATIVE = {'Unity (IL2CPP)': 'unity-test', 'Unity': 'unity-test', 'Unity (Mono)': 'unity-test',           'Cocos': 'cocos-test', 'Godot': 'godot-test', 'GameMaker': 'gamemaker-test',
           'NativeActivity': 'ue-test', 'Unreal Engine': 'ue-test', 'Rockstar': 'gta-test', 'Minecraft': 'ga-test'}
@@ -66,7 +66,8 @@ def main():
         log, shot = os.path.join(a.out, pkg + '.log'), os.path.join(a.out, pkg + '.png')
         for f in (log, shot, shot[:-4] + '.web.png'):
             if os.path.exists(f): os.remove(f)
-        env = dict(os.environ, TL_AUDIO_MUTE='1', TL_PACKAGE=pkg, TL_PKG=pkg, TMPDIR='/Volumes/GTAV/husk2/tmp')
+        env = dict(os.environ, TL_AUDIO_MUTE='1', TL_PACKAGE=pkg, TL_PKG=pkg, TMPDIR=os.environ.get('HUSK_TMP', '/Volumes/GTAV/husk2/tmp'))
+        if 'HUSK_TMP' in os.environ: env.setdefault('TL_TMP', os.environ['HUSK_TMP'])
         abis = rep.get('abis') or []
         if abis and 'arm64-v8a' not in abis:
             rows.append({'pkg': pkg, 'engine': engine, 'harness': None, 'verdict': 'no arm64 code'}); print(pkg, 'no arm64 code'); continue
@@ -114,7 +115,7 @@ def main():
             if bmps and not os.path.exists(shot): subprocess.run(['sips', '-s', 'format', 'png', bmps[-1], '--out', shot], capture_output=True)
             subprocess.run(['rm', '-rf', fm.group(1)])
         dm = re.search(r'^data: (\S+)', text, re.M)
-        if dm and dm.group(1).startswith('/Volumes/GTAV/husk2/tmp/'): subprocess.run(['chmod', '-R', 'u+w', dm.group(1)], capture_output=True); subprocess.run(['rm', '-rf', dm.group(1)])
+        if dm and dm.group(1).startswith(os.environ.get('HUSK_TMP', '/Volumes/GTAV/husk2/tmp') + '/'): subprocess.run(['chmod', '-R', 'u+w', dm.group(1)], capture_output=True); subprocess.run(['rm', '-rf', dm.group(1)])
         row = {'pkg': pkg, 'engine': engine or 'Java', 'harness': harness, 'rc': rc}
         row.update(summarise(text))
         rows = [r for r in rows if r.get('pkg') != pkg] + [row]

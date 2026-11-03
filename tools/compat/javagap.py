@@ -239,4 +239,5 @@ def main():
                 print('  inherit', c, '->', k, m); shown += 1
     if show_all: pass
 
-main()
+if __name__ == '__main__':
+    main()

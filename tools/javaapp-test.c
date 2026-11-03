@@ -11,6 +11,8 @@
 #include <mach/mach.h>
 #include <pthread.h>
 #include <signal.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <stdarg.h>
 #include <dlfcn.h>
 #include <stdatomic.h>
@@ -164,8 +166,13 @@ static void *control_thread(void *arg)
             else if (sscanf(line, "swipe %f %f %f %f %ld", &a, &b, &c, &d, &ms) == 5) do_swipe(a, b, c, d, ms);
             else if (sscanf(line, "wait %ld", &ms) == 1) sleep_ms(ms);
             else if (sscanf(line, "shot %399s", p) == 1) {
-                char cmd[900]; snprintf(cmd, sizeof(cmd), "sips -s format png '%s/latest.bmp' --out '%s' >/dev/null 2>&1", g_frame_dir, p);
-                if (system(cmd)) fprintf(stderr, "ctl: shot failed\n");
+                /* posix_spawn and a bounded wait for that child: system() waits forever when the app reaps children itself */
+                char bmp[700]; snprintf(bmp, sizeof(bmp), "%s/latest.bmp", g_frame_dir);
+                char *sargv[] = { "/usr/bin/sips", "-s", "format", "png", bmp, "--out", p, NULL };
+                extern char **environ; pid_t pid; int st = -1, ok = 0;
+                if (posix_spawn(&pid, sargv[0], NULL, NULL, sargv, environ) == 0)
+                    for (int i = 0; i < 200; i++) { pid_t w = waitpid(pid, &st, WNOHANG); if (w == pid) { ok = WIFEXITED(st) && WEXITSTATUS(st) == 0; break; } if (w < 0) { ok = access(p, F_OK) == 0; break; } sleep_ms(50); }
+                if (!ok) fprintf(stderr, "ctl: shot failed\n");
                 else fprintf(stderr, "ctl: shot %s (frame %lu)\n", p, tl_javaapp_frames());
                 char wp[420]; snprintf(wp, sizeof(wp), "%.*s.web.png", (int)(strlen(p) > 4 ? strlen(p) - 4 : strlen(p)), p);
                 tl_web_snapshot(wp);
@@ -203,8 +210,23 @@ static void *run(void *p)
     for (int i = 0; i < 5; i++) { snprintf(paths[nb], sizeof(paths[nb]), "%s/javalib/%s.jar", art, jars[i]); boot[nb] = paths[nb]; nb++; }
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.i18n/javalib/core-icu4j.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.conscrypt/javalib/conscrypt.jar", art); boot[nb] = paths[nb]; nb++;
-    snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex"); boot[nb] = paths[nb]; nb++;
+    /* TL_AOSP=<dir with framework.jar>: the app's 3.3 boot path (husk-tl-aosp.c), husk-framework-core.dex then AOSP's jars */
+    const char *aosp = getenv("TL_AOSP");
+    /* TL_AOSP_FAT=1: the full husk-framework.dex (generated stubs included) first, so AOSP only fills classes Husk has no copy of */
+    if (aosp) {
+        if (getenv("TL_AOSP_FAT")) snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex");
+        else snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK_CORE") ? getenv("TL_FRAMEWORK_CORE") : "/Volumes/GTAV/husk2/java/husk-framework-core.dex");
+        boot[nb] = paths[nb]; nb++;
+        static const char *const fw[] = { "framework.jar", "ext.jar" };
+        for (int i = 0; i < 2; i++) {
+            snprintf(paths[nb], sizeof(paths[nb]), "%s/%s", aosp, fw[i]);
+            if (access(paths[nb], R_OK) == 0) { boot[nb] = paths[nb]; nb++; }
+        }
+    } else {
+        snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex"); boot[nb] = paths[nb]; nb++;
+    }
     snprintf(paths[nb], sizeof(paths[nb]), "/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar"); boot[nb] = paths[nb]; nb++;
+    if (aosp) { void husk_aosp_start_system(void); husk_aosp_start_system(); }
     { char v[800];
       snprintf(v, sizeof(v), "%s", art); setenv("ANDROID_ART_ROOT", v, 0);
       snprintf(v, sizeof(v), "%s/../com.android.i18n", art); setenv("ANDROID_I18N_ROOT", v, 0);
