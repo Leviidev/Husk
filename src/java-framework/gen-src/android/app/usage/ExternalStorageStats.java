@@ -4,7 +4,7 @@ package android.app.usage;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ExternalStorageStats implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ExternalStorageStats.class);
     public long appBytes;
     public long audioBytes;
     public long imageBytes;

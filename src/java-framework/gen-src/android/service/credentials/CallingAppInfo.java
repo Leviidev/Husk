@@ -4,7 +4,7 @@ package android.service.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CallingAppInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CallingAppInfo.class);
     public CallingAppInfo(java.lang.String p0, android.content.pm.SigningInfo p1) {}
     public CallingAppInfo(java.lang.String p0, android.content.pm.SigningInfo p1, java.lang.String p2) {}
     public int describeContents() { return 0; }

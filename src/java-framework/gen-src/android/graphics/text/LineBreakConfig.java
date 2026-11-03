@@ -4,7 +4,7 @@ package android.graphics.text;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class LineBreakConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LineBreakConfig.class);
     public static final int HYPHENATION_DISABLED = 0;
     public static final int HYPHENATION_ENABLED = 1;
     public static final int HYPHENATION_UNSPECIFIED = -1;

@@ -187,7 +187,7 @@ public abstract class NotificationListenerService extends android.app.Service {
     }
     public static class RankingMap implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RankingMap.class);
         public RankingMap(android.service.notification.NotificationListenerService.Ranking[] p0) {}
         public int describeContents() { return 0; }
         public java.lang.String[] getOrderedKeys() { return (java.lang.String[]) huskProps.get("OrderedKeys"); }

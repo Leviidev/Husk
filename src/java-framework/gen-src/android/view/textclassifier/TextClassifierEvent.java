@@ -8,7 +8,7 @@ public abstract class TextClassifierEvent implements android.os.Parcelable {
     public static final int CATEGORY_LANGUAGE_DETECTION = 4;
     public static final int CATEGORY_LINKIFY = 2;
     public static final int CATEGORY_SELECTION = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextClassifierEvent.class);
     public static final int TYPE_ACTIONS_GENERATED = 20;
     public static final int TYPE_ACTIONS_SHOWN = 6;
     public static final int TYPE_AUTO_SELECTION = 5;
@@ -60,7 +60,7 @@ public abstract class TextClassifierEvent implements android.os.Parcelable {
     }
     public static final class ConversationActionsEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConversationActionsEvent.class);
         protected ConversationActionsEvent() { super(); }
         public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -71,7 +71,7 @@ public abstract class TextClassifierEvent implements android.os.Parcelable {
     }
     public static final class LanguageDetectionEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LanguageDetectionEvent.class);
         protected LanguageDetectionEvent() { super(); }
         public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -82,7 +82,7 @@ public abstract class TextClassifierEvent implements android.os.Parcelable {
     }
     public static final class TextLinkifyEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextLinkifyEvent.class);
         protected TextLinkifyEvent() { super(); }
         public static final class Builder extends android.view.textclassifier.TextClassifierEvent.Builder {
             private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
@@ -93,7 +93,7 @@ public abstract class TextClassifierEvent implements android.os.Parcelable {
     }
     public static final class TextSelectionEvent extends android.view.textclassifier.TextClassifierEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextSelectionEvent.class);
         public int getRelativeSuggestedWordEndIndex() { return (huskProps.get("RelativeSuggestedWordEndIndex") instanceof Integer ? (Integer) huskProps.get("RelativeSuggestedWordEndIndex") : 0); }
         public int getRelativeSuggestedWordStartIndex() { return (huskProps.get("RelativeSuggestedWordStartIndex") instanceof Integer ? (Integer) huskProps.get("RelativeSuggestedWordStartIndex") : 0); }
         public int getRelativeWordEndIndex() { return (huskProps.get("RelativeWordEndIndex") instanceof Integer ? (Integer) huskProps.get("RelativeWordEndIndex") : 0); }

@@ -4,7 +4,7 @@ package android.telephony.data;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UrspRule implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UrspRule.class);
     public static final int MAX_URSP_PRECEDENCE = 255;
     public static int MIN_URSP_PRECEDENCE;
     public UrspRule(int p0, java.util.List p1, java.util.List p2) {}

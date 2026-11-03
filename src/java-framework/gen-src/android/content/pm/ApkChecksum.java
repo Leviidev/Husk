@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ApkChecksum implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApkChecksum.class);
     public ApkChecksum(java.lang.String p0, int p1, byte[] p2) {}
     public ApkChecksum(java.lang.String p0, int p1, byte[] p2, java.lang.String p3, java.security.cert.Certificate p4) {}
     public ApkChecksum(java.lang.String p0, android.content.pm.Checksum p1, java.lang.String p2, byte[] p3) {}

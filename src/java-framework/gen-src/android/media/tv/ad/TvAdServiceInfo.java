@@ -4,7 +4,7 @@ package android.media.tv.ad;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TvAdServiceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TvAdServiceInfo.class);
     public TvAdServiceInfo(android.content.Context p0, android.content.ComponentName p1) {}
     public int describeContents() { return 0; }
     public android.content.ComponentName getComponent() { return (android.content.ComponentName) huskProps.get("Component"); }

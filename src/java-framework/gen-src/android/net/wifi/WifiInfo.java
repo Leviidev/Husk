@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WifiInfo implements android.net.TransportInfo, android.os.Parcelable {
     final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiInfo.class);
     public static final java.lang.String DEFAULT_MAC_ADDRESS = "02:00:00:00:00:00";
     public static final int DPM_SECURITY_TYPE_UNKNOWN = -1;
     public static final java.lang.String FREQUENCY_UNITS = "MHz";

@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CursorAnchorInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CursorAnchorInfo.class);
     public static final int FLAG_HAS_INVISIBLE_REGION = 2;
     public static final int FLAG_HAS_VISIBLE_REGION = 1;
     public static final int FLAG_IS_RTL = 4;

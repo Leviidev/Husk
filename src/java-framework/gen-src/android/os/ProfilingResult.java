@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ProfilingResult implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ProfilingResult.class);
     public static final int ERROR_FAILED_EXECUTING = 4;
     public static final int ERROR_FAILED_INVALID_REQUEST = 7;
     public static final int ERROR_FAILED_NO_DISK_SPACE = 6;

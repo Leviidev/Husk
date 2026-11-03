@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DnsEvent extends android.app.admin.NetworkEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DnsEvent.class);
     public DnsEvent(java.lang.String p0, java.lang.String[] p1, int p2, java.lang.String p3, long p4) { super(); }
     public int describeContents() { return 0; }
     public java.lang.String getHostname() { return (java.lang.String) huskProps.get("Hostname"); }

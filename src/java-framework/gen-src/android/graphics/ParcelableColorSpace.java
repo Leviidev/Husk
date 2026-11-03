@@ -4,7 +4,7 @@ package android.graphics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ParcelableColorSpace implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ParcelableColorSpace.class);
     public ParcelableColorSpace(android.graphics.ColorSpace p0) {}
     public static boolean isParcelable(android.graphics.ColorSpace p0) { return false; }
     public int describeContents() { return 0; }

@@ -8,7 +8,7 @@ public final class CallAttributes implements android.os.Parcelable {
     public static final java.lang.String CALLER_PID_KEY = "CallerPid";
     public static final java.lang.String CALLER_UID_KEY = "CallerUid";
     public static final java.lang.String CALL_CAPABILITIES_KEY = "TelecomCapabilities";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CallAttributes.class);
     public static final int DIRECTION_INCOMING = 1;
     public static final int DIRECTION_OUTGOING = 2;
     public static final java.lang.String DISPLAY_NAME_KEY = "DisplayName";

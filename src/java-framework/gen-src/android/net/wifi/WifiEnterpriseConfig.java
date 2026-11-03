@@ -12,7 +12,7 @@ public class WifiEnterpriseConfig implements android.os.Parcelable {
     public static final java.lang.String CA_PATH_KEY = "ca_path";
     public static final java.lang.String CLIENT_CERT_KEY = "client_cert";
     public static final java.lang.String CLIENT_CERT_PREFIX = "keystore://USRCERT_";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiEnterpriseConfig.class);
     public static final java.lang.String DECORATED_IDENTITY_PREFIX_KEY = "decorated_username_prefix";
     public static final java.lang.String DOM_SUFFIX_MATCH_KEY = "domain_suffix_match";
     public static final java.lang.String EAP_ERP = "eap_erp";

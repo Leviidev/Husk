@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TranslationRequestValue implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TranslationRequestValue.class);
     public TranslationRequestValue(java.lang.CharSequence p0) {}
     public static android.view.translation.TranslationRequestValue forText(java.lang.CharSequence p0) { return new TranslationRequestValue(); }
     public int describeContents() { return 0; }

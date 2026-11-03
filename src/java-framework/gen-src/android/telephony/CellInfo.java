@@ -8,7 +8,7 @@ public abstract class CellInfo implements android.os.Parcelable {
     public static final int CONNECTION_PRIMARY_SERVING = 1;
     public static final int CONNECTION_SECONDARY_SERVING = 2;
     public static final int CONNECTION_UNKNOWN = 2147483647;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellInfo.class);
     public static final int TIMESTAMP_TYPE_ANTENNA = 1;
     public static final int TIMESTAMP_TYPE_JAVA_RIL = 4;
     public static final int TIMESTAMP_TYPE_MODEM = 2;

@@ -17,7 +17,7 @@ public final class ConversationStatus implements android.os.Parcelable {
     public static final int AVAILABILITY_BUSY = 1;
     public static final int AVAILABILITY_OFFLINE = 2;
     public static final int AVAILABILITY_UNKNOWN = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConversationStatus.class);
     public int describeContents() { return 0; }
     public int getActivity() { return (huskProps.get("Activity") instanceof Integer ? (Integer) huskProps.get("Activity") : 0); }
     public int getAvailability() { return (huskProps.get("Availability") instanceof Integer ? (Integer) huskProps.get("Availability") : 0); }

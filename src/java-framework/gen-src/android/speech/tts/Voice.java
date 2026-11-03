@@ -4,7 +4,7 @@ package android.speech.tts;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class Voice implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Voice.class);
     public static final int LATENCY_HIGH = 400;
     public static final int LATENCY_LOW = 200;
     public static final int LATENCY_NORMAL = 300;

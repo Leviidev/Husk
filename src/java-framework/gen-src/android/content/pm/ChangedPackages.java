@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ChangedPackages implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ChangedPackages.class);
     public ChangedPackages(int p0, java.util.List p1) {}
     protected ChangedPackages(android.os.Parcel p0) {}
     public int describeContents() { return 0; }

@@ -5,7 +5,7 @@ package android.media;
 public final class Session2Command implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static int COMMAND_CODE_CUSTOM;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Session2Command.class);
     public Session2Command(int p0) {}
     public Session2Command(java.lang.String p0, android.os.Bundle p1) {}
     public int describeContents() { return 0; }

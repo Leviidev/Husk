@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class RemoveByDocumentIdRequest extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RemoveByDocumentIdRequest.class);
     public java.util.Set getIds() { return (huskProps.get("Ids") != null ? (java.util.Set) huskProps.get("Ids") : new java.util.HashSet()); }
     public java.lang.String getNamespace() { return (java.lang.String) huskProps.get("Namespace"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

@@ -4,7 +4,7 @@ package android.print;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PrinterId implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PrinterId.class);
     public PrinterId(android.content.ComponentName p0, java.lang.String p1) {}
     public int describeContents() { return 0; }
     public java.lang.String getLocalId() { return (java.lang.String) huskProps.get("LocalId"); }

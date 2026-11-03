@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CellSignalStrengthTdscdma extends android.telephony.CellSignalStrength implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellSignalStrengthTdscdma.class);
     public CellSignalStrengthTdscdma() { super(); }
     public CellSignalStrengthTdscdma(int p0, int p1, int p2) { super(); }
     public CellSignalStrengthTdscdma(android.telephony.CellSignalStrengthTdscdma p0) { super(); }

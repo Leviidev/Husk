@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SystemUpdateInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SystemUpdateInfo.class);
     public static final int SECURITY_PATCH_STATE_FALSE = 1;
     public static final int SECURITY_PATCH_STATE_TRUE = 2;
     public static final int SECURITY_PATCH_STATE_UNKNOWN = 0;

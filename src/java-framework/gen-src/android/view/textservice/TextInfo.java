@@ -4,7 +4,7 @@ package android.view.textservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextInfo.class);
     public TextInfo(android.os.Parcel p0) {}
     public TextInfo(java.lang.CharSequence p0, int p1, int p2, int p3, int p4) {}
     public TextInfo(java.lang.String p0) {}

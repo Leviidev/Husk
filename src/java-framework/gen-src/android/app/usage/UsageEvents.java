@@ -4,7 +4,7 @@ package android.app.usage;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UsageEvents implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UsageEvents.class);
     public static final int HIDE_LOCUS_EVENTS = 8;
     public static final int HIDE_SHORTCUT_EVENTS = 2;
     public static final java.lang.String INSTANT_APP_CLASS_NAME = "android.instant_class";

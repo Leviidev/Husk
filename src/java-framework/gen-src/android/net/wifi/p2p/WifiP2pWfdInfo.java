@@ -4,7 +4,7 @@ package android.net.wifi.p2p;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiP2pWfdInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pWfdInfo.class);
     public static final int DEVICE_INFO_AUDIO_ONLY_SUPPORT_AT_SOURCE = 2048;
     public static final int DEVICE_INFO_AUDIO_UNSUPPORTED_AT_PRIMARY_SINK = 1024;
     public static final int DEVICE_INFO_CONTENT_PROTECTION_SUPPORT = 256;

@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UiccPortInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UiccPortInfo.class);
     public static final java.lang.String ICCID_REDACTED = "FFFFFFFFFFFFFFFFFFFF";
     public UiccPortInfo(java.lang.String p0, int p1, int p2, boolean p3) {}
     public android.telephony.UiccPortInfo createSensitiveInfoSanitizedCopy() { return this; }

@@ -5,7 +5,7 @@ package android.media;
 public final class RouteListingPreference implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String ACTION_TRANSFER_MEDIA = "android.media.action.TRANSFER_MEDIA";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RouteListingPreference.class);
     public static final java.lang.String EXTRA_ROUTE_ID = "android.media.extra.ROUTE_ID";
     public int describeContents() { return 0; }
     public java.util.List getItems() { return (huskProps.get("Items") != null ? (java.util.List) huskProps.get("Items") : new java.util.ArrayList()); }
@@ -23,7 +23,7 @@ public final class RouteListingPreference implements android.os.Parcelable {
     }
     public static final class Item implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Item.class);
         public static final int FLAG_ONGOING_SESSION = 1;
         public static final int FLAG_ONGOING_SESSION_MANAGED = 2;
         public static final int FLAG_SUGGESTED = 4;

@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextBoundsInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextBoundsInfo.class);
     public static final int FLAG_CHARACTER_LINEFEED = 2;
     public static final int FLAG_CHARACTER_PUNCTUATION = 4;
     public static final int FLAG_CHARACTER_WHITESPACE = 1;

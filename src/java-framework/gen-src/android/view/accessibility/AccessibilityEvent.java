@@ -22,7 +22,7 @@ public final class AccessibilityEvent extends android.view.accessibility.Accessi
     public static final int CONTENT_CHANGE_TYPE_SUPPLEMENTAL_DESCRIPTION = 32768;
     public static final int CONTENT_CHANGE_TYPE_TEXT = 2;
     public static final int CONTENT_CHANGE_TYPE_UNDEFINED = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityEvent.class);
     public static final boolean DEBUG_ORIGIN = false;
     public static final int INVALID_POSITION = -1;
     public static final int MAX_TEXT_LENGTH = 500;

@@ -4,7 +4,7 @@ package android.hardware.display;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VirtualDisplayConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VirtualDisplayConfig.class);
     public int describeContents() { return 0; }
     public android.hardware.display.IBrightnessListener getBrightnessListener() { return (android.hardware.display.IBrightnessListener) huskProps.get("BrightnessListener"); }
     public float getDefaultBrightness() { return (huskProps.get("DefaultBrightness") instanceof Float ? (Float) huskProps.get("DefaultBrightness") : 0f); }

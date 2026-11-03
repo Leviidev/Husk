@@ -40,7 +40,7 @@ public final class CaptureRequest extends android.hardware.camera2.CameraMetadat
     public static android.hardware.camera2.CaptureRequest.Key CONTROL_VIDEO_STABILIZATION_MODE;
     public static android.hardware.camera2.CaptureRequest.Key CONTROL_ZOOM_METHOD;
     public static android.hardware.camera2.CaptureRequest.Key CONTROL_ZOOM_RATIO;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CaptureRequest.class);
     public static android.hardware.camera2.CaptureRequest.Key DISTORTION_CORRECTION_MODE;
     public static android.hardware.camera2.CaptureRequest.Key EDGE_MODE;
     public static android.hardware.camera2.CaptureRequest.Key EXTENSION_STRENGTH;

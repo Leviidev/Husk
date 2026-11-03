@@ -6,7 +6,7 @@ public final class PageRange implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.print.PageRange ALL_PAGES;
     public static android.print.PageRange[] ALL_PAGES_ARRAY;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PageRange.class);
     public PageRange(int p0, int p1) {}
     public boolean contains(int p0) { return false; }
     public int describeContents() { return 0; }

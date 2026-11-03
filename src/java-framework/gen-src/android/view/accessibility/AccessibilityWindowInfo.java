@@ -6,7 +6,7 @@ public final class AccessibilityWindowInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final int ACTIVE_WINDOW_ID = 2147483647;
     public static final int ANY_WINDOW_ID = -2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityWindowInfo.class);
     public static final int PICTURE_IN_PICTURE_ACTION_REPLACER_WINDOW_ID = -3;
     public static final int TYPE_ACCESSIBILITY_OVERLAY = 4;
     public static final int TYPE_APPLICATION = 1;
@@ -67,7 +67,7 @@ public final class AccessibilityWindowInfo implements android.os.Parcelable {
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public static final class WindowListSparseArray extends android.util.SparseArray implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WindowListSparseArray.class);
         public WindowListSparseArray() { super(); }
         public int describeContents() { return 0; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}

@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DsmccRequest extends android.media.tv.BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DsmccRequest.class);
     public DsmccRequest(int p0, int p1, android.net.Uri p2) { super(); }
     public int describeContents() { return 0; }
     public android.net.Uri getUri() { return (android.net.Uri) huskProps.get("Uri"); }

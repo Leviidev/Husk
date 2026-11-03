@@ -4,7 +4,7 @@ package android.gesture;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class Gesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Gesture.class);
     public Gesture() {}
     public void addStroke(android.gesture.GestureStroke p0) {}
     public java.lang.Object clone() { return null; }

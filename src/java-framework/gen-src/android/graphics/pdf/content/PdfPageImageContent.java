@@ -4,7 +4,7 @@ package android.graphics.pdf.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PdfPageImageContent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PdfPageImageContent.class);
     public PdfPageImageContent(java.lang.String p0) {}
     public int describeContents() { return 0; }
     public java.lang.String getAltText() { return (java.lang.String) huskProps.get("AltText"); }

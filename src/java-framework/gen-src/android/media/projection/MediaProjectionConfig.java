@@ -6,7 +6,7 @@ public final class MediaProjectionConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final int CAPTURE_REGION_FIXED_DISPLAY = 1;
     public static final int CAPTURE_REGION_USER_CHOICE = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MediaProjectionConfig.class);
     public static final int DEFAULT_PROJECTION_SOURCES = 10;
     public static final int PROJECTION_SOURCE_APP = 8;
     public static final int PROJECTION_SOURCE_APP_CONTENT = 16;

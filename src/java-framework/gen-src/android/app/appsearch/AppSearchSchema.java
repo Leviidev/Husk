@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class AppSearchSchema extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppSearchSchema.class);
     public java.lang.String getDescription() { return (java.lang.String) huskProps.get("Description"); }
     public java.util.List getParentTypes() { return (huskProps.get("ParentTypes") != null ? (java.util.List) huskProps.get("ParentTypes") : new java.util.ArrayList()); }
     public java.util.List getProperties() { return (huskProps.get("Properties") != null ? (java.util.List) huskProps.get("Properties") : new java.util.ArrayList()); }

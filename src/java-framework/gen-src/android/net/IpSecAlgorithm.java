@@ -14,7 +14,7 @@ public final class IpSecAlgorithm implements android.os.Parcelable {
     public static final java.lang.String AUTH_HMAC_SHA256 = "hmac(sha256)";
     public static final java.lang.String AUTH_HMAC_SHA384 = "hmac(sha384)";
     public static final java.lang.String AUTH_HMAC_SHA512 = "hmac(sha512)";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(IpSecAlgorithm.class);
     public static final java.lang.String CRYPT_AES_CBC = "cbc(aes)";
     public static final java.lang.String CRYPT_AES_CTR = "rfc3686(ctr(aes))";
     public static final java.lang.String CRYPT_NULL = "ecb(cipher_null)";

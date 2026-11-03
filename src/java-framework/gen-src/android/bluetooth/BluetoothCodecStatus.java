@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BluetoothCodecStatus implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothCodecStatus.class);
     public static final java.lang.String EXTRA_CODEC_STATUS = "android.bluetooth.extra.CODEC_STATUS";
     public BluetoothCodecStatus(android.bluetooth.BluetoothCodecConfig p0, java.util.List p1, java.util.List p2) {}
     public int describeContents() { return 0; }

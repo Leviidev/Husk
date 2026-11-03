@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CpuUsageInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CpuUsageInfo.class);
     public CpuUsageInfo(long p0, long p1) {}
     public int describeContents() { return 0; }
     public long getActive() { return (huskProps.get("Active") instanceof Long ? (Long) huskProps.get("Active") : 0L); }

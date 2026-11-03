@@ -4,7 +4,7 @@ package android.net.nsd;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DiscoveryRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DiscoveryRequest.class);
     public int describeContents() { return 0; }
     public android.net.Network getNetwork() { return (android.net.Network) huskProps.get("Network"); }
     public int getProtocolType() { return (huskProps.get("ProtocolType") instanceof Integer ? (Integer) huskProps.get("ProtocolType") : 0); }

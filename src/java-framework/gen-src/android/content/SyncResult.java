@@ -5,7 +5,7 @@ package android.content;
 public final class SyncResult implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.content.SyncResult ALREADY_IN_PROGRESS;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SyncResult.class);
     public boolean databaseError;
     public long delayUntil;
     public boolean fullSyncRequested;

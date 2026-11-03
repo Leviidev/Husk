@@ -108,10 +108,12 @@ public final class KeyStoreProvider extends Provider {
 
     private static String aliasOf(AlgorithmParameterSpec spec) {
         if (spec instanceof android.security.keystore.KeyGenParameterSpec) return ((android.security.keystore.KeyGenParameterSpec) spec).getKeystoreAlias();
+        if (spec instanceof android.security.KeyPairGeneratorSpec) return ((android.security.KeyPairGeneratorSpec) spec).getKeystoreAlias();   /* the API 18 spec, still used */
         return null;
     }
     private static int sizeOf(AlgorithmParameterSpec spec, int dflt) {
         if (spec instanceof android.security.keystore.KeyGenParameterSpec) { int s = ((android.security.keystore.KeyGenParameterSpec) spec).getKeySize(); if (s > 0) return s; }
+        if (spec instanceof android.security.KeyPairGeneratorSpec) { int s = ((android.security.KeyPairGeneratorSpec) spec).getKeySize(); if (s > 0) return s; }
         return dflt;
     }
 
@@ -151,7 +153,8 @@ public final class KeyStoreProvider extends Provider {
             mAlias = aliasOf(params);
             if (mAlias == null) throw new InvalidAlgorithmParameterException("expected a KeyGenParameterSpec");
             mSize = sizeOf(params, mSize);
-            mSpec = params instanceof android.security.keystore.KeyGenParameterSpec ? ((android.security.keystore.KeyGenParameterSpec) params).getAlgorithmParameterSpec() : null;
+            mSpec = params instanceof android.security.keystore.KeyGenParameterSpec ? ((android.security.keystore.KeyGenParameterSpec) params).getAlgorithmParameterSpec()
+                  : params instanceof android.security.KeyPairGeneratorSpec ? ((android.security.KeyPairGeneratorSpec) params).getAlgorithmParameterSpec() : null;
         }
         @Override public KeyPair generateKeyPair() {
             try {

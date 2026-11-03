@@ -4,7 +4,7 @@ package android.service.assist.classification;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FieldClassification implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FieldClassification.class);
     public FieldClassification(android.view.autofill.AutofillId p0, java.util.Set p1) {}
     public FieldClassification(android.view.autofill.AutofillId p0, java.util.Set p1, java.util.Set p2) {}
     public int describeContents() { return 0; }

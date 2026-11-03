@@ -4,7 +4,7 @@ package android.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CredentialOption implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CredentialOption.class);
     public static final java.lang.String SUPPORTED_ELEMENT_KEYS = "android.credentials.GetCredentialOption.SUPPORTED_ELEMENT_KEYS";
     public CredentialOption(java.lang.String p0, android.os.Bundle p1, android.os.Bundle p2, boolean p3) {}
     public int describeContents() { return 0; }
@@ -21,7 +21,7 @@ public final class CredentialOption implements android.os.Parcelable {
         public android.credentials.CredentialOption.Builder addAllowedProvider(android.content.ComponentName p0) { return this; }
         public android.credentials.CredentialOption build() { android.credentials.CredentialOption x = new android.credentials.CredentialOption(); x.huskProps.putAll(huskProps); return x; }
         public android.credentials.CredentialOption.Builder setAllowedProviders(java.util.Set p0) { huskProps.put("AllowedProviders", p0); return this; }
-        public android.credentials.CredentialOption.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); return this; }
+        public android.credentials.CredentialOption.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); huskProps.put("SystemProviderRequired", Boolean.valueOf(p0)); return this; }
         Builder() { this((java.lang.String) null, (android.os.Bundle) null, (android.os.Bundle) null); }
     }
 }

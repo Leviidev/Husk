@@ -7,7 +7,7 @@ public final class LocationRequest implements android.os.Parcelable {
     public static final int ACCURACY_BLOCK = 102;
     public static final int ACCURACY_CITY = 104;
     public static final int ACCURACY_FINE = 100;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LocationRequest.class);
     public static final long LOW_POWER_EXCEPTIONS = 168936375L;
     public static final long PASSIVE_INTERVAL = 9223372036854775807L;
     public static final int POWER_HIGH = 203;

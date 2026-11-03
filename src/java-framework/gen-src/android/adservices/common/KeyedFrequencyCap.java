@@ -5,7 +5,7 @@ package android.adservices.common;
 public final class KeyedFrequencyCap implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String AD_COUNTER_KEY_FIELD_NAME = "ad_counter_key";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(KeyedFrequencyCap.class);
     public static final java.lang.String INTERVAL_FIELD_NAME = "interval_in_seconds";
     public static final java.lang.String INTERVAL_NOT_POSITIVE_FORMAT = "KeyedFrequencyCap interval %s must be strictly positive";
     public static final java.lang.String INTERVAL_NULL_ERROR_MESSAGE = "KeyedFrequencyCap interval must not be null";

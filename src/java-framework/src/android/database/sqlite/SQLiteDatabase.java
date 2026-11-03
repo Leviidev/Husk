@@ -271,7 +271,13 @@ public final class SQLiteDatabase extends SQLiteClosable {
     public void execSQL(String sql, Object[] bindArgs) throws SQLException { if (bindArgs == null) throw new IllegalArgumentException("Empty bindArgs"); executeSql(sql, bindArgs); }
     public void execPerConnectionSQL(String sql, Object[] bindArgs) throws SQLException { executeSql(sql, bindArgs); }
     private void executeSql(String sql, Object[] bindArgs) {
-        if (DatabaseUtils.getSqlStatementType(sql) == DatabaseUtils.STATEMENT_ATTACH) { /* attaching disables WAL, as on Android */ disableWriteAheadLogging(); }
+        int type = DatabaseUtils.getSqlStatementType(sql);
+        if (type == DatabaseUtils.STATEMENT_ATTACH) { /* attaching disables WAL, as on Android */ disableWriteAheadLogging(); }
+        /* BEGIN / COMMIT / ROLLBACK given as SQL become this database's own (nested) transactions, as SQLiteSession.executeSpecial
+           does: Loop Habit Tracker's migrations say "begin transaction" inside the one SQLiteOpenHelper.onCreate is already in */
+        if (type == DatabaseUtils.STATEMENT_BEGIN) { beginTransaction(); return; }
+        if (type == DatabaseUtils.STATEMENT_COMMIT) { setTransactionSuccessful(); endTransaction(); return; }
+        if (type == DatabaseUtils.STATEMENT_ABORT) { endTransaction(); return; }
         try (SQLiteStatement st = new SQLiteStatement(this, sql, bindArgs)) { st.executeUpdateDelete(); }
     }
     public void validateSql(String sql, CancellationSignal cs) {

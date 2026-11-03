@@ -4,7 +4,7 @@ package android.text.style;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class LineBreakConfigSpan implements android.text.ParcelableSpan {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LineBreakConfigSpan.class);
     public LineBreakConfigSpan(android.graphics.text.LineBreakConfig p0) {}
     public static android.text.style.LineBreakConfigSpan createNoBreakSpan() { return new LineBreakConfigSpan(); }
     public static android.text.style.LineBreakConfigSpan createNoHyphenationSpan() { return new LineBreakConfigSpan(); }

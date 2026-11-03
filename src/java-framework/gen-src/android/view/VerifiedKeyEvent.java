@@ -4,7 +4,7 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VerifiedKeyEvent extends android.view.VerifiedInputEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VerifiedKeyEvent.class);
     public VerifiedKeyEvent(int p0, long p1, int p2, int p3, int p4, long p5, int p6, int p7, int p8, int p9, int p10) { super((android.os.Parcel) null, (int) 0); }
     public int describeContents() { return 0; }
     public int getAction() { return (huskProps.get("Action") instanceof Integer ? (Integer) huskProps.get("Action") : 0); }

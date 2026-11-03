@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PreciseDataConnectionState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PreciseDataConnectionState.class);
     public static final int NETWORK_VALIDATION_FAILURE = 4;
     public static final int NETWORK_VALIDATION_IN_PROGRESS = 2;
     public static final int NETWORK_VALIDATION_NOT_REQUESTED = 1;

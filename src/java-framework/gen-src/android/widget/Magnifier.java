@@ -38,7 +38,7 @@ public final class Magnifier {
         public android.widget.Magnifier.Builder setCornerRadius(float p0) { huskProps.put("CornerRadius", Float.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setDefaultSourceToMagnifierOffset(int p0, int p1) { return this; }
         public android.widget.Magnifier.Builder setElevation(float p0) { huskProps.put("Elevation", Float.valueOf(p0)); return this; }
-        public android.widget.Magnifier.Builder setInitialZoom(float p0) { huskProps.put("InitialZoom", Float.valueOf(p0)); return this; }
+        public android.widget.Magnifier.Builder setInitialZoom(float p0) { huskProps.put("InitialZoom", Float.valueOf(p0)); huskProps.put("Zoom", Float.valueOf(p0)); return this; }
         public android.widget.Magnifier.Builder setOverlay(android.graphics.drawable.Drawable p0) { huskProps.put("Overlay", p0); return this; }
         public android.widget.Magnifier.Builder setSize(int p0, int p1) { return this; }
         public android.widget.Magnifier.Builder setSourceBounds(int p0, int p1, int p2, int p3) { return this; }

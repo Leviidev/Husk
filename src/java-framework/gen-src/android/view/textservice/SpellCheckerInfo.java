@@ -4,7 +4,7 @@ package android.view.textservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SpellCheckerInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SpellCheckerInfo.class);
     public SpellCheckerInfo(android.content.Context p0, android.content.pm.ResolveInfo p1) {}
     public SpellCheckerInfo(android.os.Parcel p0) {}
     public int describeContents() { return 0; }

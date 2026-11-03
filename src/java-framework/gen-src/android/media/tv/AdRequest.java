@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdRequest.class);
     public static final java.lang.String KEY_AUDIO_METADATA = "key_audio_metadata";
     public static final java.lang.String KEY_VIDEO_METADATA = "key_video_metadata";
     public static final int REQUEST_TYPE_START = 1;

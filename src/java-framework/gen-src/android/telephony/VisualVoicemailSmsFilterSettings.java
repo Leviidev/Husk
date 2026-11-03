@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VisualVoicemailSmsFilterSettings implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VisualVoicemailSmsFilterSettings.class);
     public static final java.lang.String DEFAULT_CLIENT_PREFIX = "//VVM";
     public static final int DEFAULT_DESTINATION_PORT = -1;
     public static java.util.List DEFAULT_ORIGINATING_NUMBERS;

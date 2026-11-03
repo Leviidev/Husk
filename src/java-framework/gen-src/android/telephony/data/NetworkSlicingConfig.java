@@ -4,7 +4,7 @@ package android.telephony.data;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NetworkSlicingConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkSlicingConfig.class);
     public NetworkSlicingConfig() {}
     public NetworkSlicingConfig(android.os.Parcel p0) {}
     public NetworkSlicingConfig(java.util.List p0, java.util.List p1) {}

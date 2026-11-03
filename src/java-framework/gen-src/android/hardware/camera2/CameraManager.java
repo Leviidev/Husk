@@ -16,8 +16,8 @@ public final class CameraManager {
     public android.hardware.camera2.CameraCharacteristics getCameraCharacteristics(java.lang.String p0, boolean p1) { return null; }
     public android.hardware.camera2.CameraDevice.CameraDeviceSetup getCameraDeviceSetup(java.lang.String p0) { return null; }
     public android.hardware.camera2.CameraExtensionCharacteristics getCameraExtensionCharacteristics(java.lang.String p0) { return null; }
-    public java.lang.String[] getCameraIdList() { return (java.lang.String[]) huskProps.get("CameraIdList"); }
-    public java.lang.String[] getCameraIdListNoLazy() { return (java.lang.String[]) huskProps.get("CameraIdListNoLazy"); }
+    public java.lang.String[] getCameraIdList() { return new String[0]; }   /* a device with no cameras: apps check the list before opening one */
+    public java.lang.String[] getCameraIdListNoLazy() { return new String[0]; }
     public android.hardware.ICameraService getCameraService() { return (android.hardware.ICameraService) huskProps.get("CameraService"); }
     public android.content.AttributionSourceState getClientAttribution() { return (android.content.AttributionSourceState) huskProps.get("ClientAttribution"); }
     public android.content.AttributionSourceState getClientAttribution(int p0, boolean p1) { return null; }

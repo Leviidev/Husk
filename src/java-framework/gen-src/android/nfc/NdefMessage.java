@@ -4,7 +4,7 @@ package android.nfc;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NdefMessage implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NdefMessage.class);
     public NdefMessage(android.nfc.NdefRecord p0, android.nfc.NdefRecord[] p1) {}
     public NdefMessage(byte[] p0) {}
     public NdefMessage(android.nfc.NdefRecord[] p0) {}

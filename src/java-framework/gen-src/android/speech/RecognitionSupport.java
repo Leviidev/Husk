@@ -4,7 +4,7 @@ package android.speech;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RecognitionSupport implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RecognitionSupport.class);
     public int describeContents() { return 0; }
     public java.util.List getInstalledOnDeviceLanguages() { return (huskProps.get("InstalledOnDeviceLanguages") != null ? (java.util.List) huskProps.get("InstalledOnDeviceLanguages") : new java.util.ArrayList()); }
     public java.util.List getOnlineLanguages() { return (huskProps.get("OnlineLanguages") != null ? (java.util.List) huskProps.get("OnlineLanguages") : new java.util.ArrayList()); }

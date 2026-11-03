@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SaveRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SaveRequest.class);
     public SaveRequest(java.util.ArrayList p0, android.os.Bundle p1, java.util.ArrayList p2) {}
     public int describeContents() { return 0; }
     public android.os.Bundle getClientState() { return (android.os.Bundle) huskProps.get("ClientState"); }

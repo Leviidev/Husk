@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SelectGesture extends android.view.inputmethod.PreviewableHandwritingGesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SelectGesture.class);
     public int describeContents() { return 0; }
     public int getGranularity() { return (huskProps.get("Granularity") instanceof Integer ? (Integer) huskProps.get("Granularity") : 0); }
     public android.graphics.RectF getSelectionArea() { return (android.graphics.RectF) huskProps.get("SelectionArea"); }

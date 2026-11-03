@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InlinePresentation implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InlinePresentation.class);
     public InlinePresentation(android.app.slice.Slice p0, android.widget.inline.InlinePresentationSpec p1, boolean p2) {}
     public static android.service.autofill.InlinePresentation createTooltipPresentation(android.app.slice.Slice p0, android.widget.inline.InlinePresentationSpec p1) { return new InlinePresentation(); }
     public int describeContents() { return 0; }

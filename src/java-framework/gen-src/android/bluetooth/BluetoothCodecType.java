@@ -11,7 +11,7 @@ public final class BluetoothCodecType implements android.os.Parcelable {
     public static final long CODEC_ID_LHDCV5 = 327307049727L;
     public static final long CODEC_ID_OPUS = 16834815L;
     public static long CODEC_ID_SBC;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothCodecType.class);
     public BluetoothCodecType(int p0, long p1, java.lang.String p2) {}
     public static android.bluetooth.BluetoothCodecType createFromParcel(android.os.Parcel p0) { return new BluetoothCodecType(); }
     public static android.bluetooth.BluetoothCodecType createFromType(int p0) { return new BluetoothCodecType(); }

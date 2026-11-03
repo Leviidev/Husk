@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class EditingEndedEvent extends android.media.metrics.Event implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(EditingEndedEvent.class);
     public static final int ERROR_CODE_AUDIO_PROCESSING_FAILED = 18;
     public static final int ERROR_CODE_DECODER_INIT_FAILED = 11;
     public static final int ERROR_CODE_DECODING_FAILED = 12;

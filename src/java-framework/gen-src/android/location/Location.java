@@ -4,15 +4,35 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class Location implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Location.class);
     public static final java.lang.String EXTRA_NO_GPS_LOCATION = "noGPSLocation";
     public static final int FORMAT_DEGREES = 0;
     public static final int FORMAT_MINUTES = 1;
     public static final int FORMAT_SECONDS = 2;
     public Location(android.location.Location p0) {}
     public Location(java.lang.String p0) {}
-    public static double convert(java.lang.String p0) { return 0d; }
-    public static java.lang.String convert(double p0, int p1) { return null; }
+    /* "[-]D[:M[:S]]" to degrees, and back (FORMAT_DEGREES 0, FORMAT_MINUTES 1, FORMAT_SECONDS 2), as AOSP formats them */
+    public static double convert(java.lang.String p0) {
+        if (p0 == null) throw new NullPointerException("coordinate");
+        boolean neg = p0.startsWith("-"); String[] f = (neg ? p0.substring(1) : p0).split(":");
+        if (f.length == 0 || f.length > 3) throw new IllegalArgumentException("coordinate=" + p0);
+        double v = 0, scale = 1;
+        for (String x : f) { v += Double.parseDouble(x) / scale; scale *= 60; }
+        return neg ? -v : v;
+    }
+    public static java.lang.String convert(double p0, int p1) {
+        if (p0 < -180.0 || p0 > 180.0 || Double.isNaN(p0)) throw new IllegalArgumentException("coordinate=" + p0);
+        if (p1 < 0 || p1 > 2) throw new IllegalArgumentException("outputType=" + p1);
+        StringBuilder sb = new StringBuilder();
+        if (p0 < 0) { sb.append('-'); p0 = -p0; }
+        java.text.DecimalFormat df = new java.text.DecimalFormat("###.#####");
+        if (p1 == 1 || p1 == 2) {
+            int deg = (int) Math.floor(p0); sb.append(deg).append(':'); p0 = (p0 - deg) * 60.0;
+            if (p1 == 2) { int min = (int) Math.floor(p0); sb.append(min).append(':'); p0 = (p0 - min) * 60.0; }
+        }
+        sb.append(df.format(p0));
+        return sb.toString();
+    }
     public static void distanceBetween(double p0, double p1, double p2, double p3, float[] p4) {}
     public float bearingTo(android.location.Location p0) { return 0f; }
     public int describeContents() { return 0; }

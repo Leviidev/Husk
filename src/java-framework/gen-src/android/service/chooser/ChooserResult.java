@@ -8,7 +8,7 @@ public final class ChooserResult implements android.os.Parcelable {
     public static final int CHOOSER_RESULT_EDIT = 2;
     public static final int CHOOSER_RESULT_SELECTED_COMPONENT = 0;
     public static final int CHOOSER_RESULT_UNKNOWN = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ChooserResult.class);
     public static final long SEND_CHOOSER_RESULT = 263474465L;
     public ChooserResult(int p0, android.content.ComponentName p1, boolean p2) {}
     public int describeContents() { return 0; }

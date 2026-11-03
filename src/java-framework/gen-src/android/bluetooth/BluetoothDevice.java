@@ -56,7 +56,7 @@ public final class BluetoothDevice implements android.os.Parcelable, android.blu
     public static final int CONNECTION_STATE_DISCONNECTED = 0;
     public static final int CONNECTION_STATE_ENCRYPTED_BREDR = 2;
     public static final int CONNECTION_STATE_ENCRYPTED_LE = 4;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothDevice.class);
     public static final java.lang.String DEVICE_TYPE_CARKIT = "Carkit";
     public static final int DEVICE_TYPE_CLASSIC = 1;
     public static final java.lang.String DEVICE_TYPE_DEFAULT = "Default";
@@ -259,7 +259,7 @@ public final class BluetoothDevice implements android.os.Parcelable, android.blu
     protected BluetoothDevice() {}
     public static final class BluetoothAddress implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothAddress.class);
         public BluetoothAddress(java.lang.String p0, int p1) {}
         public int describeContents() { return 0; }
         public java.lang.String getAddress() { return (java.lang.String) huskProps.get("Address"); }

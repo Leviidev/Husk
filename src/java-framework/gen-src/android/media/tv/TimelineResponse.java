@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TimelineResponse extends android.media.tv.BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TimelineResponse.class);
     public TimelineResponse(int p0, int p1, int p2, java.lang.String p3, int p4, int p5, long p6, long p7) { super(); }
     public int describeContents() { return 0; }
     public android.net.Uri getSelector() { return (android.net.Uri) huskProps.get("Selector"); }

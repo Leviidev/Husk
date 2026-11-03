@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssAutomaticGainControl implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssAutomaticGainControl.class);
     public int describeContents() { return 0; }
     public long getCarrierFrequencyHz() { return (huskProps.get("CarrierFrequencyHz") instanceof Long ? (Long) huskProps.get("CarrierFrequencyHz") : 0L); }
     public int getConstellationType() { return (huskProps.get("ConstellationType") instanceof Integer ? (Integer) huskProps.get("ConstellationType") : 0); }

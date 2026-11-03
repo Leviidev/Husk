@@ -7,7 +7,7 @@ public final class MediaRoute2Info implements android.os.Parcelable {
     public static final int CONNECTION_STATE_CONNECTED = 2;
     public static final int CONNECTION_STATE_CONNECTING = 1;
     public static final int CONNECTION_STATE_DISCONNECTED = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MediaRoute2Info.class);
     public static final java.lang.String FEATURE_LIVE_AUDIO = "android.media.route.feature.LIVE_AUDIO";
     public static final java.lang.String FEATURE_LIVE_VIDEO = "android.media.route.feature.LIVE_VIDEO";
     public static final java.lang.String FEATURE_LOCAL_PLAYBACK = "android.media.route.feature.LOCAL_PLAYBACK";

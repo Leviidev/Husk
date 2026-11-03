@@ -5,7 +5,7 @@ package android.content.om;
 public final class OverlayInfo implements android.content.om.CriticalOverlayInfo, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String CATEGORY_THEME = "android.theme";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(OverlayInfo.class);
     public static final int STATE_DISABLED = 2;
     public static final int STATE_ENABLED = 3;
     public static final int STATE_ENABLED_IMMUTABLE = 6;

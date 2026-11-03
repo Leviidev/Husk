@@ -7,7 +7,7 @@ public final class WalletCard implements android.os.Parcelable {
     public static final int CARD_TYPE_NON_PAYMENT = 2;
     public static final int CARD_TYPE_PAYMENT = 1;
     public static int CARD_TYPE_UNKNOWN;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WalletCard.class);
     public int describeContents() { return 0; }
     public android.graphics.drawable.Icon getCardIcon() { return (android.graphics.drawable.Icon) huskProps.get("CardIcon"); }
     public java.lang.String getCardId() { return (java.lang.String) huskProps.get("CardId"); }

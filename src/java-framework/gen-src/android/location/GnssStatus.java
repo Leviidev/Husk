@@ -13,7 +13,7 @@ public final class GnssStatus implements android.os.Parcelable {
     public static final int CONSTELLATION_QZSS = 4;
     public static final int CONSTELLATION_SBAS = 2;
     public static final int CONSTELLATION_UNKNOWN = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssStatus.class);
     public static java.lang.String constellationTypeToString(int p0) { return null; }
     public static android.location.GnssStatus wrap(int p0, int[] p1, float[] p2, float[] p3, float[] p4, float[] p5, float[] p6) { return new GnssStatus(); }
     public int describeContents() { return 0; }

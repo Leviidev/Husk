@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiNetworkSpecifier.class);
     public android.util.Pair bssidPatternMatcher;
     public android.os.PatternMatcher ssidPatternMatcher;
     public android.net.wifi.WifiConfiguration wifiConfiguration;

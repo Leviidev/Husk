@@ -4,7 +4,7 @@ package android.adservices.customaudience;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CustomAudience implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CustomAudience.class);
     public static final int FLAG_AUCTION_SERVER_REQUEST_DEFAULT = 0;
     public static final int FLAG_AUCTION_SERVER_REQUEST_OMIT_ADS = 1;
     public static double PRIORITY_DEFAULT;

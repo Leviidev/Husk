@@ -10,7 +10,7 @@ public final class StorageStats implements android.os.Parcelable {
     public static final int APP_DATA_TYPE_FILE_TYPE_DM = 4;
     public static final int APP_DATA_TYPE_FILE_TYPE_REFERENCE_PROFILE = 1;
     public static final int APP_DATA_TYPE_LIB = 5;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(StorageStats.class);
     public long apkBytes;
     public long cacheBytes;
     public long codeBytes;

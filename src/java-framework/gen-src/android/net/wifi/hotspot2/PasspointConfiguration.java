@@ -4,7 +4,7 @@ package android.net.wifi.hotspot2;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PasspointConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PasspointConfiguration.class);
     public static final long MAX_HESSID_VALUE = 281474976710655L;
     public static final int MAX_NUMBER_OF_ENTRIES = 16;
     public static final int MAX_NUMBER_OF_OI = 36;

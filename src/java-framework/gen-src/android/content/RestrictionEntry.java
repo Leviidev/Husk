@@ -4,7 +4,7 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class RestrictionEntry implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RestrictionEntry.class);
     public static final int TYPE_BOOLEAN = 1;
     public static final int TYPE_BUNDLE = 7;
     public static final int TYPE_BUNDLE_ARRAY = 8;

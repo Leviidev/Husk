@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextAppearanceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextAppearanceInfo.class);
     public static android.view.inputmethod.TextAppearanceInfo createFromTextView(android.widget.TextView p0) { return new TextAppearanceInfo(); }
     public int describeContents() { return 0; }
     public java.lang.String getFontFeatureSettings() { return (java.lang.String) huskProps.get("FontFeatureSettings"); }

@@ -4,7 +4,7 @@ package android.hardware.camera2.params;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SessionConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SessionConfiguration.class);
     public static final int SESSION_HIGH_SPEED = 1;
     public static final int SESSION_REGULAR = 0;
     public static final int SESSION_SHARED = 2;

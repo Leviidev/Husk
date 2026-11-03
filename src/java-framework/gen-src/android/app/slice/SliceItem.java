@@ -4,7 +4,7 @@ package android.app.slice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SliceItem implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SliceItem.class);
     public static final java.lang.String FORMAT_ACTION = "action";
     public static final java.lang.String FORMAT_BUNDLE = "bundle";
     public static final java.lang.String FORMAT_IMAGE = "image";

@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NetworkEvent extends android.media.metrics.Event implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkEvent.class);
     public static final int NETWORK_TYPE_2G = 4;
     public static final int NETWORK_TYPE_3G = 5;
     public static final int NETWORK_TYPE_4G = 6;

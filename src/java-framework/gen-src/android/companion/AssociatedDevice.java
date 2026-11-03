@@ -4,7 +4,7 @@ package android.companion;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AssociatedDevice implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AssociatedDevice.class);
     public AssociatedDevice(android.os.Parcelable p0) {}
     public int describeContents() { return 0; }
     public android.bluetooth.le.ScanResult getBleDevice() { return (android.bluetooth.le.ScanResult) huskProps.get("BleDevice"); }

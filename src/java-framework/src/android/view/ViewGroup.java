@@ -256,6 +256,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     protected boolean getChildStaticTransformation(View child, android.view.animation.Transformation t) { return false; }
 
     @Override void dispatchAttachedToWindow(husk.ViewRoot root, int visibility) {
+        if (isAttachedToWindow()) return;
         super.dispatchAttachedToWindow(root, visibility);
         for (int i = 0; i < mChildrenCount; i++) mChildren[i].dispatchAttachedToWindow(root, visibility);
     }

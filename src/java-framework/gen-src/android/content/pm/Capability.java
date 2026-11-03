@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Capability implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Capability.class);
     public int describeContents() { return 0; }
     public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

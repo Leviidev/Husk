@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InsertGesture extends android.view.inputmethod.HandwritingGesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InsertGesture.class);
     public int describeContents() { return 0; }
     public android.graphics.PointF getInsertionPoint() { return (android.graphics.PointF) huskProps.get("InsertionPoint"); }
     public java.lang.String getTextToInsert() { return (java.lang.String) huskProps.get("TextToInsert"); }

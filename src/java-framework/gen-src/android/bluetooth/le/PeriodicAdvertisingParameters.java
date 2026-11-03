@@ -4,7 +4,7 @@ package android.bluetooth.le;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PeriodicAdvertisingParameters implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PeriodicAdvertisingParameters.class);
     public int describeContents() { return 0; }
     public boolean getIncludeTxPower() { return (huskProps.get("IncludeTxPower") instanceof Boolean ? (Boolean) huskProps.get("IncludeTxPower") : false); }
     public int getInterval() { return (huskProps.get("Interval") instanceof Integer ? (Integer) huskProps.get("Interval") : 0); }

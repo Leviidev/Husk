@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class SubscriptionInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SubscriptionInfo.class);
     public SubscriptionInfo(int p0, java.lang.String p1, int p2, java.lang.CharSequence p3, java.lang.CharSequence p4, int p5, int p6, java.lang.String p7, int p8, android.graphics.Bitmap p9, java.lang.String p10, java.lang.String p11, java.lang.String p12, boolean p13, android.telephony.UiccAccessRule[] p14, java.lang.String p15) {}
     public SubscriptionInfo(int p0, java.lang.String p1, int p2, java.lang.CharSequence p3, java.lang.CharSequence p4, int p5, int p6, java.lang.String p7, int p8, android.graphics.Bitmap p9, java.lang.String p10, java.lang.String p11, java.lang.String p12, boolean p13, android.telephony.UiccAccessRule[] p14, java.lang.String p15, int p16, boolean p17, java.lang.String p18, boolean p19, int p20, int p21, int p22, java.lang.String p23, android.telephony.UiccAccessRule[] p24, boolean p25) {}
     public SubscriptionInfo(int p0, java.lang.String p1, int p2, java.lang.CharSequence p3, java.lang.CharSequence p4, int p5, int p6, java.lang.String p7, int p8, android.graphics.Bitmap p9, java.lang.String p10, java.lang.String p11, java.lang.String p12, boolean p13, android.telephony.UiccAccessRule[] p14, java.lang.String p15, int p16, boolean p17, java.lang.String p18, boolean p19, int p20, int p21, int p22, java.lang.String p23, android.telephony.UiccAccessRule[] p24, boolean p25, int p26) {}

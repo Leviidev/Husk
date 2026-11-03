@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class LabeledIntent extends android.content.Intent {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LabeledIntent.class);
     public LabeledIntent(android.content.Intent p0, java.lang.String p1, int p2, int p3) { super(); }
     public LabeledIntent(android.content.Intent p0, java.lang.String p1, java.lang.CharSequence p2, int p3) { super(); }
     protected LabeledIntent(android.os.Parcel p0) { super(p0); }

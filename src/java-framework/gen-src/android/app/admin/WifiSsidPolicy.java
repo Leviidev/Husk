@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiSsidPolicy implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiSsidPolicy.class);
     public static final int WIFI_SSID_POLICY_TYPE_ALLOWLIST = 0;
     public static final int WIFI_SSID_POLICY_TYPE_DENYLIST = 1;
     public WifiSsidPolicy(int p0, java.util.Set p1) {}

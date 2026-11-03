@@ -4,7 +4,7 @@ package android.bluetooth.le;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TransportBlock implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TransportBlock.class);
     public TransportBlock(int p0, int p1, int p2, byte[] p3) {}
     public int describeContents() { return 0; }
     public int getOrgId() { return (huskProps.get("OrgId") instanceof Integer ? (Integer) huskProps.get("OrgId") : 0); }

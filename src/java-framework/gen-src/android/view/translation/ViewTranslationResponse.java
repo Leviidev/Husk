@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ViewTranslationResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ViewTranslationResponse.class);
     public int describeContents() { return 0; }
     public android.view.autofill.AutofillId getAutofillId() { return (android.view.autofill.AutofillId) huskProps.get("AutofillId"); }
     public java.util.Set getKeys() { return (huskProps.get("Keys") != null ? (java.util.Set) huskProps.get("Keys") : new java.util.HashSet()); }

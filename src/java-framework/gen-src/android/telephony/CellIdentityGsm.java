@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CellIdentityGsm extends android.telephony.CellIdentity {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellIdentityGsm.class);
     public CellIdentityGsm() { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
     public CellIdentityGsm(int p0, int p1, int p2, int p3, java.lang.String p4, java.lang.String p5, java.lang.String p6, java.lang.String p7, java.util.Collection p8) { super((java.lang.String) null, (int) 0, (android.os.Parcel) null); }
     protected static android.telephony.CellIdentityGsm createFromParcelBody(android.os.Parcel p0) { return new CellIdentityGsm(); }

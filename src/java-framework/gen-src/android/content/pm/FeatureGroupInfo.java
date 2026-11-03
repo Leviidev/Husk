@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FeatureGroupInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FeatureGroupInfo.class);
     public android.content.pm.FeatureInfo[] features;
     public FeatureGroupInfo() {}
     public FeatureGroupInfo(android.content.pm.FeatureGroupInfo p0) {}

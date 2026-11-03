@@ -7,7 +7,7 @@ public final class PrintDocumentInfo implements android.os.Parcelable {
     public static final int CONTENT_TYPE_DOCUMENT = 0;
     public static final int CONTENT_TYPE_PHOTO = 1;
     public static final int CONTENT_TYPE_UNKNOWN = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PrintDocumentInfo.class);
     public static final int PAGE_COUNT_UNKNOWN = -1;
     public int describeContents() { return 0; }
     public int getContentType() { return (huskProps.get("ContentType") instanceof Integer ? (Integer) huskProps.get("ContentType") : 0); }

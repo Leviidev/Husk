@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssClock implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssClock.class);
     public GnssClock() {}
     public int describeContents() { return 0; }
     public double getBiasNanos() { return (huskProps.get("BiasNanos") instanceof Double ? (Double) huskProps.get("BiasNanos") : 0d); }

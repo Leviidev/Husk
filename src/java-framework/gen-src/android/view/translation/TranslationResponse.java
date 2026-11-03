@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TranslationResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TranslationResponse.class);
     public static final int TRANSLATION_STATUS_CONTEXT_UNSUPPORTED = 2;
     public static final int TRANSLATION_STATUS_SUCCESS = 0;
     public static final int TRANSLATION_STATUS_UNKNOWN_ERROR = 1;

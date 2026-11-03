@@ -4,7 +4,7 @@ package android.view.textclassifier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextClassificationSessionId implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextClassificationSessionId.class);
     public TextClassificationSessionId() {}
     public TextClassificationSessionId(java.lang.String p0, android.os.IBinder p1) {}
     public int describeContents() { return 0; }

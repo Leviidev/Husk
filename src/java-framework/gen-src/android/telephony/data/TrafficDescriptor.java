@@ -4,7 +4,7 @@ package android.telephony.data;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TrafficDescriptor implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TrafficDescriptor.class);
     public TrafficDescriptor(java.lang.String p0, byte[] p1) {}
     public int describeContents() { return 0; }
     public java.lang.String getDataNetworkName() { return (java.lang.String) huskProps.get("DataNetworkName"); }

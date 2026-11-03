@@ -44,7 +44,7 @@ public class ShortcutManager {
     ShortcutManager() { this((android.content.Context) null); }
     public static final class ShareShortcutInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ShareShortcutInfo.class);
         public ShareShortcutInfo(android.content.pm.ShortcutInfo p0, android.content.ComponentName p1) {}
         public int describeContents() { return 0; }
         public android.content.pm.ShortcutInfo getShortcutInfo() { return (android.content.pm.ShortcutInfo) huskProps.get("ShortcutInfo"); }

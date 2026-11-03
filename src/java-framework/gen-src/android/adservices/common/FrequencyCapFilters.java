@@ -12,7 +12,7 @@ public final class FrequencyCapFilters implements android.os.Parcelable {
     public static final int AD_EVENT_TYPE_VIEW = 2;
     public static final int AD_EVENT_TYPE_WIN = 0;
     public static final java.lang.String CLICK_EVENTS_FIELD_NAME = "click";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FrequencyCapFilters.class);
     public static final java.lang.String FREQUENCY_CAP_FILTERS_NULL_ELEMENT_ERROR_MESSAGE = "FrequencyCapFilters should not contain null KeyedFrequencyCaps";
     public static final java.lang.String FREQUENCY_CAP_FILTERS_NULL_LIST_ERROR_MESSAGE = "FrequencyCapFilters should not set null list of KeyedFrequencyCaps";
     public static final java.lang.String IMPRESSION_EVENTS_FIELD_NAME = "impression";

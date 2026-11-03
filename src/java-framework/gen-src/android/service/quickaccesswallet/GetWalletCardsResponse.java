@@ -4,7 +4,7 @@ package android.service.quickaccesswallet;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GetWalletCardsResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GetWalletCardsResponse.class);
     public GetWalletCardsResponse(java.util.List p0, int p1) {}
     public int describeContents() { return 0; }
     public int getSelectedIndex() { return (huskProps.get("SelectedIndex") instanceof Integer ? (Integer) huskProps.get("SelectedIndex") : 0); }

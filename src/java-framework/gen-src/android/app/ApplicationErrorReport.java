@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class ApplicationErrorReport implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApplicationErrorReport.class);
     public static final int TYPE_ANR = 2;
     public static final int TYPE_BATTERY = 3;
     public static final int TYPE_CRASH = 1;
@@ -67,7 +67,7 @@ public class ApplicationErrorReport implements android.os.Parcelable {
     }
     public static class ParcelableCrashInfo extends android.app.ApplicationErrorReport.CrashInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ParcelableCrashInfo.class);
         public ParcelableCrashInfo() { super(); }
         public ParcelableCrashInfo(android.os.Parcel p0) { super(p0); }
         public ParcelableCrashInfo(java.lang.Throwable p0) { super(p0); }

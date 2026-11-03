@@ -4,7 +4,7 @@ package android.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UnregisterCredentialDescriptionRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UnregisterCredentialDescriptionRequest.class);
     public UnregisterCredentialDescriptionRequest(android.credentials.CredentialDescription p0) {}
     public UnregisterCredentialDescriptionRequest(java.util.Set p0) {}
     public int describeContents() { return 0; }

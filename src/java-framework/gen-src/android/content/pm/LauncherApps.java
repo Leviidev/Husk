@@ -67,7 +67,7 @@ public class LauncherApps {
     LauncherApps() { this((android.content.Context) null); }
     public static final class AppUsageLimit implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppUsageLimit.class);
         public AppUsageLimit(long p0, long p1) {}
         public int describeContents() { return 0; }
         public long getTotalUsageLimit() { return (huskProps.get("TotalUsageLimit") instanceof Long ? (Long) huskProps.get("TotalUsageLimit") : 0L); }
@@ -100,7 +100,7 @@ public class LauncherApps {
     }
     public static final class PinItemRequest implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PinItemRequest.class);
         public static final int REQUEST_TYPE_APPWIDGET = 2;
         public static final int REQUEST_TYPE_SHORTCUT = 1;
         public PinItemRequest(android.content.pm.IPinItemRequest p0, int p1) {}

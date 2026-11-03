@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssAntennaInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssAntennaInfo.class);
     public int describeContents() { return 0; }
     public double getCarrierFrequencyMHz() { return (huskProps.get("CarrierFrequencyMHz") instanceof Double ? (Double) huskProps.get("CarrierFrequencyMHz") : 0d); }
     public android.location.GnssAntennaInfo.PhaseCenterOffset getPhaseCenterOffset() { return (android.location.GnssAntennaInfo.PhaseCenterOffset) huskProps.get("PhaseCenterOffset"); }
@@ -27,7 +27,7 @@ public final class GnssAntennaInfo implements android.os.Parcelable {
     }
     public static final class PhaseCenterOffset implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PhaseCenterOffset.class);
         public PhaseCenterOffset(double p0, double p1, double p2, double p3, double p4, double p5) {}
         public int describeContents() { return 0; }
         public double getXOffsetMm() { return (huskProps.get("XOffsetMm") instanceof Double ? (Double) huskProps.get("XOffsetMm") : 0d); }
@@ -41,7 +41,7 @@ public final class GnssAntennaInfo implements android.os.Parcelable {
     }
     public static final class SphericalCorrections implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SphericalCorrections.class);
         public SphericalCorrections(double[][] p0, double[][] p1) {}
         public int describeContents() { return 0; }
         public double[][] getCorrectionUncertaintiesArray() { return (double[][]) huskProps.get("CorrectionUncertaintiesArray"); }

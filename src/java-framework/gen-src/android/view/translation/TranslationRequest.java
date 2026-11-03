@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TranslationRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TranslationRequest.class);
     public static final int FLAG_DICTIONARY_RESULT = 2;
     public static final int FLAG_PARTIAL_RESPONSES = 8;
     public static final int FLAG_TRANSLATION_RESULT = 1;

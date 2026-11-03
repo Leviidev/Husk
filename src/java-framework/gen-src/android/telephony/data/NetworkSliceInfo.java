@@ -4,7 +4,7 @@ package android.telephony.data;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NetworkSliceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkSliceInfo.class);
     public static final int MAX_SLICE_DIFFERENTIATOR = 16777214;
     public static final int MAX_SLICE_STATUS = 5;
     public static final int MIN_SLICE_DIFFERENTIATOR = -1;

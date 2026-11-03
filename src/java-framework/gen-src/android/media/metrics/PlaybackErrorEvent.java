@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PlaybackErrorEvent extends android.media.metrics.Event implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PlaybackErrorEvent.class);
     public static final int ERROR_AUDIO_TRACK_INIT_FAILED = 17;
     public static final int ERROR_AUDIO_TRACK_OTHER = 19;
     public static final int ERROR_AUDIO_TRACK_WRITE_FAILED = 18;

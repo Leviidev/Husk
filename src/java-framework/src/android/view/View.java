@@ -371,6 +371,9 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public final void huskAttach(husk.ViewRoot root) { dispatchAttachedToWindow(root, VISIBLE); }
     public final void huskDetach() { dispatchDetachedFromWindow(); }
     void dispatchAttachedToWindow(husk.ViewRoot root, int visibility) {
+        /* already attached: a child the app added while its parent was being attached (RNScreens' TabsContainer) is reached
+           by addView and by the parent's pass both, and must hear onAttachedToWindow once */
+        if (mRoot != null) return;
         mRoot = root;
         if (mLayoutParams != null) mLayoutParams.resolveLayoutDirection(getLayoutDirection());
         mWindowAttachCount++;

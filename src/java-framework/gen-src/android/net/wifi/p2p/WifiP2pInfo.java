@@ -4,7 +4,7 @@ package android.net.wifi.p2p;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WifiP2pInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pInfo.class);
     public boolean groupFormed;
     public java.net.InetAddress groupOwnerAddress;
     public boolean isGroupOwner;

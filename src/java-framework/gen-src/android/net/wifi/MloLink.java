@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MloLink implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MloLink.class);
     public static final int INVALID_MLO_LINK_ID = -1;
     public static final int MAX_MLO_LINK_ID = 15;
     public static final int MIN_MLO_LINK_ID = 0;

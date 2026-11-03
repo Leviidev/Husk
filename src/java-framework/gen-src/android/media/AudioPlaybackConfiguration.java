@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AudioPlaybackConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioPlaybackConfiguration.class);
     public static final java.lang.String EXTRA_PLAYER_EVENT_CHANNEL_MASK = "android.media.extra.PLAYER_EVENT_CHANNEL_MASK";
     public static final java.lang.String EXTRA_PLAYER_EVENT_MUTE = "android.media.extra.PLAYER_EVENT_MUTE";
     public static final java.lang.String EXTRA_PLAYER_EVENT_SAMPLE_RATE = "android.media.extra.PLAYER_EVENT_SAMPLE_RATE";
@@ -75,7 +75,7 @@ public final class AudioPlaybackConfiguration implements android.os.Parcelable {
     AudioPlaybackConfiguration() { this((android.media.PlayerBase.PlayerIdCard) null, (int) 0, (int) 0, (int) 0); }
     public static final class FormatInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FormatInfo.class);
         public FormatInfo(boolean p0, int p1, int p2) {}
         public int describeContents() { return 0; }
         public void writeToParcel(android.os.Parcel p0, int p1) {}

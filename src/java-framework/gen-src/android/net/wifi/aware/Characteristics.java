@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Characteristics implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Characteristics.class);
     public static final java.lang.String KEY_IS_INSTANT_COMMUNICATION_MODE_SUPPORTED = "key_is_instant_communication_mode_supported";
     public static final java.lang.String KEY_MAX_MATCH_FILTER_LENGTH = "key_max_match_filter_length";
     public static final java.lang.String KEY_MAX_NDI_NUMBER = "key_max_ndi_number";

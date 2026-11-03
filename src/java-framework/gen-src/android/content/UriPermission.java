@@ -4,7 +4,7 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UriPermission implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UriPermission.class);
     public static final long INVALID_TIME = -9223372036854775808L;
     public UriPermission(android.net.Uri p0, int p1, long p2) {}
     public UriPermission(android.os.Parcel p0) {}

@@ -4,7 +4,7 @@ package android.service.carrier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MessagePdu implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MessagePdu.class);
     public MessagePdu(java.util.List p0) {}
     public int describeContents() { return 0; }
     public java.util.List getPdus() { return (huskProps.get("Pdus") != null ? (java.util.List) huskProps.get("Pdus") : new java.util.ArrayList()); }

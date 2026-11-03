@@ -4,7 +4,7 @@ package android.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CredentialDescription implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CredentialDescription.class);
     public CredentialDescription(java.lang.String p0, java.util.Set p1, java.util.List p2) {}
     public int describeContents() { return 0; }
     public java.util.List getCredentialEntries() { return (huskProps.get("CredentialEntries") != null ? (java.util.List) huskProps.get("CredentialEntries") : new java.util.ArrayList()); }

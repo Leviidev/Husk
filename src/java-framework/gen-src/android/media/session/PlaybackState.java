@@ -23,7 +23,7 @@ public final class PlaybackState implements android.os.Parcelable {
     public static final long ACTION_SKIP_TO_PREVIOUS = 16L;
     public static final long ACTION_SKIP_TO_QUEUE_ITEM = 4096L;
     public static final long ACTION_STOP = 1L;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PlaybackState.class);
     public static final long PLAYBACK_POSITION_UNKNOWN = -1L;
     public static final int STATE_BUFFERING = 6;
     public static final int STATE_CONNECTING = 8;

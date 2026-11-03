@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class Address implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Address.class);
     public Address(java.util.Locale p0) {}
     public void clearLatitude() {}
     public void clearLongitude() {}

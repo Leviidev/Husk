@@ -4,7 +4,7 @@ package android.app.sdksandbox;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class LoadSdkException extends java.lang.Exception implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LoadSdkException.class);
     public LoadSdkException(int p0, java.lang.String p1) { super(); }
     public LoadSdkException(int p0, java.lang.String p1, java.lang.Throwable p2) { super(); }
     public LoadSdkException(int p0, java.lang.String p1, java.lang.Throwable p2, android.os.Bundle p3) { super(); }

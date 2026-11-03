@@ -4,7 +4,7 @@ package android.adservices.measurement;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WebSourceParams implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WebSourceParams.class);
     public int describeContents() { return 0; }
     public android.net.Uri getRegistrationUri() { return (android.net.Uri) huskProps.get("RegistrationUri"); }
     public boolean isDebugKeyAllowed() { return (huskProps.get("DebugKeyAllowed") instanceof Boolean ? (Boolean) huskProps.get("DebugKeyAllowed") : false); }

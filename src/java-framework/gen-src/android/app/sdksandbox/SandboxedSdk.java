@@ -4,7 +4,7 @@ package android.app.sdksandbox;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SandboxedSdk implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SandboxedSdk.class);
     public SandboxedSdk(android.os.IBinder p0) {}
     public void attachSharedLibraryInfo(android.content.pm.SharedLibraryInfo p0) {}
     public int describeContents() { return 0; }

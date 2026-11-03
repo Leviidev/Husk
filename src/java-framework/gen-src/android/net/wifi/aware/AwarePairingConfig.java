@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AwarePairingConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AwarePairingConfig.class);
     public static final int PAIRING_BOOTSTRAPPING_MAX = 512;
     public static final int PAIRING_BOOTSTRAPPING_NFC_READER = 256;
     public static final int PAIRING_BOOTSTRAPPING_NFC_TAG = 16;

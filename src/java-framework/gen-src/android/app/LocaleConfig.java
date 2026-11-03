@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class LocaleConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LocaleConfig.class);
     public static final int STATUS_NOT_SPECIFIED = 1;
     public static final int STATUS_PARSING_FAILED = 2;
     public static final int STATUS_SUCCESS = 0;

@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FillResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FillResponse.class);
     public static final int FLAG_CREDENTIAL_MANAGER_RESPONSE = 8;
     public static final int FLAG_DELAY_FILL = 4;
     public static final int FLAG_DISABLE_ACTIVITY_ONLY = 2;

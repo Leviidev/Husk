@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TsRequest extends android.media.tv.BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TsRequest.class);
     public TsRequest(int p0, int p1, int p2) { super(); }
     public int describeContents() { return 0; }
     public int getTsPid() { return (huskProps.get("TsPid") instanceof Integer ? (Integer) huskProps.get("TsPid") : 0); }

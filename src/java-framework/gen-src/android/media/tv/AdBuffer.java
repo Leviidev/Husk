@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdBuffer implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdBuffer.class);
     public AdBuffer(int p0, java.lang.String p1, android.os.SharedMemory p2, int p3, int p4, long p5, int p6) {}
     public static android.media.tv.AdBuffer dupAdBuffer(android.media.tv.AdBuffer p0) { return new AdBuffer(); }
     public int describeContents() { return 0; }

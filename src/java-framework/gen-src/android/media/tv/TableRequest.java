@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TableRequest extends android.media.tv.BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TableRequest.class);
     public static final int TABLE_NAME_BAT = 4;
     public static final int TABLE_NAME_CAT = 2;
     public static final int TABLE_NAME_EIT = 6;

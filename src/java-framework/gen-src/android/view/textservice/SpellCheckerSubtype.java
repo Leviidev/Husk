@@ -4,7 +4,7 @@ package android.view.textservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SpellCheckerSubtype implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SpellCheckerSubtype.class);
     public static final int SUBTYPE_ID_NONE = 0;
     public SpellCheckerSubtype(int p0, java.lang.String p1, java.lang.String p2) {}
     public SpellCheckerSubtype(int p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, int p4) {}

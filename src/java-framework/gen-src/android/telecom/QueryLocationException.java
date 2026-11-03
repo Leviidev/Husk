@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class QueryLocationException extends java.lang.RuntimeException implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(QueryLocationException.class);
     public static final int ERROR_NOT_ALLOWED_FOR_NON_EMERGENCY_CONNECTIONS = 4;
     public static final int ERROR_NOT_PERMITTED = 3;
     public static final int ERROR_PREVIOUS_REQUEST_EXISTS = 2;

@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WallpaperColors implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WallpaperColors.class);
     public static final int HINT_FROM_BITMAP = 4;
     public static final int HINT_SUPPORTS_DARK_TEXT = 1;
     public static final int HINT_SUPPORTS_DARK_THEME = 2;

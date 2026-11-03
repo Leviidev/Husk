@@ -4,7 +4,7 @@ package android.adservices.common;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdSelectionSignals implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdSelectionSignals.class);
     public static android.adservices.common.AdSelectionSignals EMPTY;
     public static android.adservices.common.AdSelectionSignals fromString(java.lang.String p0) { return new AdSelectionSignals(); }
     public static android.adservices.common.AdSelectionSignals fromString(java.lang.String p0, boolean p1) { return new AdSelectionSignals(); }

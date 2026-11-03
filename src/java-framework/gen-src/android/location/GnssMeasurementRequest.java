@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssMeasurementRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssMeasurementRequest.class);
     public static final int PASSIVE_INTERVAL = 2147483647;
     public int describeContents() { return 0; }
     public int getIntervalMillis() { return (huskProps.get("IntervalMillis") instanceof Integer ? (Integer) huskProps.get("IntervalMillis") : 0); }

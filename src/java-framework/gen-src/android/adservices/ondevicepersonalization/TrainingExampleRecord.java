@@ -4,7 +4,7 @@ package android.adservices.ondevicepersonalization;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TrainingExampleRecord implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TrainingExampleRecord.class);
     public int describeContents() { return 0; }
     public byte[] getResumptionToken() { return (byte[]) huskProps.get("ResumptionToken"); }
     public byte[] getTrainingExample() { return (byte[]) huskProps.get("TrainingExample"); }

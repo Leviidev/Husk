@@ -188,6 +188,7 @@ public final class ContextImpl extends Context {
         if (cls == null || java.lang.reflect.Modifier.isAbstract(cls.getModifiers())) return null;
         java.lang.reflect.Constructor<?>[] ctors = cls.getDeclaredConstructors();
         java.util.Arrays.sort(ctors, (a, b) -> a.getParameterTypes().length - b.getParameterTypes().length);
+        Throwable last = null;
         for (java.lang.reflect.Constructor<?> k : ctors) {
             Class<?>[] pt = k.getParameterTypes();
             Object[] av = new Object[pt.length];
@@ -204,8 +205,9 @@ public final class ContextImpl extends Context {
                 av[i] = v;
             }
             if (av == null) continue;
-            try { k.setAccessible(true); return k.newInstance(av); } catch (Throwable t) {}
+            try { k.setAccessible(true); return k.newInstance(av); } catch (Throwable t) { last = t instanceof java.lang.reflect.InvocationTargetException && t.getCause() != null ? t.getCause() : t; }
         }
+        if (last != null) android.util.Log.w("Husk", "no " + name + " service: " + cls.getName() + " could not be made", last);
         return null;
     }
 }

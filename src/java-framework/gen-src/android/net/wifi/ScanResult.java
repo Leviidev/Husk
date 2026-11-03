@@ -42,7 +42,7 @@ public final class ScanResult implements android.os.Parcelable {
     public static final int CIPHER_NO_GROUP_ADDRESSED = 1;
     public static final int CIPHER_SMS4 = 5;
     public static final int CIPHER_TKIP = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ScanResult.class);
     public static final long FLAG_80211az_NTB_RESPONDER = 4L;
     public static final long FLAG_80211mc_RESPONDER = 2L;
     public static final long FLAG_PASSPOINT_NETWORK = 1L;
@@ -186,7 +186,7 @@ public final class ScanResult implements android.os.Parcelable {
         public android.net.wifi.ScanResult.Builder setHessid(long p0) { huskProps.put("Hessid", Long.valueOf(p0)); return this; }
         public android.net.wifi.ScanResult.Builder setIs80211McRTTResponder(boolean p0) { huskProps.put("Is80211McRTTResponder", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.ScanResult.Builder setIs80211azNtbRTTResponder(boolean p0) { huskProps.put("Is80211azNtbRTTResponder", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.ScanResult.Builder setIsTwtResponder(boolean p0) { huskProps.put("IsTwtResponder", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.ScanResult.Builder setIsTwtResponder(boolean p0) { huskProps.put("IsTwtResponder", Boolean.valueOf(p0)); huskProps.put("TwtResponder", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.ScanResult.Builder setOsuProviders(byte[] p0) { huskProps.put("OsuProviders", p0); return this; }
         public android.net.wifi.ScanResult.Builder setRangingFrameProtectionRequired(boolean p0) { huskProps.put("RangingFrameProtectionRequired", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.ScanResult.Builder setRssi(int p0) { huskProps.put("Rssi", Integer.valueOf(p0)); return this; }
@@ -196,7 +196,7 @@ public final class ScanResult implements android.os.Parcelable {
     }
     public static class InformationElement implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InformationElement.class);
         public static final int EID_BSS_LOAD = 11;
         public static final int EID_COUNTRY = 7;
         public static final int EID_ERP = 42;

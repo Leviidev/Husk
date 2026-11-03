@@ -7,7 +7,7 @@ public final class GnssCapabilities implements android.os.Parcelable {
     public static final int CAPABILITY_SUPPORTED = 1;
     public static final int CAPABILITY_UNKNOWN = 0;
     public static final int CAPABILITY_UNSUPPORTED = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssCapabilities.class);
     public static final int SUB_HAL_MEASUREMENT_CORRECTIONS_CAPABILITY_EXCESS_PATH_LENGTH = 2;
     public static final int SUB_HAL_MEASUREMENT_CORRECTIONS_CAPABILITY_LOS_SATS = 1;
     public static final int SUB_HAL_MEASUREMENT_CORRECTIONS_CAPABILITY_REFLECTING_PLANE = 4;

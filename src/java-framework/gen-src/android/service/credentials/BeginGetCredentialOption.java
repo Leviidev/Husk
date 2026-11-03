@@ -4,7 +4,7 @@ package android.service.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BeginGetCredentialOption implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BeginGetCredentialOption.class);
     public BeginGetCredentialOption(java.lang.String p0, java.lang.String p1, android.os.Bundle p2) {}
     public int describeContents() { return 0; }
     public android.os.Bundle getCandidateQueryData() { return (android.os.Bundle) huskProps.get("CandidateQueryData"); }

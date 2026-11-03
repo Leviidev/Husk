@@ -11,7 +11,7 @@ public final class ShortcutInfo implements android.os.Parcelable {
     public static final int CLONE_REMOVE_NON_KEY_INFO = 4;
     public static final int CLONE_REMOVE_PERSON = 16;
     public static final int CLONE_REMOVE_RES_NAMES = 8;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ShortcutInfo.class);
     public static final int DISABLED_REASON_APP_CHANGED = 2;
     public static final int DISABLED_REASON_BACKUP_NOT_SUPPORTED = 101;
     public static final int DISABLED_REASON_BY_APP = 1;

@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class NeighboringCellInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NeighboringCellInfo.class);
     public static final int UNKNOWN_CID = -1;
     public static final int UNKNOWN_RSSI = 99;
     public NeighboringCellInfo() {}

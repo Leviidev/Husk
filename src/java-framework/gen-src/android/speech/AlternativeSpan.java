@@ -4,7 +4,7 @@ package android.speech;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AlternativeSpan implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AlternativeSpan.class);
     public AlternativeSpan(int p0, int p1, java.util.List p2) {}
     public int describeContents() { return 0; }
     public java.util.List getAlternatives() { return (huskProps.get("Alternatives") != null ? (java.util.List) huskProps.get("Alternatives") : new java.util.ArrayList()); }

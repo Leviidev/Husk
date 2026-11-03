@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TvInputInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TvInputInfo.class);
     public static final java.lang.String EXTRA_INPUT_ID = "android.media.tv.extra.INPUT_ID";
     public static final int TYPE_COMPONENT = 1004;
     public static final int TYPE_COMPOSITE = 1001;

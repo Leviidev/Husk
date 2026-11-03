@@ -9,7 +9,7 @@ public final class ScanSettings implements android.os.Parcelable {
     public static final int CALLBACK_TYPE_ALL_MATCHES_AUTO_BATCH = 8;
     public static final int CALLBACK_TYPE_FIRST_MATCH = 2;
     public static final int CALLBACK_TYPE_MATCH_LOST = 4;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ScanSettings.class);
     public static final int MATCH_MODE_AGGRESSIVE = 1;
     public static final int MATCH_MODE_STICKY = 2;
     public static final int MATCH_NUM_FEW_ADVERTISEMENT = 2;
@@ -51,7 +51,7 @@ public final class ScanSettings implements android.os.Parcelable {
         public android.bluetooth.le.ScanSettings.Builder setMatchMode(int p0) { huskProps.put("MatchMode", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setNumOfMatches(int p0) { huskProps.put("NumOfMatches", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setPhy(int p0) { huskProps.put("Phy", Integer.valueOf(p0)); return this; }
-        public android.bluetooth.le.ScanSettings.Builder setReportDelay(long p0) { huskProps.put("ReportDelay", Long.valueOf(p0)); return this; }
+        public android.bluetooth.le.ScanSettings.Builder setReportDelay(long p0) { huskProps.put("ReportDelay", Long.valueOf(p0)); huskProps.put("ReportDelayMillis", Long.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setRssiThreshold(int p0) { huskProps.put("RssiThreshold", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setScanMode(int p0) { huskProps.put("ScanMode", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.ScanSettings.Builder setScanResultType(int p0) { huskProps.put("ScanResultType", Integer.valueOf(p0)); return this; }

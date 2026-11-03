@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ApplicationMediaCapabilities implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApplicationMediaCapabilities.class);
     public static android.media.ApplicationMediaCapabilities createFromXml(org.xmlpull.v1.XmlPullParser p0) { return new ApplicationMediaCapabilities(); }
     public int describeContents() { return 0; }
     public java.util.List getSupportedHdrTypes() { return (huskProps.get("SupportedHdrTypes") != null ? (java.util.List) huskProps.get("SupportedHdrTypes") : new java.util.ArrayList()); }

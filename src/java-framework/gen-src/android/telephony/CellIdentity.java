@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class CellIdentity implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellIdentity.class);
     public static final int INVALID_CHANNEL_NUMBER = 2147483647;
     public static final int MCC_LENGTH = 3;
     public static final int MNC_MAX_LENGTH = 3;

@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RouteDiscoveryPreference implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RouteDiscoveryPreference.class);
     public static android.media.RouteDiscoveryPreference EMPTY;
     public int describeContents() { return 0; }
     public void dump(java.io.PrintWriter p0, java.lang.String p1) {}

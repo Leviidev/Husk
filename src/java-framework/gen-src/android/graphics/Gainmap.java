@@ -4,7 +4,7 @@ package android.graphics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Gainmap implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Gainmap.class);
     public static final int GAINMAP_DIRECTION_HDR_TO_SDR = 1;
     public static int GAINMAP_DIRECTION_SDR_TO_HDR;
     public Gainmap(android.graphics.Bitmap p0) {}

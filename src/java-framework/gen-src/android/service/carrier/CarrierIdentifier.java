@@ -4,7 +4,7 @@ package android.service.carrier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class CarrierIdentifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CarrierIdentifier.class);
     public CarrierIdentifier(android.os.Parcel p0) {}
     public CarrierIdentifier(java.lang.String p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.String p5) {}
     public CarrierIdentifier(java.lang.String p0, java.lang.String p1, java.lang.String p2, java.lang.String p3, java.lang.String p4, java.lang.String p5, int p6, int p7) {}

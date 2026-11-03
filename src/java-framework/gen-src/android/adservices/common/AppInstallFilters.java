@@ -4,7 +4,7 @@ package android.adservices.common;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AppInstallFilters implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppInstallFilters.class);
     public static final java.lang.String PACKAGE_NAMES_FIELD_NAME = "package_names";
     public static android.adservices.common.AppInstallFilters fromJson(org.json.JSONObject p0) { return new AppInstallFilters(); }
     public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.window;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InputTransferToken implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InputTransferToken.class);
     public long mNativeObject;
     public InputTransferToken() {}
     public InputTransferToken(android.os.IBinder p0) {}

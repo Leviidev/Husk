@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssSignalType implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssSignalType.class);
     public static android.location.GnssSignalType create(int p0, double p1, java.lang.String p2) { return new GnssSignalType(); }
     public int describeContents() { return 0; }
     public double getCarrierFrequencyHz() { return (huskProps.get("CarrierFrequencyHz") instanceof Double ? (Double) huskProps.get("CarrierFrequencyHz") : 0d); }

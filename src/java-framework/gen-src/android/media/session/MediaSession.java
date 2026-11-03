@@ -92,7 +92,7 @@ public final class MediaSession {
     }
     public static final class QueueItem implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(QueueItem.class);
         public static final int UNKNOWN_ID = -1;
         public QueueItem(android.media.MediaDescription p0, long p1) {}
         public int describeContents() { return 0; }
@@ -103,7 +103,7 @@ public final class MediaSession {
     }
     public static final class Token implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Token.class);
         public Token(int p0, android.media.session.ISessionController p1) {}
         public int describeContents() { return 0; }
         public android.media.session.ISessionController getBinder() { return (android.media.session.ISessionController) huskProps.get("Binder"); }

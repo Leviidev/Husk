@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AudioRecordingConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioRecordingConfiguration.class);
     public AudioRecordingConfiguration(int p0, int p1, int p2, android.media.AudioFormat p3, android.media.AudioFormat p4, int p5, java.lang.String p6) {}
     public AudioRecordingConfiguration(int p0, int p1, int p2, android.media.AudioFormat p3, android.media.AudioFormat p4, int p5, java.lang.String p6, int p7, boolean p8, int p9, android.media.audiofx.AudioEffect.Descriptor[] p10, android.media.audiofx.AudioEffect.Descriptor[] p11) {}
     public static android.media.AudioRecordingConfiguration anonymizedCopy(android.media.AudioRecordingConfiguration p0) { return new AudioRecordingConfiguration(); }

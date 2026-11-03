@@ -4,7 +4,7 @@ package android.service.notification;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Condition implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Condition.class);
     public static final int FLAG_RELEVANT_ALWAYS = 2;
     public static final int FLAG_RELEVANT_NOW = 1;
     public static final int MAX_STRING_LENGTH = 1000;

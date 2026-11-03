@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class BluetoothGattDescriptor implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothGattDescriptor.class);
     public static byte[] DISABLE_NOTIFICATION_VALUE;
     public static byte[] ENABLE_INDICATION_VALUE;
     public static byte[] ENABLE_NOTIFICATION_VALUE;

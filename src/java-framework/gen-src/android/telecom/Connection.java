@@ -245,7 +245,7 @@ public abstract class Connection extends android.telecom.Conferenceable {
     public void unsetConnectionService(android.telecom.ConnectionService p0) {}
     public static final class CallFilteringCompletionInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CallFilteringCompletionInfo.class);
         protected CallFilteringCompletionInfo(android.os.Parcel p0) {}
         public CallFilteringCompletionInfo(boolean p0, boolean p1, android.telecom.CallScreeningService.CallResponse p2, android.content.ComponentName p3) {}
         public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.hardware.biometrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PromptContentViewWithMoreOptionsButton implements android.hardware.biometrics.PromptContentViewParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PromptContentViewWithMoreOptionsButton.class);
     public int describeContents() { return 0; }
     public java.lang.String getDescription() { return (java.lang.String) huskProps.get("Description"); }
     public android.content.DialogInterface.OnClickListener getMoreOptionsButtonListener() { return (android.content.DialogInterface.OnClickListener) huskProps.get("MoreOptionsButtonListener"); }

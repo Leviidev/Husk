@@ -4,7 +4,7 @@ package android.adservices.ondevicepersonalization;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UserData implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UserData.class);
     public int describeContents() { return 0; }
     public java.util.Map getAppInfos() { return (huskProps.get("AppInfos") != null ? (java.util.Map) huskProps.get("AppInfos") : new java.util.HashMap()); }
     public long getAvailableStorageBytes() { return (huskProps.get("AvailableStorageBytes") instanceof Long ? (Long) huskProps.get("AvailableStorageBytes") : 0L); }

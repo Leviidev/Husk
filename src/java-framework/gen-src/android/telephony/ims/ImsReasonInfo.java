@@ -180,7 +180,7 @@ public final class ImsReasonInfo implements android.os.Parcelable {
     public static final int CODE_UT_SS_MODIFIED_TO_USSD = 823;
     public static final int CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION = 1623;
     public static final int CODE_WIFI_LOST = 1407;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ImsReasonInfo.class);
     public static final int EXTRA_CODE_CALL_RETRY_BY_SETTINGS = 3;
     public static final int EXTRA_CODE_CALL_RETRY_EMERGENCY = 4;
     public static final int EXTRA_CODE_CALL_RETRY_NORMAL = 1;

@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DirectAction implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DirectAction.class);
     public static final java.lang.String KEY_ACTIONS_LIST = "actions_list";
     public DirectAction(android.app.DirectAction p0) {}
     public DirectAction(java.lang.String p0, android.os.Bundle p1, android.content.LocusId p2) {}

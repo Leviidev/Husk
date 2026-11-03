@@ -15,7 +15,7 @@ public final class SelectionEvent implements android.os.Parcelable {
     public static final int ACTION_SELECT_ALL = 200;
     public static final int ACTION_SHARE = 104;
     public static final int ACTION_SMART_SHARE = 105;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SelectionEvent.class);
     public static final int EVENT_AUTO_SELECTION = 5;
     public static final int EVENT_SELECTION_MODIFIED = 2;
     public static final int EVENT_SELECTION_STARTED = 1;

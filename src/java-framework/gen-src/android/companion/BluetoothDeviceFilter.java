@@ -4,7 +4,7 @@ package android.companion;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BluetoothDeviceFilter implements android.companion.DeviceFilter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothDeviceFilter.class);
     public int describeContents() { return 0; }
     public java.lang.String getAddress() { return (java.lang.String) huskProps.get("Address"); }
     public java.lang.String getDeviceDisplayName(android.bluetooth.BluetoothDevice p0) { return null; }

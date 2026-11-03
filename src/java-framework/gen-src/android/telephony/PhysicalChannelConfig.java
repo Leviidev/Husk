@@ -10,7 +10,7 @@ public final class PhysicalChannelConfig implements android.os.Parcelable {
     public static final int CONNECTION_PRIMARY_SERVING = 1;
     public static final int CONNECTION_SECONDARY_SERVING = 2;
     public static final int CONNECTION_UNKNOWN = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PhysicalChannelConfig.class);
     public static final int FREQUENCY_UNKNOWN = -1;
     public static final int PHYSICAL_CELL_ID_MAXIMUM_VALUE = 1007;
     public static final int PHYSICAL_CELL_ID_UNKNOWN = -1;

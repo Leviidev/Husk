@@ -4,7 +4,7 @@ package android.widget.inline;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InlinePresentationSpec implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InlinePresentationSpec.class);
     public int describeContents() { return 0; }
     public void filterContentTypes() {}
     public android.util.Size getMaxSize() { return (android.util.Size) huskProps.get("MaxSize"); }

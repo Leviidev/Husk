@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiAwareNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiAwareNetworkSpecifier.class);
     public static final int NETWORK_SPECIFIER_TYPE_IB = 0;
     public static final int NETWORK_SPECIFIER_TYPE_IB_ANY_PEER = 1;
     public static final int NETWORK_SPECIFIER_TYPE_MAX_VALID = 3;

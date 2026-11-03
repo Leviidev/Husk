@@ -4,7 +4,7 @@ package android.service.quicksettings;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Tile implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Tile.class);
     public static final int STATE_ACTIVE = 2;
     public static final int STATE_INACTIVE = 1;
     public static final int STATE_UNAVAILABLE = 0;

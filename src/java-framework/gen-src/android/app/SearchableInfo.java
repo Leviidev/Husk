@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SearchableInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SearchableInfo.class);
     public static android.app.SearchableInfo getActivityMetaData(android.content.Context p0, android.content.pm.ActivityInfo p1, int p2) { return new SearchableInfo(); }
     public boolean autoUrlDetect() { return false; }
     public int describeContents() { return 0; }
@@ -43,7 +43,7 @@ public final class SearchableInfo implements android.os.Parcelable {
     protected SearchableInfo() {}
     public static class ActionKeyInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ActionKeyInfo.class);
         public int describeContents() { return 0; }
         public int getKeyCode() { return (huskProps.get("KeyCode") instanceof Integer ? (Integer) huskProps.get("KeyCode") : 0); }
         public java.lang.String getQueryActionMsg() { return (java.lang.String) huskProps.get("QueryActionMsg"); }

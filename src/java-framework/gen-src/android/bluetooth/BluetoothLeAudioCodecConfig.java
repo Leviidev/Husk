@@ -14,7 +14,7 @@ public final class BluetoothLeAudioCodecConfig implements android.os.Parcelable 
     public static final int CODEC_PRIORITY_DEFAULT = 0;
     public static final int CODEC_PRIORITY_DISABLED = -1;
     public static final int CODEC_PRIORITY_HIGHEST = 1000000;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothLeAudioCodecConfig.class);
     public static final int FRAME_DURATION_10000 = 2;
     public static final int FRAME_DURATION_20000 = 4;
     public static final int FRAME_DURATION_7500 = 1;

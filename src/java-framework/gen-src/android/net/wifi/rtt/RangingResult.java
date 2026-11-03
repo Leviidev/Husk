@@ -4,7 +4,7 @@ package android.net.wifi.rtt;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RangingResult implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RangingResult.class);
     public static final int STATUS_FAIL = 1;
     public static final int STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC = 2;
     public static final int STATUS_SUCCESS = 0;

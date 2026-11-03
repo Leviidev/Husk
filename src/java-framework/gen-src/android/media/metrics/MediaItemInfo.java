@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MediaItemInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MediaItemInfo.class);
     public static final long DATA_TYPE_AUDIO = 4L;
     public static final long DATA_TYPE_DEPTH = 16L;
     public static final long DATA_TYPE_GAIN_MAP = 32L;

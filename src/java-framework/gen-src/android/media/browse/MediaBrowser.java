@@ -36,7 +36,7 @@ public final class MediaBrowser {
     }
     public static class MediaItem implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MediaItem.class);
         public static final int FLAG_BROWSABLE = 1;
         public static final int FLAG_PLAYABLE = 2;
         public MediaItem(android.media.MediaDescription p0, int p1) {}

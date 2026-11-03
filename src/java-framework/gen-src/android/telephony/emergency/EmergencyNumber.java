@@ -4,7 +4,7 @@ package android.telephony.emergency;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class EmergencyNumber implements android.os.Parcelable, java.lang.Comparable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(EmergencyNumber.class);
     public static final int EMERGENCY_CALL_ROUTING_EMERGENCY = 1;
     public static final int EMERGENCY_CALL_ROUTING_NORMAL = 2;
     public static final int EMERGENCY_CALL_ROUTING_UNKNOWN = 0;

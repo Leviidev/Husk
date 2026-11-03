@@ -4,7 +4,7 @@ package android.accessibilityservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AccessibilityGestureEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityGestureEvent.class);
     public AccessibilityGestureEvent(int p0, int p1) {}
     public AccessibilityGestureEvent(int p0, int p1, java.util.List p2) {}
     public static java.lang.String gestureIdToString(int p0) { return null; }

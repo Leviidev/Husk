@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FactoryResetProtectionPolicy implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FactoryResetProtectionPolicy.class);
     public int describeContents() { return 0; }
     public void dump(android.util.IndentingPrintWriter p0) {}
     public java.util.List getFactoryResetProtectionAccounts() { return (huskProps.get("FactoryResetProtectionAccounts") != null ? (java.util.List) huskProps.get("FactoryResetProtectionAccounts") : new java.util.ArrayList()); }

@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TranslationCapability implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TranslationCapability.class);
     public static final int STATE_AVAILABLE_TO_DOWNLOAD = 1;
     public static final int STATE_DOWNLOADING = 2;
     public static final int STATE_NOT_AVAILABLE = 4;

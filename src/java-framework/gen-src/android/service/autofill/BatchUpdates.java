@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BatchUpdates implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BatchUpdates.class);
     public int describeContents() { return 0; }
     public java.util.ArrayList getTransformations() { return (huskProps.get("Transformations") != null ? (java.util.ArrayList) huskProps.get("Transformations") : new java.util.ArrayList()); }
     public android.widget.RemoteViews getUpdates() { return (android.widget.RemoteViews) huskProps.get("Updates"); }

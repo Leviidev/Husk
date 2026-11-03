@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CallAudioState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CallAudioState.class);
     public static final int ROUTE_ALL = 31;
     public static final int ROUTE_BLUETOOTH = 2;
     public static final int ROUTE_EARPIECE = 1;

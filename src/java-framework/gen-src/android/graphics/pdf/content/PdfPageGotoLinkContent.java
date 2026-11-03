@@ -4,7 +4,7 @@ package android.graphics.pdf.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PdfPageGotoLinkContent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PdfPageGotoLinkContent.class);
     public PdfPageGotoLinkContent(java.util.List p0, android.graphics.pdf.content.PdfPageGotoLinkContent.Destination p1) {}
     public int describeContents() { return 0; }
     public java.util.List getBounds() { return (huskProps.get("Bounds") != null ? (java.util.List) huskProps.get("Bounds") : new java.util.ArrayList()); }
@@ -13,7 +13,7 @@ public final class PdfPageGotoLinkContent implements android.os.Parcelable {
     PdfPageGotoLinkContent() { this((java.util.List) null, (android.graphics.pdf.content.PdfPageGotoLinkContent.Destination) null); }
     public static final class Destination implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Destination.class);
         public Destination(int p0, float p1, float p2, float p3) {}
         public int describeContents() { return 0; }
         public int getPageNumber() { return (huskProps.get("PageNumber") instanceof Integer ? (Integer) huskProps.get("PageNumber") : 0); }

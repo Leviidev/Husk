@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BluetoothClass implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothClass.class);
     public static final int ERROR = -16777216;
     public static final int PROFILE_A2DP = 1;
     public static final int PROFILE_A2DP_SINK = 6;

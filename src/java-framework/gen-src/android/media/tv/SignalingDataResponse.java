@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SignalingDataResponse extends android.media.tv.BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalingDataResponse.class);
     public SignalingDataResponse(int p0, int p1, int p2, java.util.List p3, java.util.List p4) { super(); }
     public int describeContents() { return 0; }
     public java.util.List getSignalingDataInfoList() { return (huskProps.get("SignalingDataInfoList") != null ? (java.util.List) huskProps.get("SignalingDataInfoList") : new java.util.ArrayList()); }

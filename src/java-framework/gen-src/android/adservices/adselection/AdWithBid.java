@@ -4,7 +4,7 @@ package android.adservices.adselection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdWithBid implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdWithBid.class);
     public AdWithBid(android.adservices.common.AdData p0, double p1) {}
     public int describeContents() { return 0; }
     public android.adservices.common.AdData getAdData() { return (android.adservices.common.AdData) huskProps.get("AdData"); }

@@ -65,7 +65,7 @@ public class SecurityLog {
     public static int writeEvent(int p0, java.lang.Object[] p1) { return 0; }
     public static final class SecurityEvent implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SecurityEvent.class);
         public SecurityEvent(long p0, byte[] p1) {}
         public int describeContents() { return 0; }
         public boolean eventEquals(android.app.admin.SecurityLog.SecurityEvent p0) { return false; }

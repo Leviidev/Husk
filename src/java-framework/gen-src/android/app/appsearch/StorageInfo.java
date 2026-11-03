@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class StorageInfo extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(StorageInfo.class);
     public int getAliveDocumentsCount() { return (huskProps.get("AliveDocumentsCount") instanceof Integer ? (Integer) huskProps.get("AliveDocumentsCount") : 0); }
     public int getAliveNamespacesCount() { return (huskProps.get("AliveNamespacesCount") instanceof Integer ? (Integer) huskProps.get("AliveNamespacesCount") : 0); }
     public int getBlobsCount() { return (huskProps.get("BlobsCount") instanceof Integer ? (Integer) huskProps.get("BlobsCount") : 0); }

@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class ReportUsageRequest extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ReportUsageRequest.class);
     public java.lang.String getDocumentId() { return (java.lang.String) huskProps.get("DocumentId"); }
     public java.lang.String getNamespace() { return (java.lang.String) huskProps.get("Namespace"); }
     public long getUsageTimestampMillis() { return (huskProps.get("UsageTimestampMillis") instanceof Long ? (Long) huskProps.get("UsageTimestampMillis") : 0L); }

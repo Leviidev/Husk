@@ -5,7 +5,7 @@ package android.view.contentcapture;
 public final class ContentCaptureCondition implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.view.contentcapture.ContentCaptureCondition CONDITION_ENABLE_EXPORTING_VIRTUAL_CHILDREN;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ContentCaptureCondition.class);
     public static final int FLAG_IS_REGEX = 2;
     public ContentCaptureCondition(android.content.LocusId p0, int p1) {}
     public int describeContents() { return 0; }

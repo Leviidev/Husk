@@ -4,7 +4,7 @@ package android.view.contentcapture;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ContentCaptureSessionId implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ContentCaptureSessionId.class);
     public ContentCaptureSessionId(int p0) {}
     public int describeContents() { return 0; }
     public void dump(java.io.PrintWriter p0) {}

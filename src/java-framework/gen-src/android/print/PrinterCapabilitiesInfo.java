@@ -4,7 +4,7 @@ package android.print;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PrinterCapabilitiesInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PrinterCapabilitiesInfo.class);
     public static final int DEFAULT_UNDEFINED = -1;
     public PrinterCapabilitiesInfo() {}
     public PrinterCapabilitiesInfo(android.print.PrinterCapabilitiesInfo p0) {}

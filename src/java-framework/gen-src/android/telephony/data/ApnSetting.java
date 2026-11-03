@@ -9,7 +9,7 @@ public class ApnSetting implements android.os.Parcelable {
     public static final int AUTH_TYPE_PAP = 1;
     public static final int AUTH_TYPE_PAP_OR_CHAP = 3;
     public static final int AUTH_TYPE_UNKNOWN = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApnSetting.class);
     public static final int INFRASTRUCTURE_CELLULAR = 1;
     public static final int INFRASTRUCTURE_SATELLITE = 2;
     public static final int MVNO_TYPE_GID = 2;

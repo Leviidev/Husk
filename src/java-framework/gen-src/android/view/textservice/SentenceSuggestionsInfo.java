@@ -4,7 +4,7 @@ package android.view.textservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SentenceSuggestionsInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SentenceSuggestionsInfo.class);
     public SentenceSuggestionsInfo(android.os.Parcel p0) {}
     public SentenceSuggestionsInfo(android.view.textservice.SuggestionsInfo[] p0, int[] p1, int[] p2) {}
     public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiAwareDataPathSecurityConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiAwareDataPathSecurityConfig.class);
     public WifiAwareDataPathSecurityConfig(int p0, byte[] p1, byte[] p2, java.lang.String p3) {}
     public int describeContents() { return 0; }
     public int getCipherSuite() { return (huskProps.get("CipherSuite") instanceof Integer ? (Integer) huskProps.get("CipherSuite") : 0); }

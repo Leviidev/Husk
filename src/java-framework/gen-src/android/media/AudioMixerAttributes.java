@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AudioMixerAttributes implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioMixerAttributes.class);
     public static final int MIXER_BEHAVIOR_BIT_PERFECT = 1;
     public static int MIXER_BEHAVIOR_DEFAULT;
     public int describeContents() { return 0; }

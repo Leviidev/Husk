@@ -6,7 +6,7 @@ public final class ProviderProperties implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final int ACCURACY_COARSE = 2;
     public static final int ACCURACY_FINE = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ProviderProperties.class);
     public static final int POWER_USAGE_HIGH = 3;
     public static final int POWER_USAGE_LOW = 1;
     public static final int POWER_USAGE_MEDIUM = 2;

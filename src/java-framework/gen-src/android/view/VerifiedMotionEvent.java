@@ -4,7 +4,7 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VerifiedMotionEvent extends android.view.VerifiedInputEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VerifiedMotionEvent.class);
     public VerifiedMotionEvent(int p0, long p1, int p2, int p3, float p4, float p5, int p6, long p7, int p8, int p9, int p10) { super((android.os.Parcel) null, (int) 0); }
     public int describeContents() { return 0; }
     public int getActionMasked() { return (huskProps.get("ActionMasked") instanceof Integer ? (Integer) huskProps.get("ActionMasked") : 0); }

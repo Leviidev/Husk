@@ -4,7 +4,7 @@ package android.hardware.lights;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Light implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Light.class);
     public static final int LIGHT_CAPABILITY_BRIGHTNESS = 1;
     public static final int LIGHT_CAPABILITY_COLOR_RGB = 2;
     public static final int LIGHT_CAPABILITY_RGB = 0;

@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WpsInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WpsInfo.class);
     public static final int DISPLAY = 1;
     public static final int INVALID = 4;
     public static final int KEYPAD = 2;

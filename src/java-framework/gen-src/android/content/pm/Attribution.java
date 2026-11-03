@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Attribution implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Attribution.class);
     public Attribution(java.lang.String p0, int p1) {}
     public int describeContents() { return 0; }
     public int getLabel() { return (huskProps.get("Label") instanceof Integer ? (Integer) huskProps.get("Label") : 0); }

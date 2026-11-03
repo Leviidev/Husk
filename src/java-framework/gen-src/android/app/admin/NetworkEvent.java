@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class NetworkEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkEvent.class);
     public int describeContents() { return 0; }
     public long getId() { return (huskProps.get("Id") instanceof Long ? (Long) huskProps.get("Id") : 0L); }
     public java.lang.String getPackageName() { return (java.lang.String) huskProps.get("PackageName"); }

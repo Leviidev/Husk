@@ -4,7 +4,7 @@ package android.adservices.ondevicepersonalization;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AppInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppInfo.class);
     public AppInfo(boolean p0) {}
     public int describeContents() { return 0; }
     public boolean isInstalled() { return (huskProps.get("Installed") instanceof Boolean ? (Boolean) huskProps.get("Installed") : false); }

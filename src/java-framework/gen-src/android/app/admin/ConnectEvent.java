@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ConnectEvent extends android.app.admin.NetworkEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConnectEvent.class);
     public ConnectEvent(java.lang.String p0, int p1, java.lang.String p2, long p3) { super(); }
     public int describeContents() { return 0; }
     public java.net.InetAddress getInetAddress() { return (java.net.InetAddress) huskProps.get("InetAddress"); }

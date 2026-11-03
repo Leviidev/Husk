@@ -12,7 +12,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
     protected VolumeShaper() {}
     public static final class Configuration implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Configuration.class);
         public static android.media.VolumeShaper.Configuration CUBIC_RAMP;
         public static final int INTERPOLATOR_TYPE_CUBIC = 2;
         public static final int INTERPOLATOR_TYPE_CUBIC_MONOTONIC = 3;
@@ -55,7 +55,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
     }
     public static final class Operation implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Operation.class);
         public static android.media.VolumeShaper.Operation PLAY;
         public static android.media.VolumeShaper.Operation REVERSE;
         public static android.media.VolumeShaper.Operation fromParcelable(android.media.VolumeShaperOperation p0) { return new Operation(); }
@@ -78,7 +78,7 @@ public final class VolumeShaper implements java.lang.AutoCloseable {
     }
     public static final class State implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(State.class);
         public static android.media.VolumeShaper.State fromParcelable(android.media.VolumeShaperState p0) { return new State(); }
         public int describeContents() { return 0; }
         public float getVolume() { return (huskProps.get("Volume") instanceof Float ? (Float) huskProps.get("Volume") : 0f); }

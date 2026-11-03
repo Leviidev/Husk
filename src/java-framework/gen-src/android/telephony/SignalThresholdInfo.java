@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SignalThresholdInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalThresholdInfo.class);
     public static final int HYSTERESIS_DB_MINIMUM = 0;
     public static final int HYSTERESIS_MS_DISABLED = 0;
     public static final int MAXIMUM_NUMBER_OF_THRESHOLDS_ALLOWED = 4;
@@ -54,7 +54,7 @@ public final class SignalThresholdInfo implements android.os.Parcelable {
         public android.telephony.SignalThresholdInfo build() { android.telephony.SignalThresholdInfo x = new android.telephony.SignalThresholdInfo(); x.huskProps.putAll(huskProps); return x; }
         public android.telephony.SignalThresholdInfo.Builder setHysteresisDb(int p0) { huskProps.put("HysteresisDb", Integer.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setHysteresisMs(int p0) { huskProps.put("HysteresisMs", Integer.valueOf(p0)); return this; }
-        public android.telephony.SignalThresholdInfo.Builder setIsEnabled(boolean p0) { huskProps.put("IsEnabled", Boolean.valueOf(p0)); return this; }
+        public android.telephony.SignalThresholdInfo.Builder setIsEnabled(boolean p0) { huskProps.put("IsEnabled", Boolean.valueOf(p0)); huskProps.put("Enabled", Boolean.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setRadioAccessNetworkType(int p0) { huskProps.put("RadioAccessNetworkType", Integer.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setSignalMeasurementType(int p0) { huskProps.put("SignalMeasurementType", Integer.valueOf(p0)); return this; }
         public android.telephony.SignalThresholdInfo.Builder setThresholds(int[] p0) { huskProps.put("Thresholds", p0); return this; }

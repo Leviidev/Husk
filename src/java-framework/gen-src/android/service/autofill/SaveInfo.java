@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SaveInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SaveInfo.class);
     public static final int FLAG_DELAY_SAVE = 4;
     public static final int FLAG_DONT_SAVE_ON_FINISH = 2;
     public static final int FLAG_SAVE_ON_ALL_VIEWS_INVISIBLE = 1;

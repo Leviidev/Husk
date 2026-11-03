@@ -79,7 +79,7 @@ public final class CloudMediaProviderContract {
     }
     public static final class Capabilities implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Capabilities.class);
         public int describeContents() { return 0; }
         public boolean isAlbumsAsCategoryEnabled() { return (huskProps.get("AlbumsAsCategoryEnabled") instanceof Boolean ? (Boolean) huskProps.get("AlbumsAsCategoryEnabled") : false); }
         public boolean isMediaCategoriesEnabled() { return (huskProps.get("MediaCategoriesEnabled") instanceof Boolean ? (Boolean) huskProps.get("MediaCategoriesEnabled") : false); }

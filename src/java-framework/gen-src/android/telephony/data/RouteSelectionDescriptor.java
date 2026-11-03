@@ -4,7 +4,7 @@ package android.telephony.data;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RouteSelectionDescriptor implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RouteSelectionDescriptor.class);
     public static final int MAX_ROUTE_PRECEDENCE = 255;
     public static final int MAX_ROUTE_SSC_MODE = 3;
     public static final int MIN_ROUTE_PRECEDENCE = 0;

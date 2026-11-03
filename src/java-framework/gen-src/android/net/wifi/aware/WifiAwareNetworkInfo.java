@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiAwareNetworkInfo implements android.net.TransportInfo, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiAwareNetworkInfo.class);
     public WifiAwareNetworkInfo() {}
     public WifiAwareNetworkInfo(java.net.Inet6Address p0) {}
     public WifiAwareNetworkInfo(java.net.Inet6Address p0, int p1, int p2, java.util.List p3) {}

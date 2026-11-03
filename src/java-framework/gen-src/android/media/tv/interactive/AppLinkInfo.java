@@ -4,7 +4,7 @@ package android.media.tv.interactive;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AppLinkInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppLinkInfo.class);
     public AppLinkInfo(java.lang.String p0, java.lang.String p1, java.lang.String p2) {}
     public int describeContents() { return 0; }
     public android.content.ComponentName getComponentName() { return (android.content.ComponentName) huskProps.get("ComponentName"); }

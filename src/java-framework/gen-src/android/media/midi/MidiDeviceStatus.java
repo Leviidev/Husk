@@ -4,7 +4,7 @@ package android.media.midi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MidiDeviceStatus implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MidiDeviceStatus.class);
     public MidiDeviceStatus(android.media.midi.MidiDeviceInfo p0) {}
     public MidiDeviceStatus(android.media.midi.MidiDeviceInfo p0, boolean[] p1, int[] p2) {}
     public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.view.displayhash;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VerifiedDisplayHash implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VerifiedDisplayHash.class);
     public VerifiedDisplayHash(long p0, android.graphics.Rect p1, java.lang.String p2, byte[] p3) {}
     public int describeContents() { return 0; }
     public android.graphics.Rect getBoundsInWindow() { return (android.graphics.Rect) huskProps.get("BoundsInWindow"); }

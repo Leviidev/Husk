@@ -4,7 +4,7 @@ package android.net.wifi.p2p;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WifiP2pGroup implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pGroup.class);
     public static final int NETWORK_ID_PERSISTENT = -2;
     public static final int NETWORK_ID_TEMPORARY = -1;
     public static final int SECURITY_TYPE_UNKNOWN = -1;

@@ -4,7 +4,7 @@ package android.window;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TrustedPresentationThresholds implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TrustedPresentationThresholds.class);
     public TrustedPresentationThresholds(float p0, float p1, int p2) {}
     public int describeContents() { return 0; }
     public float getMinAlpha() { return (huskProps.get("MinAlpha") instanceof Float ? (Float) huskProps.get("MinAlpha") : 0f); }

@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SharedMemory implements android.os.Parcelable, java.io.Closeable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SharedMemory.class);
     public static android.os.SharedMemory create(java.lang.String p0, int p1) { return new SharedMemory(); }
     public static android.os.SharedMemory fromFileDescriptor(android.os.ParcelFileDescriptor p0) { return new SharedMemory(); }
     public static void unmap(java.nio.ByteBuffer p0) {}

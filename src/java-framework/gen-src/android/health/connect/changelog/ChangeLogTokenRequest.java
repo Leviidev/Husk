@@ -4,7 +4,7 @@ package android.health.connect.changelog;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ChangeLogTokenRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ChangeLogTokenRequest.class);
     public int describeContents() { return 0; }
     public java.util.Set getDataOriginFilters() { return (huskProps.get("DataOriginFilters") != null ? (java.util.Set) huskProps.get("DataOriginFilters") : new java.util.HashSet()); }
     public java.util.Set getMedicalResourceTypes() { return (huskProps.get("MedicalResourceTypes") != null ? (java.util.Set) huskProps.get("MedicalResourceTypes") : new java.util.HashSet()); }

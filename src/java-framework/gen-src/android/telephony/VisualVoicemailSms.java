@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VisualVoicemailSms implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VisualVoicemailSms.class);
     public int describeContents() { return 0; }
     public android.os.Bundle getFields() { return (android.os.Bundle) huskProps.get("Fields"); }
     public java.lang.String getMessageBody() { return (java.lang.String) huskProps.get("MessageBody"); }

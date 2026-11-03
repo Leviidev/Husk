@@ -11,7 +11,7 @@ public class MediaDescription implements android.os.Parcelable {
     public static final long BT_FOLDER_TYPE_PLAYLISTS = 5L;
     public static final long BT_FOLDER_TYPE_TITLES = 1L;
     public static final long BT_FOLDER_TYPE_YEARS = 6L;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MediaDescription.class);
     public static final java.lang.String EXTRA_BT_FOLDER_TYPE = "android.media.extra.BT_FOLDER_TYPE";
     public int describeContents() { return 0; }
     public java.lang.CharSequence getDescription() { return (java.lang.CharSequence) huskProps.get("Description"); }

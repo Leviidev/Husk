@@ -4,7 +4,7 @@ package android.view.textservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SuggestionsInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SuggestionsInfo.class);
     public static final int RESULT_ATTR_DONT_SHOW_UI_FOR_SUGGESTIONS = 16;
     public static final int RESULT_ATTR_HAS_RECOMMENDED_SUGGESTIONS = 4;
     public static final int RESULT_ATTR_IN_THE_DICTIONARY = 1;

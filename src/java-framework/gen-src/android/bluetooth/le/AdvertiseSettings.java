@@ -11,7 +11,7 @@ public final class AdvertiseSettings implements android.os.Parcelable {
     public static final int ADVERTISE_TX_POWER_LOW = 1;
     public static final int ADVERTISE_TX_POWER_MEDIUM = 2;
     public static final int ADVERTISE_TX_POWER_ULTRA_LOW = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdvertiseSettings.class);
     public int describeContents() { return 0; }
     public int getMode() { return (huskProps.get("Mode") instanceof Integer ? (Integer) huskProps.get("Mode") : 0); }
     public int getOwnAddressType() { return (huskProps.get("OwnAddressType") instanceof Integer ? (Integer) huskProps.get("OwnAddressType") : 0); }
@@ -25,7 +25,7 @@ public final class AdvertiseSettings implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public android.bluetooth.le.AdvertiseSettings build() { android.bluetooth.le.AdvertiseSettings x = new android.bluetooth.le.AdvertiseSettings(); x.huskProps.putAll(huskProps); return x; }
-        public android.bluetooth.le.AdvertiseSettings.Builder setAdvertiseMode(int p0) { huskProps.put("AdvertiseMode", Integer.valueOf(p0)); return this; }
+        public android.bluetooth.le.AdvertiseSettings.Builder setAdvertiseMode(int p0) { huskProps.put("AdvertiseMode", Integer.valueOf(p0)); huskProps.put("Mode", Integer.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseSettings.Builder setConnectable(boolean p0) { huskProps.put("Connectable", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseSettings.Builder setDiscoverable(boolean p0) { huskProps.put("Discoverable", Boolean.valueOf(p0)); return this; }
         public android.bluetooth.le.AdvertiseSettings.Builder setOwnAddressType(int p0) { huskProps.put("OwnAddressType", Integer.valueOf(p0)); return this; }

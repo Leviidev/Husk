@@ -4,7 +4,7 @@ package android.net.wifi.p2p;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiP2pDiscoveryConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pDiscoveryConfig.class);
     public int describeContents() { return 0; }
     public int getFrequencyMhz() { return (huskProps.get("FrequencyMhz") instanceof Integer ? (Integer) huskProps.get("FrequencyMhz") : 0); }
     public int getScanType() { return (huskProps.get("ScanType") instanceof Integer ? (Integer) huskProps.get("ScanType") : 0); }

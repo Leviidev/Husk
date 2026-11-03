@@ -4,7 +4,7 @@ package android.companion;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiDeviceFilter implements android.companion.DeviceFilter {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiDeviceFilter.class);
     public int describeContents() { return 0; }
     public android.net.MacAddress getBssid() { return (android.net.MacAddress) huskProps.get("Bssid"); }
     public android.net.MacAddress getBssidMask() { return (android.net.MacAddress) huskProps.get("BssidMask"); }

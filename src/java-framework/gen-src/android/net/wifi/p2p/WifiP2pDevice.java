@@ -6,7 +6,7 @@ public class WifiP2pDevice implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final int AVAILABLE = 3;
     public static final int CONNECTED = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pDevice.class);
     public static final int FAILED = 2;
     public static final int INVITED = 1;
     public static final int UNAVAILABLE = 4;

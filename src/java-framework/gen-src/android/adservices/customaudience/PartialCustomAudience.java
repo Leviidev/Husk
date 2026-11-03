@@ -4,7 +4,7 @@ package android.adservices.customaudience;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PartialCustomAudience implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PartialCustomAudience.class);
     public int describeContents() { return 0; }
     public java.time.Instant getActivationTime() { return (java.time.Instant) huskProps.get("ActivationTime"); }
     public java.time.Instant getExpirationTime() { return (java.time.Instant) huskProps.get("ExpirationTime"); }

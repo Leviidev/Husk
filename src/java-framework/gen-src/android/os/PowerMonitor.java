@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PowerMonitor implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PowerMonitor.class);
     public static final int POWER_MONITOR_TYPE_CONSUMER = 0;
     public static final int POWER_MONITOR_TYPE_MEASUREMENT = 1;
     public int index;

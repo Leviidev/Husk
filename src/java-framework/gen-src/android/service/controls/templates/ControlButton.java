@@ -4,7 +4,7 @@ package android.service.controls.templates;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ControlButton implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ControlButton.class);
     public ControlButton(boolean p0, java.lang.CharSequence p1) {}
     public int describeContents() { return 0; }
     public java.lang.CharSequence getActionDescription() { return (java.lang.CharSequence) huskProps.get("ActionDescription"); }

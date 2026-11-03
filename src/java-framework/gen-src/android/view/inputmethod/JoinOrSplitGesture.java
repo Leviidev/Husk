@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class JoinOrSplitGesture extends android.view.inputmethod.HandwritingGesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(JoinOrSplitGesture.class);
     public int describeContents() { return 0; }
     public android.graphics.PointF getJoinOrSplitPoint() { return (android.graphics.PointF) huskProps.get("JoinOrSplitPoint"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

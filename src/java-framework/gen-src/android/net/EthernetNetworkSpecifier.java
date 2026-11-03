@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class EthernetNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(EthernetNetworkSpecifier.class);
     public EthernetNetworkSpecifier(java.lang.String p0) { super(); }
     public EthernetNetworkSpecifier(java.lang.String p0, android.net.MacAddress p1) { super(); }
     public boolean canBeSatisfiedBy(android.net.NetworkSpecifier p0) { return false; }

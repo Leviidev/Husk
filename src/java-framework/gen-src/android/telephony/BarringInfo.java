@@ -14,7 +14,7 @@ public final class BarringInfo implements android.os.Parcelable {
     public static final int BARRING_SERVICE_TYPE_MO_SIGNALLING = 3;
     public static final int BARRING_SERVICE_TYPE_PS_SERVICE = 1;
     public static final int BARRING_SERVICE_TYPE_SMS = 9;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BarringInfo.class);
     public BarringInfo() {}
     public BarringInfo(android.os.Parcel p0) {}
     public BarringInfo(android.telephony.CellIdentity p0, android.util.SparseArray p1) {}
@@ -29,7 +29,7 @@ public final class BarringInfo implements android.os.Parcelable {
         public static final int BARRING_TYPE_NONE = 0;
         public static final int BARRING_TYPE_UNCONDITIONAL = 2;
         public static final int BARRING_TYPE_UNKNOWN = -1;
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BarringServiceInfo.class);
         public BarringServiceInfo(int p0) {}
         public BarringServiceInfo(int p0, boolean p1, int p2, int p3) {}
         public BarringServiceInfo(android.os.Parcel p0) {}

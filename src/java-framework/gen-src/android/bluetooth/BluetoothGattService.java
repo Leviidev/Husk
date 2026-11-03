@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class BluetoothGattService implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothGattService.class);
     public static final int SERVICE_TYPE_PRIMARY = 0;
     public static final int SERVICE_TYPE_SECONDARY = 1;
     protected java.util.List mCharacteristics;

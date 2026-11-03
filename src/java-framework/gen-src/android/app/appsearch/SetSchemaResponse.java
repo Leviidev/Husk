@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SetSchemaResponse extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SetSchemaResponse.class);
     public java.util.Set getDeletedTypes() { return (huskProps.get("DeletedTypes") != null ? (java.util.Set) huskProps.get("DeletedTypes") : new java.util.HashSet()); }
     public java.util.Set getIncompatibleTypes() { return (huskProps.get("IncompatibleTypes") != null ? (java.util.Set) huskProps.get("IncompatibleTypes") : new java.util.HashSet()); }
     public java.util.Set getMigratedTypes() { return (huskProps.get("MigratedTypes") != null ? (java.util.Set) huskProps.get("MigratedTypes") : new java.util.HashSet()); }
@@ -27,7 +27,7 @@ public abstract class SetSchemaResponse extends android.app.appsearch.safeparcel
     }
     public static abstract class MigrationFailure extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MigrationFailure.class);
         public MigrationFailure(java.lang.String p0, java.lang.String p1, java.lang.String p2, android.app.appsearch.AppSearchResult p3) { super(); }
         public android.app.appsearch.AppSearchResult getAppSearchResult() { return (android.app.appsearch.AppSearchResult) huskProps.get("AppSearchResult"); }
         public java.lang.String getDocumentId() { return (java.lang.String) huskProps.get("DocumentId"); }

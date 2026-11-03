@@ -4,7 +4,7 @@ package android.view.contentcapture;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DataShareRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DataShareRequest.class);
     public DataShareRequest(android.content.LocusId p0, java.lang.String p1) {}
     public int describeContents() { return 0; }
     public android.content.LocusId getLocusId() { return (android.content.LocusId) huskProps.get("LocusId"); }

@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BroadcastInfoRequest.class);
     public static final int REQUEST_OPTION_AUTO_UPDATE = 1;
     public static final int REQUEST_OPTION_ONESHOT = 3;
     public static final int REQUEST_OPTION_ONEWAY = 2;

@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DeleteRangeGesture extends android.view.inputmethod.PreviewableHandwritingGesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DeleteRangeGesture.class);
     public int describeContents() { return 0; }
     public android.graphics.RectF getDeletionEndArea() { return (android.graphics.RectF) huskProps.get("DeletionEndArea"); }
     public android.graphics.RectF getDeletionStartArea() { return (android.graphics.RectF) huskProps.get("DeletionStartArea"); }

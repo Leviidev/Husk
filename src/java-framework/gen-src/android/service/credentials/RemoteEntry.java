@@ -4,7 +4,7 @@ package android.service.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RemoteEntry implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RemoteEntry.class);
     public RemoteEntry(android.app.slice.Slice p0) {}
     public int describeContents() { return 0; }
     public android.app.slice.Slice getSlice() { return (android.app.slice.Slice) huskProps.get("Slice"); }

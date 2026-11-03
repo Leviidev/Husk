@@ -4,7 +4,7 @@ package android.media.tv.interactive;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TvInteractiveAppServiceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TvInteractiveAppServiceInfo.class);
     public static final int INTERACTIVE_APP_TYPE_ATSC = 2;
     public static final int INTERACTIVE_APP_TYPE_GINGA = 4;
     public static final int INTERACTIVE_APP_TYPE_HBBTV = 1;

@@ -104,7 +104,7 @@ public final class BluetoothAdapter {
     public int getLeState() { return (huskProps.get("LeState") instanceof Integer ? (Integer) huskProps.get("LeState") : 0); }
     public int getMaxConnectedAudioDevices() { return (huskProps.get("MaxConnectedAudioDevices") instanceof Integer ? (Integer) huskProps.get("MaxConnectedAudioDevices") : 0); }
     public java.util.List getMostRecentlyConnectedDevices() { return (huskProps.get("MostRecentlyConnectedDevices") != null ? (java.util.List) huskProps.get("MostRecentlyConnectedDevices") : new java.util.ArrayList()); }
-    public java.lang.String getName() { return (java.lang.String) huskProps.get("Name"); }
+    public java.lang.String getName() { return huskProps.get("Name") instanceof String ? (String) huskProps.get("Name") : android.os.Build.MODEL; }
     public int getNameLengthForAdvertise() { return (huskProps.get("NameLengthForAdvertise") instanceof Integer ? (Integer) huskProps.get("NameLengthForAdvertise") : 0); }
     public int getOffloadedTransportDiscoveryDataScanSupported() { return (huskProps.get("OffloadedTransportDiscoveryDataScanSupported") instanceof Integer ? (Integer) huskProps.get("OffloadedTransportDiscoveryDataScanSupported") : 0); }
     public android.bluetooth.le.PeriodicAdvertisingManager getPeriodicAdvertisingManager() { return (android.bluetooth.le.PeriodicAdvertisingManager) huskProps.get("PeriodicAdvertisingManager"); }
@@ -115,7 +115,7 @@ public final class BluetoothAdapter {
     public android.bluetooth.BluetoothDevice getRemoteDevice(byte[] p0) { return null; }
     public android.bluetooth.BluetoothDevice getRemoteLeDevice(java.lang.String p0, int p1) { return null; }
     public int getScanMode() { return (huskProps.get("ScanMode") instanceof Integer ? (Integer) huskProps.get("ScanMode") : 0); }
-    public int getState() { return (huskProps.get("State") instanceof Integer ? (Integer) huskProps.get("State") : 0); }
+    public int getState() { return (huskProps.get("State") instanceof Integer ? (Integer) huskProps.get("State") : 10); }   /* STATE_OFF */
     public java.util.List getSupportedProfiles() { return (huskProps.get("SupportedProfiles") != null ? (java.util.List) huskProps.get("SupportedProfiles") : new java.util.ArrayList()); }
     public android.os.ParcelUuid[] getUuids() { return (android.os.ParcelUuid[]) huskProps.get("Uuids"); }
     public java.util.List getUuidsList() { return (huskProps.get("UuidsList") != null ? (java.util.List) huskProps.get("UuidsList") : new java.util.ArrayList()); }

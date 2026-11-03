@@ -4,7 +4,7 @@ package android.text.style;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SuggestionRangeSpan extends android.text.style.CharacterStyle implements android.text.ParcelableSpan {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SuggestionRangeSpan.class);
     public SuggestionRangeSpan() { super(); }
     public SuggestionRangeSpan(android.os.Parcel p0) { super(); }
     public int describeContents() { return 0; }

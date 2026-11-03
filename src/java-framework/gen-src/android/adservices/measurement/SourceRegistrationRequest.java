@@ -4,7 +4,7 @@ package android.adservices.measurement;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SourceRegistrationRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SourceRegistrationRequest.class);
     public int describeContents() { return 0; }
     public android.view.InputEvent getInputEvent() { return (android.view.InputEvent) huskProps.get("InputEvent"); }
     public java.util.List getRegistrationUris() { return (huskProps.get("RegistrationUris") != null ? (java.util.List) huskProps.get("RegistrationUris") : new java.util.ArrayList()); }

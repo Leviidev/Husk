@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CellInfoWcdma extends android.telephony.CellInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellInfoWcdma.class);
     public CellInfoWcdma() { super(); }
     public CellInfoWcdma(int p0, boolean p1, long p2, android.telephony.CellIdentityWcdma p3, android.telephony.CellSignalStrengthWcdma p4) { super(); }
     public CellInfoWcdma(android.telephony.CellInfoWcdma p0) { super(); }

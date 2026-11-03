@@ -4,7 +4,7 @@ package android.adservices.ondevicepersonalization;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RenderingConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RenderingConfig.class);
     public int describeContents() { return 0; }
     public java.util.List getKeys() { return (huskProps.get("Keys") != null ? (java.util.List) huskProps.get("Keys") : new java.util.ArrayList()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

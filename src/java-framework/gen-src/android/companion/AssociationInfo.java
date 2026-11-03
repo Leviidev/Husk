@@ -4,7 +4,7 @@ package android.companion;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AssociationInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AssociationInfo.class);
     public static final java.lang.String METADATA_TIMESTAMP = "_timestamp_";
     public boolean belongsToPackage(int p0, java.lang.String p1) { return false; }
     public int describeContents() { return 0; }
@@ -48,7 +48,7 @@ public final class AssociationInfo implements android.os.Parcelable {
         public android.companion.AssociationInfo.Builder setDeviceMacAddress(android.net.MacAddress p0) { huskProps.put("DeviceMacAddress", p0); return this; }
         public android.companion.AssociationInfo.Builder setDeviceProfile(java.lang.String p0) { huskProps.put("DeviceProfile", p0); return this; }
         public android.companion.AssociationInfo.Builder setDisplayName(java.lang.CharSequence p0) { huskProps.put("DisplayName", p0); return this; }
-        public android.companion.AssociationInfo.Builder setLastTimeConnected(long p0) { huskProps.put("LastTimeConnected", Long.valueOf(p0)); return this; }
+        public android.companion.AssociationInfo.Builder setLastTimeConnected(long p0) { huskProps.put("LastTimeConnected", Long.valueOf(p0)); huskProps.put("LastTimeConnectedMs", Long.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setMetadata(android.os.PersistableBundle p0) { huskProps.put("Metadata", p0); return this; }
         public android.companion.AssociationInfo.Builder setNotifyOnDeviceNearby(boolean p0) { huskProps.put("NotifyOnDeviceNearby", Boolean.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setPackagesToNotify(java.util.List p0) { huskProps.put("PackagesToNotify", p0); return this; }
@@ -56,7 +56,7 @@ public final class AssociationInfo implements android.os.Parcelable {
         public android.companion.AssociationInfo.Builder setRevoked(boolean p0) { huskProps.put("Revoked", Boolean.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setSelfManaged(boolean p0) { huskProps.put("SelfManaged", Boolean.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setSystemDataSyncFlags(int p0) { huskProps.put("SystemDataSyncFlags", Integer.valueOf(p0)); return this; }
-        public android.companion.AssociationInfo.Builder setTimeApproved(long p0) { huskProps.put("TimeApproved", Long.valueOf(p0)); return this; }
+        public android.companion.AssociationInfo.Builder setTimeApproved(long p0) { huskProps.put("TimeApproved", Long.valueOf(p0)); huskProps.put("TimeApprovedMs", Long.valueOf(p0)); return this; }
         public android.companion.AssociationInfo.Builder setTransportFlags(int p0) { huskProps.put("TransportFlags", Integer.valueOf(p0)); return this; }
         Builder() { this((android.companion.AssociationInfo) null); }
     }

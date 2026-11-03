@@ -4,7 +4,7 @@ package android.print;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PrintJobInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PrintJobInfo.class);
     public static final int STATE_ANY = -1;
     public static final int STATE_ANY_ACTIVE = -3;
     public static final int STATE_ANY_SCHEDULED = -4;

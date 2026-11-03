@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class InsertModeGesture extends android.view.inputmethod.CancellableHandwritingGesture implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InsertModeGesture.class);
     public int describeContents() { return 0; }
     public android.os.CancellationSignal getCancellationSignal() { return (android.os.CancellationSignal) huskProps.get("CancellationSignal"); }
     public android.graphics.PointF getInsertionPoint() { return (android.graphics.PointF) huskProps.get("InsertionPoint"); }

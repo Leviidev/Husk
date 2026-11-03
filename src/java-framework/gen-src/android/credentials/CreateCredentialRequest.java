@@ -4,7 +4,7 @@ package android.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CreateCredentialRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CreateCredentialRequest.class);
     public boolean alwaysSendAppInfoToProvider() { return false; }
     public int describeContents() { return 0; }
     public android.os.Bundle getCandidateQueryData() { return (android.os.Bundle) huskProps.get("CandidateQueryData"); }
@@ -19,7 +19,7 @@ public final class CreateCredentialRequest implements android.os.Parcelable {
         public Builder(java.lang.String p0, android.os.Bundle p1, android.os.Bundle p2) {}
         public android.credentials.CreateCredentialRequest build() { android.credentials.CreateCredentialRequest x = new android.credentials.CreateCredentialRequest(); x.huskProps.putAll(huskProps); return x; }
         public android.credentials.CreateCredentialRequest.Builder setAlwaysSendAppInfoToProvider(boolean p0) { huskProps.put("AlwaysSendAppInfoToProvider", Boolean.valueOf(p0)); return this; }
-        public android.credentials.CreateCredentialRequest.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); return this; }
+        public android.credentials.CreateCredentialRequest.Builder setIsSystemProviderRequired(boolean p0) { huskProps.put("IsSystemProviderRequired", Boolean.valueOf(p0)); huskProps.put("SystemProviderRequired", Boolean.valueOf(p0)); return this; }
         public android.credentials.CreateCredentialRequest.Builder setOrigin(java.lang.String p0) { huskProps.put("Origin", p0); return this; }
         Builder() { this((java.lang.String) null, (android.os.Bundle) null, (android.os.Bundle) null); }
     }

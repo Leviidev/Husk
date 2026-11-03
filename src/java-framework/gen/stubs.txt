@@ -648,7 +648,6 @@ android.provider.Browser
 android.provider.CalendarContract
 android.provider.CallLog
 android.provider.ContactsContract
-android.provider.DocumentsContract
 android.provider.DocumentsProvider
 android.provider.OpenableColumns
 android.provider.SearchRecentSuggestions

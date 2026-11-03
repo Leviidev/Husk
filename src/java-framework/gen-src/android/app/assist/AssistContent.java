@@ -4,7 +4,7 @@ package android.app.assist;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class AssistContent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AssistContent.class);
     public static final java.lang.String EXTRA_APP_FUNCTION_DATA = "android.app.assist.extra.APP_FUNCTION_DATA";
     public AssistContent() {}
     public AssistContent(android.os.Bundle p0) {}

@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class VideoProfile implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VideoProfile.class);
     public static final int QUALITY_DEFAULT = 4;
     public static final int QUALITY_HIGH = 1;
     public static final int QUALITY_LOW = 3;
@@ -31,7 +31,7 @@ public class VideoProfile implements android.os.Parcelable {
     VideoProfile() { this((int) 0); }
     public static final class CameraCapabilities implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CameraCapabilities.class);
         public CameraCapabilities(int p0, int p1) {}
         public CameraCapabilities(int p0, int p1, boolean p2, float p3) {}
         public int describeContents() { return 0; }

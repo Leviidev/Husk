@@ -4,7 +4,7 @@ package android.net.wifi.p2p.nsd;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WifiP2pServiceRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pServiceRequest.class);
     protected WifiP2pServiceRequest(int p0, java.lang.String p1) {}
     public WifiP2pServiceRequest(android.net.wifi.p2p.nsd.WifiP2pUsdBasedServiceConfig p0) {}
     public static android.net.wifi.p2p.nsd.WifiP2pServiceRequest newInstance(int p0) { return new WifiP2pServiceRequest(); }

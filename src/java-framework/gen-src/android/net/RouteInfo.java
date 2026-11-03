@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RouteInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RouteInfo.class);
     public static final int RTN_THROW = 9;
     public static final int RTN_UNICAST = 1;
     public static final int RTN_UNREACHABLE = 7;

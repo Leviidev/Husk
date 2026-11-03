@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class IpSecTransformState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(IpSecTransformState.class);
     public IpSecTransformState(android.os.Parcel p0) {}
     public int describeContents() { return 0; }
     public long getByteCount() { return (huskProps.get("ByteCount") instanceof Long ? (Long) huskProps.get("ByteCount") : 0L); }

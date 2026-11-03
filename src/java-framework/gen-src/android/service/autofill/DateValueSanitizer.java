@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class DateValueSanitizer extends android.service.autofill.InternalSanitizer implements android.service.autofill.Sanitizer, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DateValueSanitizer.class);
     public int describeContents() { return 0; }
     public android.view.autofill.AutofillValue sanitize(android.view.autofill.AutofillValue p0) { return null; }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

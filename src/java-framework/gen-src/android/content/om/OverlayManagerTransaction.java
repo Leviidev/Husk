@@ -4,7 +4,7 @@ package android.content.om;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class OverlayManagerTransaction implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(OverlayManagerTransaction.class);
     public static android.content.om.OverlayManagerTransaction newInstance() { return new OverlayManagerTransaction(); }
     public int describeContents() { return 0; }
     public java.util.Iterator getRequests() { return (java.util.Iterator) huskProps.get("Requests"); }

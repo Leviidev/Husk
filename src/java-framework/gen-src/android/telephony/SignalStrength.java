@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class SignalStrength implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalStrength.class);
     public static final int INVALID = 2147483647;
     public static final int NUM_SIGNAL_STRENGTH_BINS = 5;
     public static final int SIGNAL_STRENGTH_GOOD = 3;

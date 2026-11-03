@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InputBinding implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InputBinding.class);
     public InputBinding(android.view.inputmethod.InputConnection p0, android.os.IBinder p1, int p2, int p3) {}
     public InputBinding(android.view.inputmethod.InputConnection p0, android.view.inputmethod.InputBinding p1) {}
     public int describeContents() { return 0; }

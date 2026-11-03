@@ -6,7 +6,7 @@ public final class SubscriptionPlan implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final long BYTES_UNKNOWN = -1L;
     public static final long BYTES_UNLIMITED = 9223372036854775807L;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SubscriptionPlan.class);
     public static final int LIMIT_BEHAVIOR_BILLED = 1;
     public static final int LIMIT_BEHAVIOR_DISABLED = 0;
     public static final int LIMIT_BEHAVIOR_THROTTLED = 2;

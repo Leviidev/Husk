@@ -4,7 +4,7 @@ package android.net.wifi.p2p;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WifiP2pDeviceList implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiP2pDeviceList.class);
     public WifiP2pDeviceList() {}
     public WifiP2pDeviceList(android.net.wifi.p2p.WifiP2pDeviceList p0) {}
     public WifiP2pDeviceList(java.util.ArrayList p0) {}

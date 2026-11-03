@@ -4,7 +4,7 @@ package android.view.textclassifier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ConversationAction implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConversationAction.class);
     public static final java.lang.String TYPE_ADD_CONTACT = "add_contact";
     public static final java.lang.String TYPE_CALL_PHONE = "call_phone";
     public static final java.lang.String TYPE_COPY = "copy";

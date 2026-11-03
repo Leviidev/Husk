@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class BluetoothGattCharacteristic implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothGattCharacteristic.class);
     public static final int FORMAT_FLOAT = 52;
     public static final int FORMAT_SFLOAT = 50;
     public static final int FORMAT_SINT16 = 34;

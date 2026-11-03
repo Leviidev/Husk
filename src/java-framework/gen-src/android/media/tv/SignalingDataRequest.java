@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SignalingDataRequest extends android.media.tv.BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalingDataRequest.class);
     public static final int SIGNALING_DATA_NO_GROUP_ID = -1;
     public static final java.lang.String SIGNALING_METADATA_AEAT = "AEAT";
     public static final java.lang.String SIGNALING_METADATA_AEI = "AEI";

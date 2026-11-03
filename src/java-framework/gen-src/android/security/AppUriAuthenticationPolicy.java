@@ -4,7 +4,7 @@ package android.security;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AppUriAuthenticationPolicy implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AppUriAuthenticationPolicy.class);
     public static android.security.AppUriAuthenticationPolicy readFromXml(org.xmlpull.v1.XmlPullParser p0) { return new AppUriAuthenticationPolicy(); }
     public int describeContents() { return 0; }
     public java.util.Set getAliases() { return (huskProps.get("Aliases") != null ? (java.util.Set) huskProps.get("Aliases") : new java.util.HashSet()); }

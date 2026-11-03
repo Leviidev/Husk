@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InlineSuggestionInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InlineSuggestionInfo.class);
     public static final java.lang.String SOURCE_AUTOFILL = "android:autofill";
     public static final java.lang.String SOURCE_PLATFORM = "android:platform";
     public static final java.lang.String TYPE_ACTION = "android:autofill:action";

@@ -4,7 +4,7 @@ package android.graphics.pdf.models.selection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SelectionBoundary implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SelectionBoundary.class);
     public SelectionBoundary(int p0) {}
     public SelectionBoundary(int p0, boolean p1) {}
     public SelectionBoundary(android.graphics.Point p0) {}

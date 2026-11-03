@@ -10,7 +10,7 @@ public final class CallException extends java.lang.RuntimeException implements a
     public static final int CODE_CANNOT_HOLD_CURRENT_ACTIVE_CALL = 2;
     public static final int CODE_ERROR_UNKNOWN = 1;
     public static final int CODE_OPERATION_TIMED_OUT = 6;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CallException.class);
     public static final java.lang.String TRANSACTION_EXCEPTION_KEY = "TelecomTransactionalExceptionKey";
     public CallException(java.lang.String p0, int p1) { super(); }
     public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.companion.virtual;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VirtualDevice implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VirtualDevice.class);
     public VirtualDevice(android.companion.virtual.IVirtualDevice p0, int p1, java.lang.String p2, java.lang.String p3) {}
     public VirtualDevice(android.companion.virtual.IVirtualDevice p0, int p1, java.lang.String p2, java.lang.String p3, java.lang.CharSequence p4) {}
     public int describeContents() { return 0; }

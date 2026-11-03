@@ -4,7 +4,7 @@ package android.telephony.ims;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SipDetails implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SipDetails.class);
     public static final int METHOD_PUBLISH = 2;
     public static final int METHOD_REGISTER = 1;
     public static final int METHOD_SUBSCRIBE = 3;

@@ -4,7 +4,7 @@ package android.view.textclassifier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ConversationActions implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConversationActions.class);
     public ConversationActions(java.util.List p0, java.lang.String p1) {}
     public int describeContents() { return 0; }
     public java.util.List getConversationActions() { return (huskProps.get("ConversationActions") != null ? (java.util.List) huskProps.get("ConversationActions") : new java.util.ArrayList()); }
@@ -13,7 +13,7 @@ public final class ConversationActions implements android.os.Parcelable {
     ConversationActions() { this((java.util.List) null, (java.lang.String) null); }
     public static final class Message implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Message.class);
         public static android.app.Person PERSON_USER_OTHERS;
         public static android.app.Person PERSON_USER_SELF;
         public int describeContents() { return 0; }
@@ -35,7 +35,7 @@ public final class ConversationActions implements android.os.Parcelable {
     }
     public static final class Request implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Request.class);
         public static final java.lang.String HINT_FOR_IN_APP = "in_app";
         public static final java.lang.String HINT_FOR_NOTIFICATION = "notification";
         public int describeContents() { return 0; }

@@ -7,7 +7,7 @@ public final class ImsRegistrationAttributes implements android.os.Parcelable {
     public static final int ATTR_EPDG_OVER_CELL_INTERNET = 1;
     public static final int ATTR_REGISTRATION_TYPE_EMERGENCY = 2;
     public static final int ATTR_VIRTUAL_FOR_ANONYMOUS_EMERGENCY_CALL = 4;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ImsRegistrationAttributes.class);
     public ImsRegistrationAttributes(int p0, int p1, int p2, java.util.Set p3) {}
     public ImsRegistrationAttributes(int p0, int p1, int p2, java.util.Set p3, android.telephony.ims.SipDetails p4) {}
     public ImsRegistrationAttributes(int p0, int p1, int p2, java.util.Set p3, android.telephony.ims.SipDetails p4, java.lang.String p5) {}

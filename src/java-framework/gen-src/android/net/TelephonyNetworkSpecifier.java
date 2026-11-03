@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TelephonyNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TelephonyNetworkSpecifier.class);
     public TelephonyNetworkSpecifier(int p0) { super(); }
     public boolean canBeSatisfiedBy(android.net.NetworkSpecifier p0) { return false; }
     public int describeContents() { return 0; }

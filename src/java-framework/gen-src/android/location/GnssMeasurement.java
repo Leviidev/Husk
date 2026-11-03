@@ -11,7 +11,7 @@ public final class GnssMeasurement implements android.os.Parcelable {
     public static final int ADR_STATE_RESET = 2;
     public static final int ADR_STATE_UNKNOWN = 0;
     public static final int ADR_STATE_VALID = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssMeasurement.class);
     public static final int MULTIPATH_INDICATOR_DETECTED = 1;
     public static final int MULTIPATH_INDICATOR_NOT_DETECTED = 2;
     public static final int MULTIPATH_INDICATOR_UNKNOWN = 0;

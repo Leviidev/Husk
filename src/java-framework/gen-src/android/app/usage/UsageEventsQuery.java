@@ -4,7 +4,7 @@ package android.app.usage;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UsageEventsQuery implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UsageEventsQuery.class);
     public int describeContents() { return 0; }
     public long getBeginTimeMillis() { return (huskProps.get("BeginTimeMillis") instanceof Long ? (Long) huskProps.get("BeginTimeMillis") : 0L); }
     public long getEndTimeMillis() { return (huskProps.get("EndTimeMillis") instanceof Long ? (Long) huskProps.get("EndTimeMillis") : 0L); }

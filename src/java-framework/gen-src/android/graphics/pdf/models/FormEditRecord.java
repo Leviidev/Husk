@@ -4,7 +4,7 @@ package android.graphics.pdf.models;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FormEditRecord implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FormEditRecord.class);
     public static final int EDIT_TYPE_CLICK = 0;
     public static final int EDIT_TYPE_SET_INDICES = 1;
     public static final int EDIT_TYPE_SET_TEXT = 2;

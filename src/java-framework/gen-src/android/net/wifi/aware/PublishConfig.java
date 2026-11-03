@@ -4,7 +4,7 @@ package android.net.wifi.aware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PublishConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PublishConfig.class);
     public static final int PUBLISH_TYPE_SOLICITED = 1;
     public static int PUBLISH_TYPE_UNSOLICITED;
     public boolean mEnablePeriodicRangingResults;

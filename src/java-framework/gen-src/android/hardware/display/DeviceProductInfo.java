@@ -8,7 +8,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
     public static final int CONNECTION_TO_SINK_DIRECT = 2;
     public static final int CONNECTION_TO_SINK_TRANSITIVE = 3;
     public static final int CONNECTION_TO_SINK_UNKNOWN = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DeviceProductInfo.class);
     public static final int VIDEO_INPUT_TYPE_ANALOG = 0;
     public static final int VIDEO_INPUT_TYPE_DIGITAL = 1;
     public static final int VIDEO_INPUT_TYPE_UNKNOWN = -1;
@@ -43,7 +43,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
     }
     public static final class EdidStructureMetadata implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(EdidStructureMetadata.class);
         public EdidStructureMetadata(int p0, int p1) {}
         public int describeContents() { return 0; }
         public int getRevision() { return (huskProps.get("Revision") instanceof Integer ? (Integer) huskProps.get("Revision") : 0); }
@@ -53,7 +53,7 @@ public final class DeviceProductInfo implements android.os.Parcelable {
     }
     public static class ManufactureDate implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ManufactureDate.class);
         protected ManufactureDate(android.os.Parcel p0) {}
         public ManufactureDate(java.lang.Integer p0, java.lang.Integer p1) {}
         public int describeContents() { return 0; }

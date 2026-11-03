@@ -4,7 +4,7 @@ package android.service.controls;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Control implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Control.class);
     public static final int STATUS_DISABLED = 4;
     public static final int STATUS_ERROR = 3;
     public static final int STATUS_NOT_FOUND = 2;

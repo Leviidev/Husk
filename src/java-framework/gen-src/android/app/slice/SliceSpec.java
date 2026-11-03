@@ -4,7 +4,7 @@ package android.app.slice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SliceSpec implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SliceSpec.class);
     public SliceSpec(android.os.Parcel p0) {}
     public SliceSpec(java.lang.String p0, int p1) {}
     public boolean canRender(android.app.slice.SliceSpec p0) { return false; }

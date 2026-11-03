@@ -4,7 +4,7 @@ package android.hardware.usb;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class UsbConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UsbConfiguration.class);
     public UsbConfiguration(int p0, java.lang.String p1, int p2, int p3) {}
     public int describeContents() { return 0; }
     public int getAttributes() { return (huskProps.get("Attributes") instanceof Integer ? (Integer) huskProps.get("Attributes") : 0); }

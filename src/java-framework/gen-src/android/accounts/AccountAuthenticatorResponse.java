@@ -4,7 +4,7 @@ package android.accounts;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class AccountAuthenticatorResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccountAuthenticatorResponse.class);
     public AccountAuthenticatorResponse(android.accounts.IAccountAuthenticatorResponse p0) {}
     public AccountAuthenticatorResponse(android.os.Parcel p0) {}
     public int describeContents() { return 0; }

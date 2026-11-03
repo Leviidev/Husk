@@ -4,7 +4,7 @@ package android.hardware.camera2.params;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class OutputConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(OutputConfiguration.class);
     public static final int MIRROR_MODE_AUTO = 0;
     public static final int MIRROR_MODE_H = 2;
     public static final int MIRROR_MODE_NONE = 1;

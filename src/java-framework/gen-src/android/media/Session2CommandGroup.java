@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Session2CommandGroup implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Session2CommandGroup.class);
     public int describeContents() { return 0; }
     public java.util.Set getCommands() { return (huskProps.get("Commands") != null ? (java.util.Set) huskProps.get("Commands") : new java.util.HashSet()); }
     public boolean hasCommand(int p0) { return false; }

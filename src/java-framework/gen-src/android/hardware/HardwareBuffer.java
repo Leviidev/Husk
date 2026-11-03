@@ -7,7 +7,7 @@ public final class HardwareBuffer implements android.os.Parcelable, java.lang.Au
     public static final int BGRA_1010102 = 67;
     public static final int BGRX_1010102 = 68;
     public static final int BLOB = 33;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(HardwareBuffer.class);
     public static final int DS_24UI8 = 50;
     public static final int DS_FP32UI8 = 52;
     public static final int D_16 = 48;

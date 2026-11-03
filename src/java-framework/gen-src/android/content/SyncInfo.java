@@ -4,7 +4,7 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class SyncInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SyncInfo.class);
     public android.accounts.Account account;
     public java.lang.String authority;
     public int authorityId;

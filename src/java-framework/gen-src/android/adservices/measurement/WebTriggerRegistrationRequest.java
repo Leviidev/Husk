@@ -4,7 +4,7 @@ package android.adservices.measurement;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WebTriggerRegistrationRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WebTriggerRegistrationRequest.class);
     public int describeContents() { return 0; }
     public android.net.Uri getDestination() { return (android.net.Uri) huskProps.get("Destination"); }
     public java.util.List getTriggerParams() { return (huskProps.get("TriggerParams") != null ? (java.util.List) huskProps.get("TriggerParams") : new java.util.ArrayList()); }

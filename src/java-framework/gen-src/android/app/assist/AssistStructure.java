@@ -4,7 +4,7 @@ package android.app.assist;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class AssistStructure implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AssistStructure.class);
     public AssistStructure() {}
     public AssistStructure(android.app.Activity p0, boolean p1, int p2) {}
     public AssistStructure(android.os.Parcel p0) {}
@@ -179,7 +179,7 @@ public class AssistStructure implements android.os.Parcelable {
     }
     public static final class ViewNodeParcelable implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ViewNodeParcelable.class);
         public ViewNodeParcelable(android.app.assist.AssistStructure.ViewNode p0) {}
         public ViewNodeParcelable(android.os.Parcel p0) {}
         public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PreferentialNetworkServiceConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PreferentialNetworkServiceConfig.class);
     public static android.app.admin.PreferentialNetworkServiceConfig DEFAULT;
     public static final int PREFERENTIAL_NETWORK_ID_1 = 1;
     public static final int PREFERENTIAL_NETWORK_ID_2 = 2;

@@ -4,7 +4,7 @@ package android.app.appsearch.observer;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class ObserverSpec extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ObserverSpec.class);
     public ObserverSpec(java.util.List p0) { super(); }
     public java.util.Set getFilterSchemas() { return (huskProps.get("FilterSchemas") != null ? (java.util.Set) huskProps.get("FilterSchemas") : new java.util.HashSet()); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}

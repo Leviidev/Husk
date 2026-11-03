@@ -45,7 +45,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
     public static final int CHECKED_STATE_FALSE = 0;
     public static final int CHECKED_STATE_PARTIAL = 2;
     public static final int CHECKED_STATE_TRUE = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityNodeInfo.class);
     public static final int EXPANDED_STATE_COLLAPSED = 1;
     public static final int EXPANDED_STATE_FULL = 3;
     public static final int EXPANDED_STATE_PARTIAL = 2;
@@ -341,7 +341,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
         public static android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction ACTION_SHOW_ON_SCREEN;
         public static android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction ACTION_SHOW_TEXT_SUGGESTIONS;
         public static android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction ACTION_SHOW_TOOLTIP;
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AccessibilityAction.class);
         public static android.util.ArraySet sStandardActions;
         public long mSerializationFlag;
         public AccessibilityAction(int p0, java.lang.CharSequence p1) {}
@@ -449,7 +449,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
     }
     public static final class Selection implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Selection.class);
         public Selection(android.view.accessibility.AccessibilityNodeInfo.SelectionPosition p0, android.view.accessibility.AccessibilityNodeInfo.SelectionPosition p1) {}
         public int describeContents() { return 0; }
         public android.view.accessibility.AccessibilityNodeInfo.SelectionPosition getEnd() { return (android.view.accessibility.AccessibilityNodeInfo.SelectionPosition) huskProps.get("End"); }
@@ -459,7 +459,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
     }
     public static final class SelectionPosition implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SelectionPosition.class);
         public SelectionPosition(android.view.View p0, int p1) {}
         public SelectionPosition(android.view.View p0, int p1, int p2) {}
         public SelectionPosition(android.view.accessibility.AccessibilityNodeInfo p0, int p1) {}
@@ -471,7 +471,7 @@ public class AccessibilityNodeInfo implements android.os.Parcelable {
     }
     public static final class TouchDelegateInfo implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TouchDelegateInfo.class);
         public TouchDelegateInfo(java.util.Map p0) {}
         public int describeContents() { return 0; }
         public long getAccessibilityIdForRegion(android.graphics.Region p0) { return 0L; }

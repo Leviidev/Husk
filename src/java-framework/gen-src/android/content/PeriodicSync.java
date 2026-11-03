@@ -4,7 +4,7 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class PeriodicSync implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PeriodicSync.class);
     public android.accounts.Account account;
     public java.lang.String authority;
     public android.os.Bundle extras;

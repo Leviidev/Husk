@@ -22,14 +22,14 @@ public final class KeyPairGeneratorSpec implements java.security.spec.AlgorithmP
         public Builder(android.content.Context p0) {}
         public android.security.KeyPairGeneratorSpec build() { android.security.KeyPairGeneratorSpec x = new android.security.KeyPairGeneratorSpec(); x.huskProps.putAll(huskProps); return x; }
         public android.security.KeyPairGeneratorSpec.Builder setAlgorithmParameterSpec(java.security.spec.AlgorithmParameterSpec p0) { huskProps.put("AlgorithmParameterSpec", p0); return this; }
-        public android.security.KeyPairGeneratorSpec.Builder setAlias(java.lang.String p0) { huskProps.put("Alias", p0); return this; }
+        public android.security.KeyPairGeneratorSpec.Builder setAlias(java.lang.String p0) { huskProps.put("Alias", p0); huskProps.put("KeystoreAlias", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setEncryptionRequired() { return this; }
         public android.security.KeyPairGeneratorSpec.Builder setEndDate(java.util.Date p0) { huskProps.put("EndDate", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setKeySize(int p0) { huskProps.put("KeySize", Integer.valueOf(p0)); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setKeyType(java.lang.String p0) { huskProps.put("KeyType", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setSerialNumber(java.math.BigInteger p0) { huskProps.put("SerialNumber", p0); return this; }
         public android.security.KeyPairGeneratorSpec.Builder setStartDate(java.util.Date p0) { huskProps.put("StartDate", p0); return this; }
-        public android.security.KeyPairGeneratorSpec.Builder setSubject(javax.security.auth.x500.X500Principal p0) { huskProps.put("Subject", p0); return this; }
+        public android.security.KeyPairGeneratorSpec.Builder setSubject(javax.security.auth.x500.X500Principal p0) { huskProps.put("Subject", p0); huskProps.put("SubjectDN", p0); return this; }
         Builder() { this((android.content.Context) null); }
     }
 }

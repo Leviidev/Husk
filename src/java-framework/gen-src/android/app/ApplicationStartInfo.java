@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ApplicationStartInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ApplicationStartInfo.class);
     public static final int LAUNCH_MODE_SINGLE_INSTANCE = 2;
     public static final int LAUNCH_MODE_SINGLE_INSTANCE_PER_TASK = 4;
     public static final int LAUNCH_MODE_SINGLE_TASK = 3;

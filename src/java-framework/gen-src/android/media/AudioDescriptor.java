@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class AudioDescriptor implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioDescriptor.class);
     public static final int STANDARD_EDID = 1;
     public static final int STANDARD_NONE = 0;
     public static final int STANDARD_SADB = 2;

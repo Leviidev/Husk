@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SearchResult extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SearchResult.class);
     public java.lang.String getDatabaseName() { return (java.lang.String) huskProps.get("DatabaseName"); }
     public android.app.appsearch.GenericDocument getGenericDocument() { return (android.app.appsearch.GenericDocument) huskProps.get("GenericDocument"); }
     public java.util.List getInformationalRankingSignals() { return (huskProps.get("InformationalRankingSignals") != null ? (java.util.List) huskProps.get("InformationalRankingSignals") : new java.util.ArrayList()); }
@@ -32,7 +32,7 @@ public abstract class SearchResult extends android.app.appsearch.safeparcel.Abst
     }
     public static abstract class EmbeddingMatchInfo extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(EmbeddingMatchInfo.class);
         public EmbeddingMatchInfo(double p0, int p1, int p2) { super(); }
         public int getEmbeddingSearchMetricType() { return (huskProps.get("EmbeddingSearchMetricType") instanceof Integer ? (Integer) huskProps.get("EmbeddingSearchMetricType") : 0); }
         public int getQueryEmbeddingVectorIndex() { return (huskProps.get("QueryEmbeddingVectorIndex") instanceof Integer ? (Integer) huskProps.get("QueryEmbeddingVectorIndex") : 0); }
@@ -42,7 +42,7 @@ public abstract class SearchResult extends android.app.appsearch.safeparcel.Abst
     }
     public static abstract class MatchInfo extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MatchInfo.class);
         public android.app.appsearch.SearchResult.EmbeddingMatchInfo getEmbeddingMatch() { return (android.app.appsearch.SearchResult.EmbeddingMatchInfo) huskProps.get("EmbeddingMatch"); }
         public java.lang.CharSequence getExactMatch() { return (java.lang.CharSequence) huskProps.get("ExactMatch"); }
         public android.app.appsearch.SearchResult.MatchRange getExactMatchRange() { return (android.app.appsearch.SearchResult.MatchRange) huskProps.get("ExactMatchRange"); }
@@ -70,7 +70,7 @@ public abstract class SearchResult extends android.app.appsearch.safeparcel.Abst
     }
     public static abstract class MatchRange extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MatchRange.class);
         public MatchRange(int p0, int p1) { super(); }
         public int getEnd() { return (huskProps.get("End") instanceof Integer ? (Integer) huskProps.get("End") : 0); }
         public int getStart() { return (huskProps.get("Start") instanceof Integer ? (Integer) huskProps.get("Start") : 0); }
@@ -79,7 +79,7 @@ public abstract class SearchResult extends android.app.appsearch.safeparcel.Abst
     }
     public static abstract class TextMatchInfo extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextMatchInfo.class);
         public TextMatchInfo(android.app.appsearch.SearchResult.MatchRange p0, android.app.appsearch.SearchResult.MatchRange p1, android.app.appsearch.SearchResult.MatchRange p2) { super(); }
         public java.lang.CharSequence getExactMatch() { return (java.lang.CharSequence) huskProps.get("ExactMatch"); }
         public android.app.appsearch.SearchResult.MatchRange getExactMatchRange() { return (android.app.appsearch.SearchResult.MatchRange) huskProps.get("ExactMatchRange"); }

@@ -4,7 +4,7 @@ package android.bluetooth;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class BluetoothLeAudioCodecStatus implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BluetoothLeAudioCodecStatus.class);
     public static final java.lang.String EXTRA_LE_AUDIO_CODEC_STATUS = "android.bluetooth.extra.LE_AUDIO_CODEC_STATUS";
     public BluetoothLeAudioCodecStatus(android.bluetooth.BluetoothLeAudioCodecConfig p0, android.bluetooth.BluetoothLeAudioCodecConfig p1, java.util.List p2, java.util.List p3, java.util.List p4, java.util.List p5) {}
     public int describeContents() { return 0; }

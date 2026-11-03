@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class PermissionGroupInfo extends android.content.pm.PackageItemInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PermissionGroupInfo.class);
     public static final int FLAG_PERSONAL_INFO = 1;
     public int backgroundRequestDetailResourceId;
     public int backgroundRequestResourceId;

@@ -19,7 +19,7 @@ public class DropBoxManager {
     public boolean isTagEnabled(java.lang.String p0) { return false; }
     public static class Entry implements android.os.Parcelable, java.io.Closeable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Entry.class);
         public Entry(java.lang.String p0, long p1) {}
         public Entry(java.lang.String p0, long p1, android.os.ParcelFileDescriptor p2, int p3) {}
         public Entry(java.lang.String p0, long p1, java.io.File p2, int p3) {}

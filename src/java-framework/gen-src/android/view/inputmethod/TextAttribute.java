@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextAttribute implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextAttribute.class);
     public int describeContents() { return 0; }
     public android.os.PersistableBundle getExtras() { return (android.os.PersistableBundle) huskProps.get("Extras"); }
     public java.util.List getTextConversionSuggestions() { return (huskProps.get("TextConversionSuggestions") != null ? (java.util.List) huskProps.get("TextConversionSuggestions") : new java.util.ArrayList()); }

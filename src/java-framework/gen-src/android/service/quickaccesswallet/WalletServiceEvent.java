@@ -4,7 +4,7 @@ package android.service.quickaccesswallet;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WalletServiceEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WalletServiceEvent.class);
     public static final int TYPE_NFC_PAYMENT_STARTED = 1;
     public static final int TYPE_WALLET_CARDS_UPDATED = 2;
     public WalletServiceEvent(int p0) {}

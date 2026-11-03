@@ -4,7 +4,7 @@ package android.adservices.adselection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SignedContextualAds implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignedContextualAds.class);
     public int describeContents() { return 0; }
     public java.util.List getAdsWithBid() { return (huskProps.get("AdsWithBid") != null ? (java.util.List) huskProps.get("AdsWithBid") : new java.util.ArrayList()); }
     public android.adservices.common.AdTechIdentifier getBuyer() { return (android.adservices.common.AdTechIdentifier) huskProps.get("Buyer"); }

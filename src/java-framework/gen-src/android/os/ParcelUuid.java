@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ParcelUuid implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ParcelUuid.class);
     public ParcelUuid(java.util.UUID p0) {}
     public static android.os.ParcelUuid fromString(java.lang.String p0) { return new ParcelUuid(); }
     public int describeContents() { return 0; }

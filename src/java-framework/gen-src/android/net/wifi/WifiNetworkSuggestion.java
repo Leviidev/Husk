@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiNetworkSuggestion implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiNetworkSuggestion.class);
     public static final int RANDOMIZATION_NON_PERSISTENT = 1;
     public static int RANDOMIZATION_PERSISTENT;
     public boolean isAppInteractionRequired;
@@ -52,12 +52,12 @@ public final class WifiNetworkSuggestion implements android.os.Parcelable {
         public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierId(int p0) { huskProps.put("CarrierId", Integer.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierMerged(boolean p0) { huskProps.put("CarrierMerged", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setCredentialSharedWithUser(boolean p0) { huskProps.put("CredentialSharedWithUser", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsAppInteractionRequired(boolean p0) { huskProps.put("IsAppInteractionRequired", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsEnhancedOpen(boolean p0) { huskProps.put("IsEnhancedOpen", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsHiddenSsid(boolean p0) { huskProps.put("IsHiddenSsid", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsInitialAutojoinEnabled(boolean p0) { huskProps.put("IsInitialAutojoinEnabled", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsMetered(boolean p0) { huskProps.put("IsMetered", Boolean.valueOf(p0)); return this; }
-        public android.net.wifi.WifiNetworkSuggestion.Builder setIsUserInteractionRequired(boolean p0) { huskProps.put("IsUserInteractionRequired", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsAppInteractionRequired(boolean p0) { huskProps.put("IsAppInteractionRequired", Boolean.valueOf(p0)); huskProps.put("AppInteractionRequired", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsEnhancedOpen(boolean p0) { huskProps.put("IsEnhancedOpen", Boolean.valueOf(p0)); huskProps.put("EnhancedOpen", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsHiddenSsid(boolean p0) { huskProps.put("IsHiddenSsid", Boolean.valueOf(p0)); huskProps.put("HiddenSsid", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsInitialAutojoinEnabled(boolean p0) { huskProps.put("IsInitialAutojoinEnabled", Boolean.valueOf(p0)); huskProps.put("InitialAutojoinEnabled", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsMetered(boolean p0) { huskProps.put("IsMetered", Boolean.valueOf(p0)); huskProps.put("Metered", Boolean.valueOf(p0)); return this; }
+        public android.net.wifi.WifiNetworkSuggestion.Builder setIsUserInteractionRequired(boolean p0) { huskProps.put("IsUserInteractionRequired", Boolean.valueOf(p0)); huskProps.put("UserInteractionRequired", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setIsWpa3SaeH2eOnlyModeEnabled(boolean p0) { huskProps.put("IsWpa3SaeH2eOnlyModeEnabled", Boolean.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setMacRandomizationSetting(int p0) { huskProps.put("MacRandomizationSetting", Integer.valueOf(p0)); return this; }
         public android.net.wifi.WifiNetworkSuggestion.Builder setOemPaid(boolean p0) { huskProps.put("OemPaid", Boolean.valueOf(p0)); return this; }

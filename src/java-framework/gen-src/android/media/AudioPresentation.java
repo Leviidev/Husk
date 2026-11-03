@@ -13,7 +13,7 @@ public final class AudioPresentation implements android.os.Parcelable {
     public static final int CONTENT_UNKNOWN = -1;
     public static final int CONTENT_VISUALLY_IMPAIRED = 2;
     public static final int CONTENT_VOICEOVER = 7;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioPresentation.class);
     public static final int MASTERED_FOR_3D = 3;
     public static final int MASTERED_FOR_HEADPHONE = 4;
     public static final int MASTERED_FOR_STEREO = 1;

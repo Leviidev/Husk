@@ -4,7 +4,7 @@ package android.net.vcn;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class VcnConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VcnConfig.class);
     public VcnConfig(android.os.PersistableBundle p0) {}
     public int describeContents() { return 0; }
     public java.util.Set getGatewayConnectionConfigs() { return (huskProps.get("GatewayConnectionConfigs") != null ? (java.util.Set) huskProps.get("GatewayConnectionConfigs") : new java.util.HashSet()); }

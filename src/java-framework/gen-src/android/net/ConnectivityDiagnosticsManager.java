@@ -27,7 +27,7 @@ public class ConnectivityDiagnosticsManager {
     }
     public static final class ConnectivityReport implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConnectivityReport.class);
         public static final java.lang.String KEY_NETWORK_PROBES_ATTEMPTED_BITMASK = "networkProbesAttempted";
         public static final java.lang.String KEY_NETWORK_PROBES_SUCCEEDED_BITMASK = "networkProbesSucceeded";
         public static final java.lang.String KEY_NETWORK_VALIDATION_RESULT = "networkValidationResult";
@@ -52,7 +52,7 @@ public class ConnectivityDiagnosticsManager {
     }
     public static final class DataStallReport implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DataStallReport.class);
         public static final int DETECTION_METHOD_DNS_EVENTS = 1;
         public static final int DETECTION_METHOD_TCP_METRICS = 2;
         public static final java.lang.String KEY_DNS_CONSECUTIVE_TIMEOUTS = "dnsConsecutiveTimeouts";

@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TrackChangeEvent extends android.media.metrics.Event implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TrackChangeEvent.class);
     public static final int TRACK_CHANGE_REASON_ADAPTIVE = 4;
     public static final int TRACK_CHANGE_REASON_INITIAL = 2;
     public static final int TRACK_CHANGE_REASON_MANUAL = 3;

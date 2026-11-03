@@ -4,7 +4,7 @@ package android.media.midi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MidiDeviceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MidiDeviceInfo.class);
     public static final java.lang.String PROPERTY_ALSA_CARD = "alsa_card";
     public static final java.lang.String PROPERTY_ALSA_DEVICE = "alsa_device";
     public static final java.lang.String PROPERTY_BLUETOOTH_DEVICE = "bluetooth_device";

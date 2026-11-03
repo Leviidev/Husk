@@ -6,7 +6,7 @@ public final class MacAddress implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static android.net.MacAddress ALL_ZEROS_ADDRESS;
     public static android.net.MacAddress BROADCAST_ADDRESS;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MacAddress.class);
     public static final int TYPE_BROADCAST = 3;
     public static final int TYPE_MULTICAST = 2;
     public static final int TYPE_UNICAST = 1;

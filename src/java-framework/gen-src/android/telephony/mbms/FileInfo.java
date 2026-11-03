@@ -4,7 +4,7 @@ package android.telephony.mbms;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FileInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FileInfo.class);
     public FileInfo(android.net.Uri p0, java.lang.String p1) {}
     public int describeContents() { return 0; }
     public java.lang.String getMimeType() { return (java.lang.String) huskProps.get("MimeType"); }

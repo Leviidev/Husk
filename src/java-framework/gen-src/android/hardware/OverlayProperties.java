@@ -4,7 +4,7 @@ package android.hardware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class OverlayProperties implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(OverlayProperties.class);
     public static android.hardware.OverlayProperties getDefault() { return new OverlayProperties(); }
     public int describeContents() { return 0; }
     public android.hardware.LutProperties[] getLutProperties() { return (android.hardware.LutProperties[]) huskProps.get("LutProperties"); }

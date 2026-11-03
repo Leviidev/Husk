@@ -4,7 +4,7 @@ package android.app.slice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Slice implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Slice.class);
     public static final java.lang.String EXTRA_RANGE_VALUE = "android.app.slice.extra.RANGE_VALUE";
     public static final java.lang.String EXTRA_TOGGLE_STATE = "android.app.slice.extra.TOGGLE_STATE";
     public static final java.lang.String HINT_ACTIONS = "actions";

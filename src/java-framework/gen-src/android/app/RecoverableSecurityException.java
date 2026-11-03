@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RecoverableSecurityException extends java.lang.SecurityException implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RecoverableSecurityException.class);
     public RecoverableSecurityException(android.os.Parcel p0) { super(); }
     public RecoverableSecurityException(java.lang.Throwable p0, java.lang.CharSequence p1, android.app.RemoteAction p2) { super(); }
     public int describeContents() { return 0; }

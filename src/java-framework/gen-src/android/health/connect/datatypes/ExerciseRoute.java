@@ -4,7 +4,7 @@ package android.health.connect.datatypes;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ExerciseRoute implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ExerciseRoute.class);
     public ExerciseRoute(java.util.List p0) {}
     public int describeContents() { return 0; }
     public java.util.List getRouteLocations() { return (huskProps.get("RouteLocations") != null ? (java.util.List) huskProps.get("RouteLocations") : new java.util.ArrayList()); }
@@ -13,7 +13,7 @@ public final class ExerciseRoute implements android.os.Parcelable {
     ExerciseRoute() { this((java.util.List) null); }
     public static final class Location implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Location.class);
         public int describeContents() { return 0; }
         public android.health.connect.datatypes.units.Length getAltitude() { return (android.health.connect.datatypes.units.Length) huskProps.get("Altitude"); }
         public android.health.connect.datatypes.units.Length getHorizontalAccuracy() { return (android.health.connect.datatypes.units.Length) huskProps.get("HorizontalAccuracy"); }

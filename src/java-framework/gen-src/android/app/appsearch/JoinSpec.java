@@ -10,7 +10,7 @@ public abstract class JoinSpec extends android.app.appsearch.safeparcel.Abstract
     public static final int AGGREGATION_SCORING_OUTER_RESULT_RANKING_SIGNAL = 0;
     public static final int AGGREGATION_SCORING_RESULT_COUNT = 1;
     public static final int AGGREGATION_SCORING_SUM_RANKING_SIGNAL = 5;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(JoinSpec.class);
     public static final java.lang.String QUALIFIED_ID = "this.qualifiedId()";
     public int getAggregationScoringStrategy() { return (huskProps.get("AggregationScoringStrategy") instanceof Integer ? (Integer) huskProps.get("AggregationScoringStrategy") : 0); }
     public java.lang.String getChildPropertyExpression() { return (java.lang.String) huskProps.get("ChildPropertyExpression"); }

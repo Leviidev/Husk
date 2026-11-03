@@ -4,7 +4,7 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WindowAnimationFrameStats extends android.view.FrameStats implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WindowAnimationFrameStats.class);
     public WindowAnimationFrameStats() { super(); }
     public int describeContents() { return 0; }
     public void init(long p0, long[] p1) {}

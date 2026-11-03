@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UnsafeStateException extends java.lang.IllegalStateException implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UnsafeStateException.class);
     public UnsafeStateException(int p0, int p1) { super(); }
     public int describeContents() { return 0; }
     public java.lang.String getMessage() { return (java.lang.String) huskProps.get("Message"); }

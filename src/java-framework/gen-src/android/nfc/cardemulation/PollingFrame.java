@@ -4,7 +4,7 @@ package android.nfc.cardemulation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PollingFrame implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PollingFrame.class);
     public static final int POLLING_LOOP_TYPE_A = 65;
     public static final int POLLING_LOOP_TYPE_B = 66;
     public static final int POLLING_LOOP_TYPE_F = 70;

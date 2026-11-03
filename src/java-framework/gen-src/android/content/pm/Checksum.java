@@ -4,7 +4,7 @@ package android.content.pm;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Checksum implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Checksum.class);
     public static final int MAX_CHECKSUM_SIZE_BYTES = 64;
     public static final int TYPE_PARTIAL_MERKLE_ROOT_1M_SHA256 = 32;
     public static final int TYPE_PARTIAL_MERKLE_ROOT_1M_SHA512 = 64;

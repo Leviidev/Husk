@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class IccOpenLogicalChannelResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(IccOpenLogicalChannelResponse.class);
     public static final int INVALID_CHANNEL = -1;
     public static final int STATUS_MISSING_RESOURCE = 2;
     public static final int STATUS_NO_ERROR = 1;

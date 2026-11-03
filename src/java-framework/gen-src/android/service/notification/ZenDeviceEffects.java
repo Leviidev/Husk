@@ -4,7 +4,7 @@ package android.service.notification;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ZenDeviceEffects implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ZenDeviceEffects.class);
     public static final int FIELD_BRIGHTNESS_CAP = 4096;
     public static final int FIELD_DIM_WALLPAPER = 4;
     public static final int FIELD_DISABLE_AUTO_BRIGHTNESS = 16;

@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SchemaVisibilityConfig extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SchemaVisibilityConfig.class);
     public java.util.List getAllowedPackages() { return (huskProps.get("AllowedPackages") != null ? (java.util.List) huskProps.get("AllowedPackages") : new java.util.ArrayList()); }
     public android.app.appsearch.PackageIdentifier getPubliclyVisibleTargetPackage() { return (android.app.appsearch.PackageIdentifier) huskProps.get("PubliclyVisibleTargetPackage"); }
     public java.util.Set getRequiredPermissions() { return (huskProps.get("RequiredPermissions") != null ? (java.util.Set) huskProps.get("RequiredPermissions") : new java.util.HashSet()); }

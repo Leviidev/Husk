@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class StaticIpConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(StaticIpConfiguration.class);
     public java.util.ArrayList dnsServers;
     public java.lang.String domains;
     public java.net.InetAddress gateway;

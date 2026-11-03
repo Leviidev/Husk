@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CellInfoLte extends android.telephony.CellInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellInfoLte.class);
     public CellInfoLte() { super(); }
     public CellInfoLte(int p0, boolean p1, long p2, android.telephony.CellIdentityLte p3, android.telephony.CellSignalStrengthLte p4, android.telephony.CellConfigLte p5) { super(); }
     public CellInfoLte(android.telephony.CellInfoLte p0) { super(); }

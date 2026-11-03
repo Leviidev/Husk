@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SignalStrengthUpdateRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalStrengthUpdateRequest.class);
     public int describeContents() { return 0; }
     public android.os.IBinder getLiveToken() { return (android.os.IBinder) huskProps.get("LiveToken"); }
     public java.util.Collection getSignalThresholdInfos() { return (huskProps.get("SignalThresholdInfos") != null ? (java.util.Collection) huskProps.get("SignalThresholdInfos") : new java.util.ArrayList()); }

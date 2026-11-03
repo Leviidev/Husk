@@ -4,7 +4,7 @@ package android.view.inputmethod;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class InlineSuggestion implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(InlineSuggestion.class);
     public static android.view.inputmethod.InlineSuggestion newInlineSuggestion(android.view.inputmethod.InlineSuggestionInfo p0) { return new InlineSuggestion(); }
     public int describeContents() { return 0; }
     public android.view.inputmethod.InlineSuggestionInfo getInfo() { return (android.view.inputmethod.InlineSuggestionInfo) huskProps.get("Info"); }

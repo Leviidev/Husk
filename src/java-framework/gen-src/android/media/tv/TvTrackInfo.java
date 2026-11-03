@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TvTrackInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TvTrackInfo.class);
     public static final java.lang.String EXTRA_BUNDLE_KEY_COMPONENT_TAG = "component_tag";
     public static final java.lang.String EXTRA_BUNDLE_KEY_PID = "pid";
     public static final int TYPE_AUDIO = 0;

@@ -4,7 +4,7 @@ package android.app.admin;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SystemUpdatePolicy implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SystemUpdatePolicy.class);
     public static final int TYPE_INSTALL_AUTOMATIC = 1;
     public static final int TYPE_INSTALL_WINDOWED = 2;
     public static final int TYPE_PAUSE = 4;
@@ -35,7 +35,7 @@ public final class SystemUpdatePolicy implements android.os.Parcelable {
     }
     public static final class ValidationFailedException extends java.lang.IllegalArgumentException implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ValidationFailedException.class);
         public static final int ERROR_COMBINED_FREEZE_PERIOD_TOO_CLOSE = 6;
         public static final int ERROR_COMBINED_FREEZE_PERIOD_TOO_LONG = 5;
         public static final int ERROR_DUPLICATE_OR_OVERLAP = 2;

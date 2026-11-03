@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CellInfoGsm extends android.telephony.CellInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CellInfoGsm.class);
     public CellInfoGsm() { super(); }
     public CellInfoGsm(int p0, boolean p1, long p2, android.telephony.CellIdentityGsm p3, android.telephony.CellSignalStrengthGsm p4) { super(); }
     public CellInfoGsm(android.telephony.CellInfoGsm p0) { super(); }

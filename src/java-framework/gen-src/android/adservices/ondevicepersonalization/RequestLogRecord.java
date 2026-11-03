@@ -4,7 +4,7 @@ package android.adservices.ondevicepersonalization;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RequestLogRecord implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RequestLogRecord.class);
     public int describeContents() { return 0; }
     public long getRequestId() { return (huskProps.get("RequestId") instanceof Long ? (Long) huskProps.get("RequestId") : 0L); }
     public java.util.List getRows() { return (huskProps.get("Rows") != null ? (java.util.List) huskProps.get("Rows") : new java.util.ArrayList()); }

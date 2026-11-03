@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NetworkScanRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkScanRequest.class);
     public static final int MAX_BANDS = 8;
     public static final int MAX_CHANNELS = 32;
     public static final int MAX_INCREMENTAL_PERIODICITY_SEC = 10;

@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TsResponse extends android.media.tv.BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TsResponse.class);
     public TsResponse(int p0, int p1, int p2, java.lang.String p3) { super(); }
     public int describeContents() { return 0; }
     public java.lang.String getSharedFilterToken() { return (java.lang.String) huskProps.get("SharedFilterToken"); }

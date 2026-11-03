@@ -33,7 +33,7 @@ public final class BluetoothHearingAid implements android.bluetooth.BluetoothPro
     protected BluetoothHearingAid() {}
     public static final class AdvertisementServiceData implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdvertisementServiceData.class);
         public AdvertisementServiceData(int p0, int p1) {}
         public int describeContents() { return 0; }
         public int getDeviceMode() { return (huskProps.get("DeviceMode") instanceof Integer ? (Integer) huskProps.get("DeviceMode") : 0); }

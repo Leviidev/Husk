@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiAvailableChannel implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiAvailableChannel.class);
     public static final int FILTER_CELLULAR_COEXISTENCE = 1;
     public static final int FILTER_CONCURRENCY = 2;
     public static final int FILTER_NAN_INSTANT_MODE = 4;

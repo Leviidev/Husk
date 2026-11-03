@@ -4,7 +4,7 @@ package android.location;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GnssMeasurementsEvent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GnssMeasurementsEvent.class);
     public int describeContents() { return 0; }
     public android.location.GnssClock getClock() { return (android.location.GnssClock) huskProps.get("Clock"); }
     public java.util.Collection getGnssAutomaticGainControls() { return (huskProps.get("GnssAutomaticGainControls") != null ? (java.util.Collection) huskProps.get("GnssAutomaticGainControls") : new java.util.ArrayList()); }
@@ -22,7 +22,7 @@ public final class GnssMeasurementsEvent implements android.os.Parcelable {
         public android.location.GnssMeasurementsEvent.Builder setClock(android.location.GnssClock p0) { huskProps.put("Clock", p0); return this; }
         public android.location.GnssMeasurementsEvent.Builder setGnssAutomaticGainControls(java.util.Collection p0) { huskProps.put("GnssAutomaticGainControls", p0); return this; }
         public android.location.GnssMeasurementsEvent.Builder setGnssAutomaticGainControls(android.location.GnssAutomaticGainControl[] p0) { huskProps.put("GnssAutomaticGainControls", p0); return this; }
-        public android.location.GnssMeasurementsEvent.Builder setIsFullTracking(boolean p0) { huskProps.put("IsFullTracking", Boolean.valueOf(p0)); return this; }
+        public android.location.GnssMeasurementsEvent.Builder setIsFullTracking(boolean p0) { huskProps.put("IsFullTracking", Boolean.valueOf(p0)); huskProps.put("FullTracking", Boolean.valueOf(p0)); return this; }
         public android.location.GnssMeasurementsEvent.Builder setMeasurements(java.util.Collection p0) { huskProps.put("Measurements", p0); return this; }
         public android.location.GnssMeasurementsEvent.Builder setMeasurements(android.location.GnssMeasurement[] p0) { huskProps.put("Measurements", p0); return this; }
     }

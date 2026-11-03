@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GameState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GameState.class);
     public static final int MODE_CONTENT = 4;
     public static final int MODE_GAMEPLAY_INTERRUPTIBLE = 2;
     public static final int MODE_GAMEPLAY_UNINTERRUPTIBLE = 3;

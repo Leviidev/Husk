@@ -4,7 +4,7 @@ package android.graphics.pdf.models.selection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PageSelection implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PageSelection.class);
     public PageSelection(int p0, android.graphics.pdf.models.selection.SelectionBoundary p1, android.graphics.pdf.models.selection.SelectionBoundary p2, java.util.List p3) {}
     public int describeContents() { return 0; }
     public int getPage() { return (huskProps.get("Page") instanceof Integer ? (Integer) huskProps.get("Page") : 0); }

@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class VisibilitySetterAction extends android.service.autofill.InternalOnClickAction implements android.service.autofill.OnClickAction, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(VisibilitySetterAction.class);
     public int describeContents() { return 0; }
     public void onClick(android.view.ViewGroup p0) {}
     public void writeToParcel(android.os.Parcel p0, int p1) {}

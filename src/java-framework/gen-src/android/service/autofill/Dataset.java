@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Dataset implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Dataset.class);
     public static final int PICK_REASON_NO_PCC = 1;
     public static final int PICK_REASON_PCC_DETECTION_ONLY = 4;
     public static final int PICK_REASON_PCC_DETECTION_PREFERRED_WITH_PROVIDER = 5;
@@ -60,7 +60,7 @@ public final class Dataset implements android.os.Parcelable {
     }
     public static final class DatasetFieldFilter implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DatasetFieldFilter.class);
         public java.util.regex.Pattern pattern;
         public int describeContents() { return 0; }
         public java.util.regex.Pattern getPattern() { return (java.util.regex.Pattern) huskProps.get("Pattern"); }

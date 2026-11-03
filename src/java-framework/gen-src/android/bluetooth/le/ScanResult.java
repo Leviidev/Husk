@@ -4,7 +4,7 @@ package android.bluetooth.le;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ScanResult implements android.os.Parcelable, android.bluetooth.Attributable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ScanResult.class);
     public static final int DATA_COMPLETE = 0;
     public static final int DATA_TRUNCATED = 2;
     public static final int PERIODIC_INTERVAL_NOT_PRESENT = 0;

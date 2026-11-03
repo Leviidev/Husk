@@ -4,7 +4,7 @@ package android.service.chooser;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ChooserAction implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ChooserAction.class);
     public int describeContents() { return 0; }
     public android.app.PendingIntent getAction() { return (android.app.PendingIntent) huskProps.get("Action"); }
     public android.graphics.drawable.Icon getIcon() { return (android.graphics.drawable.Icon) huskProps.get("Icon"); }

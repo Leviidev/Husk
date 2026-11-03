@@ -4,7 +4,7 @@ package android.bluetooth.le;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdvertiseData implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdvertiseData.class);
     public int describeContents() { return 0; }
     public boolean getIncludeDeviceName() { return (huskProps.get("IncludeDeviceName") instanceof Boolean ? (Boolean) huskProps.get("IncludeDeviceName") : false); }
     public boolean getIncludeTxPowerLevel() { return (huskProps.get("IncludeTxPowerLevel") instanceof Boolean ? (Boolean) huskProps.get("IncludeTxPowerLevel") : false); }

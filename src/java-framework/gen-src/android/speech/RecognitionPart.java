@@ -10,7 +10,7 @@ public final class RecognitionPart implements android.os.Parcelable {
     public static final int CONFIDENCE_LEVEL_MEDIUM_HIGH = 4;
     public static final int CONFIDENCE_LEVEL_MEDIUM_LOW = 2;
     public static int CONFIDENCE_LEVEL_UNKNOWN;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RecognitionPart.class);
     public static java.lang.String confidenceLevelToString(int p0) { return null; }
     public int describeContents() { return 0; }
     public int getConfidenceLevel() { return (huskProps.get("ConfidenceLevel") instanceof Integer ? (Integer) huskProps.get("ConfidenceLevel") : 0); }

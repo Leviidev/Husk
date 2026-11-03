@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AsyncNotedAppOp implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AsyncNotedAppOp.class);
     public AsyncNotedAppOp(int p0, int p1, java.lang.String p2, java.lang.String p3, long p4) {}
     public int describeContents() { return 0; }
     public java.lang.String getAttributionTag() { return (java.lang.String) huskProps.get("AttributionTag"); }

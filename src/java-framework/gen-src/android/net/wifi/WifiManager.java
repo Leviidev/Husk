@@ -638,7 +638,7 @@ public class WifiManager {
     }
     public static final class AddNetworkResult implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AddNetworkResult.class);
         public static final int STATUS_ADD_PASSPOINT_FAILURE = 3;
         public static final int STATUS_ADD_WIFI_CONFIG_FAILURE = 4;
         public static final int STATUS_FAILURE_UNKNOWN = 1;

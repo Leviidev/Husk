@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class StatusHints implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(StatusHints.class);
     public StatusHints(android.content.ComponentName p0, java.lang.CharSequence p1, int p2, android.os.Bundle p3) {}
     public StatusHints(android.graphics.drawable.Icon p0) {}
     public StatusHints(java.lang.CharSequence p0, android.graphics.drawable.Icon p1, android.os.Bundle p2) {}

@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WifiSsid implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiSsid.class);
     public static final java.lang.String NONE = "<unknown ssid>";
     public java.io.ByteArrayOutputStream octets;
     public static android.net.wifi.WifiSsid createFromAsciiEncoded(java.lang.String p0) { return new WifiSsid(); }

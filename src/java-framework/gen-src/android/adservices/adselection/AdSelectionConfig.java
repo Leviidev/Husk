@@ -4,7 +4,7 @@ package android.adservices.adselection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdSelectionConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdSelectionConfig.class);
     public static android.adservices.adselection.AdSelectionConfig EMPTY;
     public android.adservices.adselection.AdSelectionConfig.Builder cloneToBuilder() { return null; }
     public int describeContents() { return 0; }

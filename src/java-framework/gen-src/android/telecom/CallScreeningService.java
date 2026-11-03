@@ -14,7 +14,7 @@ public abstract class CallScreeningService extends android.app.Service {
     }
     public static class ParcelableCallResponse implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ParcelableCallResponse.class);
         protected ParcelableCallResponse(android.os.Parcel p0) {}
         public int describeContents() { return 0; }
         public int getCallComposerAttachmentsToShow() { return (huskProps.get("CallComposerAttachmentsToShow") instanceof Integer ? (Integer) huskProps.get("CallComposerAttachmentsToShow") : 0); }

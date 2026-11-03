@@ -4,7 +4,7 @@ package android.app.usage;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ConfigurationStats implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConfigurationStats.class);
     public int mActivationCount;
     public long mBeginTimeStamp;
     public android.content.res.Configuration mConfiguration;

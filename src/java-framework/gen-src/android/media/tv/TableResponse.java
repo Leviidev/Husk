@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TableResponse extends android.media.tv.BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TableResponse.class);
     public TableResponse(int p0, int p1, int p2, android.net.Uri p3, int p4, int p5) { super(); }
     public int describeContents() { return 0; }
     public int getSize() { return (huskProps.get("Size") instanceof Integer ? (Integer) huskProps.get("Size") : 0); }

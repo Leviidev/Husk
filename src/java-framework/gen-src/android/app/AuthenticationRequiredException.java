@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AuthenticationRequiredException extends java.lang.SecurityException implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AuthenticationRequiredException.class);
     public AuthenticationRequiredException(android.os.Parcel p0) { super(); }
     public AuthenticationRequiredException(java.lang.Throwable p0, android.app.PendingIntent p1) { super(); }
     public int describeContents() { return 0; }

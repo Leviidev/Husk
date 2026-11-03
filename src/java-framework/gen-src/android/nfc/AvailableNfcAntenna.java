@@ -4,7 +4,7 @@ package android.nfc;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AvailableNfcAntenna implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AvailableNfcAntenna.class);
     public AvailableNfcAntenna(int p0, int p1) {}
     public int describeContents() { return 0; }
     public int getLocationX() { return (huskProps.get("LocationX") instanceof Integer ? (Integer) huskProps.get("LocationX") : 0); }

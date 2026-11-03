@@ -4,7 +4,7 @@ package android.media;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Session2Token implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Session2Token.class);
     public static final int TYPE_SESSION = 0;
     public static final int TYPE_SESSION_SERVICE = 1;
     public Session2Token(android.content.Context p0, android.content.ComponentName p1) {}

@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PhoneAccountSuggestion implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PhoneAccountSuggestion.class);
     public static final int REASON_FREQUENT = 2;
     public static final int REASON_INTRA_CARRIER = 1;
     public static final int REASON_NONE = 0;

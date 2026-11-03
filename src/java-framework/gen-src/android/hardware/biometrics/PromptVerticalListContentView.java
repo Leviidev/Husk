@@ -4,7 +4,7 @@ package android.hardware.biometrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PromptVerticalListContentView implements android.hardware.biometrics.PromptContentViewParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PromptVerticalListContentView.class);
     public static int getMaxEachItemCharacterNumber() { return 0; }
     public static int getMaxItemCount() { return 0; }
     public int describeContents() { return 0; }

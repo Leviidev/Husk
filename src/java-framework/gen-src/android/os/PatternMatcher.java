@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class PatternMatcher implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PatternMatcher.class);
     public static final int PATTERN_ADVANCED_GLOB = 3;
     public static final int PATTERN_LITERAL = 0;
     public static final int PATTERN_PREFIX = 1;

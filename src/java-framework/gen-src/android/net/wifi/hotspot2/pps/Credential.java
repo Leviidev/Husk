@@ -4,7 +4,7 @@ package android.net.wifi.hotspot2.pps;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Credential implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Credential.class);
     public Credential() {}
     public Credential(android.net.wifi.hotspot2.pps.Credential p0) {}
     public static boolean isX509CertificateEquals(java.security.cert.X509Certificate p0, java.security.cert.X509Certificate p1) { return false; }
@@ -39,7 +39,7 @@ public final class Credential implements android.os.Parcelable {
     public static final class CertificateCredential implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public static final java.lang.String CERT_TYPE_X509V3 = "x509v3";
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CertificateCredential.class);
         public CertificateCredential() {}
         public CertificateCredential(android.net.wifi.hotspot2.pps.Credential.CertificateCredential p0) {}
         public int describeContents() { return 0; }
@@ -52,7 +52,7 @@ public final class Credential implements android.os.Parcelable {
     }
     public static final class SimCredential implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SimCredential.class);
         public SimCredential() {}
         public SimCredential(android.net.wifi.hotspot2.pps.Credential.SimCredential p0) {}
         public int describeContents() { return 0; }
@@ -68,7 +68,7 @@ public final class Credential implements android.os.Parcelable {
         public static final java.lang.String AUTH_METHOD_MSCHAP = "MS-CHAP";
         public static final java.lang.String AUTH_METHOD_MSCHAPV2 = "MS-CHAP-V2";
         public static final java.lang.String AUTH_METHOD_PAP = "PAP";
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UserCredential.class);
         public UserCredential() {}
         public UserCredential(android.net.wifi.hotspot2.pps.Credential.UserCredential p0) {}
         public int describeContents() { return 0; }

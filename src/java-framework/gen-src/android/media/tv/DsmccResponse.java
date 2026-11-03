@@ -8,7 +8,7 @@ public final class DsmccResponse extends android.media.tv.BroadcastInfoResponse 
     public static final java.lang.String BIOP_MESSAGE_TYPE_FILE = "file";
     public static final java.lang.String BIOP_MESSAGE_TYPE_SERVICE_GATEWAY = "service_gateway";
     public static final java.lang.String BIOP_MESSAGE_TYPE_STREAM = "stream";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DsmccResponse.class);
     public DsmccResponse(int p0, int p1, int p2, android.os.ParcelFileDescriptor p3) { super(); }
     public DsmccResponse(int p0, int p1, int p2, boolean p3, java.util.List p4) { super(); }
     public DsmccResponse(int p0, int p1, int p2, int[] p3, java.lang.String[] p4) { super(); }

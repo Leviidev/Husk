@@ -4,7 +4,7 @@ package android.accessibilityservice;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class MagnificationConfig implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(MagnificationConfig.class);
     public static final int MAGNIFICATION_MODE_DEFAULT = 0;
     public static final int MAGNIFICATION_MODE_FULLSCREEN = 1;
     public static final int MAGNIFICATION_MODE_WINDOW = 2;

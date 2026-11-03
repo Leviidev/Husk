@@ -4,7 +4,7 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DisplayShape implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DisplayShape.class);
     public static android.view.DisplayShape NONE;
     public java.lang.String mDisplayShapeSpec;
     public static android.view.DisplayShape createDefaultDisplayShape(int p0, int p1, boolean p2) { return new DisplayShape(); }

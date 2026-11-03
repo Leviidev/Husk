@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NetworkRegistrationInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NetworkRegistrationInfo.class);
     public static final int DOMAIN_CS = 1;
     public static final int DOMAIN_CS_PS = 3;
     public static final int DOMAIN_PS = 2;
@@ -82,7 +82,7 @@ public final class NetworkRegistrationInfo implements android.os.Parcelable {
         public android.telephony.NetworkRegistrationInfo.Builder setDataSpecificInfo(android.telephony.DataSpecificRegistrationInfo p0) { huskProps.put("DataSpecificInfo", p0); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setDomain(int p0) { huskProps.put("Domain", Integer.valueOf(p0)); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setEmergencyOnly(boolean p0) { huskProps.put("EmergencyOnly", Boolean.valueOf(p0)); return this; }
-        public android.telephony.NetworkRegistrationInfo.Builder setIsNonTerrestrialNetwork(boolean p0) { huskProps.put("IsNonTerrestrialNetwork", Boolean.valueOf(p0)); return this; }
+        public android.telephony.NetworkRegistrationInfo.Builder setIsNonTerrestrialNetwork(boolean p0) { huskProps.put("IsNonTerrestrialNetwork", Boolean.valueOf(p0)); huskProps.put("NonTerrestrialNetwork", Boolean.valueOf(p0)); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setRegisteredPlmn(java.lang.String p0) { huskProps.put("RegisteredPlmn", p0); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setRegistrationState(int p0) { huskProps.put("RegistrationState", Integer.valueOf(p0)); return this; }
         public android.telephony.NetworkRegistrationInfo.Builder setRejectCause(int p0) { huskProps.put("RejectCause", Integer.valueOf(p0)); return this; }

@@ -4,7 +4,7 @@ package android.bluetooth.le;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ScanFilter implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ScanFilter.class);
     public static android.bluetooth.le.ScanFilter EMPTY;
     public static boolean matchesServiceUuids(android.os.ParcelUuid p0, android.os.ParcelUuid p1, java.util.List p2) { return false; }
     public int describeContents() { return 0; }

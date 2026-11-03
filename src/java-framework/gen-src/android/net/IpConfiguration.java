@@ -4,7 +4,7 @@ package android.net;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class IpConfiguration implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(IpConfiguration.class);
     public android.net.ProxyInfo httpProxy;
     public android.net.IpConfiguration.IpAssignment ipAssignment;
     public android.net.IpConfiguration.ProxySettings proxySettings;

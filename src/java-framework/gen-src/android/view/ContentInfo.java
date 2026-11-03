@@ -4,7 +4,7 @@ package android.view;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ContentInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ContentInfo.class);
     public static final int FLAG_CONVERT_TO_PLAIN_TEXT = 1;
     public static final int SOURCE_APP = 0;
     public static final int SOURCE_AUTOFILL = 4;

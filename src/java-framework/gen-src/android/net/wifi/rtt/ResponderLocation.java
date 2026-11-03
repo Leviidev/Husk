@@ -7,7 +7,7 @@ public final class ResponderLocation implements android.os.Parcelable {
     public static final int ALTITUDE_FLOORS = 2;
     public static final int ALTITUDE_METERS = 1;
     public static final int ALTITUDE_UNDEFINED = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ResponderLocation.class);
     public static final int DATUM_NAD83_MLLW = 3;
     public static final int DATUM_NAD83_NAV88 = 2;
     public static final int DATUM_UNDEFINED = 0;

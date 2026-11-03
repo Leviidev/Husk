@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SearchSuggestionSpec extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SearchSuggestionSpec.class);
     public static final int SUGGESTION_RANKING_STRATEGY_DOCUMENT_COUNT = 0;
     public static final int SUGGESTION_RANKING_STRATEGY_NONE = 2;
     public static final int SUGGESTION_RANKING_STRATEGY_TERM_FREQUENCY = 1;

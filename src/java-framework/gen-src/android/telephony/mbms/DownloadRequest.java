@@ -4,7 +4,7 @@ package android.telephony.mbms;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DownloadRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DownloadRequest.class);
     public static final int MAX_APP_INTENT_SIZE = 50000;
     public static final int MAX_DESTINATION_URI_SIZE = 50000;
     public static int getMaxAppIntentSize() { return 0; }

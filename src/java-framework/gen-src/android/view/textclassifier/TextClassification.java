@@ -4,7 +4,7 @@ package android.view.textclassifier;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TextClassification implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextClassification.class);
     public static android.view.textclassifier.TextClassification EMPTY;
     public static android.view.View.OnClickListener createIntentOnClickListener(android.app.PendingIntent p0) { return null; }
     public static android.app.PendingIntent createPendingIntent(android.content.Context p0, android.content.Intent p1, int p2) { return null; }
@@ -42,7 +42,7 @@ public final class TextClassification implements android.os.Parcelable {
     }
     public static final class Request implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Request.class);
         public int describeContents() { return 0; }
         public java.lang.String getCallingPackageName() { return (java.lang.String) huskProps.get("CallingPackageName"); }
         public android.os.LocaleList getDefaultLocales() { return (android.os.LocaleList) huskProps.get("DefaultLocales"); }

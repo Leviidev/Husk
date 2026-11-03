@@ -4,7 +4,7 @@ package android.adservices.common;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdTechIdentifier implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdTechIdentifier.class);
     public static android.adservices.common.AdTechIdentifier UNSET_AD_TECH_IDENTIFIER;
     public static android.adservices.common.AdTechIdentifier fromString(java.lang.String p0) { return new AdTechIdentifier(); }
     public static android.adservices.common.AdTechIdentifier fromString(java.lang.String p0, boolean p1) { return new AdTechIdentifier(); }

@@ -4,7 +4,7 @@ package android.adservices.customaudience;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TrustedBiddingData implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TrustedBiddingData.class);
     public int describeContents() { return 0; }
     public java.util.List getTrustedBiddingKeys() { return (huskProps.get("TrustedBiddingKeys") != null ? (java.util.List) huskProps.get("TrustedBiddingKeys") : new java.util.ArrayList()); }
     public android.net.Uri getTrustedBiddingUri() { return (android.net.Uri) huskProps.get("TrustedBiddingUri"); }

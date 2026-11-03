@@ -4,7 +4,7 @@ package android.net.nsd;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class NsdServiceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(NsdServiceInfo.class);
     public NsdServiceInfo() {}
     public NsdServiceInfo(android.net.nsd.NsdServiceInfo p0) {}
     public NsdServiceInfo(java.lang.String p0, java.lang.String p1) {}

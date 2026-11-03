@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class GetSchemaResponse extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GetSchemaResponse.class);
     public java.util.Map getPubliclyVisibleSchemas() { return (huskProps.get("PubliclyVisibleSchemas") != null ? (java.util.Map) huskProps.get("PubliclyVisibleSchemas") : new java.util.HashMap()); }
     public java.util.Map getRequiredPermissionsForSchemaTypeVisibility() { return (huskProps.get("RequiredPermissionsForSchemaTypeVisibility") != null ? (java.util.Map) huskProps.get("RequiredPermissionsForSchemaTypeVisibility") : new java.util.HashMap()); }
     public java.util.Set getSchemaTypesNotDisplayedBySystem() { return (huskProps.get("SchemaTypesNotDisplayedBySystem") != null ? (java.util.Set) huskProps.get("SchemaTypesNotDisplayedBySystem") : new java.util.HashSet()); }

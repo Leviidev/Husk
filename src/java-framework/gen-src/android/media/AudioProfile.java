@@ -7,7 +7,7 @@ public class AudioProfile implements android.os.Parcelable {
     public static final int AUDIO_ENCAPSULATION_TYPE_IEC61937 = 1;
     public static final int AUDIO_ENCAPSULATION_TYPE_NONE = 0;
     public static final int AUDIO_ENCAPSULATION_TYPE_PCM = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AudioProfile.class);
     public AudioProfile(int p0, int[] p1, int[] p2, int[] p3, int p4) {}
     public int describeContents() { return 0; }
     public int[] getChannelIndexMasks() { return (int[]) huskProps.get("ChannelIndexMasks"); }

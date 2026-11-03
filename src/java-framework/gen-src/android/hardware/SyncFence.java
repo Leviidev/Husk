@@ -4,7 +4,7 @@ package android.hardware;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SyncFence implements java.lang.AutoCloseable, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SyncFence.class);
     public static final long SIGNAL_TIME_INVALID = -1L;
     public static final long SIGNAL_TIME_PENDING = 9223372036854775807L;
     public SyncFence(long p0) {}

@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ConnectionRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ConnectionRequest.class);
     public ConnectionRequest(android.telecom.PhoneAccountHandle p0, android.net.Uri p1, android.os.Bundle p2) {}
     public ConnectionRequest(android.telecom.PhoneAccountHandle p0, android.net.Uri p1, android.os.Bundle p2, int p3) {}
     public ConnectionRequest(android.telecom.PhoneAccountHandle p0, android.net.Uri p1, android.os.Bundle p2, int p3, java.lang.String p4, boolean p5) {}
@@ -30,7 +30,7 @@ public final class ConnectionRequest implements android.os.Parcelable {
         public android.telecom.ConnectionRequest.Builder setAccountHandle(android.telecom.PhoneAccountHandle p0) { huskProps.put("AccountHandle", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setAddress(android.net.Uri p0) { huskProps.put("Address", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
-        public android.telecom.ConnectionRequest.Builder setIsAdhocConferenceCall(boolean p0) { huskProps.put("IsAdhocConferenceCall", Boolean.valueOf(p0)); return this; }
+        public android.telecom.ConnectionRequest.Builder setIsAdhocConferenceCall(boolean p0) { huskProps.put("IsAdhocConferenceCall", Boolean.valueOf(p0)); huskProps.put("AdhocConferenceCall", Boolean.valueOf(p0)); return this; }
         public android.telecom.ConnectionRequest.Builder setParticipants(java.util.List p0) { huskProps.put("Participants", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setRttPipeFromInCall(android.os.ParcelFileDescriptor p0) { huskProps.put("RttPipeFromInCall", p0); return this; }
         public android.telecom.ConnectionRequest.Builder setRttPipeToInCall(android.os.ParcelFileDescriptor p0) { huskProps.put("RttPipeToInCall", p0); return this; }

@@ -9,7 +9,7 @@ public final class DisconnectCause implements android.os.Parcelable {
     public static final int CALL_PULLED = 12;
     public static final int CANCELED = 4;
     public static final int CONNECTION_MANAGER_NOT_SUPPORTED = 10;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DisconnectCause.class);
     public static final int ERROR = 1;
     public static final int LOCAL = 2;
     public static final int MISSED = 5;

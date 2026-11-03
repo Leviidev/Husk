@@ -4,7 +4,7 @@ package android.net.wifi.rtt;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class RangingRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(RangingRequest.class);
     public static final int SECURITY_MODE_OPEN = 0;
     public static final int SECURITY_MODE_OPPORTUNISTIC = 1;
     public static final int SECURITY_MODE_SECURE_AUTH = 2;

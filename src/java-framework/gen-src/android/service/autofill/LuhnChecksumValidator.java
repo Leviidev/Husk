@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class LuhnChecksumValidator extends android.service.autofill.InternalValidator implements android.service.autofill.Validator, android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LuhnChecksumValidator.class);
     public LuhnChecksumValidator(android.view.autofill.AutofillId[] p0) { super(); }
     public int describeContents() { return 0; }
     public boolean isValid(android.service.autofill.ValueFinder p0) { return false; }

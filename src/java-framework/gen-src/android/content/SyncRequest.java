@@ -4,7 +4,7 @@ package android.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class SyncRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SyncRequest.class);
     protected SyncRequest(android.content.SyncRequest.Builder p0) {}
     public int describeContents() { return 0; }
     public android.accounts.Account getAccount() { return (android.accounts.Account) huskProps.get("Account"); }

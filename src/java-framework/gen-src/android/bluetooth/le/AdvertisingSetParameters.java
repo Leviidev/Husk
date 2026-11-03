@@ -8,7 +8,7 @@ public final class AdvertisingSetParameters implements android.os.Parcelable {
     public static final int ADDRESS_TYPE_PUBLIC = 0;
     public static final int ADDRESS_TYPE_RANDOM = 1;
     public static final int ADDRESS_TYPE_RANDOM_NON_RESOLVABLE = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdvertisingSetParameters.class);
     public static final int INTERVAL_HIGH = 1600;
     public static final int INTERVAL_LOW = 160;
     public static final int INTERVAL_MAX = 16777215;

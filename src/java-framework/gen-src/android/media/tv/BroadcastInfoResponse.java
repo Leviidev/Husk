@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BroadcastInfoResponse.class);
     public static final int RESPONSE_RESULT_CANCEL = 3;
     public static final int RESPONSE_RESULT_ERROR = 1;
     public static final int RESPONSE_RESULT_OK = 2;

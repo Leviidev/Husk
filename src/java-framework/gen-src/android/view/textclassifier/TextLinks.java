@@ -6,7 +6,7 @@ public final class TextLinks implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final int APPLY_STRATEGY_IGNORE = 0;
     public static final int APPLY_STRATEGY_REPLACE = 1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextLinks.class);
     public static final int STATUS_DIFFERENT_TEXT = 3;
     public static final int STATUS_LINKS_APPLIED = 0;
     public static final int STATUS_NO_LINKS_APPLIED = 2;
@@ -31,7 +31,7 @@ public final class TextLinks implements android.os.Parcelable {
     }
     public static final class Request implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Request.class);
         public int describeContents() { return 0; }
         public java.lang.String getCallingPackageName() { return (java.lang.String) huskProps.get("CallingPackageName"); }
         public android.os.LocaleList getDefaultLocales() { return (android.os.LocaleList) huskProps.get("DefaultLocales"); }
@@ -58,7 +58,7 @@ public final class TextLinks implements android.os.Parcelable {
     }
     public static final class TextLink implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TextLink.class);
         public int describeContents() { return 0; }
         public float getConfidenceScore(java.lang.String p0) { return 0f; }
         public int getEnd() { return (huskProps.get("End") instanceof Integer ? (Integer) huskProps.get("End") : 0); }

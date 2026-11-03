@@ -4,7 +4,7 @@ package android.service.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class CredentialEntry implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CredentialEntry.class);
     public CredentialEntry(android.service.credentials.BeginGetCredentialOption p0, android.app.slice.Slice p1) {}
     public CredentialEntry(java.lang.String p0, android.app.slice.Slice p1) {}
     public CredentialEntry(java.lang.String p0, java.lang.String p1, android.app.slice.Slice p2) {}

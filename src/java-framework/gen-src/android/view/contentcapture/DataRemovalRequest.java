@@ -4,7 +4,7 @@ package android.view.contentcapture;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DataRemovalRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DataRemovalRequest.class);
     public static final int FLAG_IS_PREFIX = 1;
     public int describeContents() { return 0; }
     public java.util.List getLocusIdRequests() { return (huskProps.get("LocusIdRequests") != null ? (java.util.List) huskProps.get("LocusIdRequests") : new java.util.ArrayList()); }

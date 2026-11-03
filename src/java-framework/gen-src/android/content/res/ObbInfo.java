@@ -4,7 +4,7 @@ package android.content.res;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class ObbInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ObbInfo.class);
     public static final int OBB_OVERLAY = 1;
     public java.lang.String filename;
     public int flags;

@@ -4,7 +4,7 @@ package android.graphics.pdf.content;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PdfPageLinkContent implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PdfPageLinkContent.class);
     public PdfPageLinkContent(java.util.List p0, android.net.Uri p1) {}
     public int describeContents() { return 0; }
     public java.util.List getBounds() { return (huskProps.get("Bounds") != null ? (java.util.List) huskProps.get("Bounds") : new java.util.ArrayList()); }

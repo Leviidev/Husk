@@ -4,7 +4,7 @@ package android.view.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AutofillValue implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AutofillValue.class);
     public static android.view.autofill.AutofillValue forDate(long p0) { return new AutofillValue(); }
     public static android.view.autofill.AutofillValue forList(int p0) { return new AutofillValue(); }
     public static android.view.autofill.AutofillValue forText(java.lang.CharSequence p0) { return new AutofillValue(); }

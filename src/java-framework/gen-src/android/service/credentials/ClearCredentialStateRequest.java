@@ -4,7 +4,7 @@ package android.service.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ClearCredentialStateRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ClearCredentialStateRequest.class);
     public ClearCredentialStateRequest(android.service.credentials.CallingAppInfo p0, android.os.Bundle p1) {}
     public int describeContents() { return 0; }
     public android.service.credentials.CallingAppInfo getCallingAppInfo() { return (android.service.credentials.CallingAppInfo) huskProps.get("CallingAppInfo"); }

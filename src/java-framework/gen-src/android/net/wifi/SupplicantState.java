@@ -4,7 +4,7 @@ package android.net.wifi;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public enum SupplicantState implements android.os.Parcelable {
     ASSOCIATED, ASSOCIATING, AUTHENTICATING, COMPLETED, DISCONNECTED, DORMANT, FOUR_WAY_HANDSHAKE, GROUP_HANDSHAKE, INACTIVE, INTERFACE_DISABLED, INVALID, SCANNING, UNINITIALIZED;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SupplicantState.class);
     public static boolean isConnecting(android.net.wifi.SupplicantState p0) { return false; }
     public static boolean isDriverActive(android.net.wifi.SupplicantState p0) { return false; }
     public static boolean isHandshakeState(android.net.wifi.SupplicantState p0) { return false; }

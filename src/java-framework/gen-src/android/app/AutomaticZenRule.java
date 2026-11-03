@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AutomaticZenRule implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AutomaticZenRule.class);
     public static final int FIELD_ICON = 4;
     public static final int FIELD_INTERRUPTION_FILTER = 2;
     public static final int FIELD_NAME = 1;
@@ -56,7 +56,7 @@ public final class AutomaticZenRule implements android.os.Parcelable {
     AutomaticZenRule() { this((android.os.Parcel) null); }
     public static final class AzrWithId implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AzrWithId.class);
         public java.lang.String mId;
         public android.app.AutomaticZenRule mRule;
         public AzrWithId(java.lang.String p0, android.app.AutomaticZenRule p1) {}

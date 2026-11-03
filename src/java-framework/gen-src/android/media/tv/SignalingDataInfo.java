@@ -6,7 +6,7 @@ public final class SignalingDataInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String CONTENT_ENCODING_BASE64 = "Base64";
     public static final java.lang.String CONTENT_ENCODING_UTF_8 = "UTF-8";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SignalingDataInfo.class);
     public static final int LLS_NO_GROUP_ID = -1;
     public SignalingDataInfo(java.lang.String p0, java.lang.String p1, int p2, int p3) {}
     public SignalingDataInfo(java.lang.String p0, java.lang.String p1, int p2, int p3, java.lang.String p4) {}

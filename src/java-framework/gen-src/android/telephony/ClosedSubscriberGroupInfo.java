@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ClosedSubscriberGroupInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ClosedSubscriberGroupInfo.class);
     public ClosedSubscriberGroupInfo(boolean p0, java.lang.String p1, int p2) {}
     protected static android.telephony.ClosedSubscriberGroupInfo createFromParcelBody(android.os.Parcel p0) { return new ClosedSubscriberGroupInfo(); }
     public int describeContents() { return 0; }

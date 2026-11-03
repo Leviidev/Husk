@@ -4,7 +4,7 @@ package android.media.metrics;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PlaybackStateEvent extends android.media.metrics.Event implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PlaybackStateEvent.class);
     public static final int STATE_ABANDONED = 15;
     public static final int STATE_BUFFERING = 6;
     public static final int STATE_ENDED = 11;

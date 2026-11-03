@@ -8,7 +8,7 @@ public class CaptivePortal implements android.os.Parcelable {
     public static final int APP_RETURN_DISMISSED = 0;
     public static final int APP_RETURN_UNWANTED = 1;
     public static final int APP_RETURN_WANTED_AS_IS = 2;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(CaptivePortal.class);
     public CaptivePortal(android.os.IBinder p0) {}
     public int describeContents() { return 0; }
     public void ignoreNetwork() {}

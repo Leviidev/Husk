@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class WallpaperInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WallpaperInfo.class);
     public WallpaperInfo(android.content.Context p0, android.content.pm.ResolveInfo p1) {}
     public int describeContents() { return 0; }
     public void dump(android.util.Printer p0, java.lang.String p1) {}

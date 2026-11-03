@@ -4,7 +4,7 @@ package android.telecom;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class GatewayInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GatewayInfo.class);
     public GatewayInfo(java.lang.String p0, android.net.Uri p1, android.net.Uri p2) {}
     public int describeContents() { return 0; }
     public android.net.Uri getGatewayAddress() { return (android.net.Uri) huskProps.get("GatewayAddress"); }

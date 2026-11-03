@@ -31,8 +31,8 @@ public class ImageReader implements java.lang.AutoCloseable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder(int p0, int p1) {}
         public android.media.ImageReader build() { android.media.ImageReader x = new android.media.ImageReader(); x.huskProps.putAll(huskProps); return x; }
-        public android.media.ImageReader.Builder setDefaultDataSpace(int p0) { huskProps.put("DefaultDataSpace", Integer.valueOf(p0)); return this; }
-        public android.media.ImageReader.Builder setDefaultHardwareBufferFormat(int p0) { huskProps.put("DefaultHardwareBufferFormat", Integer.valueOf(p0)); return this; }
+        public android.media.ImageReader.Builder setDefaultDataSpace(int p0) { huskProps.put("DefaultDataSpace", Integer.valueOf(p0)); huskProps.put("DataSpace", Integer.valueOf(p0)); return this; }
+        public android.media.ImageReader.Builder setDefaultHardwareBufferFormat(int p0) { huskProps.put("DefaultHardwareBufferFormat", Integer.valueOf(p0)); huskProps.put("HardwareBufferFormat", Integer.valueOf(p0)); return this; }
         public android.media.ImageReader.Builder setImageFormat(int p0) { huskProps.put("ImageFormat", Integer.valueOf(p0)); return this; }
         public android.media.ImageReader.Builder setMaxImages(int p0) { huskProps.put("MaxImages", Integer.valueOf(p0)); return this; }
         public android.media.ImageReader.Builder setUsage(long p0) { huskProps.put("Usage", Long.valueOf(p0)); return this; }

@@ -19,7 +19,7 @@ public final class GestureDescription {
     }
     public static class GestureStep implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GestureStep.class);
         public int numTouchPoints;
         public long timeSinceGestureStart;
         public android.accessibilityservice.GestureDescription.TouchPoint[] touchPoints;
@@ -49,7 +49,7 @@ public final class GestureDescription {
     }
     public static class TouchPoint implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TouchPoint.class);
         public int mContinuedStrokeId;
         public boolean mIsEndOfPath;
         public boolean mIsStartOfPath;

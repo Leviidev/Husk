@@ -4,7 +4,7 @@ package android.credentials;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GetCredentialResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GetCredentialResponse.class);
     public GetCredentialResponse(android.credentials.Credential p0) {}
     public int describeContents() { return 0; }
     public android.view.autofill.AutofillId getAutofillId() { return (android.view.autofill.AutofillId) huskProps.get("AutofillId"); }

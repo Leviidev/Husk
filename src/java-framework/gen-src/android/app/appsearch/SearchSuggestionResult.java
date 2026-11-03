@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SearchSuggestionResult extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SearchSuggestionResult.class);
     public java.lang.String getSuggestedResult() { return (java.lang.String) huskProps.get("SuggestedResult"); }
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     protected SearchSuggestionResult() { super(); }

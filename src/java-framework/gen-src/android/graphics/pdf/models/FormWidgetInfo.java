@@ -4,7 +4,7 @@ package android.graphics.pdf.models;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FormWidgetInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FormWidgetInfo.class);
     public static final int WIDGET_TYPE_CHECKBOX = 2;
     public static final int WIDGET_TYPE_COMBOBOX = 4;
     public static final int WIDGET_TYPE_LISTBOX = 5;

@@ -4,7 +4,7 @@ package android.service.autofill;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FillRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FillRequest.class);
     public static final int FLAG_COMPATIBILITY_MODE_REQUEST = 2;
     public static final int FLAG_IME_SHOWING = 128;
     public static final int FLAG_MANUAL_REQUEST = 1;

@@ -124,7 +124,9 @@ public class Window {
     public void setHideOverlayWindows(boolean b) {}
     public void setFrameRateBoostOnTouchEnabled(boolean b) {}
     public boolean requestFeature(int f) {
-        if (mContentParent != null && f != FEATURE_NO_TITLE) throw new AndroidRuntimeExceptionHusk("requestFeature() must be called before adding content");
+        /* only once content was set (PhoneWindow's mContentParentExplicitlySet): getDecorView() alone installs the decor, and
+           apps (Voice Memos, edge-to-edge setups) ask for features after that */
+        if (mContentExplicitlySet && f != FEATURE_NO_TITLE) throw new AndroidRuntimeExceptionHusk("requestFeature() must be called before adding content");
         if (f == FEATURE_NO_TITLE) mFeatures &= ~(1 << FEATURE_ACTION_BAR);
         if (f == FEATURE_ACTION_BAR) mFeatures &= ~(1 << FEATURE_NO_TITLE);
         mFeatures |= 1 << f;
@@ -156,18 +158,22 @@ public class Window {
     }
     public <T extends View> T findViewById(int id) { return getDecorView().findViewById(id); }
     public final <T extends View> T requireViewById(int id) { T v = getDecorView().findViewById(id); if (v == null) throw new IllegalArgumentException("ID does not reference a View inside this Window"); return v; }
+    private boolean mContentExplicitlySet;
     public void setContentView(int layout) {
+        mContentExplicitlySet = true;
         if (mContentParent == null) installDecor(); else mContentParent.removeAllViews();
         LayoutInflater.from(mContext).inflate(layout, mContentParent);
         if (mCallback != null && !mDestroyed) mCallback.onContentChanged();
     }
     public void setContentView(View v) { setContentView(v, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)); }
     public void setContentView(View v, ViewGroup.LayoutParams p) {
+        mContentExplicitlySet = true;
         if (mContentParent == null) installDecor(); else mContentParent.removeAllViews();
         mContentParent.addView(v, p);
         if (mCallback != null && !mDestroyed) mCallback.onContentChanged();
     }
     public void addContentView(View v, ViewGroup.LayoutParams p) {
+        mContentExplicitlySet = true;
         if (mContentParent == null) installDecor();
         mContentParent.addView(v, p);
         if (mCallback != null && !mDestroyed) mCallback.onContentChanged();

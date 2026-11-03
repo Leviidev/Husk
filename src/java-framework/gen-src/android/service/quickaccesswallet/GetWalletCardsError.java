@@ -4,7 +4,7 @@ package android.service.quickaccesswallet;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class GetWalletCardsError implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(GetWalletCardsError.class);
     public GetWalletCardsError(android.graphics.drawable.Icon p0, java.lang.CharSequence p1) {}
     public int describeContents() { return 0; }
     public android.graphics.drawable.Icon getIcon() { return (android.graphics.drawable.Icon) huskProps.get("Icon"); }

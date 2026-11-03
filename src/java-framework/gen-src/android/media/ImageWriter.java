@@ -26,7 +26,7 @@ public class ImageWriter implements java.lang.AutoCloseable {
         public android.media.ImageWriter build() { android.media.ImageWriter x = new android.media.ImageWriter(); x.huskProps.putAll(huskProps); return x; }
         public android.media.ImageWriter.Builder setDataSpace(int p0) { huskProps.put("DataSpace", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setHardwareBufferFormat(int p0) { huskProps.put("HardwareBufferFormat", Integer.valueOf(p0)); return this; }
-        public android.media.ImageWriter.Builder setImageFormat(int p0) { huskProps.put("ImageFormat", Integer.valueOf(p0)); return this; }
+        public android.media.ImageWriter.Builder setImageFormat(int p0) { huskProps.put("ImageFormat", Integer.valueOf(p0)); huskProps.put("Format", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setMaxImages(int p0) { huskProps.put("MaxImages", Integer.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setUsage(long p0) { huskProps.put("Usage", Long.valueOf(p0)); return this; }
         public android.media.ImageWriter.Builder setWidthAndHeight(int p0, int p1) { return this; }

@@ -10,7 +10,7 @@ public final class SoftApConfiguration implements android.os.Parcelable {
     public static final int BAND_6GHZ = 4;
     public static final int BAND_ANY = 7;
     public static int[] BAND_TYPES;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SoftApConfiguration.class);
     public static final long DEFAULT_TIMEOUT = -1L;
     public static final int RANDOMIZATION_NONE = 0;
     public static final int RANDOMIZATION_NON_PERSISTENT = 2;

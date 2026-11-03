@@ -5,7 +5,7 @@ package android.app.blob;
 public final class BlobHandle implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
     public static final java.lang.String ALGO_SHA_256 = "SHA-256";
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(BlobHandle.class);
     public java.lang.String algorithm;
     public byte[] digest;
     public long expiryTimeMillis;

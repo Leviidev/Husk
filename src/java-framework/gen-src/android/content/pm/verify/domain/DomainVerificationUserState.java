@@ -4,7 +4,7 @@ package android.content.pm.verify.domain;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class DomainVerificationUserState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(DomainVerificationUserState.class);
     public static final int DOMAIN_STATE_NONE = 0;
     public static final int DOMAIN_STATE_SELECTED = 1;
     public static final int DOMAIN_STATE_VERIFIED = 2;

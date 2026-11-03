@@ -8,7 +8,7 @@ public final class PlaybackMetrics implements android.os.Parcelable {
     public static final int CONTENT_TYPE_MAIN = 1;
     public static final int CONTENT_TYPE_OTHER = 3;
     public static final int CONTENT_TYPE_UNKNOWN = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PlaybackMetrics.class);
     public static final int DRM_TYPE_CLEARKEY = 6;
     public static final int DRM_TYPE_NONE = 0;
     public static final int DRM_TYPE_OTHER = 1;

@@ -270,7 +270,9 @@ public class PackageManager {
     public boolean isInstantApp() { return false; }
     public boolean isInstantApp(String pkg) { return false; }
     public boolean canRequestPackageInstalls() { return false; }
-    public PackageInstaller getPackageInstaller() { return null; }
+    private static PackageInstaller sInstaller;
+    /* no sessions, none to install: an app store (F-Droid) builds its install manager on it as it starts */
+    public PackageInstaller getPackageInstaller() { synchronized (PackageManager.class) { if (sInstaller == null) sInstaller = new PackageInstaller(); return sInstaller; } }
     public android.content.pm.ModuleInfo getModuleInfo(String pkg, int flags) throws NameNotFoundException { throw new NameNotFoundException(pkg); }
     public List<SharedLibraryInfo> getSharedLibraries(int flags) { return new ArrayList<>(); }
     public boolean isPackageSuspended() { return false; }

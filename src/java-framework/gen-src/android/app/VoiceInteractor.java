@@ -51,7 +51,7 @@ public final class VoiceInteractor {
     }
     public static class Prompt implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Prompt.class);
         public Prompt(java.lang.CharSequence p0) {}
         public Prompt(java.lang.CharSequence[] p0, java.lang.CharSequence p1) {}
         public int countVoicePrompts() { return 0; }

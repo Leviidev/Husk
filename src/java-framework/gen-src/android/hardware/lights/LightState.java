@@ -4,7 +4,7 @@ package android.hardware.lights;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class LightState implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(LightState.class);
     public LightState(int p0) {}
     public LightState(int p0, int p1) {}
     public int describeContents() { return 0; }

@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SectionResponse extends android.media.tv.BroadcastInfoResponse implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SectionResponse.class);
     public SectionResponse(int p0, int p1, int p2, int p3, int p4, android.os.Bundle p5) { super(); }
     public int describeContents() { return 0; }
     public android.os.Bundle getSessionData() { return (android.os.Bundle) huskProps.get("SessionData"); }

@@ -292,7 +292,23 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
     public void setTextCursorDrawable(Drawable d) { mCursorDrawable = d; invalidate(); }
     public void setTextCursorDrawable(int r) { setTextCursorDrawable(r != 0 ? getContext().getDrawable(r) : null); }
     public Drawable getTextCursorDrawable() { return mCursorDrawable; }
-    public void setTextSelectHandle(Drawable d) {} public void setTextSelectHandle(int r) {} public void setTextSelectHandleLeft(Drawable d) {} public void setTextSelectHandleRight(Drawable d) {}
+    /* the selection handles (API 29): never null on Android, as React Native's TextInput checks; the framework's own, else a plain shape */
+    private Drawable mSelectHandle, mSelectHandleLeft, mSelectHandleRight;
+    private Drawable handle(String name) {
+        int id = 0;
+        try { id = getContext().getResources().getIdentifier(name, "drawable", "android"); } catch (Throwable t) {}
+        Drawable d = null;
+        if (id != 0) try { d = getContext().getDrawable(id); } catch (Throwable t) {}
+        if (d == null) { android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(); g.setShape(android.graphics.drawable.GradientDrawable.OVAL); g.setColor(0xff4285f4); g.setSize(44, 44); d = g; }
+        return d;
+    }
+    public void setTextSelectHandle(Drawable d) { mSelectHandle = d; } public void setTextSelectHandle(int r) { setTextSelectHandle(r != 0 ? getContext().getDrawable(r) : null); }
+    public void setTextSelectHandleLeft(Drawable d) { mSelectHandleLeft = d; } public void setTextSelectHandleRight(Drawable d) { mSelectHandleRight = d; }
+    public void setTextSelectHandleLeft(int r) { setTextSelectHandleLeft(r != 0 ? getContext().getDrawable(r) : null); }
+    public void setTextSelectHandleRight(int r) { setTextSelectHandleRight(r != 0 ? getContext().getDrawable(r) : null); }
+    public Drawable getTextSelectHandle() { if (mSelectHandle == null) mSelectHandle = handle("text_select_handle_middle"); return mSelectHandle; }
+    public Drawable getTextSelectHandleLeft() { if (mSelectHandleLeft == null) mSelectHandleLeft = handle("text_select_handle_left"); return mSelectHandleLeft; }
+    public Drawable getTextSelectHandleRight() { if (mSelectHandleRight == null) mSelectHandleRight = handle("text_select_handle_right"); return mSelectHandleRight; }
     public void setShadowLayer(float radius, float dx, float dy, int color) { mShadowRadius = radius; mShadowDx = dx; mShadowDy = dy; mShadowColor = color; mTextPaint.setShadowLayer(radius, dx, dy, color); invalidate(); }
     public float getShadowRadius() { return mShadowRadius; } public float getShadowDx() { return mShadowDx; } public float getShadowDy() { return mShadowDy; } public int getShadowColor() { return mShadowColor; }
     public TextPaint getPaint() { return mTextPaint; }
@@ -1022,9 +1038,6 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
     public android.view.inputmethod.TextBoundsInfo getTextBoundsInfo(android.graphics.RectF p0) { return null; }
     public android.text.TextDirectionHeuristic getTextDirectionHeuristic() { return null; }
     public android.os.LocaleList getTextLocales() { return null; }
-    public android.graphics.drawable.Drawable getTextSelectHandle() { return null; }
-    public android.graphics.drawable.Drawable getTextSelectHandleLeft() { return (android.graphics.drawable.Drawable) huskFill.get("TextSelectHandleLeft"); }
-    public android.graphics.drawable.Drawable getTextSelectHandleRight() { return (android.graphics.drawable.Drawable) huskFill.get("TextSelectHandleRight"); }
     public java.util.Locale getTextServicesLocale() { return null; }
     protected int getTopPaddingOffset() { return 0; }
     public int getTypefaceStyle() { return 0; }
@@ -1098,8 +1111,6 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
     public void setShiftDrawingOffsetForStartOverhang(boolean p0) { huskFill.put("ShiftDrawingOffsetForStartOverhang", Boolean.valueOf(p0)); }
     public java.lang.Runnable setTextAsync(java.lang.CharSequence p0) { return null; }
     public void setTextOperationUser(android.os.UserHandle p0) {}
-    public void setTextSelectHandleLeft(int p0) { huskFill.put("TextSelectHandleLeft", Integer.valueOf(p0)); }
-    public void setTextSelectHandleRight(int p0) { huskFill.put("TextSelectHandleRight", Integer.valueOf(p0)); }
     public void setUseBoundsForWidth(boolean p0) { huskFill.put("UseBoundsForWidth", Boolean.valueOf(p0)); }
     public boolean shouldTrackHandwritingArea() { return false; }
     public boolean showUIForTouchScreen() { return false; }

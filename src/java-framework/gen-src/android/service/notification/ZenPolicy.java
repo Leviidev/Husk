@@ -11,7 +11,7 @@ public final class ZenPolicy implements android.os.Parcelable {
     public static final int CONVERSATION_SENDERS_IMPORTANT = 2;
     public static final int CONVERSATION_SENDERS_NONE = 3;
     public static final int CONVERSATION_SENDERS_UNSET = 0;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ZenPolicy.class);
     public static final int FIELD_ALLOW_CHANNELS = 8;
     public static final int FIELD_CALLS = 2;
     public static final int FIELD_CONVERSATIONS = 4;

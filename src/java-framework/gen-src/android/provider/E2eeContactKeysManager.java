@@ -47,7 +47,7 @@ public final class E2eeContactKeysManager {
     }
     public static final class E2eeContactKey extends android.provider.E2eeContactKeysManager.E2eeBaseKey implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(E2eeContactKey.class);
         public E2eeContactKey(java.lang.String p0, java.lang.String p1, java.lang.String p2, long p3, byte[] p4, int p5, int p6, java.lang.String p7, java.lang.String p8, java.lang.String p9) { super((java.lang.String) null, (java.lang.String) null, (java.lang.String) null, (long) 0L, (byte[]) null, (int) 0); }
         public int describeContents() { return 0; }
         public java.lang.String getAccountId() { return (java.lang.String) huskProps.get("AccountId"); }
@@ -96,7 +96,7 @@ public final class E2eeContactKeysManager {
     }
     public static final class E2eeSelfKey extends android.provider.E2eeContactKeysManager.E2eeBaseKey implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(E2eeSelfKey.class);
         public E2eeSelfKey(java.lang.String p0, java.lang.String p1, java.lang.String p2, long p3, byte[] p4, int p5) { super(p0, p1, p2, p3, p4, p5); }
         public int describeContents() { return 0; }
         public java.lang.String getAccountId() { return (java.lang.String) huskProps.get("AccountId"); }

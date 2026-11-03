@@ -4,7 +4,7 @@ package android.adservices.adselection;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class PerBuyerDecisionLogic implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(PerBuyerDecisionLogic.class);
     public static android.adservices.adselection.PerBuyerDecisionLogic EMPTY;
     public PerBuyerDecisionLogic(java.util.Map p0) {}
     public int describeContents() { return 0; }

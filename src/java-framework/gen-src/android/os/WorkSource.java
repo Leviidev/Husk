@@ -4,7 +4,7 @@ package android.os;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class WorkSource implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WorkSource.class);
     public WorkSource() {}
     public WorkSource(int p0) {}
     public WorkSource(int p0, java.lang.String p1) {}
@@ -39,7 +39,7 @@ public class WorkSource implements android.os.Parcelable {
     public void writeToParcel(android.os.Parcel p0, int p1) {}
     public static final class WorkChain implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-        public static android.os.Parcelable.Creator CREATOR;
+        public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WorkChain.class);
         public WorkChain() {}
         public WorkChain(android.os.WorkSource.WorkChain p0) {}
         public android.os.WorkSource.WorkChain addNode(int p0, java.lang.String p1) { return this; }

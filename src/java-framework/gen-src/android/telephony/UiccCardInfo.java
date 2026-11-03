@@ -4,7 +4,7 @@ package android.telephony;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class UiccCardInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(UiccCardInfo.class);
     public UiccCardInfo(boolean p0, int p1, java.lang.String p2, int p3, boolean p4, boolean p5, java.util.List p6) {}
     public android.telephony.UiccCardInfo createSensitiveInfoSanitizedCopy(boolean p0) { return this; }
     public int describeContents() { return 0; }

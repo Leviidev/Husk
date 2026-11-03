@@ -4,7 +4,7 @@ package android.hardware.input;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class HostUsiVersion implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(HostUsiVersion.class);
     public HostUsiVersion(int p0, int p1) {}
     public int describeContents() { return 0; }
     public int getMajorVersion() { return (huskProps.get("MajorVersion") instanceof Integer ? (Integer) huskProps.get("MajorVersion") : 0); }

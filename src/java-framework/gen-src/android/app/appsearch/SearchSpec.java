@@ -4,7 +4,7 @@ package android.app.appsearch;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public abstract class SearchSpec extends android.app.appsearch.safeparcel.AbstractSafeParcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SearchSpec.class);
     public static final int DEFAULT_NUM_PER_PAGE = 10;
     public static final int EMBEDDING_SEARCH_METRIC_TYPE_COSINE = 1;
     public static final int EMBEDDING_SEARCH_METRIC_TYPE_DEFAULT = 0;

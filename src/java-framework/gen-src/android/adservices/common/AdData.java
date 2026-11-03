@@ -4,7 +4,7 @@ package android.adservices.common;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class AdData implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(AdData.class);
     public static final int MAX_NUM_AD_COUNTER_KEYS = 10;
     public static final java.lang.String NUM_AD_COUNTER_KEYS_EXCEEDED_FORMAT = "AdData should have no more than %d ad counter keys";
     public int describeContents() { return 0; }

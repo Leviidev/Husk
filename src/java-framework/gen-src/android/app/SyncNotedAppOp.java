@@ -4,7 +4,7 @@ package android.app;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class SyncNotedAppOp implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(SyncNotedAppOp.class);
     public SyncNotedAppOp(int p0, int p1, java.lang.String p2, java.lang.String p3) {}
     public SyncNotedAppOp(int p0, java.lang.String p1) {}
     public SyncNotedAppOp(int p0, java.lang.String p1, java.lang.String p2) {}

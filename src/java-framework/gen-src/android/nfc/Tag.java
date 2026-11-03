@@ -4,7 +4,7 @@ package android.nfc;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class Tag implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(Tag.class);
     public Tag(byte[] p0, int[] p1, android.os.Bundle[] p2, int p3, long p4, android.nfc.INfcTag p5) {}
     public static android.nfc.Tag createMockTag(byte[] p0, int[] p1, android.os.Bundle[] p2, long p3) { return new Tag(); }
     public int describeContents() { return 0; }

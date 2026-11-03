@@ -4,7 +4,7 @@ package android.view.translation;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ViewTranslationRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ViewTranslationRequest.class);
     public static final java.lang.String ID_CONTENT_DESCRIPTION = "android:content_description";
     public static final java.lang.String ID_TEXT = "android:text";
     public ViewTranslationRequest(android.view.autofill.AutofillId p0, java.util.Map p1) {}

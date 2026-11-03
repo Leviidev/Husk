@@ -10,7 +10,7 @@ public final class ResponderConfig implements android.os.Parcelable {
     public static final int CHANNEL_WIDTH_40MHZ = 1;
     public static final int CHANNEL_WIDTH_80MHZ = 2;
     public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ResponderConfig.class);
     public static final int PREAMBLE_EHT = 4;
     public static final int PREAMBLE_HE = 3;
     public static final int PREAMBLE_HT = 1;

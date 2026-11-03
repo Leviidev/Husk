@@ -4,7 +4,7 @@ package android.view.contentcapture;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class ContentCaptureContext implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(ContentCaptureContext.class);
     public static final int FLAG_DISABLED_BY_APP = 1;
     public static final int FLAG_DISABLED_BY_FLAG_SECURE = 2;
     public static final int FLAG_DISABLED_FLUSH_FOR_VIEW_TREE_APPEARING = 8;

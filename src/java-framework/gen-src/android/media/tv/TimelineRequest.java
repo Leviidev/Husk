@@ -4,7 +4,7 @@ package android.media.tv;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class TimelineRequest extends android.media.tv.BroadcastInfoRequest implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(TimelineRequest.class);
     public TimelineRequest(int p0, int p1, int p2) { super(); }
     public TimelineRequest(int p0, int p1, int p2, java.lang.String p3) { super(); }
     public int describeContents() { return 0; }

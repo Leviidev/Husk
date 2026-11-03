@@ -8,7 +8,7 @@ public class WifiConfiguration implements android.os.Parcelable {
     public static final int AP_BAND_5GHZ = 1;
     public static final int AP_BAND_60GHZ = 2;
     public static final int AP_BAND_ANY = -1;
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(WifiConfiguration.class);
     public static final int HOME_NETWORK_RSSI_BOOST = 5;
     public static final int INVALID_NETWORK_ID = -1;
     public static int INVALID_RSSI;

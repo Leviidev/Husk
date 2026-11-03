@@ -4,7 +4,7 @@ package android.telephony.mbms;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public final class FileServiceInfo extends android.telephony.mbms.ServiceInfo implements android.os.Parcelable {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
-    public static android.os.Parcelable.Creator CREATOR;
+    public static android.os.Parcelable.Creator CREATOR = husk.StubCreator.of(FileServiceInfo.class);
     public FileServiceInfo(java.util.Map p0, java.lang.String p1, java.util.List p2, java.lang.String p3, java.util.Date p4, java.util.Date p5, java.util.List p6) { super((android.os.Parcel) null); }
     public int describeContents() { return 0; }
     public java.util.List getFiles() { return (huskProps.get("Files") != null ? (java.util.List) huskProps.get("Files") : new java.util.ArrayList()); }
