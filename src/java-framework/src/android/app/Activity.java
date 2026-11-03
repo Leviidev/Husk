@@ -65,6 +65,7 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
      * Lifecycle on them (ON_CREATE after onCreate, ON_PAUSE before onPause...), and Compose sets its content once that is CREATED */
     private interface Step { void on(Application.ActivityLifecycleCallbacks c); }
     private void each(Step s) { for (Application.ActivityLifecycleCallbacks c : callbacks()) s.on(c); }
+    private boolean mPostCreate; private Bundle mPostCreateState;
     public final void huskCreate(Bundle state) {
         // as Activity.attach: the activity is its inflater's private factory, after any the app sets (FragmentActivity makes
         // <fragment> and FragmentContainerView there)
@@ -82,7 +83,9 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
             mVisibleFromClient = !ta.getBoolean(0, false);
             ta.recycle();
         } catch (RuntimeException e) { mVisibleFromClient = true; }
-        if (!mFinished) onPostCreate(state);            /* as ActivityThread: an activity that finished in onCreate goes no further */
+        /* onPostCreate comes after the first onStart (ActivityThread.handleStartActivity): fragments' views exist by then, and
+           JSettlers reaches the Toolbar one of them made its action bar */
+        mPostCreate = !mFinished; mPostCreateState = state;
         each(c -> c.onActivityPostCreated(this, state));
     }
     public final void huskStart() {
@@ -90,6 +93,7 @@ public class Activity extends ContextThemeWrapper implements Window.Callback, Ke
         mCalled = false; onStart(); mStarted = true;
         fragmentHost(FragmentManager.HOST_STARTED);
         if (mLoaders != null) mLoaders.doStart();
+        if (mPostCreate) { mPostCreate = false; if (!mFinished) onPostCreate(mPostCreateState); mPostCreateState = null; }   /* an activity that finished goes no further */
         each(c -> c.onActivityPostStarted(this));
     }
     public final void huskRestart() { onRestart(); }
