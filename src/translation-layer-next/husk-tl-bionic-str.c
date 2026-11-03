@@ -650,6 +650,13 @@ static int locale_is_c(const char *v)
 static char *b_getenv(const char *name)
 {
     char *v = getenv(name);
+    /* JavaScriptCore (React Native before Hermes) reads its options as JSC_<name>: its JITs write code into memory that is
+       made executable, which here can only be read and executed (W^X), so it runs its interpreter (LLInt), as on a phone */
+    if (!v && name && !strncmp(name, "JSC_", 4)) {
+        static const char *const off[] = { "JSC_useJIT", "JSC_useBaselineJIT", "JSC_useDFGJIT", "JSC_useFTLJIT", "JSC_useRegExpJIT",
+                                           "JSC_useDOMJIT", "JSC_useWebAssembly", "JSC_useConcurrentJIT", "JSC_useWasm", NULL };
+        for (int i = 0; off[i]; i++) if (!strcmp(name, off[i])) return "false";
+    }
     if (name && (!strcmp(name, "LANG") || !strncmp(name, "LC_", 3)) && locale_is_c(v))
         return "en_US.UTF-8";
     return v;

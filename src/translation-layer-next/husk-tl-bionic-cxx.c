@@ -98,6 +98,10 @@ static int b_kill(int pid, int sig)
         if (tl_guest_exit_hook) tl_guest_exit_hook(128 + sig);
         return 0;
     }
+    /* 0 or a negative pid is a process group, -1 every process the user owns: on iOS that group is Husk itself (an app destroying a
+       child process that never started hands in 0, and Resticopia took the whole harness down with SIGKILL). An app is in a sandbox
+       on Android and may not signal those either. */
+    if (pid <= 0) { tl_log_line("cxx: kill(%d, %d) of a process group refused", pid, sig); tl_set_guest_errno(1); return -1; }   /* EPERM */
     int ds = sig == 0 ? 0 : tl_signal_to_darwin(sig);
     if (sig != 0 && ds <= 0) { tl_set_guest_errno(22); return -1; }
     TL_ERRNO_BEGIN(); int r = kill(pid, ds); TL_ERRNO_END();
