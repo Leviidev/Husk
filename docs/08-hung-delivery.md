@@ -129,7 +129,7 @@ Kết quả chi tiết được ghi tại `build/qa-results.json`:
 - Production iconv bridge: symbol lookup, UTF-8/16LE/16BE/32LE/32BE,
   WCHAR_T, tiếng Việt/CJK/emoji/NUL, partial buffer, malformed/incomplete
   sequence, reset, stateful ISO-2022-JP, close, bốn thread: PASS.
-- 17 unittest Python: analyzer, phân loại log, profile, bootstrap: PASS.
+- 18 unittest Python: analyzer, phân loại log, profile, bootstrap: PASS.
 - Swift model/legacy settings tests và APK ordering baseline: SKIP vì không
   có Swift toolchain. Workflow sẽ chạy các test khả thi trên runner.
 - Bash syntax các script sửa: PASS.
@@ -145,13 +145,13 @@ CI nhưng chưa chạy trong phiên Windows này.
 
 Workflow `.github/workflows/hung-ios.yml` có `workflow_dispatch` và trigger
 push cho riêng nhánh `hung-apk-player` sau khi người dùng duyệt. Nó chạy QA
-Linux/macOS, kiểm tra bridge bằng iOS SDK, rồi gọi `scripts/ci_build.sh`.
-Runner phải có Xcode/iOS SDK 26+ cho helper gốc. Không có Apple ID, private
+Linux/macOS và kiểm tra bridge bằng iOS SDK. Workflow chọn rõ Xcode 26.3 vì
+Xcode mặc định trên runner macOS 15 vẫn là 16.4. Không có Apple ID, private
 key hoặc signing secret trong workflow; IPA được đóng gói ad hoc theo script
 gốc rồi Sideloadly ký lại tại máy người dùng.
 
 Script gốc phụ thuộc tài nguyên ngoài repository và một PS4 dylib từ máy
-tác giả. Bản CI này lấy **chỉ** `java-runtime/` và `android-system/` từ
+tác giả. Bản CI này lấy tài nguyên Android và các dependency không sửa từ
 [Husk 3.3 chính thức](https://github.com/Leviidev/Husk/releases/tag/3.3), với
 SHA-256 được khóa:
 
@@ -161,7 +161,13 @@ SHA-256 được khóa:
 
 Bootstrap từ chối hash sai, entry trùng, đường dẫn thoát thư mục, symlink và
 layout thiếu. Nó sinh spec CI bỏ dependency PS4; default project vẫn giữ
-PS4. Không sao chép executable iOS, game dylib hay dữ liệu game từ IPA gốc.
+PS4. Không sao chép executable của app Husk, game dylib hay dữ liệu game.
+Chế độ `upstream` mặc định dùng QEMU, ANGLE, MoltenVK và firmware không sửa
+từ IPA đã khóa hash; `stage_hung_dependencies.py` ghi provenance từng file.
+Wrapper XCFramework cho MoltenVK chỉ mô tả binary iOS arm64 có sẵn. Toàn bộ
+mã C/Swift của app (bao gồm bản sửa iconv) cùng Rust pairing được biên dịch
+mới rồi đóng gói bằng script gốc. Chọn `dependency_mode=source` khi muốn
+chạy `scripts/ci_build.sh` để rebuild các dependency từ source.
 Java framework dex là bản upstream, chưa rebuild từ Java source trong CI
 này; các thay đổi Java tương lai cần bổ sung build JDK/D8/APEX đầy đủ.
 
@@ -209,6 +215,7 @@ SHA-256. Không sửa máy chủ, DRM hoặc chống gian lận.
 
 - `.gitignore`, `README.md`, `.github/workflows/hung-ios.yml`.
 - `scripts/prepare_hung_ci.py`, `scripts/package_ipa.sh`, `scripts/build_gpu_ios.sh`.
+- `scripts/stage_hung_dependencies.py` (dependency bootstrap có hash/provenance).
 - `src/app/project.yml`, `src/app/Husk.xcodeproj/project.pbxproj`.
 - `src/app/Husk/Info.plist`, `AppDiagnosis.swift`, `TLAppSettings.swift`,
   `TLUnityView.swift`, `TranslationLayer.swift`.

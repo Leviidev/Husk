@@ -21,6 +21,7 @@ def module(name, path):
 
 compat = module("hung_compat", "tools/hung_compat.py")
 bootstrap = module("hung_ci", "scripts/prepare_hung_ci.py")
+native_stage = module("hung_native", "scripts/stage_hung_dependencies.py")
 
 
 def binary_manifest():
@@ -256,6 +257,24 @@ class BootstrapTests(unittest.TestCase):
                 bootstrap.prepare(p, "0" * 64, root)
             with self.assertRaisesRegex(ValueError, "unsafe"):
                 bootstrap.prepare(p, sha, root)
+
+    def test_pinned_native_dependencies_without_app_executable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root, p, _ = self.prepare_fixture(temp)
+            with zipfile.ZipFile(p, "a") as z:
+                for name in native_stage.NATIVE:
+                    z.writestr("Payload/Husk.app/" + name, struct.pack("<II", 0xFEEDFACF, 0x0100000C) + b"\0" * 24)
+                for name in native_stage.OTHER:
+                    z.writestr("Payload/Husk.app/" + name, b"fixture")
+                z.writestr("Payload/Husk.app/edk2-aarch64-code.fd", b"firmware")
+            rows = native_stage.stage(p, compat.digest(p), root)
+            self.assertGreater(len(rows), 6)
+            self.assertTrue((root / "build/ios-arm64/lib/libqemu-aarch64-softmmu.dylib").exists())
+            self.assertFalse((root / "build/Husk").exists())
+            wrapper = plistlib.loads((root / "build/ios-arm64/lib/MoltenVK.xcframework/Info.plist").read_bytes())
+            self.assertEqual(wrapper["AvailableLibraries"][0]["SupportedPlatform"], "ios")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                native_stage.stage(p, "0" * 64, root)
 
 
 if __name__ == "__main__":

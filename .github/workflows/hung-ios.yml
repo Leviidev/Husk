@@ -4,6 +4,12 @@ on:
   push:
     branches: [hung-apk-player]
   workflow_dispatch:
+    inputs:
+      dependency_mode:
+        description: Reuse pinned upstream dependencies, or rebuild every dependency
+        type: choice
+        options: [upstream, source]
+        default: upstream
 
 permissions:
   contents: read
@@ -37,10 +43,12 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 360
     env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       DD: ${{ github.workspace }}/build/DerivedData
       HUSK_PROJECT_SPEC: project.hung.generated.yml
       HUSK_INCLUDE_PS4: '0'
       HUSK_REQUIRE_ANDROID_RUNTIME: '1'
+      HUNG_DEPENDENCY_MODE: ${{ inputs.dependency_mode || 'upstream' }}
       SUPPORT_IPA_URL: https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa
       SUPPORT_IPA_SHA256: 47cdbac8ba310886bdd74d148ea411298e5cf0dd7bedc7f93d6da810681f695f
     steps:
@@ -57,7 +65,10 @@ jobs:
           python3 -c 'import sys; assert int(sys.argv[1].split(".")[0]) >= 26, "HuskJITHelper needs iOS SDK 26 or later"' "$SDK_VERSION"
       - name: Install build tools
         run: |
-          brew install meson ninja pkg-config xcodegen qemu cmake ccache automake autoconf libtool
+          brew install xcodegen qemu
+          if [ "$HUNG_DEPENDENCY_MODE" = source ]; then
+            brew install meson ninja pkg-config cmake ccache automake autoconf libtool
+          fi
           rustup target add aarch64-apple-ios
           find scripts -name '*.sh' -exec chmod +x {} +
       - name: Bootstrap pinned Android resources
@@ -67,8 +78,15 @@ jobs:
       - name: Compile iconv bridge against the iOS SDK
         run: |
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
-      - name: Build with the upstream pipeline
-        run: bash scripts/ci_build.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+      - name: Build the modified app with the upstream packager
+        run: |
+          if [ "$HUNG_DEPENDENCY_MODE" = source ]; then
+            bash scripts/ci_build.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+          else
+            python3 scripts/stage_hung_dependencies.py "$RUNNER_TEMP/husk-support.ipa" "$SUPPORT_IPA_SHA256"
+            bash scripts/build_rppairing_ios.sh
+            bash scripts/package_ipa.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+          fi
       - name: Package this revision's source and provenance
         run: |
           git archive --format=zip --output=build/HUNG-APK-PLAYER-source.zip HEAD
