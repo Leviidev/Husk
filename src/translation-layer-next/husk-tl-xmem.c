@@ -238,11 +238,12 @@ static bool open_platform(size_t host_bytes, char *err, size_t errlen)
         return false;
     }
 #if defined(__APPLE__)
-    mach_vm_address_t alias = (mach_vm_address_t)(uintptr_t)base;
+    /* vm_remap, not mach_vm_remap: the iOS SDK's <mach/mach_vm.h> is an #error since SDK 27; on arm64 the vm_* types are 64-bit, so they agree. */
+    vm_address_t alias = (vm_address_t)(uintptr_t)base;
     vm_prot_t cur, max;
-    kern_return_t kr = mach_vm_remap(mach_task_self(), &alias, size, 0, VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE,
-                                     mach_task_self(), (mach_vm_address_t)(uintptr_t)rw, FALSE,
-                                     &cur, &max, VM_INHERIT_NONE);
+    kern_return_t kr = vm_remap(mach_task_self(), &alias, size, 0, VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE,
+                                mach_task_self(), (vm_address_t)(uintptr_t)rw, FALSE,
+                                &cur, &max, VM_INHERIT_NONE);
     if (kr != KERN_SUCCESS) {
         snprintf(err, errlen, "mach_vm_remap failed (%d)", kr);
         munmap(base, size * 2);
