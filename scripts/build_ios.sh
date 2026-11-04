@@ -160,6 +160,15 @@ stage_qemu() {
     local log="$LOGS/qemu.log"
     done_stage qemu && { echo "[skip] qemu"; return 0; }
     apply_patch qemu-10.0.12-utm qemu-10.0.12-utm.patch
+    # QEMU's configure writes a cross file whose host is darwin/aarch64, the
+    # same as an Apple Silicon build machine, so Meson assumes it can run the
+    # iOS sanity-check binary. Newer macOS/Xcode refuse to launch it and setup
+    # dies with "Executables created by c compiler ... are not runnable".
+    # QEMU's meson.build never calls cc.run(), so declare that target
+    # binaries need a wrapper and Meson skips running them.
+    grep -q 'needs_exe_wrapper = true' "$dir/configure" || \
+        sed -i '' 's|^  echo "\[properties\]" >> \$cross$|&\
+  echo "needs_exe_wrapper = true" >> $cross|' "$dir/configure"
     banner "building qemu (this is the long one)"
     rm -rf "$dir/_husk_build"; mkdir -p "$dir/_husk_build"
     ( cd "$dir/_husk_build" \
