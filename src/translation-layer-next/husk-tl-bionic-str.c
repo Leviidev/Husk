@@ -269,6 +269,7 @@ static void *b_freopen(const char *path, const char *mode, void *stream)
 static void *b_fdopen(int fd, const char *mode) { TL_ERRNO_BEGIN(); FILE *f = fdopen(fd, mode); TL_ERRNO_END(); return f; }
 static int b_fclose(void *f) { FILE *h = map_stream(f); int fd = fileno(h); TL_ERRNO_BEGIN(); int r = fclose(h); tl_atomic_closed(fd); TL_ERRNO_END(); return r; }
 static char *b_fgets(char *s, int n, void *f) { TL_ERRNO_BEGIN(); char *r = fgets(s, n, map_stream(f)); TL_ERRNO_END(); return r; }
+static int b_getchar(void) { TL_ERRNO_BEGIN(); int r = fgetc(stdin); TL_ERRNO_END(); return r; }
 static size_t b_fread(void *p, size_t sz, size_t n, void *f) { TL_ERRNO_BEGIN(); size_t r = fread(p, sz, n, map_stream(f)); TL_ERRNO_END(); return r; }
 static size_t b_fwrite(const void *p, size_t sz, size_t n, void *f);
 /* FORTIFY's fwrite: the same, with the size of the buffer it reads from. */
@@ -931,7 +932,7 @@ const tl_bionic_entry tl_tab_str2[] = {
     TL_DATA("stdin", &g_stdin_var), TL_DATA("stdout", &g_stdout_var), TL_DATA("stderr", &g_stderr_var),
     TL_WRAP("perror", b_perror), TL_WRAP("rewind", b_rewind), TL_WRAP("fputwc", b_fputwc), TL_WRAP("putwc", b_fputwc), TL_WRAP("fgetwc", b_fgetwc), TL_WRAP("getwc", b_fgetwc), TL_WRAP("ungetwc", b_ungetwc),
     TL_WRAP("fgetws", b_fgetws), TL_WRAP("fputws", b_fputws), TL_WRAP("fwide", b_fwide), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),
-    TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("wcsrtombs", b_wcsrtombs),
+    TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("wcsrtombs", b_wcsrtombs), TL_WRAP("getchar", b_getchar),
     TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_DIRECT(sleep), TL_DIRECT(pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
     /* the rest of libm a guest may import (most are inlined as instructions, some libraries call them) */
     TL_DIRECT(ceilf), TL_DIRECT(copysignf), TL_DIRECT(erfcf), TL_DIRECT(fdim), TL_DIRECT(fdimf), TL_DIRECT(floorf), TL_DIRECT(fma), TL_DIRECT(fmaf),

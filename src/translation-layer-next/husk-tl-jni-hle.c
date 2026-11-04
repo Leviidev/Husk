@@ -527,9 +527,16 @@ static bool load_native_library(const char *base)
     /* System.loadLibrary("libc") becomes liblibc.so; treat that as the system libc. */
     if (!strcmp(leaf, "liblibc.so")) leaf = "libc.so";
     if (tl_bionic_is_system_lib(leaf)) return true;
+    bool startup_trace = getenv("TL_STARTUP_TRACE") != NULL;
+    if (startup_trace) tl_log_line("startup: ELF load %s begin", base);
     tl_lib *L = tl_ld_load(base);
-    if (!L) return false;
+    if (!L) {
+        if (startup_trace) tl_log_line("startup: ELF load %s failed", base);
+        return false;
+    }
+    if (startup_trace) tl_log_line("startup: ELF load %s returned; constructors begin", base);
     tl_ld_init(L);
+    if (startup_trace) tl_log_line("startup: constructors %s returned", base);
     pthread_mutex_lock(&g_onload_mu);
     bool first = true;
     for (int i = 0; i < g_nonload; i++) if (g_onload_done[i] == L) first = false;
@@ -548,10 +555,12 @@ static bool load_native_library(const char *base)
             pthread_mutex_unlock(&g_onload_mu);
         }
         if (onload) {
+            if (startup_trace) tl_log_line("startup: JNI_OnLoad %s begin", base);
             int32_t ver = tl_a32_is_fn((void *)onload)
                 ? tl_a32_jni_onload(owner ? owner : L)
                 : onload(tl_jni_vm(), NULL);
             tl_log_line("jni: %s JNI_OnLoad -> %#x", base, ver);
+            if (startup_trace) tl_log_line("startup: JNI_OnLoad %s returned%s", base, tl_jni_pending() ? " with pending exception" : "");
         }
     }
     return true;

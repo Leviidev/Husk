@@ -1,0 +1,10 @@
+# User-supplied baseline excerpt, not a run of the patched player.
+[husk-jit] selftest: PASS
+JIT is genuinely live
+ld: libc++.so: unresolved import _Unwind_RaiseException
+ld: libc++.so: unresolved import _Unwind_DeleteException
+ld: libmain.so: unresolved import iconv_open
+ld: libmain.so: unresolved import iconv
+ld: CALLED an unresolved import: iconv_open
+ld: CALLED an unresolved import: iconv
+I/TruTien: update: release 000067 complete

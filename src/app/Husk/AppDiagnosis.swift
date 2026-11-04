@@ -10,7 +10,7 @@ import SwiftUI
 struct AppDiagnosis: Identifiable, Equatable {
     enum Kind: String {
         case badAPK, unsupportedCPU, missingSplits, protected, needsGoogle, missingFeature, javaCrash, nativeCrash, closedItself,
-             missingFunction, noProgress, noJIT
+             missingFunction, noProgress, noJIT, graphicsFailure, fileAccess, networkTimeout, permissionFailure, emulatorBoot
     }
     let id = UUID()
     let kind: Kind
@@ -20,6 +20,31 @@ struct AppDiagnosis: Identifiable, Equatable {
     let evidence: String?
     /// A warning before launch that still lets the app be tried.
     var blocksLaunch: Bool { kind == .badAPK || kind == .unsupportedCPU }
+
+    /// Stable report fields; a suspected cause from a log is not a verified game fix.
+    var errorCode: String {
+        switch kind {
+        case .badAPK: return "APK_INVALID"
+        case .unsupportedCPU: return "ABI_UNSUPPORTED"
+        case .missingSplits: return "GAME_DATA_MISSING"
+        case .protected: return "PROTECTED_CONTENT"
+        case .needsGoogle: return "GOOGLE_SERVICE_REQUIRED"
+        case .missingFeature: return "ANDROID_API_MISSING"
+        case .javaCrash: return "JAVA_EXCEPTION"
+        case .nativeCrash: return "NATIVE_CRASH"
+        case .closedItself: return "APP_EXITED"
+        case .missingFunction: return "NATIVE_SYMBOL_CALLED"
+        case .noProgress: return "STARTUP_OR_MEMORY_SUSPECTED"
+        case .noJIT: return "JIT_UNAVAILABLE"
+        case .graphicsFailure: return "GRAPHICS_INIT_FAILED"
+        case .fileAccess: return "FILE_ACCESS_FAILED"
+        case .networkTimeout: return "NETWORK_TIMEOUT"
+        case .permissionFailure: return "PERMISSION_FAILED"
+        case .emulatorBoot: return "EMULATOR_BOOT_FAILED"
+        }
+    }
+    var severity: String { blocksLaunch || kind == .nativeCrash || kind == .javaCrash || kind == .noJIT ? "error" : "warning" }
+    var verificationStatus: String { "UNVERIFIED" }
 
     static func == (a: AppDiagnosis, b: AppDiagnosis) -> Bool { a.kind == b.kind && a.title == b.title && a.detail == b.detail }
 
@@ -34,6 +59,11 @@ struct AppDiagnosis: Identifiable, Equatable {
         case .javaCrash, .nativeCrash: return "exclamationmark.triangle.fill"
         case .noProgress: return "hourglass"
         case .noJIT: return "bolt.slash"
+        case .graphicsFailure: return "display"
+        case .fileAccess: return "folder.badge.questionmark"
+        case .networkTimeout: return "network"
+        case .permissionFailure: return "hand.raised"
+        case .emulatorBoot: return "power"
         }
     }
 
@@ -209,7 +239,29 @@ struct AppDiagnosis: Identifiable, Equatable {
         if let l = lines.first(where: { $0.contains("CALLED an unresolved import: ") }), lines.contains(where: { $0.contains("the app finished") || $0.contains("CRASH") }) {
             let fn = l.components(separatedBy: "unresolved import: ").last?.split(separator: " ").first.map(String.init) ?? "?"
             return AppDiagnosis(kind: .missingFunction, title: "Uses something Husk does not have yet",
-                                detail: "The app called \(fn), a system function Husk does not provide yet.", evidence: l)
+                                detail: "The app called \(fn), a system function Husk does not provide yet. This may contribute to the failure; the log does not establish it as the only cause.", evidence: l)
+        }
+
+        // Only diagnose these warnings as a stopping condition once a run has
+        // ended or launch was refused; apps can recover from file/network errors.
+        if lines.contains(where: { $0.contains("the app finished") || $0.contains("launch refused") || $0.contains("boot failed") }) {
+            let rules: [(Kind, String, String, String)] = [
+                (.graphicsFailure, "(?:EGL|ANGLE|Vulkan|eglInitialize).*(?:failed|FAILED|unavailable)", "Graphics could not start",
+                 "Check the graphics error in the report and the required device features. A fallback must support those features."),
+                (.networkTimeout, "SocketTimeoutException|NSURLErrorDomain.*-1001|network.*timed out", "A network request timed out",
+                 "Check the connection and server availability, then retry. The timeout may be secondary to another startup problem."),
+                (.permissionFailure, "SecurityException.*[Pp]ermission|EACCES|Permission denied", "A permission request failed",
+                 "Check which permission the app requested and whether this player can provide the corresponding iOS service."),
+                (.fileAccess, "file: (?:open|stat|access).*-> -1", "A game file could not be accessed",
+                 "Check the report for the path and import the matching game resources or split APKs. Some missing-file probes are optional."),
+                (.emulatorBoot, "(?:QEMU|qemu|guest boot).*(?:failed|FAILED)|Kernel panic", "Android could not boot",
+                 "Check the guest image and QEMU boot log. Starting Android uses separate app data and may require a guest download.")
+            ]
+            for (kind, pattern, title, detail) in rules {
+                if let line = lines.last(where: { $0.range(of: pattern, options: .regularExpression) != nil }) {
+                    return AppDiagnosis(kind: kind, title: title, detail: detail, evidence: line)
+                }
+            }
         }
         return nil
     }
@@ -293,12 +345,15 @@ extension AppDiagnosis {
     @MainActor static func writeReport(app: TLApp, diagnosis d: AppDiagnosis) -> URL? {
         let info = Bundle.main.infoDictionary ?? [:]
         var text = """
-        Husk app report
+        HUNG APK PLAYER app report
         ===============
         App      : \(app.label) (\(app.packageName ?? "?"))
         What     : \(d.title)
         Why      : \(d.detail)
         Evidence : \(d.evidence ?? "-")
+        Code     : \(d.errorCode)
+        Severity : \(d.severity)
+        Status   : \(d.verificationStatus) (suspected cause; gameplay not verified)
         Husk     : \(info["CFBundleShortVersionString"] as? String ?? "?") (\(info["CFBundleVersion"] as? String ?? "?"))
         Device   : \(HuskLog.deviceModel), \(UIDevice.current.systemName) \(UIDevice.current.systemVersion)
         APKs     : \(app.apks.map { ($0 as NSString).lastPathComponent }.joined(separator: ", "))

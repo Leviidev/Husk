@@ -45,6 +45,7 @@
 		22363DC2D857FB5CE998FAF1 /* PlayStoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0384223FE1CD6D8C7C3A22A0 /* PlayStoreManager.swift */; };
 		22C6845CB351341738D8B027 /* WhatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB8BAA1A1D0AB19EBD6F784 /* WhatsNew.swift */; };
 		2382523F24A95C0E58189C78 /* husk-tl-bionic-cxx.c in Sources */ = {isa = PBXBuildFile; fileRef = 44BAD09F39FA4184F97AB0D0 /* husk-tl-bionic-cxx.c */; };
+		A7D65498907BBF4D071C5901 /* husk-tl-bionic-iconv.c in Sources */ = {isa = PBXBuildFile; fileRef = A7D65498907BBF4D071C5902 /* husk-tl-bionic-iconv.c */; };
 		23DB83A6F0FE77417BAF5BBB /* PlayText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53FCFD712C021AB82D0FAF94 /* PlayText.swift */; };
 		240D4917EC7FC510B753EB4E /* husk-tl-jni-cocos.c in Sources */ = {isa = PBXBuildFile; fileRef = B76CE6F39722749AA0027959 /* husk-tl-jni-cocos.c */; };
 		2472A0B862A3BC5106DBAEBC /* husk-tl-load.c in Sources */ = {isa = PBXBuildFile; fileRef = 5BE31DC5ACA28C0133F828FA /* husk-tl-load.c */; };
@@ -344,6 +345,7 @@
 		43C233A62FB57030C0818489 /* JITBuiltIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITBuiltIn.swift; sourceTree = "<group>"; };
 		4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter.c"; sourceTree = "<group>"; };
 		44BAD09F39FA4184F97AB0D0 /* husk-tl-bionic-cxx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-cxx.c"; sourceTree = "<group>"; };
+		A7D65498907BBF4D071C5902 /* husk-tl-bionic-iconv.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-iconv.c"; sourceTree = "<group>"; };
 		46287061DCF461334B1A8D2E /* husk-tl-gamepad.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-gamepad.c"; sourceTree = "<group>"; };
 		463C342B38F6BF37752F4E72 /* husk-tl-audio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-audio.c"; sourceTree = "<group>"; };
 		4711462A9432487DE6DD66EF /* husk-tl-flutter-codec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-codec.c"; sourceTree = "<group>"; };
@@ -718,6 +720,7 @@
 				13804B75FC649BB57295FD28 /* husk-tl-binder.c */,
 				C836602C7457E825FDF5A2DA /* husk-tl-binder.h */,
 				44BAD09F39FA4184F97AB0D0 /* husk-tl-bionic-cxx.c */,
+				A7D65498907BBF4D071C5902 /* husk-tl-bionic-iconv.c */,
 				7CC582FAC1F17C1C659C9D47 /* husk-tl-bionic-io.c */,
 				39B1A738A583D4E01CB15C60 /* husk-tl-bionic-ldbl.c */,
 				FF5A120A4E0B3EE166D789C4 /* husk-tl-bionic-ndk.c */,
@@ -1230,6 +1233,7 @@
 				80C126C7BDB5EE56A7139C20 /* husk-tl-audio.c in Sources */,
 				88B74AA9060E0D9A6D186CCC /* husk-tl-binder.c in Sources */,
 				2382523F24A95C0E58189C78 /* husk-tl-bionic-cxx.c in Sources */,
+				A7D65498907BBF4D071C5901 /* husk-tl-bionic-iconv.c in Sources */,
 				BA42565FACC0AAC10D8FEAF6 /* husk-tl-bionic-io.c in Sources */,
 				2A3E4ED499EAA7EDDFCB3EE2 /* husk-tl-bionic-ldbl.c in Sources */,
 				E165A4CCFD518F67D08A4696 /* husk-tl-bionic-ndk.c in Sources */,
@@ -1405,6 +1409,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lz",
+					"-liconv",
 					"-lresolv",
 					"-lsqlite3",
 					"-framework",
@@ -1483,6 +1488,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lz",
+					"-liconv",
 					"-lresolv",
 					"-lsqlite3",
 					"-framework",

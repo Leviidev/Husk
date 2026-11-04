@@ -804,6 +804,7 @@ static void tl_unresolved_called(const char *name, void *lr)
         const char *caller = tl_ld_symbol_at(lr, &ln, &sa);
         tl_log_line("ld: CALLED an unresolved import: %s (from %s %s+%#lx)", name, ln ? ln : "?",
                     caller ? caller : "?", sa ? (unsigned long)((const char *)lr - (const char *)sa) : 0ul);
+        tl_log_line("ld: missing function %s returned placeholder 0; call observed, impact not established", name);
     }
 }
 

@@ -40,6 +40,7 @@ typedef struct tl_bionic_entry {
 /* The tables, one per file. Each ends with TL_END. */
 extern const tl_bionic_entry tl_tab_core[];
 extern const tl_bionic_entry tl_tab_str[];
+extern const tl_bionic_entry tl_tab_iconv[];
 extern const tl_bionic_entry tl_tab_io[];
 extern const tl_bionic_entry tl_tab_net[];
 extern const tl_bionic_entry tl_tab_io2[];

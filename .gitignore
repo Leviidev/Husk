@@ -1,5 +1,7 @@
 # Build outputs
 build/
+src/app/project.hung.generated.yml
+__pycache__/
 # On-device pairing crate (scripts/build_rppairing_ios.sh)
 src/rppairing-ios/target/
 third_party/build/
@@ -26,3 +28,12 @@ third_party/gpu/
 # local notes and editor rules, never part of the repo
 /Husk_*.MD
 /.cursor/
+
+# Local signing/pairing material is never an input to the cloud build.
+*.p12
+*.pfx
+*.p8
+*.mobileprovision
+*.provisionprofile
+/secrets/
+/pairing/

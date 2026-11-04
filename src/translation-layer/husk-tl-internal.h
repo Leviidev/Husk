@@ -6,7 +6,9 @@
 #ifndef HUSK_TL_INTERNAL_H
 #define HUSK_TL_INTERNAL_H
 
+#ifndef _WIN32
 #include <pthread.h>
+#endif
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,6 +21,7 @@
  * ANativeWindow calls), so both see one layout.
  */
 typedef struct tl_window tl_window;
+#ifndef _WIN32 /* Windows builds the offline ELF analysis; no software window backend. */
 struct tl_window {
     int32_t width, height, format;   /* 1 == WINDOW_FORMAT_RGBA_8888 */
     int stridePixels;
@@ -26,6 +29,7 @@ struct tl_window {
     pthread_mutex_t lock;            /* held between lock and unlockAndPost */
     atomic_int refcount;
 };
+#endif
 
 tl_window *tl_window_create(int width, int height);
 void tl_window_acquire(tl_window *w);
@@ -138,6 +142,7 @@ size_t tl_page_plan(const tl_segment *loads, size_t nloads,
                     uint8_t *flags, size_t max, uint64_t *base);
 
 #define TL_MAX_NEEDED 48
+#define TL_MAX_IMPORT_NAMES 128
 
 typedef struct tl_elf_report {
     bool     ok;
@@ -165,6 +170,11 @@ typedef struct tl_elf_report {
     uint32_t first_unsupported;
     const char *packing;        /* "none", "android" (APS2) or "relr" */
     uint32_t imports;
+    bool     imports_scanned;
+    uint32_t imports_weak;
+    uint32_t import_name_count;
+    bool     import_names_truncated;
+    char     import_names[TL_MAX_IMPORT_NAMES][128]; /* bounded sample, never a claim of runtime support */
     bool     exports_sdl_main;          /* SDL_main / SDL_Main, or SDLActivity natives: a game that carries SDL */
     bool     exports_native_activity;   /* ANativeActivity_onCreate */
     bool     exports_jni_onload;        /* JNI_OnLoad */

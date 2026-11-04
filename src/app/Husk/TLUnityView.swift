@@ -267,6 +267,13 @@ final class TLUnityUIView: UIView, UIKeyInput {
             HuskLog.log("tl", "native: \(loaded ?? "another app") is still loaded; close Husk to start \(apk)")
             return
         }
+        let appID = ((dataDir as NSString).deletingLastPathComponent as NSString).lastPathComponent
+        if TLAppSettings.load(appID).startupDiagnostics {
+            for name in ["TL_STARTUP_TRACE", "TL_ICONV_TRACE", "TL_FILE_TRACE", "TL_NET_TRACE"] {
+                setenv(name, "1", 1)
+            }
+            HuskLog.log("tl", "startup: detailed diagnostics enabled for this launch")
+        }
         // The game plays through the silent switch, like the guest's own audio, and mixes with other audio. Unity games too:
         // they used to be left out, from before they had sound, and played through a session that was never set up.
         do {

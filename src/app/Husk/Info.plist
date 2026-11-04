@@ -11,7 +11,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Husk</string>
+	<string>HUNG APK PLAYER</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

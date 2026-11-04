@@ -1,0 +1,95 @@
+name: HUNG APK PLAYER iOS
+
+on:
+  push:
+    branches: [hung-apk-player]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-qa:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Portable QA and real host iconv
+        run: python3 tests/run_portable.py --sanitize
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-${{ matrix.os }}-${{ github.sha }}
+          path: build/qa-results.json
+          if-no-files-found: ignore
+
+  ios:
+    needs: portable-qa
+    runs-on: macos-15
+    timeout-minutes: 360
+    env:
+      DD: ${{ github.workspace }}/build/DerivedData
+      HUSK_PROJECT_SPEC: project.hung.generated.yml
+      HUSK_INCLUDE_PS4: '0'
+      HUSK_REQUIRE_ANDROID_RUNTIME: '1'
+      SUPPORT_IPA_URL: https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa
+      SUPPORT_IPA_SHA256: 47cdbac8ba310886bdd74d148ea411298e5cf0dd7bedc7f93d6da810681f695f
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Xcode and iOS SDK
+        run: |
+          xcodebuild -version
+          SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
+          python3 -c 'import sys; assert int(sys.argv[1].split(".")[0]) >= 26, "HuskJITHelper needs iOS SDK 26 or later"' "$SDK_VERSION"
+      - name: Install build tools
+        run: |
+          brew install meson ninja pkg-config xcodegen qemu cmake ccache automake autoconf libtool
+          rustup target add aarch64-apple-ios
+          find scripts -name '*.sh' -exec chmod +x {} +
+      - name: Bootstrap pinned Android resources
+        run: |
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 "$SUPPORT_IPA_URL" --output "$RUNNER_TEMP/husk-support.ipa"
+          python3 scripts/prepare_hung_ci.py "$RUNNER_TEMP/husk-support.ipa" "$SUPPORT_IPA_SHA256"
+      - name: Compile iconv bridge against the iOS SDK
+        run: |
+          xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
+      - name: Build with the upstream pipeline
+        run: bash scripts/ci_build.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+      - name: Package this revision's source and provenance
+        run: |
+          git archive --format=zip --output=build/HUNG-APK-PLAYER-source.zip HEAD
+          shasum -a 256 build/HUNG-APK-PLAYER.ipa > build/HUNG-APK-PLAYER.ipa.sha256
+      - name: Upload IPA and corresponding project source
+        uses: actions/upload-artifact@v4
+        with:
+          name: HUNG-APK-PLAYER-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            build/HUNG-APK-PLAYER.ipa
+            build/HUNG-APK-PLAYER.ipa.sha256
+            build/HUNG-APK-PLAYER-source.zip
+            build/support-provenance.json
+            LICENSE
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            build/logs
+            build/DerivedData/build.log
+            build/support-provenance.json

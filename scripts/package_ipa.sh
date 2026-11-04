@@ -56,7 +56,7 @@ fi
 # is plainly right there on disk.
 if command -v xcodegen >/dev/null 2>&1; then
     echo "==> regenerating the project from project.yml"
-    (cd "$HUSK_ROOT/src/app" && xcodegen generate --quiet)
+    (cd "$HUSK_ROOT/src/app" && xcodegen generate --spec "${HUSK_PROJECT_SPEC:-project.yml}" --quiet)
 else
     echo "==> xcodegen not installed; using the checked-in project as-is" >&2
 fi
@@ -137,7 +137,9 @@ fi
 # @rpath/libANGLE-shared.dylib". Everything else in this validation passed. A
 # check that covers one of two required libraries is a check that reports
 # success on a bundle that cannot launch.
-for lib in libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib libhuskps4.dylib; do
+REQUIRED_LIBS=(libqemu-aarch64-softmmu.dylib libANGLE-shared.dylib)
+[ "${HUSK_INCLUDE_PS4:-1}" = 0 ] || REQUIRED_LIBS+=(libhuskps4.dylib)
+for lib in "${REQUIRED_LIBS[@]}"; do
     if [ ! -f "$APP/Frameworks/$lib" ]; then
         echo "  MISSING  Frameworks/$lib" >&2
         rc=1
@@ -174,6 +176,13 @@ for f in "$APP/PlugIns/HuskJITHelper.appex/HuskJITHelper" \
 done
 
 [ $rc -eq 0 ] || { echo "==> bundle is not installable; refusing to package" >&2; exit 1; }
+
+if [ "${HUSK_REQUIRE_ANDROID_RUNTIME:-0}" = 1 ]; then
+    for f in java-runtime/husk-framework.dex java-runtime/com.android.art/javalib/core-oj.jar \
+             java-runtime/com.android.art/lib64/libjavacore.so android-system/etc/fonts.xml; do
+        [ -s "$APP/$f" ] || { echo "missing required Android resource: $f" >&2; exit 1; }
+    done
+fi
 
 echo "==> packaging"
 # staged next to the build (DD), not in the system temp folder: a full startup disk made codesign fail with "internal error"

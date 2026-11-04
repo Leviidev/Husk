@@ -615,10 +615,21 @@ static void analyze_dynamic(const elf *e, tl_elf_report *r)
     uint64_t symoff;
     if (d.symtab && nsyms && nsyms < MAX_SYMBOLS && (d.syment == 0 || d.syment == 24)
         && vaddr_to_off(e, d.symtab, nsyms * 24, &symoff)) {
+        r->imports_scanned = true;
         for (uint64_t i = 1; i < nsyms; i++) {
             const uint8_t *s = e->d + symoff + i * 24;
             if (rd16(s + 6) == 0 && rd32(s) != 0) {     /* SHN_UNDEF, named */
                 r->imports++;
+                if ((s[4] >> 4) == 2) r->imports_weak++;
+                uint32_t idx = rd32(s);
+                if (have_strings && idx < d.strsz && r->import_name_count < TL_MAX_IMPORT_NAMES) {
+                    size_t available = (size_t)(d.strsz - idx);
+                    if (available > sizeof(r->import_names[0])) available = sizeof(r->import_names[0]);
+                    if (memchr(e->d + stroff + idx, 0, available)) {
+                        copy_string(e, stroff, d.strsz, idx, r->import_names[r->import_name_count], sizeof(r->import_names[0]));
+                        r->import_name_count++;
+                    } else r->import_names_truncated = true;
+                } else r->import_names_truncated = true;
             } else if (have_strings && rd32(s) != 0) {
                 char nm[64];
                 copy_string(e, stroff, d.strsz, rd32(s), nm, sizeof(nm));

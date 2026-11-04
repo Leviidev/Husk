@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "package": "vn.trutien.client",
+  "apkFingerprint": null,
+  "engines": [{"name": "SDL3 / native C++", "evidence": ["user-supplied baseline description"]}],
+  "configuration": {"mode": "manual", "orientation": "auto", "resolution": "high", "controller": "auto"},
+  "results": {"launch": "NOT TESTED", "rendering": "NOT TESTED", "mainMenu": "NOT TESTED", "input": "NOT TESTED", "resources": "NOT TESTED", "gameplay": "NOT TESTED"},
+  "result": "NOT TESTED",
+  "evidence": [],
+  "baseline": "User reports Husk 3.3 build 148 starts rendering but remains on the startup screen. No APK or patched-device run is available. This is not a result for the modified build."
+}

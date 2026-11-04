@@ -47,6 +47,8 @@ struct TLReport: Decodable {
     let abis: [String]
     let systemLibraries: [String]
     let libraries: [TLLibrary]
+    let assessment: String?
+    let engineVariant: String?
 }
 
 extension TLReport {
@@ -137,6 +139,9 @@ struct TLLibrary: Decodable, Identifiable {
     let unsupportedRelocations: Int?
     let packing: String?
     let imports: Int?
+    let weakImports: Int?
+    let importNamesComplete: Bool?
+    let importNames: [String]?
     let soname: String?
     let needed: [String]?
 
@@ -186,7 +191,7 @@ final class TranslationLayerStore: ObservableObject {
 
     /// Which reading of an app's libraries its report came from. A newer Husk that recognises more (an engine, a kind of game) reads
     /// the apps it already holds again, so they are not left with what the old one knew.
-    nonisolated static let scanVersion = 8
+    nonisolated static let scanVersion = 9
     private var rescanning = false
 
     func reload() {

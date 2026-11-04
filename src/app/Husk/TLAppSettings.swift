@@ -82,6 +82,8 @@ struct TLAppSettings: Codable, Equatable {
     var resolution: Resolution = .high
     /// The frames-per-second readout in the top bar.
     var showStats = true
+    /// Extra startup, encoding, file and network evidence; applies after restarting Husk.
+    var startupDiagnostics = false
     /// Start with nothing over the picture: no bar, no controller, no readout. Three fingers tapped together bring them back.
     var cleanView = false
     /// Stop the screen from dimming and locking while the game is on.
@@ -102,6 +104,7 @@ struct TLAppSettings: Codable, Equatable {
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
         resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .high
         showStats = try c.decodeIfPresent(Bool.self, forKey: .showStats) ?? true
+        startupDiagnostics = try c.decodeIfPresent(Bool.self, forKey: .startupDiagnostics) ?? false
         cleanView = try c.decodeIfPresent(Bool.self, forKey: .cleanView) ?? false
         keepAwake = try c.decodeIfPresent(Bool.self, forKey: .keepAwake) ?? true
         pad = try c.decodeIfPresent(PadMode.self, forKey: .pad) ?? .auto
@@ -193,6 +196,14 @@ struct TLAppSettingsView: View {
             } footer: {
                 Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
                    + "running in this session needs Husk closed and opened again.")
+            }
+
+            Section {
+                Toggle("Detailed startup log", isOn: $settings.startupDiagnostics)
+            } header: {
+                Text("Troubleshooting")
+            } footer: {
+                Text("Records startup steps, file access and network activity for a bug report. Close and reopen the player before testing. Logs may include file paths and server addresses.")
             }
 
             Section {

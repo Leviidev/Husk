@@ -9,6 +9,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <CommonCrypto/CommonDigest.h>
 
@@ -45,6 +46,8 @@ static struct {
     atomic_bool touch_ready;
     bool touch_as_mouse;                  /* an old SDL 2 that finds its touch screen through inputGetInputDeviceIds and does not turn touches into mouse events */
     atomic_int fingers;
+    bool startup_trace;
+    atomic_int main_state;        /* 0 not entered, 1 inside nativeRunMain, 2 returned */
     char signature[100];          /* SHA-256 of the APK signing certificate, "aa:bb:..." as PackageInfo.signatures would give it */
 } S;
 
@@ -499,8 +502,10 @@ static const tl_jhle k_hle[] = {
 
 static void load_library(const char *name)
 {
+    if (S.startup_trace) tl_log_line("startup: loadLibrary lib%s.so begin (includes constructors/JNI_OnLoad)", name);
     jvalue a; a.j = 0; a.l = tl_jni_new_string(name);
     tl_jni_call(tl_jni_class_object("java/lang/System"), "loadLibrary", "(Ljava/lang/String;)V", &a);
+    if (S.startup_trace) tl_log_line("startup: loadLibrary lib%s.so %s", name, tl_jni_pending() ? "exception pending" : "returned");
 }
 
 static void mkdirs(const char *path)
@@ -752,6 +757,9 @@ bool tl_sdl_start(const tl_ga_config *cfg, const char *activity_class)
     /* python-for-android (Kivy, pygame): the app and Python unpacked, and the environment its start.c reads. */
     { bool tl_python_prepare(const char *apk, const char *data_dir); tl_python_prepare(S.apk, S.data); }
 
+    S.startup_trace = getenv("TL_STARTUP_TRACE") != NULL;
+    atomic_store(&S.main_state, 0);
+    if (S.startup_trace) tl_log_line("startup: package=%s SDL host preparing; Java Activity is supplied by the HLE driver", S.pkg);
     tl_set_data_dir(cfg->data_dir);
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     int n = tl_dexidx_open(cfg->apk_path);
@@ -834,6 +842,7 @@ bool tl_sdl_start(const tl_ga_config *cfg, const char *activity_class)
         if (ml && !tl_ld_sym(ml, "SDL_main") && tl_ld_sym(ml, "SDL_Main")) snprintf(S.main_fn, sizeof(S.main_fn), "SDL_Main");
     }
     tl_log_line("sdl: libraries loaded (entry %s)", S.main_fn);
+    if (S.startup_trace) tl_log_line("startup: JNI/library setup complete; engine/resource/network readiness not yet established");
     /* The D-pad as buttons (DPAD_UP...), the way SDL maps them, rather than as the hat the gamepad layer sends by default. Read by the layer at the first controller update. */
     setenv("TL_PAD_DPAD", "keys", 0);
     static const tl_pad_sink sink = { pad_key, pad_motion };
@@ -857,7 +866,9 @@ static void *sdl_main_thread(void *arg)
     int (*run_main)(void *, void *, void *, void *, void *) = native_of(SDLA, "nativeRunMain", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;)I");
     void (*cleanup)(void *, void *) = find_native(SDLA, "nativeCleanupMainThread", "()V");
     if (!run_main) return NULL;
+    if (S.startup_trace) tl_log_line("startup: nativeInitMainThread begin");
     if (init_main) init_main(env, cls);
+    if (S.startup_trace) tl_log_line("startup: nativeInitMainThread returned");
     tl_log_line("sdl: SDL_main starting");
     /* SDLActivity.getArguments(): what the player set as the game's launch arguments, split at spaces */
     char args[sizeof(g_sdl_args)]; snprintf(args, sizeof(args), "%s", g_sdl_args);
@@ -866,7 +877,10 @@ static void *sdl_main_thread(void *arg)
     jobj *jargs = tl_jni_new_obj_array(tl_jni_class("java/lang/String"), (uint32_t)argc);
     for (int i = 0; i < argc; i++) jargs->oarr.v[i] = tl_jni_new_string(argv[i]);
     if (argc) tl_log_line("sdl: launch arguments: %s", g_sdl_args);
+    atomic_store(&S.main_state, 1);
+    if (S.startup_trace) tl_log_line("startup: nativeRunMain %s:%s begin (entering game code)", S.main_lib, S.main_fn);
     int r = run_main(env, cls, tl_jni_new_string(S.main_lib[0] ? S.main_lib : "libmain.so"), tl_jni_new_string(S.main_fn[0] ? S.main_fn : "SDL_main"), jargs);
+    atomic_store(&S.main_state, 2);
     tl_log_line("sdl: SDL_main returned %d", r);
     if (cleanup) cleanup(env, cls);
     return NULL;
@@ -904,7 +918,9 @@ static void *ui_main(void *arg)
 
     /* SDL.setupJNI: each of SDL's Java classes tells its native half where to find the methods it will call. */
     int (*setup)(void *, void *) = native_of(SDLA, "nativeSetupJNI", "()I");
+    if (S.startup_trace) tl_log_line("startup: SDL nativeSetupJNI begin");
     if (setup) setup(env, cls);
+    if (S.startup_trace) tl_log_line("startup: SDL nativeSetupJNI returned%s", setup ? "" : " (entry missing)");
     int (*setup_audio)(void *, void *) = native_of(SDLAUDIO, "nativeSetupJNI", "()I");
     if (setup_audio) setup_audio(env, tl_jni_class_object(SDLAUDIO));
     int (*setup_ctrl)(void *, void *) = native_of(SDLCTRL, "nativeSetupJNI", "()I");
@@ -974,7 +990,25 @@ static void *ui_main(void *arg)
 
     /* The activity's message loop: nothing to serve beyond keeping the thread (and its looper) alive. */
     int (*poll_once)(int, int *, int *, void **) = tl_bionic_find("ALooper_pollOnce");
-    for (;;) { poll_once(200, NULL, NULL, NULL); if (tl_jni_pending()) tl_jni_clear(); }
+    struct timespec last; clock_gettime(CLOCK_MONOTONIC, &last);
+    unsigned long last_frames = 0;
+    unsigned pending_notes = 0;
+    for (;;) {
+        poll_once(200, NULL, NULL, NULL);
+        if (tl_jni_pending()) {
+            if (S.startup_trace && pending_notes++ < 16) tl_log_line("startup: UI loop has a pending JNI exception (existing host policy clears it)");
+            tl_jni_clear();
+        }
+        if (S.startup_trace) {
+            struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
+            if (now.tv_sec - last.tv_sec >= 15) {
+                unsigned long frames = tl_egl_frames_presented() + tl_vk_frames_presented();
+                tl_log_line("startup: heartbeat nativeRunMain=%d frames=%lu delta=%lu; engine readiness unknown",
+                            atomic_load(&S.main_state), frames, frames - last_frames);
+                last = now; last_frames = frames;
+            }
+        }
+    }
     return NULL;
 }
 

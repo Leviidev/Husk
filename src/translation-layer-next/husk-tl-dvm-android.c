@@ -1128,6 +1128,8 @@ static void *app_main(void *arg)
     void tl_thread_altstack(void); tl_thread_altstack();
     (void)arg;
     pthread_setname_np("main");
+    bool startup_trace = getenv("TL_STARTUP_TRACE") != NULL;
+    if (startup_trace) tl_log_line("startup: Java Activity runner begin activity=%s", A.activity);
     jvalue r;
     bool ok = false;
     if (tl_dvm_defines_class("husk/AppRunner")) {
@@ -1147,6 +1149,7 @@ static void *app_main(void *arg)
         log_pending_stack();
         atomic_store(&A.ended, true);
     }
+    if (startup_trace) tl_log_line("startup: Java Activity runner returned ok=%d", ok);
     return NULL;
 }
 

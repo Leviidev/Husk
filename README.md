@@ -67,6 +67,28 @@ On a Mac with Xcode, plus `meson`, `ninja`, `pkg-config`, `python3`, `xcodegen`,
 
 That produces `build/Husk.ipa`. Later app-only rebuilds: `./scripts/package_ipa.sh` → `~/Desktop/Husk.ipa`.
 
+## HUNG APK PLAYER development
+
+This workspace adds a real `iconv` compatibility bridge, native-import evidence,
+per-app startup diagnostics, portable APK/DEX/ELF analysis and QA profiles.
+Game compatibility remains unverified until tested on a device.
+
+- [Current architecture](docs/07-hung-architecture.md)
+- [Changes, Windows tests, cloud build and iPhone installation](docs/08-hung-delivery.md)
+- [Compatibility matrix and outstanding device tests](docs/09-hung-qa.md)
+- Manual iOS build: [HUNG APK PLAYER workflow](.github/workflows/hung-ios.yml)
+
+```sh
+python tools/hung_compat.py analyze TruTien.apk --out build/trutien-report.json
+python tools/hung_compat.py diagnose startup.log --out build/startup-diagnosis.json
+python tests/run_portable.py
+```
+
+Windows C tests need a compiler; the tested invocation is documented in the
+delivery guide. The cloud workflow builds Android support from this checkout and
+bootstraps hash-pinned Android resources from upstream Husk 3.3. Its Android
+variant omits the optional PS4 module. **No modified IPA has been built yet.**
+
 ## Licence
 
 GPL-2.0-or-later. Husk links QEMU (GPLv2), so the shipped binary is a combined GPLv2 work. It cannot go on the App Store. See [docs/01-licensing.md](docs/01-licensing.md).

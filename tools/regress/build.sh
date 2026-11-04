@@ -8,6 +8,6 @@ for f in $N/*.c $N/*.m; do case $f in *-unity-app.c) ;; *) SRCS="$SRCS $f";; esa
 # husk-console-host.c asks the app glue which game is loaded; the harness has none (-U below)
 SRCS="$SRCS $T/husk-tl-elf.c $T/husk-tl-zip.c $T/husk-tl-sound.c"
 clang -g -O1 -fobjc-arc -Wall -Wno-unused-function -Wno-deprecated-declarations -I$T -I$N "$@" $SRCS \
-    -Wl,-U,_husk_native_loaded_apk -lz -lm -lresolv -lsqlite3 -framework AudioToolbox -framework Foundation -framework CoreFoundation -framework CoreText \
+    -Wl,-U,_husk_native_loaded_apk -lz -lm -liconv -lresolv -lsqlite3 -framework AudioToolbox -framework Foundation -framework CoreFoundation -framework CoreText \
     -framework CoreGraphics -framework Security -framework QuartzCore -framework Metal -framework IOSurface -framework ImageIO -framework WebKit -framework AppKit -framework VideoToolbox -framework CoreMedia -framework CoreVideo -framework Accelerate -o "$OUT"
 codesign -s - --force "$OUT" >/dev/null 2>&1

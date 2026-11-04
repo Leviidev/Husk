@@ -234,6 +234,12 @@ static void write_library(tl_json *j, const char *apk, int abi, const char *file
         tl_json_key(j, "unsupportedRelocations"); tl_json_int(j, r->relocs_unsupported);
         tl_json_key(j, "packing");          tl_json_string(j, r->packing);
         tl_json_key(j, "imports");          tl_json_int(j, r->imports);
+        tl_json_key(j, "weakImports");      tl_json_int(j, r->imports_weak);
+        tl_json_key(j, "importNamesComplete"); tl_json_bool(j, r->imports_scanned && !r->import_names_truncated && r->import_name_count == r->imports);
+        tl_json_key(j, "importNames");
+        tl_json_begin_array(j);
+        for (uint32_t i = 0; i < r->import_name_count; i++) tl_json_string(j, r->import_names[i]);
+        tl_json_end_array(j);
         tl_json_key(j, "soname");           tl_json_string(j, r->soname[0] ? r->soname : NULL);
         tl_json_key(j, "needed");
         tl_json_begin_array(j);
@@ -436,6 +442,8 @@ char *husk_tl_scan(const char *const *paths, int count)
     /* An app with code and no engine Husk knows by its libraries is an Android app: Husk's own Java runtime runs it */
     tl_json_key(&j, "engine");      tl_json_string(&j, engine_name(&eng) ? engine_name(&eng) : dex_count > 0 ? "Java" : NULL);
     tl_json_key(&j, "hasManifest"); tl_json_bool(&j, manifest);
+    tl_json_key(&j, "assessment");  tl_json_string(&j, "NOT TESTED");
+    tl_json_key(&j, "engineVariant"); tl_json_string(&j, eng.sdl ? "SDL3" : eng.sdl2 ? "SDL2" : NULL);
     tl_json_key(&j, "dexCount");    tl_json_int(&j, dex_count);
     tl_json_key(&j, "dexBytes");    tl_json_int(&j, dex_bytes);
     tl_json_key(&j, "abis");
