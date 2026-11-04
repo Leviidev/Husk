@@ -145,8 +145,11 @@ CI nhưng chưa chạy trong phiên Windows này.
 
 Workflow `.github/workflows/hung-ios.yml` có `workflow_dispatch` và trigger
 push cho riêng nhánh `hung-apk-player` sau khi người dùng duyệt. Nó chạy QA
-Linux/macOS và kiểm tra bridge bằng iOS SDK. Workflow chọn rõ Xcode 26.3 vì
-Xcode mặc định trên runner macOS 15 vẫn là 16.4. Không có Apple ID, private
+Linux/macOS và kiểm tra bridge bằng iOS SDK. Workflow dùng runner
+[`xcode-27`](https://github.com/actions/runner-images/issues/14404) và kiểm tra
+Swift >= 6.4: interface StikJIT trong repository dùng module selector `::`,
+không đọc được bởi Swift 6.2 của Xcode 26.3. Binary JIT không đổi.
+Không có Apple ID, private
 key hoặc signing secret trong workflow; IPA được đóng gói ad hoc theo script
 gốc rồi Sideloadly ký lại tại máy người dùng.
 

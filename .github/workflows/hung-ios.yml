@@ -40,10 +40,11 @@ jobs:
 
   ios:
     needs: portable-qa
-    runs-on: macos-15
+    # StikJIT's checked-in Swift 6.4 interface uses module selectors (::).
+    runs-on: xcode-27
     timeout-minutes: 360
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
       DD: ${{ github.workspace }}/build/DerivedData
       HUSK_PROJECT_SPEC: project.hung.generated.yml
       HUSK_INCLUDE_PS4: '0'
@@ -61,6 +62,8 @@ jobs:
       - name: Check Xcode and iOS SDK
         run: |
           xcodebuild -version
+          xcrun swiftc --version | tee "$RUNNER_TEMP/swift-version.txt"
+          python3 -c 'import pathlib,re,sys; m=re.search(r"Swift version (\d+)\.(\d+)", pathlib.Path(sys.argv[1]).read_text()); assert m and tuple(map(int,m.groups())) >= (6,4), "StikJIT requires Swift 6.4 module selectors"' "$RUNNER_TEMP/swift-version.txt"
           SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
           python3 -c 'import sys; assert int(sys.argv[1].split(".")[0]) >= 26, "HuskJITHelper needs iOS SDK 26 or later"' "$SDK_VERSION"
       - name: Install build tools
