@@ -46,7 +46,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <mach/mach.h>
-#include <mach/mach_vm.h>
+#include <mach/vm_map.h> /* iOS exposes vm_region_64, not mach_vm.h. */
 #include <time.h>
 #include <search.h>
 #include <dlfcn.h>
@@ -1444,10 +1444,13 @@ const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void 
 /* Whether all of [a, a+l) can be written now (vm_region), so a scan that rewrites words in it does not fault. */
 static bool b_mprotect_writable(void *a, size_t l)
 {
-    mach_vm_address_t at = (mach_vm_address_t)(uintptr_t)a; mach_vm_size_t sz = 0;
+    vm_address_t at = (vm_address_t)(uintptr_t)a; vm_size_t sz = 0;
     vm_region_basic_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_BASIC_INFO_COUNT_64; mach_port_t obj = MACH_PORT_NULL;
-    if (mach_vm_region(mach_task_self(), &at, &sz, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &cnt, &obj) != KERN_SUCCESS) return false;
-    return at <= (mach_vm_address_t)(uintptr_t)a && at + sz >= (mach_vm_address_t)(uintptr_t)a + l && (info.protection & VM_PROT_WRITE);
+    kern_return_t kr = vm_region_64(mach_task_self(), &at, &sz, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &cnt, &obj);
+    if (obj != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), obj);
+    if (kr != KERN_SUCCESS) return false;
+    uintptr_t start = (uintptr_t)a;
+    return at <= start && start - at <= sz && l <= sz - (start - at) && (info.protection & VM_PROT_WRITE);
 }
 static int b_mprotect(void *a, size_t l, int prot)
 {

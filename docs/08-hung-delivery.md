@@ -137,9 +137,9 @@ Kết quả chi tiết được ghi tại `build/qa-results.json`:
   layout tài nguyên thỏa kiểm tra.
 
 Windows backend test gọi GNU libiconv thật, không giả lập chuyển mã. Tuy vậy,
-test host không chứng minh ABI gọi arm64 iOS, bản Apple libiconv, JNI runtime,
-graphics hay JIT trên điện thoại. ASan/UBSan được cấu hình trên Linux/macOS
-CI nhưng chưa chạy trong phiên Windows này.
+test host không chứng minh ABI gọi arm64 iOS, JNI runtime, graphics hay JIT
+trên điện thoại. ASan/UBSan và real host iconv đã PASS trên Linux/macOS CI,
+bao gồm Apple libiconv trên macOS và hai harness Swift.
 
 ## 4. Build iOS từ Windows
 

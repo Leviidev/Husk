@@ -78,9 +78,10 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 --fail --location --retry 3 "$SUPPORT_IPA_URL" --output "$RUNNER_TEMP/husk-support.ipa"
           python3 scripts/prepare_hung_ci.py "$RUNNER_TEMP/husk-support.ipa" "$SUPPORT_IPA_SHA256"
-      - name: Compile iconv bridge against the iOS SDK
+      - name: Check iconv and memory-query bridges against the iOS SDK
         run: |
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
+          xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -I src/translation-layer -I src/translation-layer-next -I src/ios-jit -fsyntax-only src/translation-layer-next/husk-tl-bionic-io.c
       - name: Build the modified app with the upstream packager
         run: |
           if [ "$HUNG_DEPENDENCY_MODE" = source ]; then
