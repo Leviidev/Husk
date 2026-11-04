@@ -55,6 +55,8 @@ void tl_jni_wait_linked(tl_jclass *c);
 typedef struct tl_dvm_hooks {
     /* A class the interpreter has bytecode for: attach it (sets jc->dvm, jc->super, statics). */
     bool (*attach)(tl_jclass *jc);
+    /* Run the class initializer, if this is a class the interpreter owns. */
+    bool (*ensure_init)(tl_jclass *jc);
     /* The method name/sig on (or above) a class it runs. */
     void *(*find_method)(tl_jclass *jc, const char *name, const char *sig, bool is_static);
     /* Call one of its methods from native code. */
