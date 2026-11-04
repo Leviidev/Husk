@@ -10,6 +10,7 @@ import pathlib
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -47,6 +48,8 @@ def manifest(split=None, typed_only=False, package="ru.easyanatomy"):
 class APKOrderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if sys.platform != "darwin":
+            raise unittest.SkipTest("APK ordering harness imports Apple's Compression framework; run on macOS")
         compiler = shutil.which("swiftc")
         if not compiler:
             raise unittest.SkipTest("swiftc is unavailable; production Swift tests require a Swift toolchain")

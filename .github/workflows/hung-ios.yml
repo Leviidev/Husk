@@ -11,6 +11,7 @@ permissions:
 jobs:
   portable-qa:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
     runs-on: ${{ matrix.os }}
