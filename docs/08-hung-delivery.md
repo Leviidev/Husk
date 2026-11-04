@@ -2,15 +2,20 @@
 
 ## Trạng thái thực tế
 
-Đã chỉnh sửa mã và chạy QA host trên Windows. **Chưa build được IPA của bản
-sửa, chưa chạy bản sửa trên iPhone, chưa xác nhận Tru Tiên vượt màn hình khởi
+Đã build IPA của bản sửa bằng Xcode 27.1 / Swift 6.4, revision
+`0dd57e1a3ef07f47f9a73ce8df5cdcb70412a983`, ngày 2026-11-04.
+[Run 41812380941](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941)
+PASS cả QA Linux/macOS và build iOS; Windows host QA cũng PASS.
+Tải [artifact IPA, checksum và source](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941/artifacts/13312987970).
+**Chưa chạy bản sửa trên iPhone, chưa xác nhận Tru Tiên vượt màn hình khởi
 động.** `TruTien.apk` chưa được cung cấp. `build/upstream-Husk-3.3.ipa` là bản
 Husk gốc tải để kiểm tra tài nguyên, không phải IPA của HUNG APK PLAYER.
 
 Workspace ban đầu là ZIP, không có `.git`. Đã khởi tạo nhánh
 `hung-apk-player`. Repository đích do người dùng chỉ định:
 <https://github.com/hungtm200401-bot/Husk>. Chỉ push và chạy workflow sau khi
-người dùng phê duyệt danh sách thay đổi.
+người dùng phê duyệt danh sách thay đổi. Mã đã được push trên nhánh này;
+default branch không đổi.
 
 ## 1. Sửa runtime đã có căn cứ
 
@@ -187,9 +192,15 @@ Sau phê duyệt push:
    giao diện **Actions → HUNG APK PLAYER iOS → Run workflow**, GitHub cần
    workflow có mặt ở default branch; không tự merge/push default branch.
 2. Đợi QA/build. Nếu thất bại, tải `qa-*` hoặc `build-logs-*`, đọc lỗi thực tế,
-   sửa rồi chạy lại. Workflow mới chưa chứng minh pipeline đã thành công.
+   sửa rồi chạy lại. Run 41812380941 đã hoàn tất thành công.
 3. Nếu thành công, tải artifact ZIP về Windows, giải nén lấy
    `HUNG-APK-PLAYER.ipa`. Không dùng IPA upstream để thay cho kết quả này.
+
+Build stamp `0dd57e1-dirty` ghi nhận XcodeGen sinh lại project Android-only
+và script Rust cập nhật notices trong checkout CI. Source ZIP là revision
+`0dd57e1`; các script sinh project/notices nằm trong source. Bản sửa build
+dùng `vm_region_64` được iOS SDK hỗ trợ để kiểm tra quyền ghi vùng nhớ,
+không đổi allocator/arena hay cơ chế cấp JIT.
 
 ## 5. Cài và kiểm thử trên iPhone
 
@@ -221,16 +232,16 @@ SHA-256. Không sửa máy chủ, DRM hoặc chống gian lận.
 - `scripts/stage_hung_dependencies.py` (dependency bootstrap có hash/provenance).
 - `src/app/project.yml`, `src/app/Husk.xcodeproj/project.pbxproj`.
 - `src/app/Husk/Info.plist`, `AppDiagnosis.swift`, `TLAppSettings.swift`,
-  `TLUnityView.swift`, `TranslationLayer.swift`.
+  `TLUnityView.swift`, `TranslationLayer.swift`, `ApkMetadata.swift`.
 - `src/translation-layer/husk-tl-internal.h`, `husk-tl-elf.c`, `husk-tl-scan.c`.
 - `src/translation-layer-next/husk-tl-bionic-iconv.c` (mới),
-  `husk-tl-bionic.c`, `husk-tl-bionic.h`, `husk-tl-bionic-str.c`,
+  `husk-tl-bionic.c`, `husk-tl-bionic.h`, `husk-tl-bionic-str.c`, `husk-tl-bionic-io.c`,
   `husk-tl-ld.c`, `husk-tl-sdl.c`, `husk-tl-jni-hle.c`, `husk-tl-dvm-android.c`.
 - `tools/hung_compat.py`, `tools/regress/build.sh`.
 - `tests/run_portable.py`, `test_hung_tools.py`, `test_hung_swift.py`,
   `fixtures/trutien-startup.log`.
 - `tests/translation-layer/iconv_test.c`, `run_iconv.py`, `elf_import_test.c`,
-  `getchar_test.c`, `windows-iconv/iconv.h`, `windows-iconv/backend.c`.
+  `getchar_test.c`, `test_apk_order.py`, `windows-iconv/iconv.h`, `windows-iconv/backend.c`.
 - `catalog/hung-trutien-qa.json`, `docs/07-hung-architecture.md`,
   `docs/08-hung-delivery.md`, `docs/09-hung-qa.md`.
 

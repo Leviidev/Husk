@@ -44,14 +44,14 @@ ghi nhận. Không lấy FPS/splash làm kết quả gameplay.
 - Không bypass DRM/chống gian lận/Play Integrity, không sửa game/server.
 - QA profile CLI ghi nhận thủ công có bằng chứng, chưa đồng bộ tự động vào
   launcher iOS. Settings chạy từng app tiếp tục dùng cơ chế có sẵn.
-- QA Linux/macOS và kiểm tra iconv bằng iOS SDK đã PASS trong
-  [run 41811487914](https://github.com/hungtm200401-bot/Husk/actions/runs/41811487914).
-  IPA tùy chỉnh chỉ tồn tại sau build thành công; IPA gốc tải làm tài nguyên
-  bootstrap không phải kết quả build.
+- QA Linux/macOS, kiểm tra iconv/memory query bằng iOS SDK và build IPA đã
+  PASS trong [run 41812380941](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941),
+  revision `0dd57e1`. IPA gốc tải làm tài nguyên bootstrap không phải kết quả build.
 
 ## Bước kiểm thử tiếp theo
 
-Sau khi build hoàn tất, cài artifact thật. Đối chiếu một game từng hoạt động với baseline và Tru Tiên
+Cài [artifact thật](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941/artifacts/13312987970).
+Đối chiếu một game từng hoạt động với baseline và Tru Tiên
 cùng APK hash. Kiểm tra cả menu, input, tải dữ liệu và gameplay. Nếu iconv
 không còn unresolved nhưng vẫn treo, dùng full log để thu hẹp JNI, tài nguyên,
 mạng và exception handling; không tự kết luận lỗi đã giải quyết.

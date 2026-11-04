@@ -87,7 +87,11 @@ python tests/run_portable.py
 Windows C tests need a compiler; the tested invocation is documented in the
 delivery guide. The cloud workflow builds Android support from this checkout and
 bootstraps hash-pinned Android resources from upstream Husk 3.3. Its Android
-variant omits the optional PS4 module. **No modified IPA has been built yet.**
+variant omits the optional PS4 module. The modified IPA was built successfully
+in [run 41812380941](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941),
+with passing Linux/macOS QA. Download the IPA and corresponding source from
+the [build artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/41812380941/artifacts/13312987970).
+Device launch and game compatibility remain untested.
 
 ## Licence
 
