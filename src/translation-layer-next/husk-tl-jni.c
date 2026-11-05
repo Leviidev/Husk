@@ -626,6 +626,7 @@ static jo jni_FindClass(void *env, const char *name)
         /* the Java runtime is up: a class exists when some DEX on its class paths defines it */
         tl_jclass *c = tl_jni_class(name);
         if (c->dvm || framework) return c->mirror;
+        tl_log_line("jni: FindClass(%s) -> NoClassDefFoundError", name);
         char msg[200]; snprintf(msg, sizeof(msg), "%s", name);
         tl_jni_throw("java/lang/NoClassDefFoundError", msg);
         return NULL;
@@ -690,7 +691,18 @@ static uint8_t jni_IsSameObject(void *env, jo a, jo b) { (void)env; return a == 
 static jo jni_NewLocalRef(void *env, jo o) { (void)env; return tl_jni_ref(o); }
 static int32_t jni_EnsureLocalCapacity(void *env, int32_t n) { (void)env; (void)n; return 0; }
 static uint32_t jni_GetObjectRefType(void *env, jo o) { (void)env; (void)o; return 1; }
-static jo jni_AllocObject(void *env, jo cls) { (void)env; return (cls && cls->kind == TL_K_CLASS) ? tl_jni_new_object(cls->klass.jc) : NULL; }
+/* ART ensures the class is initialised before JNI object-creation and method-lookup operations. */
+static bool ensure_class_initialized(tl_jclass *jc)
+{
+    return !tl_dvm || !jc || tl_dvm->ensure_init(jc);
+}
+static jo jni_AllocObject(void *env, jo cls)
+{
+    (void)env;
+    if (!cls || cls->kind != TL_K_CLASS) return NULL;
+    if (!ensure_class_initialized(cls->klass.jc)) return NULL;
+    return tl_jni_new_object(cls->klass.jc);
+}
 static jo jni_GetObjectClass(void *env, jo o)
 {
     (void)env;
@@ -706,6 +718,7 @@ static void *jni_GetMethodID_impl(jo cls, const char *name, const char *sig, boo
         tl_jni_throw("java/lang/NullPointerException", "class is null");
         return NULL;
     }
+    if (!ensure_class_initialized(cls->klass.jc)) return NULL;
     tl_jmeth *m = lookup_method(cls->klass.jc, name, sig, is_static);
     TRACE("jni: Get%sMethodID(%s, %s%s) -> %s", is_static ? "Static" : "", cls->klass.jc->name, name, sig,
           m->fn ? "implemented" : m->exists ? "exists, not implemented" : "NOT FOUND");
@@ -762,6 +775,7 @@ extern void tl_va_jni_CallVoidMethod(void); extern void tl_va_jni_CallNonvirtual
 static jo new_object(jo cls, void *mid, int how, const jvalue *a, tl_va_list *ap)
 {
     if (!cls || cls->kind != TL_K_CLASS) { tl_jni_throw("java/lang/NullPointerException", "class is null"); return NULL; }
+    if (!ensure_class_initialized(cls->klass.jc)) return NULL;
     jobj *o = tl_jni_new_object(cls->klass.jc);
     tl_jmeth *m = mid_ok(mid);
     if (m) {
@@ -1085,7 +1099,10 @@ static unsigned g_natives_generation;
 static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, int32_t n)
 {
     (void)env;
-    if (!cls || cls->kind != TL_K_CLASS) return -1;
+    if (!cls || cls->kind != TL_K_CLASS) {
+        tl_log_line("jni: RegisterNatives failed: %s (%d methods)", cls ? "not a class object" : "null class", (int)n);
+        return -1;
+    }
     tl_jclass *given = cls->klass.jc;
     bool tl_dvm_declares(tl_jclass *jc, const char *name, const char *sig);
     pthread_mutex_lock(&g_lock);
@@ -1093,8 +1110,12 @@ static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, in
         /* the class that declares the method, the given one or a superclass (ART's FindClassMethod): Reanimated registers
            NativeProxyCommon's natives through its subclass NativeProxy */
         tl_jclass *c = given;
-        if (!tl_dvm_declares(c, m[i].name, m[i].sig))
-            for (tl_jclass *k = given->super; k; k = k->super) if (tl_dvm_declares(k, m[i].name, m[i].sig)) { c = k; break; }
+        bool declared = tl_dvm_declares(c, m[i].name, m[i].sig);
+        for (tl_jclass *k = given->super; !declared && k; k = k->super)
+            if (tl_dvm_declares(k, m[i].name, m[i].sig)) { c = k; declared = true; }
+        if (!declared)
+            tl_log_line("jni: RegisterNatives %s.%s%s: declared by no class in the chain, bound to %s anyway",
+                        given->name, m[i].name, m[i].sig, c->name);
         c->natives = realloc(c->natives, (size_t)(c->nnatives + 1) * sizeof(*c->natives));
         c->natives[c->nnatives].name = strdup(m[i].name);
         c->natives[c->nnatives].sig = strdup(m[i].sig);
