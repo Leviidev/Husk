@@ -1,0 +1,21 @@
+/* No comment provided by engineer. */
+"Android App" = "Androidアプリ";
+
+/* No comment provided by engineer. */
+"Android App Bundle (APKM)" = "Androidアプリバンドル (APKM)";
+
+/* No comment provided by engineer. */
+"Android App Bundle (APKS)" = "Androidアプリバンドル (APKS)";
+
+/* No comment provided by engineer. */
+"Android App Bundle (XAPK)" = "Androidアプリバンドル (XAPK)";
+
+/* Bundle display name */
+"CFBundleDisplayName" = "Husk";
+
+/* Bundle name */
+"CFBundleName" = "Husk";
+
+/* Privacy - Local Network Usage Description */
+"NSLocalNetworkUsageDescription" = "HuskはPCを使わずにJITを有効化するため、ローカルネットワーク経由でこのiPhoneとペアリングを行います。";
+
