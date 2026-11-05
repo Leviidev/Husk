@@ -60,9 +60,31 @@ groups and anchor behavior. They are not included in the patch or source tree.
   coordinates; all other window objects remain byte-identical. The original
   native function updates the quest draw/hit rectangle consistently. Right-edge
   and absent-camera cases keep an already clear left quest in place.
-- Swift settings roundtrip test extended: SKIP on Windows (no Swift toolchain).
-- iOS SDK syntax check added for the native module. macOS/Linux sanitizer QA,
-  Xcode build, physical iPhone drawing/touch and long gameplay stability: PENDING.
+- Swift settings roundtrip: SKIP on Windows (no Swift toolchain); PASS on
+  macOS and Linux CI.
+- Production quest-profile/PLT contracts, portable sanitizer QA on macOS/Linux,
+  Java framework contracts, native-module iOS SDK check and Xcode build: PASS in
+  [run 42003272097](https://github.com/hungtm200401-bot/Husk/actions/runs/42003272097).
+- Physical iPhone drawing/touch and long gameplay stability: NOT TESTED.
+
+## Verified IPA delivery
+
+Built revision `b2b44b04219dd96e9a61a6e7b54372de9d8df752`, stamped
+`b2b44b0-dirty`, produced `build/HUNG-APK-PLAYER-quest-only-fix.ipa`
+(113,679,872 bytes). Download the
+[IPA and matching source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/42003272097/artifacts/13404400535).
+
+IPA SHA-256: `48f5b6702844410e0b3c0f1ea77777d767532fda63f93219d90f36c7644f2838`.
+
+The downloaded archive checksum matches the CI upload log. The arm64 executable
+contains the quest-only setting, native-profile functions, PLT-filter symbol and
+full-screen viewport markers. Embedded Java full/core DEX hashes match the tested
+framework, native components are present, and entitlements match the unchanged
+source. The source ZIP identifies the build revision and matches its reviewed
+files. These checks verify packaging and revision identity, not device gameplay.
+
+After installing this build, keep both **Keep game controls clear of screen cutouts**
+and **Move only the quest tracker** on for VHTG, close Husk completely, then reopen it.
 
 The controlled native check does not verify the actual downloaded UI assets,
 screen rendering, physical touch handling or the previously reported gameplay exit.
