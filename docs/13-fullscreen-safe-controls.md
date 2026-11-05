@@ -64,9 +64,26 @@ API references: [Apple interface orientation](https://developer.apple.com/docume
   controlled JNI responses and a modeled GLView rectangle/scale. No-cutout and all
   four camera-edge cases produce the expected HUD rectangle: PASS. This is a
   native geometry check, not rendered gameplay or touch verification.
-- Swift geometry tests updated for full-screen size and one-edge HUD metadata:
-  SKIP on Windows (no Swift toolchain); macOS/Linux CI and Xcode build: PENDING.
-- New IPA and iPhone full-screen/HUD/touch check: NOT YET VERIFIED.
+- Swift geometry tests for full-screen size and one-edge HUD metadata:
+  SKIP on Windows (no Swift toolchain); PASS on macOS and Linux CI.
+- Portable sanitizer QA on macOS/Linux, Java dialog/cutout contracts and Xcode
+  iOS build: PASS in [run 41988946317](https://github.com/hungtm200401-bot/Husk/actions/runs/41988946317).
+- Packaged IPA: VERIFIED. iPhone full-screen/HUD/touch: NOT TESTED.
+
+## Verified delivery
+
+The built revision is `439564c1b3cc7d2526e847b0a4f1588985971a5d`, stamped
+`439564c-dirty`. Local file: `build/HUNG-APK-PLAYER-fullscreen-hud-fix.ipa`
+(113,675,123 bytes). Download the
+[IPA and matching source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/41988946317/artifacts/13396399502).
+
+IPA SHA-256: `9d4cf2fa86fa258512540f06fb6de80a1c34b6e5bf4f8c1d799f4fa804e0d1db`.
+
+The downloaded archive checksum matches the CI upload log. The executable's
+revision, full-host viewport/cutout markers, native components and unchanged
+entitlements were checked. Both embedded Java DEX files match the locally tested
+and CI-tested framework hashes. The source ZIP identifies the built commit and
+matches its changed files. This verifies packaging, not gameplay on a physical iPhone.
 
 After installing the new build, keep the control-cutout preference on, restart
 Husk fully and check the scene reaches all screen edges. Test the controls near
