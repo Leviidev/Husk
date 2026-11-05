@@ -40,9 +40,15 @@ pause/resume, callback dismiss một lần, teardown và embedded mode: PASS.
 Đây là kiểm thử hợp đồng lifecycle, không phải render/touch trên iPhone.
 Portable C và 19 Python tests: PASS; Swift tests SKIP ở Windows.
 
-Job Java mới và IPA mới cần chạy CI sau khi duyệt push. IPA đã giao
-`HUNG-APK-PLAYER-VHTG-fix.ipa` vẫn là build `09512a5`, chưa chứa bản sửa này.
-Đăng nhập có tài khoản thật và gameplay vẫn NOT TESTED.
+Job Java, portable QA Linux/macOS và build IPA đã PASS trong
+[run 41966764609](https://github.com/hungtm200401-bot/Husk/actions/runs/41966764609),
+revision `79b033eb66a31eb69309ba8ad53332684a196bf3`. DEX từ Linux CI khớp
+checksum với bản biên dịch/kiểm thử trên Windows. Tải
+[artifact IPA và source](https://github.com/hungtm200401-bot/Husk/actions/runs/41966764609/artifacts/13387922849).
+IPA cũ `HUNG-APK-PLAYER-VHTG-fix.ipa` là build `09512a5`, chưa chứa bản sửa này;
+bản mới được giao tên `HUNG-APK-PLAYER-login-fix.ipa`, build `79b033e-dirty`.
+Đăng nhập có tài khoản thật và gameplay vẫn NOT TESTED. Lỗi font Tru Tiên
+chưa được xác nhận đã sửa.
 
 ## Lấy log lần chạy mới
 
