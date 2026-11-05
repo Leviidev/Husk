@@ -82,6 +82,8 @@ struct TLAppSettings: Codable, Equatable {
     var resolution: Resolution = .high
     /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
     var avoidUnsafeArea = true
+    /// VHTG's generic safe rectangle shifts all HUD groups; its inspected native profile can move only quest tracking.
+    var questOnlyCutout = true
     /// The frames-per-second readout in the top bar.
     var showStats = true
     /// Extra startup, encoding, file and network evidence; applies after restarting Husk.
@@ -106,6 +108,7 @@ struct TLAppSettings: Codable, Equatable {
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
         resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .high
         avoidUnsafeArea = try c.decodeIfPresent(Bool.self, forKey: .avoidUnsafeArea) ?? true
+        questOnlyCutout = try c.decodeIfPresent(Bool.self, forKey: .questOnlyCutout) ?? true
         showStats = try c.decodeIfPresent(Bool.self, forKey: .showStats) ?? true
         startupDiagnostics = try c.decodeIfPresent(Bool.self, forKey: .startupDiagnostics) ?? false
         cleanView = try c.decodeIfPresent(Bool.self, forKey: .cleanView) ?? false
@@ -193,13 +196,16 @@ struct TLAppSettingsView: View {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
+                if app.packageName == "review.com.game3c.vhtgmobile", settings.avoidUnsafeArea {
+                    Toggle("Move only the quest tracker", isOn: $settings.questOnlyCutout)
+                }
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
             } header: {
                 Text("Display")
             } footer: {
                 Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area.")
+                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's quest-only mode keeps the other HUD groups in their original positions.")
             }
 
             Section {

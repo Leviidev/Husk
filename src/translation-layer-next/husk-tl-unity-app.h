@@ -70,6 +70,7 @@ int  husk_gamemaker_orientation(const char *apk);                   /* from opti
 bool husk_java_launch(const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                       const char *angle_dylib, const char *ca_bundle);
 void husk_java_set_runtime(const char *root, float density);
+void husk_java_set_quest_only_cutout(int enabled);
 void husk_java_back(void);
 /* The host's side of a Java app's views: its keyboard (show, EditorInfo input type and IME options), the clipboard (get returns a
    malloc'd string or NULL), the share sheet, the orientation the activity asks for. Before husk_java_launch. */

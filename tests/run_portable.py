@@ -80,6 +80,22 @@ def main():
     run("frame buffer compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/frame_buffer_test.c"), "-o", str(exe)])
     run("frame buffer allocation failure and reuse", [str(exe)])
+    inset_fn = re.search(r"void tl_javaapp_set_insets\([^)]*\)\n\{.*?\n\}", android_source, re.S)
+    assert inset_fn
+    (out / "quest_insets_under_test.h").write_text(inset_fn[0] + "\n", encoding="utf-8")
+    exe = out / ("quest_layout_test.exe" if os.name == "nt" else "quest_layout_test")
+    run("quest layout compile", compiler + flags + [f"-I{ROOT / 'tests/translation-layer/quest-host'}",
+        f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/quest_layout_test.c"),
+        str(ROOT / "src/translation-layer-next/husk-tl-vhtg-quest.c"), "-lm", "-o", str(exe)])
+    run("quest-only profile contracts", [str(exe)])
+    loader_source = (ROOT / "src/translation-layer-next/husk-tl-ld.c").read_text(encoding="utf-8")
+    slot = re.search(r"case R_ABS64: case R_GLOB_DAT: case R_JUMP_SLOT: \{.*?return true;\n    \}", loader_source, re.S)
+    assert slot
+    (out / "plt_slot_under_test.h").write_text(slot[0] + "\n", encoding="utf-8")
+    exe = out / ("plt_filter_test.exe" if os.name == "nt" else "plt_filter_test")
+    run("PLT filter compile", compiler + flags + [f"-I{out}", str(ROOT / "tests/translation-layer/plt_filter_test.c"), "-o", str(exe)])
+    run("PLT filter relocation contracts", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

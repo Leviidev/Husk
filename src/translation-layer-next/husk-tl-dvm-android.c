@@ -28,6 +28,7 @@
 #include "husk-tl-egl.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-vhtg-quest.h"
 
 void tl_nwindow_configure(int w, int h, void *layer);
 void *tl_nwindow_get(void);
@@ -403,6 +404,8 @@ void tl_javaapp_documents_picked(const char *const *paths, int n)
 }
 void tl_javaapp_set_insets(int l, int t, int r, int b, int ime)
 {
+    tl_vhtg_quest_insets(l,t,r,b);
+    if (tl_vhtg_quest_active()) l=t=r=b=0;
     A.insets[0] = l; A.insets[1] = t; A.insets[2] = r; A.insets[3] = b; A.insets[4] = ime;
     tl_javaapp_touch(8, 0, 0, 0);
 }
@@ -1224,6 +1227,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     { void tl_set_data_dir(const char *dir); tl_set_data_dir(A.data); }
     tl_set_guest_package(A.pkg);
+    if (tl_vhtg_quest_start(cfg->apk_path,A.pkg,cfg->quest_only_cutout,cfg->insets))
+        for (int i=0;i<4;i++) A.insets[i]=0;
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);

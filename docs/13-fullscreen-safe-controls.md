@@ -25,6 +25,9 @@ resource pack, account data or raw device log is included in this patch.
 
 ## Changes
 
+For VHTG, [quest-only positioning](14-vhtg-quest-only-cutout.md) refines the
+generic HUD policy below after the user reported that other control groups moved.
+
 The full-screen host now uses its complete bounds. Cutout avoidance never reduces
 the render area or adds safety margins around the whole picture. Cached surfaces
 still keep aspect ratio and touch transforms when moving between hosts. Close Husk

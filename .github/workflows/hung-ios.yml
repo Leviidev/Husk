@@ -119,6 +119,7 @@ jobs:
         run: |
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -I src/translation-layer -I src/translation-layer-next -I src/ios-jit -fsyntax-only src/translation-layer-next/husk-tl-bionic-io.c
+          xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -I src/translation-layer -I src/translation-layer-next -fsyntax-only src/translation-layer-next/husk-tl-vhtg-quest.c
       - name: Build the modified app with the upstream packager
         run: |
           if [ "$HUNG_DEPENDENCY_MODE" = source ]; then

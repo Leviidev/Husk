@@ -367,6 +367,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             started = husk_cocos_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .java:
             // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
+            husk_java_set_quest_only_cutout(TLAppSettings.load(appID).questOnlyCutout ? 1 : 0)
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
             husk_java_set_night_mode(traitCollection.userInterfaceStyle == .dark ? 1 : 0)
             attachWebHost(fresh: true)

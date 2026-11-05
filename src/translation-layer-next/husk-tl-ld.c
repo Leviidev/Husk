@@ -232,9 +232,13 @@ bool tl_ld_add_apk(const char *path)
     return true;
 }
 
+static void *(*g_plt_filter)(tl_lib *, const char *, void *);
+void tl_ld_set_plt_filter(void *(*filter)(tl_lib *, const char *, void *)) { g_plt_filter = filter; }
+
 void tl_ld_reset_session(void)
 {
     pthread_mutex_lock(&g_big);
+    g_plt_filter = NULL;
     for (int i = 0; i < G.napks; i++) tl_zip_close(&G.apks[i]);
     G.napks = 0;
     g_nsplits = 0;
@@ -1848,6 +1852,8 @@ static bool reloc_one_into(tl_lib *L, uint64_t r_offset, uint32_t type, uint32_t
         uint64_t v = bind_symbol(L, symidx, &failed);
         if (failed) return false;
         if (v == 1 && L->symcache) v = 0;
+        if (type == R_JUMP_SLOT && v && g_plt_filter)
+            v = (uint64_t)(uintptr_t)g_plt_filter(L, sym_name(L, sym_at(L, symidx)), (void *)(uintptr_t)v);
         *place = v + (type == R_ABS64 ? (uint64_t)addend : 0);
         return true;
     }

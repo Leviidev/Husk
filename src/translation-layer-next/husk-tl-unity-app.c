@@ -54,6 +54,7 @@ static char g_java_root[1024];
 static float g_java_density = 3.0f;
 static int g_java_insets[4];
 static bool g_java_night;
+static bool g_java_quest_only;
 static struct {
     void (*keyboard)(int show, int input_type, int ime_options);
     void (*set_clipboard)(const char *utf8);
@@ -358,6 +359,7 @@ static void *launch_thread(void *arg)
                 .get_clipboard = g_java_host.get_clipboard, .share = g_java_host.share, .set_orientation = g_java_host.orientation,
                 .pick_documents = g_java_host.pick_documents,
                 .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] }, .night_mode = g_java_night,
+                .quest_only_cutout = g_java_quest_only,
             };
             ok = tl_javaapp_start(&cfg);
         }
@@ -554,6 +556,7 @@ void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard
     if (java_running()) tl_javaapp_set_insets(left, top, right, bottom, keyboard);
 }
 void husk_java_set_night_mode(int night) { g_java_night = night != 0; }
+void husk_java_set_quest_only_cutout(int enabled) { g_java_quest_only = enabled != 0; }
 void husk_java_insert_text(const char *utf8) { if (java_running()) tl_javaapp_text(utf8); }
 void husk_java_delete_backward(void) { if (java_running()) tl_javaapp_text_delete(); }
 void husk_java_text_action(void) { if (java_running()) tl_javaapp_text_action(); }

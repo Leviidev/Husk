@@ -49,6 +49,10 @@ const struct tl_zip *tl_ld_apk_at(int index);
 
 /* Bind every later import of `name` to `fn` instead of the library that defines it (the original is still reachable with tl_ld_sym). Call before the libraries load. */
 void tl_ld_interpose(const char *name, void *fn);
+/* Optional driver filter for PLT slots only, including symbols defined by the calling library.
+ * original still names the unwrapped function. Called under the loader lock: no symbol lookups
+ * or guest calls in the filter. Reset at the next session. NULL disables it. */
+void tl_ld_set_plt_filter(void *(*filter)(tl_lib *lib, const char *symbol, void *original));
 
 /* Whether one of the APKs carries this arm64 library (an engine is told by the libraries it ships). */
 bool tl_ld_has_lib(const char *name);

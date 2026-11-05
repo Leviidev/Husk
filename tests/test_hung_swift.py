@@ -75,17 +75,20 @@ enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryD
         self.compile_run(source, '''
 let old = try JSONDecoder().decode(TLAppSettings.self, from: Data("{}".utf8))
 precondition(old.startupDiagnostics == false && old.resolution == .high && old.avoidUnsafeArea)
+precondition(old.questOnlyCutout)
 let low = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"low"}"#.utf8))
 precondition(low.resolution == .low && low.avoidUnsafeArea)
 var settings = old
 settings.startupDiagnostics = true
 settings.orientation = .portrait
 settings.avoidUnsafeArea = false
+settings.questOnlyCutout = false
 let encoded = try JSONEncoder().encode(settings)
 let decoded = try JSONDecoder().decode(TLAppSettings.self, from: encoded)
 precondition(decoded == settings)
 precondition(decoded.startupDiagnostics && decoded.orientation == .portrait)
 precondition(!decoded.avoidUnsafeArea)
+precondition(!decoded.questOnlyCutout)
 print("PASS: per-app diagnostic profile survives Codable roundtrip and legacy settings")
 ''')
 

@@ -36,6 +36,7 @@ typedef struct tl_javaapp_config {
     void (*pick_documents)(const char *mime_types, int multiple);
     int insets[4];                   /* left, top, right, bottom: the screen's notch and home indicator, in pixels */
     bool night_mode;                 /* the phone is in dark mode: the app's configuration says UI_MODE_NIGHT_YES */
+    bool quest_only_cutout;          /* inspected VHTG: move quest windows, keep other HUD anchors unchanged */
 } tl_javaapp_config;
 
 bool tl_javaapp_manifest(const char *apk, char *pkg, size_t pn, char *activity, size_t an, char *application, size_t apn);
