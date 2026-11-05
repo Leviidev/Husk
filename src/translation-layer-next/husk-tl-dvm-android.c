@@ -9,6 +9,7 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-dvm-javaapp.h"
 #include "husk-tl-dvm-gl.h"
+#include "husk-tl-frame-buffer.h"
 #include "husk-tl-aosp.h"
 #include "husk-tl-dvm.h"
 
@@ -670,13 +671,14 @@ static void ov_draw(overlay *o, int vw, int vh)
  * draws it where the SurfaceView is, under the window's views. A context that cannot share (ANGLE refuses some pairs) reads its
  * frame back into memory instead. */
 typedef struct { EGLContext c; int version; bool readback; } app_ctx;
-typedef struct { EGLSurface pb; int w, h; uint32_t tex[2]; int tw[2], th[2]; int cur; uint8_t *px; } app_surf;
+typedef struct { EGLSurface pb; int w, h; uint32_t tex[2]; int tw[2], th[2]; int cur; uint8_t *px; size_t px_capacity; } app_surf;
 static struct {
     pthread_mutex_t lk;
     pthread_cond_t cv;
     EGLDisplay dpy; EGLConfig cfg; EGLContext ui; bool es3, ready;
     /* the frame to show: a shared texture, or pixels (bottom row first) */
     uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq; bool on;
+    size_t px_capacity;
 } E2 = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER };
 
 static bool e2_wait_ready(void)
@@ -796,12 +798,23 @@ NAT(EN_swap)
     if (fb && bindFb) bindFb(0x8D40, 0);
     if (c->readback) {
         getIntegerv(0x0D05, &pack);
-        s->px = realloc(s->px, (size_t)s->w * s->h * 4);
+        if (!tl_rgba_buffer_reserve(&s->px, &s->px_capacity, s->w, s->h)) {
+            if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+            tl_log_line("javaapp: readback frame allocation failed (%dx%d)", s->w, s->h);
+            ret->z = false;
+            return true;
+        }
         pixelStore(0x0D05, 4);
         readPixels(0, 0, s->w, s->h, 0x1908, 0x1401, s->px);
         pixelStore(0x0D05, pack);
         pthread_mutex_lock(&E2.lk);
-        E2.px = realloc(E2.px, (size_t)s->w * s->h * 4);
+        if (!tl_rgba_buffer_reserve(&E2.px, &E2.px_capacity, s->w, s->h)) {
+            pthread_mutex_unlock(&E2.lk);
+            if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+            tl_log_line("javaapp: compositor frame allocation failed (%dx%d)", s->w, s->h);
+            ret->z = false;
+            return true;
+        }
         memcpy(E2.px, s->px, (size_t)s->w * s->h * 4);
         E2.pw = s->w; E2.ph = s->h; E2.tex = 0;
     } else {
@@ -881,9 +894,12 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
 {
     pthread_mutex_lock(&E2.lk);
     if (!px) { E2.on = false; E2.seq++; pthread_mutex_unlock(&E2.lk); return; }
-    size_t n = (size_t)w * h * 4;
-    if (E2.pw != w || E2.ph != h || !E2.px) E2.px = realloc(E2.px, n);
-    if (E2.px) memcpy(E2.px, px, n);
+    if (!tl_rgba_buffer_reserve(&E2.px, &E2.px_capacity, w, h)) {
+        pthread_mutex_unlock(&E2.lk);
+        tl_log_line("javaapp: compositor frame allocation failed (%dx%d); keeping previous frame", w, h);
+        return;
+    }
+    memcpy(E2.px, px, (size_t)w * (size_t)h * 4);
     E2.pw = w; E2.ph = h; E2.tex = 0;
     E2.x = 0; E2.y = 0; E2.w = A.cfg.width; E2.h = A.cfg.height;
     E2.on = true; E2.seq++;

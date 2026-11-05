@@ -51,6 +51,13 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private(set) var launchedSize: CGSize?
     /// In a floating window rather than full screen: no notch or home indicator to keep clear of.
     var windowed = false
+    /// Insets that still overlap this surface after the host has fitted it to the safe area.
+    private var gameSafeAreaInsets: UIEdgeInsets {
+        guard !windowed, let window else { return .zero }
+        let safeFrame = convert(window.safeAreaLayoutGuide.layoutFrame, from: window)
+        let inset = TLGameViewport.insets(view: bounds, safeFrame: safeFrame)
+        return UIEdgeInsets(top: inset.top, left: inset.left, bottom: inset.bottom, right: inset.right)
+    }
     /// Where the corner statistics go when this view does not draw them itself (a landscape game has its own bar).
     var onStats: ((String) -> Void)?
     /// Active touches by UITouch identity, each given a small stable id like Android's pointer ids.
@@ -154,7 +161,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private func attachWebHost(fresh: Bool) {
         guard let superview else { return }
         webHost?.removeFromSuperview()
-        let host = UIView(frame: frame)
+        let host = UIView(frame: .zero)
         host.backgroundColor = .black
         superview.insertSubview(host, belowSubview: self)
         let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
@@ -167,7 +174,22 @@ final class TLUnityUIView: UIView, UIKeyInput {
         threeFingers.delaysTouchesEnded = false
         host.addGestureRecognizer(threeFingers)
         webHost = host
+        layoutWebHost()
         husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Unmanaged.passUnretained(host).toOpaque(), Float(contentScaleFactor), fresh ? 1 : 0)
+    }
+
+    private func layoutWebHost() {
+        guard let host = webHost else { return }
+        // Preserve the same local coordinates as the game when its cached surface is scaled to fit.
+        host.transform = .identity
+        host.bounds = bounds
+        host.center = center
+        host.transform = transform
+    }
+
+    override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        if engine == .java, launched, superview != nil { attachWebHost(fresh: false) }
     }
 
     override func willMove(toSuperview newSuperview: UIView?) {
@@ -182,10 +204,10 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private func keyboardMoved(_ note: Notification) {
         guard let window, let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         let hiding = note.name == UIResponder.keyboardWillHideNotification
-        let mine = convert(bounds, to: window)
-        let covered = hiding ? 0 : max(0, mine.maxY - window.convert(end, from: nil).minY)
+        let keyboard = convert(window.convert(end, from: nil), from: window)
+        let covered = hiding ? 0 : min(bounds.height, max(0, bounds.maxY - keyboard.minY))
         if engine == .java {
-            let k = contentScaleFactor, inset = windowed ? UIEdgeInsets.zero : window.safeAreaInsets
+            let k = contentScaleFactor, inset = gameSafeAreaInsets
             husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32((covered * k).rounded()))
             if hiding, isFirstResponder == false { husk_java_keyboard_closed() }
             return
@@ -210,7 +232,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override func layoutSubviews() {
         super.layoutSubviews()
         stats.frame = CGRect(x: bounds.width - 148, y: bounds.height - 22, width: 142, height: 16)
-        if let webHost, webHost.frame != frame { webHost.frame = frame }
+        layoutWebHost()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
@@ -298,7 +320,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
         switch engine {
         case .sdl:
             // The notch and the rounded corners, in the surface's pixels: the game keeps its controls out of them.
-            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
+            do {
+                let inset = gameSafeAreaInsets
                 let k = contentScaleFactor
                 husk_sdl_set_safe_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k))
             }
@@ -323,7 +346,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
             husk_java_set_night_mode(traitCollection.userInterfaceStyle == .dark ? 1 : 0)
             // The notch and the home indicator, in surface pixels: the app's window keeps its content out of them.
-            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
+            do {
+                let inset = gameSafeAreaInsets
                 let k = contentScaleFactor
                 husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
             }
@@ -333,7 +357,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
         case .flutter:
             // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
             husk_flutter_set_pixel_ratio(Float(contentScaleFactor))
-            if let inset = windowed ? UIEdgeInsets.zero : window?.safeAreaInsets {
+            do {
+                let inset = gameSafeAreaInsets
                 let k = contentScaleFactor
                 husk_flutter_set_insets(Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32(inset.left * k))
             }
@@ -743,6 +768,7 @@ struct TLUnityScreen: UIViewRepresentable {
     var engine: TLNativeEngine = .unity
     var portrait = false
     var scale: CGFloat = 2
+    var avoidUnsafeArea = true
     var onStats: ((String) -> Void)? = nil
     var onThreeFingerTap: (() -> Void)? = nil
     /// One view per game for the life of the process. The engine's GPU surface belongs to this view's layer and an
@@ -757,19 +783,16 @@ struct TLUnityScreen: UIViewRepresentable {
         return view
     }
 
-    func makeUIView(context: Context) -> TLUnityUIView {
-        if let view = Self.shared[apk] {
-            view.windowed = false
-            view.transform = .identity
-            view.onStats = onStats; view.onThreeFingerTap = onThreeFingerTap; return view
-        }
-        let view = TLUnityUIView(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
+    func makeUIView(context: Context) -> TLWindowHost {
+        let view = Self.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
         view.onStats = onStats
         view.onThreeFingerTap = onThreeFingerTap
-        Self.shared[apk] = view
-        return view
+        return TLWindowHost(game: view, windowed: false, avoidUnsafeArea: avoidUnsafeArea)
     }
-    func updateUIView(_ view: TLUnityUIView, context: Context) { view.onStats = onStats; view.onThreeFingerTap = onThreeFingerTap }
+    func updateUIView(_ host: TLWindowHost, context: Context) {
+        host.game.onStats = onStats; host.game.onThreeFingerTap = onThreeFingerTap
+        host.avoidUnsafeArea = avoidUnsafeArea
+    }
 }
 
 /// Polls the runtime for the status line and its log, ten times a second at most.
@@ -890,10 +913,11 @@ struct TLCocosAttemptView: View {
             Color.black.ignoresSafeArea()
             Group {
                 if let apk = app.apks.first {
-                    // The game always has the whole screen: it is told its size once, as it starts, so nothing may take space from it.
-                    // The bar and the log are drawn over it instead, and hiding them shows everything underneath.
+                    // The game's surface stays the same size when the bar is hidden. Older games also need the host
+                    // to fit their entire picture inside the cutout, since they may ignore Android's insets.
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,
-                                  scale: settings.resolution.scale, onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
+                                  scale: settings.resolution.scale, avoidUnsafeArea: settings.avoidUnsafeArea,
+                                  onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
                     .overlay {
                         // A game whose menus answer only a controller: with none paired, one on the glass. Hiding the bar leaves
@@ -905,7 +929,7 @@ struct TLCocosAttemptView: View {
                                 .overlay(alignment: .center) { if editingPad { padEditor } }
                         }
                     }
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.container, edges: settings.avoidUnsafeArea ? [] : .all)
                 }
             }
             if !uiHidden {
@@ -936,6 +960,7 @@ struct TLCocosAttemptView: View {
                 .transition(.opacity)
             }
         }
+        .ignoresSafeArea(.keyboard) // The guest receives IME insets; opening the keyboard must not resize its fixed surface.
         .statusBarHidden(true)
         .huskHideSystemOverlays()
         // Swipes near the edges are the game's.

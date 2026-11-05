@@ -57,6 +57,10 @@ precondition(AppDiagnosis.fromLog("file: open(data) -> -1 ENOENT\\nthe app finis
 precondition(AppDiagnosis.fromLog("SecurityException Permission denied\\nthe app finished")?.kind == .permissionFailure)
 precondition(AppDiagnosis.fromLog("QEMU boot failed")?.kind == .emulatorBoot)
 precondition(AppDiagnosis.fromLog("startup: heartbeat frames=1000 delta=900") == nil)
+let memory = "unity: alive: 1000 frames (+60), 12 MiB left before jetsam"
+let pressure = AppDiagnosis.fromLog(memory)!
+precondition(pressure.detail.contains("does not confirm"))
+precondition(AppDiagnosis.fromLog(memory + "\\n*** FATAL SIGNAL 6 -- process is dying ***")?.kind == .nativeCrash)
 print("PASS: production Swift diagnostics preserve uncertainty and ignore recoverable warnings")
 ''')
 
@@ -70,15 +74,55 @@ enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryD
 '''
         self.compile_run(source, '''
 let old = try JSONDecoder().decode(TLAppSettings.self, from: Data("{}".utf8))
-precondition(old.startupDiagnostics == false && old.resolution == .high)
+precondition(old.startupDiagnostics == false && old.resolution == .high && old.avoidUnsafeArea)
+let low = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"low"}"#.utf8))
+precondition(low.resolution == .low && low.avoidUnsafeArea)
 var settings = old
 settings.startupDiagnostics = true
 settings.orientation = .portrait
+settings.avoidUnsafeArea = false
 let encoded = try JSONEncoder().encode(settings)
 let decoded = try JSONDecoder().decode(TLAppSettings.self, from: encoded)
 precondition(decoded == settings)
 precondition(decoded.startupDiagnostics && decoded.orientation == .portrait)
+precondition(!decoded.avoidUnsafeArea)
 print("PASS: per-app diagnostic profile survives Codable roundtrip and legacy settings")
+''')
+
+    def test_production_viewport_cutouts_and_cached_surface(self):
+        source = (ROOT / "src/app/Husk/TLGameViewport.swift").read_text(encoding="utf-8")
+        self.compile_run(source, '''
+func near(_ a: CGFloat, _ b: CGFloat) { precondition(abs(a - b) < 0.000001) }
+// Representative landscape cutout/home-indicator geometry; runtime reads UIWindow's actual values.
+let screen = CGRect(x: 0, y: 0, width: 932, height: 430)
+let safe = CGRect(x: 59, y: 0, width: 814, height: 409)
+precondition(TLGameViewport.area(in: screen, safeFrame: safe, avoidUnsafeArea: true) == safe)
+precondition(TLGameViewport.area(in: screen, safeFrame: safe, avoidUnsafeArea: false) == screen)
+let inset = TLGameViewport.insets(view: screen, safeFrame: safe)
+precondition(inset.left == 59 && inset.right == 59 && inset.top == 0 && inset.bottom == 21)
+let fittedInsets = TLGameViewport.insets(view: safe, safeFrame: safe)
+precondition(fittedInsets.top == 0 && fittedInsets.left == 0 && fittedInsets.bottom == 0 && fittedInsets.right == 0)
+// A surface that already fills a smaller window must not be inset twice.
+let small = CGRect(x: 200, y: 50, width: 400, height: 250)
+precondition(TLGameViewport.area(in: small, safeFrame: safe, avoidUnsafeArea: true) == small)
+for area in [safe, CGRect(x: 0, y: 59, width: 430, height: 839), small, screen] {
+    for size in [screen.size, safe.size, CGSize(width: 430, height: 932)] {
+        let fit = TLGameViewport.fit(size, in: area)
+        precondition(fit.minX >= area.minX - 0.000001 && fit.maxX <= area.maxX + 0.000001)
+        precondition(fit.minY >= area.minY - 0.000001 && fit.maxY <= area.maxY + 0.000001)
+        near(fit.width / fit.height, size.width / size.height)
+        near(fit.midX, area.midX); near(fit.midY, area.midY)
+        // Inverse view transform preserves guest touch positions after moving/resizing a cached surface.
+        let k = fit.width / size.width
+        for x in [CGFloat(0), size.width / 2, size.width] {
+            near((fit.minX + x * k - fit.minX) / k, x)
+        }
+    }
+}
+precondition(TLGameViewport.area(in: screen, safeFrame: CGRect(x: 2000, y: 0, width: 10, height: 10), avoidUnsafeArea: true) == .zero)
+precondition(TLGameViewport.fit(.zero, in: safe) == .zero)
+precondition(TLGameViewport.area(in: .zero, safeFrame: safe, avoidUnsafeArea: true) == .zero)
+print("PASS: production viewport avoids cutouts, preserves aspect/touches, and reports no double inset")
 ''')
 
 

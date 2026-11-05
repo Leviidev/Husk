@@ -76,6 +76,7 @@ Game compatibility remains unverified until tested on a device.
 - [Current architecture](docs/07-hung-architecture.md)
 - [Changes, Windows tests, cloud build and iPhone installation](docs/08-hung-delivery.md)
 - [Compatibility matrix and outstanding device tests](docs/09-hung-qa.md)
+- [iPhone cutouts, frame allocation checks and gameplay crash evidence](docs/12-iphone-viewport-stability.md)
 - Manual iOS build: [HUNG APK PLAYER workflow](.github/workflows/hung-ios.yml)
 
 ```sh

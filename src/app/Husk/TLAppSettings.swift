@@ -80,6 +80,8 @@ struct TLAppSettings: Codable, Equatable {
     var orientation: Orientation = .auto
     var window: WindowMode = .auto
     var resolution: Resolution = .high
+    /// Fit the whole game inside the notch/Dynamic Island and home indicator, including older games that ignore Android insets.
+    var avoidUnsafeArea = true
     /// The frames-per-second readout in the top bar.
     var showStats = true
     /// Extra startup, encoding, file and network evidence; applies after restarting Husk.
@@ -103,6 +105,7 @@ struct TLAppSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
         resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .high
+        avoidUnsafeArea = try c.decodeIfPresent(Bool.self, forKey: .avoidUnsafeArea) ?? true
         showStats = try c.decodeIfPresent(Bool.self, forKey: .showStats) ?? true
         startupDiagnostics = try c.decodeIfPresent(Bool.self, forKey: .startupDiagnostics) ?? false
         cleanView = try c.decodeIfPresent(Bool.self, forKey: .cleanView) ?? false
@@ -189,13 +192,14 @@ struct TLAppSettingsView: View {
                 Picker("Resolution", selection: $settings.resolution) {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
+                Toggle("Keep game clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
             } header: {
                 Text("Display")
             } footer: {
                 Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again.")
+                   + "running in this session needs Husk closed and opened again. Keeping the game clear of screen cutouts fits the whole picture inside the safe area, with black margins.")
             }
 
             Section {

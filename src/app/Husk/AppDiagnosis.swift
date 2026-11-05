@@ -120,17 +120,17 @@ struct AppDiagnosis: Identifiable, Equatable {
                                 evidence: l)
         }
 
-        // iOS closed Husk for memory: the runtime's last readings ("N MiB left before jetsam") had fallen to almost nothing. Checked
-        // before what the log said earlier in the run, which may only be a warning (#175: an OBB note, then an out-of-memory end).
+        // Low memory is evidence, not proof of a jetsam kill. A recorded fatal signal takes precedence.
         let left = lines.suffix(40).compactMap { l -> Int? in
             guard let r = l.range(of: " MiB left before jetsam") else { return nil }
             return Int(l[..<r.lowerBound].split(separator: " ").last ?? "")
         }
-        if let last = left.last, last < 80 {
-            return AppDiagnosis(kind: .noProgress, title: "Ran out of memory",
-                                detail: "iOS closed Husk because the game used all the memory it allows an app (\(last) MiB were left). "
-                                    + "Close other apps and try again; lower graphics settings in the game help. On SideStore or AltStore, "
-                                    + "GetMoreRam raises the limit.",
+        if let last = left.last, last < 80,
+           !lines.contains(where: { $0.contains("=== CRASH:") || $0.contains("*** FATAL SIGNAL") }) {
+            return AppDiagnosis(kind: .noProgress, title: "Low memory before the app closed",
+                                detail: "The last runtime reading showed \(last) MiB available before the app's memory limit. "
+                                    + "Memory pressure may have contributed; this log alone does not confirm that iOS killed Husk. "
+                                    + "Try a lower resolution or lower graphics settings and compare the next report.",
                                 evidence: lines.last { $0.contains("left before jetsam") })
         }
 

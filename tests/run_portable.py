@@ -72,6 +72,14 @@ def main():
     run("getcwd compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/getcwd_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
     run("getcwd", [str(exe), fixture.resolve().as_posix()])
+    android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
+    frame_copy = re.search(r"void tl_javaapp_app_pixels\([^)]*\)\n\{.*?\n\}", android_source, re.S)
+    assert frame_copy
+    (out / "frame_copy_under_test.h").write_text(frame_copy[0] + "\n", encoding="utf-8")
+    exe = out / ("frame_buffer_test.exe" if os.name == "nt" else "frame_buffer_test")
+    run("frame buffer compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/frame_buffer_test.c"), "-o", str(exe)])
+    run("frame buffer allocation failure and reuse", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

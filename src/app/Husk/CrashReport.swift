@@ -18,6 +18,8 @@ final class CrashReport: ObservableObject {
         let appID: String
         let cause: Cause
         let when: Date?
+        /// Captured at launch, so changing settings after a crash does not rewrite its evidence.
+        let display: String?
         /// The previous run's last lines, for the sheet.
         let excerpt: [String]
     }
@@ -62,6 +64,7 @@ final class CrashReport: ObservableObject {
     // MARK: the note
 
     private static var running: TLApp?
+    private static var runningDisplay = ""
     private static var observers: [NSObjectProtocol] = []
 
     /// A game is starting: if Husk ends before `gameEnded`, the next launch will say so.
@@ -72,6 +75,9 @@ final class CrashReport: ObservableObject {
     /// (a Geometry Dash session closed that way). The note goes when Husk stops being active and comes back with it.
     static func gameStarted(_ app: TLApp) {
         running = app
+        let settings = TLAppSettings.load(app.id)
+        runningDisplay = "requestedResolution=\(settings.resolution.rawValue) requestedScale=\(settings.resolution.scale) safeArea=\(settings.avoidUnsafeArea) windowed=\(AppWindows.opensInWindow(app))"
+        HuskLog.log("runtime", "game display: \(runningDisplay)")
         writeMarker()
         if observers.isEmpty {
             let nc = NotificationCenter.default
@@ -81,12 +87,21 @@ final class CrashReport: ObservableObject {
             observers.append(nc.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
                 writeMarker()
             })
+            observers.append(nc.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { _ in
+                guard running != nil else { return }
+                HuskLog.log("runtime", "memory warning while game active; \(runningDisplay); thermal=\(ProcessInfo.processInfo.thermalState.rawValue)")
+                HuskLog.logFootprint("game-memory-warning")
+            })
+            observers.append(nc.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { _ in
+                guard running != nil else { return }
+                HuskLog.log("runtime", "thermal state changed: \(ProcessInfo.processInfo.thermalState.rawValue)")
+            })
         }
     }
 
     private static func writeMarker() {
         guard let app = running else { return }
-        let info: [String: Any] = ["id": app.id, "label": app.label, "time": Date().timeIntervalSince1970]
+        let info: [String: Any] = ["id": app.id, "label": app.label, "time": Date().timeIntervalSince1970, "display": runningDisplay]
         if let data = try? JSONSerialization.data(withJSONObject: info) { try? data.write(to: marker, options: .atomic) }
     }
 
@@ -113,7 +128,8 @@ final class CrashReport: ObservableObject {
         if let d = AppDiagnosis.fromLog(lines.joined(separator: "\n")) { cause = .diagnosed(d) }
         let time = (info["time"] as? Double).map { Date(timeIntervalSince1970: $0) }
         pending = Report(game: info["label"] as? String ?? "A game", appID: info["id"] as? String ?? "",
-                         cause: cause, when: time, excerpt: Array(Self.interesting(lines).suffix(14)))
+                         cause: cause, when: time, display: info["display"] as? String,
+                         excerpt: Array(Self.interesting(lines).suffix(14)))
         HuskLog.log("crash", "\(pending!.game) did not close normally last run: \(cause.title)")
         switch cause {
         case .signal: GameStatusStore.shared.record(pending!.appID, .crashed)
@@ -151,6 +167,7 @@ final class CrashReport: ObservableObject {
             text += "APKs     : \(app.apks.map { ($0 as NSString).lastPathComponent }.joined(separator: ", "))\n"
             text += "Engine   : \(app.report?.nativeEngine.map { "\($0)" } ?? "?")\n"
         }
+        if let display = r.display { text += "Display  : \(display)\n" }
         text += "\n---- husk.log of that run ----\n"
         text += (try? String(contentsOf: previousLogURL, encoding: .utf8)) ?? "(not kept)\n"
         text += "\n---- native output of that run ----\n"

@@ -321,37 +321,55 @@ struct TLWindowScreen: UIViewRepresentable {
     func updateUIView(_ view: TLWindowHost, context: Context) { view.setNeedsLayout() }
 }
 
+/// Fits the game's one surface in either a floating window or the full-screen safe area.
 final class TLWindowHost: UIView {
     let game: TLUnityUIView
+    private var loggedArea: CGRect?
+    var avoidUnsafeArea: Bool { didSet { if oldValue != avoidUnsafeArea { setNeedsLayout() } } }
 
-    init(game: TLUnityUIView) {
+    init(game: TLUnityUIView, windowed: Bool = true, avoidUnsafeArea: Bool = false) {
         self.game = game
+        self.avoidUnsafeArea = avoidUnsafeArea
         super.init(frame: .zero)
         backgroundColor = .black
         clipsToBounds = true
-        game.windowed = true
+        game.windowed = windowed
         game.transform = .identity
         addSubview(game)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        setNeedsLayout()
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         guard game.superview === self, bounds.width > 0, bounds.height > 0 else { return }
+        let safeFrame = window.map { convert($0.safeAreaLayoutGuide.layoutFrame, from: $0) } ?? bounds
+        let area = TLGameViewport.area(in: bounds, safeFrame: safeFrame, avoidUnsafeArea: avoidUnsafeArea)
+        guard area.width > 0, area.height > 0 else { return }
+        if loggedArea != area {
+            loggedArea = area
+            HuskLog.log("tl", "viewport: available=\(area) surfaceScale=\(game.contentScaleFactor) cachedSize=\(String(describing: game.launchedSize)) avoidCutouts=\(avoidUnsafeArea)")
+        }
         if let size = game.launchedSize, game.engine != .flutter, size.width > 0, size.height > 0 {
-            let k = min(bounds.width / size.width, bounds.height / size.height)
+            let fitted = TLGameViewport.fit(size, in: area)
+            let k = fitted.width / size.width
             game.transform = .identity
             game.bounds = CGRect(origin: .zero, size: size)
-            game.center = CGPoint(x: bounds.midX, y: bounds.midY)
+            game.center = CGPoint(x: fitted.midX, y: fitted.midY)
             game.transform = CGAffineTransform(scaleX: k, y: k)
         } else {
             game.transform = .identity
-            game.frame = bounds
+            game.frame = area
             // The game starts in its own layout pass; once it has, a fixed-size engine needs placing as above.
             DispatchQueue.main.async { [weak self] in
                 if self?.game.launchedSize != nil, self?.game.engine != .flutter { self?.setNeedsLayout() }
             }
         }
+        game.setNeedsLayout() // Keep the Java web host aligned when a cached surface moves or scales.
     }
 }
