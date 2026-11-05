@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Geometry shared by full-screen and floating game surfaces. A running engine keeps its launch size;
 /// changes to the available area fit that surface without cropping or changing its touch coordinates.

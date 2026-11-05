@@ -23,7 +23,7 @@ class SwiftModelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             p = Path(temp)
             (p / "Model.swift").write_text(source, encoding="utf-8")
-            (p / "main.swift").write_text("import Foundation\n" + main, encoding="utf-8")
+            (p / "main.swift").write_text("import Foundation\n#if canImport(CoreGraphics)\nimport CoreGraphics\n#endif\n" + main, encoding="utf-8")
             exe = p / "models"
             subprocess.run([self.compiler, str(p / "Model.swift"), str(p / "main.swift"), "-o", str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
