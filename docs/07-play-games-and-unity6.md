@@ -22,8 +22,15 @@ keeps on its own server under the player's Play Games ID. What changed:
    - On the Java runtime, Unity 6 hands each frame to the screen on the GPU (a shared texture) instead of reading it back
      through the CPU on every swap. **Game Settings › Frame Handoff** sets this per game, and **CPU Copy** keeps the old
      path.
-3. **Switching apps.** When the person leaves Husk, the game is paused, and pausing is what makes it save. Husk now asks iOS
-   for up to 8 seconds of background time while a game is loaded, so that save can finish before iOS suspends Husk.
+3. **Switching apps.** A phone that leaves an app takes its window's focus, pauses it and stops it, and reverses that on
+   return. Husk's framework only paused and resumed it (`AppRunner.hostPause`). Unity tells the game about the focus
+   (OnApplicationFocus), and a player that allows a resizable window pauses on onStop, not onPause, so ITRTG did not count
+   its time away. For a Unity game on the Java runtime, `Native.pollInput` (the app's main thread, before the framework
+   handles the host's pause or resume) now makes the missing steps: focus lost, onPause, onStop; then onRestart, onStart,
+   onResume, focus back. The log shows `javaapp: left the screen` / `back on the screen`, and Unity's `nativePause`,
+   `nativeResume` and `nativeFocusChanged` as they are called (a new RegisterNatives filter, `tl_jni_native_wrap`, wraps them
+   to log). Pausing is also what makes a game save, so Husk asks iOS for up to 8 seconds of background time while a game is
+   loaded, to let that save finish before iOS suspends Husk.
 4. **Debugging:**
    - **Game Settings › Debugging › Detailed Log** turns on the file and network traces (`TL_FILE_TRACE`, `TL_NET_TRACE`)
      for one game. A path under `/proc` or `/sys` is traced once: Unity polls every core's `cpu_capacity` and
@@ -48,6 +55,8 @@ keeps on its own server under the player's Play Games ID. What changed:
     `getCurrentPlayer`, the `Player` getters, `Tasks.whenAll`, `requestServerSideAccess`). For `requestServerSideAccess`
     only the fact that a code was issued is logged, never the code.
   - `unity: command line "-systemallocator"`: the player was started with malloc for its memory.
+  - `javaapp: left the screen …` / `back on the screen …`, and `unity: nativePause` / `nativeResume` /
+    `nativeFocusChanged(…)`: switching apps, and what Unity was told.
 - **Online Saves › Copy Sign-In Details** copies the build, the game, the SHA-1 of the APK's signing certificate, the
   Google account, the player and the last sign-in error. It has no passwords and no tokens. The certificate SHA-1 should
   match the one Google Play lists for the game; an APK re-signed by someone else will not sign in.

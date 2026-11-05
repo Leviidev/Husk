@@ -277,6 +277,7 @@ NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrat
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
 NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
 NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
+static void host_lifecycle(bool pause);      /* below, with Unity's command line */
 NAT(N_pollInput)
 {
     (void)self; (void)a;
@@ -288,8 +289,11 @@ NAT(N_pollInput)
     int32_t *v = arr->arr.data;
     v[0] = n;
     memcpy(v + 1, A.q, (size_t)A.qn * 4);
+    bool host[16]; int nhost = 0;                     /* the host's pauses (true) and resumes, in order */
+    for (int i = 0; i + 3 < A.qn; i += 4) if (A.q[i] == 6 && nhost < 16) host[nhost++] = A.q[i + 1] != 0;
     A.qn = 0;
     pthread_mutex_unlock(&A.q_lock);
+    for (int i = 0; i < nhost; i++) host_lifecycle(host[i]);
     *ret = L(arr);
     return true;
 }
@@ -1209,6 +1213,8 @@ static struct {
     pthread_mutex_t lock;
     char line[512];             /* what is added to the "unity" extra */
     tl_jclass *intent;
+    bool unity;                 /* the app is a Unity game: leaving and coming back go through the whole lifecycle (below) */
+    jobj *stopped;              /* the activity stopped when Husk left the screen */
 } UC = { .lock = PTHREAD_MUTEX_INITIALIZER };
 
 /* Whether the game's libunity.so has mimalloc in it: its messages ("mimalloc: ...") and Unity's own line about it are among the
@@ -1257,6 +1263,79 @@ static void unity_intent_peek(jobj *self, const tl_jmeth *m)
     inside = false;
 }
 
+/*
+ * Leaving the screen and coming back, as Android does it. A phone that leaves an app takes its window's focus, then pauses it,
+ * then stops it; coming back, it restarts, starts and resumes it, then gives the focus back. Husk's framework pauses and
+ * resumes only (AppRunner.hostPause). Unity's player reacts to each step: the focus is OnApplicationFocus, and a player that
+ * allows a resizable window pauses on onStop rather than onPause. An idle game that counts the time it was away from either
+ * missed it (Idling to Rule the Gods seemed not to count the time away when Husk was left and come back to). For a Unity game, the
+ * steps Husk's framework leaves out are made here, on the app's main thread, before the framework's own pause or resume runs
+ * (which then finds the activity already paused, or resumed, and does nothing more).
+ */
+static void lifecycle_call(jobj *o, const char *name, const char *sig, const jvalue *args)
+{
+    if (!o) return;
+    tl_jni_call(o, name, sig, args);
+    if (tl_jni_pending()) { tl_log_line("javaapp: %s threw", name); tl_jni_clear(); }
+}
+
+static void unity_host_lifecycle(bool pause)
+{
+    jvalue r; r.j = 0;
+    if (!tl_dvm_call_static("husk/AppRunner", "top", "()Landroid/app/Activity;", NULL, &r) || !r.l) { tl_jni_clear(); return; }
+    jobj *act = r.l;
+    bool resumed = tl_jni_call(act, "isResumedHusk", "()Z", NULL).z;
+    jobj *win = tl_jni_call(act, "getWindow", "()Landroid/view/Window;", NULL).l;
+    jobj *decor = win ? tl_jni_call(win, "peekDecorView", "()Landroid/view/View;", NULL).l : NULL;
+    tl_jni_clear();
+    jvalue focus; focus.j = 0;
+    if (pause) {
+        if (!resumed) return;
+        lifecycle_call(decor, "dispatchWindowFocusChanged", "(Z)V", &focus);
+        lifecycle_call(act, "huskPause", "()V", NULL);
+        lifecycle_call(act, "huskStop", "()V", NULL);
+        UC.stopped = act;
+        tl_log_line("javaapp: left the screen: %s loses the window's focus, pauses and stops", tl_jni_class_name(act));
+    } else {
+        if (resumed) return;
+        bool was_stopped = UC.stopped == act;
+        if (was_stopped) { lifecycle_call(act, "huskRestart", "()V", NULL); lifecycle_call(act, "huskStart", "()V", NULL); }
+        lifecycle_call(act, "huskResume", "()V", NULL);
+        focus.z = 1;
+        lifecycle_call(decor, "dispatchWindowFocusChanged", "(Z)V", &focus);
+        UC.stopped = NULL;
+        tl_log_line("javaapp: back on the screen: %s %sresumes and has the window's focus", tl_jni_class_name(act),
+                    was_stopped ? "restarts, starts, " : "");
+    }
+}
+
+static void host_lifecycle(bool pause) { if (UC.unity) unity_host_lifecycle(pause); }
+
+/* What Unity's player is told, in the log: its pause, resume and focus natives, as they are called. */
+static uint8_t (*u_native_pause)(void *, void *);
+static void (*u_native_resume)(void *, void *);
+static void (*u_native_focus)(void *, void *, uint8_t);
+static uint8_t w_native_pause(void *env, void *self) { tl_log_line("unity: nativePause (OnApplicationPause(true))"); return u_native_pause(env, self); }
+static void w_native_resume(void *env, void *self) { tl_log_line("unity: nativeResume (OnApplicationPause(false))"); u_native_resume(env, self); }
+static void w_native_focus(void *env, void *self, uint8_t f)
+{
+    tl_log_line("unity: nativeFocusChanged(%s) (OnApplicationFocus(%s))", f ? "true" : "false", f ? "true" : "false");
+    u_native_focus(env, self, f);
+}
+static void *unity_native_wrap(const char *cls, const char *name, const char *sig, void *fn)
+{
+    if (strncmp(cls, "com/unity3d/player/", 19)) return fn;
+    /* (one function each: a second, different one is bound as it is, unlogged) */
+#define WRAP(nm, sg, orig, w) if (!strcmp(name, nm) && !strcmp(sig, sg)) { \
+        if (orig && (void *)orig != fn) return fn; \
+        orig = fn; return (void *)w; }
+    WRAP("nativePause", "()Z", u_native_pause, w_native_pause)
+    WRAP("nativeResume", "()V", u_native_resume, w_native_resume)
+    WRAP("nativeFocusChanged", "(Z)V", u_native_focus, w_native_focus)
+#undef WRAP
+    return fn;
+}
+
 static void unity_command_line_setup(void)
 {
     __atomic_store_n(&tl_jni_before_java, NULL, __ATOMIC_RELEASE);
@@ -1268,6 +1347,10 @@ static void unity_command_line_setup(void)
         if (!z) { if (i == 0) continue; break; }
         unity = tl_zip_find(z, "lib/arm64-v8a/libunity.so") != NULL;
     }
+    UC.unity = unity;
+    UC.stopped = NULL;
+    u_native_pause = NULL; u_native_resume = NULL; u_native_focus = NULL;
+    __atomic_store_n(&tl_jni_native_wrap, unity ? unity_native_wrap : NULL, __ATOMIC_RELEASE);
     if (!unity) return;
     bool sys = force ? atoi(force) != 0 : libunity_has_mimalloc();
     snprintf(UC.line, sizeof(UC.line), "%s%s%s", sys ? "-systemallocator" : "", sys && extra && extra[0] ? " " : "", extra ? extra : "");
@@ -1340,6 +1423,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
 void tl_javaapp_stop(void)
 {
     __atomic_store_n(&tl_jni_before_java, NULL, __ATOMIC_RELEASE);
+    __atomic_store_n(&tl_jni_native_wrap, NULL, __ATOMIC_RELEASE);
+    UC.unity = false; UC.stopped = NULL;
     atomic_store(&A.ended, true);
     if (A.app_started) { pthread_join(A.app_thread, NULL); A.app_started = false; }
     if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }

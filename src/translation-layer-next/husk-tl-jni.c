@@ -1100,6 +1100,8 @@ static void jni_ReleaseStringCritical(void *env, jo s, const uint16_t *c) { jni_
 typedef struct { const char *name, *sig; void *fn; } native_method;
 static unsigned g_natives_generation;
 
+void *(*tl_jni_native_wrap)(const char *cls, const char *name, const char *sig, void *fn);
+
 static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, int32_t n)
 {
     (void)env;
@@ -1123,7 +1125,10 @@ static int32_t jni_RegisterNatives(void *env, jo cls, const native_method *m, in
         c->natives = realloc(c->natives, (size_t)(c->nnatives + 1) * sizeof(*c->natives));
         c->natives[c->nnatives].name = strdup(m[i].name);
         c->natives[c->nnatives].sig = strdup(m[i].sig);
-        c->natives[c->nnatives].fn = m[i].fn;
+        void *fn = m[i].fn;
+        void *(*wrap)(const char *, const char *, const char *, void *) = __atomic_load_n(&tl_jni_native_wrap, __ATOMIC_ACQUIRE);
+        if (wrap && fn) fn = wrap(c->name, m[i].name, m[i].sig, fn);
+        c->natives[c->nnatives].fn = fn;
         c->nnatives++;
         TRACE("jni: RegisterNatives %s.%s%s -> %p", c->name, m[i].name, m[i].sig, m[i].fn);
     }

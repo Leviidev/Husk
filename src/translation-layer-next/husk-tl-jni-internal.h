@@ -70,6 +70,9 @@ extern const tl_dvm_hooks *tl_dvm;
 /* Called before native code's call into a method the Java runtime runs, with the object and the method; NULL: nothing is. Set
    and cleared with __atomic_store_n (husk-tl-dvm-android.c: Unity's command line). */
 extern void (*tl_jni_before_java)(jobj *self, const tl_jmeth *m);
+/* Called as RegisterNatives binds each method, under the JNI lock; what it returns is bound instead. NULL: nothing is. It must not
+   call JNI. (husk-tl-dvm-android.c: Unity's lifecycle natives, logged.) */
+extern void *(*tl_jni_native_wrap)(const char *cls, const char *name, const char *sig, void *fn);
 
 /* Exceptions, for the interpreter. */
 jobj *tl_jni_pending_object(void);
