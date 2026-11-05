@@ -47,8 +47,30 @@ as evidence, not proof of jetsam, and no longer overrides an explicit fatal sign
 - Swift model tests added for legacy settings/roundtrip, cutouts, both orientations,
   fitting a cached surface without cropping, inverse touch geometry, zero double
   inset, and fatal-signal precedence. SKIP on this Windows host (no Swift compiler).
-- macOS/Linux sanitizer QA, Xcode build and iPhone rendering/touch: PENDING.
+- macOS/Linux sanitizer QA and all three Swift model checks: PASS in
+  [run 41985908707](https://github.com/hungtm200401-bot/Husk/actions/runs/41985908707).
+  Linux skips the separate macOS Compression-based APK ordering baseline;
+  that baseline passes on macOS.
+- Java framework lifecycle checks and Xcode iOS build: PASS in the same run.
+- iPhone rendering/touch: NOT TESTED.
 - Sustained gameplay and the reported exit: NOT VERIFIED; fresh device report required.
+
+## Verified IPA delivery
+
+Build revision `97914c09b217a6e522ebc3ee9d9884c8f24e2ada`, stamped
+`97914c0-dirty`, produced `build/HUNG-APK-PLAYER-iphone-fix.ipa`
+(113,674,862 bytes). Download the
+[IPA and corresponding source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/41985908707/artifacts/13395704859).
+The source ZIP identifies the build revision and matches its changed files.
+The executable contains the viewport/allocation/log changes; the tested full/core
+Java DEX hashes match the embedded files, and entitlements match the source.
+
+IPA SHA-256: `3991a050b513bf75e7e875a94757d3840a0f58ac8e37fc8264de2985d9ab4e69`.
+
+The first QA attempt stopped before iOS packaging because Apple builds needed
+an explicit CoreGraphics import in the viewport model and host harness. The import
+was added and all four jobs passed in the delivery run above. Build-time changes
+to the generated Xcode project/notices account for the `-dirty` stamp.
 
 ## Device check after installing the new build
 
@@ -63,5 +85,5 @@ as evidence, not proof of jetsam, and no longer overrides an explicit fatal sign
    If iOS provides a corresponding JetsamEvent/Husk `.ips` report, retain it locally
    to distinguish an OS memory kill from a native signal.
 
-Keep device logs, game APKs and signing material out of commits. The existing IPA
+Keep device logs, game APKs and signing material out of commits. The older IPA
 `HUNG-APK-PLAYER-login-fix.ipa` does not contain this patch.
