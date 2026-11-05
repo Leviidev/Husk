@@ -12,7 +12,7 @@ public final class MidiManager {
     public MidiManager(android.media.midi.IMidiManager p0) {}
     public void closeBluetoothDevice(android.media.midi.MidiDevice p0) {}
     public android.media.midi.MidiDeviceServer createDeviceServer(android.media.midi.MidiReceiver[] p0, int p1, java.lang.String[] p2, java.lang.String[] p3, android.os.Bundle p4, int p5, int p6, android.media.midi.MidiDeviceServer.Callback p7) { return null; }
-    public android.media.midi.MidiDeviceInfo[] getDevices() { return (android.media.midi.MidiDeviceInfo[]) huskProps.get("Devices"); }
+    public android.media.midi.MidiDeviceInfo[] getDevices() { return new android.media.midi.MidiDeviceInfo[0]; }
     public java.util.Set getDevicesForTransport(int p0) { return new java.util.HashSet(); }
     public void openBluetoothDevice(android.bluetooth.BluetoothDevice p0, android.media.midi.MidiManager.OnDeviceOpenedListener p1, android.os.Handler p2) {}
     public void openDevice(android.media.midi.MidiDeviceInfo p0, android.media.midi.MidiManager.OnDeviceOpenedListener p1, android.os.Handler p2) {}

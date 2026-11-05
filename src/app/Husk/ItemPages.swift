@@ -255,6 +255,16 @@ struct GamePage: View {
                 Button(role: .destructive) { confirmRemove = true } label: {
                     Label("Remove Game", systemImage: "trash")
                 }
+                // on the button: on an iPad the dialog is a popover from whatever it is attached to, and the
+                // whole page's anchor put it outside the view on iPadOS 15 (#218)
+                .confirmationDialog("Remove \(app.label)?", isPresented: $confirmRemove, titleVisibility: .visible) {
+                    Button("Remove", role: .destructive) {
+                        dismiss()
+                        store.remove(app)
+                    }
+                } message: {
+                    Text("The game and everything it saved here are deleted from Husk.")
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -286,14 +296,6 @@ struct GamePage: View {
             }
         } message: {
             Text("\(blockedBy ?? "The other game") is still loaded and only one game can run per session. Husk closes; open it again and \(app.label) starts by itself.")
-        }
-        .confirmationDialog("Remove \(app.label)?", isPresented: $confirmRemove, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) {
-                dismiss()
-                store.remove(app)
-            }
-        } message: {
-            Text("The game and everything it saved here are deleted from Husk.")
         }
         .id(jit.attachGeneration)
         .onAppear {
@@ -600,6 +602,14 @@ struct AndroidAppPage: View {
                     Label("Uninstall", systemImage: "trash")
                 }
                 .disabled(!canOpen)
+                .confirmationDialog("Uninstall \(live.label)?", isPresented: $confirmUninstall, titleVisibility: .visible) {
+                    Button("Uninstall", role: .destructive) {
+                        host.uninstall(app.name)
+                        dismiss()
+                    }
+                } message: {
+                    Text("Its data goes with it.")
+                }
             } footer: {
                 if !canOpen { Text("Start Android to uninstall or look inside the app.") }
             }
@@ -607,14 +617,6 @@ struct AndroidAppPage: View {
         .listStyle(.insetGrouped)
         .navigationTitle(live.label)
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Uninstall \(live.label)?", isPresented: $confirmUninstall, titleVisibility: .visible) {
-            Button("Uninstall", role: .destructive) {
-                host.uninstall(app.name)
-                dismiss()
-            }
-        } message: {
-            Text("Its data goes with it.")
-        }
     }
 
     @ViewBuilder

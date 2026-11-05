@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+import Darwin
 import SwiftUI
 import UniformTypeIdentifiers
+import os
 
 /// Settings, as the iOS Settings app lays them out: a card for the app up top, then groups of rows that each
 /// push a page of their own. What belongs to the app, what belongs to the emulator, and what the thing is.
@@ -285,6 +287,19 @@ struct FontSettings: View {
 
 // MARK: - Performance
 
+/// Whether this install was really signed with an entitlement: signing can drop them, and iOS gives no other sign that it did.
+/// nil when the system does not answer.
+private func huskHasEntitlement(_ name: String) -> Bool? {
+    typealias Create = @convention(c) (UnsafeRawPointer?) -> UnsafeMutableRawPointer?
+    typealias Copy = @convention(c) (UnsafeMutableRawPointer, CFString, UnsafeMutableRawPointer?) -> Unmanaged<CFTypeRef>?
+    let all = UnsafeMutableRawPointer(bitPattern: -2)      // RTLD_DEFAULT
+    guard let c = dlsym(all, "SecTaskCreateFromSelf"), let v = dlsym(all, "SecTaskCopyValueForEntitlement"),
+          let task = unsafeBitCast(c, to: Create.self)(nil) else { return nil }
+    defer { Unmanaged<AnyObject>.fromOpaque(task).release() }
+    guard let value = unsafeBitCast(v, to: Copy.self)(task, name as CFString, nil)?.takeRetainedValue() else { return false }
+    return (value as? Bool) ?? false
+}
+
 struct PerformanceSettings: View {
     @ObservedObject private var runner = QemuRunner.shared
     @State private var gpuMode =
@@ -293,8 +308,22 @@ struct PerformanceSettings: View {
     @State private var soundDevice =
         UserDefaults.standard.object(forKey: "husk.soundDevice") as? Bool ?? true
 
+    private func entitlementRow(_ title: String, _ name: String) -> some View {
+        let on = huskHasEntitlement(name)
+        return LabeledContent(title, value: on == nil ? "Unknown" : on! ? "On" : "Off")
+    }
+
     var body: some View {
         HuskForm {
+            Section {
+                entitlementRow("Increased memory limit", "com.apple.developer.kernel.increased-memory-limit")
+                entitlementRow("Extended address space", "com.apple.developer.kernel.extended-virtual-addressing")
+                LabeledContent("Memory available now", value: ByteCountFormatter.string(fromByteCount: Int64(os_proc_available_memory()), countStyle: .memory))
+            } header: {
+                Text("Memory")
+            } footer: {
+                Text("What this install was signed with. If one is Off, big games can close early: sign Husk with a method that keeps these entitlements.")
+            }
             Section {
                 Picker("Renderer", selection: $gpuMode) {
                     Text("GPU").tag(true)

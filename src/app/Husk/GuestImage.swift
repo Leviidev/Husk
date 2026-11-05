@@ -842,9 +842,11 @@ final class GuestImage: ObservableObject {
         // truncated image otherwise installs cleanly and fails much later,
         // inside QEMU, as something that looks nothing like a bad download.
         if let want = manifest?.image.sha256, let got = digest, want != got {
+            let bytes = (try? FileManager.default.attributesOfItem(atPath: tempURL.path)[.size] as? Int64) ?? -1
             try? FileManager.default.removeItem(at: tempURL)
             HuskLog.log("guest", "image rejected: sha256 \(got.prefix(12)) but the "
-                               + "release says \(want.prefix(12))")
+                               + "release says \(want.prefix(12)); \(bytes) bytes, "
+                               + "release has \(manifest?.image.size ?? -1)")
             state = .failed("The downloaded image did not match the release. Tap to retry.")
             return
         }

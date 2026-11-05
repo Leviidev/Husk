@@ -309,4 +309,5 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         APPLICATION_EXTENSION_API_ONLY: YES
         CODE_SIGN_STYLE: Automatic
+        OTHER_LDFLAGS: ["$(inherited)", "-weak_framework", "ActivityKit"]
         TARGETED_DEVICE_FAMILY: "1"
