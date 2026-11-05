@@ -26,7 +26,7 @@ enum TLNativeEngine {
 /// Nothing is copied or composed here. The runtime hands the layer to EGL as the game's window; the
 /// game draws and presents on its own thread. This view's jobs are the layer's size, the pause that
 /// goes with leaving the screen, and turning touches into the pixel coordinates Android reports.
-final class TLUnityUIView: UIView, UIKeyInput {
+final class TLUnityUIView: UIView, UIKeyInput, UIGestureRecognizerDelegate {
     override class var layerClass: AnyClass { CAMetalLayer.self }
 
     /// A touch on a Java app's web page goes to the WKWebView under this view.
@@ -151,8 +151,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// A Java app's WebViews (WKWebViews) live in a view right under this one, where the app's window leaves a hole for them.
     /// Touches on a page go straight to it, so the back swipe and the three-finger tap are on that view too.
     private var webHost: UIView?
+    private weak var webParentPan: UIPanGestureRecognizer?
+    private var webDragActive = false
     private func attachWebHost(fresh: Bool) {
         guard let superview else { return }
+        cancelWebParentDrag()
         webHost?.removeFromSuperview()
         let host = UIView(frame: frame)
         host.backgroundColor = .black
@@ -160,6 +163,15 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
         back.edges = .left
         host.addGestureRecognizer(back)
+        // A native page otherwise receives the whole touch stream before its Android parent can intercept it.
+        let drag = UIPanGestureRecognizer(target: self, action: #selector(webParentDragged(_:)))
+        drag.maximumNumberOfTouches = 1
+        drag.delaysTouchesBegan = false
+        drag.delaysTouchesEnded = false
+        drag.delegate = self
+        drag.require(toFail: back)
+        host.addGestureRecognizer(drag)
+        webParentPan = drag
         let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
         threeFingers.numberOfTouchesRequired = 3
         threeFingers.cancelsTouchesInView = false
@@ -170,9 +182,41 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Unmanaged.passUnretained(host).toOpaque(), Float(contentScaleFactor), fresh ? 1 : 0)
     }
 
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer, pan === webParentPan else { return super.gestureRecognizerShouldBegin(gestureRecognizer) }
+        let point = pan.location(in: self), translation = pan.translation(in: self)
+        let axes = husk_java_web_parent_scroll_axes(Float(point.x - translation.x), Float(point.y - translation.y))
+        let velocity = pan.velocity(in: self)
+        return axes & (abs(velocity.y) >= abs(velocity.x) ? 2 : 1) != 0
+    }
+
+    @objc private func webParentDragged(_ pan: UIPanGestureRecognizer) {
+        guard pan === webParentPan else { return }
+        let point = pan.location(in: self), scale = contentScaleFactor
+        if pan.state == .began {
+            let translation = pan.translation(in: self)
+            webDragActive = true
+            husk_unity_touch(0, 0, Float((point.x - translation.x) * scale), Float((point.y - translation.y) * scale))
+        }
+        guard webDragActive else { return }
+        let phase: Int32
+        switch pan.state {
+        case .began, .changed: phase = 1
+        case .ended: phase = 2
+        case .cancelled, .failed: phase = 3
+        default: return
+        }
+        husk_unity_touch(phase, 0, Float(point.x * scale), Float(point.y * scale))
+        if phase >= 2 { webDragActive = false }
+    }
+
+    private func cancelWebParentDrag() {
+        if webDragActive { husk_unity_touch(3, 0, 0, 0); webDragActive = false }
+    }
+
     override func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
-        if newSuperview == nil { webHost?.removeFromSuperview() }
+        if newSuperview == nil { cancelWebParentDrag(); webHost?.removeFromSuperview() }
     }
 
     @objc private func edgeSwiped(_ g: UIScreenEdgePanGestureRecognizer) {
