@@ -76,6 +76,9 @@ int  tl_errno_from_guest(int guest_errno);
 int *tl_guest_errno_ptr(void);
 void tl_set_guest_errno(int guest_errno);
 
+/* Set with the app's data directory, before guest code starts. */
+void tl_set_guest_package(const char *package_name);
+
 #define TL_ERRNO_BEGIN()  (errno = 0)
 #define TL_ERRNO_END()    do { if (errno) tl_set_guest_errno(tl_errno_to_guest(errno)); } while (0)
 

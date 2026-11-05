@@ -1207,6 +1207,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     { void tl_set_data_dir(const char *dir); tl_set_data_dir(A.data); }
+    tl_set_guest_package(A.pkg);
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);

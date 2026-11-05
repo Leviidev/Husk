@@ -53,6 +53,25 @@ def main():
     exe = out / ("getchar_test.exe" if os.name == "nt" else "getchar_test")
     run("getchar compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}", str(ROOT / "tests/translation-layer/getchar_test.c"), "-o", str(exe)])
     run("getchar", [str(exe), str(out / "stdin.bin")])
+    io_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-io.c").read_text(encoding="utf-8")
+    snippets = [re.search(pattern, io_source, re.S)[0] for pattern in (
+        r"void tl_set_guest_package\([^)]*\)\n\{.*?\n\}",
+        r"static char \*b_getcwd\([^)]*\)\n\{.*?\n\}")]
+    (out / "getcwd_under_test.h").write_text("\n".join(snippets) + "\n", encoding="utf-8")
+    # Deliberately long physical container path, distinct from Android's alias.
+    fixture = out / ("physical-container-" + "x" * 112)
+    fixture.mkdir(exist_ok=True)
+    (fixture / "files/quest").mkdir(parents=True, exist_ok=True)
+    (fixture / "files/quest/keep.txt").write_text("KEEP", encoding="utf-8")
+    fixture.with_name(fixture.name + "-sibling").mkdir(exist_ok=True)
+    if os.name != "nt":
+        alias = fixture.with_name(fixture.name + "-alias")
+        if not alias.exists():
+            alias.symlink_to(fixture, target_is_directory=True)
+    exe = out / ("getcwd_test.exe" if os.name == "nt" else "getcwd_test")
+    run("getcwd compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/getcwd_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
+    run("getcwd", [str(exe), fixture.resolve().as_posix()])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

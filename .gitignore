@@ -37,3 +37,5 @@ third_party/gpu/
 *.provisionprofile
 /secrets/
 /pairing/
+# Device reports contain container identifiers and account/network diagnostics.
+/patches/Husk crash report*.txt

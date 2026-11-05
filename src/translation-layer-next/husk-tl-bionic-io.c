@@ -16,6 +16,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-codewrite.h"
 #include "husk-tl-xmem.h"
 #include "husk-tl-binder.h"
+#include "husk-tl-path.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -62,6 +63,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
  * to learn about the device are synthesised into unlinked temporary files.
  */
 static char g_data_dir[512];
+static char g_guest_data_dir[256];
 /* New files a game never finished, because Husk was ended while it wrote them (tl_atomic_open): the old files beside them are whole. */
 static void drop_unfinished(const char *dir, int depth)
 {
@@ -80,10 +82,21 @@ static void drop_unfinished(const char *dir, int depth)
 }
 void tl_set_data_dir(const char *dir)
 {
+    g_guest_data_dir[0] = 0;
     snprintf(g_data_dir, sizeof(g_data_dir), "%s", dir ? dir : "");
     if (g_data_dir[0]) drop_unfinished(g_data_dir, 0);
 }
 const char *tl_data_dir(void) { return g_data_dir[0] ? g_data_dir : "/tmp"; }
+
+void tl_set_guest_package(const char *pkg)
+{
+    g_guest_data_dir[0] = 0;
+    if (!pkg || !*pkg) return;
+    for (const char *c = pkg; *c; c++)
+        if (!isalnum((unsigned char)*c) && *c != '_' && *c != '.') return;
+    int n = snprintf(g_guest_data_dir, sizeof(g_guest_data_dir), "/data/data/%s", pkg);
+    if (n < 0 || (size_t)n >= sizeof(g_guest_data_dir)) g_guest_data_dir[0] = 0;
+}
 
 /* A file holding `content`, already unlinked. Where it can be made depends on the host: iOS gives an app no /tmp. */
 static int synth_file_n(const void *content, size_t n);
@@ -245,14 +258,8 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
     /* /data/user/0/<package> and /data/data/<package>: the app's own folder, as Android names it -- short, where the real one on a
        phone is ~150 characters (p4a's launcher allows its script path 128) */
     {
-        static const char *const roots[] = { "/data/user/0/", "/data/data/" };
-        for (int i = 0; i < 2; i++) {
-            size_t l = strlen(roots[i]);
-            if (strncmp(path, roots[i], l) || !path[l] || path[l] == '/') continue;
-            const char *rest = strchr(path + l, '/');
-            snprintf(buf, n, "%s%s", tl_data_dir(), rest ? rest : "");
-            return buf;
-        }
+        const char *mapped = tl_resolve_data_path(path, tl_data_dir(), buf, n);
+        if (mapped) return mapped;
     }
     /* /data/local/tmp: the world-writable scratch folder (JNA unpacks itself there): a folder of the app's own */
     if (!strncmp(path, "/data/local/tmp", 15) && (path[15] == 0 || path[15] == '/')) {
@@ -786,7 +793,14 @@ static long b_readlink(const char *p, char *buf, size_t n)
     char b[1024]; TL_ERRNO_BEGIN(); long r = readlink(tl_path_resolve(p, b, sizeof(b)), buf, n); TL_ERRNO_END(); return r;
 }
 static char *b_realpath(const char *p, char *out) { char b[1024]; TL_ERRNO_BEGIN(); char *r = realpath(tl_path_resolve(p, b, sizeof(b)), out); TL_ERRNO_END(); return r; }
-static char *b_getcwd(char *buf, size_t n) { TL_ERRNO_BEGIN(); char *r = getcwd(buf, n); TL_ERRNO_END(); return r; }
+static char *b_getcwd(char *buf, size_t n)
+{
+    TL_ERRNO_BEGIN();
+    char *r = tl_guest_getcwd(buf, n, g_data_dir, g_guest_data_dir);
+    TL_ERRNO_END();
+    if (getenv("TL_FILE_TRACE")) tl_log_line("file: getcwd(%zu) -> %s", n, r ? r : "failed");
+    return r;
+}
 static char *b___getcwd_chk(char *buf, size_t n, size_t bl) { (void)bl; return b_getcwd(buf, n); }
 static int b_utimes(const char *p, const struct timeval tv[2]) { char b[1024]; TL_ERRNO_BEGIN(); int r = utimes(tl_path_resolve(p, b, sizeof(b)), tv); TL_ERRNO_END(); return r; }
 static int b_utime(const char *p, const struct utimbuf *t) { char b[1024]; TL_ERRNO_BEGIN(); int r = utime(tl_path_resolve(p, b, sizeof(b)), t); TL_ERRNO_END(); return r; }

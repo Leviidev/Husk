@@ -1,0 +1,88 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+#define _DARWIN_C_SOURCE
+#include "husk-tl-path.h"
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
+
+const char *tl_resolve_data_path(const char *path, const char *host_root, char *out, size_t cap)
+{
+    if (!path || !host_root) return NULL;
+    static const char *const roots[] = { "/data/user/0/", "/data/data/" };
+    for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); i++) {
+        size_t n = strlen(roots[i]);
+        if (strncmp(path, roots[i], n) || !path[n] || path[n] == '/') continue;
+        const char *rest = strchr(path + n, '/');
+        snprintf(out, cap, "%s%s", host_root, rest ? rest : "");
+        return out;
+    }
+    return NULL;
+}
+
+static char *native_cwd(void)
+{
+#ifdef _WIN32
+    char *p = _getcwd(NULL, 0);
+    if (p) for (char *c = p; *c; c++) if (*c == '\\') *c = '/';
+    return p;
+#else
+    return getcwd(NULL, 0);
+#endif
+}
+
+static char *canonical_root(const char *root)
+{
+#ifdef _WIN32
+    char *p = _fullpath(NULL, root, 0);
+    if (p) for (char *c = p; *c; c++) if (*c == '\\') *c = '/';
+    return p;
+#else
+    return realpath(root, NULL);
+#endif
+}
+
+/* iOS exposes the same container through /var and /private/var. */
+static const char *without_private(const char *p)
+{
+    return !strncmp(p, "/private/var/", 13) ? p + 8 : p;
+}
+
+char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char *guest_root)
+{
+    int saved_errno = errno;
+    if (out && !size) { errno = EINVAL; return NULL; }
+    char *cwd = native_cwd();
+    if (!cwd) return NULL;
+    char *canonical = host_root && *host_root ? canonical_root(host_root) : NULL;
+    const char *prefix = "", *suffix = cwd;
+    if (canonical && guest_root && *guest_root) {
+        const char *root = without_private(canonical), *actual = without_private(cwd);
+        size_t n = strlen(root);
+        while (n > 1 && root[n - 1] == '/') n--;
+        /* A sibling with a common prefix is not this app's directory. Only
+         * replace a longer physical prefix; avoid changing short host paths. */
+        if (n > strlen(guest_root) && !strncmp(actual, root, n) &&
+            (actual[n] == 0 || actual[n] == '/')) {
+            prefix = guest_root;
+            suffix = actual + n;
+        }
+    }
+    size_t a = strlen(prefix), b = strlen(suffix), needed = a + b + 1;
+    int failure = 0;
+    if (size && needed > size) failure = ERANGE;
+    else if (!out && !(out = malloc(size ? size : needed))) failure = ENOMEM;
+    if (!failure) {
+        memcpy(out, prefix, a);
+        memcpy(out + a, suffix, b + 1);
+    }
+    free(canonical);
+    free(cwd);
+    errno = failure ? failure : saved_errno;
+    return failure ? NULL : out;
+}
