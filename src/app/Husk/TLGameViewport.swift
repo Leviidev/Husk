@@ -4,12 +4,22 @@ import Foundation
 import CoreGraphics
 #endif
 
-/// Geometry shared by full-screen and floating game surfaces. A running engine keeps its launch size;
-/// changes to the available area fit that surface without cropping or changing its touch coordinates.
+/// Full-screen pixels and safe controls are independent. A running engine keeps its launch size;
+/// changes to the available area fit that surface without changing its touch coordinates.
 enum TLGameViewport {
-    static func area(in bounds: CGRect, safeFrame: CGRect, avoidUnsafeArea: Bool) -> CGRect {
-        let area = avoidUnsafeArea ? bounds.intersection(safeFrame) : bounds
-        return valid(area) ? area : .zero
+    enum CutoutEdge { case none, top, left, bottom, right }
+
+    /// UIKit's landscape safe area reserves both short edges and the Home indicator. Only the
+    /// physical camera edge is a cutout; do not turn those other margins into phantom cutouts.
+    static func cutoutInsets(view: CGRect, safeFrame: CGRect, edge: CutoutEdge) -> (top: CGFloat, left: CGFloat, bottom: CGFloat, right: CGFloat) {
+        let remaining = insets(view: view, safeFrame: safeFrame)
+        switch edge {
+        case .top: return (remaining.top, 0, 0, 0)
+        case .left: return (0, remaining.left, 0, 0)
+        case .bottom: return (0, 0, remaining.bottom, 0)
+        case .right: return (0, 0, 0, remaining.right)
+        case .none: return (0, 0, 0, 0)
+        }
     }
 
     static func fit(_ size: CGSize, in area: CGRect) -> CGRect {
@@ -20,8 +30,7 @@ enum TLGameViewport {
                       width: fitted.width, height: fitted.height)
     }
 
-    /// Only the parts of this view still outside the window's safe frame. An already inset surface
-    /// must report zero to Android/SDL/Flutter instead of applying the notch padding a second time.
+    /// Insets relative to this surface, including when a cached view has been moved or scaled.
     static func insets(view: CGRect, safeFrame: CGRect) -> (top: CGFloat, left: CGFloat, bottom: CGFloat, right: CGFloat) {
         guard valid(view), valid(safeFrame) else { return (0, 0, 0, 0) }
         return (min(view.height, max(0, safeFrame.minY - view.minY)),

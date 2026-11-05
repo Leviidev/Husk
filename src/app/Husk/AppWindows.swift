@@ -321,15 +321,13 @@ struct TLWindowScreen: UIViewRepresentable {
     func updateUIView(_ view: TLWindowHost, context: Context) { view.setNeedsLayout() }
 }
 
-/// Fits the game's one surface in either a floating window or the full-screen safe area.
+/// Fits the game's one surface to its whole host. Cutout avoidance belongs to the game's HUD.
 final class TLWindowHost: UIView {
     let game: TLUnityUIView
     private var loggedArea: CGRect?
-    var avoidUnsafeArea: Bool { didSet { if oldValue != avoidUnsafeArea { setNeedsLayout() } } }
 
-    init(game: TLUnityUIView, windowed: Bool = true, avoidUnsafeArea: Bool = false) {
+    init(game: TLUnityUIView, windowed: Bool = true) {
         self.game = game
-        self.avoidUnsafeArea = avoidUnsafeArea
         super.init(frame: .zero)
         backgroundColor = .black
         clipsToBounds = true
@@ -348,12 +346,11 @@ final class TLWindowHost: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         guard game.superview === self, bounds.width > 0, bounds.height > 0 else { return }
-        let safeFrame = window.map { convert($0.safeAreaLayoutGuide.layoutFrame, from: $0) } ?? bounds
-        let area = TLGameViewport.area(in: bounds, safeFrame: safeFrame, avoidUnsafeArea: avoidUnsafeArea)
+        let area = bounds
         guard area.width > 0, area.height > 0 else { return }
         if loggedArea != area {
             loggedArea = area
-            HuskLog.log("tl", "viewport: available=\(area) surfaceScale=\(game.contentScaleFactor) cachedSize=\(String(describing: game.launchedSize)) avoidCutouts=\(avoidUnsafeArea)")
+            HuskLog.log("tl", "viewport: fullHost=\(area) surfaceScale=\(game.contentScaleFactor) cachedSize=\(String(describing: game.launchedSize))")
         }
         if let size = game.launchedSize, game.engine != .flutter, size.width > 0, size.height > 0 {
             let fitted = TLGameViewport.fit(size, in: area)

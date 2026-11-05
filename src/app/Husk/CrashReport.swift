@@ -76,7 +76,7 @@ final class CrashReport: ObservableObject {
     static func gameStarted(_ app: TLApp) {
         running = app
         let settings = TLAppSettings.load(app.id)
-        runningDisplay = "requestedResolution=\(settings.resolution.rawValue) requestedScale=\(settings.resolution.scale) safeArea=\(settings.avoidUnsafeArea) windowed=\(AppWindows.opensInWindow(app))"
+        runningDisplay = "requestedResolution=\(settings.resolution.rawValue) requestedScale=\(settings.resolution.scale) cutoutHUD=\(settings.avoidUnsafeArea) windowed=\(AppWindows.opensInWindow(app))"
         HuskLog.log("runtime", "game display: \(runningDisplay)")
         writeMarker()
         if observers.isEmpty {

@@ -51,12 +51,40 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private(set) var launchedSize: CGSize?
     /// In a floating window rather than full screen: no notch or home indicator to keep clear of.
     var windowed = false
-    /// Insets that still overlap this surface after the host has fitted it to the safe area.
+    /// This flag supplies HUD insets; it never shrinks the game surface.
+    var avoidUnsafeArea = true
+    private var sentSafeInsets: UIEdgeInsets?
+    private var keyboardInset: Int32 = 0
     private var gameSafeAreaInsets: UIEdgeInsets {
-        guard !windowed, let window else { return .zero }
+        guard avoidUnsafeArea, !windowed, UIDevice.current.userInterfaceIdiom == .phone, let window else { return .zero }
+        let edge: TLGameViewport.CutoutEdge
+        switch window.windowScene?.interfaceOrientation {
+        case .portrait: edge = .top
+        case .portraitUpsideDown: edge = .bottom
+        // Interface orientation names describe the Home-button side; the camera is opposite.
+        case .landscapeLeft: edge = .right
+        case .landscapeRight: edge = .left
+        default: edge = .none
+        }
         let safeFrame = convert(window.safeAreaLayoutGuide.layoutFrame, from: window)
-        let inset = TLGameViewport.insets(view: bounds, safeFrame: safeFrame)
+        let inset = TLGameViewport.cutoutInsets(view: bounds, safeFrame: safeFrame, edge: edge)
         return UIEdgeInsets(top: inset.top, left: inset.left, bottom: inset.bottom, right: inset.right)
+    }
+
+    private func sendSafeInsetsIfNeeded() {
+        let inset = gameSafeAreaInsets
+        guard sentSafeInsets != inset else { return }
+        sentSafeInsets = inset
+        let k = contentScaleFactor
+        let l = Int32((inset.left * k).rounded()), t = Int32((inset.top * k).rounded())
+        let r = Int32((inset.right * k).rounded()), b = Int32((inset.bottom * k).rounded())
+        HuskLog.log("tl", "display-cutout: pixels L=\(l) T=\(t) R=\(r) B=\(b); full-screen surface unchanged")
+        switch engine {
+        case .java: husk_java_set_insets(l, t, r, b, keyboardInset)
+        case .sdl: husk_sdl_set_safe_insets(l, t, r, b)
+        case .flutter: husk_flutter_set_insets(t, r, b, l)
+        default: break
+        }
     }
     /// Where the corner statistics go when this view does not draw them itself (a landscape game has its own bar).
     var onStats: ((String) -> Void)?
@@ -206,13 +234,14 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let hiding = note.name == UIResponder.keyboardWillHideNotification
         let keyboard = convert(window.convert(end, from: nil), from: window)
         let covered = hiding ? 0 : min(bounds.height, max(0, bounds.maxY - keyboard.minY))
+        keyboardInset = Int32((covered * contentScaleFactor).rounded())
         if engine == .java {
             let k = contentScaleFactor, inset = gameSafeAreaInsets
-            husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32((covered * k).rounded()))
+            husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), keyboardInset)
             if hiding, isFirstResponder == false { husk_java_keyboard_closed() }
             return
         }
-        husk_flutter_set_keyboard_inset(Int32((covered * contentScaleFactor).rounded()))
+        husk_flutter_set_keyboard_inset(keyboardInset)
     }
 
     deinit { statsTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
@@ -239,6 +268,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
         // swapchain disagreeing from then on.
         if !(engine == .ue4 && launched) { (layer as? CAMetalLayer)?.drawableSize = CGSize(width: w, height: h) }
+        sendSafeInsetsIfNeeded()
         // Flutter lays itself out again at any size, as an Android view does when its window changes: a window being resized, the
         // screen turning.
         if engine == .flutter, launched { husk_flutter_resize(Int32(w), Int32(h)) }
@@ -319,12 +349,6 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let started: Bool
         switch engine {
         case .sdl:
-            // The notch and the rounded corners, in the surface's pixels: the game keeps its controls out of them.
-            do {
-                let inset = gameSafeAreaInsets
-                let k = contentScaleFactor
-                husk_sdl_set_safe_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k))
-            }
             // Vulkan for the SDL games that draw with it (directly, or through DXVK): MoltenVK, as for Unreal.
             if let fw = Bundle.main.privateFrameworksPath { husk_ue4_set_vulkan(fw + "/MoltenVK.framework/MoltenVK") }
             started = husk_sdl_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
@@ -345,23 +369,12 @@ final class TLUnityUIView: UIView, UIKeyInput {
             // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
             husk_java_set_night_mode(traitCollection.userInterfaceStyle == .dark ? 1 : 0)
-            // The notch and the home indicator, in surface pixels: the app's window keeps its content out of them.
-            do {
-                let inset = gameSafeAreaInsets
-                let k = contentScaleFactor
-                husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
-            }
             attachWebHost(fresh: true)
             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .flutter:
-            // The screen's scale is the app's device pixel ratio, and the notch and home indicator its padding, in surface pixels.
+            // The screen's scale is the app's device pixel ratio; cutout insets were sent during layout.
             husk_flutter_set_pixel_ratio(Float(contentScaleFactor))
-            do {
-                let inset = gameSafeAreaInsets
-                let k = contentScaleFactor
-                husk_flutter_set_insets(Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32(inset.left * k))
-            }
             started = husk_flutter_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .minecraft: started = husk_gameactivity_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
         case .unity: started = husk_unity_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
@@ -785,13 +798,15 @@ struct TLUnityScreen: UIViewRepresentable {
 
     func makeUIView(context: Context) -> TLWindowHost {
         let view = Self.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
+        view.avoidUnsafeArea = avoidUnsafeArea
         view.onStats = onStats
         view.onThreeFingerTap = onThreeFingerTap
-        return TLWindowHost(game: view, windowed: false, avoidUnsafeArea: avoidUnsafeArea)
+        return TLWindowHost(game: view, windowed: false)
     }
     func updateUIView(_ host: TLWindowHost, context: Context) {
         host.game.onStats = onStats; host.game.onThreeFingerTap = onThreeFingerTap
-        host.avoidUnsafeArea = avoidUnsafeArea
+        host.game.avoidUnsafeArea = avoidUnsafeArea
+        host.game.setNeedsLayout()
     }
 }
 
@@ -913,24 +928,20 @@ struct TLCocosAttemptView: View {
             Color.black.ignoresSafeArea()
             Group {
                 if let apk = app.apks.first {
-                    // The game's surface stays the same size when the bar is hidden. Older games also need the host
-                    // to fit their entire picture inside the cutout, since they may ignore Android's insets.
+                    // Keep all render pixels, including behind the camera. The guest positions its HUD from cutout data.
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,
                                   scale: settings.resolution.scale, avoidUnsafeArea: settings.avoidUnsafeArea,
                                   onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
-                    .overlay {
-                        // A game whose menus answer only a controller: with none paired, one on the glass. Hiding the bar leaves
-                        // it in place; only Hide pad takes it away.
-                        if padOffered, settings.padShown, model.state == Int32(HUSK_UNITY_RUNNING) {
-                            VirtualPadView(pad: virtualPad, opacity: settings.padOpacity, haptics: settings.haptics,
-                                           layout: padLayout, editing: editingPad, selected: $padSelected,
-                                           onChange: { padLayout = $0; padLayout.save(app.id) })
-                                .overlay(alignment: .center) { if editingPad { padEditor } }
-                        }
-                    }
-                    .ignoresSafeArea(.container, edges: settings.avoidUnsafeArea ? [] : .all)
+                        .ignoresSafeArea(.container)
                 }
+            }
+            // Husk's own controls remain in the safe layout independently of the full-screen game background.
+            if padOffered, settings.padShown, model.state == Int32(HUSK_UNITY_RUNNING) {
+                VirtualPadView(pad: virtualPad, opacity: settings.padOpacity, haptics: settings.haptics,
+                               layout: padLayout, editing: editingPad, selected: $padSelected,
+                               onChange: { padLayout = $0; padLayout.save(app.id) })
+                    .overlay(alignment: .center) { if editingPad { padEditor } }
             }
             if !uiHidden {
                 VStack(spacing: 0) {

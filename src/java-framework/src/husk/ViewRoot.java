@@ -183,9 +183,9 @@ public final class ViewRoot implements ViewParent {
     public static int imeHeight() { return sImeBottom; }
     public static int[] screenInsetsHusk() { return sInsets; }
     public static WindowInsets screenInsets() { return WindowInsets.huskOf(sInsets[0], sInsets[1], sInsets[2], sInsets[3], sImeBottom, cutout()); }
-    /** The notch and the screen's rounded corners: the host's safe area on the sides and top (the bottom is the home indicator, a bar). */
+    /** The host reports the physical camera edge, independently of the full-screen surface. */
     public static DisplayCutout cutout() {
-        return sInsets[0] > 0 || sInsets[1] > 0 || sInsets[2] > 0 ? new DisplayCutout(new Rect(sInsets[0], sInsets[1], sInsets[2], 0), null) : null;
+        return DisplayCutout.huskFromInsets(screenW(), screenH(), sInsets[0], sInsets[1], sInsets[2], sInsets[3]);
     }
     static int screenW() { return Native.screenWidth(); }
     static int screenH() { return Native.screenHeight(); }

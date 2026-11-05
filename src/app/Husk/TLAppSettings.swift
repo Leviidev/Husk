@@ -80,7 +80,7 @@ struct TLAppSettings: Codable, Equatable {
     var orientation: Orientation = .auto
     var window: WindowMode = .auto
     var resolution: Resolution = .high
-    /// Fit the whole game inside the notch/Dynamic Island and home indicator, including older games that ignore Android insets.
+    /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
     var avoidUnsafeArea = true
     /// The frames-per-second readout in the top bar.
     var showStats = true
@@ -192,14 +192,14 @@ struct TLAppSettingsView: View {
                 Picker("Resolution", selection: $settings.resolution) {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Keep game clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
+                Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
             } header: {
                 Text("Display")
             } footer: {
                 Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again. Keeping the game clear of screen cutouts fits the whole picture inside the safe area, with black margins.")
+                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area.")
             }
 
             Section {

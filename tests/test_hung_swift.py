@@ -96,15 +96,28 @@ func near(_ a: CGFloat, _ b: CGFloat) { precondition(abs(a - b) < 0.000001) }
 // Representative landscape cutout/home-indicator geometry; runtime reads UIWindow's actual values.
 let screen = CGRect(x: 0, y: 0, width: 932, height: 430)
 let safe = CGRect(x: 59, y: 0, width: 814, height: 409)
-precondition(TLGameViewport.area(in: screen, safeFrame: safe, avoidUnsafeArea: true) == safe)
-precondition(TLGameViewport.area(in: screen, safeFrame: safe, avoidUnsafeArea: false) == screen)
+// The full-screen surface keeps its complete launch dimensions. Insets affect HUD metadata only.
+precondition(TLGameViewport.fit(screen.size, in: screen) == screen)
 let inset = TLGameViewport.insets(view: screen, safeFrame: safe)
 precondition(inset.left == 59 && inset.right == 59 && inset.top == 0 && inset.bottom == 21)
 let fittedInsets = TLGameViewport.insets(view: safe, safeFrame: safe)
 precondition(fittedInsets.top == 0 && fittedInsets.left == 0 && fittedInsets.bottom == 0 && fittedInsets.right == 0)
 // A surface that already fills a smaller window must not be inset twice.
 let small = CGRect(x: 200, y: 50, width: 400, height: 250)
-precondition(TLGameViewport.area(in: small, safeFrame: safe, avoidUnsafeArea: true) == small)
+let left = TLGameViewport.cutoutInsets(view: screen, safeFrame: safe, edge: .left)
+precondition(left.left == 59 && left.right == 0 && left.top == 0 && left.bottom == 0)
+let right = TLGameViewport.cutoutInsets(view: screen, safeFrame: safe, edge: .right)
+precondition(right.right == 59 && right.left == 0 && right.top == 0 && right.bottom == 0)
+let phone = CGRect(x: 0, y: 0, width: 430, height: 932)
+let portraitSafe = CGRect(x: 0, y: 59, width: 430, height: 839)
+let top = TLGameViewport.cutoutInsets(view: phone, safeFrame: portraitSafe, edge: .top)
+precondition(top.top == 59 && top.left == 0 && top.right == 0 && top.bottom == 0)
+let upside = TLGameViewport.cutoutInsets(view: phone, safeFrame: CGRect(x: 0, y: 34, width: 430, height: 839), edge: .bottom)
+precondition(upside.bottom == 59 && upside.top == 0)
+let none = TLGameViewport.cutoutInsets(view: screen, safeFrame: safe, edge: .none)
+precondition(none.top == 0 && none.left == 0 && none.right == 0 && none.bottom == 0)
+let window = TLGameViewport.cutoutInsets(view: small, safeFrame: safe, edge: .left)
+precondition(window.left == 0 && window.right == 0 && window.top == 0 && window.bottom == 0)
 for area in [safe, CGRect(x: 0, y: 59, width: 430, height: 839), small, screen] {
     for size in [screen.size, safe.size, CGSize(width: 430, height: 932)] {
         let fit = TLGameViewport.fit(size, in: area)
@@ -119,10 +132,10 @@ for area in [safe, CGRect(x: 0, y: 59, width: 430, height: 839), small, screen] 
         }
     }
 }
-precondition(TLGameViewport.area(in: screen, safeFrame: CGRect(x: 2000, y: 0, width: 10, height: 10), avoidUnsafeArea: true) == .zero)
 precondition(TLGameViewport.fit(.zero, in: safe) == .zero)
-precondition(TLGameViewport.area(in: .zero, safeFrame: safe, avoidUnsafeArea: true) == .zero)
-print("PASS: production viewport avoids cutouts, preserves aspect/touches, and reports no double inset")
+let zero = TLGameViewport.cutoutInsets(view: .zero, safeFrame: safe, edge: .top)
+precondition(zero.top == 0 && zero.left == 0 && zero.bottom == 0 && zero.right == 0)
+print("PASS: full-screen geometry stays unchanged; only the physical camera edge gets HUD insets; cached aspect/touches stay consistent")
 ''')
 
 

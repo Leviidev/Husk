@@ -8,6 +8,10 @@ The existing local crash report is build `0dd57e1-dirty` and contains the older
 
 ## Display change
 
+The display policy below describes build `97914c0`. It is superseded by
+[full-screen background with safe controls](13-fullscreen-safe-controls.md),
+following the user's clarification that the scene must not be inset.
+
 `Keep game clear of screen cutouts` defaults to on, including older settings files.
 The host intersects its available area with the actual UIWindow safe frame, then
 fits the complete game surface there. Existing surfaces keep their launch size
