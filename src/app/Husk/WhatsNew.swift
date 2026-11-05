@@ -13,18 +13,18 @@ enum WhatsNew {
     }
 
     /// The version whose notes these are. A build of the same version shows nothing again.
-    static let version = "3.3"
+    static let version = "3.4"
     static let items: [Item] = [
-        Item(symbol: "bolt.slash.fill", title: "Play without JIT",
-             detail: "More games convert and sign their libraries on the device. One library that cannot convert no longer stops the rest, certificates from SideStore, AltStore or a .p12 import more reliably, and converted libraries are signed again after this update."),
         Item(symbol: "shippingbox.fill", title: "More Android apps",
-             detail: "Java apps pick up missing platform classes from AOSP when framework.jar is bundled, jobs and boot receivers actually start, and Wi-Fi, location and settings answer as a running phone would."),
-        Item(symbol: "folder.fill", title: "Importing files",
-             detail: "The in-app file picker for Android apps can be used more than once in a session."),
-        Item(symbol: "cpu", title: "32-bit ARM apps",
-             detail: "APKs that only ship armeabi-v7a libraries are translated to arm64 and run through the same translation layer as 64-bit apps."),
+             detail: "Microsoft Word, Slack, Gmail, Teams, Deezer, Flipboard and Picsart get past the crashes that stopped them. React Native's new architecture and Qt 6 start, and libGDX and other OpenGL apps draw again."),
+        Item(symbol: "paintbrush.fill", title: "Looks better",
+             detail: "Rounded buttons are proper pills, and toolbars, window backgrounds and more color formats behave as they do on a phone."),
+        Item(symbol: "memorychip", title: "Less \"out of memory\"",
+             detail: "Fewer thread and address space crashes on sideloaded installs, and Unity games keep their frame rate up. Settings > Performance shows whether Increased Memory Limit and Extended Address Space are on."),
+        Item(symbol: "globe", title: "Japanese",
+             detail: "Husk is now in Japanese too, thanks to Yuki-1018."),
         Item(symbol: "wrench.and.screwdriver.fill", title: "Fixes",
-             detail: "Certificate import, leftover store passwords on a .p12, the file picker after the first pick, game pages on iOS 15, and StikDebug when Husk is inside a container app."),
+             detail: "Importing a .p12, or launching with one saved, no longer crashes on iOS 27. Remove and Uninstall open next to their buttons on iPad, and Winlator's Settings no longer crashes."),
     ]
 
     private static let seenKey = "husk.whatsNew.seen"

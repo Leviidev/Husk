@@ -74,7 +74,7 @@ def main():
         if parts[:3] < [1, 0, 0]:
             v["minOSVersion"] = "16.4"
     if husk_versions and husk_versions[0]["version"].startswith("3.3"):
-        husk_versions[0]["buildVersion"] = "148"
+        husk_versions[0]["buildVersion"] = "149"
 
     apps = [
         {
