@@ -140,10 +140,27 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // The GPU is not the app's while it is in the background: stop drawing, and carry on when it returns.
         NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
             husk_unity_set_paused(true)
+            MainActor.assumeIsolated { TLUnityUIView.holdForSave() }
         }
         NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { TLUnityUIView.releaseSaveHold() }
             if self?.window != nil { husk_unity_set_paused(false) }
         }
+    }
+
+    /// Pausing is what makes a game save (Unity's OnApplicationPause, an activity's onPause), and it happens on the game's own
+    /// thread a moment after the screen is left -- by when iOS may have suspended Husk, and may then end it with the save half
+    /// written (the next start then reads a broken one). A few seconds of background time let the save finish first.
+    @MainActor private static var saveHold: UIBackgroundTaskIdentifier = .invalid
+    @MainActor private static func holdForSave() {
+        guard saveHold == .invalid, husk_native_loaded_apk() != nil else { return }
+        saveHold = UIApplication.shared.beginBackgroundTask(withName: "Husk game save") {
+            MainActor.assumeIsolated { TLUnityUIView.releaseSaveHold() }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { MainActor.assumeIsolated { TLUnityUIView.releaseSaveHold() } }
+    }
+    @MainActor private static func releaseSaveHold() {
+        if saveHold != .invalid { UIApplication.shared.endBackgroundTask(saveHold); saveHold = .invalid }
     }
 
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
@@ -938,6 +955,8 @@ struct TLCocosAttemptView: View {
             UIApplication.shared.isIdleTimerDisabled = settings.keepAwake
             if uiHidden { showHint() }
             CrashReport.gameStarted(app)
+            PlayGamesSignIn.gameStarting(app)
+            settings.applyRuntimeOptions()
             padLayout = PadLayout.load(app.id)
             model.start()
         }

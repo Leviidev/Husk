@@ -465,6 +465,26 @@ static int ai_flags_to_darwin(int f)
     return r;
 }
 
+/* Each host the game looks up, once, in its log (whether it worked): which servers a game talks to -- an online save's among
+ * them -- is the first thing to know when one does not answer. Names only, never paths or data; the first 64 hosts. */
+static void note_host(const char *node, int r, bool numeric_only)
+{
+    static pthread_mutex_t lk = PTHREAD_MUTEX_INITIALIZER;
+    static char *seen[64];
+    static int n;
+    if (!node || !node[0]) return;
+    /* asked whether the name is an address (AI_NUMERICHOST), which a host name is not: the real lookup comes next */
+    if (r && numeric_only) return;
+    pthread_mutex_lock(&lk);
+    bool known = false;
+    for (int i = 0; i < n && !known; i++) known = !strcmp(seen[i], node);
+    if (!known && n < 64) {
+        seen[n++] = strdup(node);
+        tl_log_line("net: the game looks up %s%s", node, r ? " -- not found" : "");
+    }
+    pthread_mutex_unlock(&lk);
+}
+
 static int b_getaddrinfo(const char *node, const char *service, const guest_addrinfo *gh, guest_addrinfo **res)
 {
     struct addrinfo hints, *dres = NULL, *hp = NULL;
@@ -479,6 +499,7 @@ static int b_getaddrinfo(const char *node, const char *service, const guest_addr
         hp = &hints;
     }
     int r = getaddrinfo(node, service, hp, &dres);
+    note_host(node, r, gh && (gh->ai_flags & 0x4));              /* bionic's AI_NUMERICHOST */
     NTRACE("getaddrinfo(%s, %s, family %d flags %#x socktype %d) -> %d", node ? node : "(null)", service ? service : "(null)",
            gh ? gh->ai_family : -1, gh ? gh->ai_flags : -1, gh ? gh->ai_socktype : -1, r);
     if (r) return r;                                                /* EAI_* values agree with bionic's */

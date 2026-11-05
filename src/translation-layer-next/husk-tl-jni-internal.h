@@ -67,6 +67,9 @@ typedef struct tl_dvm_hooks {
     uint32_t (*instance_slots)(tl_jclass *jc);
 } tl_dvm_hooks;
 extern const tl_dvm_hooks *tl_dvm;
+/* Called before native code's call into a method the Java runtime runs, with the object and the method; NULL: nothing is. Set
+   and cleared with __atomic_store_n (husk-tl-dvm-android.c: Unity's command line). */
+extern void (*tl_jni_before_java)(jobj *self, const tl_jmeth *m);
 
 /* Exceptions, for the interpreter. */
 jobj *tl_jni_pending_object(void);

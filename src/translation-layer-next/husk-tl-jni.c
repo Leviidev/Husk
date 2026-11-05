@@ -471,6 +471,8 @@ void tl_jni_clear(void) { t_pending = NULL; }
 static void jni_ExceptionDescribe(void *env);
 static jvalue g_zero;
 
+void (*tl_jni_before_java)(jobj *self, const tl_jmeth *m);
+
 static jvalue invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *args)
 {
     /* A host implementation wins over the APK's bytecode: Subway's AnalyticsBridge.SetupWorkerForAppClosed
@@ -498,6 +500,8 @@ static jvalue invoke(jobj *self, tl_jmeth *m, bool nonvirtual, const jvalue *arg
         return c.ret;
     }
     if (m->dvm && tl_dvm) {
+        void (*peek)(jobj *, const tl_jmeth *) = __atomic_load_n(&tl_jni_before_java, __ATOMIC_ACQUIRE);
+        if (peek) peek(self, m);
         jvalue r = tl_dvm->invoke(m->dvm, self, nonvirtual, args);
         if (g_trace >= 3) {
             tl_log_line("jni: java call %s.%s%s on %p -> %#llx%s", m->cls->name, m->name, m->sig, (void *)self, (unsigned long long)r.j, t_pending ? " (threw)" : "");

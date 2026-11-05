@@ -62,7 +62,7 @@ enum {
 #define MAX_DEPS 48
 
 struct tl_lib {
-    char name[96];                 /* as asked for */
+    char name[1024];               /* as asked for: a whole path (a Unity 6 game's are 160 bytes and more, under java-data/lib) */
     char soname[96];
     uint8_t *rx, *rw;              /* image: address of base_vaddr, in each view */
     uint64_t base_vaddr;
@@ -697,6 +697,7 @@ bool tl_ld_covers(const void *addr, size_t bytes)
 }
 
 const char *tl_ld_lib_name(const tl_lib *lib) { return lib ? lib->name : NULL; }
+const char *tl_ld_lib_soname(const tl_lib *lib) { return lib && lib->soname[0] ? lib->soname : NULL; }
 
 const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void **sym_addr)
 {
