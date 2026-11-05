@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+env:
+  R8_URL: https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.9.35/r8-8.9.35.jar
+  R8_SHA256: 204b2fc2b0f4e888dc0ef748b58090def1bf4185068d36abbb94841dbc7107a8
+
 jobs:
   portable-qa:
     strategy:
@@ -38,8 +42,33 @@ jobs:
           path: build/qa-results.json
           if-no-files-found: ignore
 
+  java-framework:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build Java framework and test dialog lifecycle
+        run: |
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 "$R8_URL" --output "$RUNNER_TEMP/r8.jar"
+          echo "$R8_SHA256  $RUNNER_TEMP/r8.jar" | sha256sum --check
+          python3 scripts/build_hung_framework.py --jdk "$JAVA_HOME" --r8 "$RUNNER_TEMP/r8.jar" --output build/hung-java/runtime
+          python3 tests/run_java_framework.py --jdk "$JAVA_HOME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: java-framework-${{ github.sha }}
+          path: build/hung-java/runtime
+          if-no-files-found: error
+
   ios:
-    needs: portable-qa
+    needs: [portable-qa, java-framework]
     # StikJIT's checked-in Swift 6.4 interface uses module selectors (::).
     runs-on: xcode-27
     timeout-minutes: 360
@@ -78,6 +107,14 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 --fail --location --retry 3 "$SUPPORT_IPA_URL" --output "$RUNNER_TEMP/husk-support.ipa"
           python3 scripts/prepare_hung_ci.py "$RUNNER_TEMP/husk-support.ipa" "$SUPPORT_IPA_SHA256"
+      - name: Download this revision's tested Java framework
+        uses: actions/download-artifact@v4
+        with:
+          name: java-framework-${{ github.sha }}
+          path: build/java-framework-built
+      - name: Stage the rebuilt Java framework
+        run: |
+          python3 scripts/stage_hung_framework.py build/java-framework-built
       - name: Check iconv and memory-query bridges against the iOS SDK
         run: |
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
@@ -105,6 +142,7 @@ jobs:
             build/HUNG-APK-PLAYER.ipa.sha256
             build/HUNG-APK-PLAYER-source.zip
             build/support-provenance.json
+            build/java-framework-built/java-framework-build.json
             LICENSE
       - name: Upload build diagnostics
         if: always()

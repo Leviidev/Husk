@@ -176,8 +176,10 @@ Wrapper XCFramework cho MoltenVK chỉ mô tả binary iOS arm64 có sẵn. Toà
 mã C/Swift của app (bao gồm bản sửa iconv) cùng Rust pairing được biên dịch
 mới rồi đóng gói bằng script gốc. Chọn `dependency_mode=source` khi muốn
 chạy `scripts/ci_build.sh` để rebuild các dependency từ source.
-Java framework dex là bản upstream, chưa rebuild từ Java source trong CI
-này; các thay đổi Java tương lai cần bổ sung build JDK/D8/APEX đầy đủ.
+IPA từ run 41812380941 dùng Java framework DEX upstream. Từ bản vá
+DialogFragment, workflow có job JDK/D8 để biên dịch full/core DEX từ
+checkout và kiểm thử lifecycle trước khi đóng gói; các APEX khác giữ nguyên.
+Xem `docs/11-login-resource-audit.md` cho trạng thái kiểm thử bản vá mới.
 
 Build thành công mới upload artifact `HUNG-APK-PLAYER-<commit>` chứa IPA,
 checksum, project source ZIP và provenance. Lỗi upload riêng build logs để

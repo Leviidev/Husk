@@ -36,10 +36,19 @@ public class FragmentManager {
     private final ArrayList<Tx> mPending = new ArrayList<>();
     private boolean mExecScheduled;
     private final Activity mActivity;
+    private final Fragment mParent;
     final ArrayList<Fragment> mAdded = new ArrayList<>();
     final ArrayList<Tx> mBackStack = new ArrayList<>();
     private final ArrayList<OnBackStackChangedListener> mListeners = new ArrayList<>();
-    FragmentManager(Activity a) { mActivity = a; mHostState = a.huskFragmentHost(); }
+    FragmentManager(Activity a) { this(a, null); }
+    FragmentManager(Activity a, Fragment parent) {
+        mActivity = a; mParent = parent;
+        mHostState = parent == null ? a.huskFragmentHost() : parent.mResumed ? HOST_RESUMED
+                : parent.mStarted ? HOST_STARTED : parent.mHuskActivityCreated ? HOST_ACTIVITY_CREATED : HOST_CREATED;
+    }
+    private View findContainer(int id) {
+        return mParent == null ? mActivity.findViewById(id) : mParent.mView == null ? null : mParent.mView.findViewById(id);
+    }
     /** The activity moved: its fragments follow, up to where it is now (or down, as it pauses, stops, goes). */
     void huskHostState(int state) {
         int old = mHostState;
@@ -51,10 +60,10 @@ public class FragmentManager {
             for (Fragment f : new ArrayList<>(mAdded)) {
                 if (state < HOST_RESUMED && f.mResumed) { f.onPause(); f.mResumed = false; }
                 if (state < HOST_STARTED && f.mStarted) { f.onStop(); f.mStarted = false; }
+                if (f.mChildFragmentManager != null) f.mChildFragmentManager.huskHostState(state);
             }
             if (state == HOST_NONE) for (Fragment f : new ArrayList<>(mAdded)) {
-                if (f.mView != null) { f.onDestroyView(); f.mView = null; }
-                f.onDestroy(); f.onDetach();
+                removeFragment(f);
             }
         }
     }
@@ -63,6 +72,7 @@ public class FragmentManager {
         if (mHostState >= HOST_ACTIVITY_CREATED && !f.mHuskActivityCreated) { f.mHuskActivityCreated = true; f.onActivityCreated(null); f.onViewStateRestored(null); }
         if (mHostState >= HOST_STARTED && !f.mStarted) { f.onStart(); f.mStarted = true; }
         if (mHostState >= HOST_RESUMED && !f.mResumed) { f.onResume(); f.mResumed = true; }
+        if (f.mChildFragmentManager != null) f.mChildFragmentManager.huskHostState(mHostState);
     }
     public FragmentTransaction beginTransaction() { return new Tx(); }
     public boolean executePendingTransactions() {
@@ -109,15 +119,15 @@ public class FragmentManager {
     public boolean popBackStackImmediate(int id, int flags) { return popBackStackImmediate(); }
 
     void addFragment(Fragment f, int containerId, String tag) {
-        f.mActivity = mActivity; f.mFragmentManager = this; f.mContainerId = containerId; if (f.mFragmentId == 0) f.mFragmentId = containerId; if (tag != null) f.mTag = tag;
+        f.mActivity = mActivity; f.mParentFragment = mParent; f.mFragmentManager = this; f.mContainerId = containerId; if (f.mFragmentId == 0) f.mFragmentId = containerId; if (tag != null) f.mTag = tag;
         f.mAdded = true; f.mRemoving = false;
         mAdded.add(f);
         f.onAttach((Context) mActivity); f.onAttach(mActivity);
-        mActivity.onAttachFragment(f);
+        if (mParent != null) mParent.onAttachFragment(f); else mActivity.onAttachFragment(f);
         f.onCreate(f.mArguments);
-        ViewGroup container = containerId != 0 ? (ViewGroup) mActivity.findViewById(containerId) : null;
+        ViewGroup container = containerId != 0 ? (ViewGroup) findContainer(containerId) : null;
         f.mContainer = container;
-        View v = f.onCreateView(mActivity.getLayoutInflater(), container, null);
+        View v = f.onCreateView(f.onGetLayoutInflater(null), container, null);
         f.mView = v;
         if (v != null) {
             if (container != null && v.getParent() == null) container.addView(v);
@@ -131,7 +141,8 @@ public class FragmentManager {
         f.mRemoving = true;
         if (f.mResumed) { f.onPause(); f.mResumed = false; }
         if (f.mStarted) { f.onStop(); f.mStarted = false; }
-        if (f.mView != null) { f.onDestroyView(); if (f.mView.getParent() instanceof ViewGroup) ((ViewGroup) f.mView.getParent()).removeView(f.mView); f.mView = null; }
+        if (f.mChildFragmentManager != null) f.mChildFragmentManager.huskHostState(HOST_NONE);
+        if (f.mView != null || f instanceof DialogFragment) { f.onDestroyView(); if (f.mView != null && f.mView.getParent() instanceof ViewGroup) ((ViewGroup) f.mView.getParent()).removeView(f.mView); f.mView = null; }
         f.onDestroy(); f.onDetach();
         f.mAdded = false; f.mHuskActivityCreated = false;
     }

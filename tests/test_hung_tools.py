@@ -22,6 +22,7 @@ def module(name, path):
 compat = module("hung_compat", "tools/hung_compat.py")
 bootstrap = module("hung_ci", "scripts/prepare_hung_ci.py")
 native_stage = module("hung_native", "scripts/stage_hung_dependencies.py")
+framework_stage = module("hung_framework", "scripts/stage_hung_framework.py")
 
 
 def binary_manifest():
@@ -226,6 +227,39 @@ class ProfileTests(unittest.TestCase):
 
 
 class BootstrapTests(unittest.TestCase):
+    def test_rebuilt_java_framework_staging_checks_both_dex_before_copying(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "java-artifact"
+            source.mkdir()
+            target = root / "build/java-runtime"
+            target.mkdir(parents=True)
+            provenance = root / "build/support-provenance.json"
+            provenance.write_text(json.dumps({"upstreamVersion": "3.3"}))
+            files = {}
+            for name in ("husk-framework.dex", "husk-framework-core.dex"):
+                data = b"dex\n035\0" + name.encode()
+                (source / name).write_bytes(data)
+                (target / name).write_bytes(b"old")
+                files[name] = {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            metadata = {"files": files, "r8SHA256": "test compiler hash"}
+            (source / "java-framework-build.json").write_text(json.dumps(metadata))
+            (source / "husk-framework-core.dex").write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "mismatch"):
+                framework_stage.stage(source, root)
+            self.assertEqual((target / "husk-framework.dex").read_bytes(), b"old")
+            core = b"dex\n035\0husk-framework-core.dex"
+            (source / "husk-framework-core.dex").write_bytes(core)
+            framework_stage.stage(source, root)
+            self.assertEqual((target / "husk-framework-core.dex").read_bytes(), core)
+            record = json.loads(provenance.read_text())
+            self.assertEqual(record["upstreamVersion"], "3.3")
+            self.assertEqual(record["javaFramework"]["files"], files)
+            metadata["files"]["../unexpected.dex"] = {}
+            (source / "java-framework-build.json").write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, "exactly"):
+                framework_stage.stage(source, root)
+
     def prepare_fixture(self, temp, extra=None):
         root = Path(temp)
         (root / "src/app").mkdir(parents=True)

@@ -23,6 +23,8 @@ public class Fragment implements android.content.ComponentCallbacks2, View.OnCre
     boolean mHuskActivityCreated;
     boolean mAdded, mRemoving, mDetached, mHidden, mResumed, mStarted, mInLayout, mRetainInstance, mHasMenu = false, mMenuVisible = true, mUserVisibleHint = true, mCalled;
     Fragment mTarget;
+    Fragment mParentFragment;
+    FragmentManager mChildFragmentManager;
     int mTargetRequestCode;
     public Fragment() {}
     public static Fragment instantiate(Context c, String name) { return instantiate(c, name, null); }
@@ -49,8 +51,12 @@ public class Fragment implements android.content.ComponentCallbacks2, View.OnCre
     public final String getString(int id) { return getResources().getString(id); }
     public final String getString(int id, Object... args) { return getResources().getString(id, args); }
     public final FragmentManager getFragmentManager() { return mFragmentManager; }
-    public final FragmentManager getChildFragmentManager() { return mActivity.getFragmentManager(); }
-    public final Fragment getParentFragment() { return null; }
+    public final FragmentManager getChildFragmentManager() {
+        if (mActivity == null) throw new IllegalStateException("Fragment is not attached");
+        if (mChildFragmentManager == null) mChildFragmentManager = new FragmentManager(mActivity, this);
+        return mChildFragmentManager;
+    }
+    public final Fragment getParentFragment() { return mParentFragment; }
     public final boolean isAdded() { return mActivity != null && mAdded; }
     public final boolean isDetached() { return mDetached; }
     public final boolean isRemoving() { return mRemoving; }
@@ -122,7 +128,7 @@ public class Fragment implements android.content.ComponentCallbacks2, View.OnCre
     public boolean getAllowReturnTransitionOverlap() { return false; }
     public android.transition.Transition getEnterTransition() { return null; }
     public android.transition.Transition getExitTransition() { return null; }
-    public android.view.LayoutInflater getLayoutInflater() { return null; }
+    public android.view.LayoutInflater getLayoutInflater() { return onGetLayoutInflater(null); }
     public android.transition.Transition getReenterTransition() { return null; }
     public android.transition.Transition getReturnTransition() { return null; }
     public android.transition.Transition getSharedElementEnterTransition() { return null; }
