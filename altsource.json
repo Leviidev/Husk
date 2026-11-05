@@ -34,6 +34,15 @@
       ],
       "versions": [
         {
+          "version": "3.4",
+          "date": "2026-11-05T03:33:53Z",
+          "localizedDescription": "## What's new?\n\n3.4 is a compatibility release. About 97% of the 472 F-Droid apps we test now run, up from 85%. On the 169 Play Store apps we test, about 90% run, not counting apps with anti-tamper or fraud protection, which Husk doesn't try to bypass. All of these numbers are from testing on a Mac.\n\n### More Android apps\n- Microsoft Word opens (Excel and PowerPoint share its libraries)\n- Slack, Gmail, Teams, Deezer, Flipboard and Picsart get past the crashes that stopped them\n- More engines and frameworks start: React Native's new architecture, Qt 6 / QML, and apps using JavaScriptCore\n- libGDX and other OpenGL apps draw again (3.3 broke these)\n- Apps that keep secrets in Android's secure key store work better\n- Apps with big bundled databases open\n- UPnP and network discovery apps can start\n- Apps that declare their launch screen in a split APK can start\n\n### Looks better\n- Rounded buttons are proper pills instead of ellipses\n- Toolbars, window backgrounds and more color formats behave like they do on a phone\n\n### Less \"out of memory\"\n- Fewer `OutOfMemoryError: pthread_create` crashes on installs without extended address space\n- Unity games use less address space on sideloaded installs, and keep their frame rate up\n- New in Settings -> Performance: see whether Increased Memory Limit and Extended Address Space are on for your install\n\n### Also\n- Japanese, thanks to @Yuki-1018\n- Fixed Husk crashing when importing a `.p12`, or at launch with one saved on iOS 27 (#220)\n- The Remove and Uninstall dialogs open next to their buttons on iPad (#218)\n- Winlator's Settings page no longer crashes\n- Husk builds with Xcode 27 and the iOS 27 SDK\n\n## Known Issues\n- Without JIT, Minecraft, some Flutter apps and some L\u00d6VE games can fail. Use StikJIT for those for now\n- Browsers (Firefox, Brave, Opera) don't run yet because they need separate helper processes\n- Husk's Java runtime still has no garbage collector, so big apps can run out of memory in long sessions (#191)\n- Touch doesn't work yet in Godot 3 games (#200)\n- Apps with anti-tamper still won't run, and neither will apps that need Google Play services or a Google account\n- Winlator containers don't run\n- Full Android is still slow. Use the translation layer for games\n\n## Thanks\nThanks to @BartolomeoRusso9, @Dey410 and @Yuki-1018 for their pull requests, and to everyone who sent logs. Crash reports are what made this release possible \u2764\ufe0f\n\n## Links\n- Website: https://itslevii.dev",
+          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/3.4/Husk.ipa",
+          "size": 142303569,
+          "minOSVersion": "15.5",
+          "buildVersion": "149"
+        },
+        {
           "version": "3.3",
           "date": "2026-11-01T01:43:51Z",
           "localizedDescription": "## Play without JIT\nMore games convert and sign their libraries on the device. One library that cannot convert no longer stops the rest. Certificates from SideStore, AltStore, or a `.p12` import more reliably, and converted libraries are signed again after this update.\n\n## More Android apps\nJava apps pick up missing platform classes from AOSP when `framework.jar` is bundled. Jobs and boot receivers actually start, and Wi-Fi, location, and settings answer as a running phone would.\n\n## Importing files\nThe in-app file picker for Android apps can be used more than once in a session.\n\n## 32-bit ARM apps\nAPKs that only ship `armeabi-v7a` libraries are translated to arm64. This path is still incomplete (Minecraft PE is the current test case).\n\n## Fixes\nCertificate import, leftover store passwords on a `.p12`, the file picker after the first pick, game pages on iOS 15, and StikDebug when Husk is inside a container app.",
@@ -105,14 +114,6 @@
           "downloadURL": "https://github.com/Leviidev/Husk/releases/download/1.0.0/Husk.ipa",
           "size": 47559993,
           "minOSVersion": "15.5"
-        },
-        {
-          "version": "0.9.0",
-          "date": "2026-10-07T22:40:28Z",
-          "localizedDescription": "## What's new?\r\n- Sound for Unity and Java games\r\n- Turn on JIT at launch with a setting (StikJIT)\r\n- Share apps to Husk and import it (skips the file picker bugs)\r\n- New App User Interface\r\n- Game details for each game (screenshots, etc).\r\n\r\n## Info\r\nHusk's first stable release (1.0.0), is right around the corner. It will probably be the best release, fixing issues for almost all devices, but it is not out yet. This IPA may not work, and that is ok. It will be fixed soon, just open a GitHub issue",
-          "downloadURL": "https://github.com/Leviidev/Husk/releases/download/0.9.0/Husk.ipa",
-          "size": 46958334,
-          "minOSVersion": "16.4"
         }
       ],
       "appPermissions": {
@@ -174,6 +175,14 @@
       "category": "games",
       "beta": true,
       "versions": [
+        {
+          "version": "0.1.0",
+          "date": "2026-11-01T18:28:08Z",
+          "localizedDescription": "## Running Games:\nMinecraft: Xbox One Edition - 60 FPS\nRocket League - 60 FPS\nSonic Mania - 60 FPS\n\nThese are all confirmed to be running games, everything else is unconfirmed\n\n## Installation\nSideload Utsuro.ipa and open the app. Import your Xbox One Dump, enable JIT and get to playing!\n\n## Issues\nIf any bugs / issues occur, report it to the GitHub or in my Discord Server.\n\nLinks:\nDiscord Server: https://itslevii.dev/discord\nEmail: hello@itslevii.dev",
+          "downloadURL": "https://github.com/Leviidev/Utsuro/releases/download/0.1.0/Utsuro.ipa",
+          "size": 5423119,
+          "minOSVersion": "17.4"
+        },
         {
           "version": "0.1.0-alpha",
           "date": "2026-10-22T12:54:28Z",

@@ -73,8 +73,11 @@ def main():
         parts = [int(p) for p in v["version"].replace("-", ".").split(".") if p.isdigit()] + [0, 0, 0]
         if parts[:3] < [1, 0, 0]:
             v["minOSVersion"] = "16.4"
-    if husk_versions and husk_versions[0]["version"].startswith("3.3"):
-        husk_versions[0]["buildVersion"] = "149"
+    # AltStore and SideStore compare these to the app's CFBundleVersion: add each release's here
+    builds = {"3.4": "149", "3.3": "148"}
+    for v in husk_versions:
+        if v["version"] in builds:
+            v["buildVersion"] = builds[v["version"]]
 
     apps = [
         {
