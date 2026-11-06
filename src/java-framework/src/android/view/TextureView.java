@@ -88,21 +88,23 @@ public class TextureView extends View {
     @Override public void draw(Canvas c) {
         super.draw(c);
         SurfaceTexture t = mTexture;
-        Bitmap f = t != null ? t.huskFront() : null;
-        if (f != null) {
-            if (f != mShown) { mShown = f; if (mListener != null) mListener.onSurfaceTextureUpdated(t); }
+        if (t != null) {
             int save = c.save();
             c.concat(mMatrix);
             Paint p = mLayerPaint != null ? mLayerPaint : mPaint;
-            c.drawBitmap(f, null, new Rect(0, 0, getWidth(), getHeight()), p);
+            Bitmap f = t.huskDraw(c, new Rect(0, 0, getWidth(), getHeight()), p);
             c.restoreToCount(save);
+            if (f != null && f != mShown) { mShown = f; if (mListener != null) mListener.onSurfaceTextureUpdated(t); }
         }
     }
     public Bitmap getBitmap() { return getWidth() > 0 && getHeight() > 0 ? getBitmap(getWidth(), getHeight()) : null; }
     public Bitmap getBitmap(int w, int h) { return isAvailable() && w > 0 && h > 0 ? getBitmap(Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)) : null; }
     public Bitmap getBitmap(Bitmap b) {
-        Bitmap f = mTexture != null ? mTexture.huskFront() : null;
-        if (b != null && f != null) { Canvas c = new Canvas(b); c.drawBitmap(f, null, new Rect(0, 0, b.getWidth(), b.getHeight()), mPaint); }
+        if (b != null && mTexture != null) {
+            Canvas c = new Canvas(b);
+            try { mTexture.huskDraw(c, new Rect(0, 0, b.getWidth(), b.getHeight()), mPaint); }
+            finally { c.huskRelease(); }
+        }
         return b;
     }
     public Canvas lockCanvas() { return lockCanvas(null); }

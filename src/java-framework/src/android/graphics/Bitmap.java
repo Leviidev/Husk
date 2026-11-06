@@ -210,7 +210,12 @@ public final class Bitmap implements android.os.Parcelable {
     public static void dumpAll(java.lang.String p0) {}
     public static int scaleFromDensity(int p0, int p1, int p2) { return 0; }
     public static void setDefaultDensity(int p0) {}
-    public static android.graphics.Bitmap wrapHardwareBuffer(android.hardware.HardwareBuffer p0, android.graphics.ColorSpace p1) { return null; }
+    public static android.graphics.Bitmap wrapHardwareBuffer(android.hardware.HardwareBuffer buffer, android.graphics.ColorSpace colorSpace) {
+        if (buffer == null) throw new NullPointerException("buffer");
+        Bitmap bitmap = buffer.huskCopyBitmap();
+        bitmap.mConfig = Config.HARDWARE;
+        return bitmap;
+    }
     public android.graphics.Bitmap createAshmemBitmap() { return this; }
     public android.graphics.Color getColor(int p0, int p1) { return null; }
     public android.graphics.Gainmap getGainmap() { return (android.graphics.Gainmap) huskFill.get("Gainmap"); }
