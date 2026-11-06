@@ -829,6 +829,11 @@ bool tl_sdl_start(const tl_ga_config *cfg, const char *activity_class)
             tl_log_line("sdl: entry library %s", S.main_lib);
         }
     }
+    void tl_trutien_on_init(tl_lib *lib);
+    tl_lib *tml = tl_ld_find_lib("libmain.so");
+    if (tml && S.pkg[0] && !strcmp(S.pkg, "vn.trutien.client")) {
+        tl_trutien_on_init(tml);
+    }
     /* The game's own onCreate then loads FMOD (whose JNI_OnLoad is what lets it find the Java side) and initialises it. */
     static const char *const fmod[] = { "fmod", "fmodstudio", NULL };
     if (tl_ld_has_lib("libfmod.so")) {

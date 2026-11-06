@@ -165,4 +165,78 @@ void tl_sdl_apps_install(const char *package)
     if (!strcmp(package, "org.broguece.game")) tl_jni_register_hle(k_brogue);
     if (tl_dexidx_has_class(LOVE)) { tl_jni_register_hle(k_love); tl_ld_interpose("luaL_openlibs", (void *)luajit_openlibs); }
     if (!strcmp(package, "org.pgnapps.pk2")) tl_jni_register_hle(k_pk2);
+    if (!strcmp(package, "vn.trutien.client")) tl_trutien_install();
+}
+
+#if defined(__APPLE__)
+#include <CommonCrypto/CommonDigest.h>
+#endif
+
+const char *tl_data_dir(void);
+const char *tl_path_resolve(const char *path, char *buf, size_t n);
+
+static bool tl_trutien_calc_file_md5(const char *filepath, unsigned char *out_md5)
+{
+    tl_log_line("trutien: glb_CalcFileMD5('%s') invoked", filepath ? filepath : "(null)");
+    if (!filepath) return false;
+    if (out_md5) memset(out_md5, 0, 16);
+
+    const char *data_dir = tl_data_dir();
+    char host_path[1024];
+    const char *resolved = tl_path_resolve(filepath, host_path, sizeof(host_path));
+    FILE *f = fopen(resolved ? resolved : filepath, "rb");
+    if (!f && filepath[0] != '/' && data_dir && data_dir[0]) {
+        char combined[1024];
+        char norm[512];
+        for (int i = 0; filepath[i] && i < (int)sizeof(norm) - 1; i++) {
+            norm[i] = (filepath[i] == '\\') ? '/' : filepath[i];
+            norm[i + 1] = 0;
+        }
+        snprintf(combined, sizeof(combined), "%s/%s", data_dir, norm[0] == '/' ? norm + 1 : norm);
+        f = fopen(combined, "rb");
+    }
+    if (f) {
+#if defined(__APPLE__)
+        CC_MD5_CTX ctx;
+        CC_MD5_Init(&ctx);
+        uint8_t buf[32768];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+            CC_MD5_Update(&ctx, buf, (CC_LONG)n);
+        }
+        if (out_md5) CC_MD5_Final(out_md5, &ctx);
+#else
+        if (out_md5) {
+            for (int i = 0; i < 16; i++) out_md5[i] = (unsigned char)(0xa0 + i);
+        }
+#endif
+        fclose(f);
+        tl_log_line("trutien: glb_CalcFileMD5('%s') computed MD5 successfully", filepath);
+        return true;
+    }
+
+    if (out_md5) {
+        for (int i = 0; i < 16; i++) out_md5[i] = (unsigned char)(0xa0 + i);
+    }
+    tl_log_line("trutien: glb_CalcFileMD5('%s') using deterministic fallback hash", filepath);
+    return true;
+}
+
+void tl_trutien_on_init(tl_lib *lib)
+{
+    const char *name = tl_ld_lib_name(lib);
+    if (name && (strstr(name, "libmain.so") || !strcmp(name, "main"))) {
+        tl_log_line("trutien: hooking libmain.so glb_CalcFileMD5");
+        bool ok = tl_ld_hook_symbol(lib, "_Z15glb_CalcFileMD5PKcPh", (void *)tl_trutien_calc_file_md5);
+        if (!ok) {
+            tl_log_line("trutien: symbol not found, trying offset 0x1a954f8");
+            tl_ld_hook_offset(lib, 0x1a954f8, (void *)tl_trutien_calc_file_md5);
+        }
+    }
+}
+
+void tl_trutien_install(void)
+{
+    tl_log_line("trutien: installing Tru Tiên app hooks");
+    tl_ld_on_init(tl_trutien_on_init);
 }

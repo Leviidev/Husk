@@ -1082,6 +1082,46 @@ bool tl_ld_probe(tl_lib *L, uint64_t vaddr, void (*cb)(uint64_t *regs))
     return true;
 }
 
+bool tl_ld_hook_offset(tl_lib *L, uint64_t offset, void *hook_fn)
+{
+    if (!L || !hook_fn) return false;
+    if (offset + 16 > L->npages * PAGE) return false;
+    if (!L->rw) return false;
+
+    uint32_t *rw = (uint32_t *)(L->rw + offset);
+    const uint8_t *rx = L->rx + offset;
+
+    /* ARM64 direct trampoline:
+     * ldr x16, #8   (0x58000050)
+     * br  x16       (0xd61f0200)
+     * .quad hook_fn (8 bytes)
+     */
+    rw[0] = 0x58000050u;
+    rw[1] = 0xd61f0200u;
+    uint64_t target = (uint64_t)(uintptr_t)hook_fn;
+    memcpy(&rw[2], &target, sizeof(target));
+    tl_xmem_flush(rx, 16);
+    tl_log_line("ld: hooked offset %#llx in %s -> %p", (unsigned long long)offset, L->name ? L->name : "(anon)", hook_fn);
+    return true;
+}
+
+bool tl_ld_hook_symbol(tl_lib *L, const char *symbol, void *hook_fn)
+{
+    if (!L || !hook_fn) return false;
+    uint64_t off = 0;
+    if (symbol) {
+        const elf_sym *s = lib_find(L, symbol);
+        if (s) off = s->st_value - L->base_vaddr;
+    }
+    if (!off) {
+        tl_log_line("ld: hook symbol '%s' not found in %s", symbol ? symbol : "(null)", L->name ? L->name : "(anon)");
+        return false;
+    }
+    bool ok = tl_ld_hook_offset(L, off, hook_fn);
+    if (ok) tl_log_line("ld: hooked symbol '%s' in %s", symbol, L->name ? L->name : "(anon)");
+    return ok;
+}
+
 /*
  * Stubs are position-independent: they hold no absolute address, so the same bytes work wherever the image is loaded -- in the JIT
  * region, or as a signed dylib made ahead of time (elf2macho, Husk 3.2), where the code is read-only and its address unknown when it

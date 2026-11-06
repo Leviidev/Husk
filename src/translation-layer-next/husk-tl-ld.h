@@ -118,6 +118,10 @@ int tl_ld_iterate(tl_ld_phdr_cb cb, void *user);
  */
 bool tl_ld_probe(tl_lib *lib, uint64_t vaddr, void (*cb)(uint64_t *regs));
 
+/* Rewrite the function entry point of an exported symbol in `lib` (or by offset from base_vaddr) to branch to `hook_fn`. */
+bool tl_ld_hook_symbol(tl_lib *lib, const char *symbol, void *hook_fn);
+bool tl_ld_hook_offset(tl_lib *lib, uint64_t offset, void *hook_fn);
+
 /*
  * The calling thread's virtual x18. Guest code never holds a live value in the real
  * register (the kernel zeroes it); its x18 lives in a TSD slot instead, and anything

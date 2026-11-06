@@ -524,6 +524,22 @@ static bool heap_is_image(const void *p)
 {
     return p && (tl_ld_covers(p, 1) || tl_xmem_contains(p));
 }
+static void *b_malloc(size_t n)
+{
+    void *p = malloc(n);
+    if (!p && n > 0) {
+        tl_log_line("bionic: malloc(%zu) returned NULL", n);
+    }
+    return p;
+}
+static void *b_calloc(size_t count, size_t size)
+{
+    void *p = calloc(count, size);
+    if (!p && count > 0 && size > 0) {
+        tl_log_line("bionic: calloc(%zu, %zu) returned NULL", count, size);
+    }
+    return p;
+}
 static void b_free(void *p)
 {
     if (!p) return;
@@ -763,7 +779,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("wcstold", b_wcstold),
     TL_WRAP("swprintf", tl_va_swprintf),
     /* stdlib.h */
-    TL_DIRECT(malloc), TL_DIRECT(calloc), TL_WRAP("realloc", b_realloc), TL_WRAP("free", b_free), TL_DIRECT(posix_memalign),
+    TL_WRAP("malloc", b_malloc), TL_WRAP("calloc", b_calloc), TL_WRAP("realloc", b_realloc), TL_WRAP("free", b_free), TL_DIRECT(posix_memalign),
     TL_WRAP("memalign", b_memalign),
     TL_DIRECT(atoi), TL_DIRECT(atol), TL_DIRECT(atoll), TL_DIRECT(bsearch), TL_DIRECT(qsort), TL_DIRECT(div), TL_DIRECT(lldiv),
     TL_DIRECT(rand), TL_DIRECT(srand), TL_DIRECT(srand48), TL_DIRECT(lrand48),
