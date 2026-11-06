@@ -82,6 +82,8 @@ static void drop_unfinished(const char *dir, int depth)
 }
 void tl_set_data_dir(const char *dir)
 {
+    void husk_release_unused_compressed_heap(void);
+    husk_release_unused_compressed_heap();
     g_guest_data_dir[0] = 0;
     snprintf(g_data_dir, sizeof(g_data_dir), "%s", dir ? dir : "");
     if (g_data_dir[0]) drop_unfinished(g_data_dir, 0);
@@ -1995,6 +1997,20 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 96: { uint64_t t = 0; pthread_threadid_np(NULL, &t); return (long)t; }        /* set_tid_address */
     case 99: return 0;                                                                  /* set_robust_list */
     case 117: return -1;                                                                /* ptrace: EPERM */
+    case 269: {
+        TL_ERRNO_BEGIN();
+        ssize_t r = preadv((int)a0, (const struct iovec *)a1, (int)a2, (off_t)a3);
+        int e = errno;
+        TL_ERRNO_END();
+        return r < 0 ? -tl_errno_to_guest(e) : (long)r;
+    }
+    case 270: {
+        TL_ERRNO_BEGIN();
+        ssize_t r = pwritev((int)a0, (const struct iovec *)a1, (int)a2, (off_t)a3);
+        int e = errno;
+        TL_ERRNO_END();
+        return r < 0 ? -tl_errno_to_guest(e) : (long)r;
+    }
     default: break;
     }
     /* the rest, by the libc function bionic would have made the call through: called as the guest calls it (arguments in
