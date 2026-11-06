@@ -1928,9 +1928,9 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
         int fd = b_open((const char *)a1, (int)a2, (unsigned)a3);
         return fd < 0 ? -*tl_guest_errno_ptr() : fd;
     }
-    case 57: { int r = close((int)a0); if (r == 0) tl_atomic_closed((int)a0); return r < 0 ? -tl_errno_to_guest(errno) : r; }
-    case 63: { long r = read((int)a0, (void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
-    case 64: { long r = write((int)a0, (const void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
+    case 57: { int r = b_close((int)a0); return r < 0 ? -*tl_guest_errno_ptr() : r; }
+    case 63: { long r = b_read((int)a0, (void *)a1, (size_t)a2); return r < 0 ? -*tl_guest_errno_ptr() : r; }
+    case 64: { long r = b_write((int)a0, (const void *)a1, (size_t)a2); return r < 0 ? -*tl_guest_errno_ptr() : r; }
     case 113: { int r = clock_gettime(clock_to_darwin((int)a0), (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
     case 169: return b_gettimeofday((int64_t *)a0, (void *)a1);
     case 93: case 94: tl_log_line("bionic: exit(%ld) by raw system call", a0); exit((int)a0);
