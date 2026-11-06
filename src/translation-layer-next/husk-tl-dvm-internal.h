@@ -106,6 +106,8 @@ bool dvm_instance_of(jobj *o, tl_jclass *c);
 bool dvm_assignable(tl_jclass *sub, tl_jclass *sup);
 tl_jclass *dvm_object_class(jobj *o);                   /* what getClass() says, arrays and classes included */
 bool dvm_throw(const char *cls, const char *fmt, ...) __attribute__((format(printf, 2, 3)));   /* always false */
+bool dvm_out_of_memory(size_t bytes);                 /* uses the preallocated error; never constructs another string */
+void *dvm_string_alloc(size_t bytes);                 /* checked temporary/string storage */
 jvalue *dvm_slots(jobj *o);                             /* the object's instance slots (made for Class mirrors on demand) */
 void dvm_monitor_enter(jobj *o);
 bool dvm_monitor_exit(jobj *o);

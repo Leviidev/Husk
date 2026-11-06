@@ -85,38 +85,44 @@ NAT(String_concat)
     if (!a[0].l) return npe("concat(null)");
     int32_t n1, n2; const uint16_t *s1 = chars(self, &n1), *s2 = chars(a[0].l, &n2);
     if (!n2) { *ret = L(self); return true; }
-    uint16_t *b = malloc((size_t)(n1 + n2) * 2);
+    if ((int64_t)n1 + n2 > INT32_MAX) return dvm_out_of_memory((size_t)n1 * 2 + (size_t)n2 * 2);
+    uint16_t *b = dvm_string_alloc((size_t)(n1 + n2) * 2);
+    if (!b) return false;
     memcpy(b, s1, (size_t)n1 * 2); memcpy(b + n1, s2, (size_t)n2 * 2);
     *ret = L(tl_dvm_string_u16(b, n1 + n2));
     free(b);
-    return true;
+    return ret->l != NULL;
 }
 NAT(String_doRepeat)
 {
     int32_t n; const uint16_t *s = chars(self, &n);
     int64_t total = (int64_t)n * a[0].i;
-    uint16_t *b = malloc((size_t)(total ? total : 1) * 2);
+    if (a[0].i < 0) return dvm_throw("java/lang/IllegalArgumentException", "negative repeat count");
+    if (total > INT32_MAX) return dvm_out_of_memory((size_t)total * 2);
+    uint16_t *b = dvm_string_alloc((size_t)(total ? total : 1) * 2);
+    if (!b) return false;
     for (int32_t i = 0; i < a[0].i; i++) memcpy(b + (int64_t)i * n, s, (size_t)n * 2);
     *ret = L(tl_dvm_string_u16(b, (int32_t)total));
     free(b);
-    return true;
+    return ret->l != NULL;
 }
 NAT(String_doReplace)
 {
     int32_t n; const uint16_t *s = chars(self, &n);
-    uint16_t *b = malloc((size_t)(n ? n : 1) * 2);
+    uint16_t *b = dvm_string_alloc((size_t)(n ? n : 1) * 2);
+    if (!b) return false;
     for (int32_t i = 0; i < n; i++) b[i] = s[i] == a[0].c ? a[1].c : s[i];
     *ret = L(tl_dvm_string_u16(b, n));
     free(b);
-    return true;
+    return ret->l != NULL;
 }
 NAT(String_fastSubstring)
 {
     int32_t n; const uint16_t *s = chars(self, &n);
     int32_t start = a[0].i, len = a[1].i;
-    if (start < 0 || len < 0 || start + len > n) return dvm_throw("java/lang/StringIndexOutOfBoundsException", "substring");
+    if (start < 0 || len < 0 || start > n || len > n - start) return dvm_throw("java/lang/StringIndexOutOfBoundsException", "substring");
     *ret = L(tl_dvm_string_u16(s + start, len));
-    return true;
+    return ret->l != NULL;
 }
 NAT(String_fillBytesLatin1)
 {
@@ -190,6 +196,7 @@ NAT(String_toCharArray)
     (void)a;
     int32_t n; const uint16_t *s = chars(self, &n);
     jobj *arr = tl_jni_new_prim_array('C', (uint32_t)n);
+    if (!arr) return false;
     arr->refs = 1u << 30;
     memcpy(arr->arr.data, s, (size_t)n * 2);
     *ret = L(arr);
@@ -228,7 +235,12 @@ NAT(String_indexOfChar)
 /* new String(...) in bytecode, and StringFactory: the forms a string is made from */
 static jobj *from_bytes(jobj *b, int32_t off, int32_t len, int32_t hibyte)
 {
-    uint16_t *u = malloc((size_t)(len ? len : 1) * 2);
+    if (off < 0 || len < 0 || (uint32_t)off > b->arr.len || (uint32_t)len > b->arr.len - (uint32_t)off) {
+        dvm_throw("java/lang/StringIndexOutOfBoundsException", "bytes offset=%d length=%d capacity=%u", off, len, b->arr.len);
+        return NULL;
+    }
+    uint16_t *u = dvm_string_alloc((size_t)(len ? len : 1) * 2);
+    if (!u) return NULL;
     for (int32_t i = 0; i < len; i++) u[i] = (uint16_t)((hibyte & 0xFF) << 8 | ((uint8_t *)b->arr.data)[off + i]);
     jobj *s = tl_dvm_string_u16(u, len);
     free(u);
@@ -236,34 +248,46 @@ static jobj *from_bytes(jobj *b, int32_t off, int32_t len, int32_t hibyte)
 }
 static jobj *from_utf8(const uint8_t *p, int32_t len)
 {
-    char *z = malloc((size_t)len + 1);
+    char *z = dvm_string_alloc((size_t)len + 1);
+    if (!z) return NULL;
     memcpy(z, p, (size_t)len); z[len] = 0;
     jobj *s = dvm_new_string_utf8(z);
     free(z);
     return s;
 }
-NAT(SF_fromBytes) { (void)self; if (!a[0].l) return npe("bytes"); *ret = L(from_bytes(a[0].l, a[2].i, a[3].i, a[1].i)); return true; }
-NAT(SF_fromChars) { (void)self; jobj *c = a[2].l; if (!c) return npe("chars"); *ret = L(tl_dvm_string_u16((uint16_t *)c->arr.data + a[0].i, a[1].i)); return true; }
-NAT(SF_fromString) { (void)self; int32_t n; const uint16_t *s = chars(a[0].l, &n); *ret = L(tl_dvm_string_u16(s, n)); return true; }
+static bool string_slice(jobj *array, int32_t off, int32_t n)
+{
+    if (!array) return npe("string array");
+    if (off < 0 || n < 0 || (uint32_t)off > array->arr.len || (uint32_t)n > array->arr.len - (uint32_t)off)
+        return dvm_throw("java/lang/StringIndexOutOfBoundsException", "offset=%d length=%d capacity=%u", off, n, array->arr.len);
+    return true;
+}
+NAT(SF_fromBytes) { (void)self; if (!a[0].l) return npe("bytes"); *ret = L(from_bytes(a[0].l, a[2].i, a[3].i, a[1].i)); return ret->l != NULL; }
+NAT(SF_fromChars) { (void)self; jobj *c = a[2].l; if (!string_slice(c, a[0].i, a[1].i)) return false; *ret = L(tl_dvm_string_u16((uint16_t *)c->arr.data + a[0].i, a[1].i)); return ret->l != NULL; }
+NAT(SF_fromString) { (void)self; if (!a[0].l) return npe("string"); int32_t n; const uint16_t *s = chars(a[0].l, &n); if (!s) return false; *ret = L(tl_dvm_string_u16(s, n)); return ret->l != NULL; }
 NAT(SF_fromUtf16Bytes)
 {
     (void)self;
     jobj *b = a[0].l; int32_t off = a[1].i, n = a[2].i;
-    uint16_t *u = malloc((size_t)(n ? n : 1) * 2);
+    if (!b) return npe("bytes");
+    if (off < 0 || n < 0 || (uint32_t)off > b->arr.len || (uint32_t)n > (b->arr.len - (uint32_t)off) / 2)
+        return dvm_throw("java/lang/StringIndexOutOfBoundsException", "UTF-16 bytes");
+    uint16_t *u = dvm_string_alloc((size_t)(n ? n : 1) * 2);
+    if (!u) return false;
     for (int32_t i = 0; i < n; i++) u[i] = (uint16_t)(((uint8_t *)b->arr.data)[off + 2 * i] | ((uint8_t *)b->arr.data)[off + 2 * i + 1] << 8);
     *ret = L(tl_dvm_string_u16(u, n));
     free(u);
-    return true;
+    return ret->l != NULL;
 }
-NAT(SF_fromUtf8Bytes) { (void)self; jobj *b = a[0].l; if (!b) return npe("bytes"); *ret = L(from_utf8((uint8_t *)b->arr.data + a[1].i, a[2].i)); return true; }
+NAT(SF_fromUtf8Bytes) { (void)self; jobj *b = a[0].l; if (!string_slice(b, a[1].i, a[2].i)) return false; *ret = L(from_utf8((uint8_t *)b->arr.data + a[1].i, a[2].i)); return ret->l != NULL; }
 
 /* String's constructors, as StringFactory's methods of the same parameters. Encoded bytes go through StringFactory's Java. */
 bool dvm_string_init(const char *sig, const jvalue *p, jvalue *ret)
 {
-    if (!strcmp(sig, "()V")) { *ret = L(tl_dvm_string_u16(NULL, 0)); return true; }
+    if (!strcmp(sig, "()V")) { *ret = L(tl_dvm_string_u16(NULL, 0)); return ret->l != NULL; }
     if (!strcmp(sig, "(Ljava/lang/String;)V")) return SF_fromString(NULL, p, ret);
-    if (!strcmp(sig, "([C)V")) { jobj *c = p[0].l; if (!c) return npe("chars"); *ret = L(tl_dvm_string_u16(c->arr.data, (int32_t)c->arr.len)); return true; }
-    if (!strcmp(sig, "([CII)V")) { jobj *c = p[0].l; if (!c) return npe("chars"); *ret = L(tl_dvm_string_u16((uint16_t *)c->arr.data + p[1].i, p[2].i)); return true; }
+    if (!strcmp(sig, "([C)V")) { jobj *c = p[0].l; if (!c) return npe("chars"); *ret = L(tl_dvm_string_u16(c->arr.data, (int32_t)c->arr.len)); return ret->l != NULL; }
+    if (!strcmp(sig, "([CII)V")) { jobj *c = p[0].l; if (!string_slice(c, p[1].i, p[2].i)) return false; *ret = L(tl_dvm_string_u16((uint16_t *)c->arr.data + p[1].i, p[2].i)); return ret->l != NULL; }
     if (!strcmp(sig, "(II[C)V")) return SF_fromChars(NULL, p, ret);
     /* everything else (charsets, code points, builders): StringFactory.newStringFrom<same parameters> */
     char fsig[256];
