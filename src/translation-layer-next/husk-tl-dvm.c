@@ -11,6 +11,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#include <mach/mach.h>
+#if TARGET_OS_IPHONE
+#include <os/proc.h>
+#endif
+#endif
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
@@ -189,11 +196,43 @@ static bool open_path(const char *path)
 
 /* ================================================================== strings */
 
+/* An OOM must not recursively allocate its message, stack trace and another
+ * String. Prepared with the boot classes before an app can exhaust the heap. */
+static jobj *g_oom_error;
+static tl_jclass g_boot_oom_class = { .name = "java/lang/OutOfMemoryError" };
+static jobj g_boot_oom_error = { .refs = 1u << 30, .kind = TL_K_OBJECT, .cls = &g_boot_oom_class };
+bool dvm_out_of_memory(size_t bytes)
+{
+    char line[256];
+    int n = snprintf(line, sizeof(line), "dvm: OutOfMemoryError: allocation failed (%zu bytes)", bytes);
+#if defined(__APPLE__)
+    task_vm_info_data_t info;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
+        n += snprintf(line + n, sizeof(line) - (size_t)n, "; phys=%llu MiB virtual=%llu MiB",
+                      (unsigned long long)(info.phys_footprint >> 20), (unsigned long long)(info.virtual_size >> 20));
+#if TARGET_OS_IPHONE
+    n += snprintf(line + n, sizeof(line) - (size_t)n, " available=%llu MiB", (unsigned long long)(os_proc_available_memory() >> 20));
+#endif
+#endif
+    if (n > 0) { size_t len = (size_t)n < sizeof(line) - 1 ? (size_t)n : sizeof(line) - 2; line[len++] = '\n'; (void)write(STDERR_FILENO, line, len); }
+    tl_jni_set_pending(g_oom_error ? g_oom_error : &g_boot_oom_error);
+    return false;
+}
+
+void *dvm_string_alloc(size_t bytes)
+{
+    void *p = malloc(bytes ? bytes : 1);
+    if (!p) dvm_out_of_memory(bytes);
+    return p;
+}
+
 /* MUTF-8 (a DEX's strings) to UTF-16. */
 static uint16_t *mutf8_to_u16(const char *s, int32_t *n)
 {
     size_t cap = strlen(s) + 1;
-    uint16_t *o = malloc(cap * 2);
+    uint16_t *o = dvm_string_alloc(cap * 2);
+    if (!o) return NULL;
     int32_t k = 0;
     const unsigned char *p = (const unsigned char *)s;
     while (*p) {
@@ -210,7 +249,8 @@ static uint16_t *mutf8_to_u16(const char *s, int32_t *n)
 /* UTF-16 to UTF-8 (surrogate pairs joined; U+0000 as C0 80). */
 static char *u16_to_utf8(const uint16_t *s, int32_t n)
 {
-    char *o = malloc((size_t)n * 3 + 1);
+    char *o = dvm_string_alloc((size_t)n * 3 + 1);
+    if (!o) return NULL;
     size_t k = 0;
     for (int32_t i = 0; i < n; i++) {
         uint32_t c = s[i];
@@ -232,7 +272,8 @@ static char *u16_to_utf8(const uint16_t *s, int32_t n)
 static uint16_t *utf8_to_u16(const char *s, int32_t *n)
 {
     size_t cap = strlen(s) + 1;
-    uint16_t *o = malloc(cap * 2);
+    uint16_t *o = dvm_string_alloc(cap * 2);
+    if (!o) return NULL;
     int32_t k = 0;
     const unsigned char *p = (const unsigned char *)s;
     while (*p) {
@@ -253,6 +294,7 @@ const uint16_t *tl_dvm_string_chars(jobj *s, int32_t *n)
     if (!s || s->kind != TL_K_STRING) { *n = 0; return NULL; }
     if (!s->str.u16) {
         int32_t len; uint16_t *u = utf8_to_u16(s->str.utf8 ? s->str.utf8 : "", &len);
+        if (!u) { *n = 0; return NULL; }
         pthread_mutex_lock(&g_lock);
         if (!s->str.u16) { s->str.u16 = u; s->str.len16 = len; u = NULL; }
         pthread_mutex_unlock(&g_lock);
@@ -266,22 +308,35 @@ static tl_jclass *g_string_class;
 
 jobj *tl_dvm_string_u16(const uint16_t *s, int32_t n)
 {
+    if (n < 0 || (n && !s)) { dvm_throw("java/lang/StringIndexOutOfBoundsException", "invalid UTF-16 length %d", n); return NULL; }
+    char *utf8 = u16_to_utf8(s, n);
+    if (!utf8) return NULL;
+    uint16_t *u16 = dvm_string_alloc((size_t)(n ? n : 1) * 2);
+    if (!u16) { free(utf8); return NULL; }
+    if (n) memcpy(u16, s, (size_t)n * 2);
     jobj *o = tl_jni_new_string("");
+    if (!o) { free(utf8); free(u16); return NULL; }
     free(o->str.utf8);
-    o->str.utf8 = u16_to_utf8(s, n);
-    o->str.u16 = malloc((size_t)(n ? n : 1) * 2);
-    if (n) memcpy(o->str.u16, s, (size_t)n * 2);
+    o->str.utf8 = utf8;
+    o->str.u16 = u16;
     o->str.len16 = n;
     o->refs = 1u << 30;
-    if (g_string_class) { o->cls = g_string_class; dvm_slots(o); }
+    if (g_string_class) {
+        o->cls = g_string_class;
+        if (!dvm_slots(o)) { free(o->str.utf8); free(o->str.u16); free(o); return NULL; }
+    }
     return o;
 }
 
 jobj *dvm_new_string_utf8(const char *s)
 {
     jobj *o = tl_jni_new_string(s);
+    if (!o) return NULL;
     o->refs = 1u << 30;
-    if (g_string_class) { o->cls = g_string_class; dvm_slots(o); }
+    if (g_string_class) {
+        o->cls = g_string_class;
+        if (!dvm_slots(o)) { free(o->str.utf8); free(o); return NULL; }
+    }
     return o;
 }
 
@@ -290,8 +345,10 @@ static jobj *const_string(dvm_dex *d, uint32_t idx)
     jobj *s = __atomic_load_n(&d->scache[idx], __ATOMIC_ACQUIRE);
     if (s) return s;
     int32_t n; uint16_t *u = mutf8_to_u16(dex_str(d, idx), &n);
+    if (!u) return NULL;
     s = tl_dvm_string_u16(u, n);
     free(u);
+    if (!s) return NULL;
     { jobj *dvm_intern(jobj *); s = dvm_intern(s); }
     __atomic_store_n(&d->scache[idx], s, __ATOMIC_RELEASE);
     return s;
@@ -628,6 +685,7 @@ jvalue *dvm_slots(jobj *o)
     uint32_t n = c ? c->nslots : 0;
     if (!n) n = 1;
     jvalue *f = calloc(n, sizeof(jvalue));
+    if (!f) { dvm_out_of_memory((size_t)n * sizeof(jvalue)); return NULL; }
     pthread_mutex_lock(&g_lock);
     bool mine = !o->fields;
     if (mine) { __atomic_store_n(&o->fields, f, __ATOMIC_RELEASE); __atomic_store_n(&o->nfields, n, __ATOMIC_RELEASE); f = NULL; }
@@ -677,6 +735,7 @@ jvalue *dvm_slots_for(jobj *o, uint32_t slot)
 jobj *dvm_new_object(tl_jclass *jc)
 {
     jobj *o = tl_jni_new_object(jc);
+    if (!o) return NULL;
     o->refs = 1u << 30;
     return o;
 }
@@ -733,13 +792,16 @@ bool dvm_throw(const char *cls, const char *fmt, ...)
     if (!jc) jc = tl_jni_class(cls);
     dvm_class *c = dvm_class_of(jc);
     jobj *e = dvm_new_object(jc);
+    if (!e) return false;
     if (c) {
         dvm_ensure_init(c);
         dvm_method *init = dvm_find_method(c, "<init>", "(Ljava/lang/String;)V", false);
         jvalue a; a.l = fmt ? dvm_new_string_utf8(msg) : NULL;
+        if (fmt && !a.l) return false;
         if (init) { jobj *saved = tl_jni_pending_object(); tl_jni_set_pending(NULL); jvalue r; dvm_call(init, e, &a, &r); if (!tl_jni_pending_object()) tl_jni_set_pending(saved); }
     } else {
         jvalue v; v.l = dvm_new_string_utf8(msg);
+        if (!v.l) return false;
         tl_jni_set_field(e, "detailMessage", "Ljava/lang/String;", v);
     }
     if (g_dvm_trace >= 1) tl_log_line("dvm: throw %s: %s", cls, msg);
@@ -1041,13 +1103,14 @@ static bool dvm_call_inner(dvm_method *m, jobj *self, const jvalue *params, jval
 {
     ret->j = 0;
     if (m->proxy_method) { bool dvm_proxy_invoke(dvm_method *, jobj *, const jvalue *, jvalue *); return dvm_proxy_invoke(m, self, params, ret); }
-    if (m->intrinsic) return m->intrinsic(self, params, ret);
+    if (m->intrinsic) return m->intrinsic(self, params, ret) && !tl_jni_pending();
     if (!m->insns) {
         if (m->flags & 0x100) return call_native(m, self, params, ret);
         return dvm_throw("java/lang/AbstractMethodError", "%s.%s%s", m->cls->name, m->name, m->sig);
     }
     uint64_t small[64];
     uint64_t *regs = m->regs <= 64 ? small : calloc(m->regs, sizeof(uint64_t));
+    if (!regs) return dvm_out_of_memory((size_t)m->regs * sizeof(uint64_t));
     if (regs == small) memset(small, 0, sizeof(uint64_t) * m->regs);
     int r = m->regs - m->ins;
     if (!(m->flags & 8)) regs[r++] = (uint64_t)(uintptr_t)self;
@@ -1386,10 +1449,12 @@ static jobj *new_array(tl_jclass *arrcls, int32_t n)
     if (name[1] == 'L' || name[1] == '[') {
         char elem[400]; desc_to_name(name + 1, elem, sizeof(elem));
         a = tl_jni_new_obj_array(class_for_desc(name + 1), (uint32_t)n);
+        if (!a) return NULL;
         a->cls = arrcls;
     } else {
         a = tl_jni_new_prim_array(name[1], (uint32_t)n);
     }
+    if (!a) return NULL;
     a->refs = 1u << 30;
     return a;
 }
@@ -1437,7 +1502,7 @@ static bool invoke_regs(dvm_method *caller, int kind, uint32_t midx, int count, 
     /* String's constructors */
     if (kind == 2 && self && self->kind == TL_K_OBJECT && self->cls == g_string_class && !strcmp(r->name, "<init>")) {
         jvalue s;
-        if (!dvm_string_init(r->sig, params, &s)) return false;
+        if (!dvm_string_init(r->sig, params, &s) || !s.l) return false;
         for (int i = 0; i < caller->regs; i++) if (regs[i] == (uint64_t)(uintptr_t)self) regs[i] = (uint64_t)(uintptr_t)s.l;
         result->l = s.l;
         return true;
@@ -1668,8 +1733,8 @@ dispatch:;
     case 0x17: WJ(regs, AA, (int32_t)(FETCH(1) | (uint32_t)FETCH(2) << 16)); NEXT(3);
     case 0x18: WJ(regs, AA, (int64_t)(FETCH(1) | (uint64_t)FETCH(2) << 16 | (uint64_t)FETCH(3) << 32 | (uint64_t)FETCH(4) << 48)); NEXT(5);
     case 0x19: WJ(regs, AA, (int64_t)((uint64_t)FETCH(1) << 48)); NEXT(2);
-    case 0x1a: WL(regs, AA, const_string(dex, FETCH(1))); NEXT(2);
-    case 0x1b: WL(regs, AA, const_string(dex, FETCH(1) | (uint32_t)FETCH(2) << 16)); NEXT(3);
+    case 0x1a: { jobj *s = const_string(dex, FETCH(1)); if (!s) goto exception; WL(regs, AA, s); NEXT(2); }
+    case 0x1b: { jobj *s = const_string(dex, FETCH(1) | (uint32_t)FETCH(2) << 16); if (!s) goto exception; WL(regs, AA, s); NEXT(3); }
     case 0x1c: WL(regs, AA, resolve_type(dex, FETCH(1))->mirror); NEXT(2);
     case 0x1d: { jobj *o = RL(regs, AA); THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-enter on null")); dvm_monitor_enter(o); NEXT(1); }
     case 0x1e: { jobj *o = RL(regs, AA); THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-exit on null")); dvm_monitor_exit(o); NEXT(1); }
@@ -1698,7 +1763,7 @@ dispatch:;
         if (!dc && class_missing(c)) { throw_missing(c); goto exception; }
         if (dc && !dvm_ensure_init(dc)) goto exception;
         jobj *o = dvm_new_object(c);
-        if (dc) dvm_slots(o);
+        if (!o || (dc && !dvm_slots(o))) goto exception;
         WL(regs, AA, o);
         NEXT(2);
     }
@@ -1713,7 +1778,9 @@ dispatch:;
         THROW_IF((uint64_t)n * esz > (256ull << 20) &&
                  !dvm_throw("java/lang/OutOfMemoryError", "Failed to allocate a %llu byte allocation with 0 free bytes",
                             (unsigned long long)((uint64_t)n * esz)));
-        WL(regs, A4, new_array(ac, n));
+        jobj *a = new_array(ac, n);
+        if (!a) goto exception;
+        WL(regs, A4, a);
         NEXT(2);
     }
     case 0x24: case 0x25: {                                        /* filled-new-array(/range) */
@@ -1721,6 +1788,7 @@ dispatch:;
         int count = range ? AA : B4;
         tl_jclass *ac = resolve_type(dex, FETCH(1));
         jobj *a = new_array(ac, count);
+        if (!a) goto exception;
         uint16_t list = FETCH(2);
         for (int i = 0; i < count; i++) {
             int reg = range ? list + i : (i < 4 ? (list >> (4 * i)) & 0xF : A4);
@@ -2089,7 +2157,7 @@ static bool hook_find_field(tl_jclass *jc, const char *name, const char *sig, bo
 }
 static uint32_t hook_slots(tl_jclass *jc) { dvm_class *c = dvm_class_of(jc); return c ? c->nslots : 0; }
 
-static const tl_dvm_hooks k_hooks = { hook_attach, hook_ensure_init, hook_find_method, hook_invoke, hook_find_field, hook_slots };
+static const tl_dvm_hooks k_hooks = { hook_attach, hook_ensure_init, hook_find_method, hook_invoke, hook_find_field, hook_slots, dvm_out_of_memory };
 
 static bool g_running;
 
@@ -2123,6 +2191,10 @@ bool tl_dvm_start(const char *const *boot, int nboot)
     g_nboot_dex = g_ndex;
     g_nboot_cp = g_ncp;
     g_string_class = tl_jni_class("java/lang/String");
+    dvm_throw("java/lang/OutOfMemoryError", "Java allocation failed");
+    g_oom_error = tl_jni_pending_object();
+    tl_jni_clear();
+    if (!g_oom_error || g_oom_error == &g_boot_oom_error) return false;
     return true;
 }
 
