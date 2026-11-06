@@ -27,7 +27,7 @@ for the manager, as it does for the game's own GOT. All native object access
 remains behind the exact package/library SHA-256 guard. Missing groups/windows
 are retried; missing exports disable adjustments while native rendering continues.
 
-Only the two quest roots and `BtnSit`/`BtnRun` are selected. The avatar, 18+ logo,
+In revision `882adf9`, only the two quest roots and `BtnSit`/`BtnRun` are selected. The avatar, 18+ logo,
 whole popbar and other controls are not selected. The full-screen background is
 unchanged. No game resource file or executable instruction is patched.
 
@@ -180,3 +180,33 @@ kept directly in `IPA/`, with its checksum. The upstream dependency archive
 remains separately in `IPA/support/`; matching source and verification are in
 `build/releases/882adf9/`. Direct USB capture remains active for the next device
 run; no game APK, device log, pairing record or signing certificate was published.
+
+## Local follow-up: Mission/Team tabs
+
+The user confirmed that the remaining overlap on `882adf9` is the left
+Mission/Team button strip. Fresh USB logs show successful quest lookup and a
+39-unit text-panel adjustment; the tab buttons were never selected.
+Read-only inspection of the phone's UI identifies them in `UI_TABMISSIONTEAM`:
+`BtnTab1`, `BtnTab2`, `BtnTab3` and `BtnReportBattle`. They are screen-anchored
+children, so moving that group's unanchored `Main` would not move the buttons.
+
+The local fix measures the two quest roots and these four buttons together,
+then applies a shared translation to preserve their spacing. Avatar, 18+ logo,
+whole popbar and Mission/Team parent retain their positions. Walk/sit keep their
+separate downward adjustment. Screen anchors ignore parent scale, matching the
+original native layout function.
+
+For a modeled scene origin of -149.5 and the observed 1665×768 scene extent,
+the common horizontal adjustment is 81 scene units, rather than the previous
+text-only 39. Original ARM64 safe-area, anchor-layout and hit-rectangle code
+reproduces the old overlapping tabs and verifies the corrected positions in six
+cases, including Native/High/Low pixel sizes, opposite-side and absent cutouts.
+The selected-HUD C regression also covers late tab registration, both quest
+roots, unchanged spacing, restoration and 10,000 updates without drift.
+
+Portable C and 28 Python checks pass on Windows. Physical HUD/touch validation
+of this follow-up is NOT TESTED. The user subsequently authorized publishing
+exactly the three reviewed files and building a new IPA on GitHub's macOS runner.
+That build must be verified before delivery; permission for this batch does not
+authorize future pushes. The previously delivered `882adf9` IPA does not contain
+this follow-up.

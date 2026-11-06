@@ -12,12 +12,14 @@
 #include <CommonCrypto/CommonDigest.h>
 
 static unsigned char quest[0x4b8], avatar[0x4b8], age_logo[0x4b8], movement[0x4b8];
-static unsigned char sit[0x4b8], run_button[0x4b8];
+static unsigned char sit[0x4b8], run_button[0x4b8], quest_tmp[0x4b8];
+static unsigned char mission_tabs[4][0x4b8];
+static const char *tab_names[]={"BtnTab1","BtnTab2","BtnTab3","BtnReportBattle"};
 static bool hash_match=true, provide_quest=true, provide_movement=false;
-static bool provide_groups=true;
+static bool provide_groups=true, provide_tabs=false, provide_tmp=false;
 static const char *missing_export;
 static unsigned char manager[48];
-static struct { const char *name; } groups[]={{"UI_TASKTRACK"},{"UI_TASKTRACKTMP"},{"UI_POPBAR"}};
+static struct { const char *name; } groups[]={{"UI_TASKTRACK"},{"UI_TASKTRACKTMP"},{"UI_POPBAR"},{"UI_TABMISSIONTEAM"}};
 static unsigned calls, lookups, renders;
 static uintptr_t fixture_base;
 static const char *library="libMyGame.so";
@@ -34,23 +36,31 @@ static void original_render(void) { renders++; }
 static void *get_group(void *self,const char *name)
 {
     assert(self==manager); // g_UIManager is an object, never dereference it as a pointer.
-    for (unsigned i=0;i<3;i++) {
-        if (!strcmp(name,groups[i].name)) return provide_groups?&groups[i]:NULL;
+    for (unsigned i=0;i<4;i++) {
+        if (!strcmp(name,groups[i].name)) return provide_groups&&(i!=3||provide_tabs)?&groups[i]:NULL;
     }
     assert(false);return NULL;
 }
 static void *get_window(void *self,const char *name)
 {
-    assert(self==&groups[0]||self==&groups[1]||self==&groups[2]);
+    assert(self==&groups[0]||self==&groups[1]||self==&groups[2]||self==&groups[3]);
+    if (self==&groups[3]) {
+        for (unsigned i=0;i<4;i++) if (!strcmp(name,tab_names[i])) return mission_tabs[i];
+        assert(false);return NULL; // Moving Main would miss these screen-anchored buttons.
+    }
     if (self==&groups[2]) {
         assert(!strcmp(name,"BtnSit")||!strcmp(name,"BtnRun"));
         return provide_movement?(!strcmp(name,"BtnSit")?sit:run_button):NULL;
     }
     assert(!strcmp(name,"Main"));
-    return provide_quest&&self==&groups[0]?quest:NULL;
+    return provide_quest&&self==&groups[0]?quest:provide_tmp&&self==&groups[1]?quest_tmp:NULL;
 }
 static void set_position(void *window,int x,int y)
-{ assert(window==quest||window==sit||window==run_button);put_int(window,0x28,x);put_int(window,0x2c,y); }
+{
+    bool selected=window==quest||window==quest_tmp||window==sit||window==run_button;
+    for (unsigned i=0;i<4;i++) selected|=window==mission_tabs[i];
+    assert(selected);put_int(window,0x28,x);put_int(window,0x2c,y);
+}
 void *tl_ld_sym(tl_lib *lib,const char *symbol)
 {
     (void)lib;lookups++;
@@ -222,6 +232,48 @@ int main(void)
     assert(get_double(run_button,0x490)==20&&get_double(run_button,0x498)==121);
     for (int i=0;i<10000;i++) render_frame();
     assert(get_double(quest,0x490)==106&&get_double(sit,0x498)==191&&get_double(run_button,0x498)==121);
+
+    // Device report: text is adjusted, but its separate Mission/Team tabs are
+    // still behind the left island. Reproduce the negative scene origin from
+    // the live log, plus the downloaded tabs' screen-anchor geometry.
+    unsigned char tab_parent[0x4b8]={0}, saved_parent[0x4b8];void *tab_parent_ptr=tab_parent;
+    put_int(tab_parent,0x40,-90);put_int(tab_parent,0x44,-45);
+    put_int(tab_parent,0x30,281);put_int(tab_parent,0x34,532);
+    scale=2;memcpy(tab_parent+0x4ac,&scale,4);memcpy(saved_parent,tab_parent,sizeof(tab_parent));
+    const int tab_x[]={25,25,24,24}, tab_w[]={41,41,57,105}, tab_h[]={107,107,57,53};
+    const double tab_y[]={-116,-15,71.5,261.5};
+    for (unsigned i=0;i<4;i++) {
+        window_at(mission_tabs[i],tab_x[i],0,tab_w[i],tab_h[i]);
+        put_double(mission_tabs[i],0x498,tab_y[i]);put_double(mission_tabs[i],0x478,0.5);
+        memcpy(mission_tabs[i]+0x458,&tab_parent_ptr,sizeof(tab_parent_ptr));put_int(mission_tabs[i],0x4b0,1);
+    }
+    window_at(quest,66,-66,275,204);put_double(quest,0x478,0.5);put_double(quest,0x488,0.5);
+    memcpy(quest_tmp,quest,sizeof(quest));provide_tmp=true;
+    put_double(sit,0x498,170);put_double(run_button,0x498,100);
+    begin(2796,1290,insets);wrapped(1665,768,0,0,1665,768,1366,768);render_frame();
+    assert(get_double(quest,0x490)==105); // Old text-only behavior; tabs not yet registered.
+    provide_tabs=true;render_frame();
+    assert(get_double(quest,0x490)==147); // Common +81 from the leftmost tab.
+    assert(get_double(quest_tmp,0x490)==147);
+    for (unsigned i=0;i<4;i++) {
+        assert(get_double(mission_tabs[i],0x490)==tab_x[i]+81);
+        assert(get_double(mission_tabs[i],0x498)==tab_y[i]);
+    }
+    assert(get_double(mission_tabs[0],0x490)+41==get_double(quest,0x490)); // Same text/tab spacing.
+    for (int i=0;i<10000;i++) render_frame();
+    assert(get_double(quest,0x490)==147&&get_double(mission_tabs[0],0x490)==106);
+    assert(memcmp(tab_parent,saved_parent,sizeof(tab_parent))==0);
+    for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
+    put_double(mission_tabs[0],0x498,-110);render_frame(); // A Y-only edit must not retain X shift.
+    tl_javaapp_set_insets(0,0,0,0,0);render_frame();
+    assert(get_double(quest,0x490)==66&&get_double(mission_tabs[0],0x490)==25);
+    assert(get_double(mission_tabs[0],0x498)==-110);
+    tl_javaapp_set_insets(0,0,177,0,0);render_frame();
+    assert(get_double(quest,0x490)==66&&get_double(mission_tabs[0],0x490)==25);
+    tl_javaapp_set_insets(177,0,0,0,0);render_frame();
+    assert(get_double(quest,0x490)==147&&get_double(mission_tabs[0],0x490)==106);
+    assert(get_double(sit,0x498)==191&&get_double(run_button,0x498)==121);
+    provide_tabs=provide_tmp=false;
     // Missing groups/exports are inert; later-created script groups are retried.
     window_at(quest,66,-66,275,204);provide_groups=false;begin(2796,1290,insets);
     wrapped(1665,768,0,0,1665,768,1665,768);render_frame();assert(get_double(quest,0x490)==66);
@@ -235,6 +287,6 @@ int main(void)
     missing_export=NULL;
     double dx,dy;
     assert(!tl_quest_delta((tl_quest_rect){0,0,932,430},(tl_quest_rect){0,100,900,200},(tl_quest_cutout){59,0,0,0},932,430,&dx,&dy));
-    puts("PASS: selected HUD uses the script-group registry/object ABI, handles missing exports/groups, guards package/hash/PLT hooks, converts pixel/visible units, preserves IME/other HUD, and moves the device-layout quest/walk/sit without drift over 10000 updates");
+    puts("PASS: selected HUD uses the registry/object ABI, moves separate Mission/Team tabs and text together at the observed negative scene origin, preserves spacing/other HUD/IME, handles missing/late groups and exports, and avoids drift over 10000 updates");
     return 0;
 }
