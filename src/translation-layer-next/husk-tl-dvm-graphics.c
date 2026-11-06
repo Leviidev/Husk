@@ -1473,6 +1473,13 @@ bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any)
 }
 void tl_ui_frame_done(void) { pthread_mutex_unlock(&S.lock); }
 bool tl_ui_has_frame(void) { return atomic_load(&S.any); }
+void tl_ui_reset_frame(void)
+{
+    pthread_mutex_lock(&S.lock);
+    free(S.px); S.px = NULL; S.w = S.h = 0;
+    atomic_store(&S.any, false); atomic_store(&S.fresh, false);
+    pthread_mutex_unlock(&S.lock);
+}
 
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_gfx[] = {
     { "bmNew", "(II)J", G_bmNew },

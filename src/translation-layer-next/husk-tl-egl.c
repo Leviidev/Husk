@@ -741,7 +741,7 @@ static void *glt_wrap(const char *name, void *real)
     void *thunk = real;
     char err[120];
     if (n < 4096 && tl_xmem_open(768u << 20, err, sizeof(err))) {
-        if (used == 256) { used = 0; if (!tl_xmem_alloc(TL_XMEM_PAGE, &page_rx, &page_rw)) page_rx = page_rw = NULL; }
+        if (used == 256) { used = 0; if (!tl_xmem_alloc_shared(TL_XMEM_PAGE, &page_rx, &page_rw)) page_rx = page_rw = NULL; }
         if (page_rx) {
             uint8_t *trx = page_rx + (size_t)used * 64, *trw = page_rw + (size_t)used * 64;
             used++;

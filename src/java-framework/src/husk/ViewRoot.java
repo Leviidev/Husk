@@ -37,6 +37,12 @@ public final class ViewRoot implements ViewParent {
 
     private ViewRoot(View v, WindowManager.LayoutParams lp) { mView = v; mLp = new WindowManager.LayoutParams(); mLp.copyFrom(lp); }
 
+    public static void resetSession() {
+        sRoots.clear(); sTouchTarget = null; sMain = null;
+        if (sScreen != null) sScreen.recycle();
+        sScreen = null; sCanvas = null; sScheduled = false; sPresentedAny = false;
+        sImeBottom = 0; sNextViewId = 0x00100000;
+    }
     public static Handler mainHandler() { if (sMain == null) sMain = new Handler(Looper.getMainLooper()); return sMain; }
     public static synchronized int nextViewId() { return sNextViewId++; }
     public static ViewRoot of(View v) { for (ViewRoot r : sRoots) if (r.mView == v) return r; return null; }

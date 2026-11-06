@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "husk-tl-http.h"
+#include "husk-tl-session.h"
 
 /* Answering a redirect with nil makes the task finish with the 3xx response itself. */
 @interface TLHttpNoRedirect : NSObject <NSURLSessionTaskDelegate>
@@ -36,6 +37,8 @@ static void put_message(tl_http_response *out, int error, NSString *text)
     snprintf(out->message, sizeof(out->message), "%s", text.UTF8String ?: "");
 }
 
+static void cancel_request(void *context) { [(__bridge NSURLSessionTask *)context cancel]; }
+
 static bool perform_once(const tl_http_request *req, tl_http_response *out)
 {
     memset(out, 0, sizeof(*out));
@@ -58,8 +61,14 @@ static bool perform_once(const tl_http_request *req, tl_http_response *out)
             data = d; resp = rs; err = e;
             dispatch_semaphore_signal(done);
         }];
+        tl_session_wait wait;
+        bool registered = tl_session_wait_begin(&wait, cancel_request, (__bridge void *)task);
+        if (!registered) {
+            [task cancel]; put_message(out, TL_HTTP_READ, @"APK session stopped"); return false;
+        }
         [task resume];
         dispatch_semaphore_wait(done, DISPATCH_TIME_FOREVER);
+        tl_session_wait_end(&wait);
 
         if (err || ![resp isKindOfClass:[NSHTTPURLResponse class]]) {
             NSInteger code = err.code;

@@ -865,7 +865,7 @@ static void *pool_stub(const char *name)
 static void *make_stub(const char *name)
 {
     if (g_stub_left < 32) {
-        if (!tl_xmem_alloc(PAGE, &g_stub_rx, &g_stub_rw)) return pool_stub(name);
+        if (!tl_xmem_alloc_shared(PAGE, &g_stub_rx, &g_stub_rw)) return pool_stub(name);
         g_stub_left = PAGE;
     }
     uint8_t *rw = g_stub_rw, *rx = g_stub_rx;
@@ -2356,7 +2356,7 @@ static void fill_data_slots(tl_lib *L)
     t[5] = 0xdeadbeefcafebabeull;             /* [tpidr_el0 + 0x28]: the stack cookie */
 }
 
-static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
+static tl_lib *map_library(const char *name, uint8_t *file, size_t flen, bool system)
 {
     tl_ld_trap_signals();       /* raw svc and floating-point traps from the guest's code are answered (svc_signal) */
     /* Mix/copy decisions and the dylib's stub count must see the AOT folder before aot_import runs,
@@ -2561,7 +2561,8 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     if (imported) {
         /* dyld mapped all of it: the image's pages at their own addresses, executable or writable as the segment says, the stub,
          * slot and thread-block pages zero, and the mixed pages' writable copies after them */
-    } else if (g_aot.on ? !aot_alloc((npages + nstub + 2) * PAGE, &rx, &rw) : !tl_xmem_alloc((npages + nstub + 2) * PAGE, &rx, &rw)) {
+    } else if (g_aot.on ? !aot_alloc((npages + nstub + 2) * PAGE, &rx, &rw)
+               : !(system ? tl_xmem_alloc_shared : tl_xmem_alloc)((npages + nstub + 2) * PAGE, &rx, &rw)) {
         tl_log_line("ld: %s needs %zu MiB of executable memory and the region has %zu MiB left", name,
                     npages * PAGE >> 20, (tl_xmem_size() - tl_xmem_used()) >> 20);
         free(flags); free(mix); free(phs);
@@ -2995,7 +2996,7 @@ static tl_lib *load_locked(const char *name, int depth, bool system)
         ptrdiff_t d = tl_xmem_delta();
         if (d > ((ptrdiff_t)3 << 30) || d < -((ptrdiff_t)3 << 30)) { tl_log_line("ld: the writable and executable views are %td MiB apart: too far for adrp", d >> 20); free(file); return NULL; }
     }
-    L = map_library(name, file, flen);
+    L = map_library(name, file, flen, system);
     free(file);
     if (!L) return NULL;
     L->system = system;
@@ -3080,7 +3081,7 @@ bool tl_ld_aot_build(const char *name, const uint8_t *file, size_t flen, tl_ld_a
     memcpy(copy, file, flen);
     pthread_mutex_lock(&g_big);
     g_aot.on = true; g_aot.base = 0; g_aot.size = 0;
-    tl_lib *L = map_library(name, copy, flen);
+    tl_lib *L = map_library(name, copy, flen, false);
     g_aot.on = false;
     free(copy);
     if (!L) {

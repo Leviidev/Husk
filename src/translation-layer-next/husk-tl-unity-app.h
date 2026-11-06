@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-enum { HUSK_UNITY_IDLE = 0, HUSK_UNITY_STARTING = 1, HUSK_UNITY_RUNNING = 2, HUSK_UNITY_FAILED = 3, HUSK_UNITY_ENDED = 4 };
+enum { HUSK_UNITY_IDLE = 0, HUSK_UNITY_STARTING = 1, HUSK_UNITY_RUNNING = 2, HUSK_UNITY_FAILED = 3, HUSK_UNITY_ENDED = 4, HUSK_UNITY_STOPPING = 5 };
 
 /*
  * Start the game in `apk`. `metal_layer` is the CAMetalLayer it draws into, `width`/`height` its
@@ -164,6 +164,11 @@ void husk_gamepad_update(int slot, unsigned buttons, float lx, float ly, float r
 const char *husk_native_loaded_apk(void);
 /* Stop the current app and forget its libraries. User-facing Play does not switch games this way. */
 void husk_native_unload(void);
+/* In-process close for Java apps; false retains the session for a retry. */
+bool husk_native_can_close(void);
+bool husk_native_close(void);
+/* Wait for initialization or outstanding shutdown work to finish, without retry timers. */
+bool husk_native_wait_for_close(void);
 
 /* Whether the running game has no touch controls of its own and wants the on-screen controller (a PC game through DXVK). */
 bool husk_native_wants_controller(void);

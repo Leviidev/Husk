@@ -155,6 +155,7 @@ private struct AppWindow: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in windows.close() }
         .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { windows.close() } } }
+        .overlay { APKStoppingOverlay(app: app) { windows.close() } }
         .onReceive(NotificationCenter.default.publisher(for: WebAppRuntime.closed)) { n in
             if (n.object as? String) == app.id { windows.close() }
         }
@@ -199,8 +200,11 @@ private struct AppWindow: View {
             ItemIcon(item: .game(app), size: 18)
             Text(app.label).font(.footnote.weight(.semibold)).lineLimit(1)
             Spacer(minLength: 6)
-            // Balances the lights, so the name sits in the middle.
-            Color.clear.frame(width: 3 * 22 + 2 * 8, height: 1)
+            if app.screenEngine == .java && app.report?.webKind == nil {
+                CloseAPKButton(app: app, compact: true)
+            } else {
+                Color.clear.frame(width: 3 * 22 + 2 * 8, height: 1)
+            }
         }
         .padding(.horizontal, 10)
         .frame(height: Self.bar)
@@ -295,7 +299,8 @@ private struct WindowDock: View {
             )
             .contextMenu {
                 Button { windows.restore() } label: { Label("Show", systemImage: "macwindow") }
-                Button(role: .destructive) { windows.close() } label: { Label("Close", systemImage: "xmark") }
+                Button { windows.close() } label: { Label("Pause and Return", systemImage: "xmark") }
+                if app.screenEngine == .java && app.report?.webKind == nil { CloseAPKButton(app: app) }
             }
             .accessibilityLabel("\(app.label), minimised")
             .accessibilityHint("Shows the window again")

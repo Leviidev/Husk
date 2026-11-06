@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo;
  */
 public final class LoadedApk {
     private static LoadedApk sSelf;
+    public static void huskResetSession() { sSelf = null; }
 
     final ActivityThread mActivityThread;
     final String mPackageName;
