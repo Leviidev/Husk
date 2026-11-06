@@ -23,9 +23,15 @@ public class ConnectivityManager {
     public interface OnNetworkActiveListener { void onNetworkActive(); }
     private static final Network sNet = new Network();
     public NetworkInfo getActiveNetworkInfo() { return new NetworkInfo(); }
-    public NetworkInfo getNetworkInfo(int type) { return type == TYPE_WIFI ? new NetworkInfo() : null; }
+    public NetworkInfo getNetworkInfo(int type) {
+        if (type == TYPE_WIFI) return new NetworkInfo();
+        // Legacy callers query both legacy transports without checking for
+        // null. Mobile is supported but disconnected in our Wi-Fi-only model.
+        if (type == TYPE_MOBILE) return new NetworkInfo(TYPE_MOBILE, 0, "MOBILE", "");
+        return null;
+    }
     public NetworkInfo getNetworkInfo(Network n) { return new NetworkInfo(); }
-    public NetworkInfo[] getAllNetworkInfo() { return new NetworkInfo[] { new NetworkInfo() }; }
+    public NetworkInfo[] getAllNetworkInfo() { return new NetworkInfo[] { getNetworkInfo(TYPE_MOBILE), getNetworkInfo(TYPE_WIFI) }; }
     public Network getActiveNetwork() { return sNet; }
     public Network[] getAllNetworks() { return new Network[] { sNet }; }
     public NetworkCapabilities getNetworkCapabilities(Network n) { return new NetworkCapabilities(); }
