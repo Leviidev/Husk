@@ -10,6 +10,7 @@
 #include "husk-tl-dvm-javaapp.h"
 #include "husk-tl-dvm-gl.h"
 #include "husk-tl-frame-buffer.h"
+#include "husk-tl-autorelease.h"
 #include "husk-tl-aosp.h"
 #include "husk-tl-dvm.h"
 
@@ -917,6 +918,7 @@ static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pth
  */
 static void *gl_main(void *arg)
 {
+    TL_AUTORELEASE_SCOPE(thread_pool);
     (void)arg;
     pthread_setname_np("GLThread");
     EGLDisplay (*getDisplay)(void *) = tl_egl_resolve("eglGetDisplay");
@@ -956,12 +958,16 @@ static void *gl_main(void *arg)
     void (*clearColor)(float, float, float, float) = gl_fn("glClearColor");
     void (*clear)(uint32_t) = gl_fn("glClear");
     tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
+#if defined(__APPLE__)
+    tl_log_line("javaapp: Objective-C temporary objects drained after each GL frame");
+#endif
 
     jobj *gl10 = NULL;
     jvalue p1[1];
     int64_t next = now_ns();
     while (!atomic_load(&A.ended)) {
         if (atomic_load(&A.paused)) { usleep(20000); next = now_ns(); continue; }
+        TL_AUTORELEASE_SCOPE(frame_pool);
         bool drew = false;
         /* the app's renderer, once its GLSurfaceView is on screen */
         if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !app) {

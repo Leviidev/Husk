@@ -1,5 +1,7 @@
 # Build outputs
 build/
+/IPA/
+/device-logs/
 src/app/project.hung.generated.yml
 __pycache__/
 # On-device pairing crate (scripts/build_rppairing_ios.sh)

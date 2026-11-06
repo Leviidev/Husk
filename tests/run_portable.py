@@ -89,6 +89,15 @@ def main():
         str(ROOT / "tests/translation-layer/quest_layout_test.c"),
         str(ROOT / "src/translation-layer-next/husk-tl-vhtg-quest.c"), "-lm", "-o", str(exe)])
     run("VHTG selected HUD contracts", [str(exe)])
+    exe = out / ("autorelease_pool_test.exe" if os.name == "nt" else "autorelease_pool_test")
+    run("autorelease scope compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+        str(ROOT / "tests/translation-layer/autorelease_pool_test.c"), "-o", str(exe)])
+    run("autorelease scope lifecycle", [str(exe)])
+    if platform.system() == "Darwin":
+        exe = out / "autorelease_pool_apple"
+        run("Apple autorelease runtime compile", compiler + flags + ["-fno-objc-arc", "-framework", "Foundation",
+            f"-I{ROOT / 'src/translation-layer-next'}", str(ROOT / "tests/translation-layer/autorelease_pool_apple.m"), "-o", str(exe)])
+        run("actual Apple autorelease lifetime", [str(exe)])
     loader_source = (ROOT / "src/translation-layer-next/husk-tl-ld.c").read_text(encoding="utf-8")
     slot = re.search(r"case R_ABS64: case R_GLOB_DAT: case R_JUMP_SLOT: \{.*?return true;\n    \}", loader_source, re.S)
     assert slot
@@ -103,6 +112,7 @@ def main():
         iconv += ["--sanitize"]
     run("iconv", iconv)
     run("Python analyzer/diagnostics/profile/bootstrap", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_hung_tools.py", "-v"])
+    run("USB log mirror contracts", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_ios_logs.py", "-v"])
     run("Swift diagnosis and settings", [sys.executable, "tests/test_hung_swift.py", "-v"])
     run("Swift APK ordering baseline", [sys.executable, "tests/translation-layer/test_apk_order.py"])
     print("Portable checks completed; iOS/JIT/graphics/boot/gameplay still require their own runs.")
