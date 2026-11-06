@@ -3,7 +3,8 @@
 # macOS; requires the libcore boot jars from an existing build/java-runtime.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-OUT=$(mktemp -d)
+: "${TMPDIR:?Set TMPDIR to a writable test directory}"
+OUT=$(mktemp -d "$TMPDIR/husk-string-oom.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 RUNTIME=${HUSK_JAVA_RUNTIME:-"$ROOT/build/java-runtime"}
 test -f "$RUNTIME/com.android.art/javalib/core-oj.jar"
