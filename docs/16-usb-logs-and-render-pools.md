@@ -18,13 +18,13 @@ directory and to contain no reparse points. Source, game APKs, device evidence,
 analysis dependencies and the pinned upstream support IPA were retained.
 The deletion inventory is local at `build/cleanup-manifest.json`.
 
-Only the latest verified custom IPA is kept in `IPA/`:
-`HUNG-APK-PLAYER-5bc7dcc.ipa`, 113,680,084 bytes, SHA-256
-`928f81f113022c28bc465349942ef32911a604ab306083a0217fcc7e506ac505`.
-The matching source/verification are kept in `build/releases/5bc7dcc/`.
-This IPA predates the render-pool fix described below. Retry signing in Sideloadly
-with this relocated IPA after freeing space. Signing/installing on the iPhone
-has not been repeated by this agent.
+The current verified custom IPA is `IPA/HUNG-APK-PLAYER-4e85bdf.ipa`, 113,680,222 bytes, SHA-256
+`e67139e5f398f37ce074a40cc7252fd915e8c8ba77f9d5b742d251baf523b8c9`.
+The superseded `5bc7dcc` custom IPA has been removed after verification.
+Corresponding source and verification are in `build/releases/4e85bdf/`.
+The pinned upstream reference archive is kept separately in `IPA/support/`.
+Select the current custom IPA in Sideloadly to retry signing after freeing
+space. Signing/installing on the iPhone has not been repeated by this agent.
 
 ## Direct logs over USB
 
@@ -104,6 +104,33 @@ play. Other texture/resource pressure can also cause allocation failure.
   usage.
 - A new macOS test uses a real secondary POSIX thread and Foundation objects to
   check per-frame deallocation, retained objects and early-return cleanup. It is
-  wired into the portable CI runner: PENDING macOS execution.
-- iOS SDK/Xcode build and a new IPA containing this fix: PENDING.
+  wired into the portable CI runner: PASS on macOS CI.
+- iOS SDK/Xcode build and a new IPA containing this fix: PASS; verified below.
 - Sustained iPhone gameplay after the fix: NOT TESTED.
+
+
+## Verified render-pool IPA
+
+Built revision `4e85bdf9f4d19f6f82d58bb9e685b60c964a24b2`, stamped `4e85bdf-dirty`, produced
+`IPA/HUNG-APK-PLAYER-4e85bdf.ipa` (113,680,222 bytes). Download the
+[IPA and corresponding source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/42149710824/artifacts/13472276927).
+All four CI jobs completed successfully in [the build run](https://github.com/hungtm200401-bot/Husk/actions/runs/42149710824).
+
+IPA SHA-256: `e67139e5f398f37ce074a40cc7252fd915e8c8ba77f9d5b742d251baf523b8c9`.
+
+Downloaded artifact ZIP SHA-256: `4d8d2fffe113e57a5d46f264f5b4d02685494c0fb21d35ede857bb4e36c5b0c4`, matching GitHub's published
+digest. The source ZIP identifies the build revision and matches the approved
+files. The arm64 app contains the new per-frame temporary-object diagnostic and
+Objective-C pool runtime references, along with the previous HUD implementation.
+Embedded full/core Java DEX hashes match the tested framework, required runtime
+components are present and entitlements match the unchanged source.
+
+The macOS CI test exercises actual Foundation deallocation on a secondary POSIX
+thread. This verifies the pool behavior; sustained gameplay on the physical
+iPhone after installing this new build remains NOT TESTED. Direct USB logs remain
+the source of evidence for the next device run.
+
+Only this current custom IPA is retained directly in `IPA/`; the pinned upstream
+reference remains under `IPA/support/`. Corresponding source and verification
+are under `build/releases/4e85bdf/`. Downloaded packaging duplicates and the
+superseded custom IPA are removed after the new delivery has been verified.
