@@ -110,6 +110,8 @@ int main(int argc, char **argv)
     char nbuf[64];
     tl_path_normalize_slashes("//foo///bar//baz/", nbuf, sizeof(nbuf));
     assert(!strcmp(nbuf, "/foo/bar/baz/"));
+    tl_path_normalize_slashes("foo\\\\bar\\baz", nbuf, sizeof(nbuf));
+    assert(!strcmp(nbuf, "foo/bar/baz"));
     tl_path_normalize_slashes("///", nbuf, sizeof(nbuf));
     assert(!strcmp(nbuf, "/"));
     tl_path_normalize_slashes("", nbuf, sizeof(nbuf));

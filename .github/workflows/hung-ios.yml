@@ -12,7 +12,7 @@ on:
         default: upstream
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   R8_URL: https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.9.35/r8-8.9.35.jar
@@ -145,6 +145,16 @@ jobs:
             build/support-provenance.json
             build/java-framework-built/java-framework-build.json
             LICENSE
+      - name: Create GitHub Release with IPA
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v-fixed-${{ github.run_number }}
+          name: "Hung APK Player - Tru Tiên Fixed (Build ${{ github.run_number }})"
+          body: "Bản build IPA sửa lỗi iconv, mallopt và chuẩn hóa dấu gạch chéo ngược đường dẫn cho Angelica Engine (Tru Tiên)."
+          files: |
+            build/HUNG-APK-PLAYER.ipa
+            build/HUNG-APK-PLAYER.ipa.sha256
       - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4

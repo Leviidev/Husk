@@ -188,7 +188,7 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
     char norm[1024];
-    if (strstr(path, "//")) {
+    if (strstr(path, "//") || strchr(path, '\\')) {
         tl_path_normalize_slashes(path, norm, sizeof(norm));
         path = norm;
     }
@@ -309,6 +309,10 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
                 if (stat(beside, &st) == 0) snprintf(buf, n, "%s", beside);
             }
         }
+        return buf;
+    }
+    if (path == norm) {
+        snprintf(buf, n, "%s", norm);
         return buf;
     }
     return path;

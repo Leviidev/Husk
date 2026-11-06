@@ -17,8 +17,9 @@ void tl_path_normalize_slashes(const char *src, char *dst, size_t cap)
     if (!src) { dst[0] = 0; return; }
     size_t j = 0;
     for (size_t i = 0; src[i] && j + 1 < cap; i++) {
-        if (src[i] == '/' && j > 0 && dst[j - 1] == '/') continue;
-        dst[j++] = src[i];
+        char c = (src[i] == '\\') ? '/' : src[i];
+        if (c == '/' && j > 0 && dst[j - 1] == '/') continue;
+        dst[j++] = c;
     }
     dst[j] = 0;
 }
@@ -27,7 +28,7 @@ const char *tl_resolve_data_path(const char *path, const char *host_root, char *
 {
     if (!path || !host_root) return NULL;
     char norm[1024];
-    if (strstr(path, "//")) {
+    if (strstr(path, "//") || strchr(path, '\\')) {
         tl_path_normalize_slashes(path, norm, sizeof(norm));
         path = norm;
     }
@@ -44,9 +45,9 @@ const char *tl_resolve_data_path(const char *path, const char *host_root, char *
 
 unsigned tl_android_data_ancestor_mode(const char *path)
 {
-    if (!path || path[0] != '/') return 0;
+    if (!path || (path[0] != '/' && path[0] != '\\')) return 0;
     char norm[64];
-    if (strstr(path, "//")) {
+    if (strstr(path, "//") || strchr(path, '\\')) {
         tl_path_normalize_slashes(path, norm, sizeof(norm));
         path = norm;
     }

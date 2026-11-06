@@ -540,6 +540,11 @@ static void *b_calloc(size_t count, size_t size)
     }
     return p;
 }
+static int b_mallopt(int param, int value)
+{
+    (void)param; (void)value;
+    return 1;
+}
 static void b_free(void *p)
 {
     if (!p) return;
@@ -780,7 +785,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("swprintf", tl_va_swprintf),
     /* stdlib.h */
     TL_WRAP("malloc", b_malloc), TL_WRAP("calloc", b_calloc), TL_WRAP("realloc", b_realloc), TL_WRAP("free", b_free), TL_DIRECT(posix_memalign),
-    TL_WRAP("memalign", b_memalign),
+    TL_WRAP("mallopt", b_mallopt), TL_WRAP("memalign", b_memalign),
     TL_DIRECT(atoi), TL_DIRECT(atol), TL_DIRECT(atoll), TL_DIRECT(bsearch), TL_DIRECT(qsort), TL_DIRECT(div), TL_DIRECT(lldiv),
     TL_DIRECT(rand), TL_DIRECT(srand), TL_DIRECT(srand48), TL_DIRECT(lrand48),
     TL_WRAP("strtol", b_strtol), TL_WRAP("strtoll", b_strtoll), TL_WRAP("strtoul", b_strtoul), TL_WRAP("strtoull", b_strtoull),
