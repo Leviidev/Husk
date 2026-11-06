@@ -222,6 +222,7 @@
 		FCC98727BBE825F227BA85DC /* husk-tl-prefs.c in Sources */ = {isa = PBXBuildFile; fileRef = 86A6E743652A606829BC044B /* husk-tl-prefs.c */; };
 		FF486702C6D33BA45B29F232 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FE1883A8008B6E8BF4D83155 /* InfoPlist.strings */; };
 		FF9CF33CB5846E7DF6189EB9 /* husk-tl-dvm-annotations.c in Sources */ = {isa = PBXBuildFile; fileRef = 65972F9D6806424034E38589 /* husk-tl-dvm-annotations.c */; };
+		8962275716665ABE9C802F74 /* JITMemoryBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01C92889DE40D61282EF243A /* JITMemoryBudget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -539,6 +540,7 @@
 		FE8922E7AB75C8C61B37986A /* husk-tl-jni-loop.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-loop.c"; sourceTree = "<group>"; };
 		FF32BE604D93D4757E99BAF0 /* husk-console-host.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-console-host.h"; sourceTree = "<group>"; };
 		FF5A120A4E0B3EE166D789C4 /* husk-tl-bionic-ndk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-ndk.c"; sourceTree = "<group>"; };
+		01C92889DE40D61282EF243A /* JITMemoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JITMemoryBudget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -565,6 +567,7 @@
 		0F8D2787A26076A289B9B8EA /* Husk */ = {
 			isa = PBXGroup;
 			children = (
+				01C92889DE40D61282EF243A /* JITMemoryBudget.swift */,
 				4A099519AE80F7DAC9A65F34 /* Account.swift */,
 				2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */,
 				3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */,
@@ -1138,6 +1141,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8962275716665ABE9C802F74 /* JITMemoryBudget.swift in Sources */,
 				7CA02F2FB22207E86499451E /* DownloadsWidget.swift in Sources */,
 				E8F0828C2C030D26E891E528 /* HuskDownloadActivity.swift in Sources */,
 			);

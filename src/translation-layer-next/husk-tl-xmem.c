@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/mman.h>
 
 #if defined(__APPLE__)
@@ -30,6 +31,7 @@ static struct {
     uint8_t *rx, *rw;
     size_t size, used;
     bool open, shared;
+    size_t target_bytes;
     pthread_mutex_t lock;
 } g_x = { .lock = PTHREAD_MUTEX_INITIALIZER };
 
@@ -85,7 +87,7 @@ static bool grant_self(size_t host_bytes, char *err, size_t errlen)
     bool debugged = csops(getpid(), TL_CS_OPS_STATUS, &flags, sizeof(flags)) == 0 && (flags & TL_CS_DEBUGGED);
     static const int how[2][2] = { { PROT_READ | PROT_WRITE | PROT_EXEC, 0 }, { PROT_READ | PROT_WRITE | PROT_EXEC, MAP_JIT } };
     int last_errno = 0;
-    for (size_t size = (host_bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1); size >= (64u << 20); size /= 2) {
+    for (size_t size = (host_bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1); size >= (2u << 20); size /= 2) {
         uint8_t *base = mmap(NULL, size * 2, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if (base == MAP_FAILED) { last_errno = errno; continue; }
         for (int h = 0; h < 2; h++) {
@@ -162,7 +164,7 @@ static void near_alias(void)
      *    region placed low in the address space, between other mappings), the largest part of it that fits: the region is used
      *    from its start, so a shorter alias of its first part is a shorter region. */
     kern_return_t first = KERN_SUCCESS;
-    for (uintptr_t want_size = size; want_size >= (64u << 20); want_size -= (32u << 20)) {
+    for (uintptr_t want_size = size; want_size >= (2u << 20); want_size -= (32u << 20)) {
         for (uintptr_t off = 0; off <= reach; off += step) {
             for (int side = 0; side < 2; side++) {
                 if (side == 1 && rx < want_size + off + step) continue;
@@ -193,6 +195,7 @@ static void near_alias(void)
 /* The phone: StikDebug's region if a debugger granted one, otherwise one the process makes for itself where the device allows that (before TXM). */
 static bool open_platform(size_t host_bytes, char *err, size_t errlen)
 {
+    if (g_x.target_bytes) host_bytes = g_x.target_bytes;
     tl_dual_mapping *m = tl_find_stikdebug_prewarmed();
     if (m && m->rw_addr && m->rx_addr) {
         g_x.rx = m->rx_addr;
@@ -214,6 +217,7 @@ static bool open_platform(size_t host_bytes, char *err, size_t errlen)
 /* A Mac (or a plain host): two views of ordinary memory. */
 static bool open_platform(size_t host_bytes, char *err, size_t errlen)
 {
+    if (g_x.target_bytes) host_bytes = g_x.target_bytes;
     /* TL_XMEM_MIB: size the region as a phone's would be, to see whether a game fits there */
     if (getenv("TL_XMEM_MIB")) host_bytes = (size_t)atoi(getenv("TL_XMEM_MIB")) << 20;
 #if defined(__APPLE__)
@@ -301,6 +305,7 @@ bool tl_jit_reserve_bottom(size_t end)
 
 bool tl_xmem_alloc(size_t bytes, uint8_t **rx, uint8_t **rw)
 {
+    if (bytes > SIZE_MAX - (TL_XMEM_PAGE - 1)) return false;
     size_t n = (bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1);
     bool ok = false;
     pthread_mutex_lock(&g_x.lock);
@@ -347,3 +352,20 @@ void tl_xmem_flush(const void *rx, size_t bytes)
 
 size_t tl_xmem_used(void) { return g_x.used; }
 size_t tl_xmem_size(void)  { return g_x.size; }
+
+void husk_jit_budget_set_target_bytes(size_t bytes)
+{
+    pthread_mutex_lock(&g_x.lock);
+    g_x.target_bytes = bytes;
+    pthread_mutex_unlock(&g_x.lock);
+}
+
+size_t husk_jit_budget_region_bytes(void)
+{
+    size_t size = tl_xmem_size();
+    if (size) return size;
+    /* This is a query: tl_find_stikdebug_prewarmed() also contains a legacy prewarm path. Never trap from a UI check. */
+    tl_dual_mapping *(*get)(void) = (tl_dual_mapping *(*)(void))dlsym(RTLD_DEFAULT, "husk_ios_jit_get_mapping");
+    tl_dual_mapping *m = get ? get() : NULL;
+    return m && m->rw_addr && m->rx_addr ? m->size : 0;
+}

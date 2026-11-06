@@ -437,3 +437,13 @@
 "Email" = "电子邮件";
 "Privacy policy" = "隐私政策";
 "View on Google Play" = "在 Google Play 上查看";
+
+"JIT memory" = "JIT 内存";
+"Memory size" = "内存大小";
+"JIT memory in MB" = "JIT 内存，单位 MB";
+"Save memory setting" = "保存内存设置";
+"Enter a whole number from 2 to 1024 MB." = "请输入 2 至 1024 之间的整数，单位 MB。";
+"JIT uses the size set here for all apps. Close and reopen Husk after changing this setting." = "所有应用均使用此处设置的 JIT 内存大小。修改后请彻底退出并重新打开 Husk。";
+"Code memory" = "已分配代码内存";
+"Next launch budget" = "待申请代码内存";
+"The app ran out of code memory. Increase JIT memory in Settings, then close and reopen Husk." = "应用的代码内存不足。请在设置中调大 JIT 内存，然后彻底退出并重新打开 Husk。";
