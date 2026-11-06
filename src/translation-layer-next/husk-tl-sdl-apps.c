@@ -159,6 +159,8 @@ static void kivy_statics(void)
     if (metrics.l) tl_jni_set_static("org/renpy/android/Hardware", "metrics", "Landroid/util/DisplayMetrics;", metrics);
 }
 
+void tl_trutien_install(void);
+
 void tl_sdl_apps_install(const char *package)
 {
     if (tl_dexidx_has_class("org/kivy/android/PythonActivity")) kivy_statics();
