@@ -357,7 +357,7 @@ static void *launch_thread(void *arg)
                 .density = g_java_density, .metal_layer = A.layer, .angle_egl = A.angle, .angle_gles = NULL,
                 .framework_res = fwres, .show_keyboard = g_java_host.keyboard, .set_clipboard = g_java_host.set_clipboard,
                 .get_clipboard = g_java_host.get_clipboard, .share = g_java_host.share, .set_orientation = g_java_host.orientation,
-                .pick_documents = g_java_host.pick_documents,
+                .pick_documents = g_java_host.pick_documents, .open_url = tl_cocos_open_url_hook,
                 .insets = { g_java_insets[0], g_java_insets[1], g_java_insets[2], g_java_insets[3] }, .night_mode = g_java_night,
                 .quest_only_cutout = g_java_quest_only,
             };

@@ -11,9 +11,26 @@
 #include <unistd.h>
 #endif
 
+void tl_path_normalize_slashes(const char *src, char *dst, size_t cap)
+{
+    if (!dst || !cap) return;
+    if (!src) { dst[0] = 0; return; }
+    size_t j = 0;
+    for (size_t i = 0; src[i] && j + 1 < cap; i++) {
+        if (src[i] == '/' && j > 0 && dst[j - 1] == '/') continue;
+        dst[j++] = src[i];
+    }
+    dst[j] = 0;
+}
+
 const char *tl_resolve_data_path(const char *path, const char *host_root, char *out, size_t cap)
 {
     if (!path || !host_root) return NULL;
+    char norm[1024];
+    if (strstr(path, "//")) {
+        tl_path_normalize_slashes(path, norm, sizeof(norm));
+        path = norm;
+    }
     static const char *const roots[] = { "/data/user/0/", "/data/data/" };
     for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); i++) {
         size_t n = strlen(roots[i]);
@@ -28,6 +45,11 @@ const char *tl_resolve_data_path(const char *path, const char *host_root, char *
 unsigned tl_android_data_ancestor_mode(const char *path)
 {
     if (!path || path[0] != '/') return 0;
+    char norm[64];
+    if (strstr(path, "//")) {
+        tl_path_normalize_slashes(path, norm, sizeof(norm));
+        path = norm;
+    }
     size_t n = strlen(path);
     while (n > 1 && path[n - 1] == '/') n--;
     /* Android's modes: system-owned, traversable by an app but not listable. */

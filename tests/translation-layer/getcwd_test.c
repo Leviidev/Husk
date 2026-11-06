@@ -86,15 +86,34 @@ int main(int argc, char **argv)
     /* Android data ancestor path simulation: /data, /data/data, /data/user, /data/user/0 */
     assert(tl_android_data_ancestor_mode("/data") == 0771);
     assert(tl_android_data_ancestor_mode("/data/") == 0771);
+    assert(tl_android_data_ancestor_mode("//data") == 0771);
     assert(tl_android_data_ancestor_mode("/data/data") == 0771);
+    assert(tl_android_data_ancestor_mode("//data/data") == 0771);
     assert(tl_android_data_ancestor_mode("/data/data///") == 0771);
+    assert(tl_android_data_ancestor_mode("///data//data///") == 0771);
     assert(tl_android_data_ancestor_mode("/data/user") == 0711);
     assert(tl_android_data_ancestor_mode("/data/user/0") == 0771);
     assert(tl_android_data_ancestor_mode("/data/user/0/") == 0771);
+    assert(tl_android_data_ancestor_mode("///data/user//0///") == 0771);
     assert(tl_android_data_ancestor_mode("/data/data/example.game") == 0);
     assert(tl_android_data_ancestor_mode("/data/other") == 0);
     assert(tl_android_data_ancestor_mode(NULL) == 0);
     assert(tl_android_data_ancestor_mode("") == 0);
+
+    /* Consecutive slashes in data path resolution */
+    snprintf(host, sizeof(host), "%s/files/quest", argv[1]);
+    assert(tl_resolve_data_path("//data/data/example.game/files/quest", g_data_dir, mapped, sizeof(mapped)));
+    assert(!strcmp(mapped, host));
+    assert(tl_resolve_data_path("///data//user///0//example.game/files/quest", g_data_dir, mapped, sizeof(mapped)));
+    assert(!strcmp(mapped, host));
+
+    char nbuf[64];
+    tl_path_normalize_slashes("//foo///bar//baz/", nbuf, sizeof(nbuf));
+    assert(!strcmp(nbuf, "/foo/bar/baz/"));
+    tl_path_normalize_slashes("///", nbuf, sizeof(nbuf));
+    assert(!strcmp(nbuf, "/"));
+    tl_path_normalize_slashes("", nbuf, sizeof(nbuf));
+    assert(!strcmp(nbuf, ""));
 
     assert(tl_android_data_ancestor_access("/data", 0) == 0);
     assert(tl_android_data_ancestor_access("/data", 1) == 0);

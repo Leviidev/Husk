@@ -406,14 +406,52 @@ final class TranslationLayerStore: ObservableObject {
             return "Husk could not copy it: \(error.localizedDescription)"
         }
 
-        let apks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
+        var targetDir = dir
+        let stagingApks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
             .filter { $0.lowercased().hasSuffix(".apk") }
             .map { dir.appendingPathComponent($0).path })
-        describe(apks, into: dir)
+        describe(stagingApks, into: dir)
+
+        let newPkg = (try? String(contentsOf: dir.appendingPathComponent("package.txt"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let newPkg, !newPkg.isEmpty {
+            let existingDirs = (try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+            for existing in existingDirs where existing.lastPathComponent != dir.lastPathComponent {
+                let pkgFile = existing.appendingPathComponent("package.txt")
+                if let existingPkg = (try? String(contentsOf: pkgFile, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   existingPkg == newPkg {
+                    let oldFiles = (try? fm.contentsOfDirectory(at: existing, includingPropertiesForKeys: nil)) ?? []
+                    for f in oldFiles where f.pathExtension.lowercased() == "apk" {
+                        try? fm.removeItem(at: f)
+                    }
+                    let stagedFiles = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+                    for f in stagedFiles where f.pathExtension.lowercased() == "apk" {
+                        let dest = existing.appendingPathComponent(f.lastPathComponent)
+                        try? fm.removeItem(at: dest)
+                        try? fm.moveItem(at: f, to: dest)
+                    }
+                    let javaDataLib = existing.appendingPathComponent("java-data").appendingPathComponent("lib")
+                    if let libs = try? fm.contentsOfDirectory(at: javaDataLib, includingPropertiesForKeys: nil) {
+                        for lib in libs where lib.pathExtension.lowercased() == "so" {
+                            try? fm.removeItem(at: lib)
+                        }
+                    }
+                    try? fm.removeItem(at: dir)
+                    targetDir = existing
+                    HuskLog.log("tl", "updated existing app for \(newPkg) in \(existing.lastPathComponent)")
+                    break
+                }
+            }
+        }
+
+        let apks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: targetDir.path)) ?? [])
+            .filter { $0.lowercased().hasSuffix(".apk") }
+            .map { targetDir.appendingPathComponent($0).path })
+        describe(apks, into: targetDir)
         let json = scan(apks)
-        try? Data(json.utf8).write(to: dir.appendingPathComponent("report.json"))
-        try? "\(scanVersion)".write(to: dir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
-        HuskLog.log("tl", "report for \(dir.lastPathComponent): \(json)")
+        try? Data(json.utf8).write(to: targetDir.appendingPathComponent("report.json"))
+        try? "\(scanVersion)".write(to: targetDir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
+        HuskLog.log("tl", "report for \(targetDir.lastPathComponent): \(json)")
         return nil
     }
 

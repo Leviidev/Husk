@@ -187,6 +187,11 @@ void tl_set_extra_fonts_dir(const char *dir) { snprintf(g_extrafonts, sizeof(g_e
 const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
+    char norm[1024];
+    if (strstr(path, "//")) {
+        tl_path_normalize_slashes(path, norm, sizeof(norm));
+        path = norm;
+    }
     if (g_sysfonts[0]) {
         const char *font_suffix = NULL;
         if (!strncmp(path, "/system/fonts", 13) && (path[13] == 0 || path[13] == '/'))
@@ -1050,7 +1055,7 @@ static int b_ioctl(int fd, unsigned long req, long arg)
 /* ------------------------------------------------------------ directories */
 
 typedef struct { uint64_t d_ino; int64_t d_off; uint16_t d_reclen; uint8_t d_type; char d_name[256]; } guest_dirent;
-typedef struct { DIR *dir; guest_dirent ent; char **names; uint8_t *types; size_t n, pos; } guest_dir;
+typedef struct { DIR *dir; guest_dirent ent; char **names; uint8_t *types; size_t n, pos; bool is_root; int root_synth_idx; } guest_dir;
 
 /* A folder inside an APK ("jar:file:///.../base.apk!/assets"), listed from the zip: what is directly in it, files and folders.
  * Unity 6 lists its StreamingAssets this way through System.IO (Wordscapes boots from it). */
@@ -1093,6 +1098,11 @@ static void *b_opendir(const char *p)
     if (!d) return NULL;
     guest_dir *g = calloc(1, sizeof(*g));
     g->dir = d;
+    if (p) {
+        char pnorm[16];
+        tl_path_normalize_slashes(p, pnorm, sizeof(pnorm));
+        if (!strcmp(pnorm, "/")) g->is_root = true;
+    }
     return g;
 }
 static void *b_fdopendir(int fd)
@@ -1105,7 +1115,7 @@ static void *b_fdopendir(int fd)
     return g;
 }
 static int b_dirfd(void *dp) { guest_dir *g = dp; if (!g->dir) { tl_set_guest_errno(95); return -1; } return dirfd(g->dir); }
-static void b_rewinddir(void *dp) { guest_dir *g = dp; if (g->dir) rewinddir(g->dir); else g->pos = 0; }
+static void b_rewinddir(void *dp) { guest_dir *g = dp; if (g->dir) { rewinddir(g->dir); g->root_synth_idx = 0; } else g->pos = 0; }
 static void *b_readdir(void *dp)
 {
     guest_dir *g = dp;
@@ -1117,7 +1127,29 @@ static void *b_readdir(void *dp)
         return &g->ent;
     }
     TL_ERRNO_BEGIN(); struct dirent *e = readdir(g->dir); TL_ERRNO_END();
-    if (!e) return NULL;
+    if (!e) {
+        if (g->is_root) {
+            static const struct { const char *name; uint8_t type; } synths[] = {
+                { "data", DT_DIR },
+                { "sdcard", DT_DIR },
+                { "system", DT_DIR },
+                { "storage", DT_DIR },
+            };
+            size_t nsynths = sizeof(synths) / sizeof(synths[0]);
+            if ((size_t)g->root_synth_idx < nsynths) {
+                const char *sname = synths[g->root_synth_idx].name;
+                uint8_t stype = synths[g->root_synth_idx].type;
+                g->root_synth_idx++;
+                g->ent.d_ino = 0x8000 + g->root_synth_idx;
+                g->ent.d_off = (int64_t)g->root_synth_idx;
+                g->ent.d_reclen = sizeof(guest_dirent);
+                g->ent.d_type = stype;
+                snprintf(g->ent.d_name, sizeof(g->ent.d_name), "%s", sname);
+                return &g->ent;
+            }
+        }
+        return NULL;
+    }
     g->ent.d_ino = e->d_ino; g->ent.d_off = 0; g->ent.d_reclen = sizeof(guest_dirent); g->ent.d_type = e->d_type;
     snprintf(g->ent.d_name, sizeof(g->ent.d_name), "%s", e->d_name);
     return &g->ent;

@@ -6,6 +6,9 @@
 /* Android app-data aliases used by the file shims; NULL means not an alias. */
 const char *tl_resolve_data_path(const char *path, const char *host_root, char *out, size_t cap);
 
+/* Collapses consecutive slashes in a path (e.g. "//data//data" -> "/data/data"). */
+void tl_path_normalize_slashes(const char *src, char *dst, size_t cap);
+
 /* /data, /data/data, /data/user and /data/user/0 (trailing slashes allowed): directories on
  * Android, absent on iOS. Games that resolve names case-insensitively walk the path from "/"
  * with lstat and give up at the first missing component. Returns Android's permission bits
