@@ -45,20 +45,8 @@ enum JITBootstrap {
                          + "return 0 instead of killing the process")
     }
 
-    /// Size QEMU will ask for. Must match tb-size in the phase 1 command line:
-    /// a smaller region here means QEMU allocates a second one, at a point where
-    /// StikDebug may be long gone.
-    // Back to 256 MiB. Raising this to 512 was one of three changes made at
-    // once in v15, and v15 was the first build to die inside qemu_init(). The
-    // guest RAM -- the other suspect -- has since been shown to map and write
-    // cleanly at 6144 MiB, which leaves this. The region itself allocates and
-    // passes its selftest at 512; whatever objects is further in, where TCG
-    // carves the buffer into per-vCPU regions.
-    //
-    // 512 MiB since the native runtime runs Minecraft: its main library alone is a 354 MiB image that has to sit in this
-    // region, with the stubs the loader places beside it. A larger prewarm is safe for QEMU, which is handed the
-    // prewarmed region whenever it is at least what tb-size asks for.
-    static let jitBytes = 512 * 1024 * 1024
+    /// Always request the size entered in Settings, regardless of the selected app or its previous runs.
+    static var jitBytes: Int { JITMemoryBudget.bytes() }
 
     /// True once the region is held. The memory budget needs this: after a
     /// prewarm the JIT is already counted in the footprint, so subtracting it
@@ -76,6 +64,8 @@ enum JITBootstrap {
     @discardableResult
     static func prewarm() -> Bool {
         if prewarmed { return true }
+        let jitBytes = Self.jitBytes
+        husk_jit_budget_set_target_bytes(jitBytes)
         // Before iOS 26 Husk can make the region itself where the device allows it (a jailbreak,
         // a debugger that attached and let go such as TrollStore's enable-jit, or dynamic-codesigning),
         // so it does not wait for CS_DEBUGGED there if jailbroken: Dopamine hides that flag from apps unless
@@ -93,6 +83,14 @@ enum JITBootstrap {
             selfGrantTried = true
             if mapJITWorks {
                 HuskLog.log("jit", "not trapping for a JIT region (no StikDebug); MAP_JIT executes here")
+                // Claim the selected budget here as well. Native apps and PS4 need a held dual mapping, and the
+                // mapping lookup must remain a read-only query instead of allocating a hard-coded 256 MiB later.
+                prepareCompressedHeap()
+                if husk_ios_jit_prewarm_self(jitBytes) {
+                    prewarmed = true
+                } else {
+                    releaseUnusedCompressedHeap()
+                }
                 lastFailure = nil
                 return true
             }
