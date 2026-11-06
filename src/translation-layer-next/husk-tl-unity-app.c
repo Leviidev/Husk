@@ -565,8 +565,10 @@ void husk_java_keyboard_closed(void) { if (java_running()) tl_javaapp_keyboard_c
 void husk_java_back(void) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_back(); }
 void tl_web_attach(void *screen_view, void *container, float scale, bool fresh);
 bool tl_web_hit(float x, float y);
+int tl_web_parent_scroll_axes(float x, float y);
 void husk_java_web_attach(void *screen_view, void *container, float scale, int fresh) { tl_web_attach(screen_view, container, scale, fresh != 0); }
 int husk_java_web_hit(float x, float y) { return java_running() && tl_web_hit(x, y) ? 1 : 0; }
+int husk_java_web_parent_scroll_axes(float x, float y) { return java_running() ? tl_web_parent_scroll_axes(x, y) : 0; }
 void husk_java_key(int android_keycode, int down) { if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA) tl_javaapp_key(android_keycode, down != 0); }
 int husk_flutter_is_app(const char *apk) { return tl_flutter_is_app(apk) ? 1 : 0; }
 void husk_flutter_set_pixel_ratio(float ratio) { tl_flutter_set_pixel_ratio(ratio); }
