@@ -920,7 +920,15 @@ static void *b_popen(const char *cmd, const char *mode)
     return f;
 }
 static int b_pclose(void *f) { if (!f) { tl_set_guest_errno(10); return -1; } fclose(map_stream(f)); return 0; }
-static FILE *b_tmpfile(void) { TL_ERRNO_BEGIN(); FILE *f = tmpfile(); TL_ERRNO_END(); return f; }
+static FILE *b_tmpfile(void)
+{
+    TL_ERRNO_BEGIN();
+    int fd = tl_anonymous_temp_file();
+    FILE *f = fd < 0 ? NULL : fdopen(fd, "w+");
+    if (!f && fd >= 0) { int error = errno; close(fd); errno = error; }
+    TL_ERRNO_END();
+    return f;
+}
 /* bionic's mbstate_t is 8 bytes, Darwin's is not; the conversion state is dropped */
 static size_t b_wcsrtombs(char *dst, const wchar_t **src, size_t len, void *ps) { (void)ps; return wcsrtombs(dst, src, len, NULL); }
 

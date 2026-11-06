@@ -82,23 +82,44 @@ void tl_set_data_dir(const char *dir)
     snprintf(g_data_dir, sizeof(g_data_dir), "%s", dir ? dir : "");
     if (g_data_dir[0]) drop_unfinished(g_data_dir, 0);
 }
-const char *tl_data_dir(void) { return g_data_dir[0] ? g_data_dir : "/tmp"; }
+const char *tl_temporary_dir(void)
+{
+    const char *dir = getenv("TL_TMP");
+    if (dir) return dir;
+    dir = getenv("TMPDIR");
+    return dir ? dir : g_data_dir[0] ? g_data_dir : NULL;
+}
+
+const char *tl_data_dir(void)
+{
+    if (g_data_dir[0]) return g_data_dir;
+    const char *dir = tl_temporary_dir();
+    if (dir && dir[0] == '/') return dir;
+    tl_log_line("bionic: no app data directory or temporary directory was configured");
+    abort();
+}
+
+int tl_anonymous_temp_file(void)
+{
+    const char *dir = tl_temporary_dir();
+    if (!dir || !*dir) { errno = ENOENT; return -1; }
+    if (dir[0] != '/') { errno = EINVAL; return -1; }
+    char path[PATH_MAX];
+    int n = snprintf(path, sizeof(path), "%s%shusk-temp-XXXXXX", dir, dir[strlen(dir) - 1] == '/' ? "" : "/");
+    if (n < 0 || (size_t)n >= sizeof(path)) { errno = ENAMETOOLONG; return -1; }
+    int fd = mkstemp(path);
+    if (fd < 0) return -1;
+    if (unlink(path)) { int error = errno; close(fd); errno = error; return -1; }
+    return fd;
+}
 
 /* A file holding `content`, already unlinked. Where it can be made depends on the host: iOS gives an app no /tmp. */
 static int synth_file_n(const void *content, size_t n);
 static int synth_file(const char *content) { return synth_file_n(content, strlen(content)); }
 static int synth_file_n(const void *content, size_t n)
 {
-    const char *dirs[3] = { g_data_dir[0] ? g_data_dir : NULL, getenv("TMPDIR"), "/tmp" };
-    char tmpl[1100];
-    int fd = -1;
-    for (int i = 0; i < 3 && fd < 0; i++) {
-        if (!dirs[i]) continue;
-        snprintf(tmpl, sizeof(tmpl), "%s/husk-synth-XXXXXX", dirs[i]);
-        fd = mkstemp(tmpl);
-    }
+    int fd = tl_anonymous_temp_file();
     if (fd < 0) { tl_log_line("bionic: no writable directory for a synthetic file (%s)", strerror(errno)); return -1; }
-    unlink(tmpl);
     if (write(fd, content, n) != (ssize_t)n) { close(fd); return -1; }
     lseek(fd, 0, SEEK_SET);
     return fd;
