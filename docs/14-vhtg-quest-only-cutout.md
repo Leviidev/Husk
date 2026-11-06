@@ -1,5 +1,9 @@
 # VHTG: move only the quest tracker
 
+This records the first quest-only implementation and its delivered IPA. The
+follow-up [selected HUD adjustment](15-vhtg-selected-hud.md) corrects coordinate
+units and timing, and adds the separately requested walk/sit button adjustment.
+
 The user reported that build `439564c` moves the avatar, 18+ logo and walk/sit
 controls along with the quest tracker. The requested behavior is a full-screen
 scene with only the quest tracker moved out of the camera edge. The general

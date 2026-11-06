@@ -27,7 +27,9 @@ static inline bool tl_quest_delta(tl_quest_rect scene, tl_quest_rect window, tl_
     double r = scene.x + scene.w - fmax(0,cut.right) * scene.w / pixel_w;
     double t = scene.y + fmax(0,cut.top) * scene.h / pixel_h;
     double b = scene.y + scene.h - fmax(0,cut.bottom) * scene.h / pixel_h;
-    if (r-l < window.w || b-t < window.h) return false;
+    // A tall quest container must not disable horizontal camera avoidance.
+    if (((cut.left > 0 || cut.right > 0) && r-l < window.w) ||
+        ((cut.top > 0 || cut.bottom > 0) && b-t < window.h)) return false;
     if (cut.left > 0 && window.x < l) *dx = l-window.x;
     else if (cut.right > 0 && window.x+window.w > r) *dx = r-window.x-window.w;
     if (cut.top > 0 && window.y < t) *dy = t-window.y;
@@ -35,5 +37,16 @@ static inline bool tl_quest_delta(tl_quest_rect scene, tl_quest_rect window, tl_
     *dx = ceil(fabs(*dx)) * (*dx < 0 ? -1 : 1);
     *dy = ceil(fabs(*dy)) * (*dy < 0 ? -1 : 1);
     return true;
+}
+
+/* A small downward adjustment for the two movement buttons, bounded by the picture.
+ * 12/430 is twelve screen points on the user's 430-point-tall landscape surface.
+ * Normalizing by scene height keeps the result independent of render resolution. */
+static inline double tl_quest_movement_down(tl_quest_rect scene, tl_quest_rect window)
+{
+    if (!isfinite(scene.y) || !isfinite(scene.h) || !isfinite(window.y) || !isfinite(window.h) ||
+        scene.h <= 0 || window.h <= 0) return 0;
+    double room = scene.y + scene.h - window.y - window.h;
+    return floor(fmax(0, fmin(scene.h * (12.0/430.0), room)));
 }
 #endif

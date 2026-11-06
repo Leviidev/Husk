@@ -82,7 +82,7 @@ struct TLAppSettings: Codable, Equatable {
     var resolution: Resolution = .high
     /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
     var avoidUnsafeArea = true
-    /// VHTG's generic safe rectangle shifts all HUD groups; its inspected native profile can move only quest tracking.
+    /// VHTG's inspected native profile adjusts quests and the two walk/sit buttons separately.
     var questOnlyCutout = true
     /// The frames-per-second readout in the top bar.
     var showStats = true
@@ -197,7 +197,7 @@ struct TLAppSettingsView: View {
                 }
                 Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
                 if app.packageName == "review.com.game3c.vhtgmobile", settings.avoidUnsafeArea {
-                    Toggle("Move only the quest tracker", isOn: $settings.questOnlyCutout)
+                    Toggle("Adjust quest and walk/sit controls", isOn: $settings.questOnlyCutout)
                 }
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
@@ -205,7 +205,7 @@ struct TLAppSettingsView: View {
                 Text("Display")
             } footer: {
                 Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's quest-only mode keeps the other HUD groups in their original positions.")
+                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's separate adjustment keeps quests clear of the camera and lowers only the walk/sit buttons slightly, leaving the avatar and 18+ logo in place.")
             }
 
             Section {

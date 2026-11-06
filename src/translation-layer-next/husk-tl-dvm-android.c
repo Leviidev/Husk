@@ -1227,7 +1227,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
     { void tl_set_data_dir(const char *dir); tl_set_data_dir(A.data); }
     tl_set_guest_package(A.pkg);
-    if (tl_vhtg_quest_start(cfg->apk_path,A.pkg,cfg->quest_only_cutout,cfg->insets))
+    if (tl_vhtg_quest_start(cfg->apk_path,A.pkg,cfg->quest_only_cutout,cfg->insets,cfg->width,cfg->height))
         for (int i=0;i<4;i++) A.insets[i]=0;
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);

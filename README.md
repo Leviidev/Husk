@@ -79,6 +79,7 @@ Game compatibility remains unverified until tested on a device.
 - [iPhone cutouts, frame allocation checks and gameplay crash evidence](docs/12-iphone-viewport-stability.md)
 - [Full-screen background with cutout-aware game controls](docs/13-fullscreen-safe-controls.md)
 - [VHTG quest-only cutout positioning](docs/14-vhtg-quest-only-cutout.md)
+- [VHTG quest coordinates and separate walk/sit adjustment](docs/15-vhtg-selected-hud.md)
 - Manual iOS build: [HUNG APK PLAYER workflow](.github/workflows/hung-ios.yml)
 
 ```sh
