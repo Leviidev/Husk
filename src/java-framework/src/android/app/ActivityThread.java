@@ -43,6 +43,12 @@ public final class ActivityThread {
     public Application huskInitialApplication() { return mInitialApplication; }
     public void huskAddApplication(Application app) { synchronized (mAllApplications) { if (!mAllApplications.contains(app)) mAllApplications.add(app); } }
 
+    public static void huskResetSession() {
+        ActivityThread t = sCurrent;
+        t.mPackages.clear(); t.mResourcePackages.clear(); t.mProviderMap.clear();
+        t.mAllApplications.clear(); t.mInitialApplication = null; t.mBoundApplication = null;
+        t.mInstrumentation = new Instrumentation();
+    }
     public static ActivityThread currentActivityThread() { return sCurrent; }
     public static Application currentApplication() { return husk.AppRunner.application(); }
     public Instrumentation getInstrumentation() { return mInstrumentation; }

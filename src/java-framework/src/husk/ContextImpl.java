@@ -27,6 +27,10 @@ public final class ContextImpl extends Context {
     private Resources.Theme mTheme;
     private int mThemeId;
 
+    public static synchronized void resetSession() {
+        sApp = null; sApplication = null; sAssets = null; sResources = null;
+        sServices.clear(); sPrefs.clear();
+    }
     private ContextImpl(Resources r) { mResources = r; }
     public static synchronized ContextImpl app() {
         if (sApp == null) {

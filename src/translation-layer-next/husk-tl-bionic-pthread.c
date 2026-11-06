@@ -16,6 +16,7 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-session.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -432,6 +433,7 @@ void tl_thread_altstack(void)
     stack_t ss = { .ss_sp = malloc(64 << 10), .ss_size = 64 << 10, .ss_flags = 0 };
     if (ss.ss_sp) sigaltstack(&ss, NULL);
 }
+static void guest_thread_done(void *unused) { (void)unused; tl_session_worker_done(); }
 static void *start_thunk(void *p)
 {
     start_ctx c = *(start_ctx *)p;
@@ -445,13 +447,17 @@ static void *start_thunk(void *p)
         const char *sym = tl_ld_symbol_at((const void *)c.fn, &ln, &sa);
         tl_log_line("thread: started, entry %s %s+%#lx", ln ? ln : "?", sym ? sym : "?", sa ? (unsigned long)((const char *)c.fn - (const char *)sa) : 0ul);
     }
-    void *r = c.fn(c.arg);
+    void *r = NULL;
+    pthread_cleanup_push(guest_thread_done, NULL);
+    if (!tl_session_stopping()) r = c.fn(c.arg);
+    pthread_cleanup_pop(1);
     if (g_thread_trace) { char nm[32] = ""; pthread_getname_np(pthread_self(), nm, sizeof(nm)); tl_log_line("thread: '%s' EXITED", nm); }
     return r;
 }
 
 static int b_create(pthread_t *out, const guest_attr *attr, void *(*fn)(void *), void *arg)
 {
+    if (!tl_session_worker_add()) return 11;
     pthread_attr_t a;
     pthread_attr_init(&a);
     size_t stack = attr && attr->stack_size ? attr->stack_size : DEFAULT_STACK;
@@ -466,7 +472,7 @@ static int b_create(pthread_t *out, const guest_attr *attr, void *(*fn)(void *),
     pthread_t t;
     int r = pthread_create(&t, &a, start_thunk, c);
     pthread_attr_destroy(&a);
-    if (r) { free(c); return rc(r); }
+    if (r) { free(c); tl_session_worker_done(); return rc(r); }
     *out = t;
     return 0;
 }

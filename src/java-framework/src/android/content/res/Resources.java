@@ -137,10 +137,13 @@ public class Resources {
             if (pb != null) { for (int i = 0; i < pb.n; i++) b.put(pb.keys[i], pb.types[i], pb.data[i], pb.strings[i], pb.dens[i]); }
         }
         int n = t.bagCount(e);
+        // Arrays are ordered values. Optimized APKs can give every item the same
+        // map name; deduplicating those names as style attributes loses elements.
+        boolean array = "array".equals(t.typeName(id));
         TypedValue v = new TypedValue();
         for (int i = 0; i < n; i++) {
             int name = t.bagItem(e, i, v);
-            b.put(name, v.type, v.data, v.string, v.density);
+            b.put(array ? i : name, v.type, v.data, v.string, v.density);
         }
         cache.put(id, b);
         return b;

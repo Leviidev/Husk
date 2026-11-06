@@ -28,7 +28,7 @@ void tl_log_line(const char *fmt, ...);
 
 static struct {
     uint8_t *rx, *rw;
-    size_t size, used;
+    size_t size, used, shared_used;
     bool open, shared;
     pthread_mutex_t lock;
 } g_x = { .lock = PTHREAD_MUTEX_INITIALIZER };
@@ -299,7 +299,7 @@ bool tl_jit_reserve_bottom(size_t end)
     return !g_reserve || g_reserve(end);
 }
 
-bool tl_xmem_alloc(size_t bytes, uint8_t **rx, uint8_t **rw)
+static bool alloc_bytes(size_t bytes, uint8_t **rx, uint8_t **rw, bool shared)
 {
     size_t n = (bytes + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1);
     bool ok = false;
@@ -309,11 +309,16 @@ bool tl_xmem_alloc(size_t bytes, uint8_t **rx, uint8_t **rw)
         if (rx) *rx = g_x.rx + g_x.used;
         if (rw) *rw = g_x.rw + g_x.used;
         g_x.used += n;
+        if (shared) g_x.shared_used += n;
         ok = true;
     }
     pthread_mutex_unlock(&g_x.lock);
     return ok;
 }
+
+bool tl_xmem_alloc(size_t bytes, uint8_t **rx, uint8_t **rw) { return alloc_bytes(bytes, rx, rw, false); }
+bool tl_xmem_alloc_shared(size_t bytes, uint8_t **rx, uint8_t **rw) { return alloc_bytes(bytes, rx, rw, true); }
+size_t tl_xmem_shared_used(void) { pthread_mutex_lock(&g_x.lock); size_t n = g_x.shared_used; pthread_mutex_unlock(&g_x.lock); return n; }
 
 ptrdiff_t tl_xmem_delta(void) { return g_x.rw - g_x.rx; }
 bool tl_xmem_near(const void *p, size_t dist)

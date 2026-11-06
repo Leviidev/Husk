@@ -84,6 +84,7 @@ struct dvm_class {
     dvm_method **vtab; int nvtab;
     _Atomic int state;
     pthread_mutex_t init_lock;
+    pthread_cond_t init_changed;
     pthread_t init_thread;
     char elem;                      /* arrays: the element's descriptor letter ('L' or '[' for objects) */
     char prim;                      /* primitive classes: their letter */

@@ -16,6 +16,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-codewrite.h"
 #include "husk-tl-xmem.h"
 #include "husk-tl-binder.h"
+#include "husk-tl-session.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -653,7 +654,9 @@ static long b_read(int fd, void *p, size_t n)
         if (r > 0) v->pos += (uint64_t)r;
         return r;
     }
-    TL_ERRNO_BEGIN(); long r = read(fd, p, n); int e = errno; TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = read(fd, p, n); tl_session_io_end(&io); }
+    int e = errno; TL_ERRNO_END();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_TIMERFD_TRACE") ? 1 : 0;
       bool tl_timerfd_is(int fd);
       if (tr && tl_timerfd_is(fd)) { char nm[32] = ""; pthread_getname_np(pthread_self(), nm, sizeof(nm)); tl_log_line("timerfd[%s]: read fd %d -> %ld errno %d", nm, fd, r, r < 0 ? e : 0); } }
@@ -1520,6 +1523,7 @@ static bool b_mprotect_writable(void *a, size_t l)
     vm_address_t at = (vm_address_t)(uintptr_t)a; vm_size_t sz = 0;
     vm_region_basic_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_BASIC_INFO_COUNT_64; mach_port_t obj = MACH_PORT_NULL;
     if (vm_region_64(mach_task_self(), &at, &sz, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &cnt, &obj) != KERN_SUCCESS) return false;
+    if (obj != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), obj);
     return at <= (vm_address_t)(uintptr_t)a && at + sz >= (vm_address_t)(uintptr_t)a + l && (info.protection & VM_PROT_WRITE);
 }
 static int b_mprotect(void *a, size_t l, int prot)
@@ -2027,7 +2031,7 @@ static int poll_devices_via_select(struct pollfd *fds, unsigned long n, int r)
 }
 static int b_poll(struct pollfd *fds, unsigned long n, int timeout)
 {
-    TL_ERRNO_BEGIN(); int r = poll(fds, (nfds_t)n, timeout); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = tl_session_poll(fds, (nfds_t)n, timeout); TL_ERRNO_END();
     if (r > 0) r = poll_devices_via_select(fds, n, r);
     for (unsigned long i = 0; i < n && i < 4; i++)
         if (net_trace_fd(fds[i].fd)) { tl_log_line("net: poll(%lu fds, fd[%lu] %d ev %#x, timeout %d) -> %d rev %#x", n, i, fds[i].fd, fds[i].events, timeout, r, r > 0 ? fds[i].revents : 0); break; }

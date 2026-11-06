@@ -1,3 +1,4 @@
+#include "husk-tl-session.h"
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * The native methods ART implements inside itself rather than in libjavacore/libopenjdk: Object, String's character access,
@@ -25,6 +26,7 @@ static jvalue Z(bool v) { jvalue r; r.j = v ? 1 : 0; return r; }
 static jvalue L(void *p) { jvalue r; r.j = 0; r.l = p; return r; }
 static jvalue F(float f) { jvalue r; r.j = 0; r.f = f; return r; }
 static jvalue D(double d) { jvalue r; r.d = d; return r; }
+static jobj *g_vm_runtime;
 #define NAT(fn) static bool fn(jobj *self, const jvalue *a, jvalue *ret)
 #define UNUSED (void)self; (void)a; (void)ret
 
@@ -522,14 +524,13 @@ NAT(VMR_properties)
 NAT(VMR_getRuntime)
 {
     UNUSED;
-    static jobj *rt;
-    if (!rt) {
+    if (!g_vm_runtime) {
         tl_jclass *jc = dvm_class_named("dalvik/system/VMRuntime");
         if (!jc) { *ret = L(NULL); return true; }
-        rt = dvm_new_object(jc);
-        rt->refs = 1u << 30;
+        g_vm_runtime = dvm_new_object(jc);
+        g_vm_runtime->refs = 1u << 30;
     }
-    *ret = L(rt);
+    *ret = L(g_vm_runtime);
     return true;
 }
 NAT(VMR_zero) { UNUSED; ret->j = 0; return true; }
@@ -571,10 +572,23 @@ NAT(VMR_classPath) { UNUSED; *ret = L(dvm_new_string_utf8("")); return true; }
 /* ================================================================== Thread */
 
 static _Thread_local jobj *t_thread;
+static atomic_ulong g_thread_epoch;
+static _Thread_local unsigned long t_thread_epoch;
+
+void dvm_natives_reset_session(void)
+{
+    atomic_fetch_add(&g_thread_epoch, 1);
+    g_vm_runtime = NULL;
+    pthread_mutex_lock(&g_intern_lock);
+    free(g_interned); g_interned = NULL; g_icap = 0; g_icount = 0;
+    pthread_mutex_unlock(&g_intern_lock);
+}
 static pthread_mutex_t g_tid_lock = PTHREAD_MUTEX_INITIALIZER;
 
 jobj *dvm_current_thread(void)
 {
+    unsigned long epoch = atomic_load(&g_thread_epoch);
+    if (t_thread_epoch != epoch) { t_thread = NULL; t_thread_epoch = epoch; }
     if (t_thread) return t_thread;
     /* A thread Java has not seen (the main thread, a native thread calling in): a Thread for it, in the main group, as ART
      * makes when it attaches one. */
@@ -607,9 +621,7 @@ NAT(Thread_sleep)
 {
     (void)self; (void)ret;
     int64_t ms = a[1].j; int32_t ns = a[2].i;
-    struct timespec ts = { (time_t)(ms / 1000), (long)((ms % 1000) * 1000000 + ns) };
-    nanosleep(&ts, NULL);
-    return true;
+    return tl_session_sleep(ms, ns);
 }
 NAT(Thread_false) { UNUSED; *ret = Z(false); return true; }
 NAT(Thread_noop) { UNUSED; return true; }
@@ -711,19 +723,37 @@ NAT(Thread_holdsLock)
 }
 
 typedef struct { jobj *thread; } start_arg;
+static void finish_thread(void *context)
+{
+    jobj *t = context;
+    /* the thread is over: no longer alive, and whoever joins it wakes */
+    dvm_field *pf = thread_peer(t);
+    if (pf) dvm_slots(t)[pf->slot].j = 0;
+    dvm_monitor_enter(t);
+    dvm_monitor_notify(t, true);
+    dvm_monitor_exit(t);
+    /* Android's Thread.join() waits on the thread's private lock object, which ART notifies as the thread ends */
+    static dvm_field *lf;
+    if (!lf) { dvm_class *tc = dvm_class_of(dvm_class_named("java/lang/Thread")); lf = tc ? dvm_find_field(tc, "lock", false) : NULL; }
+    jobj *lk = lf ? dvm_slots(t)[lf->slot].l : NULL;
+    if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
+    tl_session_worker_done();
+}
 static void *thread_main(void *p)
 {
     void tl_thread_altstack(void); tl_thread_altstack();
     start_arg *s = p;
     t_thread = s->thread;
+    t_thread_epoch = g_thread_epoch;
     free(s);
     jobj *t = t_thread;
+    pthread_cleanup_push(finish_thread, t);
     jvalue nm; dvm_class *c = dvm_class_of(dvm_object_class(t));
     dvm_field *nf = c ? dvm_find_field(c, "name", false) : NULL;
     if (nf) { nm = t->fields[nf->slot]; const char *n = tl_jni_string(nm.l); if (n) pthread_setname_np(n); }
     dvm_method *run = dvm_find_virtual(dvm_object_class(t), "run", "()V");
     jvalue r;
-    if (run && !dvm_call(run, t, NULL, &r)) {
+    if (run && !dvm_call(run, t, NULL, &r) && !tl_session_stopping()) {
         char buf[400];
         tl_log_line("dvm: uncaught exception in a thread: %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
         /* the thread's (or the default) uncaught exception handler gets it, as on Android */
@@ -746,23 +776,15 @@ static void *thread_main(void *p)
         dvm_method *d = e ? dvm_find_virtual(dvm_object_class(t), "dispatchUncaughtException", "(Ljava/lang/Throwable;)V") : NULL;
         if (d) { jvalue arg; arg.j = 0; arg.l = e; jvalue r2; if (!dvm_call(d, t, &arg, &r2)) tl_jni_set_pending(NULL); }
     }
-    /* the thread is over: no longer alive, and whoever joins it wakes */
-    dvm_field *pf = thread_peer(t);
-    if (pf) dvm_slots(t)[pf->slot].j = 0;
-    dvm_monitor_enter(t);
-    dvm_monitor_notify(t, true);
-    dvm_monitor_exit(t);
-    /* Android's Thread.join() waits on the thread's private lock object, which ART notifies as the thread ends */
-    static dvm_field *lf;
-    if (!lf) { dvm_class *tc = dvm_class_of(dvm_class_named("java/lang/Thread")); lf = tc ? dvm_find_field(tc, "lock", false) : NULL; }
-    jobj *lk = lf ? dvm_slots(t)[lf->slot].l : NULL;
-    if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
+    pthread_cleanup_pop(1);
     return NULL;
 }
 NAT(Thread_nativeCreate)
 {
     (void)self; (void)ret;
+    if (!tl_session_worker_add()) return false;
     start_arg *s = malloc(sizeof(*s));
+    if (!s) { tl_session_worker_done(); return dvm_throw("java/lang/OutOfMemoryError", "thread startup allocation"); }
     s->thread = a[0].l;
     dvm_field *pf = s->thread ? thread_peer(s->thread) : NULL;
     if (pf) dvm_slots(s->thread)[pf->slot].j = (int64_t)(uintptr_t)s->thread;     /* alive from here (before it runs: start() then isAlive() is true) */
@@ -783,7 +805,7 @@ NAT(Thread_nativeCreate)
         atomic_store(&stack, sz / 4 < (1u << 20) ? (1u << 20) : sz / 4);
     }
     pthread_attr_destroy(&at);
-    if (rc != 0) { free(s); return dvm_throw("java/lang/OutOfMemoryError", "pthread_create"); }
+    if (rc != 0) { if (pf) dvm_slots(s->thread)[pf->slot].j = 0; tl_session_worker_done(); free(s); return dvm_throw("java/lang/OutOfMemoryError", "pthread_create"); }
     return true;
 }
 

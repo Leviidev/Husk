@@ -16,6 +16,8 @@
 #include "husk-tl-internal.h"
 #include "husk-tl-arm32.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-session.h"
+#include <errno.h>
 
 int g_dvm_trace;
 void tl_dvm_set_trace(int level) { g_dvm_trace = level; }
@@ -444,6 +446,7 @@ static bool attach(tl_jclass *jc)
     }
     cdef *cd = cdef_find(name);
     if (!cd) { free(c); return false; }
+    pthread_cond_init(&c->init_changed, NULL);
     dvm_dex *d = cd->dex;
     const uint8_t *def = d->b + d->cls_off + 32 * cd->def;
     c->dex = d; c->def = cd->def;
@@ -779,9 +782,28 @@ const char *tl_dvm_describe_pending(char *buf, size_t n)
 
 /* ================================================================== monitors */
 
-/* A Java monitor: a plain mutex with its owner and how many times the owner holds it. wait() lets go of every level (as Java's
- * does: a thread that waits inside two synchronized blocks on the same object must not keep it locked) and takes them back. */
-typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv; _Atomic(pthread_t) owner; int count; } mon;
+/* The mutex protects monitor state, rather than remaining locked during Java execution.
+ * Entry and Object.wait block on conditions; stop broadcasts them without waiting for a Java owner. */
+typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv, entry; _Atomic(pthread_t) owner; int count; struct mon *held_next; } mon;
+
+static _Thread_local mon *held;
+static void remember_monitor(mon *m) { m->held_next = held; held = m; }
+static void forget_monitor(mon *m) {
+    mon **p = &held;
+    while (*p) { if (*p == m) { *p = m->held_next; m->held_next = NULL; return; } p = &(*p)->held_next; }
+}
+static void release_stopped_monitors(void) {
+    while (held) {
+        mon *m = held; held = m->held_next; m->held_next = NULL;
+        pthread_mutex_lock(&m->mu);
+        pthread_t owner = atomic_load(&m->owner);
+        if (owner && pthread_equal(owner, pthread_self())) {
+            m->count = 0; atomic_store(&m->owner, (pthread_t)0);
+            pthread_cond_broadcast(&m->entry);
+        }
+        pthread_mutex_unlock(&m->mu);
+    }
+}
 
 static mon *monitor_of(jobj *o)
 {
@@ -790,27 +812,55 @@ static mon *monitor_of(jobj *o)
     mon *n = calloc(1, sizeof(*n));
     pthread_mutex_init(&n->mu, NULL);
     pthread_cond_init(&n->cv, NULL);
+    pthread_cond_init(&n->entry, NULL);
     pthread_mutex_lock(&g_lock);
-    if (!o->monitor) o->monitor = n; else { pthread_mutex_destroy(&n->mu); free(n); }
+    if (!o->monitor) o->monitor = n;
+    else { pthread_mutex_destroy(&n->mu); pthread_cond_destroy(&n->cv); pthread_cond_destroy(&n->entry); free(n); }
     pthread_mutex_unlock(&g_lock);
     return o->monitor;
 }
 static bool mon_mine(mon *m) { pthread_t w = atomic_load(&m->owner); return w && pthread_equal(w, pthread_self()); }
 /* Thread.holdsLock: whether this thread is inside a synchronized block on o (Facebook's loader asserts it is not before taking a file lock) */
 bool dvm_holds_lock(jobj *o) { mon *m = o ? o->monitor : NULL; return m && mon_mine(m); }
+static void wake_monitor(void *context)
+{
+    mon *m = context;
+    pthread_mutex_lock(&m->mu);
+    pthread_cond_broadcast(&m->cv);
+    pthread_cond_broadcast(&m->entry);
+    pthread_mutex_unlock(&m->mu);
+}
 void dvm_monitor_enter(jobj *o)
 {
     mon *m = monitor_of(o);
     if (mon_mine(m)) { m->count++; return; }
     pthread_mutex_lock(&m->mu);
-    atomic_store(&m->owner, pthread_self());
-    m->count = 1;
+    if (!atomic_load(&m->owner)) {
+        remember_monitor(m); atomic_store(&m->owner, pthread_self()); m->count = 1;
+        pthread_mutex_unlock(&m->mu); return;
+    }
+    pthread_mutex_unlock(&m->mu);
+    tl_session_wait wait;
+    if (!tl_session_wait_begin(&wait, wake_monitor, m)) return;
+    pthread_mutex_lock(&m->mu);
+    while (atomic_load(&m->owner) && !tl_session_stopping()) pthread_cond_wait(&m->entry, &m->mu);
+    if (!tl_session_stopping()) {
+        remember_monitor(m); atomic_store(&m->owner, pthread_self()); m->count = 1;
+    }
+    pthread_mutex_unlock(&m->mu);
+    tl_session_wait_end(&wait);
 }
 bool dvm_monitor_exit(jobj *o)
 {
     mon *m = monitor_of(o);
     if (!mon_mine(m)) return false;
-    if (--m->count == 0) { atomic_store(&m->owner, (pthread_t)0); pthread_mutex_unlock(&m->mu); }
+    if (m->count > 1) { m->count--; return true; }
+    pthread_mutex_lock(&m->mu);
+    if (!mon_mine(m)) { pthread_mutex_unlock(&m->mu); return false; }
+    if (--m->count == 0) {
+        forget_monitor(m); atomic_store(&m->owner, (pthread_t)0); pthread_cond_signal(&m->entry);
+    }
+    pthread_mutex_unlock(&m->mu);
     return true;
 }
 void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns);
@@ -818,42 +868,59 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
 {
     mon *m = monitor_of(o);
     if (!mon_mine(m)) { dvm_throw("java/lang/IllegalMonitorStateException", "object not locked by thread before wait()"); return; }
-    int held = m->count;
+    tl_session_wait wait;
+    if (!tl_session_wait_begin(&wait, wake_monitor, m)) return;
+    pthread_mutex_lock(&m->mu);
+    int depth = m->count;
+    forget_monitor(m);
     m->count = 0;
     atomic_store(&m->owner, (pthread_t)0);
-    if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
-    else {
-        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += ms / 1000; ts.tv_nsec += (ms % 1000) * 1000000 + ns;
-        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-        pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+    pthread_cond_signal(&m->entry);
+    if (!tl_session_stopping()) {
+        if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
+        else {
+            struct timespec end; clock_gettime(CLOCK_REALTIME, &end);
+            end.tv_sec += ms / 1000; end.tv_nsec += (ms % 1000) * 1000000 + ns;
+            if (end.tv_nsec >= 1000000000) { end.tv_sec++; end.tv_nsec -= 1000000000; }
+            pthread_cond_timedwait(&m->cv, &m->mu, &end);
+        }
     }
-    atomic_store(&m->owner, pthread_self());
-    m->count = held;
+    while (atomic_load(&m->owner) && !tl_session_stopping()) pthread_cond_wait(&m->entry, &m->mu);
+    if (!tl_session_stopping()) { remember_monitor(m); atomic_store(&m->owner, pthread_self()); m->count = depth; }
+    pthread_mutex_unlock(&m->mu);
+    tl_session_wait_end(&wait);
 }
 void dvm_monitor_notify(jobj *o, bool all);
-void dvm_monitor_notify(jobj *o, bool all) { mon *m = monitor_of(o); if (all) pthread_cond_broadcast(&m->cv); else pthread_cond_signal(&m->cv); }
+void dvm_monitor_notify(jobj *o, bool all)
+{
+    mon *m = monitor_of(o); pthread_mutex_lock(&m->mu);
+    if (all) pthread_cond_broadcast(&m->cv); else pthread_cond_signal(&m->cv);
+    pthread_mutex_unlock(&m->mu);
+}
 
 /* ================================================================== class initialisation */
 
-bool dvm_ensure_init(dvm_class *c)
+static void wake_class_initializer(void *context)
 {
-    if (!c || c->state == CS_INITIALIZED) return true;
+    dvm_class *c = context;
     pthread_mutex_lock(&c->init_lock);
-    if (c->state == CS_INITIALIZED) { pthread_mutex_unlock(&c->init_lock); return true; }
-    if (c->state == CS_FAILED) { pthread_mutex_unlock(&c->init_lock); return dvm_throw("java/lang/NoClassDefFoundError", "%s failed to initialise", c->name); }
-    if (c->state == CS_INITIALIZING) {
-        /* this thread is already initialising it (a <clinit> that reaches back): carry on, as the JVM does */
-        bool mine = pthread_equal(c->init_thread, pthread_self());
-        pthread_mutex_unlock(&c->init_lock);
-        if (mine) return true;
-        while (c->state == CS_INITIALIZING) usleep(200);
-        return c->state == CS_INITIALIZED;
-    }
-    c->state = CS_INITIALIZING;
-    c->init_thread = pthread_self();
+    pthread_cond_broadcast(&c->init_changed);
     pthread_mutex_unlock(&c->init_lock);
-    if (c->super && !dvm_ensure_init(c->super)) { c->state = CS_FAILED; return false; }
+}
+static void finish_class_initialization(dvm_class *c, int state)
+{
+    pthread_mutex_lock(&c->init_lock);
+    c->state = state;
+    pthread_cond_broadcast(&c->init_changed);
+    pthread_mutex_unlock(&c->init_lock);
+}
+static void abandoned_class_initializer(void *context)
+{
+    finish_class_initialization(context, CS_FAILED);
+}
+static bool run_class_initializer(dvm_class *c)
+{
+    if (c->super && !dvm_ensure_init(c->super)) return false;
     for (int i = 0; i < c->ndm; i++) {
         dvm_method *m = &c->dm[i];
         if (!strcmp(m->name, "<clinit>")) {
@@ -884,14 +951,45 @@ bool dvm_ensure_init(dvm_class *c)
                     }
                     tl_jni_set_pending(e);
                 }
-                c->state = CS_FAILED;
                 return false;
             }
             break;
         }
     }
-    c->state = CS_INITIALIZED;
     return true;
+}
+
+bool dvm_ensure_init(dvm_class *c)
+{
+    if (!c || c->state == CS_INITIALIZED) return true;
+    pthread_mutex_lock(&c->init_lock);
+    if (c->state == CS_INITIALIZED) { pthread_mutex_unlock(&c->init_lock); return true; }
+    if (c->state == CS_FAILED) { pthread_mutex_unlock(&c->init_lock); return dvm_throw("java/lang/NoClassDefFoundError", "%s failed to initialise", c->name); }
+    if (c->state == CS_INITIALIZING) {
+        /* Recursive use by this initializer is legal; other threads wait for its completion or stop. */
+        bool mine = pthread_equal(c->init_thread, pthread_self());
+        pthread_mutex_unlock(&c->init_lock);
+        if (mine) return true;
+        tl_session_wait wait;
+        if (!tl_session_wait_begin(&wait, wake_class_initializer, c)) return false;
+        pthread_mutex_lock(&c->init_lock);
+        while (c->state == CS_INITIALIZING && !tl_session_stopping())
+            pthread_cond_wait(&c->init_changed, &c->init_lock);
+        bool ok = c->state == CS_INITIALIZED;
+        pthread_mutex_unlock(&c->init_lock);
+        tl_session_wait_end(&wait);
+        return ok;
+    }
+    c->state = CS_INITIALIZING;
+    c->init_thread = pthread_self();
+    pthread_mutex_unlock(&c->init_lock);
+    bool ok;
+    /* A native <clinit> can exit its host thread: never strand other initializers behind it. */
+    pthread_cleanup_push(abandoned_class_initializer, c);
+    ok = run_class_initializer(c);
+    finish_class_initialization(c, ok ? CS_INITIALIZED : CS_FAILED);
+    pthread_cleanup_pop(0);
+    return ok;
 }
 
 /* ================================================================== calling */
@@ -984,7 +1082,37 @@ static bool watch_hit(const char *w, const dvm_method *m)
     return false;
 }
 
+static bool session_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret);
+static _Thread_local unsigned call_nesting;
+static void abandoned_call(void *unused)
+{
+    (void)unused;
+    call_nesting = 0; t_depth = 0;
+    release_stopped_monitors();
+    tl_session_leave();
+}
 bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
+{
+    ret->j = 0;
+    if (tl_session_stopping()) return false;
+    if (call_nesting) {
+        call_nesting++;
+        bool ok = session_call(m, self, params, ret);
+        call_nesting--; return ok;
+    }
+    if (!tl_session_enter()) return false;
+    bool ok;
+    /* One cleanup per host entry, rather than adding handlers to every interpreted call. */
+    pthread_cleanup_push(abandoned_call, NULL);
+    call_nesting = 1;
+    ok = session_call(m, self, params, ret);
+    call_nesting = 0;
+    pthread_cleanup_pop(0);
+    if (tl_session_stopping()) release_stopped_monitors();
+    tl_session_leave();
+    return ok;
+}
+static bool session_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
 {
     if (t_depth < 8192) { t_frames[t_depth] = m; t_pcs[t_depth] = 0; }
     t_depth++;
@@ -1247,8 +1375,6 @@ typedef struct mref {
 
 static mref *resolve_mref(dvm_dex *d, uint32_t idx, bool is_static)
 {
-    static _Thread_local mref *last;
-    (void)last;
     mref *r = (mref *)__atomic_load_n(&d->mcache[idx], __ATOMIC_ACQUIRE);
     if (r) return r;
     r = calloc(1, sizeof(*r));
@@ -1634,6 +1760,7 @@ static bool interpret(dvm_method *m, uint64_t *regs, jvalue *ret)
     if ((m->flags & 0x20) /* synchronized */) dvm_monitor_enter((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
 
 dispatch:;
+    if (tl_session_stopping()) goto cancelled;
     uint16_t w = insns[pc];
     switch (w & 0xFF) {
     case 0x00: {                                                   /* nop, and the data payloads (skipped by size) */
@@ -2024,6 +2151,7 @@ dispatch:;
     }
 
 exception: {
+        if (tl_session_stopping()) goto cancelled;
         jobj *e = tl_jni_pending_object();
         if (!e) { dvm_throw("java/lang/InternalError", "exception with nothing pending"); e = tl_jni_pending_object(); }
         uint32_t target;
@@ -2033,6 +2161,11 @@ exception: {
             pc = target;
             goto dispatch;
         }
+        if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
+        return false;
+    }
+cancelled:
+    if (tl_session_stopping()) {
         if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
         return false;
     }
@@ -2092,6 +2225,7 @@ static uint32_t hook_slots(tl_jclass *jc) { dvm_class *c = dvm_class_of(jc); ret
 static const tl_dvm_hooks k_hooks = { hook_attach, hook_ensure_init, hook_find_method, hook_invoke, hook_find_field, hook_slots };
 
 static bool g_running;
+static bool g_session_ready;
 
 static void reattach(tl_jclass *jc)
 {
@@ -2184,7 +2318,19 @@ static bool forget_app_class(tl_jclass *jc, void *user)
 {
     (void)user;
     dvm_class *c = dvm_class_of(jc);
-    return c && c->dex && !boot_dex(c->dex);
+    if (!c) return false;
+    if (c->dex) return !boot_dex(c->dex);
+    /* Generated Proxy classes hold the app's interface methods despite having no DEX of their own. */
+    if (!c->prim && !c->elem) return true;
+    const char *name = jc->name;
+    while (*name == '[') name++;
+    if (*name == 'L') {
+        char component[1024]; snprintf(component, sizeof(component), "%s", name + 1);
+        char *end = strchr(component, ';'); if (end) *end = 0;
+        cdef *definition = cdef_find(component);
+        return definition && !boot_dex(definition->dex);
+    }
+    return false;
 }
 void tl_dvm_drop_app(void)
 {
@@ -2217,6 +2363,44 @@ void tl_dvm_drop_app(void)
     g_nopened = w;
     pthread_mutex_unlock(&g_open_lock);
     tl_log_line("dvm: the app's classes are dropped; the boot path stays");
+}
+
+static void reset_boot_state(tl_jclass *jc)
+{
+    /* Class mirrors also carry mutable reflection/class-loader caches. Keep their JNI identity,
+     * but lazily fill their Java fields again from the retained, immutable class metadata. */
+    if (jc->mirror) { free(jc->mirror->fields); jc->mirror->fields = NULL; jc->mirror->nfields = 0; }
+    dvm_class *c = dvm_class_of(jc);
+    if (!c || !c->dex || !boot_dex(c->dex)) return;
+    if (jc->statics) memset(jc->statics, 0, (size_t)jc->nstatics * sizeof(jvalue));
+    uint32_t values = rd32(c->dex->b + c->dex->cls_off + 32 * c->def + 28);
+    if (values) {
+        const uint8_t *p = c->dex->b + values;
+        uint32_t n = uleb(&p);
+        for (uint32_t i = 0; i < n && (int)i < c->nsf; i++) read_value(c->dex, &p, &jc->statics[i]);
+    }
+    for (int i = 0; i < jc->nfields; i++) if (jc->fields[i]->detached) memset(&jc->fields[i]->dval, 0, sizeof(jvalue));
+    memset(&c->init_thread, 0, sizeof(c->init_thread));
+    atomic_store(&c->state, CS_LINKED);
+}
+
+void dvm_natives_reset_session(void);
+bool tl_dvm_end_session(void)
+{
+    if (!tl_session_stopping() || !tl_session_drained()) return false;
+    void tl_audio_reset_session(void), tl_media_reset_session(void), tl_sqlite_reset_session(void);
+    tl_audio_reset_session(); tl_media_reset_session(); tl_sqlite_reset_session();
+    tl_dvm_drop_app();
+    /* No Java teardown code: canceled execution may have left Java locks or executor bookkeeping unusable.
+     * Restore encoded defaults for every linked framework/core class, then run <clinit> normally on next use. */
+    tl_session_allow_cleanup(true);
+    tl_jni_each_declared(reset_boot_state);
+    dvm_natives_reset_session();
+    tl_jni_clear();
+    g_session_ready = false;
+    tl_session_allow_cleanup(false);
+    tl_log_line("dvm: Java session discarded; all core/framework class initializers will run again");
+    return true;
 }
 
 static jobj *dex_cookie(int first, int count)
@@ -2422,16 +2606,26 @@ bool tl_dvm_load_natives(const char *libdir)
     /* core-icu4j's natives (charset converters, ICU's Java side), which ART loads with the runtime */
     if (!tl_jni_load_library("libicu_jni.so")) tl_log_line("dvm: libicu_jni.so did not load");
     if (tl_jni_pending()) { char b[300]; tl_log_line("dvm: loading libcore's natives threw %s", tl_dvm_describe_pending(b, sizeof(b)) ? b : "?"); tl_jni_clear(); }
+    return tl_dvm_initialize_session() && ok;
+}
+
+bool tl_dvm_initialize_session(void)
+{
+    if (!g_running) return false;
+    if (g_session_ready) return true;
+    tl_jni_clear();
     /* What ART initialises as it starts, before any app code: the core classes, in an order where each one's <clinit> finds what
      * it needs (System's pulls in most of java.lang and java.util.concurrent). */
     static const char *const order[] = { "java/lang/Object", "java/lang/Class", "java/lang/String", "java/lang/System",
                                          "java/lang/ThreadGroup", "java/lang/Thread", NULL };
     for (int i = 0; order[i]; i++) {
         dvm_class *c = dvm_class_of(dvm_class_named(order[i]));
-        if (c && !dvm_ensure_init(c)) { char b[400]; tl_log_line("dvm: initialising %s threw %s", order[i], tl_dvm_describe_pending(b, sizeof(b)) ? b : "?"); tl_jni_clear(); }
+        if (c && !dvm_ensure_init(c)) { char b[400]; tl_log_line("dvm: initialising %s threw %s", order[i], tl_dvm_describe_pending(b, sizeof(b)) ? b : "?"); tl_jni_clear(); return false; }
     }
     dvm_current_thread();
-    return ok;
+    g_session_ready = true;
+    tl_log_line("dvm: fresh Java core initialized for APK session");
+    return true;
 }
 
 bool tl_dvm_call_static(const char *cls, const char *name, const char *sig, const jvalue *args, jvalue *ret)

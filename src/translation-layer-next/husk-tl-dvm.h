@@ -32,6 +32,11 @@ bool tl_dvm_defines_class(const char *jni_name);
 bool tl_dvm_add_apk(const char *apk);
 /* Drop every DEX added after the boot class path, so another app can load. The runtime stays up. */
 void tl_dvm_drop_app(void);
+/* Quiesced Java-session teardown: discard app definitions and restore ALL boot-class statics to their DEX defaults.
+ * Linked class metadata/native bindings are immutable runtime infrastructure; no initialized Java singleton is retained. */
+bool tl_dvm_end_session(void);
+/* Run core Java bootstrap again before constructing the next Application and main looper. */
+bool tl_dvm_initialize_session(void);
 bool tl_dvm_running(void);
 /* libcore's own native libraries (libjavacore.so, libopenjdk.so and what they need), from this folder (the ART APEX's lib64). */
 bool tl_dvm_load_natives(const char *libdir);

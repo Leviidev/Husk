@@ -39,6 +39,17 @@ public final class AppRunner {
         sFactory = android.app.AppComponentFactory.DEFAULT;
         Looper.setInputSink(null);
         Manifest.reset();
+        ViewRoot.resetSession();
+        Services.resetSession();
+        Broadcasts.resetSession();
+        android.view.LayoutInflater.huskResetSession();
+        ContextImpl.resetSession();
+        android.app.LoadedApk.huskResetSession();
+        android.app.ActivityThread.huskResetSession();
+        android.content.pm.ApplicationInfo.huskResetSession();
+        android.content.ContentResolver.huskResetSession();
+        Looper.clearMainLooperForTest();
+        Thread.setDefaultUncaughtExceptionHandler(null);
     }
 
     private static ClassLoader sLoader;

@@ -222,6 +222,8 @@
 		FCC98727BBE825F227BA85DC /* husk-tl-prefs.c in Sources */ = {isa = PBXBuildFile; fileRef = 86A6E743652A606829BC044B /* husk-tl-prefs.c */; };
 		FF486702C6D33BA45B29F232 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FE1883A8008B6E8BF4D83155 /* InfoPlist.strings */; };
 		FF9CF33CB5846E7DF6189EB9 /* husk-tl-dvm-annotations.c in Sources */ = {isa = PBXBuildFile; fileRef = 65972F9D6806424034E38589 /* husk-tl-dvm-annotations.c */; };
+		842A05E3835CCC717F5F6E10 /* CloseAPK.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66A7AFF8631EC9E2ECE01288 /* CloseAPK.swift */; };
+		D6785104F0EF7FB1FAD6E64D /* husk-tl-session.c in Sources */ = {isa = PBXBuildFile; fileRef = 1E9FE6336245C1228120EF0F /* husk-tl-session.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -539,6 +541,9 @@
 		FE8922E7AB75C8C61B37986A /* husk-tl-jni-loop.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-loop.c"; sourceTree = "<group>"; };
 		FF32BE604D93D4757E99BAF0 /* husk-console-host.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-console-host.h"; sourceTree = "<group>"; };
 		FF5A120A4E0B3EE166D789C4 /* husk-tl-bionic-ndk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-bionic-ndk.c"; sourceTree = "<group>"; };
+		1E9FE6336245C1228120EF0F /* husk-tl-session.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-session.c"; sourceTree = "<group>"; };
+		66A7AFF8631EC9E2ECE01288 /* CloseAPK.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseAPK.swift; sourceTree = "<group>"; };
+		B07227567FABF6FBDF64399D /* husk-tl-session.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-session.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -565,6 +570,7 @@
 		0F8D2787A26076A289B9B8EA /* Husk */ = {
 			isa = PBXGroup;
 			children = (
+				66A7AFF8631EC9E2ECE01288 /* CloseAPK.swift */,
 				4A099519AE80F7DAC9A65F34 /* Account.swift */,
 				2C3D6F74AFBE5CD222DE0553 /* ApkMetadata.swift */,
 				3F5C62F392C6EE9D6F1B9407 /* AppClip.swift */,
@@ -833,6 +839,8 @@
 				9545A76356E04E05C3174FA8 /* husk-tl-va.h */,
 				D6F6414E03E6D7DC976A7E4D /* husk-tl-vulkan.h */,
 				42A3D0C796971935D477F89B /* husk-tl-vulkan.m */,
+				1E9FE6336245C1228120EF0F /* husk-tl-session.c */,
+				B07227567FABF6FBDF64399D /* husk-tl-session.h */,
 				42CBC0D7ACAB400BDDFD7F9E /* husk-tl-xmem.c */,
 				F7FE1E9438A6B743456806DF /* husk-tl-xmem.h */,
 			);
@@ -1138,6 +1146,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6785104F0EF7FB1FAD6E64D /* husk-tl-session.c in Sources */,
+				842A05E3835CCC717F5F6E10 /* CloseAPK.swift in Sources */,
 				7CA02F2FB22207E86499451E /* DownloadsWidget.swift in Sources */,
 				E8F0828C2C030D26E891E528 /* HuskDownloadActivity.swift in Sources */,
 			);

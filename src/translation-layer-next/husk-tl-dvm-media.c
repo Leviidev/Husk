@@ -46,6 +46,7 @@ typedef struct pcm { uint8_t *data; int len; int64_t pts; struct pcm *next; } pc
 typedef struct { uint8_t *d; size_t n; } blob;
 
 typedef struct codec {
+    struct codec *next;
     int kind;
     pthread_mutex_t lock;
     bool trace;
@@ -65,6 +66,8 @@ typedef struct codec {
     pcm *pcms, **pcm_tail;
     int rate, channels;
 } codec;
+static codec *g_codecs;
+static pthread_mutex_t g_codec_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool trace_on(void) { static int t = -1; if (t < 0) t = getenv("TL_MEDIA_TRACE") != NULL; return t; }
 
@@ -328,9 +331,11 @@ NAT(M_create)
     int k = kind_of(tl_jni_string(a[0].l));
     if (!k) { *ret = J(0); return true; }
     codec *c = calloc(1, sizeof(*c));
+    if (!c) { *ret = J(0); return true; }
     c->kind = k; c->trace = trace_on();
     pthread_mutex_init(&c->lock, NULL);
     c->ready_tail = &c->ready; c->pcm_tail = &c->pcms;
+    pthread_mutex_lock(&g_codec_lock); c->next = g_codecs; g_codecs = c; pthread_mutex_unlock(&g_codec_lock);
     *ret = J((int64_t)(uintptr_t)c);
     return true;
 }
@@ -449,11 +454,14 @@ NAT(M_flush)
     drop_outputs(c);
     return true;
 }
-NAT(M_destroy)
+static void codec_destroy(codec *c)
 {
-    (void)self; (void)ret;
-    codec *c = C;
-    if (!c) return true;
+    if (!c) return;
+    pthread_mutex_lock(&g_codec_lock);
+    codec **p = &g_codecs; while (*p && *p != c) p = &(*p)->next;
+    if (!*p) { pthread_mutex_unlock(&g_codec_lock); return; }
+    *p = c->next;
+    pthread_mutex_unlock(&g_codec_lock);
     session_drop(c);
     drop_outputs(c);
     if (c->fmt) CFRelease(c->fmt);
@@ -462,6 +470,12 @@ NAT(M_destroy)
     if (c->trace) tl_log_line("media: codec closed after %ld outputs, %ld failures", c->decoded, c->failed);
     pthread_mutex_destroy(&c->lock);
     free(c);
+}
+void tl_media_reset_session(void) { while (g_codecs) codec_destroy(g_codecs); }
+NAT(M_destroy)
+{
+    (void)self; (void)ret;
+    codec_destroy(C);
     return true;
 }
 NAT(M_size) { (void)self; codec *c = C; *ret = I(c->width << 16 | (c->height & 0xffff)); return true; }

@@ -19,6 +19,7 @@ public abstract class LayoutInflater {
     private static final String TAG_MERGE = "merge", TAG_INCLUDE = "include", TAG_1995 = "blink", TAG_REQUEST_FOCUS = "requestFocus", TAG_TAG = "tag";
     private static final int[] ATTRS_THEME = { android.R.attr.theme };
     private static final HashMap<String, Constructor<? extends View>> sConstructors = new HashMap<>();
+    public static void huskResetSession() { sConstructors.clear(); }
     static final Class<?>[] mConstructorSignature = { Context.class, AttributeSet.class };
 
     protected final Context mContext;
