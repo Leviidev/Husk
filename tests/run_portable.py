@@ -72,6 +72,12 @@ def main():
     run("getcwd compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/getcwd_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
     run("getcwd", [str(exe), fixture.resolve().as_posix()])
+    if os.name != "nt":   # needs mmap/pthread; the registry test is POSIX-only
+        exe = out / "fallback_alloc_test"
+        run("fallback allocator compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+            str(ROOT / "tests/translation-layer/fallback_alloc_test.c"),
+            str(ROOT / "src/translation-layer-next/husk-tl-fallback-alloc.c"), "-pthread", "-o", str(exe)])
+        run("fallback allocator never probes foreign pointers", [str(exe)])
     android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
     frame_copy = re.search(r"void tl_javaapp_app_pixels\([^)]*\)\n\{.*?\n\}", android_source, re.S)
     assert frame_copy

@@ -27,13 +27,10 @@
 #include <wchar.h>
 #include <wctype.h>
 #include <xlocale.h>
-#include <sys/mman.h>
-#if defined(__APPLE__)
-#include <malloc/malloc.h>
-#endif
 
 #include "husk-tl-va.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-fallback-alloc.h"
 
 bool tl_xmem_contains(const void *p);
 
@@ -203,14 +200,6 @@ extern void tl_va_fscanf(void);
 
 static int b_vsnprintf(char *s, size_t n, const char *fmt, tl_va_list *ap) { return tl_format(s, n, fmt, ap); }
 static int b_vswprintf(wchar_t *s, size_t n, const wchar_t *fmt, tl_va_list *ap) { return tl_format_wide(s, n, fmt, ap); }
-static int b_vswscanf(const wchar_t *s, const wchar_t *fmt, va_list ap)
-{
-    if (!s || !fmt) return -1;
-    TL_ERRNO_BEGIN();
-    int r = vswscanf(s, fmt, ap);
-    TL_ERRNO_END();
-    return r;
-}
 static int b___vsnprintf_chk(char *s, size_t n, int flag, size_t slen, const char *fmt, tl_va_list *ap)
 {
     (void)flag;
@@ -536,49 +525,29 @@ static bool heap_is_image(const void *p)
 {
     return p && (tl_ld_covers(p, 1) || tl_xmem_contains(p));
 }
-#define MMAP_MAGIC 0x4D4D4150u /* "MMAP" */
-struct mmap_hdr {
-    uint32_t magic;
-    uint32_t pad;
-    size_t size;
-};
-
+/* When the host malloc refuses, a whole mapping is tried before the guest is told "out of memory" (most games abort on NULL).
+ * The mapping is tracked in a registry (husk-tl-fallback-alloc.c): free()/realloc() never inspect memory around a pointer. The
+ * errno of a failed attempt is logged, so a run shows whether the address space or a limit is what refuses. */
+static void *malloc_fallback(const char *what, size_t n)
+{
+    void *p = tl_fb_alloc(n);
+    static atomic_uint notes;
+    if (atomic_fetch_add_explicit(&notes, 1, memory_order_relaxed) < 16)
+        tl_log_line("bionic: %s(%zu) refused by the host malloc; mapping %s (errno %d, %zu fallback blocks live)",
+                    what, n, p ? "succeeded" : "failed too", p ? 0 : errno, tl_fb_live());
+    return p;
+}
 static void *b_malloc(size_t n)
 {
     void *p = malloc(n);
-    if (!p && n > 0) {
-        void husk_release_unused_compressed_heap(void);
-        husk_release_unused_compressed_heap();
-        p = malloc(n);
-        if (p) {
-            tl_log_line("bionic: malloc(%zu) succeeded after releasing compressed heap", n);
-            return p;
-        }
-        size_t total = n + sizeof(struct mmap_hdr);
-        total = (total + 4095) & ~4095;
-        void *m = mmap(NULL, total, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-        if (m != MAP_FAILED) {
-            struct mmap_hdr *hdr = (struct mmap_hdr *)m;
-            hdr->magic = MMAP_MAGIC;
-            hdr->size = total;
-            p = (void *)(hdr + 1);
-            tl_log_line("bionic: malloc(%zu) satisfied via mmap fallback (%p)", n, p);
-            return p;
-        }
-        tl_log_line("bionic: malloc(%zu) returned NULL", n);
-    }
-    return p;
+    return p || n == 0 ? p : malloc_fallback("malloc", n);
 }
 static void *b_calloc(size_t count, size_t size)
 {
     void *p = calloc(count, size);
-    if (!p && count > 0 && size > 0) {
-        size_t total = count * size;
-        p = b_malloc(total);
-        if (p) memset(p, 0, total);
-        else tl_log_line("bionic: calloc(%zu, %zu) returned NULL", count, size);
-    }
-    return p;
+    if (p || count == 0 || size == 0) return p;
+    if (size > SIZE_MAX / count) return NULL;                 /* overflow: refused, as calloc does */
+    return malloc_fallback("calloc", count * size);           /* mappings come zero-filled */
 }
 static int b_mallopt(int param, int value)
 {
@@ -588,50 +557,28 @@ static int b_mallopt(int param, int value)
 static void b_free(void *p)
 {
     if (!p) return;
+    if (tl_fb_release(p)) return;
     if (heap_is_image(p)) {
         static int n; if (n++ < 12) tl_log_line("bionic: free(%p) of a loaded library: ignored", p);
-        return;
-    }
-    struct mmap_hdr *hdr = ((struct mmap_hdr *)p) - 1;
-    if (hdr->magic == MMAP_MAGIC) {
-        hdr->magic = 0;
-        munmap(hdr, hdr->size);
         return;
     }
     free(p);
 }
 static void *b_realloc(void *p, size_t n)
 {
-    if (!p) return b_malloc(n);
+    if (p && tl_fb_owns(p)) {
+        void *fresh = b_malloc(n);
+        if (!fresh) return NULL;                              /* the old block stays valid, as realloc requires */
+        size_t old = tl_fb_size(p);
+        memcpy(fresh, p, old < n ? old : n);
+        tl_fb_release(p);
+        return fresh;
+    }
     if (heap_is_image(p)) {
         static int k; if (k++ < 8) tl_log_line("bionic: realloc(%p, %zu) of a loaded library: a fresh block", p, n);
-        void *fresh = b_malloc(n);
-        if (fresh) memcpy(fresh, p, n);
-        return fresh;
+        return malloc(n);
     }
-    struct mmap_hdr *hdr = ((struct mmap_hdr *)p) - 1;
-    if (hdr->magic == MMAP_MAGIC) {
-        void *fresh = b_malloc(n);
-        if (fresh) {
-            size_t old_user_size = hdr->size - sizeof(struct mmap_hdr);
-            memcpy(fresh, p, old_user_size < n ? old_user_size : n);
-            b_free(p);
-        }
-        return fresh;
-    }
-    void *r = realloc(p, n);
-    if (!r && n > 0) {
-        void *fresh = b_malloc(n);
-        if (fresh) {
-            #if defined(__APPLE__)
-            size_t old_sz = malloc_size(p);
-            memcpy(fresh, p, old_sz < n ? old_sz : n);
-            #endif
-            free(p);
-            return fresh;
-        }
-    }
-    return r;
+    return realloc(p, n);
 }
 
 /* The floating-point environment: bionic's fenv_t is two words of its own layout, and nothing here turns on exceptions or rounding, so these report success. */
@@ -896,7 +843,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("remove", b_remove), TL_WRAP("rename", b_rename),
     TL_WRAP("snprintf", tl_va_snprintf), TL_WRAP("sprintf", tl_va_sprintf), TL_WRAP("printf", tl_va_printf), TL_WRAP("asprintf", tl_va_asprintf),
     TL_WRAP("fprintf", tl_va_fprintf), TL_WRAP("sscanf", tl_va_sscanf), TL_WRAP("fscanf", tl_va_fscanf),
-    TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("vswscanf", b_vswscanf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
+    TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
     TL_WRAP("sched_getcpu", b_sched_getcpu), TL_DIRECT(wcslcpy), TL_DIRECT(wcslcat), TL_DIRECT(wcscasecmp), TL_DIRECT(wcsncasecmp),
     TL_WRAP("vsnprintf", b_vsnprintf), TL_WRAP("__vsnprintf_chk", b___vsnprintf_chk), TL_WRAP("__vsprintf_chk", b___vsprintf_chk),
     TL_WRAP("vprintf", b_vprintf), TL_WRAP("vfprintf", b_vfprintf), TL_WRAP("vasprintf", b_vasprintf), TL_WRAP("vsscanf", b_vsscanf),
