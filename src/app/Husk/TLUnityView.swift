@@ -66,7 +66,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         case .landscapeRight: edge = .left
         default: edge = .none
         }
-        let safeFrame = convert(window.safeAreaLayoutGuide.layoutFrame, from: window)
+        // Use UIKit's resolved inset values; querying a layout guide here can require layout
+        // while this view is already inside layoutSubviews.
+        let safeFrame = convert(window.bounds.inset(by: window.safeAreaInsets), from: window)
         let inset = TLGameViewport.cutoutInsets(view: bounds, safeFrame: safeFrame, edge: edge)
         return UIEdgeInsets(top: inset.top, left: inset.left, bottom: inset.bottom, right: inset.right)
     }
@@ -209,10 +211,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private func layoutWebHost() {
         guard let host = webHost else { return }
         // Preserve the same local coordinates as the game when its cached surface is scaled to fit.
-        host.transform = .identity
-        host.bounds = bounds
-        host.center = center
-        host.transform = transform
+        if host.bounds != bounds { host.bounds = bounds }
+        if host.center != center { host.center = center }
+        if host.transform != transform { host.transform = transform }
     }
 
     override func didMoveToSuperview() {
@@ -260,14 +261,18 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        stats.frame = CGRect(x: bounds.width - 148, y: bounds.height - 22, width: 142, height: 16)
+        let statsFrame = CGRect(x: bounds.width - 148, y: bounds.height - 22, width: 142, height: 16)
+        if stats.frame != statsFrame { stats.frame = statsFrame }
         layoutWebHost()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
         // swapchain disagreeing from then on.
-        if !(engine == .ue4 && launched) { (layer as? CAMetalLayer)?.drawableSize = CGSize(width: w, height: h) }
+        if !(engine == .ue4 && launched), let metal = layer as? CAMetalLayer {
+            let pixels = CGSize(width: w, height: h)
+            if metal.drawableSize != pixels { metal.drawableSize = pixels }
+        }
         sendSafeInsetsIfNeeded()
         // Flutter lays itself out again at any size, as an Android view does when its window changes: a window being resized, the
         // screen turning.

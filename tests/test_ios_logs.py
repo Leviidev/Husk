@@ -69,4 +69,27 @@ class LogMirrorTests(unittest.IsolatedAsyncioTestCase):
                     with capture.capture_lock(output):pass
             with capture.capture_lock(output):pass
 
+    def test_empty_session_never_claims_live_logs_and_reopens_after_reinstall(self):
+        session=capture.LogSession(0)
+        first=session.observe([],1)
+        self.assertEqual(first['state'],'waiting-for-logs')
+        self.assertTrue(first['localFilesMayBeStale']);self.assertFalse(first['reconnect'])
+        self.assertTrue(session.observe([],3)['reconnect'])
+        fresh=capture.LogSession(4).observe([{'name':'husk.log'}],5)
+        self.assertEqual(fresh['state'],'following');self.assertFalse(fresh['localFilesMayBeStale'])
+
+    def test_long_lived_container_is_refreshed_and_once_exits_empty(self):
+        session=capture.LogSession(0)
+        self.assertFalse(session.observe([{'name':'husk.log'}],29)['reconnect'])
+        self.assertTrue(session.observe([{'name':'husk.log'}],30)['reconnect'])
+        empty=capture.LogSession(0).observe([],100,once=True)
+        self.assertEqual(empty['state'],'waiting-for-logs');self.assertFalse(empty['reconnect'])
+
+    def test_build_stamp_cannot_come_from_a_stale_or_replayed_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            (root/'husk.log').write_text('[ 0ms][prev] build : old\n[ 1ms][boot] build       : 3.3 (148) new-dirty\n')
+            self.assertIsNone(capture.current_build(root,[]))
+            self.assertEqual(capture.current_build(root,[{'name':'husk.log'}]),'3.3 (148) new-dirty')
+
 if __name__=='__main__':unittest.main()

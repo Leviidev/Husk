@@ -9,6 +9,20 @@ import CoreGraphics
 enum TLGameViewport {
     enum CutoutEdge { case none, top, left, bottom, right }
 
+    struct Placement: Equatable {
+        let bounds: CGRect
+        let center: CGPoint
+        let scale: CGFloat
+    }
+
+    /// Describe the final geometry without an identity-transform step that changes safe areas.
+    static func placement(_ size: CGSize, in area: CGRect) -> Placement? {
+        let fitted = fit(size, in: area)
+        guard valid(fitted) else { return nil }
+        return Placement(bounds: CGRect(origin: .zero, size: size),
+                         center: CGPoint(x: fitted.midX, y: fitted.midY), scale: fitted.width / size.width)
+    }
+
     /// UIKit's landscape safe area reserves both short edges and the Home indicator. Only the
     /// physical camera edge is a cutout; do not turn those other margins into phantom cutouts.
     static func cutoutInsets(view: CGRect, safeFrame: CGRect, edge: CutoutEdge) -> (top: CGFloat, left: CGFloat, bottom: CGFloat, right: CGFloat) {

@@ -24,7 +24,9 @@ static struct {
     tl_lib *lib;
     anchor_fn original;
     void (*render)(void);
-    void *(*find)(const char *, const char *);
+    void *manager;
+    void *(*get_group)(void *, const char *);
+    void *(*get_window)(void *, const char *);
     void (*set_position)(void *, int, int);
     bool resolved, geometry_valid;
     double pixel_w, pixel_h;
@@ -44,11 +46,14 @@ static void position_window(unsigned index, const char *group, const char *name,
                             tl_quest_rect scene, tl_quest_rect anchor_area,
                             tl_quest_cutout cut, bool movement)
 {
-    void *w = Q.find(group,name);
+    // UI_* identifies a script group, not a native root window name. Main is
+    // itself the group's root, so Wnd_FindWindow(group, name) cannot select it.
+    void *ui = Q.get_group(Q.manager,group);
+    void *w = ui ? Q.get_window(ui,name) : NULL;
     quest_slot *s = &Q.slots[index];
     if (!w) {
         if (!s->missing_reported && Q.reports) {
-            --Q.reports; tl_log_line("vhtg-quest: waiting for %s/%s",group,name);
+            --Q.reports; tl_log_line("vhtg-quest: waiting for %s/%s (%s missing)",group,name,ui?"window":"UI group");
         }
         *s=(quest_slot){.missing_reported=true}; return;
     }
@@ -138,13 +143,18 @@ static void quest_render(void)
     // Select the live windows here, immediately before native anchor layout/drawing.
     if (atomic_load(&q_enabled) && Q.geometry_valid) {
         if (!Q.resolved) {
-            Q.find=(void *(*)(const char *,const char *))tl_ld_sym(Q.lib,"_Z14Wnd_FindWindowPKcS0_");
+            // g_UIManager is the object, not a pointer variable. Resolve it via
+            // the loader to get the same writable data view as the game's GOT.
+            Q.manager=tl_ld_sym(Q.lib,"g_UIManager");
+            Q.get_group=(void *(*)(void *,const char *))tl_ld_sym(Q.lib,"_ZN9KUIManage10GetUIGroupEPKc");
+            Q.get_window=(void *(*)(void *,const char *))tl_ld_sym(Q.lib,"_ZN8KUIGroup9GetWindowEPKc");
             Q.set_position=(void (*)(void *,int,int))tl_ld_sym(Q.lib,"_ZN10KWndWindow11SetPositionEii");
             Q.resolved=true;
-            tl_log_line("vhtg-quest: pre-render layout; framebuffer %.0fx%.0f, scene %.1fx%.1f; exports %s",
-                        Q.pixel_w,Q.pixel_h,Q.scene.w,Q.scene.h,Q.find&&Q.set_position?"ready":"missing");
+            tl_log_line("vhtg-quest: UI registry pre-render layout; framebuffer %.0fx%.0f, scene %.1fx%.1f; exports %s",
+                        Q.pixel_w,Q.pixel_h,Q.scene.w,Q.scene.h,
+                        Q.manager&&Q.get_group&&Q.get_window&&Q.set_position?"ready":"missing");
         }
-        if (Q.find && Q.set_position) {
+        if (Q.manager && Q.get_group && Q.get_window && Q.set_position) {
             pthread_mutex_lock(&q_lock); tl_quest_cutout cut=q_cut; pthread_mutex_unlock(&q_lock);
             position_window(0,"UI_TASKTRACK","Main",Q.scene,Q.area,cut,false);
             position_window(1,"UI_TASKTRACKTMP","Main",Q.scene,Q.area,cut,false);

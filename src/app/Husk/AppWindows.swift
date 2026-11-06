@@ -341,6 +341,7 @@ final class TLWindowHost: UIView {
     override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
         setNeedsLayout()
+        game.setNeedsLayout() // HUD metadata can change even when the full-screen geometry does not.
     }
 
     override func layoutSubviews() {
@@ -352,21 +353,22 @@ final class TLWindowHost: UIView {
             loggedArea = area
             HuskLog.log("tl", "viewport: fullHost=\(area) surfaceScale=\(game.contentScaleFactor) cachedSize=\(String(describing: game.launchedSize))")
         }
-        if let size = game.launchedSize, game.engine != .flutter, size.width > 0, size.height > 0 {
-            let fitted = TLGameViewport.fit(size, in: area)
-            let k = fitted.width / size.width
-            game.transform = .identity
-            game.bounds = CGRect(origin: .zero, size: size)
-            game.center = CGPoint(x: fitted.midX, y: fitted.midY)
-            game.transform = CGAffineTransform(scaleX: k, y: k)
-        } else {
-            game.transform = .identity
-            game.frame = area
+        let size = game.engine == .flutter ? area.size : (game.launchedSize ?? area.size)
+        guard let placement = TLGameViewport.placement(size, in: area) else { return }
+        let desiredTransform = CGAffineTransform(scaleX: placement.scale, y: placement.scale)
+        var geometryChanged = false
+        // Setting identity and restoring the scale on every pass continually invalidates UIKit's
+        // safe area. Apply only actual changes, without an intermediate transform or frame write.
+        if game.bounds != placement.bounds { game.bounds = placement.bounds; geometryChanged = true }
+        if game.center != placement.center { game.center = placement.center; geometryChanged = true }
+        if game.transform != desiredTransform { game.transform = desiredTransform; geometryChanged = true }
+        if game.launchedSize == nil, game.engine != .flutter {
             // The game starts in its own layout pass; once it has, a fixed-size engine needs placing as above.
             DispatchQueue.main.async { [weak self] in
-                if self?.game.launchedSize != nil, self?.game.engine != .flutter { self?.setNeedsLayout() }
+                guard let self, self.game.superview === self, self.game.launchedSize != nil else { return }
+                self.setNeedsLayout()
             }
         }
-        game.setNeedsLayout() // Keep the Java web host aligned when a cached surface moves or scales.
+        if geometryChanged { game.setNeedsLayout() }
     }
 }

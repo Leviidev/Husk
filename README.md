@@ -81,6 +81,7 @@ Game compatibility remains unverified until tested on a device.
 - [VHTG quest-only cutout positioning](docs/14-vhtg-quest-only-cutout.md)
 - [VHTG quest coordinates and separate walk/sit adjustment](docs/15-vhtg-selected-hud.md)
 - [Direct USB logs, IPA folder and VHTG render-memory crash](docs/16-usb-logs-and-render-pools.md)
+- [VHTG HUD lookup, layout watchdog and USB reconnect after installation](docs/17-layout-watchdog-and-usb-reconnect.md)
 - Manual iOS build: [HUNG APK PLAYER workflow](.github/workflows/hung-ios.yml)
 
 ```sh

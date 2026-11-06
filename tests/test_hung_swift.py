@@ -92,6 +92,74 @@ precondition(!decoded.questOnlyCutout)
 print("PASS: per-app diagnostic profile survives Codable roundtrip and legacy settings")
 ''')
 
+    def test_production_host_layout_converges_without_redundant_writes(self):
+        source = (ROOT / "src/app/Husk/TLGameViewport.swift").read_text(encoding="utf-8")
+        host = (ROOT / "src/app/Husk/AppWindows.swift").read_text(encoding="utf-8")
+        host = "final class TLWindowHost:" + host.split("final class TLWindowHost:", 1)[1]
+        # Execute the actual host class, with counting geometry properties standing in
+        # for UIKit. This detects the identity/reset feedback pattern, not UIKit itself.
+        host = host.replace("CGAffineTransform(", "TestTransform(")
+        source += '''
+struct TestTransform: Equatable {
+    var scaleX: CGFloat; var y: CGFloat
+    static let identity = TestTransform(scaleX: 1, y: 1)
+}
+enum TestColor { case black }
+class UIView {
+    var bounds = CGRect.zero { didSet { geometryWrites += 1 } }
+    var center = CGPoint.zero { didSet { geometryWrites += 1 } }
+    var transform = TestTransform.identity { didSet { geometryWrites += 1 } }
+    var geometryWrites = 0
+    var layoutRequests = 0
+    var backgroundColor: TestColor?; var clipsToBounds = false
+    weak var superview: UIView?
+    init(frame: CGRect) { bounds = CGRect(origin: .zero, size: frame.size); center = CGPoint(x: frame.midX, y: frame.midY) }
+    required init?(coder: NSCoder) { fatalError("unused") }
+    func addSubview(_ child: UIView) { child.superview = self }
+    func safeAreaInsetsDidChange() {}
+    func layoutSubviews() {}
+    func setNeedsLayout() { layoutRequests += 1 }
+}
+class TLUnityUIView: UIView {
+    enum Engine { case java, flutter }
+    var engine = Engine.java
+    var launchedSize: CGSize? = CGSize(width: 932, height: 430)
+    var contentScaleFactor: CGFloat = 3
+    var windowed = false
+}
+enum HuskLog { static func log(_ scope: String, _ text: String) {} }
+''' + host
+        self.compile_run(source, '''
+let game = TLUnityUIView(frame: .zero)
+let host = TLWindowHost(game: game, windowed: false)
+host.bounds = CGRect(x: 0, y: 0, width: 932, height: 410)
+host.layoutSubviews()
+let fitted = TLGameViewport.placement(game.launchedSize!, in: host.bounds)!
+precondition(game.bounds == fitted.bounds && game.center == fitted.center)
+precondition(game.transform == TestTransform(scaleX: fitted.scale, y: fitted.scale))
+let writes = game.geometryWrites, requests = game.layoutRequests
+for _ in 0..<10000 { host.layoutSubviews() }
+precondition(game.geometryWrites == writes && game.layoutRequests == requests)
+// Camera metadata refreshes even if it needs no geometry change.
+host.safeAreaInsetsDidChange()
+precondition(game.layoutRequests == requests + 1)
+host.layoutSubviews(); precondition(game.geometryWrites == writes)
+// A real resize converges, and never resizes the cached guest bounds.
+host.bounds = CGRect(x: 0, y: 0, width: 932, height: 430)
+host.layoutSubviews()
+precondition(game.transform == .identity && game.bounds.size == game.launchedSize!)
+let resized = game.geometryWrites
+host.layoutSubviews();precondition(game.geometryWrites == resized)
+// Flutter receives the new host size; a detached cached game is left alone.
+game.engine = .flutter
+host.bounds = CGRect(x: 0, y: 0, width: 600, height: 400)
+host.layoutSubviews();precondition(game.bounds.size == host.bounds.size && game.transform == .identity)
+game.superview = nil
+let detached = game.geometryWrites
+host.layoutSubviews();precondition(game.geometryWrites == detached)
+print("PASS: production host converges without geometry/layout writes over 10000 passes, handles metadata, resize, Flutter and detach; UIKit integration NOT TESTED")
+''')
+
     def test_production_viewport_cutouts_and_cached_surface(self):
         source = (ROOT / "src/app/Husk/TLGameViewport.swift").read_text(encoding="utf-8")
         self.compile_run(source, '''
@@ -136,6 +204,17 @@ for area in [safe, CGRect(x: 0, y: 59, width: 430, height: 839), small, screen] 
     }
 }
 precondition(TLGameViewport.fit(.zero, in: safe) == .zero)
+// Layout must converge without an intermediate identity scale, including the exact
+// 932x430 -> 932x410 cached-surface change recorded in the watchdog run.
+let reduced = CGRect(x: 0, y: 0, width: 932, height: 410)
+let placed = TLGameViewport.placement(screen.size, in: reduced)!
+precondition(placed.bounds == screen)
+near(placed.scale, 410.0/430.0)
+near(placed.center.x, 466); near(placed.center.y, 205)
+for _ in 0..<10000 { precondition(TLGameViewport.placement(screen.size, in: reduced) == placed) }
+precondition(TLGameViewport.placement(.zero, in: reduced) == nil)
+precondition(TLGameViewport.placement(screen.size, in: .zero) == nil)
+precondition(TLGameViewport.placement(screen.size, in: screen)?.scale == 1)
 let zero = TLGameViewport.cutoutInsets(view: .zero, safeFrame: safe, edge: .top)
 precondition(zero.top == 0 && zero.left == 0 && zero.bottom == 0 && zero.right == 0)
 print("PASS: full-screen geometry stays unchanged; only the physical camera edge gets HUD insets; cached aspect/touches stay consistent")

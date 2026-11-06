@@ -14,6 +14,10 @@
 static unsigned char quest[0x4b8], avatar[0x4b8], age_logo[0x4b8], movement[0x4b8];
 static unsigned char sit[0x4b8], run_button[0x4b8];
 static bool hash_match=true, provide_quest=true, provide_movement=false;
+static bool provide_groups=true;
+static const char *missing_export;
+static unsigned char manager[48];
+static struct { const char *name; } groups[]={{"UI_TASKTRACK"},{"UI_TASKTRACKTMP"},{"UI_POPBAR"}};
 static unsigned calls, lookups, renders;
 static uintptr_t fixture_base;
 static const char *library="libMyGame.so";
@@ -27,22 +31,33 @@ static int get_int(const void *p,unsigned at) { int v;memcpy(&v,(const uint8_t *
 static void original(double a,double b,double c,double d,double e,double f,double g,double h)
 { (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g;(void)h;calls++; }
 static void original_render(void) { renders++; }
-static void *find(const char *group,const char *window)
+static void *get_group(void *self,const char *name)
 {
-    if (!strcmp(group,"UI_POPBAR")) {
-        assert(!strcmp(window,"BtnSit")||!strcmp(window,"BtnRun"));
-        return provide_movement?(!strcmp(window,"BtnSit")?sit:run_button):NULL;
+    assert(self==manager); // g_UIManager is an object, never dereference it as a pointer.
+    for (unsigned i=0;i<3;i++) {
+        if (!strcmp(name,groups[i].name)) return provide_groups?&groups[i]:NULL;
     }
-    assert(!strcmp(window,"Main"));
-    assert(!strcmp(group,"UI_TASKTRACK")||!strcmp(group,"UI_TASKTRACKTMP"));
-    return provide_quest&&!strcmp(group,"UI_TASKTRACK")?quest:NULL;
+    assert(false);return NULL;
+}
+static void *get_window(void *self,const char *name)
+{
+    assert(self==&groups[0]||self==&groups[1]||self==&groups[2]);
+    if (self==&groups[2]) {
+        assert(!strcmp(name,"BtnSit")||!strcmp(name,"BtnRun"));
+        return provide_movement?(!strcmp(name,"BtnSit")?sit:run_button):NULL;
+    }
+    assert(!strcmp(name,"Main"));
+    return provide_quest&&self==&groups[0]?quest:NULL;
 }
 static void set_position(void *window,int x,int y)
 { assert(window==quest||window==sit||window==run_button);put_int(window,0x28,x);put_int(window,0x2c,y); }
 void *tl_ld_sym(tl_lib *lib,const char *symbol)
 {
     (void)lib;lookups++;
-    if (!strcmp(symbol,"_Z14Wnd_FindWindowPKcS0_")) return (void *)find;
+    if (missing_export&&!strcmp(symbol,missing_export)) return NULL;
+    if (!strcmp(symbol,"g_UIManager")) return manager;
+    if (!strcmp(symbol,"_ZN9KUIManage10GetUIGroupEPKc")) return (void *)get_group;
+    if (!strcmp(symbol,"_ZN8KUIGroup9GetWindowEPKc")) return (void *)get_window;
     if (!strcmp(symbol,"_ZN10KWndWindow11SetPositionEii")) return (void *)set_position;
     assert(false);return NULL;
 }
@@ -76,7 +91,7 @@ static void bind_profile(void)
     fixture_base=(uintptr_t)original-0x7cd9d0;
     wrapped=(anchor_call)filter((tl_lib *)1,"KT_SetUiAnchorSafeArea",(void *)original);
     fixture_base=(uintptr_t)original_render-0x7cdbdc;
-    assert(filter((tl_lib *)1,"_Z17Wnd_RenderWindowsv",(void *)find)==(void *)find);
+    assert(filter((tl_lib *)1,"_Z17Wnd_RenderWindowsv",(void *)get_window)==(void *)get_window);
     render_frame=(void (*)(void))filter((tl_lib *)1,"_Z17Wnd_RenderWindowsv",(void *)original_render);
     assert(wrapped!=original && render_frame!=original_render);
 }
@@ -111,7 +126,7 @@ int main(void)
     library="other.so";assert(filter((tl_lib *)1,"KT_SetUiAnchorSafeArea",(void *)original)==(void *)original);
     library="libMyGame.so";assert(filter((tl_lib *)1,"another_symbol",(void *)original)==(void *)original);
     fixture_base=(uintptr_t)original-0x7cd9d0;
-    assert(filter((tl_lib *)1,"KT_SetUiAnchorSafeArea",(void *)find)==(void *)find);
+    assert(filter((tl_lib *)1,"KT_SetUiAnchorSafeArea",(void *)get_window)==(void *)get_window);
     memset(avatar,0x55,sizeof(avatar));memset(age_logo,0x66,sizeof(age_logo));memset(movement,0x77,sizeof(movement));
     quest[0x468]=quest[0x469]=1;put_int(quest,0x30,200);put_int(quest,0x34,250);
     put_double(quest,0x490,10);put_double(quest,0x498,100);
@@ -119,9 +134,9 @@ int main(void)
     assert(A.insets[0]==0&&A.insets[1]==0&&A.insets[2]==0&&A.insets[3]==0&&A.insets[4]==123);
     frame(2796,1290);
     double shifted=get_double(quest,0x490);
-    assert(shifted==59&&get_double(quest,0x498)==100&&calls==1&&lookups==2&&renders==1);
+    assert(shifted==59&&get_double(quest,0x498)==100&&calls==1&&lookups==4&&renders==1);
     for (int i=0;i<10000;i++) frame(2796,1290);
-    assert(get_double(quest,0x490)==shifted&&lookups==2);
+    assert(get_double(quest,0x490)==shifted&&lookups==4);
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
     // Removing the cutout restores the original quest offset without accumulating drift.
     tl_javaapp_set_insets(0,0,0,0,0);frame(2796,1290);
@@ -170,7 +185,7 @@ int main(void)
     // Height overflow alone does not invalidate a horizontal correction.
     put_int(quest,0x34,800);put_double(quest,0x490,10);frame(932,430);assert(get_double(quest,0x490)==59);
 
-    // Only BtnSit and BtnRun move down. The enclosing popbar is deliberately not returned by find().
+    // Only BtnSit and BtnRun move down. The enclosing popbar is never selected.
     provide_movement=true;window_at(sit,10,320,35,40);window_at(run_button,10,365,35,40);
     begin(2796,1290,insets);frame(932,430);
     assert(get_double(sit,0x490)==10&&get_double(sit,0x498)==332);
@@ -191,8 +206,35 @@ int main(void)
     assert(get_double(run_button,0x498)==3); // Only one point before the parent would clip.
     wrapped(NAN,430,0,0,932,430,932,430);render_frame();assert(get_double(sit,0x498)==332);
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
+
+    // Device's downloaded UI: scene 1665x768, screen-anchored children of a
+    // 220x54 popbar. Their screen anchor, not that shallow parent, bounds movement.
+    window_at(quest,66,-66,275,204);
+    put_double(quest,0x478,0.5);put_double(quest,0x488,0.5);
+    window_at(sit,20,170,56,62);window_at(run_button,20,100,58,65);
+    put_double(sit,0x478,0.5);put_double(run_button,0x478,0.5);
+    memset(parent,0,sizeof(parent));put_int(parent,0x30,220);put_int(parent,0x34,54);
+    memcpy(sit+0x458,&parent_ptr,sizeof(parent_ptr));memcpy(run_button+0x458,&parent_ptr,sizeof(parent_ptr));
+    begin(2796,1290,insets);
+    wrapped(1665,768,0,0,1665,768,1665,768);render_frame();
+    assert(get_double(quest,0x490)==106&&get_double(quest,0x498)==-66);
+    assert(get_double(sit,0x490)==20&&get_double(sit,0x498)==191);
+    assert(get_double(run_button,0x490)==20&&get_double(run_button,0x498)==121);
+    for (int i=0;i<10000;i++) render_frame();
+    assert(get_double(quest,0x490)==106&&get_double(sit,0x498)==191&&get_double(run_button,0x498)==121);
+    // Missing groups/exports are inert; later-created script groups are retried.
+    window_at(quest,66,-66,275,204);provide_groups=false;begin(2796,1290,insets);
+    wrapped(1665,768,0,0,1665,768,1665,768);render_frame();assert(get_double(quest,0x490)==66);
+    provide_groups=true;render_frame();assert(get_double(quest,0x490)==106);
+    const char *exports[]={"g_UIManager","_ZN9KUIManage10GetUIGroupEPKc","_ZN8KUIGroup9GetWindowEPKc","_ZN10KWndWindow11SetPositionEii"};
+    for (unsigned i=0;i<4;i++) {
+        window_at(quest,66,-66,275,204);missing_export=exports[i];begin(2796,1290,insets);
+        wrapped(1665,768,0,0,1665,768,1665,768);unsigned before=renders;render_frame();
+        assert(get_double(quest,0x490)==66&&renders==before+1);
+    }
+    missing_export=NULL;
     double dx,dy;
     assert(!tl_quest_delta((tl_quest_rect){0,0,932,430},(tl_quest_rect){0,100,900,200},(tl_quest_cutout){59,0,0,0},932,430,&dx,&dy));
-    puts("PASS: selected HUD profile guards package/hash/both PLT hooks, converts pixel/visible units, adjusts late windows before render, keeps IME, preserves other HUD bytes, bounds walk/sit movement and avoids drift over 10000 updates");
+    puts("PASS: selected HUD uses the script-group registry/object ABI, handles missing exports/groups, guards package/hash/PLT hooks, converts pixel/visible units, preserves IME/other HUD, and moves the device-layout quest/walk/sit without drift over 10000 updates");
     return 0;
 }

@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LOG_NAMES = ('husk.log', 'husk-prev.log', 'husk-native.log', 'husk-native-prev.log')
 MAX_LOG_BYTES = 16 * 1024 * 1024
 MAX_CRASH_BYTES = 8 * 1024 * 1024
+SESSION_REFRESH_SECONDS = 30
 
 
 def husk_bundle(bundle):
@@ -43,6 +44,28 @@ class Cursor:
     offset: int
     prefix: bytes
     identity: tuple
+
+
+@dataclass
+class LogSession:
+    started: float
+    missing_polls: int = 0
+
+    def observe(self, files, now, once=False):
+        self.missing_polls = 0 if files else self.missing_polls+1
+        refresh = not once and (self.missing_polls >= 2 or now-self.started >= SESSION_REFRESH_SECONDS)
+        state = ('snapshot-complete' if once else 'following') if files else 'waiting-for-logs'
+        return {'state': state, 'reconnect': refresh, 'localFilesMayBeStale': not bool(files)}
+
+
+def current_build(output, files):
+    """Never identify a new session using a retained log absent from the USB snapshot."""
+    if not any(f['name']=='husk.log' for f in files):
+        return None
+    with (output/'husk.log').open('rb') as f:
+        banner=f.read(16384).decode('utf-8', errors='replace')
+    found=re.search(r'^\[[^\r\n]*\]\[boot\] build\s+: ([^\r\n]+)',banner,re.M)
+    return found[1] if found else None
 
 
 async def mirror_log(afc, remote, target, cursors, limit=MAX_LOG_BYTES):
@@ -180,11 +203,12 @@ async def capture(args):
                 next_crashes = 0
                 crash_files = []
                 async with await HouseArrestService.create(device, bundle, documents_only=True) as afc:
+                    session=LogSession(asyncio.get_running_loop().time())
                     while True:
                         files = []
                         for name in LOG_NAMES:
                             try:
-                                files.append(await mirror_log(afc, '/Documents/'+name, output/name, cursors))
+                                files.append(await asyncio.wait_for(mirror_log(afc, '/Documents/'+name, output/name, cursors), timeout=8))
                             except AfcFileNotFoundError:
                                 pass
                         now = asyncio.get_running_loop().time()
@@ -195,11 +219,15 @@ async def capture(args):
                             except Exception as error:
                                 crash_error = type(error).__name__
                             next_crashes = now+30
-                        write_status(output, state='snapshot-complete' if args.once else 'following',
+                        health=session.observe(files,now,args.once)
+                        write_status(output, **health, observedBuild=current_build(output,files),
                                      bundle=bundle, files=files, crashFiles=crash_files, crashServiceError=crash_error)
                         if args.once or (deadline and now >= deadline) or (output/'STOP').exists():
                             return
+                        if health['reconnect']:
+                            break # Reopen the current app container, including after a sideload/reinstall.
                         await asyncio.sleep(args.interval)
+                await asyncio.sleep(args.interval)
         except asyncio.CancelledError:
             raise
         except Exception as error:
