@@ -40,7 +40,8 @@ final class CrashReport: ObservableObject {
             switch self {
             case .signal(let s):
                 let name = [11: "SIGSEGV, a bad memory access", 6: "SIGABRT, the game or a library gave up",
-                            4: "SIGILL, an instruction this device does not run", 8: "SIGFPE, an arithmetic error",
+                            4: "SIGILL, an instruction this device does not run", 5: "SIGTRAP, an unexpected breakpoint",
+                            10: "SIGBUS, a store to memory that cannot be written", 8: "SIGFPE, an arithmetic error",
                             12: "SIGSYS, a system call iOS does not allow"][s] ?? "signal \(s)"
                 return "It stopped with \(name). The report has the full log of that run."
             case .startFailed:
@@ -104,7 +105,7 @@ final class CrashReport: ObservableObject {
         let lines = ((try? String(contentsOf: Self.previousLogURL, encoding: .utf8)) ?? "")
             .split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
         var cause = Cause.unknown
-        if let fatal = lines.last(where: { $0.contains("*** FATAL SIGNAL") }),
+        if let fatal = lines.last(where: { $0.contains("*** FATAL SIGNAL") || $0.contains("=== FATAL signal") }),
            let n = fatal.split(separator: " ").compactMap({ Int($0) }).first {
             cause = .signal(n)
         } else if lines.contains(where: { $0.contains("the game could not be started") || $0.contains("native: launch refused") }) {

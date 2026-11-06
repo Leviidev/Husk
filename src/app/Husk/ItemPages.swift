@@ -143,6 +143,10 @@ struct GamePage: View {
     @State private var preparing: String?
     @State private var prepareFailed: String?
     @State private var confirmQuit = false
+    /// Sign in with Google first, for a game that saves online with Play Games (asked once per run of Husk)
+    @State private var confirmOnlineSignIn = false
+    @State private var onlineSignIn = false
+    @State private var askedOnlineSignIn = false
 
     private var runs: Bool { app.report?.canRun == true }
 
@@ -238,6 +242,8 @@ struct GamePage: View {
                     else if loadedNow { Text("\(app.label) has been started in this run of Husk. Close Husk and open it again to restore saves.") }
                     else { Text("A backup is a .zip of everything \(app.label) has saved in Husk, to keep in Files or move to another device.") }
                 }
+
+                OnlineSavesSection(app: app)
             }
 
             Section("About") {
@@ -287,6 +293,13 @@ struct GamePage: View {
         } message: {
             Text(prepareFailed ?? "")
         }
+        .confirmationDialog("Sign in with Google for online saves?", isPresented: $confirmOnlineSignIn, titleVisibility: .visible) {
+            Button("Sign In with Google") { onlineSignIn = true }
+            Button("Play Without Online Saves") { play() }
+        } message: {
+            Text("\(app.label) keeps its online saves under your Google Play Games player. Sign in with the Google account you play it with on Android, and the game's Load Online finds your progress.")
+        }
+        .sheet(isPresented: $onlineSignIn) { GoogleSignInSheet() }
         .confirmationDialog("Close Husk?", isPresented: $confirmQuit, titleVisibility: .visible) {
             Button("Close Husk") {
                 Router.shared.switchTo(app.id)
@@ -309,6 +322,13 @@ struct GamePage: View {
     /// Play: in JIT-less mode the game's libraries are converted and signed first (once); with Geode on, whatever it is missing
     /// (a newer release, its resources) is fetched first.
     private func play() {
+        // A game whose progress lives on its own server under its Play Games player: without a Google account it would start
+        // a new game, and its online save could then be overwritten. Asked once per run of Husk.
+        if PlayGamesSignIn.savesOnline(app), !PlayGamesSignIn.hasGoogleAccount, !askedOnlineSignIn {
+            askedOnlineSignIn = true
+            confirmOnlineSignIn = true
+            return
+        }
         if JITLess.enabled, SigningCertificate.credentials() != nil, preparing == nil {
             preparing = "Preparing for JIT-less mode…"
             Task {

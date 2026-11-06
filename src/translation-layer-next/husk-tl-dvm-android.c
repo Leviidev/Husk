@@ -277,6 +277,7 @@ NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrat
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
 NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
 NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
+static void host_lifecycle(bool pause);      /* below, with Unity's command line */
 NAT(N_pollInput)
 {
     (void)self; (void)a;
@@ -288,8 +289,11 @@ NAT(N_pollInput)
     int32_t *v = arr->arr.data;
     v[0] = n;
     memcpy(v + 1, A.q, (size_t)A.qn * 4);
+    bool host[16]; int nhost = 0;                     /* the host's pauses (true) and resumes, in order */
+    for (int i = 0; i + 3 < A.qn; i += 4) if (A.q[i] == 6 && nhost < 16) host[nhost++] = A.q[i + 1] != 0;
     A.qn = 0;
     pthread_mutex_unlock(&A.q_lock);
+    for (int i = 0; i < nhost; i++) host_lifecycle(host[i]);
     *ret = L(arr);
     return true;
 }
@@ -889,6 +893,33 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
     E2.on = true; E2.seq++;
     pthread_mutex_unlock(&E2.lk);
 }
+/* Unity 6's frames on the GPU: the GL context its EGL window draws with shares texture objects with the Java UI compositor, so
+ * each frame is copied into a texture the compositor draws (husk-tl-egl.c) instead of read back through the CPU and uploaded
+ * again. TL_GPU_COMPOSITOR (a game's Frame Handoff setting) is "1" for every game, "0" for none; unset, it is on for the games
+ * it has been tried with. eglCreateContext asks before Unity's context is made, and makes it unshared if sharing fails. */
+void *tl_javaapp_share_context(void *display)
+{
+    const char *on = getenv("TL_GPU_COMPOSITOR");
+    if (on ? on[0] != '1' : strcmp(A.pkg, "de.shugasu.itrtg") != 0) return NULL;
+    pthread_mutex_lock(&E2.lk);
+    void *ctx = (E2.ready && E2.dpy == display) ? E2.ui : NULL;
+    pthread_mutex_unlock(&E2.lk);
+    return ctx;
+}
+
+/* Ownership: the app's EGL context owns the texture; the UI context merely
+ * samples it, using GL object sharing. The source thread finishes its copy
+ * before publishing the new object under E2.lk. */
+void tl_javaapp_app_texture(unsigned tex, int w, int h)
+{
+    if (!tex || w <= 0 || h <= 0) return;
+    pthread_mutex_lock(&E2.lk);
+    E2.tex = tex; E2.pw = w; E2.ph = h;
+    E2.x = 0; E2.y = 0; E2.w = A.cfg.width; E2.h = A.cfg.height;
+    E2.on = true; E2.seq++;
+    pthread_mutex_unlock(&E2.lk);
+}
+
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
 
@@ -1160,6 +1191,176 @@ static void stub_lib(const char *name, uint64_t size, void *dir)
     if (stat(p, &st) != 0) { int fd = open(p, O_CREAT | O_WRONLY, 0755); if (fd >= 0) close(fd); }
 }
 
+/* ---- Unity's command line: -systemallocator where the engine has mimalloc */
+
+/*
+ * Unity 6 runs its main allocators on mimalloc (its log says "Mimalloc is enabled and will override the Dynamic Heap and Dual
+ * Thread (Main and MainThread) allocators"). Mimalloc tells threads apart by the thread pointer: on Android it reads tpidr_el0
+ * and takes the word there as the thread's id. The loader turns every `mrs tpidr_el0` into the address of one thread block per
+ * library (husk-tl-ld.c, patch_image), so to mimalloc all of Unity's threads are one thread. A block freed on one thread that
+ * another thread's heap owns is then taken for a local free, done without the atomics a free from another thread needs, and
+ * two threads change one free list at once: memory still in use is handed out again. Idling to Rule the Gods died of it at
+ * start (its loading threads, on a pointer that held the bytes of a path) and later (a job worker, on 0xc0dedbad).
+ *
+ * Unity reads boot.config out of the APK with its own zip reader, so its mimalloc setting cannot be changed on the way, and
+ * Unity's documentation gives that setting no command-line argument. -systemallocator, which Unity documents for Android, has
+ * the player take all its memory from malloc, as the HLE driver already has it do where address space is short
+ * (husk-tl-unity.c). The player reads its command line in initJni, from its activity's launch intent: the "unity" extra. The
+ * argument is added to that intent when the engine first looks at it through JNI. TL_UNITY_SYSTEM_ALLOCATOR=1|0 decides
+ * instead of the check for mimalloc; TL_UNITY_ARGS adds arguments of its own.
+ */
+static struct {
+    pthread_mutex_t lock;
+    char line[512];             /* what is added to the "unity" extra */
+    tl_jclass *intent;
+    bool unity;                 /* the app is a Unity game: leaving and coming back go through the whole lifecycle (below) */
+    jobj *stopped;              /* the activity stopped when Husk left the screen */
+} UC = { .lock = PTHREAD_MUTEX_INITIALIZER };
+
+/* Whether the game's libunity.so has mimalloc in it: its messages ("mimalloc: ...") and Unity's own line about it are among the
+   library's strings. */
+static bool libunity_has_mimalloc(void)
+{
+    static const char marker[] = "imalloc";
+    for (int i = 0; i < 16; i++) {
+        const tl_zip *z = tl_ld_apk_at(i);
+        if (!z) { if (i == 0) continue; break; }
+        const tl_zip_entry *e = tl_zip_find(z, "lib/arm64-v8a/libunity.so");
+        if (!e) continue;
+        const uint8_t *d; size_t n; bool owned; char err[160];
+        if (!tl_zip_data(z, e, (size_t)1 << 30, &d, &n, &owned, err, sizeof(err))) { tl_log_line("unity: libunity.so: %s", err); return false; }
+        bool has = memmem(d, n, marker, sizeof(marker) - 1) != NULL;
+        if (owned) free((void *)d);
+        return has;
+    }
+    return false;
+}
+
+static void unity_intent_peek(jobj *self, const tl_jmeth *m)
+{
+    if (!self || m->cls != UC.intent || m->is_static) return;
+    if (strcmp(m->name, "getExtras") && strcmp(m->name, "getStringExtra") && strcmp(m->name, "hasExtra") && strcmp(m->name, "getBundleExtra")) return;
+    static _Thread_local bool inside;
+    if (inside) return;
+    inside = true;
+    bool pending = tl_jni_pending();
+    pthread_mutex_lock(&UC.lock);
+    if (UC.line[0]) {
+        jvalue key = L(jstr("unity"));
+        void *get = tl_dvm->find_method(self->cls, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", false);
+        void *put = tl_dvm->find_method(self->cls, "putExtra", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;", false);
+        const char *had = get ? tl_jni_string(tl_dvm->invoke(get, self, false, &key).l) : NULL;
+        if (put && !(had && strstr(had, UC.line))) {
+            char line[1024];
+            snprintf(line, sizeof(line), "%s%s%s", had && had[0] ? had : "", had && had[0] ? " " : "", UC.line);
+            jvalue args[2] = { key, L(jstr(line)) };
+            tl_dvm->invoke(put, self, false, args);
+            tl_log_line("unity: command line \"%s\", in the launch intent as the engine reads it", line);
+        }
+        if (!pending) tl_jni_clear();      /* what this did is not the caller's to see */
+    }
+    pthread_mutex_unlock(&UC.lock);
+    inside = false;
+}
+
+/*
+ * Leaving the screen and coming back, as Android does it. A phone that leaves an app takes its window's focus, then pauses it,
+ * then stops it; coming back, it restarts, starts and resumes it, then gives the focus back. Husk's framework pauses and
+ * resumes only (AppRunner.hostPause). Unity's player reacts to each step: the focus is OnApplicationFocus, and a player that
+ * allows a resizable window pauses on onStop rather than onPause. An idle game that counts the time it was away from either
+ * missed it (Idling to Rule the Gods seemed not to count the time away when Husk was left and come back to). For a Unity game, the
+ * steps Husk's framework leaves out are made here, on the app's main thread, before the framework's own pause or resume runs
+ * (which then finds the activity already paused, or resumed, and does nothing more).
+ */
+static void lifecycle_call(jobj *o, const char *name, const char *sig, const jvalue *args)
+{
+    if (!o) return;
+    tl_jni_call(o, name, sig, args);
+    if (tl_jni_pending()) { tl_log_line("javaapp: %s threw", name); tl_jni_clear(); }
+}
+
+static void unity_host_lifecycle(bool pause)
+{
+    jvalue r; r.j = 0;
+    if (!tl_dvm_call_static("husk/AppRunner", "top", "()Landroid/app/Activity;", NULL, &r) || !r.l) { tl_jni_clear(); return; }
+    jobj *act = r.l;
+    bool resumed = tl_jni_call(act, "isResumedHusk", "()Z", NULL).z;
+    jobj *win = tl_jni_call(act, "getWindow", "()Landroid/view/Window;", NULL).l;
+    jobj *decor = win ? tl_jni_call(win, "peekDecorView", "()Landroid/view/View;", NULL).l : NULL;
+    tl_jni_clear();
+    jvalue focus; focus.j = 0;
+    if (pause) {
+        if (!resumed) return;
+        lifecycle_call(decor, "dispatchWindowFocusChanged", "(Z)V", &focus);
+        lifecycle_call(act, "huskPause", "()V", NULL);
+        lifecycle_call(act, "huskStop", "()V", NULL);
+        UC.stopped = act;
+        tl_log_line("javaapp: left the screen: %s loses the window's focus, pauses and stops", tl_jni_class_name(act));
+    } else {
+        if (resumed) return;
+        bool was_stopped = UC.stopped == act;
+        if (was_stopped) { lifecycle_call(act, "huskRestart", "()V", NULL); lifecycle_call(act, "huskStart", "()V", NULL); }
+        lifecycle_call(act, "huskResume", "()V", NULL);
+        focus.z = 1;
+        lifecycle_call(decor, "dispatchWindowFocusChanged", "(Z)V", &focus);
+        UC.stopped = NULL;
+        tl_log_line("javaapp: back on the screen: %s %sresumes and has the window's focus", tl_jni_class_name(act),
+                    was_stopped ? "restarts, starts, " : "");
+    }
+}
+
+static void host_lifecycle(bool pause) { if (UC.unity) unity_host_lifecycle(pause); }
+
+/* What Unity's player is told, in the log: its pause, resume and focus natives, as they are called. */
+static uint8_t (*u_native_pause)(void *, void *);
+static void (*u_native_resume)(void *, void *);
+static void (*u_native_focus)(void *, void *, uint8_t);
+static uint8_t w_native_pause(void *env, void *self) { tl_log_line("unity: nativePause (OnApplicationPause(true))"); return u_native_pause(env, self); }
+static void w_native_resume(void *env, void *self) { tl_log_line("unity: nativeResume (OnApplicationPause(false))"); u_native_resume(env, self); }
+static void w_native_focus(void *env, void *self, uint8_t f)
+{
+    tl_log_line("unity: nativeFocusChanged(%s) (OnApplicationFocus(%s))", f ? "true" : "false", f ? "true" : "false");
+    u_native_focus(env, self, f);
+}
+static void *unity_native_wrap(const char *cls, const char *name, const char *sig, void *fn)
+{
+    if (strncmp(cls, "com/unity3d/player/", 19)) return fn;
+    /* (one function each: a second, different one is bound as it is, unlogged) */
+#define WRAP(nm, sg, orig, w) if (!strcmp(name, nm) && !strcmp(sig, sg)) { \
+        if (orig && (void *)orig != fn) return fn; \
+        orig = fn; return (void *)w; }
+    WRAP("nativePause", "()Z", u_native_pause, w_native_pause)
+    WRAP("nativeResume", "()V", u_native_resume, w_native_resume)
+    WRAP("nativeFocusChanged", "(Z)V", u_native_focus, w_native_focus)
+#undef WRAP
+    return fn;
+}
+
+static void unity_command_line_setup(void)
+{
+    __atomic_store_n(&tl_jni_before_java, NULL, __ATOMIC_RELEASE);
+    UC.line[0] = 0;
+    const char *force = getenv("TL_UNITY_SYSTEM_ALLOCATOR"), *extra = getenv("TL_UNITY_ARGS");
+    bool unity = false;
+    for (int i = 0; i < 16 && !unity; i++) {
+        const tl_zip *z = tl_ld_apk_at(i);
+        if (!z) { if (i == 0) continue; break; }
+        unity = tl_zip_find(z, "lib/arm64-v8a/libunity.so") != NULL;
+    }
+    UC.unity = unity;
+    UC.stopped = NULL;
+    u_native_pause = NULL; u_native_resume = NULL; u_native_focus = NULL;
+    __atomic_store_n(&tl_jni_native_wrap, unity ? unity_native_wrap : NULL, __ATOMIC_RELEASE);
+    if (!unity) return;
+    bool sys = force ? atoi(force) != 0 : libunity_has_mimalloc();
+    snprintf(UC.line, sizeof(UC.line), "%s%s%s", sys ? "-systemallocator" : "", sys && extra && extra[0] ? " " : "", extra ? extra : "");
+    if (!UC.line[0]) { tl_log_line("unity: no mimalloc in this engine: its own allocators"); return; }
+    if (sys) tl_log_line("unity: %s: -systemallocator, malloc for the engine's memory (under Husk mimalloc takes every thread for "
+                         "one, and hands out memory still in use)", force ? "TL_UNITY_SYSTEM_ALLOCATOR" : "mimalloc in this engine");
+    UC.intent = tl_jni_class("android/content/Intent");
+    __atomic_store_n(&tl_jni_before_java, unity_intent_peek, __ATOMIC_RELEASE);
+}
+
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
     atomic_store(&A.ended, false);
@@ -1209,6 +1410,9 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    /* Play Games for the game's C#, signed in with the person's Google account (husk-tl-jni-gms.c, husk-tl-playgames.h) */
+    { void tl_gms_install_java(void); tl_gms_install_java(); }
+    unity_command_line_setup();
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
@@ -1218,6 +1422,9 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
 
 void tl_javaapp_stop(void)
 {
+    __atomic_store_n(&tl_jni_before_java, NULL, __ATOMIC_RELEASE);
+    __atomic_store_n(&tl_jni_native_wrap, NULL, __ATOMIC_RELEASE);
+    UC.unity = false; UC.stopped = NULL;
     atomic_store(&A.ended, true);
     if (A.app_started) { pthread_join(A.app_thread, NULL); A.app_started = false; }
     if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }

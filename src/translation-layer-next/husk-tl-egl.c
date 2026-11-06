@@ -76,6 +76,47 @@ static void (*a_glReadPixels)(int, int, int, int, unsigned, unsigned, void *);
 static void (*a_glGetIntegerv)(unsigned, int *);
 static void (*a_glBindFramebuffer)(unsigned, unsigned);
 static void (*a_glPixelStorei)(unsigned, int);
+static void (*a_glGenTextures)(int, unsigned *);
+static void (*a_glDeleteTextures)(int, const unsigned *);
+static void (*a_glActiveTexture)(unsigned);
+static void (*a_glBindTexture)(unsigned, unsigned);
+static void (*a_glTexParameteri)(unsigned, unsigned, int);
+static void (*a_glTexImage2D)(unsigned, int, int, int, int, int, unsigned, unsigned, const void *);
+static void (*a_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int);
+static void (*a_glFinish)(void);
+static unsigned (*a_glGetError)(void);
+
+/* Unity's EGL surface may share texture objects with the Java renderer's
+ * context. The Java compositor only offers this for opted-in packages. */
+__attribute__((weak)) void *tl_javaapp_share_context(void *display);
+__attribute__((weak)) void tl_javaapp_app_texture(unsigned tex, int w, int h);
+static pthread_mutex_t g_gpu_ctx_lock = PTHREAD_MUTEX_INITIALIZER;
+static EGLContext g_gpu_contexts[64];
+static bool gpu_context_shared(EGLContext ctx)
+{
+    bool found = false;
+    pthread_mutex_lock(&g_gpu_ctx_lock);
+    for (unsigned i = 0; i < 64; i++) if (ctx && g_gpu_contexts[i] == ctx) { found = true; break; }
+    pthread_mutex_unlock(&g_gpu_ctx_lock);
+    return found;
+}
+static void gpu_context_track(EGLContext ctx, bool add)
+{
+    if (!ctx) return;
+    pthread_mutex_lock(&g_gpu_ctx_lock);
+    for (unsigned i = 0; i < 64; i++) {
+        if (g_gpu_contexts[i] == ctx) {
+            if (!add) g_gpu_contexts[i] = NULL;
+            pthread_mutex_unlock(&g_gpu_ctx_lock);
+            return;
+        }
+    }
+    if (add) for (unsigned i = 0; i < 64; i++) if (!g_gpu_contexts[i]) {
+        g_gpu_contexts[i] = ctx;
+        break;
+    }
+    pthread_mutex_unlock(&g_gpu_ctx_lock);
+}
 
 #define LOAD(lib, name) do { a_##name = dlsym(lib, #name); if (!a_##name) tl_log_line("egl: ANGLE does not export " #name); } while (0)
 
@@ -103,6 +144,15 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     a_glGetIntegerv = a_eglGetProcAddress("glGetIntegerv");
     a_glBindFramebuffer = a_eglGetProcAddress("glBindFramebuffer");
     a_glPixelStorei = a_eglGetProcAddress("glPixelStorei");
+    a_glGenTextures = a_eglGetProcAddress("glGenTextures");
+    a_glDeleteTextures = a_eglGetProcAddress("glDeleteTextures");
+    a_glActiveTexture = a_eglGetProcAddress("glActiveTexture");
+    a_glBindTexture = a_eglGetProcAddress("glBindTexture");
+    a_glTexParameteri = a_eglGetProcAddress("glTexParameteri");
+    a_glTexImage2D = a_eglGetProcAddress("glTexImage2D");
+    a_glCopyTexSubImage2D = a_eglGetProcAddress("glCopyTexSubImage2D");
+    a_glFinish = a_eglGetProcAddress("glFinish");
+    a_glGetError = a_eglGetProcAddress("glGetError");
     if (frame_dir) { snprintf(E.frame_dir, sizeof(E.frame_dir), "%s", frame_dir); E.latest_only = frame_every < 0; E.frame_every = frame_every != 0 ? (frame_every < 0 ? -frame_every : frame_every) : 60; }
     E.ready = true;
     pthread_mutex_unlock(&E.lock);
@@ -197,7 +247,12 @@ static EGLBoolean w_eglGetConfigAttrib(EGLDisplay d, EGLConfig c, EGLint at, EGL
     if (trace) tl_log_line("egl: eglGetConfigAttrib(%p, %#x) -> %s %d", c, at, ok ? "true" : "false", v ? *v : -1);
     return ok;
 }
-PASS_BOOL(eglDestroyContext, (EGLDisplay d, EGLContext c), (d, c))
+static EGLBoolean w_eglDestroyContext(EGLDisplay d, EGLContext c)
+{
+    EGLBoolean ok = a_eglDestroyContext(d, c);
+    if (ok) gpu_context_track(c, false);
+    return ok;
+}
 PASS_BOOL(eglQuerySurface, (EGLDisplay d, EGLSurface s, EGLint at, EGLint *v), (d, s, at, v))
 PASS_BOOL(eglSurfaceAttrib, (EGLDisplay d, EGLSurface s, EGLint at, EGLint v), (d, s, at, v))
 static EGLBoolean w_eglMakeCurrent(EGLDisplay d, EGLSurface dr, EGLSurface rd, EGLContext c)
@@ -235,7 +290,28 @@ static EGLContext w_eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share
         patched[n] = EGL_NONE;
         at = patched;
     }
-    EGLContext ctx = a_eglCreateContext(d, cfg_real(c), share, at);
+    /* Opt-in Unity contexts share GL texture objects with the app's UI
+     * compositor. Keep guest-requested sharing untouched. If ANGLE refuses
+     * our proposed share group, retry the original context creation. */
+    EGLContext proposed = NULL;
+    if (!share && tl_javaapp_share_context) {
+        bool es3 = false;
+        for (int i = 0; at && at[i] != EGL_NONE && i < 36; i += 2)
+            if (at[i] == 0x3098 && at[i + 1] >= 3) es3 = true;
+        if (es3) proposed = tl_javaapp_share_context(d);
+    }
+    EGLContext ctx = NULL;
+    bool gpu_shared = false;
+    if (proposed) {
+        ctx = a_eglCreateContext(d, cfg_real(c), proposed, at);
+        if (ctx) gpu_shared = true;
+        else tl_log_line("egl: GPU-shared Unity context unavailable, falling back to independent context");
+    }
+    if (!ctx) {
+        ctx = a_eglCreateContext(d, cfg_real(c), share, at);
+        gpu_shared = share && gpu_context_shared(share);
+    }
+    if (gpu_shared) gpu_context_track(ctx, true);
     static int trace = -1;
     if (trace < 0) trace = getenv("TL_EGL_TRACE") ? 1 : 0;
     if (trace || !ctx) {
@@ -303,6 +379,83 @@ static const uint8_t *read_back(EGLDisplay d, EGLSurface s, EGLint *pw, EGLint *
     *pw = w; *ph = h;
     return buf;
 }
+/* A Unity 6 frame is 1912x880 (~6.7 MB). glReadPixels on every swap
+ * synchronizes GPU -> CPU, then a memcpy and glTexSubImage2D send it straight
+ * back to GPU in the compositor. Instead, for a context that explicitly
+ * shares objects with the UI context, copy the pbuffer's back buffer into a
+ * GPU texture and publish that texture to the compositor. No CPU readback.
+ *
+ * Double buffering keeps the draw thread away from the texture most recently
+ * handed to the UI thread. glFinish ensures copy completion before publish.
+ * Unsupported contexts and any GL copy errors use the original path.
+ */
+static bool gpu_comp_copy(EGLDisplay d, EGLSurface s)
+{
+    if (!tl_javaapp_app_texture || !gpu_context_shared(a_eglGetCurrentContext()) ||
+        !a_glGenTextures || !a_glBindTexture || !a_glDeleteTextures ||
+        !a_glActiveTexture || !a_glTexImage2D || !a_glTexParameteri ||
+        !a_glCopyTexSubImage2D || !a_glFinish || !a_glGetError) return false;
+    EGLint w = 0, h = 0;
+    a_eglQuerySurface(d, s, EGL_WIDTH, &w);
+    a_eglQuerySurface(d, s, EGL_HEIGHT, &h);
+    if (w <= 0 || h <= 0) return false;
+
+    static __thread struct {
+        EGLSurface surface;
+        unsigned tex[2];
+        int width[2], height[2], next;
+        bool disabled;
+    } cache;
+    if (cache.surface != s) {
+        if (cache.tex[0] || cache.tex[1]) a_glDeleteTextures(2, cache.tex);
+        memset(&cache, 0, sizeof(cache));
+        cache.surface = s;
+    }
+    if (cache.disabled) return false;
+
+    /* An error the game's own drawing left (GL_INVALID_ENUM from a query ANGLE does not know, say) would read as this copy's:
+     * taken first, so only the copy's own errors count. */
+    unsigned stale = 0;
+    for (int i = 0; i < 16; i++) { unsigned e = a_glGetError(); if (!e) break; stale = e; }
+    static atomic_bool told_stale;
+    if (stale && !atomic_exchange(&told_stale, true)) tl_log_line("egl: the game's GL left error %#x before the GPU compositor copy (cleared)", stale);
+    int prev_active = 0x84C0, prev_tex = 0, prev_read_fb = 0;
+    a_glGetIntegerv(0x84E0 /* GL_ACTIVE_TEXTURE */, &prev_active);
+    a_glActiveTexture(0x84C0 /* GL_TEXTURE0 */);
+    a_glGetIntegerv(0x8069 /* GL_TEXTURE_BINDING_2D */, &prev_tex);
+    a_glGetIntegerv(0x8CAA /* GL_READ_FRAMEBUFFER_BINDING */, &prev_read_fb);
+    a_glBindFramebuffer(0x8CA8 /* GL_READ_FRAMEBUFFER */, 0);
+    unsigned idx = (unsigned)(cache.next++ & 1);
+    if (!cache.tex[idx]) a_glGenTextures(1, &cache.tex[idx]);
+    a_glBindTexture(0x0DE1 /* GL_TEXTURE_2D */, cache.tex[idx]);
+    if (cache.width[idx] != w || cache.height[idx] != h) {
+        a_glTexParameteri(0x0DE1, 0x2801 /* MIN_FILTER */, 0x2601 /* LINEAR */);
+        a_glTexParameteri(0x0DE1, 0x2800 /* MAG_FILTER */, 0x2601);
+        a_glTexParameteri(0x0DE1, 0x2802 /* WRAP_S */, 0x812F /* CLAMP_TO_EDGE */);
+        a_glTexParameteri(0x0DE1, 0x2803 /* WRAP_T */, 0x812F);
+        a_glTexImage2D(0x0DE1, 0, 0x1908 /* RGBA */, w, h, 0,
+                       0x1908, 0x1401 /* UNSIGNED_BYTE */, NULL);
+        cache.width[idx] = w;
+        cache.height[idx] = h;
+    }
+    a_glCopyTexSubImage2D(0x0DE1, 0, 0, 0, 0, 0, w, h);
+    a_glFinish();
+    unsigned err = a_glGetError();
+    a_glBindTexture(0x0DE1, (unsigned)prev_tex);
+    a_glActiveTexture((unsigned)prev_active);
+    a_glBindFramebuffer(0x8CA8, (unsigned)prev_read_fb);
+    if (err) {
+        cache.disabled = true;
+        tl_log_line("egl: GPU compositor copy failed with GL error %#x; falling back to CPU readback", err);
+        return false;
+    }
+    tl_javaapp_app_texture(cache.tex[idx], w, h);
+    static atomic_bool announced;
+    if (!atomic_exchange(&announced, true))
+        tl_log_line("egl: Unity GPU-shared compositor active (%dx%d), bypassing per-frame glReadPixels", w, h);
+    return true;
+}
+
 static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *win, const EGLint *at)
 {
     cfg = cfg_real(cfg);
@@ -431,10 +584,14 @@ static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
     if (texwin) { tex_swap(d, s, texwin); return EGL_TRUE; }
     unsigned long n = atomic_fetch_add(&E.presented, 1) + 1;
     if (comp_surface(s)) {
-        EGLint w = 0, h = 0;
-        const uint8_t *px = read_back(d, s, &w, &h);
-        if (px && tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, w, h);
-        if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited)", n);
+        bool gpu = gpu_comp_copy(d, s);
+        if (!gpu) {
+            EGLint w = 0, h = 0;
+            const uint8_t *px = read_back(d, s, &w, &h);
+            if (px && tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, w, h);
+        }
+        if (n <= 3 || n % 600 == 0)
+            tl_log_line("egl: swap #%lu (%s)", n, gpu ? "GPU-shared compositor" : "CPU-readback compositor");
         return EGL_TRUE;
     }
     if (n <= 3 || n % 600 == 0) {

@@ -836,6 +836,7 @@ struct TLClassicAttemptView: View {
             UIApplication.shared.isIdleTimerDisabled = settings.keepAwake
             if cleanLayout { showHint() }
             CrashReport.gameStarted(app)
+            PlayGamesSignIn.gameStarting(app)
             runner.start(apks: app.apks)
         }
         .onDisappear {

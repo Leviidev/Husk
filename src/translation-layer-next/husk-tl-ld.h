@@ -82,6 +82,7 @@ void *tl_ld_sym_deep(tl_lib *lib, const char *name, tl_lib **found_in);   /* the
 tl_lib *tl_ld_lib_of(const void *addr);
 void *tl_ld_lib_base(const tl_lib *lib);
 const char *tl_ld_lib_name(const tl_lib *lib);
+const char *tl_ld_lib_soname(const tl_lib *lib);      /* its DT_SONAME ("libunity.so"), or NULL */
 const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void **sym_addr);
 
 /* An imported AOT dylib maps the ELF image r-x (AMFI execSeg). Stores that land there belong on the writable copy of that
@@ -158,7 +159,8 @@ bool tl_ld_aot_build(const char *name, const uint8_t *file, size_t flen, tl_ld_a
 /* What a dylib made from a library records about it (section __TEXT,__husk_manifest), so the loader only imports a dylib that was
  * made from this exact file by a compatible loader. */
 #define TL_AOT_MAGIC   "HUSKAOT1"
-#define TL_AOT_VERSION 10u         /* bump whenever the rewrites or the dylib's layout change: an old dylib must not be imported */
+#define TL_AOT_VERSION 11u         /* bump whenever the rewrites or the dylib's layout change: an old dylib must not be imported
+                                      (11: code names read-only data in the image, not its copy) */
 typedef struct tl_aot_manifest {
     char magic[8];
     uint32_t version, page;            /* TL_AOT_VERSION; 16384 */

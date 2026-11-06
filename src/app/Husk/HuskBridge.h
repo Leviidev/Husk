@@ -111,6 +111,7 @@ void husk_balloon_set_bytes(int64_t target_bytes);
    docs/04-translation-layer.md for why the two are kept apart. */
 #include "../../translation-layer/husk-tl.h"
 #include "../../translation-layer-next/husk-tl-unity-app.h"
+#include "../../translation-layer-next/husk-tl-playgames.h"
 #include "../../translation-layer-next/husk-console-host.h"
 
 /* Husk 3.2's JIT-less mode (JITLess.swift, SigningCertificate.swift): libraries made into signed dylibs ahead of time. */

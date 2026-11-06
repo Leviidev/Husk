@@ -253,7 +253,10 @@ static void *b_fopen(const char *path, const char *mode)
     if (!f) f = fopen(real, mode);
     if (!f && errno == ENOENT) { void tl_note_missing_file(const char *path); tl_note_missing_file(path); }
     { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0;
-      if (tr) tl_log_line("file: fopen(%s, %s) -> %s%s", path, mode, f ? "ok" : "failed", real != path ? " (mapped)" : ""); }
+      bool tl_file_trace_shows(const char *path);
+      if (tr && tl_file_trace_shows(path))
+          tl_log_line("file: fopen(%s, %s) -> %s%s%s", path, mode, f ? "ok" : "failed", real != path ? " (mapped)" : "",
+                      path && (!strncmp(path, "/proc/", 6) || !strncmp(path, "/sys/", 5)) ? " (shown once)" : ""); }
     TL_ERRNO_END();
     return f;
 }

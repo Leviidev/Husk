@@ -22,6 +22,7 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-jni.h"
+#include "husk-tl-playgames.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-godot.h"
 #include "husk-tl-unity.h"
@@ -292,6 +293,8 @@ static void *launch_thread(void *arg)
     }
     install_crash_reporter();
     tl_hle_set_ca_bundle(A.ca);
+    /* Play Games signs in for this game: its package, and its APK's certificate (husk-tl-playgames.h) */
+    tl_pgs_set_game(A.package, A.apk);
 
     /* Controllers go to the engine that is running. (GameActivity registers its own as it starts.) */
     if (A.engine == ENGINE_UNITY) tl_unity_register_pad_sink();
