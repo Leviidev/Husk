@@ -91,7 +91,7 @@ struct tl_lib {
 
     uint8_t *stub_rx, *stub_rw;    /* pages after the image: stubs for rewritten `svc` and x18 sites */
     uint8_t *slots;                /* the data page the stubs of both pools read their run-time values from (SLOT_SVC, SLOT_VX18) */
-    uint8_t *tcb;                  /* the fake thread block this library's `mrs tpidr_el0` reads: the page after the slots, data view */
+    uint8_t *tcb;                  /* per-thread-pointer stub values (offset, slow entry, virtual-x18 offset), in a data page */
     uint8_t *dup;                  /* a 4 KiB-page library: the writable copies of its data pages, at rx + size + page * 16384; NULL otherwise */
     size_t size;                   /* the image's pages, the stub pages, the slot page and the thread-block page */
     size_t n_mixed;                /* the pages `dup` copies; also the manifest's n_mixed */
@@ -959,7 +959,7 @@ __attribute__((naked, used)) void tl_svc_common(void)
     __asm__ volatile(
         "stp x29, x30, [sp, #-16]!\n"
         "mov x29, sp\n"
-        "sub sp, sp, #640\n"
+        "sub sp, sp, #656\n"
         "stp x1, x2, [sp, #0]\n"
         "stp x3, x4, [sp, #16]\n"
         "stp x5, x6, [sp, #32]\n"
@@ -986,8 +986,18 @@ __attribute__((naked, used)) void tl_svc_common(void)
         "stp q26, q27, [sp, #416]\n"
         "stp q28, q29, [sp, #448]\n"
         "stp q30, q31, [sp, #480]\n"
-        "mov x6, x8\n"
-        "bl _tl_linux_syscall\n"
+        "str x0, [sp, #640]\n"
+        "bl _guest_syscall_stack\n"
+        "mov x17, x0\n"
+        "ldr x0, [sp, #640]\n"
+        "ldp x1, x2, [sp, #0]\n"
+        "ldp x3, x4, [sp, #16]\n"
+        "ldr x5, [sp, #32]\n"
+        "ldr x6, [sp, #56]\n"       /* original x8: Linux syscall number */
+        "cbz x17, 1f\n"
+        "mov sp, x17\n"
+        "1: bl _tl_linux_syscall\n"
+        "sub sp, x29, #656\n"
         "ldr x9, [sp, #120]\n"
         "msr nzcv, x9\n"
         "ldp q8, q9, [sp, #512]\n"
@@ -1307,6 +1317,186 @@ static inline uint32_t e_ldr0(unsigned rt, unsigned rn)   { return 0xF9400000u |
 static inline uint32_t e_str0(unsigned rt, unsigned rn)   { return 0xF9000000u | (rn << 5) | rt; }   /* str Xt, [Xn] */
 static inline uint32_t e_add_reg(unsigned rd, unsigned rn, unsigned rm) { return 0x8B000000u | (rm << 16) | (rn << 5) | rd; }
 
+/* Android's thread pointer must name the calling thread, not the library. Go's
+ * c-shared runtime stores g at TLS_SLOT_APP (byte offset 16); sharing that slot
+ * makes a Java callback borrow another thread's Go m/g. Keep one Android TCB
+ * per host pthread and let every guest library on that thread see the same TCB.
+ *
+ * The hot stub reads our pthread key directly from Darwin's TSD, just like the
+ * virtual-x18 rewrite. Only a thread's first read calls the allocating helper.
+ */
+static pthread_key_t g_guest_tcb_key;
+static int64_t g_guest_tcb_off = -1;
+typedef struct { unsigned destructor_pass; void *host_stack; uint64_t slots[512]; } guest_tcb;
+#define GUEST_HOST_STACK_BYTES (1u << 20)
+
+static void guest_tcb_free(void *p)
+{
+    guest_tcb *t = (guest_tcb *)((uint8_t *)p - offsetof(guest_tcb, slots));
+    /* Other pthread-key destructors (notably cgo's dropm) can still read g.
+     * Retain the TCB through the earlier destructor passes. */
+    if (++t->destructor_pass < PTHREAD_DESTRUCTOR_ITERATIONS) pthread_setspecific(g_guest_tcb_key, p);
+    else { free(t->host_stack); free(t); }
+}
+
+static bool guest_tcb_init(void)
+{
+    if (g_guest_tcb_off >= 0) return true;
+#if defined(__aarch64__)
+    if (pthread_key_create(&g_guest_tcb_key, guest_tcb_free)) return false;
+    const uintptr_t sentinel = 0x5a5a9876deadbeefull;
+    pthread_setspecific(g_guest_tcb_key, (void *)sentinel);
+    uintptr_t base;
+    __asm__ volatile("mrs %0, tpidrro_el0" : "=r"(base));
+    const volatile uintptr_t *tsd = (const volatile uintptr_t *)(base & ~(uintptr_t)7);
+    for (int i = 0; i < 520; i++) if (tsd[i] == sentinel) { g_guest_tcb_off = (int64_t)i * 8; break; }
+    pthread_setspecific(g_guest_tcb_key, NULL);
+    if (g_guest_tcb_off < 0) { pthread_key_delete(g_guest_tcb_key); return false; }
+    return true;
+#else
+    return false;
+#endif
+}
+
+__attribute__((used, noinline)) static void *guest_thread_pointer(void)
+{
+    uint64_t *slots = pthread_getspecific(g_guest_tcb_key);
+    if (!slots) {
+        guest_tcb *t = calloc(1, sizeof(*t));
+        if (!t) abort();
+        t->host_stack = malloc(GUEST_HOST_STACK_BYTES);
+        if (!t->host_stack) { free(t); abort(); }
+        slots = t->slots;
+        slots[0] = (uintptr_t)slots;
+        slots[5] = 0xdeadbeefcafebabeull;       /* bionic stack-protector cookie */
+        if (pthread_setspecific(g_guest_tcb_key, slots)) { free(t->host_stack); free(t); abort(); }
+    }
+    return slots;
+}
+
+/* Raw Go/Linux syscalls run on small goroutine stacks, without cgo's normal
+ * switch to g0. A translated syscall can enter libc, logging and pthread waits;
+ * execute those host calls on a real-sized per-thread C stack. Reentrant calls
+ * already on that stack keep their current SP rather than overwriting the top. */
+__attribute__((used, noinline)) static void *guest_syscall_stack(void)
+{
+    uint64_t *slots = guest_thread_pointer();
+    guest_tcb *t = (guest_tcb *)((uint8_t *)slots - offsetof(guest_tcb, slots));
+    uintptr_t lo = (uintptr_t)t->host_stack, hi = lo + GUEST_HOST_STACK_BYTES;
+    uintptr_t here = (uintptr_t)&slots;
+    return here >= lo && here < hi ? NULL : (void *)(hi & ~(uintptr_t)15);
+}
+
+/* The replaced MRS may occur between any two instructions: preserve NZCV and
+ * complete vector registers, including q8-q15 whose upper halves C may clobber.
+ * x16/x17 and the original LR are saved by the calling stub. C preserves x19-x28.
+ * Return the TCB in x16 so x0 and Go's g register x28 retain their original values. */
+__attribute__((naked, used)) static void tl_tpidr_common(void)
+{
+#if defined(__aarch64__)
+    __asm__ volatile(
+        "stp x29, x30, [sp, #-16]!\n"
+        "mov x29, sp\n"
+        "sub sp, sp, #656\n"
+        "stp x0, x1, [sp, #0]\n"    "stp x2, x3, [sp, #16]\n"
+        "stp x4, x5, [sp, #32]\n"   "stp x6, x7, [sp, #48]\n"
+        "stp x8, x9, [sp, #64]\n"   "stp x10, x11, [sp, #80]\n"
+        "stp x12, x13, [sp, #96]\n" "stp x14, x15, [sp, #112]\n"
+        "mrs x9, nzcv\n" "str x9, [sp, #640]\n"
+        "stp q0, q1, [sp, #128]\n"
+        "stp q2, q3, [sp, #160]\n"
+        "stp q4, q5, [sp, #192]\n"
+        "stp q6, q7, [sp, #224]\n"
+        "stp q8, q9, [sp, #256]\n"
+        "stp q10, q11, [sp, #288]\n"
+        "stp q12, q13, [sp, #320]\n"
+        "stp q14, q15, [sp, #352]\n"
+        "stp q16, q17, [sp, #384]\n"
+        "stp q18, q19, [sp, #416]\n"
+        "stp q20, q21, [sp, #448]\n"
+        "stp q22, q23, [sp, #480]\n"
+        "stp q24, q25, [sp, #512]\n"
+        "stp q26, q27, [sp, #544]\n"
+        "stp q28, q29, [sp, #576]\n"
+        "stp q30, q31, [sp, #608]\n"
+        "bl _guest_thread_pointer\n"
+        "mov x16, x0\n"
+        "ldr x9, [sp, #640]\n" "msr nzcv, x9\n"
+        "ldp q0, q1, [sp, #128]\n"
+        "ldp q2, q3, [sp, #160]\n"
+        "ldp q4, q5, [sp, #192]\n"
+        "ldp q6, q7, [sp, #224]\n"
+        "ldp q8, q9, [sp, #256]\n"
+        "ldp q10, q11, [sp, #288]\n"
+        "ldp q12, q13, [sp, #320]\n"
+        "ldp q14, q15, [sp, #352]\n"
+        "ldp q16, q17, [sp, #384]\n"
+        "ldp q18, q19, [sp, #416]\n"
+        "ldp q20, q21, [sp, #448]\n"
+        "ldp q22, q23, [sp, #480]\n"
+        "ldp q24, q25, [sp, #512]\n"
+        "ldp q26, q27, [sp, #544]\n"
+        "ldp q28, q29, [sp, #576]\n"
+        "ldp q30, q31, [sp, #608]\n"
+        "ldp x0, x1, [sp, #0]\n"    "ldp x2, x3, [sp, #16]\n"
+        "ldp x4, x5, [sp, #32]\n"   "ldp x6, x7, [sp, #48]\n"
+        "ldp x8, x9, [sp, #64]\n"   "ldp x10, x11, [sp, #80]\n"
+        "ldp x12, x13, [sp, #96]\n" "ldp x14, x15, [sp, #112]\n"
+        "mov sp, x29\n"
+        "ldp x29, x30, [sp], #16\n"
+        "ret\n");
+#endif
+}
+
+static bool tpidr_stub(tl_lib *L, const uint8_t *site, unsigned rd, uint32_t *branch)
+{
+    if (rd == 31) { *branch = 0xD503201Fu; return true; }
+    size_t bytes = rd == 18 ? 96 : 64;
+    uint8_t *rx = NULL, *rw = NULL;
+    if (L->stub_used + bytes <= L->stub_cap && stub_in_range(site, L->stub_rx + L->stub_used)) {
+        rx = L->stub_rx + L->stub_used; rw = L->stub_rw + L->stub_used; L->stub_used += bytes;
+    } else if (L->isl_used + bytes <= L->isl_cap && stub_in_range(site, L->isl_rx + L->isl_used)) {
+        rx = L->isl_rx + L->isl_used; rw = L->isl_rw + L->isl_used; L->isl_used += bytes;
+    }
+    if (!rx || !e_adrp_ok(rx, L->tcb)) return false;
+    uint32_t c[24] = {
+        0xA9BF47F0u,                    /* stp x16, x17, [sp, #-16]! */
+        e_mrs_tsd(16), e_and_tsd(16),
+        e_adrp(17, rx + 12, L->tcb), e_ldr_lo12(17, 17, L->tcb),
+        0xF8716A10u,                    /* ldr x16, [x16, x17] */
+        0xB50000D0u,                    /* cbnz x16, stub+48 */
+        0xA9BF7BFDu,                    /* stp x29, x30, [sp, #-16]! */
+        e_adrp(17, rx + 32, L->tcb + 8), e_ldr_lo12(17, 17, L->tcb + 8),
+        0xD63F0220u,                    /* blr x17 */
+        0xA8C17BFDu,                    /* ldp x29, x30, [sp], #16 */
+    };
+    int n = 12;
+    if (rd == 18) {
+        /* x18 remains virtual on Apple: store the result in its own TSD key. */
+        c[n++] = e_mrs_tsd(17); c[n++] = e_and_tsd(17);
+        c[n++] = e_stur(15, -8);
+        c[n] = e_adrp(15, rx + n * 4, L->tcb + 16); n++;
+        c[n++] = e_ldr_lo12(15, 15, L->tcb + 16);
+        c[n++] = e_add_reg(17, 17, 15); c[n++] = e_str0(16, 17);
+        c[n++] = e_ldur(15, -8); c[n++] = 0xA8C147F0u;
+    } else if (rd == 16) {
+        c[n++] = 0xF94007F1u;            /* ldr x17, [sp, #8] */
+        c[n++] = 0x910043FFu;            /* add sp, sp, #16 */
+    } else if (rd == 17) {
+        c[n++] = 0xAA1003F1u;            /* mov x17, x16 */
+        c[n++] = 0xF84107F0u;            /* ldr x16, [sp], #16 */
+    } else {
+        c[n++] = 0xAA1003E0u | rd;       /* mov Xd, x16 */
+        c[n++] = 0xA8C147F0u;            /* ldp x16, x17, [sp], #16 */
+    }
+    int64_t back = ((int64_t)(site + 4) - (int64_t)(rx + n * 4)) / 4;
+    c[n++] = 0x14000000u | ((uint32_t)back & 0x3FFFFFFu);
+    for (; n < (int)(bytes / 4); n++) c[n] = 0xD503201Fu;
+    memcpy(rw, c, bytes);
+    *branch = 0x14000000u | ((uint32_t)(((int64_t)rx - (int64_t)site) / 4) & 0x3FFFFFFu);
+    return true;
+}
+
 static int e_mov64(uint32_t *out, unsigned rd, uint64_t v)
 {
     int n = 0;
@@ -1500,11 +1690,10 @@ static uint32_t encode_adrp(uint32_t rt, const void *pc, const void *target)
 /*
  * Two rewrites in executable pages, both on the writable view:
  *
- *  - `mrs Xt, tpidr_el0` becomes `adrp Xt, <fake thread block>`. Android code
- *    reads its stack-protector cookie from [tpidr_el0 + 0x28]; Darwin keeps its
- *    own thread pointer elsewhere and leaves this register for nothing in
- *    particular. Every thread sharing one cookie is harmless: the cookie only has
- *    to be the same at a function's entry and exit.
+ *  - `mrs Xt, tpidr_el0` branches to a stub that reads this thread's Android
+ *    TCB from Darwin TSD, allocating it on the first read. The same TCB is used
+ *    by all guest libraries on the thread; Go's g slot and stack cookie therefore
+ *    have real thread-local storage.
  *  - an `adrp` that points into this image's writable pages is retargeted at the
  *    writable view, because code reaches its globals pc-relatively and the page
  *    the executable view shows is not writable.
@@ -1558,7 +1747,8 @@ static void patch_image(tl_lib *L, size_t *n_tpidr, size_t *n_adrp, size_t *n_ad
             if (dbg < 0) { const char *e = getenv("TL_X18_RANGE"); dbg = getenv("TL_X18_OFF") ? 1 : 0; if (e) { dbg = 2; sscanf(e, "%llx-%llx", (unsigned long long *)&dbg_lo, (unsigned long long *)&dbg_hi); } }
             uint64_t va = L->code[r].start + (uint64_t)i * 4;
             bool skip_dbg = dbg == 1 || (dbg == 2 && !(va >= dbg_lo && va < dbg_hi));
-            int xr = (is_data || skip_dbg) ? X18_NONE : x18_rewrite(L, &w[i], pc);
+            bool is_tpidr = (insn & 0xFFFFFFE0u) == 0xD53BD040u;
+            int xr = (is_data || skip_dbg || is_tpidr) ? X18_NONE : x18_rewrite(L, &w[i], pc);
             if (is_data && x18_rewrite_would_apply(insn)) {
                 L->n_x18_data++;
                 if (G.verbosity >= 3) tl_log_line("ld: %s: x18 word %08x at +%#llx left alone", L->name, insn, (unsigned long long)(L->code[r].start + (uint64_t)i * 4));
@@ -1572,8 +1762,9 @@ static void patch_image(tl_lib *L, size_t *n_tpidr, size_t *n_adrp, size_t *n_ad
                 if (const_stub(L, pc, insn & 0x1Fu, 0x8444c004ull, &branch)) { w[i] = branch; L->n_ctr++; }
                 else L->n_adr_failed++;
             } else if ((insn & 0xFFFFFFE0u) == 0xD53BD040u) {            /* mrs Xt, tpidr_el0 */
-                w[i] = encode_adrp(insn & 0x1Fu, pc, L->tcb);
-                (*n_tpidr)++;
+                uint32_t branch;
+                if (tpidr_stub(L, pc, insn & 0x1Fu, &branch)) { w[i] = branch; (*n_tpidr)++; }
+                else { tl_log_line("ld: %s: no thread-pointer stub at +%#llx", L->name, (unsigned long long)va); L->n_adr_failed++; }
             } else if ((insn & 0x9F000000u) == 0x90000000u) {     /* adrp */
                 int64_t imm = (int64_t)((((insn >> 5) & 0x7FFFFu) << 2) | ((insn >> 29) & 3u));
                 if (imm & 0x100000) imm -= 0x200000;
@@ -1640,8 +1831,8 @@ static void patch_image(tl_lib *L, size_t *a, size_t *b, size_t *c, size_t *d) {
  * in the same place -- a per-thread block for the library, allocated and filled from the template the first time a thread asks.
  *
  * A descriptor is a pair in the library's GOT: a function to call and an argument. The code calls the function with the descriptor's address and
- * expects the variable's offset from the thread pointer, which it adds to the thread pointer (`mrs x1, tpidr_el0`) itself. Here that register is read as a
- * fixed address (see the tpidr patch), so the function answers with the distance from that fixed address to this thread's copy of the variable. It is called
+ * expects the variable's offset from the thread pointer, which it adds to the thread pointer (`mrs x1, tpidr_el0`) itself. The function answers with the
+ * distance from this thread's Android TCB to this thread's copy of the variable. It is called
  * where the compiler expects an ordinary instruction, so it must leave every register but x0 and x1 as it found them -- hence the assembly.
  */
 #define MAX_TLS_MODULES 16
@@ -1683,9 +1874,9 @@ __attribute__((used)) uint64_t tl_tls_offset(uint64_t arg)
 {
     unsigned module = (unsigned)(arg >> 32);
     uint8_t *b = tls_block(module);
-    /* what `mrs xN, tpidr_el0` was turned into in the library that owns the variable (descriptors only name a library's own) */
+    /* Descriptors only name a library's own TLS template, relative to the shared per-thread Android TCB. */
     const tl_lib *owner = module && module <= (unsigned)g_ntls ? g_tlsmod[module].lib : NULL;
-    uintptr_t tp = owner ? (uintptr_t)owner->tcb & ~(uintptr_t)0xFFF : 0;
+    uintptr_t tp = owner ? (uintptr_t)guest_thread_pointer() : 0;
     return (uint64_t)((uintptr_t)(b ? b : (uint8_t *)tp) + (uint32_t)arg - tp);
 }
 
@@ -2351,9 +2542,9 @@ static void fill_data_slots(tl_lib *L)
     memcpy(L->slots + SLOT_SVC, &svc, 8);
     memcpy(L->slots + SLOT_VX18, &vx18, 8);
     uint64_t *t = (uint64_t *)L->tcb;
-    t[0] = (uint64_t)(uintptr_t)L->tcb;       /* self */
-    t[1] = 1000; t[2] = 1000;
-    t[5] = 0xdeadbeefcafebabeull;             /* [tpidr_el0 + 0x28]: the stack cookie */
+    t[0] = (uint64_t)g_guest_tcb_off;
+    t[1] = (uint64_t)(uintptr_t)tl_tpidr_common;
+    t[2] = vx18;
 }
 
 static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
@@ -2535,6 +2726,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
         for (size_t k = 0, cnt = (size_t)(code[r].size / 4); k < cnt; k++) {
             uint32_t v = wv[k];
             if (v == 0xD4000001u) stub_bytes += 32;
+            else if ((v & 0xFFFFFFE0u) == 0xD53BD040u) stub_bytes += (v & 31u) == 18 ? 96 : 64;
             else if ((v & 0xFFFFFFE0u) == 0xD53B0020u) stub_bytes += 32;                 /* mrs Xt, CTR_EL0 */
             else if ((v & 0x9F000000u) == 0x10000000u) {                 /* adr: a stub if it reaches writable data */
                 int64_t imm = (int64_t)((((v >> 5) & 0x7FFFFu) << 2) | ((v >> 29) & 3u));
@@ -2553,6 +2745,10 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
         }
     }
     size_t nstub = (stub_bytes + PAGE - 1) / PAGE;
+    if (!guest_tcb_init()) {
+        tl_log_line("ld: no thread-specific slot for the Android thread pointer");
+        free(flags); free(mix); free(phs); return NULL;
+    }
     if (!vx18_init()) tl_log_line("ld: no thread-specific slot for the virtual x18; instructions using x18 will not be rewritten");
 
     uint8_t *rx, *rw, *dup = NULL;
