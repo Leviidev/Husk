@@ -68,8 +68,11 @@ surface dimensions, JIT allocation and signing entitlements are unchanged.
 - The native runs use synthetic window trees and controlled loader/hash
   dependencies. They do not render the downloaded game UI or exercise physical
   iPhone touch input.
-- Swift/Xcode/macOS/Linux: PENDING; Swift is unavailable on this Windows host.
-- New IPA and physical iPhone validation: NOT BUILT / NOT TESTED.
+- Swift model checks and portable sanitizer QA: PASS on macOS/Linux CI. The
+  separate APK-ordering baseline passes on macOS and is skipped on Linux.
+- Native-profile check against the actual iOS SDK and Xcode build: PASS in
+  [run 42146463488](https://github.com/hungtm200401-bot/Husk/actions/runs/42146463488).
+- New IPA: VERIFIED. Physical iPhone drawing/touch/gameplay: NOT TESTED.
 - The previously reported exit during gameplay remains UNCONFIRMED.
 
 The local native inspection, fixtures and APK-derived bytes remain under ignored
@@ -84,3 +87,27 @@ panel should clear only the camera edge. Check quest links and walk/sit button
 taps at their displayed positions, and confirm avatar and 18+ remain in place.
 If it still conflicts, the new `vhtg-quest:` entries expose whether the inspected
 profile bound, which windows exist and the geometry used for the adjustment.
+
+
+## Verified IPA delivery
+
+Built revision `5bc7dccf3f68f045264369949678465e0d64844b`, stamped `5bc7dcc-dirty`, produced
+`build/HUNG-APK-PLAYER-left-cutout-walk-sit-fix.ipa` (113,680,084 bytes).
+Download the [IPA and matching source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/42146463488/artifacts/13469479716). All four CI jobs
+completed successfully.
+
+IPA SHA-256: `928f81f113022c28bc465349942ef32911a604ab306083a0217fcc7e506ac505`.
+
+Downloaded artifact ZIP SHA-256: `b4c218866354bc7c7c6f7380b9efc0081755488281e456a567b6f7dded1e2ea7`, matching the digest returned
+by GitHub. The source ZIP identifies the built revision and matches the approved
+files. The arm64 executable contains the selected-HUD, pre-render and full-screen
+implementation markers, and the embedded full/core Java DEX hashes match the
+tested framework. Required native runtime components are present; entitlements
+match the unchanged source. These are packaging/revision checks, with no claim
+of physical iPhone gameplay verification.
+
+Install this IPA, keep **Keep game controls clear of screen cutouts** and
+**Adjust quest and walk/sit controls** on for VHTG, then fully close/reopen Husk.
+Test with Dynamic Island on the left first. Check the quest links and walk/sit
+buttons at their displayed positions, then check the other landscape direction.
+The user-reported gameplay exit still needs a new device report if it recurs.
