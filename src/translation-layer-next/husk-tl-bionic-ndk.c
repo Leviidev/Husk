@@ -632,11 +632,10 @@ static void b_AWorkDuration_set(void *w, int64_t v) { (void)w; (void)v; }
 static int b_ASharedMemory_create(const char *name, size_t size)
 {
     (void)name;
-    char path[] = "/tmp/husk-ashmem-XXXXXX";
-    int fd = mkstemp(path);
-    if (fd < 0) return -1;
-    unlink(path);
-    if (ftruncate(fd, (off_t)size)) { close(fd); return -1; }
+    TL_ERRNO_BEGIN();
+    int fd = tl_anonymous_temp_file();
+    if (fd >= 0 && ftruncate(fd, (off_t)size)) { int error = errno; close(fd); errno = error; fd = -1; }
+    TL_ERRNO_END();
     return fd;
 }
 static size_t b_ASharedMemory_getSize(int fd) { struct stat st; return fstat(fd, &st) ? 0 : (size_t)st.st_size; }
