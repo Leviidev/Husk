@@ -421,6 +421,44 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     // ---- drawing
+    private int[] huskDrawingOrder() {
+        int n = mChildrenCount;
+        Integer[] order = new Integer[n];
+        for (int i = 0; i < n; i++) order[i] = mChildrenDrawingOrder ? getChildDrawingOrder(n, i) : i;
+        java.util.Arrays.sort(order, (a, b) -> Float.compare(mChildren[a].getZ(), mChildren[b].getZ()));
+        int[] result = new int[n];
+        for (int i = 0; i < n; i++) result[i] = order[i];
+        return result;
+    }
+
+    /** @hide Native web pages must yield touches to Android controls drawn above them. */
+    public void huskTouchOccluders(View child, ArrayList<Rect> out) {
+        boolean above = false;
+        for (int index : huskDrawingOrder()) {
+            View sibling = mChildren[index];
+            if (sibling == child) { above = true; continue; }
+            if (above) huskCollectTouchBounds(sibling, out);
+        }
+    }
+    private static void huskCollectTouchBounds(View view, ArrayList<Rect> out) {
+        if (view.getVisibility() != VISIBLE) return;
+        if (view.isClickable() || view.isLongClickable() || view.isContextClickable()) {
+            Rect rect = new Rect();
+            if (view.getGlobalVisibleRect(rect)) {
+                // getGlobalVisibleRect uses window coordinates; Web.frame uses screen coordinates.
+                int[] screen = new int[2], window = new int[2];
+                view.getLocationOnScreen(screen); view.getLocationInWindow(window);
+                rect.offset(screen[0] - window[0], screen[1] - window[1]);
+                out.add(rect);
+            }
+            return;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup)view;
+            for (int i = 0; i < group.mChildrenCount; i++) huskCollectTouchBounds(group.mChildren[i], out);
+        }
+    }
+
     @Override protected void dispatchDraw(Canvas c) {
         int save = c.save();
         if (mClipToPadding) c.clipRect(mScrollX + mPaddingLeft, mScrollY + mPaddingTop, mScrollX + getWidth() - mPaddingRight, mScrollY + getHeight() - mPaddingBottom);
@@ -502,8 +540,9 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             float x = e.getX(ai), y = e.getY(ai);
             View target = null;
             // a pointer down where a child already has pointers joins that child (split touches); otherwise the topmost child under it
+            int[] order = huskDrawingOrder();
             for (int i = mChildrenCount - 1; i >= 0 && target == null; i--) {
-                int ci = mChildrenDrawingOrder ? getChildDrawingOrder(mChildrenCount, i) : i;
+                int ci = order[i];
                 View c = mChildren[ci];
                 if (c == null || (c.getVisibility() != VISIBLE && c.getAnimation() == null)) continue;
                 if (!isTransformedTouchPointInView(x, y, c, null)) continue;

@@ -83,6 +83,9 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
     private final ArrayList<String> mHistory = new ArrayList<>();
     private int mFrameX = -1, mFrameY, mFrameW, mFrameH;
     private boolean mFrameVisible;
+    // View clears mRoot after its detach callbacks, so attachment queries still
+    // report true there. Keep the window's visibility for the native page too.
+    private boolean mWindowVisible;
     private boolean mSettingsPosted;
     private final Paint mClear = new Paint();
 
@@ -770,18 +773,50 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
 
     // ---- where the page shows
     private boolean mFrameTouchable;
+    private int[] mFrameBlocked;
+    private int mFrameScrollAxes;
+    /** The containing Android list/scroll view gets first chance to take a drag, as in ViewGroup.dispatchTouchEvent. */
+    private int parentScrollAxes() {
+        int axes = 0;
+        View child = this;
+        while (child.getParent() instanceof ViewGroup) {
+            child = (ViewGroup)child.getParent();
+            if (child.canScrollHorizontally(-1) || child.canScrollHorizontally(1)) axes |= 1;
+            if (child.canScrollVertically(-1) || child.canScrollVertically(1)) axes |= 2;
+            if (axes == 3) break;
+        }
+        return axes;
+    }
     private void updateFrame() { updateFrame(false); }
     private void updateFrame(boolean force) {
         if (mDestroyed) return;
-        boolean visible = isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE && getWidth() > 0 && getHeight() > 0;
+        boolean visible = mWindowVisible && isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE && getWidth() > 0 && getHeight() > 0;
         int[] loc = new int[2];
         if (visible) getLocationOnScreen(loc);
         // a dialog, popup or menu over the page takes the touches: the page only gets them while its window is the top one
         husk.ViewRoot root = visible ? husk.ViewRoot.of(getRootView()) : null;
         boolean touchable = root != null && root == husk.ViewRoot.topTouchable();
-        if (!force && visible == mFrameVisible && touchable == mFrameTouchable && (!visible || (loc[0] == mFrameX && loc[1] == mFrameY && getWidth() == mFrameW && getHeight() == mFrameH))) return;
+        int scrollAxes = touchable ? parentScrollAxes() : 0;
+        ArrayList<android.graphics.Rect> occluders = new ArrayList<>();
+        if (touchable) {
+            View child = this;
+            while (child.getParent() instanceof ViewGroup) {
+                ViewGroup parent = (ViewGroup)child.getParent();
+                parent.huskTouchOccluders(child, occluders);
+                child = parent;
+            }
+        }
+        int[] blocked = new int[occluders.size() * 4];
+        for (int i = 0; i < occluders.size(); i++) {
+            android.graphics.Rect r = occluders.get(i);
+            blocked[i * 4] = r.left; blocked[i * 4 + 1] = r.top;
+            blocked[i * 4 + 2] = r.right; blocked[i * 4 + 3] = r.bottom;
+        }
+        if (!force && visible == mFrameVisible && touchable == mFrameTouchable && scrollAxes == mFrameScrollAxes && java.util.Arrays.equals(blocked, mFrameBlocked) && (!visible || (loc[0] == mFrameX && loc[1] == mFrameY && getWidth() == mFrameW && getHeight() == mFrameH))) return;
+        mFrameBlocked = blocked;
+        mFrameScrollAxes = scrollAxes;
         mFrameVisible = visible; mFrameTouchable = touchable; mFrameX = loc[0]; mFrameY = loc[1]; mFrameW = getWidth(); mFrameH = getHeight();
-        husk.Web.frame(mId, loc[0], loc[1], getWidth(), getHeight(), visible, touchable);
+        husk.Web.frame(mId, loc[0], loc[1], getWidth(), getHeight(), visible, touchable, blocked, scrollAxes);
     }
     /** @hide A window came or went: every page says again whether it takes touches. */
     public static void huskWindowsChanged() {
@@ -795,10 +830,10 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
     }
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); post(this::updateFrame); }
     @Override protected void onLayout(boolean changed, int l, int t, int r, int b) { super.onLayout(changed, l, t, r, b); updateFrame(); }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); post(this::updateFrame); }
-    @Override protected void onDetachedFromWindow() { super.onDetachedFromWindow(); updateFrame(); }
+    @Override protected void onAttachedToWindow() { mWindowVisible = true; super.onAttachedToWindow(); post(this::updateFrame); }
+    @Override protected void onDetachedFromWindow() { mWindowVisible = false; super.onDetachedFromWindow(); updateFrame(); }
     @Override protected void onVisibilityChanged(View changedView, int visibility) { super.onVisibilityChanged(changedView, visibility); updateFrame(); }
-    @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); updateFrame(); }
+    @Override protected void onWindowVisibilityChanged(int visibility) { mWindowVisible = visibility == VISIBLE; super.onWindowVisibilityChanged(visibility); updateFrame(); }
     @Override protected void onScrollChanged(int l, int t, int oldl, int oldt) { super.onScrollChanged(l, t, oldl, oldt); updateFrame(); }
     @Override public boolean onTouchEvent(MotionEvent event) { return true; }       // touches in the page's frame go to WebKit itself
     @Override public boolean onCheckIsTextEditor() { return true; }
