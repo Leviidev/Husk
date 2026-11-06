@@ -125,10 +125,10 @@ device. The collector now:
 
 This uses the existing local read-only USB flow; no device file or setting is
 modified and no log is uploaded. The updated background collector has been
-started locally and reads build `4e85bdf` successfully. Source changes still need
-the user's approval before publication.
+started locally and reads build `4e85bdf` successfully. The user approved
+publication and the new IPA build; the delivered revision is recorded below.
 
-## Validation before push
+## Validation
 
 - Portable C checks and 28 Python analyzer/USB contracts: PASS on Windows.
 - Original ARM64 registry lookup: PASS for both quest roots, sit and run;
@@ -139,9 +139,10 @@ the user's approval before publication.
   refresh, current-build provenance, bounded tails, replacement and locking.
 - Real USB retrieval after reconnect: PASS; the live status names the correct
   build and reports the four files as available.
-- Swift model and production-host tests: SKIP on this Windows host, PENDING CI.
+- Swift model and production-host tests: PASS on macOS and Linux CI, including
+  10,000 stable host-layout passes. Windows has no Swift compiler.
 - iOS UIKit behavior, physical HUD/touch positions and absence of watchdog after
-  the patch: NOT TESTED. A new IPA containing these changes has not been built.
+  the patch: NOT TESTED. The new IPA has been built and verified below.
 
 Primary references:
 [Apple's watchdog guide](https://developer.apple.com/documentation/xcode/addressing-watchdog-terminations),
@@ -149,3 +150,33 @@ Primary references:
 [the USB House Arrest service implementation](https://github.com/doronz88/pymobiledevice3/blob/master/pymobiledevice3/services/house_arrest.py).
 Raw device logs, `.ips` reports and UUID comparison remain local under ignored
 directories and are not included in the source patch.
+
+
+## Verified IPA delivery
+
+Built revision `882adf9c6b508a7cdd29bdbffb78085931f56f8f`, stamped `882adf9-dirty`, produced
+`IPA/HUNG-APK-PLAYER-882adf9.ipa` (113,680,274 bytes). All four CI jobs passed
+in [the build run](https://github.com/hungtm200401-bot/Husk/actions/runs/42178926934); download the
+[IPA and matching source artifact](https://github.com/hungtm200401-bot/Husk/actions/runs/42178926934/artifacts/13484816773).
+
+IPA SHA-256: `1739e4d41c95f5f435f683d401756e3dee488bcfbc67e5582b319c6efe54bdff`.
+
+Artifact ZIP SHA-256: `4bd215ecf15b874946908b4cc63562e96f10f94c700ddababcad0e81abe81ca2`, matching GitHub's published digest.
+The source ZIP identifies the build revision and matches all ten approved files.
+The arm64 app has the new UI-registry lookup marker and all three required
+registry export strings, as well as the previous per-frame render-pool fix.
+Required runtime components, Java full/core DEX hashes and unchanged embedded
+entitlements have been verified.
+
+macOS and Linux QA both executed the production Swift host convergence test and
+the selected-HUD C contracts. macOS also passed the actual Foundation lifetime
+test on a secondary POSIX thread. These checks establish the code and build
+contents; physical HUD positions, touch behavior and sustained gameplay after
+installing this IPA remain NOT TESTED.
+
+The superseded `4e85bdf` custom IPA and downloaded packaging duplicates were
+removed after the new delivery was verified. The sole current custom IPA is
+kept directly in `IPA/`, with its checksum. The upstream dependency archive
+remains separately in `IPA/support/`; matching source and verification are in
+`build/releases/882adf9/`. Direct USB capture remains active for the next device
+run; no game APK, device log, pairing record or signing certificate was published.

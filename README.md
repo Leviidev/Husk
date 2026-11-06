@@ -82,6 +82,7 @@ Game compatibility remains unverified until tested on a device.
 - [VHTG quest coordinates and separate walk/sit adjustment](docs/15-vhtg-selected-hud.md)
 - [Direct USB logs, IPA folder and VHTG render-memory crash](docs/16-usb-logs-and-render-pools.md)
 - [VHTG HUD lookup, layout watchdog and USB reconnect after installation](docs/17-layout-watchdog-and-usb-reconnect.md)
+- Latest verified VHTG HUD build: `882adf9`, [IPA and matching source](https://github.com/hungtm200401-bot/Husk/actions/runs/42178926934/artifacts/13484816773). Device placement still needs confirmation.
 - Manual iOS build: [HUNG APK PLAYER workflow](.github/workflows/hung-ios.yml)
 
 ```sh
