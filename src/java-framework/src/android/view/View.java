@@ -984,6 +984,8 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public void postInvalidateOnAnimation(int l, int t, int r, int b) { postInvalidate(); }
     public void invalidateDrawableHusk() { invalidate(); }
     protected void onDraw(Canvas c) {}
+    /** Internal: content drawn by a native surface below the GPU window needs a window-level clear hole. */
+    protected boolean huskHasNativeContent() { return false; }
     protected void dispatchDraw(Canvas c) {}
     public void onDrawForeground(Canvas c) {
         if (mForeground != null) {
@@ -1043,7 +1045,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
         }
         /* a view with a layer (software or hardware) draws into one of its own, as Android's: its blending (a DST_IN mask, a CLEAR)
            then stays inside it instead of reaching what is under it in the window */
-        if (alpha < 0.998f || mLayerType != LAYER_TYPE_NONE) {
+        if (alpha < 0.998f || (mLayerType != LAYER_TYPE_NONE && !huskHasNativeContent())) {
             int a = Math.round(alpha * 255);
             if (mLayerPaint != null) a = a * mLayerPaint.getAlpha() / 255;
             c.saveLayerAlpha(0, 0, w, h, a);

@@ -793,6 +793,7 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
         canvas.drawRect(0, 0, getWidth(), getHeight(), mClear);
         updateFrame();
     }
+    @Override protected boolean huskHasNativeContent() { return true; }
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); post(this::updateFrame); }
     @Override protected void onLayout(boolean changed, int l, int t, int r, int b) { super.onLayout(changed, l, t, r, b); updateFrame(); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); post(this::updateFrame); }

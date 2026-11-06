@@ -14,6 +14,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <fcntl.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -528,6 +529,7 @@ dvm_native_fn tl_sqlite_native(const char *name, const char *sig);
 dvm_native_fn tl_media_native(const char *name, const char *sig);
 dvm_native_fn tl_web_native(const char *name, const char *sig);
 bool tl_web_any_visible(void);
+int tl_web_visible_rects(float *rectangles, int capacity);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
     if (!strcmp(cls, "husk/Sqlite")) return tl_sqlite_native(name, sig);
@@ -892,6 +894,33 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
 
+static void clear_native_web_regions(int width, int height)
+{
+    float rectangles[16 * 4];
+    int count = tl_web_visible_rects(rectangles, 16);
+    if (!count) return;
+    void (*enable)(uint32_t) = gl_fn("glEnable");
+    void (*disable)(uint32_t) = gl_fn("glDisable");
+    void (*scissor)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glScissor");
+    void (*clearColor)(float, float, float, float) = gl_fn("glClearColor");
+    void (*clear)(uint32_t) = gl_fn("glClear");
+    enable(0x0C11); /* GL_SCISSOR_TEST */
+    clearColor(0, 0, 0, 0);
+    for (int i = 0; i < count; i++) {
+        const float *rect = rectangles + i * 4;
+        int left = (int)floorf(rect[0]), top = (int)floorf(rect[1]);
+        int right = (int)ceilf(rect[0] + rect[2]), bottom = (int)ceilf(rect[1] + rect[3]);
+        if (left < 0) left = 0;
+        if (top < 0) top = 0;
+        if (right > width) right = width;
+        if (bottom > height) bottom = height;
+        if (right <= left || bottom <= top) continue;
+        scissor(left, height - bottom, right - left, bottom - top);
+        clear(0x4000); /* GL_COLOR_BUFFER_BIT */
+    }
+    disable(0x0C11);
+}
+
 /*
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
@@ -1009,7 +1038,13 @@ static void *gl_main(void *arg)
             makeCurrent(dpy, surf, surf, ui);
             if (!app) { clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
             if (!app) app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
+            clear_native_web_regions(A.cfg.width, A.cfg.height);
             if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
+            /* ANGLE/Metal needs a completion boundary on both sides of the
+             * offscreen-to-window handoff. Keep this on actual new frames;
+             * it must also run when diagnostic frame capture is disabled. */
+            void (*finish)(void) = gl_fn("glFinish");
+            finish();
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);
         }
