@@ -797,6 +797,23 @@ static tl_nwindow g_window = { 1, 1080, 2400, 1, NULL, NULL, NULL };
 
 void tl_nwindow_configure(int w, int h, void *layer) { g_window.width = w; g_window.height = h; g_window.layer = layer; }
 void tl_nwindow_resize(int w, int h) { g_window.width = w; g_window.height = h; }
+void tl_nwindow_acquire(void *window) { if (window) atomic_fetch_add(&((tl_nwindow *)window)->refs, 1); }
+void tl_nwindow_release(void *window)
+{
+    tl_nwindow *w = window;
+    if (!w) return;
+    if (w == &g_window) {
+        /* The process permanently owns the static host window. get/fromSurface
+         * references may be returned, but cannot consume this base reference. */
+        int refs = atomic_load(&w->refs);
+        while (refs > 1 && !atomic_compare_exchange_weak(&w->refs, &refs, refs - 1)) {}
+        return;
+    }
+    if (atomic_fetch_sub(&w->refs, 1) != 1) return;
+    free(w->bits);
+    tl_jni_unref(w->texture);
+    free(w);
+}
 void *tl_nwindow_get(void) { atomic_fetch_add(&g_window.refs, 1); return &g_window; }
 void *tl_nwindow_native(void *window) { return window ? ((tl_nwindow *)window)->layer : NULL; }
 int tl_nwindow_width(void *window) { return window ? ((tl_nwindow *)window)->width : 0; }
@@ -826,22 +843,20 @@ static void *b_ANativeWindow_fromSurface(void *env, void *surface)
     if (tl_jni_pending()) { tl_jni_clear(); tex = NULL; }
     if (tex) {
         tl_nwindow *w = calloc(1, sizeof(*w));
+        if (!w) return NULL;
         atomic_store(&w->refs, 1); w->format = 1; w->texture = tl_jni_ref(tex);
         jobj *sz = tl_jni_call(tex, "huskSize", "()[I", NULL).l;
         if (tl_jni_pending()) tl_jni_clear();
         if (sz && sz->arr.len >= 2) { w->width = ((int32_t *)sz->arr.data)[0]; w->height = ((int32_t *)sz->arr.data)[1]; }
+        tl_jni_unref(sz); /* huskSize returns a local JNI reference. */
         if (w->width <= 0 || w->height <= 0) { w->width = g_window.width; w->height = g_window.height; }
         tl_log_line("ndk: native window on a SurfaceTexture, %dx%d", w->width, w->height);
         return w;
     }
     atomic_fetch_add(&g_window.refs, 1); return &g_window;
 }
-static void b_ANativeWindow_acquire(tl_nwindow *w) { if (w) atomic_fetch_add(&w->refs, 1); }
-static void b_ANativeWindow_release(tl_nwindow *w)
-{
-    if (!w) return;
-    if (atomic_fetch_sub(&w->refs, 1) == 1 && w != &g_window) { free(w->bits); free(w); }
-}
+static void b_ANativeWindow_acquire(tl_nwindow *w) { tl_nwindow_acquire(w); }
+static void b_ANativeWindow_release(tl_nwindow *w) { tl_nwindow_release(w); }
 /* software drawing (ANativeWindow_lock): only texture windows have a buffer the app can write */
 typedef struct { int32_t width, height, stride, format; void *bits; uint32_t reserved[6]; } tl_nwbuffer;
 static int b_ANativeWindow_lock(tl_nwindow *w, tl_nwbuffer *out, void *dirty)
