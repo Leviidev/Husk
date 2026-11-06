@@ -25,6 +25,27 @@ const char *tl_resolve_data_path(const char *path, const char *host_root, char *
     return NULL;
 }
 
+unsigned tl_android_data_ancestor_mode(const char *path)
+{
+    if (!path || path[0] != '/') return 0;
+    size_t n = strlen(path);
+    while (n > 1 && path[n - 1] == '/') n--;
+    /* Android's modes: system-owned, traversable by an app but not listable. */
+    static const struct { const char *name; unsigned mode; } dirs[] = {
+        { "/data", 0771 }, { "/data/data", 0771 }, { "/data/user", 0711 }, { "/data/user/0", 0771 },
+    };
+    for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++)
+        if (strlen(dirs[i].name) == n && !strncmp(path, dirs[i].name, n)) return dirs[i].mode;
+    return 0;
+}
+
+int tl_android_data_ancestor_access(const char *path, int mode)
+{
+    if (!tl_android_data_ancestor_mode(path)) return -1;
+    /* R_OK 4 and W_OK 2 (the same on bionic and Darwin): only search (X_OK) is granted to "other". */
+    return (mode & 6) ? EACCES : 0;
+}
+
 static char *native_cwd(void)
 {
 #ifdef _WIN32

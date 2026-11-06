@@ -6,6 +6,16 @@
 /* Android app-data aliases used by the file shims; NULL means not an alias. */
 const char *tl_resolve_data_path(const char *path, const char *host_root, char *out, size_t cap);
 
+/* /data, /data/data, /data/user and /data/user/0 (trailing slashes allowed): directories on
+ * Android, absent on iOS. Games that resolve names case-insensitively walk the path from "/"
+ * with lstat and give up at the first missing component. Returns Android's permission bits
+ * (without S_IFDIR), or 0 if the path is not one of them. */
+unsigned tl_android_data_ancestor_mode(const char *path);
+
+/* access() for those directories as an app sees them: 0 for F_OK/X_OK, EACCES when R_OK or
+ * W_OK is asked; -1 if the path is not one of them. */
+int tl_android_data_ancestor_access(const char *path, int mode);
+
 /* getcwd with a reversible Android name for directories within this app's data.
  * The host directory and files stay in place. Allocation, ERANGE and EINVAL
  * follow getcwd; errno is unchanged on success. Other directories stay as-is. */

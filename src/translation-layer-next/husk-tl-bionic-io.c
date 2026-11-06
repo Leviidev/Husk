@@ -597,6 +597,11 @@ static int b_open(const char *path, int flags, unsigned mode)
         ftrace_open_jar(path, fd);
         return fd;
     }
+    if (tl_android_data_ancestor_mode(path)) {
+        tl_set_guest_errno(13);
+        if (getenv("TL_FILE_TRACE")) tl_log_line("file: open(%s, %#x) -> -1 EACCES", path, flags);
+        return -1;
+    }
     const char *real = tl_path_resolve(path, buf, sizeof(buf));
     if (real && (flags & 3) == 0) fill_lib_standin(real);
     if (strstr(path, "/auxv")) { int afd = tl_synth_open(path); if (afd >= 0) return afd; }   /* binary, not text */
@@ -772,9 +777,23 @@ static void ftrace(const char *what, const char *path, int r, int e)
     if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0;
     if (tr) tl_log_line("file: %s(%s) -> %d%s", what, path ? path : "(null)", r, r < 0 ? (e == ENOENT ? " ENOENT" : " error") : "");
 }
-static int b_access(const char *p, int m) { char b[1024]; jar_entry jar; if (jar_lookup(p, &jar)) { if (!jar.found) { tl_set_guest_errno(2); return -1; } if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; } if (vfile_find(p)) { if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; }
+static int b_access(const char *p, int m)
+{
+    char b[1024]; jar_entry jar;
+    if (jar_lookup(p, &jar)) { if (!jar.found) { tl_set_guest_errno(2); return -1; } if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; }
+    if (vfile_find(p)) { if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; }
+    int anc_err = tl_android_data_ancestor_access(p, m);
+    if (anc_err >= 0) {
+        ftrace("access", p, anc_err == 0 ? 0 : -1, anc_err);
+        if (anc_err != 0) { tl_set_guest_errno(anc_err); return -1; }
+        return 0;
+    }
     /* the made-up /proc files exist, as b_stat says (Mono's runtime exits with "Mono requires /proc to be mounted" without /proc/self/maps) */
-    if (p && (!strncmp(p, "/proc/", 6) || !strncmp(p, "/sys/", 5))) { static __thread char c[65536]; if (strstr(p, "/auxv") || synth_content(p, c, sizeof(c))) { if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; } } TL_ERRNO_BEGIN(); int r = access(tl_path_resolve(p, b, sizeof(b)), m); int e = errno; TL_ERRNO_END(); ftrace("access", p, r, e); return r; }
+    if (p && (!strncmp(p, "/proc/", 6) || !strncmp(p, "/sys/", 5))) { static __thread char c[65536]; if (strstr(p, "/auxv") || synth_content(p, c, sizeof(c))) { if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; } }
+    TL_ERRNO_BEGIN(); int r = access(tl_path_resolve(p, b, sizeof(b)), m); int e = errno; TL_ERRNO_END();
+    ftrace("access", p, r, e);
+    return r;
+}
 static int b_chmod(const char *p, unsigned m) { char b[1024]; TL_ERRNO_BEGIN(); int r = chmod(tl_path_resolve(p, b, sizeof(b)), (mode_t)m); TL_ERRNO_END(); return r; }
 static int b_fchmod(int fd, unsigned m) { TL_ERRNO_BEGIN(); int r = fchmod(fd, (mode_t)m); TL_ERRNO_END(); return r; }
 static int b_link(const char *a, const char *b2) { char x[1024], y[1024]; TL_ERRNO_BEGIN(); int r = link(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b2, y, sizeof(y))); TL_ERRNO_END(); return r; }
@@ -847,6 +866,16 @@ static int b_stat(const char *p, guest_stat *g)
 {
     char b[1024], c[8192]; struct stat s;
     if (synth_content(p, c, sizeof(c))) { memset(g, 0, sizeof(*g)); g->st_mode = S_IFREG | 0444; g->st_nlink = 1; return 0; }
+    unsigned anc_mode = tl_android_data_ancestor_mode(p);
+    if (anc_mode) {
+        memset(g, 0, sizeof(*g));
+        g->st_mode = S_IFDIR | anc_mode;
+        g->st_nlink = 2;
+        g->st_size = 4096;
+        g->st_blocks = 8;
+        ftrace("stat", p, 0, 0);
+        return 0;
+    }
     jar_entry jar;
     if (jar_lookup(p, &jar)) {
         ftrace("stat", p, jar.found ? 0 : -1, jar.found ? 0 : ENOENT);
@@ -873,13 +902,24 @@ static int b_lstat(const char *p, guest_stat *g)
 {
     char b[1024]; struct stat s;
     if (p && strstr(p, "jar:file:")) return b_stat(p, g);
+    unsigned anc_mode = tl_android_data_ancestor_mode(p);
+    if (anc_mode) {
+        memset(g, 0, sizeof(*g));
+        g->st_mode = S_IFDIR | anc_mode;
+        g->st_nlink = 2;
+        g->st_size = 4096;
+        g->st_blocks = 8;
+        ftrace("lstat", p, 0, 0);
+        return 0;
+    }
     /* /proc/self/exe is a link (to app_process64, as readlink says): Dart finds its own executable through it, and its code assumes a link */
     if (is_proc_exe(p)) {
         memset(g, 0, sizeof(*g));
         g->st_mode = S_IFLNK | 0777; g->st_nlink = 1; g->st_size = 25;
         return 0;
     }
-    TL_ERRNO_BEGIN(); int r = lstat(tl_path_resolve(p, b, sizeof(b)), &s); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = lstat(tl_path_resolve(p, b, sizeof(b)), &s); int e = errno; TL_ERRNO_END();
+    ftrace("lstat", p, r, e);
     if (r == 0) fill_stat(g, &s);
     return r;
 }
@@ -906,7 +946,8 @@ typedef struct { int64_t f_type, f_bsize, f_blocks, f_bfree, f_bavail, f_files, 
 static int b_statfs(const char *p, guest_statfs *g)
 {
     char b[1024]; struct statfs s;
-    TL_ERRNO_BEGIN(); int r = statfs(tl_path_resolve(p, b, sizeof(b)), &s); TL_ERRNO_END();
+    const char *resolved = tl_android_data_ancestor_mode(p) ? tl_data_dir() : tl_path_resolve(p, b, sizeof(b));
+    TL_ERRNO_BEGIN(); int r = statfs(resolved, &s); TL_ERRNO_END();
     if (r == 0) {
         memset(g, 0, sizeof(*g));
         g->f_type = 0xEF53; g->f_bsize = s.f_bsize; g->f_blocks = s.f_blocks; g->f_bfree = s.f_bfree;
@@ -1041,6 +1082,11 @@ static guest_dir *jar_opendir(const char *p)
 static void *b_opendir(const char *p)
 {
     if (p && strstr(p, "jar:file:")) { guest_dir *jd = jar_opendir(p); ftrace("opendir", p, jd ? 0 : -1, jd ? 0 : ENOENT); if (!jd) tl_set_guest_errno(2); return jd; }
+    if (tl_android_data_ancestor_mode(p)) {
+        tl_set_guest_errno(13);
+        ftrace("opendir", p, -1, 13);
+        return NULL;
+    }
     char b[1024];
     TL_ERRNO_BEGIN(); DIR *d = opendir(tl_path_resolve(p, b, sizeof(b))); int e = errno; TL_ERRNO_END();
     ftrace("opendir", p, d ? 0 : -1, e);
@@ -1082,6 +1128,10 @@ static int b_closedir(void *dp) { guest_dir *g = dp; int r = g->dir ? closedir(g
 static int b_alphasort(const guest_dirent **a, const guest_dirent **b) { return strcoll((*a)->d_name, (*b)->d_name); }
 static int b_scandir(const char *path, guest_dirent ***list, int (*filter)(const guest_dirent *), int (*cmp)(const guest_dirent **, const guest_dirent **))
 {
+    if (tl_android_data_ancestor_mode(path)) {
+        tl_set_guest_errno(13);
+        return -1;
+    }
     char b[1024];
     TL_ERRNO_BEGIN(); DIR *d = opendir(tl_path_resolve(path, b, sizeof(b))); TL_ERRNO_END();
     if (!d) return -1;
@@ -2147,7 +2197,8 @@ typedef struct { uint64_t f_bsize, f_frsize, f_blocks, f_bfree, f_bavail, f_file
 static int b_statvfs(const char *p, guest_statvfs *g)
 {
     char b[1024]; struct statfs s;
-    TL_ERRNO_BEGIN(); int r = statfs(tl_path_resolve(p, b, sizeof(b)), &s); TL_ERRNO_END();
+    const char *resolved = tl_android_data_ancestor_mode(p) ? tl_data_dir() : tl_path_resolve(p, b, sizeof(b));
+    TL_ERRNO_BEGIN(); int r = statfs(resolved, &s); TL_ERRNO_END();
     if (r == 0) {
         memset(g, 0, sizeof(*g));
         g->f_bsize = (uint64_t)s.f_bsize; g->f_frsize = (uint64_t)s.f_bsize; g->f_blocks = s.f_blocks; g->f_bfree = s.f_bfree; g->f_bavail = s.f_bavail;

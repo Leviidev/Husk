@@ -82,6 +82,29 @@ int main(int argc, char **argv)
 
     assert(chdir(argv[1]) == 0);
     assert(b_getcwd(out, sizeof(out)) && !strcmp(out, "/data/data/example.game"));
+
+    /* Android data ancestor path simulation: /data, /data/data, /data/user, /data/user/0 */
+    assert(tl_android_data_ancestor_mode("/data") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/data") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/data///") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/user") == 0711);
+    assert(tl_android_data_ancestor_mode("/data/user/0") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/user/0/") == 0771);
+    assert(tl_android_data_ancestor_mode("/data/data/example.game") == 0);
+    assert(tl_android_data_ancestor_mode("/data/other") == 0);
+    assert(tl_android_data_ancestor_mode(NULL) == 0);
+    assert(tl_android_data_ancestor_mode("") == 0);
+
+    assert(tl_android_data_ancestor_access("/data", 0) == 0);
+    assert(tl_android_data_ancestor_access("/data", 1) == 0);
+    assert(tl_android_data_ancestor_access("/data", 4) == EACCES);
+    assert(tl_android_data_ancestor_access("/data", 2) == EACCES);
+    assert(tl_android_data_ancestor_access("/data", 7) == EACCES);
+    assert(tl_android_data_ancestor_access("/data/data", 0) == 0);
+    assert(tl_android_data_ancestor_access("/data/user/0", 0) == 0);
+    assert(tl_android_data_ancestor_access("/nonexistent", 0) == -1);
+    puts("PASS: Android /data ancestor permission and access simulation");
 #ifndef _WIN32
     snprintf(g_data_dir, sizeof(g_data_dir), "%s-alias/", argv[1]);
     assert(b_getcwd(out, sizeof(out)) && !strcmp(out, "/data/data/example.game"));
