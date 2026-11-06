@@ -11,6 +11,18 @@ int main(int argc, char **argv) {
     assert(!compressed_heap_request(len - getpagesize()));
     if (!late) {
         husk_prepare_compressed_heap(); assert(g_compressed_heap);
+        // A Java app needs the remaining address window for stacks/heap rather
+        // than a Dart/V8 cage. Prove that releasing the unused cage makes room.
+        vm_address_t pressure = 0;
+        assert(vm_map(mach_task_self(), &pressure, (vm_size_t)3 << 30, 0,
+            VM_FLAGS_ANYWHERE, MACH_PORT_NULL, 0, FALSE, VM_PROT_NONE,
+            VM_PROT_ALL, VM_INHERIT_COPY) != KERN_SUCCESS);
+        husk_release_unused_compressed_heap();
+        assert(vm_map(mach_task_self(), &pressure, (vm_size_t)3 << 30, 0,
+            VM_FLAGS_ANYWHERE, MACH_PORT_NULL, 0, FALSE, VM_PROT_NONE,
+            VM_PROT_ALL, VM_INHERIT_COPY) == KERN_SUCCESS);
+        assert(vm_deallocate(mach_task_self(), pressure, (vm_size_t)3 << 30) == KERN_SUCCESS);
+        husk_prepare_compressed_heap(); assert(g_compressed_heap);
         vm_address_t first = g_compressed_heap;
         husk_prepare_compressed_heap(); assert(g_compressed_heap == first);
         husk_release_unused_compressed_heap(); assert(!g_compressed_heap);

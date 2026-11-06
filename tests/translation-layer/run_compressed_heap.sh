@@ -3,7 +3,8 @@
 # macOS only. Unrelated runtime entry points are not invoked.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-OUT=$(mktemp -d)
+: "${TMPDIR:?Set TMPDIR to a writable test directory}"
+OUT=$(mktemp -d "$TMPDIR/husk-compressed-heap.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 clang -dynamiclib "$ROOT/tests/translation-layer/compressed_heap_window.c" -o "$OUT/window.dylib"
 clang -O1 -ffunction-sections -fdata-sections -I"$ROOT/src/translation-layer-next" -I"$ROOT/src/translation-layer" \
