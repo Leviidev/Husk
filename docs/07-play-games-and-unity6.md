@@ -22,7 +22,16 @@ keeps on its own server under the player's Play Games ID. What changed:
    - On the Java runtime, Unity 6 hands each frame to the screen on the GPU (a shared texture) instead of reading it back
      through the CPU on every swap. **Game Settings › Frame Handoff** sets this per game, and **CPU Copy** keeps the old
      path.
-3. **Switching apps.** A phone that leaves an app takes its window's focus, pauses it and stops it, and reverses that on
+3. **Play without JIT.** With Settings › Play without JIT, Unity 6 died half a second after it started: iOS's report said
+   `CODESIGNING Invalid Page`, on Unity Main Thread, at a `blr` into libunity's copy range (the image size plus a function's
+   offset). A dylib copies every non-executable page after the image, read-only ones too, and the rewritten code named the
+   copies for read-only data as well. Unity 6's relative C++ vtables are in `.rodata`, and a method's address is the vtable's
+   plus an offset, so through the copy it landed where there is no code. With JIT, codewrite's fault handler moved the call;
+   without it the kernel ends the process. Read-only pages copied only for the dylib's layout are now marked (`mixed` 2), and
+   adrp/adr/ldr-literal to them keep naming the image, as relocations (`image_addr`) and symbol lookups already did. Their
+   bytes are the same in both places. Go libraries keep their data redirected (`data_page`), and JIT runs are unchanged.
+   `TL_AOT_VERSION` is 11, so converted libraries are made again. ITRTG now plays without JIT, offline.
+4. **Switching apps.** A phone that leaves an app takes its window's focus, pauses it and stops it, and reverses that on
    return. Husk's framework only paused and resumed it (`AppRunner.hostPause`). Unity tells the game about the focus
    (OnApplicationFocus), and a player that allows a resizable window pauses on onStop, not onPause, so ITRTG did not count
    its time away. For a Unity game on the Java runtime, `Native.pollInput` (the app's main thread, before the framework
@@ -31,7 +40,7 @@ keeps on its own server under the player's Play Games ID. What changed:
    `nativeResume` and `nativeFocusChanged` as they are called (a new RegisterNatives filter, `tl_jni_native_wrap`, wraps them
    to log). Pausing is also what makes a game save, so Husk asks iOS for up to 8 seconds of background time while a game is
    loaded, to let that save finish before iOS suspends Husk.
-4. **Debugging:**
+5. **Debugging:**
    - **Game Settings › Debugging › Detailed Log** turns on the file and network traces (`TL_FILE_TRACE`, `TL_NET_TRACE`)
      for one game. A path under `/proc` or `/sys` is traced once: Unity polls every core's `cpu_capacity` and
      `cpuinfo_max_freq` for as long as it runs.
