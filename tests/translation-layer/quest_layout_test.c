@@ -81,11 +81,11 @@ const tl_zip_entry *tl_zip_find(const tl_zip *z,const char *name)
 { (void)z;assert(!strcmp(name,"lib/arm64-v8a/libMyGame.so"));return &entry; }
 bool tl_zip_data(const tl_zip *z,const tl_zip_entry *e,size_t limit,const uint8_t **d,size_t *n,bool *owned,char *err,size_t cap)
 { (void)z;(void)e;(void)limit;(void)err;(void)cap;*d=fake_zip_data;*n=1;*owned=false;return true; }
+static const char *mock_sha = "0c468ae6407377f61d33f1bbe77928b1d5c32cdede98ab163b86a897f0b60dcb";
 unsigned char *CC_SHA256(const void *data,CC_LONG size,unsigned char *out)
 {
     assert(data==fake_zip_data&&size==1);
-    const char *hex="0c468ae6407377f61d33f1bbe77928b1d5c32cdede98ab163b86a897f0b60dcb";
-    for (unsigned i=0;i<32;i++) { unsigned v;assert(sscanf(hex+i*2,"%2x",&v)==1);out[i]=(uint8_t)v; }
+    for (unsigned i=0;i<32;i++) { unsigned v;assert(sscanf(mock_sha+i*2,"%2x",&v)==1);out[i]=(uint8_t)v; }
     if (!hash_match) out[0]^=1;
     return out;
 }
@@ -144,7 +144,7 @@ int main(void)
     assert(A.insets[0]==0&&A.insets[1]==0&&A.insets[2]==0&&A.insets[3]==0&&A.insets[4]==123);
     frame(2796,1290);
     double shifted=get_double(quest,0x490);
-    assert(shifted==59&&get_double(quest,0x498)==100&&calls==1&&lookups==4&&renders==1);
+    assert(shifted==75&&get_double(quest,0x498)==100&&calls==1&&lookups==4&&renders==1);
     for (int i=0;i<10000;i++) frame(2796,1290);
     assert(get_double(quest,0x490)==shifted&&lookups==4);
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
@@ -176,32 +176,32 @@ int main(void)
     assert(get_double(quest,0x490)==shifted);
     // Legacy unanchored windows use the game's position API.
     quest[0x468]=quest[0x469]=0;put_int(quest,0x28,-149);put_int(quest,0x2c,100);
-    frame(932,430);assert(get_int(quest,0x28)==59&&get_int(quest,0x2c)==100);
+    frame(932,430);assert(get_int(quest,0x28)==75&&get_int(quest,0x2c)==100);
     tl_javaapp_set_insets(0,0,0,0,0);frame(932,430);assert(get_int(quest,0x28)==-149);
     provide_quest=false;frame(932,430);
 
     // Regression: the Cocos visible size can differ from the pixel framebuffer.
     provide_quest=true;window_at(quest,10,100,200,250);begin(2796,1290,insets);
-    frame(932,430);assert(get_double(quest,0x490)==59);
-    frame(466,215);assert(get_double(quest,0x490)==59);
-    frame(2796,1290);assert(get_double(quest,0x490)==59);
+    frame(932,430);assert(get_double(quest,0x490)==75);
+    frame(466,215);assert(get_double(quest,0x490)==75);
+    frame(2796,1290);assert(get_double(quest,0x490)==75);
     // A Y-only script update must not make the current X correction permanent.
     put_double(quest,0x498,120);frame(932,430);
     tl_javaapp_set_insets(0,0,0,0,0);frame(932,430);
     assert(get_double(quest,0x490)==10&&get_double(quest,0x498)==120);
     // Native update can create or reposition a window after the safe-area setter.
     tl_javaapp_set_insets(177,0,0,0,0);provide_quest=false;wrapped(932,430,0,0,932,430,932,430);
-    provide_quest=true;put_double(quest,0x490,0);render_frame();assert(get_double(quest,0x490)==59);
+    provide_quest=true;put_double(quest,0x490,0);render_frame();assert(get_double(quest,0x490)==75);
     // Height overflow alone does not invalidate a horizontal correction.
-    put_int(quest,0x34,800);put_double(quest,0x490,10);frame(932,430);assert(get_double(quest,0x490)==59);
+    put_int(quest,0x34,800);put_double(quest,0x490,10);frame(932,430);assert(get_double(quest,0x490)==75);
 
-    // Only BtnSit and BtnRun move down. The enclosing popbar is never selected.
+    // Only BtnSit and BtnRun move down and inward. The enclosing popbar is never selected.
     provide_movement=true;window_at(sit,10,320,35,40);window_at(run_button,10,365,35,40);
     begin(2796,1290,insets);frame(932,430);
-    assert(get_double(sit,0x490)==10&&get_double(sit,0x498)==332);
-    assert(get_double(run_button,0x490)==10&&get_double(run_button,0x498)==377);
+    assert(get_double(sit,0x490)==28&&get_double(sit,0x498)==340);
+    assert(get_double(run_button,0x490)==28&&get_double(run_button,0x498)==385);
     for (int i=0;i<10000;i++) frame(932,430);
-    assert(get_double(sit,0x498)==332&&get_double(run_button,0x498)==377);
+    assert(get_double(sit,0x490)==28&&get_double(sit,0x498)==340&&get_double(run_button,0x498)==385);
     put_double(sit,0x490,20);frame(932,430); // An X edit must not accumulate the Y adjustment.
     tl_javaapp_set_insets(0,0,0,0,0);frame(932,430);
     assert(get_double(sit,0x490)==20&&get_double(sit,0x498)==320&&get_double(run_button,0x498)==365);
@@ -214,7 +214,7 @@ int main(void)
     parent_ptr=parent;window_at(run_button,0,2,26,29);run_button[0x469]=0;
     memcpy(run_button+0x458,&parent_ptr,sizeof(parent_ptr));frame(932,430);
     assert(get_double(run_button,0x498)==3); // Only one point before the parent would clip.
-    wrapped(NAN,430,0,0,932,430,932,430);render_frame();assert(get_double(sit,0x498)==332);
+    wrapped(NAN,430,0,0,932,430,932,430);render_frame();assert(get_double(sit,0x498)==340);
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
 
     // Device's downloaded UI: scene 1665x768, screen-anchored children of a
@@ -227,11 +227,11 @@ int main(void)
     memcpy(sit+0x458,&parent_ptr,sizeof(parent_ptr));memcpy(run_button+0x458,&parent_ptr,sizeof(parent_ptr));
     begin(2796,1290,insets);
     wrapped(1665,768,0,0,1665,768,1665,768);render_frame();
-    assert(get_double(quest,0x490)==106&&get_double(quest,0x498)==-66);
-    assert(get_double(sit,0x490)==20&&get_double(sit,0x498)==191);
-    assert(get_double(run_button,0x490)==20&&get_double(run_button,0x498)==121);
+    assert(get_double(quest,0x490)==135&&get_double(quest,0x498)==-66);
+    assert(get_double(sit,0x490)==40&&get_double(sit,0x498)==205);
+    assert(get_double(run_button,0x490)==40&&get_double(run_button,0x498)==135);
     for (int i=0;i<10000;i++) render_frame();
-    assert(get_double(quest,0x490)==106&&get_double(sit,0x498)==191&&get_double(run_button,0x498)==121);
+    assert(get_double(quest,0x490)==135&&get_double(sit,0x498)==205&&get_double(run_button,0x498)==135);
 
     // Device report: text is adjusted, but its separate Mission/Team tabs are
     // still behind the left island. Reproduce the negative scene origin from
@@ -251,17 +251,17 @@ int main(void)
     memcpy(quest_tmp,quest,sizeof(quest));provide_tmp=true;
     put_double(sit,0x498,170);put_double(run_button,0x498,100);
     begin(2796,1290,insets);wrapped(1665,768,0,0,1665,768,1366,768);render_frame();
-    assert(get_double(quest,0x490)==105); // Old text-only behavior; tabs not yet registered.
+    assert(get_double(quest,0x490)==134); // Old text-only behavior; tabs not yet registered.
     provide_tabs=true;render_frame();
-    assert(get_double(quest,0x490)==147); // Common +81 from the leftmost tab.
-    assert(get_double(quest_tmp,0x490)==147);
+    assert(get_double(quest,0x490)==176); // Common inward shift with tabs.
+    assert(get_double(quest_tmp,0x490)==176);
     for (unsigned i=0;i<4;i++) {
-        assert(get_double(mission_tabs[i],0x490)==tab_x[i]+81);
+        assert(get_double(mission_tabs[i],0x490)==tab_x[i]+110);
         assert(get_double(mission_tabs[i],0x498)==tab_y[i]);
     }
     assert(get_double(mission_tabs[0],0x490)+41==get_double(quest,0x490)); // Same text/tab spacing.
     for (int i=0;i<10000;i++) render_frame();
-    assert(get_double(quest,0x490)==147&&get_double(mission_tabs[0],0x490)==106);
+    assert(get_double(quest,0x490)==176&&get_double(mission_tabs[0],0x490)==135);
     assert(memcmp(tab_parent,saved_parent,sizeof(tab_parent))==0);
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
     put_double(mission_tabs[0],0x498,-110);render_frame(); // A Y-only edit must not retain X shift.
@@ -271,13 +271,13 @@ int main(void)
     tl_javaapp_set_insets(0,0,177,0,0);render_frame();
     assert(get_double(quest,0x490)==66&&get_double(mission_tabs[0],0x490)==25);
     tl_javaapp_set_insets(177,0,0,0,0);render_frame();
-    assert(get_double(quest,0x490)==147&&get_double(mission_tabs[0],0x490)==106);
-    assert(get_double(sit,0x498)==191&&get_double(run_button,0x498)==121);
+    assert(get_double(quest,0x490)==176&&get_double(mission_tabs[0],0x490)==135);
+    assert(get_double(sit,0x498)==205&&get_double(run_button,0x498)==135);
     provide_tabs=provide_tmp=false;
     // Missing groups/exports are inert; later-created script groups are retried.
     window_at(quest,66,-66,275,204);provide_groups=false;begin(2796,1290,insets);
     wrapped(1665,768,0,0,1665,768,1665,768);render_frame();assert(get_double(quest,0x490)==66);
-    provide_groups=true;render_frame();assert(get_double(quest,0x490)==106);
+    provide_groups=true;render_frame();assert(get_double(quest,0x490)==135);
     const char *exports[]={"g_UIManager","_ZN9KUIManage10GetUIGroupEPKc","_ZN8KUIGroup9GetWindowEPKc","_ZN10KWndWindow11SetPositionEii"};
     for (unsigned i=0;i<4;i++) {
         window_at(quest,66,-66,275,204);missing_export=exports[i];begin(2796,1290,insets);
@@ -285,6 +285,19 @@ int main(void)
         assert(get_double(quest,0x490)==66&&renders==before+1);
     }
     missing_export=NULL;
+
+    // Profile 2: dev/release build (com.game3c.vhtgmobile)
+    entry.usize = 14882616;
+    mock_sha = "8cc2b4e59fd6087d726445526eb04fc39f1a7262be383fb52ef78533e95ab780";
+    assert(tl_vhtg_quest_start("x","com.game3c.vhtgmobile",true,insets,2796,1290));
+    fixture_base = (uintptr_t)original - 0x7e2abc;
+    wrapped = (anchor_call)filter((tl_lib *)1, "KT_SetUiAnchorSafeArea", (void *)original);
+    fixture_base = (uintptr_t)original_render - 0x7e2cc8;
+    render_frame = (void (*)(void))filter((tl_lib *)1, "_Z17Wnd_RenderWindowsv", (void *)original_render);
+    assert(wrapped != original && render_frame != original_render);
+    window_at(quest, 10, 100, 200, 250);
+    frame(2796, 1290);
+    assert(get_double(quest, 0x490) == 75);
     double dx,dy;
     assert(!tl_quest_delta((tl_quest_rect){0,0,932,430},(tl_quest_rect){0,100,900,200},(tl_quest_cutout){59,0,0,0},932,430,&dx,&dy));
     puts("PASS: selected HUD uses the registry/object ABI, moves separate Mission/Team tabs and text together at the observed negative scene origin, preserves spacing/other HUD/IME, handles missing/late groups and exports, and avoids drift over 10000 updates");

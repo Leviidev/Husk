@@ -7,8 +7,11 @@
 #include <string.h>
 #ifdef _WIN32
 #include <direct.h>
+#include <io.h>
 #else
 #include <unistd.h>
+#include <dirent.h>
+#include <strings.h>
 #endif
 
 void tl_path_normalize_slashes(const char *src, char *dst, size_t cap)
@@ -129,4 +132,69 @@ char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char 
     free(cwd);
     errno = failure ? failure : saved_errno;
     return failure ? NULL : out;
+}
+
+bool tl_path_case_resolve(char *path)
+{
+    if (!path || !path[0]) return false;
+    if (access(path, 0) == 0) return true;
+#ifndef _WIN32
+    size_t len = strlen(path);
+    size_t i = 0;
+    while (i < len) {
+        while (path[i] == '/') i++;
+        if (i >= len) break;
+        size_t start = i;
+        while (path[i] && path[i] != '/') i++;
+        size_t comp_len = i - start;
+        if (comp_len == 0) continue;
+        if (comp_len == 1 && path[start] == '.') continue;
+        if (comp_len == 2 && path[start] == '.' && path[start + 1] == '.') continue;
+
+        char saved = path[i];
+        path[i] = '\0';
+        if (access(path, 0) != 0) {
+            char parent[1024];
+            if (start <= 1) {
+                snprintf(parent, sizeof(parent), "/");
+            } else {
+                size_t p_len = start - 1;
+                while (p_len > 1 && path[p_len - 1] == '/') p_len--;
+                snprintf(parent, sizeof(parent), "%.*s", (int)p_len, path);
+            }
+            DIR *d = opendir(parent);
+            bool found = false;
+            if (d) {
+                struct dirent *de;
+                while ((de = readdir(d))) {
+                    if (strcasecmp(de->d_name, path + start) == 0) {
+                        size_t de_len = strlen(de->d_name);
+                        if (de_len == comp_len) {
+                            memcpy(path + start, de->d_name, comp_len);
+                        } else {
+                            path[i] = saved;
+                            memmove(path + start + de_len, path + i, strlen(path + i) + 1);
+                            memcpy(path + start, de->d_name, de_len);
+                            i = start + de_len;
+                            len = strlen(path);
+                            saved = path[i];
+                            path[i] = '\0';
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                closedir(d);
+            }
+            if (!found) {
+                path[i] = saved;
+                return false;
+            }
+        }
+        path[i] = saved;
+    }
+    return access(path, 0) == 0;
+#else
+    return false;
+#endif
 }

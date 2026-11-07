@@ -125,6 +125,13 @@ int main(int argc, char **argv)
     assert(tl_android_data_ancestor_access("/data/data", 0) == 0);
     assert(tl_android_data_ancestor_access("/data/user/0", 0) == 0);
     assert(tl_android_data_ancestor_access("/nonexistent", 0) == -1);
+
+    assert(!tl_path_case_resolve(NULL));
+    assert(!tl_path_case_resolve(""));
+    char case_test[1200];
+    snprintf(case_test, sizeof(case_test), "%s/files/quest/keep.txt", argv[1]);
+    assert(tl_path_case_resolve(case_test));
+
     puts("PASS: Android /data ancestor permission and access simulation");
 #ifndef _WIN32
     snprintf(g_data_dir, sizeof(g_data_dir), "%s-alias/", argv[1]);

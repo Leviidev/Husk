@@ -14,6 +14,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct {
+    size_t size;
+    const char *hash;
+    uintptr_t anchor_offset;
+    uintptr_t render_offset;
+} vhtg_profile;
+
+static const vhtg_profile vhtg_profiles[] = {
+    { 14643976, "0c468ae6407377f61d33f1bbe77928b1d5c32cdede98ab163b86a897f0b60dcb", 0x7cd9d0, 0x7cdbdc },
+    { 14882616, "8cc2b4e59fd6087d726445526eb04fc39f1a7262be383fb52ef78533e95ab780", 0x7e2abc, 0x7e2cc8 },
+};
+
 typedef void (*anchor_fn)(double,double,double,double,double,double,double,double);
 typedef struct {
     void *window;
@@ -37,6 +49,7 @@ static struct {
     tl_lib *lib;
     anchor_fn original;
     void (*render)(void);
+    uintptr_t anchor_offset, render_offset;
     void *manager;
     void *(*get_group)(void *, const char *);
     void *(*get_window)(void *, const char *);
@@ -182,7 +195,7 @@ static void quest_render(void)
             if (have_bounds && tl_quest_delta(Q.scene,bounds,cut,Q.pixel_w,Q.pixel_h,&dx,&dy))
                 for (unsigned i=0;i<QUEST_TARGETS;i++) if (found[i]) apply_window(i,&layout[i],dx,dy);
             for (unsigned i=QUEST_TARGETS;i<HUD_TARGETS;i++) if (found[i]) {
-                double down=0;
+                double down=0, dx=0;
                 if (Q.scene.w>Q.scene.h && (cut.left>0 || cut.right>0)) {
                     down=tl_quest_movement_down(Q.scene,layout[i].rect);
                     const uint8_t *bytes=Q.slots[i].window;
@@ -190,8 +203,11 @@ static void quest_render(void)
                         double room=read_int(layout[i].parent,0x438)-layout[i].rect.y-layout[i].rect.h;
                         down=fmin(down,floor(fmax(0,room)));
                     }
+                    double inward = floor(fmin(20.0, fmax(12.0, Q.scene.w * (18.0 / 932.0))));
+                    double dir = (layout[i].rect.x < Q.scene.x + Q.scene.w * 0.5) ? 1.0 : -1.0;
+                    dx = dir * inward;
                 }
-                apply_window(i,&layout[i],0,down);
+                apply_window(i,&layout[i],dx,down);
             }
         }
     }
@@ -205,7 +221,7 @@ static void *quest_plt(tl_lib *lib, const char *symbol, void *original)
     if (!anchor && !render) return original;
     const char *name=tl_ld_lib_name(lib); const char *leaf=name?strrchr(name,'/'):NULL;
     if (!name || strcmp(leaf?leaf+1:name,"libMyGame.so")) return original;
-    if ((uintptr_t)original != (uintptr_t)tl_ld_lib_base(lib)+(anchor?0x7cd9d0:0x7cdbdc)) return original;
+    if ((uintptr_t)original != (uintptr_t)tl_ld_lib_base(lib)+(anchor?Q.anchor_offset:Q.render_offset)) return original;
     Q.lib=lib;
     tl_log_line("vhtg-quest: bound %s",symbol);
     if (anchor) { Q.original=(anchor_fn)original; return (void *)quest_anchor; }
@@ -220,26 +236,38 @@ void tl_vhtg_quest_insets(int l,int t,int r,int b)
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
     atomic_store(&q_enabled,false); memset(&Q,0,sizeof(Q));
-    if (!requested || !package || strcmp(package,"review.com.game3c.vhtgmobile") ||
+    if (!requested || !package ||
+        (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")) ||
         !insets || pixel_width<=0 || pixel_height<=0) return false;
     tl_zip zip; char error[160];
     if (!tl_zip_open(&zip,apk,error,sizeof(error))) return false;
     const tl_zip_entry *entry=tl_zip_find(&zip,"lib/arm64-v8a/libMyGame.so");
     const uint8_t *data=NULL; size_t size=0; bool owned=false;
-    bool ok=entry && entry->usize==14643976 && tl_zip_data(&zip,entry,16u<<20,&data,&size,&owned,error,sizeof(error));
+    const vhtg_profile *matched = NULL;
+    if (entry) {
+        for (size_t i = 0; i < sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]); i++) {
+            if (entry->usize == vhtg_profiles[i].size) {
+                matched = &vhtg_profiles[i];
+                break;
+            }
+        }
+    }
+    bool ok = matched && tl_zip_data(&zip,entry,16u<<20,&data,&size,&owned,error,sizeof(error));
     uint8_t hash[32]; char hex[65];
     if (ok) {
         CC_SHA256(data,(CC_LONG)size,hash);
         for (unsigned i=0;i<32;i++) snprintf(hex+i*2,3,"%02x",hash[i]);
-        ok=!strcmp(hex,"0c468ae6407377f61d33f1bbe77928b1d5c32cdede98ab163b86a897f0b60dcb");
+        ok = !strcmp(hex, matched->hash);
     }
     if (owned) free((void *)data);
     tl_zip_close(&zip);
     if (!ok) { tl_log_line("vhtg-quest: unsupported library; quest-only adjustment disabled"); return false; }
+    Q.anchor_offset = matched->anchor_offset;
+    Q.render_offset = matched->render_offset;
     Q.pixel_w=pixel_width; Q.pixel_h=pixel_height; Q.reports=48;
     tl_vhtg_quest_insets(insets[0],insets[1],insets[2],insets[3]);
     atomic_store(&q_enabled,true);
     tl_ld_set_plt_filter(quest_plt);
-    tl_log_line("vhtg-quest: verified library; quest avoidance and separate walk/sit adjustment");
+    tl_log_line("vhtg-quest: verified library (%zu bytes); quest avoidance and separate walk/sit adjustment", matched->size);
     return true;
 }

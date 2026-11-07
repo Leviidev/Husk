@@ -264,24 +264,30 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
        phone is ~150 characters (p4a's launcher allows its script path 128) */
     {
         const char *mapped = tl_resolve_data_path(path, tl_data_dir(), buf, n);
-        if (mapped) return mapped;
+        if (mapped) {
+            if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
+            return buf;
+        }
     }
     /* /data/local/tmp: the world-writable scratch folder (JNA unpacks itself there): a folder of the app's own */
     if (!strncmp(path, "/data/local/tmp", 15) && (path[15] == 0 || path[15] == '/')) {
         snprintf(buf, n, "%s/cache/local-tmp", tl_data_dir());
         mkdir(buf, 0777);
         snprintf(buf, n, "%s/cache/local-tmp%s", tl_data_dir(), path + 15);
+        if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
         return buf;
     }
     const char *pkg = "/data/data/";
     if (!strncmp(path, pkg, strlen(pkg))) {
         const char *rest = strchr(path + strlen(pkg), '/');
         snprintf(buf, n, "%s%s", tl_data_dir(), rest ? rest : "");
+        if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
         return buf;
     }
     if (!strncmp(path, "/data/user/0/", 13)) {
         const char *rest = strchr(path + 13, '/');
         snprintf(buf, n, "%s%s", tl_data_dir(), rest ? rest : "");
+        if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
         return buf;
     }
     if (!strncmp(path, "/sdcard", 7) || !strncmp(path, "/storage/emulated/0", 19)) {
@@ -292,8 +298,13 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
         if (g_shared_storage[0] && strncmp(rest, "/Android/data", 13) && strncmp(rest, "/Android/obb", 12)) {
             char own[1024]; struct stat st;
             snprintf(own, sizeof(own), "%s/sdcard%s", tl_data_dir(), rest);
-            if (rest[0] && rest[1] && stat(own, &st) == 0) { snprintf(buf, n, "%s", own); return buf; }
+            if (rest[0] && rest[1] && stat(own, &st) == 0) {
+                if (access(own, F_OK) != 0) tl_path_case_resolve(own);
+                snprintf(buf, n, "%s", own);
+                return buf;
+            }
             snprintf(buf, n, "%s%s", g_shared_storage, rest);
+            if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
             return buf;
         }
         snprintf(buf, n, "%s/sdcard%s", tl_data_dir(), rest);
@@ -309,10 +320,71 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
                 if (stat(beside, &st) == 0) snprintf(buf, n, "%s", beside);
             }
         }
+        if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
         return buf;
+    }
+
+    /* Windows backslash paths (\Maps, \Settings, \UserData, etc.) normalized to /Maps,
+     * or relative paths (Configs/instance.txt, maps/Login.ecwld, etc.) used by ported PC engines.
+     * If not matching a system directory prefix, probe under the app's data directory and sdcard. */
+    static const char *const sys_prefixes[] = {
+        "/proc", "/sys", "/dev", "/system", "/System", "/vendor", "/apex",
+        "/data", "/sdcard", "/storage", "/etc", "/tmp", "/var", "/private",
+        "/Applications", "/Library", "/usr", "/bin", "/sbin"
+    };
+    bool is_sys = false;
+    if (path[0] == '/') {
+        for (size_t i = 0; i < sizeof(sys_prefixes) / sizeof(sys_prefixes[0]); i++) {
+            size_t sl = strlen(sys_prefixes[i]);
+            if (!strncmp(path, sys_prefixes[i], sl) && (path[sl] == 0 || path[sl] == '/')) {
+                is_sys = true;
+                break;
+            }
+        }
+    }
+    if (!is_sys) {
+        const char *rel = (path[0] == '/') ? path + 1 : path;
+        char probe[1024];
+        /* 1. <data_dir>/<rel> */
+        snprintf(probe, sizeof(probe), "%s/%s", tl_data_dir(), rel);
+        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+            snprintf(buf, n, "%s", probe);
+            return buf;
+        }
+        /* 2. <data_dir>/files/<rel> */
+        snprintf(probe, sizeof(probe), "%s/files/%s", tl_data_dir(), rel);
+        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+            snprintf(buf, n, "%s", probe);
+            return buf;
+        }
+        /* 3. <data_dir>/sdcard/<rel> */
+        snprintf(probe, sizeof(probe), "%s/sdcard/%s", tl_data_dir(), rel);
+        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+            snprintf(buf, n, "%s", probe);
+            return buf;
+        }
+        /* 4. App external files directory: <data_dir>/sdcard/Android/data/<pkg>/files/<rel> */
+        if (g_guest_data_dir[0]) {
+            const char *pkg_name = strrchr(g_guest_data_dir, '/');
+            if (pkg_name) {
+                pkg_name++;
+                snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/%s", tl_data_dir(), pkg_name, rel);
+                if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+                    snprintf(buf, n, "%s", probe);
+                    return buf;
+                }
+                /* 5. TruTien element_astc_v2: <data_dir>/sdcard/Android/data/<pkg>/files/element_astc_v2/<rel> */
+                snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/element_astc_v2/%s", tl_data_dir(), pkg_name, rel);
+                if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+                    snprintf(buf, n, "%s", probe);
+                    return buf;
+                }
+            }
+        }
     }
     if (path == norm) {
         snprintf(buf, n, "%s", norm);
+        if (access(buf, F_OK) != 0) tl_path_case_resolve(buf);
         return buf;
     }
     return path;

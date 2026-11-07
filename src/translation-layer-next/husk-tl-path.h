@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef HUSK_TL_PATH_H
 #define HUSK_TL_PATH_H
+#include <stdbool.h>
 #include <stddef.h>
 
 /* Android app-data aliases used by the file shims; NULL means not an alias. */
@@ -23,4 +24,9 @@ int tl_android_data_ancestor_access(const char *path, int mode);
  * The host directory and files stay in place. Allocation, ERANGE and EINVAL
  * follow getcwd; errno is unchanged on success. Other directories stay as-is. */
 char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char *guest_root);
+
+/* Case-insensitive path resolution for APFS/Darwin:
+ * If path exists, returns true. Otherwise traverses existing components and matches
+ * missing components case-insensitively using readdir/strcasecmp, updating path in-place. */
+bool tl_path_case_resolve(char *path);
 #endif
