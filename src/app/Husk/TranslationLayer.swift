@@ -338,6 +338,27 @@ final class TranslationLayerStore: ObservableObject {
 
     // MARK: files
 
+    nonisolated private static func packageName(in dir: URL, apks knownAPKs: [String]? = nil) -> String? {
+        let pkgFile = dir.appendingPathComponent("package.txt")
+        if let saved = (try? String(contentsOf: pkgFile, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !saved.isEmpty {
+            return saved
+        }
+        let fm = FileManager.default
+        let apks = knownAPKs ?? orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.lowercased().hasSuffix(".apk") }
+            .map { dir.appendingPathComponent($0).path })
+        for apk in apks {
+            if let manifest = entry(apk, "AndroidManifest.xml", limit: 8 << 20),
+               let pkg = ApkMetadata.packageName(manifest)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !pkg.isEmpty {
+                try? pkg.write(to: pkgFile, atomically: true, encoding: .utf8)
+                return pkg
+            }
+        }
+        return nil
+    }
+
     nonisolated private static func load(_ dir: URL) -> TLApp? {
         let fm = FileManager.default
         guard let files = try? fm.contentsOfDirectory(atPath: dir.path) else { return nil }
@@ -358,12 +379,25 @@ final class TranslationLayerStore: ObservableObject {
                      label: label.isEmpty ? (first as NSString).lastPathComponent : label,
                      iconPath: fm.fileExists(atPath: icon) ? icon : nil,
                      apks: apks, report: report, lastPlayed: played,
-                     packageName: (try? String(contentsOf: dir.appendingPathComponent("package.txt"), encoding: .utf8))?
-                        .trimmingCharacters(in: .whitespacesAndNewlines))
+                     packageName: packageName(in: dir, apks: apks))
+    }
+
+    /// Install an APK/bundle update triggered from inside a running app, preserving existing game data.
+    nonisolated static func installUpdate(_ url: URL, move: Bool = false) -> (error: String?, appID: String?, label: String?) {
+        let result = ingestWithTarget([url], move: move)
+        guard result.error == nil, let dir = result.dir else {
+            return (result.error ?? "Không thể cài đặt gói APK.", nil, nil)
+        }
+        let loaded = load(dir)
+        return (nil, dir.lastPathComponent, loaded?.label)
     }
 
     /// Copy, name, scan. Returns what went wrong, if anything did.
     nonisolated private static func ingest(_ urls: [URL], move: Bool = false) -> String? {
+        ingestWithTarget(urls, move: move).error
+    }
+
+    nonisolated private static func ingestWithTarget(_ urls: [URL], move: Bool = false) -> (error: String?, dir: URL?) {
         let fm = FileManager.default
         let dir = TranslationLayer.root.appendingPathComponent(UUID().uuidString,
                                                                isDirectory: true)
@@ -403,56 +437,101 @@ final class TranslationLayerStore: ObservableObject {
         } catch {
             try? fm.removeItem(at: dir)
             HuskLog.log("tl", "FAILED to add: \(error.localizedDescription)")
-            return "Husk could not copy it: \(error.localizedDescription)"
+            return ("Husk could not copy it: \(error.localizedDescription)", nil)
         }
 
         var targetDir = dir
+        var isUpdate = false
         let stagingApks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
             .filter { $0.lowercased().hasSuffix(".apk") }
             .map { dir.appendingPathComponent($0).path })
+        guard !stagingApks.isEmpty else {
+            try? fm.removeItem(at: dir)
+            HuskLog.log("tl", "FAILED to add: no APK found in staging folder")
+            return ("Không tìm thấy gói APK hợp lệ.", nil)
+        }
         describe(stagingApks, into: dir)
 
-        let newPkg = (try? String(contentsOf: dir.appendingPathComponent("package.txt"), encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let newPkg = packageName(in: dir, apks: stagingApks)
         if let newPkg, !newPkg.isEmpty {
             let existingDirs = (try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
             for existing in existingDirs where existing.lastPathComponent != dir.lastPathComponent {
-                let pkgFile = existing.appendingPathComponent("package.txt")
-                if let existingPkg = (try? String(contentsOf: pkgFile, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   existingPkg == newPkg {
-                    let oldFiles = (try? fm.contentsOfDirectory(at: existing, includingPropertiesForKeys: nil)) ?? []
-                    for f in oldFiles where f.pathExtension.lowercased() == "apk" {
-                        try? fm.removeItem(at: f)
+                guard let existingPkg = packageName(in: existing), existingPkg == newPkg else { continue }
+                let oldApks = ((try? fm.contentsOfDirectory(at: existing, includingPropertiesForKeys: nil)) ?? [])
+                    .filter { $0.pathExtension.lowercased() == "apk" }
+                let stagedFiles = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+                    .filter { $0.pathExtension.lowercased() == "apk" }
+                guard !stagedFiles.isEmpty else { break }
+
+                var placedNames = Set<String>()
+                for f in stagedFiles {
+                    let destName = (stagedFiles.count == 1 && oldApks.count == 1 && f.lastPathComponent == "husk-update.apk")
+                        ? oldApks[0].lastPathComponent
+                        : f.lastPathComponent
+                    let dest = existing.appendingPathComponent(destName)
+                    let tmpDest = existing.appendingPathComponent(".\(UUID().uuidString)-\(destName)")
+                    do {
+                        try fm.moveItem(at: f, to: tmpDest)
+                        if fm.fileExists(atPath: dest.path) {
+                            _ = try fm.replaceItemAt(dest, withItemAt: tmpDest)
+                        } else {
+                            try fm.moveItem(at: tmpDest, to: dest)
+                        }
+                        placedNames.insert(destName.lowercased())
+                    } catch {
+                        try? fm.removeItem(at: tmpDest)
+                        HuskLog.log("tl", "FAILED to replace \(destName) during update: \(error.localizedDescription)")
                     }
-                    let stagedFiles = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-                    for f in stagedFiles where f.pathExtension.lowercased() == "apk" {
-                        let dest = existing.appendingPathComponent(f.lastPathComponent)
-                        try? fm.removeItem(at: dest)
-                        try? fm.moveItem(at: f, to: dest)
+                }
+                guard !placedNames.isEmpty else {
+                    try? fm.removeItem(at: dir)
+                    return ("Không thể ghi đè gói APK cũ khi cập nhật.", nil)
+                }
+                for old in oldApks where !placedNames.contains(old.lastPathComponent.lowercased()) {
+                    try? fm.removeItem(at: old)
+                }
+                let stagedOBBDir = dir.appendingPathComponent("obb")
+                if let obbs = try? fm.contentsOfDirectory(at: stagedOBBDir, includingPropertiesForKeys: nil), !obbs.isEmpty {
+                    let targetOBBDir = existing.appendingPathComponent("obb")
+                    try? fm.createDirectory(at: targetOBBDir, withIntermediateDirectories: true)
+                    for obb in obbs {
+                        let destOBB = targetOBBDir.appendingPathComponent(obb.lastPathComponent)
+                        try? fm.removeItem(at: destOBB)
+                        try? fm.moveItem(at: obb, to: destOBB)
                     }
-                    let javaDataLib = existing.appendingPathComponent("java-data").appendingPathComponent("lib")
-                    if let libs = try? fm.contentsOfDirectory(at: javaDataLib, includingPropertiesForKeys: nil) {
+                }
+                for sub in ["java-data", "sdl-data"] {
+                    let libDir = existing.appendingPathComponent(sub).appendingPathComponent("lib")
+                    if let libs = try? fm.contentsOfDirectory(at: libDir, includingPropertiesForKeys: nil) {
                         for lib in libs where lib.pathExtension.lowercased() == "so" {
                             try? fm.removeItem(at: lib)
                         }
                     }
-                    try? fm.removeItem(at: dir)
-                    targetDir = existing
-                    HuskLog.log("tl", "updated existing app for \(newPkg) in \(existing.lastPathComponent)")
-                    break
                 }
+                try? fm.removeItem(at: existing.appendingPathComponent("java-data").appendingPathComponent("code_cache"))
+                try? pkgWrite(newPkg, into: existing)
+                try? fm.removeItem(at: dir)
+                targetDir = existing
+                isUpdate = true
+                HuskLog.log("tl", "updated existing app for \(newPkg) in \(existing.lastPathComponent)")
+                break
             }
         }
 
         let apks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: targetDir.path)) ?? [])
             .filter { $0.lowercased().hasSuffix(".apk") }
             .map { targetDir.appendingPathComponent($0).path })
-        describe(apks, into: targetDir)
+        let keepExistingLabel = isUpdate && fm.fileExists(atPath: targetDir.appendingPathComponent("label.txt").path)
+        describe(apks, into: targetDir, label: !keepExistingLabel)
         let json = scan(apks)
         try? Data(json.utf8).write(to: targetDir.appendingPathComponent("report.json"))
         try? "\(scanVersion)".write(to: targetDir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
         HuskLog.log("tl", "report for \(targetDir.lastPathComponent): \(json)")
-        return nil
+        return (nil, targetDir)
+    }
+
+    nonisolated private static func pkgWrite(_ pkg: String, into dir: URL) throws {
+        try pkg.write(to: dir.appendingPathComponent("package.txt"), atomically: true, encoding: .utf8)
     }
 
     /// The app's own name and icon, from its manifest and resource table --
@@ -465,14 +544,14 @@ final class TranslationLayerStore: ObservableObject {
     nonisolated private static func describe(_ apks: [String], into dir: URL, label wantLabel: Bool = true) {
         // Use the same manifest-based order as launch: a large asset pack is not the base APK.
         for apk in orderedAPKs(apks) {
-            guard let manifest = entry(apk, "AndroidManifest.xml", limit: 8 << 20),
-                  let arsc = entry(apk, "resources.arsc", limit: 64 << 20) else { continue }
+            guard let manifest = entry(apk, "AndroidManifest.xml", limit: 8 << 20) else { continue }
+            if let package = ApkMetadata.packageName(manifest), !package.isEmpty {
+                try? pkgWrite(package, into: dir)
+            }
+            guard let arsc = entry(apk, "resources.arsc", limit: 64 << 20) else { continue }
             let info = ApkMetadata.read(manifest: manifest, resources: arsc)
             guard info.label != nil || info.iconEntry != nil else { continue }
 
-            if let package = ApkMetadata.packageName(manifest) {
-                try? package.write(to: dir.appendingPathComponent("package.txt"), atomically: true, encoding: .utf8)
-            }
             if wantLabel, let label = info.label {
                 try? label.write(to: dir.appendingPathComponent("label.txt"),
                                  atomically: true, encoding: .utf8)

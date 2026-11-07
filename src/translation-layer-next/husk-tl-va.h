@@ -101,9 +101,16 @@ int tl_format(char *out, size_t cap, const char *fmt, tl_va_list *ap);
 int tl_format_wide(wchar_t *out, size_t cap, const wchar_t *fmt, tl_va_list *ap);
 
 /*
- * scanf, with guest pointer arguments: up to 16 conversions. `src` is a string.
+ * scanf, with guest pointer arguments: up to 96 conversions. `src` is a string.
  */
 int tl_scan_string(const char *src, const char *fmt, tl_va_list *ap);
+
+/*
+ * Wide scanf (swscanf / vswscanf), reading only the non-suppressed pointer arguments
+ * named by `fmt` from the guest AAPCS64 va_list.
+ */
+int tl_count_wide_scan_args(const wchar_t *fmt);
+int tl_scan_wide(const wchar_t *src, const wchar_t *fmt, tl_va_list *ap);
 
 #ifdef __cplusplus
 }

@@ -314,6 +314,22 @@ static void pad_motion(jobj *ev, int device, int source, int64_t down_ms, int64_
 }
 
 
+extern void (*tl_cocos_open_url_hook)(const char *url);
+static void A_openURL_bool(tl_jcall *c)
+{
+    const char *u = Str(c->args[0].l);
+    tl_log_line("sdl: openURL %s", u);
+    if (tl_cocos_open_url_hook && u[0]) { tl_cocos_open_url_hook(u); c->ret = vz(1); }
+    else c->ret = vz(0);
+}
+static void A_openURL_int(tl_jcall *c)
+{
+    const char *u = Str(c->args[0].l);
+    tl_log_line("sdl: openURL %s", u);
+    if (tl_cocos_open_url_hook && u[0]) { tl_cocos_open_url_hook(u); c->ret = vi(0); }
+    else c->ret = vi(-1);
+}
+
 /* ---- SDL 2's differences from SDL 3, and SuperTuxKart's own activity. */
 static jvalue vf(float f) { jvalue v; v.j = 0; v.f = f; return v; }
 static void A_float0(tl_jcall *c) { c->ret = vf(0.0f); }
@@ -415,7 +431,7 @@ static const tl_jhle k_hle[] = {
     M_(SDLA, "setWindowStyle", "(Z)V", A_void),
     M_(SDLA, "minimizeWindow", "()V", A_void),
     M_(SDLA, "sendMessage", "(II)Z", A_sendMessage),
-    M_(SDLA, "openURL", "(Ljava/lang/String;)Z", A_false),
+    M_(SDLA, "openURL", "(Ljava/lang/String;)Z", A_openURL_bool),
     M_(SDLA, "requestPermission", "(Ljava/lang/String;I)V", A_void),
     M_(SDLA, "showToast", "(Ljava/lang/String;IIII)Z", A_true),
     M_(SDLA, "clipboardGetText", "()Ljava/lang/String;", A_emptyString),
@@ -465,7 +481,7 @@ static const tl_jhle k_hle[] = {
     M_(SDLCTRL, "hapticStop", "(I)V", A_void),
     /* SDL 2's SDLActivity: the same questions as SDL 3's, a few asked with other signatures. */
     M_(SDLA, "showTextInput", "(IIII)Z", A_showTextInput),
-    M_(SDLA, "openURL", "(Ljava/lang/String;)I", A_minus1),
+    M_(SDLA, "openURL", "(Ljava/lang/String;)I", A_openURL_int),
     M_(SDLA, "showToast", "(Ljava/lang/String;IIII)I", A_zero),
     M_(SDLA, "getDisplayDPI", "()Landroid/util/DisplayMetrics;", A_displayDPI),
     M_(SDLA, "jniRefDisplaySize", "()I", A_refDisplaySize),

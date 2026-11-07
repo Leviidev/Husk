@@ -279,6 +279,40 @@ static void *java_boot(void *arg)
     return NULL;
 }
 
+void husk_release_unused_compressed_heap(void);
+
+static bool lib_uses_compressed_heap(const char *entry_name)
+{
+    if (!entry_name || strncmp(entry_name, "lib/", 4) != 0) return false;
+    const char *leaf = strrchr(entry_name, '/');
+    leaf = leaf ? leaf + 1 : entry_name;
+    return !strcmp(leaf, "libflutter.so") || !strcmp(leaf, "libcocos2djs.so") ||
+           !strcmp(leaf, "libminecraftpe.so") || !strcmp(leaf, "libpuerts.so") ||
+           !strncmp(leaf, "libv8", 5) || !strncmp(leaf, "libnode", 7);
+}
+
+static bool zip_has_compressed_heap_lib(const char *path)
+{
+    if (!path || !path[0]) return false;
+    tl_zip z;
+    char zerr[160] = "";
+    if (!tl_zip_open(&z, path, zerr, sizeof(zerr))) return false;
+    bool found = false;
+    for (size_t i = 0; i < z.count && !found; i++)
+        found = lib_uses_compressed_heap(z.entries[i].name);
+    tl_zip_close(&z);
+    return found;
+}
+
+static bool app_needs_compressed_heap(void)
+{
+    if (A.engine == ENGINE_FLUTTER || A.engine == ENGINE_GAMEACTIVITY) return true;
+    if (zip_has_compressed_heap_lib(A.apk)) return true;
+    for (int i = 0; i < A.nextra; i++)
+        if (zip_has_compressed_heap_lib(A.extra[i])) return true;
+    return false;
+}
+
 static void *launch_thread(void *arg)
 {
     (void)arg;
@@ -291,6 +325,9 @@ static void *launch_thread(void *arg)
     }
     install_crash_reporter();
     tl_hle_set_ca_bundle(A.ca);
+    /* Sideloaded iOS apps lack extended-virtual-addressing (~5.5 GiB user VA space). Give back the 4 GiB V8/Dart cage
+     * reservation before starting games that ship neither Flutter nor V8, so Metal, Dalvik and large native heaps fit. */
+    if (!app_needs_compressed_heap()) husk_release_unused_compressed_heap();
 
     /* Controllers go to the engine that is running. (GameActivity registers its own as it starts.) */
     if (A.engine == ENGINE_UNITY) tl_unity_register_pad_sink();

@@ -269,7 +269,7 @@ public class PackageManager {
     public boolean isSafeMode() { return false; }
     public boolean isInstantApp() { return false; }
     public boolean isInstantApp(String pkg) { return false; }
-    public boolean canRequestPackageInstalls() { return false; }
+    public boolean canRequestPackageInstalls() { return true; }
     private static PackageInstaller sInstaller;
     /* no sessions, none to install: an app store (F-Droid) builds its install manager on it as it starts */
     public PackageInstaller getPackageInstaller() { synchronized (PackageManager.class) { if (sInstaller == null) sInstaller = new PackageInstaller(); return sInstaller; } }

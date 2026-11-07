@@ -111,6 +111,19 @@ def main():
     exe = out / ("plt_filter_test.exe" if os.name == "nt" else "plt_filter_test")
     run("PLT filter compile", compiler + flags + [f"-I{out}", str(ROOT / "tests/translation-layer/plt_filter_test.c"), "-o", str(exe)])
     run("PLT filter relocation contracts", [str(exe)])
+    unity_app_source = (ROOT / "src/translation-layer-next/husk-tl-unity-app.c").read_text(encoding="utf-8")
+    va_source = (ROOT / "src/translation-layer-next/husk-tl-va.c").read_text(encoding="utf-8")
+    trutien_snippets = [
+        re.search(r"static bool lib_uses_compressed_heap\([^)]*\)\n\{.*?\n\}", unity_app_source, re.S)[0],
+        re.search(r"int tl_count_wide_scan_args\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
+        re.search(r"int tl_scan_wide\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
+        re.search(r"static char \*b_tmpnam\([^)]*\)\n\{.*?\n\}", source, re.S)[0],
+    ]
+    (out / "trutien_under_test.h").write_text("\n\n".join(trutien_snippets) + "\n", encoding="utf-8")
+    exe = out / ("trutien_va_heap_test.exe" if os.name == "nt" else "trutien_va_heap_test")
+    run("Tru Tien VA/heap compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/trutien_va_heap_test.c"), "-o", str(exe)])
+    run("Tru Tien VA/heap/vswscanf/tmpnam contracts", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

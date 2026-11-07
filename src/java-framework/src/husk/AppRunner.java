@@ -214,7 +214,44 @@ public final class AppRunner {
         Intent i = a.getIntent();
         return i != null && i.getComponent() != null ? i.getComponent().getClassName() : a.getClass().getName();
     }
-    /** Context.startActivity: an activity of the app's own, or something the host can open (a web page, mail, the store). */
+    static String resolveExternalOrPackageUrl(Context from, String dataDir, android.net.Uri u, String mimeType, String action) {
+        String s = u.toString();
+        if (s.startsWith("market://")) return "https://play.google.com/store/apps/" + s.substring(9);
+        boolean isPkgAction = "android.intent.action.INSTALL_PACKAGE".equals(action)
+            || "application/vnd.android.package-archive".equalsIgnoreCase(mimeType);
+        String scheme = u.getScheme();
+        String path = u.getPath();
+        boolean hasApkExt = path != null && path.toLowerCase(java.util.Locale.ROOT).endsWith(".apk");
+        if ((isPkgAction || hasApkExt) && ("content".equalsIgnoreCase(scheme) || "file".equalsIgnoreCase(scheme)) && dataDir != null) {
+            java.io.File cacheDir = new java.io.File(dataDir, "cache");
+            cacheDir.mkdirs();
+            java.io.File dst = new java.io.File(cacheDir, "husk-update.apk");
+            String dstUri = new android.net.Uri.Builder().scheme("file").authority("")
+                .path(dst.getAbsolutePath().replace('\\', '/')).build().toString();
+            if ("file".equalsIgnoreCase(scheme) && path != null
+                    && new java.io.File(path).getAbsolutePath().equals(dst.getAbsolutePath())) {
+                return dstUri;
+            }
+            try (java.io.InputStream in = "content".equalsIgnoreCase(scheme) && from != null
+                    ? from.getContentResolver().openInputStream(u)
+                    : new java.io.FileInputStream(new java.io.File(path));
+                 java.io.FileOutputStream out = new java.io.FileOutputStream(dst)) {
+                if (in != null) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    return dstUri;
+                }
+            } catch (Throwable t) {
+                android.util.Log.w("Husk", "staging local APK update failed: " + t);
+            }
+        }
+        if (isPkgAction && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) && !hasApkExt && !s.contains("#")) {
+            return s + "#husk.apk";
+        }
+        return s;
+    }
+    /** Context.startActivity: an activity of the app's own, or something the host can open (a web page, mail, the store, an APK update). */
     public static void startActivity(Context from, Intent i, int request, Bundle opts) {
         Manifest.Component c = Manifest.resolve(i);
         android.util.Log.d("Husk", "startActivity " + i + (c != null ? " -> " + c.name : " (not an activity of this app)"));
@@ -250,10 +287,9 @@ public final class AppRunner {
         }
         android.net.Uri u = i.getData();
         String action = i.getAction();
-        if (u != null && (Intent.ACTION_VIEW.equals(action) || Intent.ACTION_SENDTO.equals(action) || action == null || "android.intent.action.DIAL".equals(action))) {
-            String s = u.toString();
-            if (s.startsWith("market://")) s = "https://play.google.com/store/apps/" + s.substring(9);
-            Native.openUrl(s);
+        if (u != null && (Intent.ACTION_VIEW.equals(action) || "android.intent.action.INSTALL_PACKAGE".equals(action)
+                || Intent.ACTION_SENDTO.equals(action) || action == null || "android.intent.action.DIAL".equals(action))) {
+            Native.openUrl(resolveExternalOrPackageUrl(from, Native.dataDir(), u, i.getType(), action));
             return;
         }
         if (Intent.ACTION_SEND.equals(action)) {

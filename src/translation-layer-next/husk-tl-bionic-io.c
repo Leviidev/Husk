@@ -1314,12 +1314,23 @@ void husk_prepare_compressed_heap(void)
     }
     pthread_mutex_unlock(&g_compressed_heap_lock);
 }
+bool tl_release_unused_compressed_heap(void)
+{
+    bool freed = false;
+    vm_address_t addr = 0;
+    pthread_mutex_lock(&g_compressed_heap_lock);
+    if (g_compressed_heap && vm_deallocate(mach_task_self(), g_compressed_heap, PHANTOM_HALF) == KERN_SUCCESS) {
+        addr = g_compressed_heap;
+        g_compressed_heap = 0;
+        freed = true;
+    }
+    pthread_mutex_unlock(&g_compressed_heap_lock);
+    if (freed) tl_log_line("mm: released unused 4 GiB compressed-heap reservation at %p", (void *)addr);
+    return freed;
+}
 void husk_release_unused_compressed_heap(void)
 {
-    pthread_mutex_lock(&g_compressed_heap_lock);
-    if (g_compressed_heap && vm_deallocate(mach_task_self(), g_compressed_heap, PHANTOM_HALF) == KERN_SUCCESS)
-        g_compressed_heap = 0;
-    pthread_mutex_unlock(&g_compressed_heap_lock);
+    (void)tl_release_unused_compressed_heap();
 }
 static bool compressed_heap_request(size_t len)
 {
@@ -1498,6 +1509,10 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
             : shifted ? shifted_file_map(addr, len, prot_filter(prot, "mmap"), df, fd, off)
             : mmap(addr, len, prot_filter(prot, "mmap"), df, (flags & 0x20) ? -1 : fd, off);
     if (r == MAP_FAILED && (errno == ENOMEM || force_phantom) && prot == 0 && (flags & 0x20) && !(flags & 0x10)) { r = phantom_reserve(len); if (r != MAP_FAILED) errno = 0; }
+    if (r == MAP_FAILED && errno == ENOMEM && !refuse && !compressed_heap_request(len) && tl_release_unused_compressed_heap()) {
+        r = shifted ? shifted_file_map(addr, len, prot_filter(prot, "mmap"), df, fd, off)
+                    : mmap(addr, len, prot_filter(prot, "mmap"), df, (flags & 0x20) ? -1 : fd, off);
+    }
     TL_ERRNO_END();
     /* a file mapped executable (libffi's trampolines: its own library's code page, or a temporary file holding a copy): a phone
        can not make file pages executable, and a library's file offsets are not where the loader put its code, so the mapping

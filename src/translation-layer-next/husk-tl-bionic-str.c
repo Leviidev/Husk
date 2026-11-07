@@ -184,6 +184,17 @@ int tl_vai_sscanf(tl_va_frame *f)
 TL_VA_STUB(tl_va_sscanf, tl_vai_sscanf);
 extern void tl_va_sscanf(void);
 
+int tl_vai_swscanf(tl_va_frame *f)
+{
+    tl_va_list ap; tl_va_start(f, 2, 0, &ap);
+    TL_ERRNO_BEGIN();
+    int r = tl_scan_wide((const wchar_t *)f->gp[0], (const wchar_t *)f->gp[1], &ap);
+    TL_ERRNO_END();
+    return r;
+}
+TL_VA_STUB(tl_va_swscanf, tl_vai_swscanf);
+extern void tl_va_swscanf(void);
+
 int tl_vai_fscanf(tl_va_frame *f)
 {
     tl_va_list ap; tl_va_start(f, 2, 0, &ap);
@@ -235,6 +246,13 @@ static int b_vasprintf(char **out, const char *fmt, tl_va_list *ap)
     return n;
 }
 static int b_vsscanf(const char *s, const char *fmt, tl_va_list *ap) { return tl_scan_string(s, fmt, ap); }
+static int b_vswscanf(const wchar_t *s, const wchar_t *fmt, tl_va_list *ap)
+{
+    TL_ERRNO_BEGIN();
+    int r = tl_scan_wide(s, fmt, ap);
+    TL_ERRNO_END();
+    return r;
+}
 
 /* --- plain stdio --- */
 
@@ -525,11 +543,20 @@ static bool heap_is_image(const void *p)
 {
     return p && (tl_ld_covers(p, 1) || tl_xmem_contains(p));
 }
-/* When the host malloc refuses, a whole mapping is tried before the guest is told "out of memory" (most games abort on NULL).
- * The mapping is tracked in a registry (husk-tl-fallback-alloc.c): free()/realloc() never inspect memory around a pointer. The
- * errno of a failed attempt is logged, so a run shows whether the address space or a limit is what refuses. */
+bool tl_release_unused_compressed_heap(void);
+
+/* When the host malloc refuses, release any unused 4 GiB compressed-heap reservation first, then try a whole mapping before
+ * telling the guest "out of memory" (most games abort on NULL). The mapping is tracked in a registry (husk-tl-fallback-alloc.c):
+ * free()/realloc() never inspect memory around a pointer. */
 static void *malloc_fallback(const char *what, size_t n)
 {
+    if (tl_release_unused_compressed_heap()) {
+        void *retry = malloc(n);
+        if (retry) {
+            tl_log_line("bionic: %s(%zu) succeeded after releasing unused 4 GiB compressed heap", what, n);
+            return retry;
+        }
+    }
     void *p = tl_fb_alloc(n);
     static atomic_uint notes;
     if (atomic_fetch_add_explicit(&notes, 1, memory_order_relaxed) < 16)
@@ -576,9 +603,11 @@ static void *b_realloc(void *p, size_t n)
     }
     if (heap_is_image(p)) {
         static int k; if (k++ < 8) tl_log_line("bionic: realloc(%p, %zu) of a loaded library: a fresh block", p, n);
-        return malloc(n);
+        return b_malloc(n);
     }
-    return realloc(p, n);
+    void *r = realloc(p, n);
+    if (!r && n > 0 && tl_release_unused_compressed_heap()) r = realloc(p, n);
+    return r;
 }
 
 /* The floating-point environment: bionic's fenv_t is two words of its own layout, and nothing here turns on exceptions or rounding, so these report success. */
@@ -842,8 +871,8 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("clearerr", b_clearerr), TL_WRAP("fileno", b_fileno), TL_WRAP("setbuf", b_setbuf), TL_WRAP("setvbuf", b_setvbuf),
     TL_WRAP("remove", b_remove), TL_WRAP("rename", b_rename),
     TL_WRAP("snprintf", tl_va_snprintf), TL_WRAP("sprintf", tl_va_sprintf), TL_WRAP("printf", tl_va_printf), TL_WRAP("asprintf", tl_va_asprintf),
-    TL_WRAP("fprintf", tl_va_fprintf), TL_WRAP("sscanf", tl_va_sscanf), TL_WRAP("fscanf", tl_va_fscanf),
-    TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
+    TL_WRAP("fprintf", tl_va_fprintf), TL_WRAP("sscanf", tl_va_sscanf), TL_WRAP("swscanf", tl_va_swscanf), TL_WRAP("fscanf", tl_va_fscanf),
+    TL_WRAP("vswprintf", b_vswprintf), TL_WRAP("vswscanf", b_vswscanf), TL_WRAP("__fwrite_chk", b___fwrite_chk), TL_WRAP("system", b_system),
     TL_WRAP("sched_getcpu", b_sched_getcpu), TL_DIRECT(wcslcpy), TL_DIRECT(wcslcat), TL_DIRECT(wcscasecmp), TL_DIRECT(wcsncasecmp),
     TL_WRAP("vsnprintf", b_vsnprintf), TL_WRAP("__vsnprintf_chk", b___vsnprintf_chk), TL_WRAP("__vsprintf_chk", b___vsprintf_chk),
     TL_WRAP("vprintf", b_vprintf), TL_WRAP("vfprintf", b_vfprintf), TL_WRAP("vasprintf", b_vasprintf), TL_WRAP("vsscanf", b_vsscanf),
@@ -961,6 +990,40 @@ static void *b_popen(const char *cmd, const char *mode)
 }
 static int b_pclose(void *f) { if (!f) { tl_set_guest_errno(10); return -1; } fclose(map_stream(f)); return 0; }
 static FILE *b_tmpfile(void) { TL_ERRNO_BEGIN(); FILE *f = tmpfile(); TL_ERRNO_END(); return f; }
+static char *b_tmpnam(char *s)
+{
+    static __thread char tls_buf[24];
+    static atomic_uint seq;
+    char *out = s ? s : tls_buf;
+    unsigned id = atomic_fetch_add_explicit(&seq, 1, memory_order_relaxed) & 0xfffu;
+    /* Fits in bionic's 20-byte L_tmpnam ("/data/local/tmp/XXX\0") and maps to <data_dir>/cache/local-tmp/. */
+    snprintf(out, 20, "/data/local/tmp/%03x", id);
+    return out;
+}
+static int b_vfwprintf(void *f, const wchar_t *fmt, tl_va_list *ap)
+{
+    if (!f || !fmt || !ap) return -1;
+    tl_va_list copy = *ap;
+    int n = tl_format_wide(NULL, 0, fmt, &copy);
+    if (n < 0) return -1;
+    wchar_t *buf = malloc(((size_t)n + 1) * sizeof(wchar_t));
+    if (!buf) return -1;
+    tl_format_wide(buf, (size_t)n + 1, fmt, ap);
+    TL_ERRNO_BEGIN();
+    FILE *fp = map_stream(f);
+    int err = 0;
+    for (int i = 0; i < n && !err; i++) err = wide_put(buf[i], fp);
+    TL_ERRNO_END();
+    free(buf);
+    return err ? -1 : n;
+}
+int tl_vai_fwprintf(tl_va_frame *f)
+{
+    tl_va_list ap; tl_va_start(f, 2, 0, &ap);
+    return b_vfwprintf((void *)f->gp[0], (const wchar_t *)f->gp[1], &ap);
+}
+TL_VA_STUB(tl_va_fwprintf, tl_vai_fwprintf);
+extern void tl_va_fwprintf(void);
 /* bionic's mbstate_t is 8 bytes, Darwin's is not; the conversion state is dropped */
 static size_t b_wcsrtombs(char *dst, const wchar_t **src, size_t len, void *ps) { (void)ps; return wcsrtombs(dst, src, len, NULL); }
 
@@ -970,8 +1033,8 @@ const tl_bionic_entry tl_tab_str2[] = {
     TL_WRAP("__FD_CLR_chk", b___FD_CLR_chk),
     TL_DATA("stdin", &g_stdin_var), TL_DATA("stdout", &g_stdout_var), TL_DATA("stderr", &g_stderr_var),
     TL_WRAP("perror", b_perror), TL_WRAP("rewind", b_rewind), TL_WRAP("fputwc", b_fputwc), TL_WRAP("putwc", b_fputwc), TL_WRAP("fgetwc", b_fgetwc), TL_WRAP("getwc", b_fgetwc), TL_WRAP("ungetwc", b_ungetwc),
-    TL_WRAP("fgetws", b_fgetws), TL_WRAP("fputws", b_fputws), TL_WRAP("fwide", b_fwide), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),
-    TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("wcsrtombs", b_wcsrtombs), TL_WRAP("getchar", b_getchar),
+    TL_WRAP("fgetws", b_fgetws), TL_WRAP("fputws", b_fputws), TL_WRAP("fwide", b_fwide), TL_WRAP("fwprintf", tl_va_fwprintf), TL_WRAP("vfwprintf", b_vfwprintf), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),
+    TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("tmpnam", b_tmpnam), TL_WRAP("wcsrtombs", b_wcsrtombs), TL_WRAP("getchar", b_getchar),
     TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_DIRECT(sleep), TL_DIRECT(pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
     /* the rest of libm a guest may import (most are inlined as instructions, some libraries call them) */
     TL_DIRECT(ceilf), TL_DIRECT(copysignf), TL_DIRECT(erfcf), TL_DIRECT(fdim), TL_DIRECT(fdimf), TL_DIRECT(floorf), TL_DIRECT(fma), TL_DIRECT(fmaf),

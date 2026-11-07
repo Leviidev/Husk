@@ -134,6 +134,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         stats.textAlignment = .center
         stats.isUserInteractionEnabled = false
         stats.text = " "
+        TLUnityUIView.installOpenURLHandler()
         if engine == .unity { addSubview(stats) }
         if engine == .unity {
             TLUnityUIView.cocosView = self
@@ -655,13 +656,205 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// The current translation-layer session was stopped so another app can start.
     static let huskStopPlaying = Notification.Name("husk.stopPlaying")
 
+    /// Shared handler for URLs and APK updates opened by any runtime engine (Java, Cocos, SDL, Godot, GameMaker).
+    static func installOpenURLHandler() {
+        husk_cocos_set_open_url_handler { url in
+            guard let url else { return }
+            let raw = String(cString: url)
+            Task { @MainActor in
+                TLUnityUIView.handleOpenURL(raw)
+            }
+        }
+    }
+
+    private static let apkUpdateExtensions: Set<String> = ["apk", "xapk", "apkm", "apks"]
+    private static var activeUpdateTask: Task<Void, Never>?
+
+    private static func isAPKUpdateURL(_ link: URL) -> Bool {
+        if link.isFileURL {
+            return apkUpdateExtensions.contains(link.pathExtension.lowercased())
+        }
+        guard let scheme = link.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            return false
+        }
+        if link.fragment == "husk.apk" { return true }
+        return apkUpdateExtensions.contains(link.pathExtension.lowercased())
+    }
+
+    private static func topPresenter() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = TLUnityUIView.cocosView?.window
+            ?? scenes.first(where: { $0.activationState == .foregroundActive })?.windows.first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first(where: { !$0.isHidden })
+        guard var top = window?.rootViewController else { return nil }
+        while let presented = top.presentedViewController, !presented.isBeingDismissed {
+            top = presented
+        }
+        return top
+    }
+
+    private static func dismissAlert(_ alert: UIAlertController) async {
+        while alert.isBeingPresented || alert.isBeingDismissed {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard alert.presentingViewController != nil else { return }
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            alert.dismiss(animated: true) { cont.resume() }
+        }
+    }
+
+    private static func handleOpenURL(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let link = URL(string: trimmed)
+                  ?? trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed).flatMap(URL.init(string:)) else {
+            HuskLog.log("tl", "open url ignored invalid link: \(raw)")
+            return
+        }
+        HuskLog.log("tl", "open url: \(link.absoluteString)")
+        if isAPKUpdateURL(link) {
+            performInAppAPKUpdate(link)
+            return
+        }
+        UIApplication.shared.open(link)
+    }
+
+    private static func performInAppAPKUpdate(_ link: URL) {
+        guard activeUpdateTask == nil else {
+            HuskLog.log("tl", "apk update already running; ignoring duplicate request")
+            return
+        }
+        var cleanLink = link
+        if cleanLink.fragment == "husk.apk",
+           var comps = URLComponents(url: cleanLink, resolvingAgainstBaseURL: false) {
+            comps.fragment = nil
+            if let stripped = comps.url { cleanLink = stripped }
+        }
+
+        let progressAlert = UIAlertController(
+            title: "Đang cập nhật APK…",
+            message: cleanLink.isFileURL ? "Đang cài đặt bản cập nhật…" : "Đang kết nối máy chủ cập nhật…",
+            preferredStyle: .alert
+        )
+        progressAlert.addAction(UIAlertAction(title: "Huỷ", style: .cancel) { _ in
+            TLUnityUIView.activeUpdateTask?.cancel()
+            TLUnityUIView.activeUpdateTask = nil
+        })
+        topPresenter()?.present(progressAlert, animated: true)
+
+        activeUpdateTask = Task { @MainActor in
+            defer { TLUnityUIView.activeUpdateTask = nil }
+            let fm = FileManager.default
+            var tempDir: URL?
+            defer {
+                if let tempDir { try? fm.removeItem(at: tempDir) }
+            }
+
+            do {
+                let installURL: URL
+                let moveIntoStore: Bool
+                if cleanLink.isFileURL {
+                    guard fm.fileExists(atPath: cleanLink.path) else {
+                        throw APKUpdateError.message("Không tìm thấy tệp APK cập nhật cục bộ.")
+                    }
+                    installURL = cleanLink
+                    moveIntoStore = cleanLink.lastPathComponent == "husk-update.apk"
+                } else {
+                    let dir = fm.temporaryDirectory.appendingPathComponent("apk-update-\(UUID().uuidString)", isDirectory: true)
+                    try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                    tempDir = dir
+
+                    var fileName = cleanLink.lastPathComponent
+                    if fileName.isEmpty || fileName == "/" {
+                        fileName = "update.apk"
+                    } else if !apkUpdateExtensions.contains((fileName as NSString).pathExtension.lowercased()) {
+                        fileName += ".apk"
+                    }
+                    let destURL = dir.appendingPathComponent(fileName)
+
+                    try await APKUpdateDownloader.download(from: cleanLink, to: destURL) { written, expected in
+                        Task { @MainActor in
+                            let doneMB = Double(written) / 1_048_576.0
+                            if expected > 0 {
+                                let totalMB = Double(expected) / 1_048_576.0
+                                let pct = min(100, max(0, Int((Double(written) * 100.0 / Double(expected)).rounded())))
+                                progressAlert.message = String(format: "Đang tải gói cập nhật: %.1f / %.1f MB (%d%%)", doneMB, totalMB, pct)
+                            } else {
+                                progressAlert.message = String(format: "Đang tải gói cập nhật: %.1f MB…", doneMB)
+                            }
+                        }
+                    }
+
+                    let fh = try FileHandle(forReadingFrom: destURL)
+                    let magic = try fh.read(upToCount: 4)
+                    try? fh.close()
+                    guard magic == Data([0x50, 0x4B, 0x03, 0x04]) else {
+                        throw APKUpdateError.message("Tệp tải về không phải gói APK hợp lệ.")
+                    }
+                    installURL = destURL
+                    moveIntoStore = true
+                }
+
+                try Task.checkCancellation()
+                progressAlert.message = "Đang cài đặt bản cập nhật\n(giữ nguyên dữ liệu game)…"
+
+                let result = await Task.detached(priority: .userInitiated) {
+                    TranslationLayerStore.installUpdate(installURL, move: moveIntoStore)
+                }.value
+
+                if let failure = result.error {
+                    throw APKUpdateError.message(failure)
+                }
+
+                TranslationLayerStore.shared.reload()
+                await dismissAlert(progressAlert)
+
+                let gameTitle = result.label ?? "game"
+                let doneAlert = UIAlertController(
+                    title: "Cập nhật hoàn tất",
+                    message: "Đã cập nhật \(gameTitle) thành công và giữ nguyên toàn bộ dữ liệu.\nĐóng Husk ngay bây giờ để mở lại phiên bản mới?",
+                    preferredStyle: .alert
+                )
+                doneAlert.addAction(UIAlertAction(title: "Đóng để mở bản mới", style: .default) { _ in
+                    if let appID = result.appID {
+                        Router.shared.switchTo(appID)
+                    }
+                    CrashReport.gameEnded()
+                    HuskLog.flushNow()
+                    exit(0)
+                })
+                doneAlert.addAction(UIAlertAction(title: "Để sau", style: .cancel))
+                topPresenter()?.present(doneAlert, animated: true)
+            } catch {
+                let nsErr = error as NSError
+                let isCancelled = Task.isCancelled
+                    || error is CancellationError
+                    || (nsErr.domain == NSURLErrorDomain && nsErr.code == NSURLErrorCancelled)
+                await dismissAlert(progressAlert)
+                guard !isCancelled else {
+                    HuskLog.log("tl", "apk update cancelled by user")
+                    return
+                }
+                HuskLog.log("tl", "apk update failed: \(error.localizedDescription)")
+                let failAlert = UIAlertController(
+                    title: "Cập nhật thất bại",
+                    message: error.localizedDescription,
+                    preferredStyle: .alert
+                )
+                if !cleanLink.isFileURL {
+                    failAlert.addAction(UIAlertAction(title: "Mở bằng Safari", style: .default) { _ in
+                        UIApplication.shared.open(cleanLink)
+                    })
+                }
+                failAlert.addAction(UIAlertAction(title: "Đóng", style: .cancel))
+                topPresenter()?.present(failAlert, animated: true)
+            }
+        }
+    }
+
     /// The game's own requests, from its GL thread: 0 toggles, 1 shows, 2 hides.
     static func installKeyboardHandler() {
-        // A link in the game (terms of use, the social buttons) opens in the browser.
-        husk_cocos_set_open_url_handler { url in
-            guard let url, let link = URL(string: String(cString: url)) else { return }
-            DispatchQueue.main.async { UIApplication.shared.open(link) }
-        }
+        installOpenURLHandler()
         husk_cocos_set_keyboard_handler { action in
             DispatchQueue.main.async {
                 guard let view = TLUnityUIView.cocosView else { return }
@@ -777,6 +970,139 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         send(touches, phase: 2)
         pointers.removeAll()
+    }
+}
+
+private enum APKUpdateError: LocalizedError {
+    case message(String)
+    var errorDescription: String? {
+        switch self {
+        case .message(let s): return s
+        }
+    }
+}
+
+private final class APKUpdateDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let destURL: URL
+    private let onProgress: @Sendable (Int64, Int64) -> Void
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var task: URLSessionDownloadTask?
+    private var cancelled = false
+    private var finishError: Error?
+    private var movedOK = false
+    private var lastReport: CFAbsoluteTime = 0
+
+    private init(destURL: URL, onProgress: @escaping @Sendable (Int64, Int64) -> Void) {
+        self.destURL = destURL
+        self.onProgress = onProgress
+    }
+
+    static func download(
+        from url: URL,
+        to dest: URL,
+        onProgress: @escaping @Sendable (Int64, Int64) -> Void
+    ) async throws {
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 300)
+        let delegate = APKUpdateDownloader(destURL: dest, onProgress: onProgress)
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 1800
+        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: queue)
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                delegate.start(session: session, request: request, continuation: cont)
+            }
+        } onCancel: {
+            delegate.cancel()
+        }
+    }
+
+    private func start(
+        session: URLSession,
+        request: URLRequest,
+        continuation: CheckedContinuation<Void, Error>
+    ) {
+        lock.lock()
+        if cancelled {
+            lock.unlock()
+            session.invalidateAndCancel()
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+        let downloadTask = session.downloadTask(with: request)
+        self.continuation = continuation
+        self.task = downloadTask
+        lock.unlock()
+        downloadTask.resume()
+    }
+
+    private func cancel() {
+        lock.lock()
+        cancelled = true
+        let activeTask = task
+        lock.unlock()
+        activeTask?.cancel()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastReport >= 0.2 || (totalBytesExpectedToWrite > 0 && totalBytesWritten >= totalBytesExpectedToWrite) {
+            lastReport = now
+            onProgress(totalBytesWritten, totalBytesExpectedToWrite)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        if let http = downloadTask.response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            finishError = APKUpdateError.message("Máy chủ trả về mã lỗi HTTP \(http.statusCode).")
+            return
+        }
+        do {
+            let fm = FileManager.default
+            if fm.fileExists(atPath: destURL.path) {
+                try fm.removeItem(at: destURL)
+            }
+            try fm.moveItem(at: location, to: destURL)
+            movedOK = true
+        } catch {
+            finishError = error
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        session.finishTasksAndInvalidate()
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        guard let cont else { return }
+        if let error {
+            cont.resume(throwing: error)
+        } else if let finishError {
+            cont.resume(throwing: finishError)
+        } else if !movedOK {
+            cont.resume(throwing: APKUpdateError.message("Không nhận được dữ liệu APK từ máy chủ."))
+        } else {
+            cont.resume()
+        }
     }
 }
 
