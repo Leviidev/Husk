@@ -289,13 +289,17 @@ final class TLUnityUIView: UIView, UIKeyInput {
         if engine == .flutter, launched { husk_flutter_resize(Int32(w), Int32(h)) }
         // A landscape game is told its size once, when it starts, so it must not start while the screen is still
         // turning: wait for a surface that matches the game's orientation.
+        if firstLayout == nil, window != nil {
+            firstLayout = Date()
+        }
         if !launched, window != nil {
             let orientationMatch = portrait ? (h >= w) : (w >= h)
-            if orientationMatch {
+            let waited = firstLayout.map { Date().timeIntervalSince($0) > 3.5 } ?? false
+            if orientationMatch || waited {
                 launch(width: w, height: h)
             } else {
                 HuskOrientation.set(portrait ? .portrait : .landscape)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                     self?.setNeedsLayout()
                 }
             }
@@ -571,6 +575,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             DispatchQueue.main.async {
                 guard let view = TLUnityUIView.cocosView, view.engine == .java else { return }
                 guard show != 0 else { view.resignFirstResponder(); return }
+                let cls = inputType & 0xF, variation = inputType & 0xFF0
                 let newSecure = (cls == 1 && (variation == 0x80 || variation == 0xE0)) || (cls == 2 && variation == 0x10)
                 let multiLine = cls == 1 && inputType & 0x20000 != 0
                 let newReturnKey: UIReturnKeyType
@@ -632,6 +637,13 @@ final class TLUnityUIView: UIView, UIKeyInput {
             }
         }, { orientation in
             HuskLog.log("tl", "java: the app asks for orientation \(orientation)")
+            DispatchQueue.main.async {
+                if orientation == 0 || orientation == 6 || orientation == 8 || orientation == 11 {
+                    HuskOrientation.set(.landscape)
+                } else if orientation == 1 || orientation == 7 || orientation == 9 || orientation == 12 {
+                    HuskOrientation.set(.portrait)
+                }
+            }
         })
         husk_java_set_document_picker { mimeTypes, multiple in
             let types = TLUnityUIView.contentTypes(mimeTypes.map { String(cString: $0) } ?? "*/*")
