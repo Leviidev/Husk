@@ -18,7 +18,7 @@ public final class Looper {
     }
 
     public static void prepare() { if (sThreadLocal.get() == null) { sThreadLocal.set(new Looper()); husk.Native.nativeLooperPrepare(); } }
-    public static void prepareMainLooper() { prepare(); sMain = myLooper(); }
+    public static void prepareMainLooper() { prepare(); sMain = myLooper(); sMain.mQueue.mMain = true; }
     public static Looper getMainLooper() { return sMain; }
     public static Looper myLooper() { return sThreadLocal.get(); }
     public static MessageQueue myQueue() { return myLooper().mQueue; }

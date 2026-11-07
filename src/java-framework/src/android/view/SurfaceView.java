@@ -18,20 +18,35 @@ public class SurfaceView extends View {
     private Canvas mBackCanvas;
     private boolean mCreated, mLocked, mZOnTop, mFixed, mHasFrame;
     private int mFixedW, mFixedH, mFormat = PixelFormat.OPAQUE, mSurfaceW, mSurfaceH;
+    /** Live surface buffer size and on-screen view bounds read directly by native ANativeWindow / EGL compositor. */
+    public volatile int huskBufW, huskBufH, huskViewX, huskViewY, huskViewW, huskViewH;
     private final Paint mClear = new Paint(), mBlit = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final SurfaceHolder mHolder = new SurfaceHolder() {
         public void addCallback(Callback c) { synchronized (mCallbacks) { if (!mCallbacks.contains(c)) mCallbacks.add(c); } }
         public void removeCallback(Callback c) { synchronized (mCallbacks) { mCallbacks.remove(c); } }
         public boolean isCreating() { return false; }
         public void setType(int t) {}
-        public void setFixedSize(int w, int h) { mFixed = true; mFixedW = w; mFixedH = h; post(() -> sizeChanged()); }
-        public void setSizeFromLayout() { mFixed = false; post(() -> sizeChanged()); }
+        public void setFixedSize(int w, int h) {
+            if (w <= 0 || h <= 0) return;
+            mFixed = true; mFixedW = w; mFixedH = h;
+            syncNativeBounds();
+            post(() -> sizeChanged());
+        }
+        public void setSizeFromLayout() {
+            mFixed = false;
+            syncNativeBounds();
+            post(() -> sizeChanged());
+        }
         public void setFormat(int f) { mFormat = f; }
         public void setKeepScreenOn(boolean b) { SurfaceView.this.setKeepScreenOn(b); }
         public Canvas lockCanvas() { return lock(null); }
         public Canvas lockCanvas(Rect dirty) { return lock(dirty); }
         public void unlockCanvasAndPost(Canvas c) { post(c); }
-        public Rect getSurfaceFrame() { return new Rect(0, 0, mSurfaceW, mSurfaceH); }
+        public Rect getSurfaceFrame() {
+            int w = mFixed && mFixedW > 0 ? mFixedW : mSurfaceW;
+            int h = mFixed && mFixedH > 0 ? mFixedH : mSurfaceH;
+            return new Rect(0, 0, w, h);
+        }
         public Surface getSurface() { return mSurface; }
     };
     public SurfaceView(Context c) { this(c, null); }
@@ -47,11 +62,34 @@ public class SurfaceView extends View {
             public void post(Canvas c) { SurfaceView.this.post(c); }
             public boolean valid() { return mCreated; }
         };
+        syncNativeBounds();
     }
     public SurfaceHolder getHolder() { return mHolder; }
     private volatile boolean mGL;
+    private static int nativeScreenW() { try { return husk.Native.screenWidth(); } catch (UnsatisfiedLinkError e) { return 0; } }
+    private static int nativeScreenH() { try { return husk.Native.screenHeight(); } catch (UnsatisfiedLinkError e) { return 0; } }
+    private void syncNativeBounds() {
+        int vw = getWidth(), vh = getHeight();
+        int bw = (mFixed && mFixedW > 0) ? mFixedW : (mSurfaceW > 0 ? mSurfaceW : vw);
+        int bh = (mFixed && mFixedH > 0) ? mFixedH : (mSurfaceH > 0 ? mSurfaceH : vh);
+        huskBufW = bw > 0 ? bw : nativeScreenW();
+        huskBufH = bh > 0 ? bh : nativeScreenH();
+        if (vw > 0 && vh > 0 && isAttachedToWindow()) {
+            int[] loc = new int[2];
+            getLocationOnScreen(loc);
+            huskViewX = loc[0];
+            huskViewY = loc[1];
+            huskViewW = vw;
+            huskViewH = vh;
+        } else {
+            huskViewX = 0;
+            huskViewY = 0;
+            huskViewW = vw > 0 ? vw : nativeScreenW();
+            huskViewH = vh > 0 ? vh : nativeScreenH();
+        }
+    }
     /** The size an EGL window surface on this view gets: the fixed size, else the view's. */
-    public int[] huskSurfaceSize() { int w = mSurfaceW > 0 ? mSurfaceW : getWidth(), h = mSurfaceH > 0 ? mSurfaceH : getHeight(); return new int[] { w > 0 ? w : husk.Native.screenWidth(), h > 0 ? h : husk.Native.screenHeight() }; }
+    public int[] huskSurfaceSize() { syncNativeBounds(); return new int[] { huskBufW, huskBufH }; }
     /** EGL draws on this view: it keeps its area clear for the frame under the window. */
     public void huskSetGL(boolean gl) { mGL = gl; postInvalidate(); }
     public void setZOrderOnTop(boolean onTop) { mZOnTop = onTop; }
@@ -61,19 +99,20 @@ public class SurfaceView extends View {
     public void setChildSurfacePackage(SurfaceControlViewHost.SurfacePackage p) {}
     public android.os.IBinder getHostToken() { return null; }
     @Override protected void onMeasure(int ws, int hs) {
-        int w = mFixed ? resolveSizeAndState(mFixedW, ws, 0) : getDefaultSize(0, ws);
-        int h = mFixed ? resolveSizeAndState(mFixedH, hs, 0) : getDefaultSize(0, hs);
+        int w = getDefaultSize(mFixed ? mFixedW : getSuggestedMinimumWidth(), ws);
+        int h = getDefaultSize(mFixed ? mFixedH : getSuggestedMinimumHeight(), hs);
         setMeasuredDimension(w, h);
     }
-    @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); sizeChanged(); }
+    @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); syncNativeBounds(); sizeChanged(); }
     /** The surface follows the view's frame, as Android's window does it, whatever the subclass does with onSizeChanged
      *  (cocos2d-x's GLSurfaceView does not call up). */
     @Override public void layout(int l, int t, int r, int b) {
         super.layout(l, t, r, b);
+        syncNativeBounds();
         int w = mFixed ? mFixedW : r - l, h = mFixed ? mFixedH : b - t;
         if (w > 0 && h > 0 && (!mCreated || w != mSurfaceW || h != mSurfaceH)) post(this::sizeChanged);
     }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (getWidth() > 0 && getHeight() > 0) post(this::sizeChanged); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); syncNativeBounds(); if (getWidth() > 0 && getHeight() > 0) post(this::sizeChanged); }
     @Override protected void onDetachedFromWindow() { destroy(); super.onDetachedFromWindow(); }
     @Override protected void onWindowVisibilityChanged(int v) { super.onWindowVisibilityChanged(v); if (v != VISIBLE) destroy(); else if (getWidth() > 0) post(this::sizeChanged); }
     private ArrayList<SurfaceHolder.Callback> callbacks() { synchronized (mCallbacks) { return new ArrayList<>(mCallbacks); } }
@@ -82,9 +121,10 @@ public class SurfaceView extends View {
         int w = mFixed ? mFixedW : getWidth(), h = mFixed ? mFixedH : getHeight();
         if (w <= 0 || h <= 0) return;
         boolean created = false;
-        if (!mCreated) { mCreated = true; created = true; android.util.Log.d("SurfaceView", getClass().getName() + ": surface created " + w + "x" + h + ", " + callbacks().size() + " callbacks"); for (SurfaceHolder.Callback c : callbacks()) c.surfaceCreated(mHolder); }
+        if (!mCreated) { mCreated = true; created = true; mSurfaceW = w; mSurfaceH = h; syncNativeBounds(); android.util.Log.d("SurfaceView", getClass().getName() + ": surface created " + w + "x" + h + ", " + callbacks().size() + " callbacks"); for (SurfaceHolder.Callback c : callbacks()) c.surfaceCreated(mHolder); }
         if (created || w != mSurfaceW || h != mSurfaceH) {
             mSurfaceW = w; mSurfaceH = h;
+            syncNativeBounds();
             for (SurfaceHolder.Callback c : callbacks()) c.surfaceChanged(mHolder, mFormat, w, h);
             for (SurfaceHolder.Callback c : callbacks()) if (c instanceof SurfaceHolder.Callback2) ((SurfaceHolder.Callback2) c).surfaceRedrawNeeded(mHolder);
         }
@@ -159,7 +199,7 @@ public class SurfaceView extends View {
     public java.lang.String getName() { return null; }
     public android.view.SurfaceControl getRenderingSurfaceControl() { return null; }
     public android.graphics.Rect getSurfaceRenderPosition() { return null; }
-    public boolean isFixedSize() { return false; }
+    public boolean isFixedSize() { return mFixed; }
     public boolean isZOrderedOnTop() { return (huskFill.get("ZOrderedOnTop") instanceof Boolean ? (Boolean) huskFill.get("ZOrderedOnTop") : false); }
     public void onInitializeAccessibilityNodeInfoInternal(android.view.accessibility.AccessibilityNodeInfo p0) {}
     protected void onProvideStructure(android.view.ViewStructure p0, int p1, int p2) {}

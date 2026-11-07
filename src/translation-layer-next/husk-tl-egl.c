@@ -19,6 +19,9 @@ int tl_nwindow_width(void *window);
 void *tl_nwindow_texture(void *window);
 void tl_nwindow_post(void *window, const void *rgba, int w, int h, bool flip);
 int tl_nwindow_height(void *window);
+void tl_nwindow_acquire(void *window);
+void tl_nwindow_release(void *window);
+bool tl_nwindow_view_bounds(void *window, int *x, int *y, int *vw, int *vh);
 
 typedef void *EGLDisplay, *EGLSurface, *EGLContext, *EGLConfig, *EGLNativeWindowType;
 typedef int32_t EGLint;
@@ -76,6 +79,14 @@ static void (*a_glReadPixels)(int, int, int, int, unsigned, unsigned, void *);
 static void (*a_glGetIntegerv)(unsigned, int *);
 static void (*a_glBindFramebuffer)(unsigned, unsigned);
 static void (*a_glPixelStorei)(unsigned, int);
+static void (*a_glActiveTexture)(unsigned);
+static void (*a_glBindTexture)(unsigned, unsigned);
+static void (*a_glGenTextures)(int, unsigned *);
+static void (*a_glDeleteTextures)(int, const unsigned *);
+static void (*a_glTexParameteri)(unsigned, unsigned, int);
+static void (*a_glCopyTexImage2D)(unsigned, int, unsigned, int, int, int, int, int);
+static void (*a_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int);
+static void (*a_glFlush)(void);
 
 #define LOAD(lib, name) do { a_##name = dlsym(lib, #name); if (!a_##name) tl_log_line("egl: ANGLE does not export " #name); } while (0)
 
@@ -98,11 +109,19 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     LOAD(g, eglQueryAPI); LOAD(g, eglGetError); LOAD(g, eglWaitGL); LOAD(g, eglWaitNative); LOAD(g, eglReleaseThread);
     a_eglGetPlatformDisplayEXT = a_eglGetProcAddress ? a_eglGetProcAddress("eglGetPlatformDisplayEXT") : NULL;
     if (!a_eglGetPlatformDisplayEXT) { tl_log_line("egl: ANGLE has no eglGetPlatformDisplayEXT"); pthread_mutex_unlock(&E.lock); return false; }
-    /* GLES functions this layer itself calls (frame capture) */
+    /* GLES functions this layer itself calls (frame capture and zero-readback GPU compositing) */
     a_glReadPixels = a_eglGetProcAddress("glReadPixels");
     a_glGetIntegerv = a_eglGetProcAddress("glGetIntegerv");
     a_glBindFramebuffer = a_eglGetProcAddress("glBindFramebuffer");
     a_glPixelStorei = a_eglGetProcAddress("glPixelStorei");
+    a_glActiveTexture = a_eglGetProcAddress("glActiveTexture");
+    a_glBindTexture = a_eglGetProcAddress("glBindTexture");
+    a_glGenTextures = a_eglGetProcAddress("glGenTextures");
+    a_glDeleteTextures = a_eglGetProcAddress("glDeleteTextures");
+    a_glTexParameteri = a_eglGetProcAddress("glTexParameteri");
+    a_glCopyTexImage2D = a_eglGetProcAddress("glCopyTexImage2D");
+    a_glCopyTexSubImage2D = a_eglGetProcAddress("glCopyTexSubImage2D");
+    a_glFlush = a_eglGetProcAddress("glFlush");
     if (frame_dir) { snprintf(E.frame_dir, sizeof(E.frame_dir), "%s", frame_dir); E.latest_only = frame_every < 0; E.frame_every = frame_every != 0 ? (frame_every < 0 ? -frame_every : frame_every) : 60; }
     E.ready = true;
     pthread_mutex_unlock(&E.lock);
@@ -197,7 +216,48 @@ static EGLBoolean w_eglGetConfigAttrib(EGLDisplay d, EGLConfig c, EGLint at, EGL
     if (trace) tl_log_line("egl: eglGetConfigAttrib(%p, %#x) -> %s %d", c, at, ok ? "true" : "false", v ? *v : -1);
     return ok;
 }
-PASS_BOOL(eglDestroyContext, (EGLDisplay d, EGLContext c), (d, c))
+static pthread_mutex_t g_tex_lock = PTHREAD_MUTEX_INITIALIZER;
+/* The Java runtime's compositor (husk-tl-dvm-android.c), where it is linked: it holds the screen's surface, so an app that makes
+ * an EGL window of its own (SDL, bgfx, Unity on a SurfaceView) draws off screen and each swap hands the frame to it, to be put on
+ * the screen under the app's views. Sharing the compositor's GL context lets swaps stay on the GPU via glCopyTexSubImage2D. */
+__attribute__((weak)) bool tl_javaapp_compositing(void);
+__attribute__((weak)) void *tl_javaapp_ui_context(void);
+__attribute__((weak)) void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
+
+#define MAX_COMP_CONTEXTS 32
+static struct { EGLContext c; int ver; } g_comp_ctx[MAX_COMP_CONTEXTS];
+static int comp_ctx_ver(EGLContext c)
+{
+    if (!c) return 0;
+    int v = 0;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { v = g_comp_ctx[i].ver; break; }
+    pthread_mutex_unlock(&g_tex_lock);
+    return v;
+}
+static void comp_ctx_add(EGLContext c, int ver)
+{
+    if (!c || ver <= 0) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { g_comp_ctx[i].ver = ver; pthread_mutex_unlock(&g_tex_lock); return; }
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (!g_comp_ctx[i].c) { g_comp_ctx[i].c = c; g_comp_ctx[i].ver = ver; break; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+static void comp_ctx_remove(EGLContext c)
+{
+    if (!c) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { g_comp_ctx[i].c = NULL; g_comp_ctx[i].ver = 0; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+
+static EGLBoolean w_eglDestroyContext(EGLDisplay d, EGLContext c)
+{
+    comp_ctx_remove(c);
+    return a_eglDestroyContext(d, c);
+}
 PASS_BOOL(eglQuerySurface, (EGLDisplay d, EGLSurface s, EGLint at, EGLint *v), (d, s, at, v))
 PASS_BOOL(eglSurfaceAttrib, (EGLDisplay d, EGLSurface s, EGLint at, EGLint v), (d, s, at, v))
 static EGLBoolean w_eglMakeCurrent(EGLDisplay d, EGLSurface dr, EGLSurface rd, EGLContext c)
@@ -224,6 +284,11 @@ static const char *w_eglQueryString(EGLDisplay d, EGLint name) { return a_eglQue
 static bool g_es31_shim;           /* defined with the rest of the shim, below */
 static EGLContext w_eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share, const EGLint *at)
 {
+    int req_ver = 1;
+    if (at) {
+        for (int i = 0; at[i] != EGL_NONE; i += 2)
+            if (at[i] == 0x3098 /* EGL_CONTEXT_CLIENT_VERSION */) req_ver = at[i + 1];
+    }
     /* A game that insists on ES 3.1 or 3.2 (Unreal Engine tries 3.2, then 3.1) is given the 3.0 context ANGLE can make: the version it is then told is the shim's. */
     EGLint patched[40];
     if (g_es31_shim && at) {
@@ -235,13 +300,32 @@ static EGLContext w_eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share
         patched[n] = EGL_NONE;
         at = patched;
     }
-    EGLContext ctx = a_eglCreateContext(d, cfg_real(c), share, at);
+    EGLContext ctx = NULL;
+    bool shared_comp = false;
+    if (!share && d == E.display && req_ver >= 2 && tl_javaapp_ui_context) {
+        EGLContext ui_ctx = tl_javaapp_ui_context();
+        if (ui_ctx) {
+            ctx = a_eglCreateContext(d, cfg_real(c), ui_ctx, at);
+            if (ctx) {
+                comp_ctx_add(ctx, req_ver >= 3 ? 3 : 2);
+                shared_comp = true;
+            }
+        }
+    }
+    if (!ctx) {
+        ctx = a_eglCreateContext(d, cfg_real(c), share, at);
+        int sver = share ? comp_ctx_ver(share) : 0;
+        if (ctx && sver > 0) {
+            comp_ctx_add(ctx, req_ver >= 3 ? 3 : (req_ver >= 2 ? 2 : sver));
+            shared_comp = true;
+        }
+    }
     static int trace = -1;
     if (trace < 0) trace = getenv("TL_EGL_TRACE") ? 1 : 0;
-    if (trace || !ctx) {
-        char buf[200]; size_t k = 0;
+    if (trace || !ctx || shared_comp) {
+        char buf[200]; size_t k = 0; buf[0] = 0;
         for (int i = 0; at && at[i] != EGL_NONE && i < 20 && k + 24 < sizeof(buf); i += 2) k += (size_t)snprintf(buf + k, sizeof(buf) - k, " %#x=%d", at[i], at[i + 1]);
-        tl_log_line("egl: eglCreateContext(share %p,%s ) -> %p%s", share, buf, ctx, ctx ? "" : " (failed)");
+        tl_log_line("egl: eglCreateContext(share %p,%s ) -> %p%s", share, buf, ctx, !ctx ? " (failed)" : (shared_comp ? " (shared with compositor)" : ""));
     }
     return ctx;
 }
@@ -258,7 +342,6 @@ void tl_egl_offscreen_windows(bool on) { g_offscreen_windows = on; }
 /* surfaces made on a TextureView's window: off-screen, read back into its SurfaceTexture at each swap */
 #define MAX_TEX_SURFACES 16
 static struct { EGLSurface s; void *win; } g_tex_surf[MAX_TEX_SURFACES];
-static pthread_mutex_t g_tex_lock = PTHREAD_MUTEX_INITIALIZER;
 static void *tex_window_of(EGLSurface s)
 {
     void *w = NULL;
@@ -267,39 +350,37 @@ static void *tex_window_of(EGLSurface s)
     pthread_mutex_unlock(&g_tex_lock);
     return w;
 }
-/* The Java runtime's compositor (husk-tl-dvm-android.c), where it is linked: it holds the screen's surface, so an app that makes
- * an EGL window of its own (SDL, Unity on a SurfaceView) draws off screen and each swap hands the frame to it, to be put on the
- * screen under the app's views. Two window surfaces on one layer is what a phone refuses (EGL_BAD_ALLOC). */
-__attribute__((weak)) bool tl_javaapp_compositing(void);
-__attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
+
 #define MAX_COMP_SURFACES 8
-static EGLSurface g_comp_surf[MAX_COMP_SURFACES];
-static bool comp_surface(EGLSurface s)
-{
-    bool r = false;
-    pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_COMP_SURFACES && s; i++) if (g_comp_surf[i] == s) r = true;
-    pthread_mutex_unlock(&g_tex_lock);
-    return r;
-}
+typedef struct {
+    EGLSurface s;
+    void *win;
+    unsigned tex[3];
+    int tw[3], th[3];
+    int cur;
+} comp_surf_entry;
+static comp_surf_entry g_comp_surf[MAX_COMP_SURFACES];
+
 /* The current frame of a surface, read back (bottom-up RGBA, in a buffer of this thread's). */
-static const uint8_t *read_back(EGLDisplay d, EGLSurface s, EGLint *pw, EGLint *ph)
+static const uint8_t *read_back_rect(EGLDisplay d, EGLSurface s, int max_w, int max_h, EGLint *pw, EGLint *ph)
 {
     EGLint w = 0, h = 0;
     a_eglQuerySurface(d, s, EGL_WIDTH, &w); a_eglQuerySurface(d, s, EGL_HEIGHT, &h);
+    if (max_w > 0 && max_w < w) w = max_w;
+    if (max_h > 0 && max_h < h) h = max_h;
     if (w <= 0 || h <= 0 || !a_glReadPixels) return NULL;
     static __thread uint8_t *buf; static __thread size_t cap;
-    size_t need = (size_t)w * h * 4;
+    size_t need = (size_t)w * (size_t)h * 4;
     if (need > cap) { free(buf); buf = malloc(need); cap = buf ? need : 0; }
     if (!buf) return NULL;
     int old_fb = 0, old_pack = 0;
     a_glGetIntegerv(0x8CAA /* GL_READ_FRAMEBUFFER_BINDING */, &old_fb);
     a_glGetIntegerv(0x0D05 /* GL_PACK_ALIGNMENT */, &old_pack);
-    a_glBindFramebuffer(0x8CA8 /* GL_READ_FRAMEBUFFER */, 0);
+    if (old_fb) a_glBindFramebuffer(0x8CA8 /* GL_READ_FRAMEBUFFER */, 0);
     a_glPixelStorei(0x0D05, 1);
     a_glReadPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, buf);
     a_glPixelStorei(0x0D05, old_pack);
-    a_glBindFramebuffer(0x8CA8, (unsigned)old_fb);
+    if (old_fb) a_glBindFramebuffer(0x8CA8, (unsigned)old_fb);
     *pw = w; *ph = h;
     return buf;
 }
@@ -307,9 +388,13 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
 {
     cfg = cfg_real(cfg);
     if (tl_nwindow_texture(win)) {
-        EGLint pb[] = { EGL_WIDTH, tl_nwindow_width(win), EGL_HEIGHT, tl_nwindow_height(win), EGL_NONE };
+        int ww = tl_nwindow_width(win), wh = tl_nwindow_height(win);
+        if (ww < 1) ww = 1;
+        if (wh < 1) wh = 1;
+        EGLint pb[] = { EGL_WIDTH, ww, EGL_HEIGHT, wh, EGL_NONE };
         EGLSurface s = a_eglCreatePbufferSurface(d, cfg, pb);
         if (s) {
+            tl_nwindow_acquire(win);
             pthread_mutex_lock(&g_tex_lock);
             for (int i = 0; i < MAX_TEX_SURFACES; i++) if (!g_tex_surf[i].s) { g_tex_surf[i].s = s; g_tex_surf[i].win = win; break; }
             pthread_mutex_unlock(&g_tex_lock);
@@ -318,18 +403,32 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
         return s;
     }
     if (tl_javaapp_compositing && tl_javaapp_compositing()) {
-        EGLint pb[] = { EGL_WIDTH, tl_nwindow_width(win), EGL_HEIGHT, tl_nwindow_height(win), EGL_NONE };
+        int ww = tl_nwindow_width(win), wh = tl_nwindow_height(win);
+        if (ww < 1) ww = 1;
+        if (wh < 1) wh = 1;
+        EGLint pb[] = { EGL_WIDTH, ww, EGL_HEIGHT, wh, EGL_NONE };
         EGLSurface s = a_eglCreatePbufferSurface(d, cfg, pb);
         if (s) {
+            tl_nwindow_acquire(win);
             pthread_mutex_lock(&g_tex_lock);
-            for (int i = 0; i < MAX_COMP_SURFACES; i++) if (!g_comp_surf[i]) { g_comp_surf[i] = s; break; }
+            for (int i = 0; i < MAX_COMP_SURFACES; i++) {
+                if (!g_comp_surf[i].s) {
+                    memset(&g_comp_surf[i], 0, sizeof(g_comp_surf[i]));
+                    g_comp_surf[i].s = s;
+                    g_comp_surf[i].win = win;
+                    break;
+                }
+            }
             pthread_mutex_unlock(&g_tex_lock);
         }
         tl_log_line("egl: window %dx%d -> surface %p, composited under the app's views", pb[1], pb[3], s);
         return s;
     }
     if (E.frame_dir[0] || g_offscreen_windows) {
-        EGLint pb[] = { EGL_WIDTH, tl_nwindow_width(win), EGL_HEIGHT, tl_nwindow_height(win), EGL_NONE };
+        int ww = tl_nwindow_width(win), wh = tl_nwindow_height(win);
+        if (ww < 1) ww = 1;
+        if (wh < 1) wh = 1;
+        EGLint pb[] = { EGL_WIDTH, ww, EGL_HEIGHT, wh, EGL_NONE };
         EGLSurface s = a_eglCreatePbufferSurface(d, cfg, pb);
         if (!s) {
             /* the config the game chose may draw only to windows: the closest one that also makes buffers */
@@ -349,12 +448,35 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
 }
 static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
 {
-    pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_TEX_SURFACES; i++) if (g_tex_surf[i].s == s) g_tex_surf[i].s = NULL;
+    void *tex_win = NULL, *comp_win = NULL;
+    unsigned del_tex[3] = { 0, 0, 0 };
     bool comp = false;
-    for (int i = 0; i < MAX_COMP_SURFACES && s; i++) if (g_comp_surf[i] == s) { g_comp_surf[i] = NULL; comp = true; }
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_TEX_SURFACES && s; i++) {
+        if (g_tex_surf[i].s == s) {
+            tex_win = g_tex_surf[i].win;
+            g_tex_surf[i].s = NULL;
+            g_tex_surf[i].win = NULL;
+        }
+    }
+    for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
+        if (g_comp_surf[i].s == s) {
+            comp_win = g_comp_surf[i].win;
+            memcpy(del_tex, g_comp_surf[i].tex, sizeof(del_tex));
+            memset(&g_comp_surf[i], 0, sizeof(g_comp_surf[i]));
+            comp = true;
+        }
+    }
     pthread_mutex_unlock(&g_tex_lock);
-    if (comp && tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
+    if (tex_win) tl_nwindow_release(tex_win);
+    if (comp) {
+        if (tl_javaapp_app_tex) tl_javaapp_app_tex(0, 0, 0, 0, 0, 0, 0);
+        else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
+        if (a_glDeleteTextures && comp_ctx_ver(a_eglGetCurrentContext()) > 0) {
+            for (int k = 0; k < 3; k++) if (del_tex[k]) a_glDeleteTextures(1, &del_tex[k]);
+        }
+        if (comp_win) tl_nwindow_release(comp_win);
+    }
     return a_eglDestroySurface(d, s);
 }
 static EGLSurface w_eglCreatePbufferSurface(EGLDisplay d, EGLConfig c, const EGLint *at) { return a_eglCreatePbufferSurface(d, cfg_real(c), at); }
@@ -425,18 +547,101 @@ static void tex_swap(EGLDisplay d, EGLSurface s, void *win)
     a_glBindFramebuffer(0x8CA8, (unsigned)old_fb);
     tl_nwindow_post(win, buf, w, h, true);
 }
+static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
+{
+    int slot = -1;
+    void *win = NULL;
+    int k = 0, tw = 0, th = 0;
+    unsigned tex_id = 0;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
+        if (g_comp_surf[i].s == s) {
+            slot = i;
+            win = g_comp_surf[i].win;
+            k = g_comp_surf[i].cur;
+            tex_id = g_comp_surf[i].tex[k];
+            tw = g_comp_surf[i].tw[k];
+            th = g_comp_surf[i].th[k];
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    if (slot < 0) return false;
+
+    EGLint surf_w = 0, surf_h = 0;
+    a_eglQuerySurface(d, s, EGL_WIDTH, &surf_w);
+    a_eglQuerySurface(d, s, EGL_HEIGHT, &surf_h);
+    if (surf_w <= 0 || surf_h <= 0) return true;
+
+    int win_w = win ? tl_nwindow_width(win) : 0;
+    int win_h = win ? tl_nwindow_height(win) : 0;
+    int cw = (win_w > 0 && win_w <= surf_w) ? win_w : surf_w;
+    int ch = (win_h > 0 && win_h <= surf_h) ? win_h : surf_h;
+    int vx = 0, vy = 0, vw = 0, vh = 0;
+    if (!win || !tl_nwindow_view_bounds(win, &vx, &vy, &vw, &vh)) {
+        vx = 0; vy = 0; vw = 0; vh = 0;
+    }
+
+    int ver = a_eglGetCurrentContext ? comp_ctx_ver(a_eglGetCurrentContext()) : 0;
+    if (ver >= 2 && tl_javaapp_app_tex && a_glGetIntegerv && a_glBindFramebuffer
+        && a_glActiveTexture && a_glBindTexture && a_glGenTextures && a_glTexParameteri
+        && a_glCopyTexImage2D && a_glCopyTexSubImage2D) {
+        unsigned fb_target = ver >= 3 ? 0x8CA8u /* GL_READ_FRAMEBUFFER */ : 0x8D40u /* GL_FRAMEBUFFER */;
+        unsigned fb_query = ver >= 3 ? 0x8CAAu /* GL_READ_FRAMEBUFFER_BINDING */ : 0x8CA6u /* GL_FRAMEBUFFER_BINDING */;
+        int old_fb = 0, old_active = 0x84C0, old_tex = 0;
+        a_glGetIntegerv(fb_query, &old_fb);
+        a_glGetIntegerv(0x84E0 /* GL_ACTIVE_TEXTURE */, &old_active);
+        if (old_fb) a_glBindFramebuffer(fb_target, 0);
+        a_glActiveTexture(0x84C0 /* GL_TEXTURE0 */);
+        a_glGetIntegerv(0x8069 /* GL_TEXTURE_BINDING_2D */, &old_tex);
+        if (!tex_id) a_glGenTextures(1, &tex_id);
+        a_glBindTexture(0x0DE1 /* GL_TEXTURE_2D */, tex_id);
+        if (tw != cw || th != ch) {
+            a_glTexParameteri(0x0DE1, 0x2801 /* GL_TEXTURE_MIN_FILTER */, 0x2601 /* GL_LINEAR */);
+            a_glTexParameteri(0x0DE1, 0x2800 /* GL_TEXTURE_MAG_FILTER */, 0x2601 /* GL_LINEAR */);
+            a_glTexParameteri(0x0DE1, 0x2802 /* GL_TEXTURE_WRAP_S */, 0x812F /* GL_CLAMP_TO_EDGE */);
+            a_glTexParameteri(0x0DE1, 0x2803 /* GL_TEXTURE_WRAP_T */, 0x812F /* GL_CLAMP_TO_EDGE */);
+            a_glCopyTexImage2D(0x0DE1, 0, 0x1908 /* GL_RGBA */, 0, 0, cw, ch, 0);
+            tw = cw; th = ch;
+        } else {
+            a_glCopyTexSubImage2D(0x0DE1, 0, 0, 0, 0, 0, cw, ch);
+        }
+        a_glBindTexture(0x0DE1, (unsigned)old_tex);
+        a_glActiveTexture((unsigned)old_active);
+        if (old_fb) a_glBindFramebuffer(fb_target, (unsigned)old_fb);
+        if (a_glFlush) a_glFlush();
+
+        pthread_mutex_lock(&g_tex_lock);
+        if (g_comp_surf[slot].s == s) {
+            g_comp_surf[slot].tex[k] = tex_id;
+            g_comp_surf[slot].tw[k] = tw;
+            g_comp_surf[slot].th[k] = th;
+            g_comp_surf[slot].cur = (k + 1) % 3;
+        }
+        pthread_mutex_unlock(&g_tex_lock);
+
+        tl_javaapp_app_tex(tex_id, cw, ch, vx, vy, vw, vh);
+        if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
+        if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited GPU %dx%d -> %dx%d)", n, cw, ch, vw, vh);
+        return true;
+    }
+
+    EGLint rw = 0, rh = 0;
+    const uint8_t *px = read_back_rect(d, s, cw, ch, &rw, &rh);
+    if (px) {
+        if (tl_javaapp_app_pixels_rect) tl_javaapp_app_pixels_rect(px, rw, rh, vx, vy, vw, vh);
+        else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, rw, rh);
+    }
+    if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
+    if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited CPU %dx%d -> %dx%d)", n, rw, rh, vw, vh);
+    return true;
+}
 static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
 {
     void *texwin = tex_window_of(s);
     if (texwin) { tex_swap(d, s, texwin); return EGL_TRUE; }
     unsigned long n = atomic_fetch_add(&E.presented, 1) + 1;
-    if (comp_surface(s)) {
-        EGLint w = 0, h = 0;
-        const uint8_t *px = read_back(d, s, &w, &h);
-        if (px && tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, w, h);
-        if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited)", n);
-        return EGL_TRUE;
-    }
+    if (comp_swap(d, s, n)) return EGL_TRUE;
     if (n <= 3 || n % 600 == 0) {
         if (getenv("TL_GL_TRACE")) tl_log_line("egl: swap #%lu (%lu GL calls, %lu draws, %lu uploads so far)", n, (unsigned long)atomic_load(&g_glt_n), (unsigned long)atomic_load(&g_glt_draws), (unsigned long)atomic_load(&g_glt_uploads));
         else tl_log_line("egl: swap #%lu", n);

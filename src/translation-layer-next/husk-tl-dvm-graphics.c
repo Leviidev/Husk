@@ -1448,18 +1448,44 @@ static struct {
     atomic_bool any;
 } S = { .lock = PTHREAD_MUTEX_INITIALIZER };
 
+__attribute__((weak)) void tl_javaapp_wake_gl(void);
+
+static bool bitmap_has_visible_pixels(const uint8_t *px, size_t bytes)
+{
+    const uint64_t *w64 = (const uint64_t *)px;
+    size_t n64 = bytes / 8;
+    for (size_t i = 0; i < n64; i++) {
+        if (w64[i] != 0) return true;
+    }
+    for (size_t i = n64 * 8; i < bytes; i++) {
+        if (px[i] != 0) return true;
+    }
+    return false;
+}
+
 /* husk.Native.present(long bitmap): the window's views, drawn; the GL thread puts them on screen. */
 NAT(G_present)
 {
     (void)self; (void)ret;
     gbitmap *b = H(gbitmap, 0);
-    if (!b) { atomic_store(&S.any, false); atomic_store(&S.fresh, true); return true; }
-    pthread_mutex_lock(&S.lock);
-    if (S.w != b->w || S.h != b->h) { free(S.px); S.px = malloc(b->stride * (size_t)b->h); S.w = b->w; S.h = b->h; }
-    memcpy(S.px, b->px, b->stride * (size_t)b->h);
-    pthread_mutex_unlock(&S.lock);
-    atomic_store(&S.any, true);
+    if (!b) {
+        atomic_store(&S.any, false);
+        atomic_store(&S.fresh, true);
+        if (tl_javaapp_wake_gl) tl_javaapp_wake_gl();
+        return true;
+    }
+    size_t bytes = b->stride * (size_t)b->h;
+    bool visible = bitmap_has_visible_pixels(b->px, bytes);
+    if (visible) {
+        pthread_mutex_lock(&S.lock);
+        if (S.w != b->w || S.h != b->h) { free(S.px); S.px = malloc(bytes); S.w = b->w; S.h = b->h; }
+        if (S.px) memcpy(S.px, b->px, bytes);
+        else visible = false;
+        pthread_mutex_unlock(&S.lock);
+    }
+    atomic_store(&S.any, visible);
     atomic_store(&S.fresh, true);
+    if (tl_javaapp_wake_gl) tl_javaapp_wake_gl();
     return true;
 }
 
@@ -1473,6 +1499,7 @@ bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any)
 }
 void tl_ui_frame_done(void) { pthread_mutex_unlock(&S.lock); }
 bool tl_ui_has_frame(void) { return atomic_load(&S.any); }
+bool tl_ui_frame_pending(void) { return atomic_load(&S.fresh); }
 
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_gfx[] = {
     { "bmNew", "(II)J", G_bmNew },

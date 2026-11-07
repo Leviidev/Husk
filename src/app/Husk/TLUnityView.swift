@@ -154,6 +154,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
             // Android's back gesture: a swipe in from the left edge.
             let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
             back.edges = .left
+            back.cancelsTouchesInView = false
+            back.delaysTouchesBegan = false
+            back.delaysTouchesEnded = false
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: its views are told (an adjustResize window shrinks above it).
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
@@ -167,6 +170,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
             // Android's back gesture: a swipe in from the left edge.
             let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
             back.edges = .left
+            back.cancelsTouchesInView = false
+            back.delaysTouchesBegan = false
+            back.delaysTouchesEnded = false
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: Flutter is told, and moves the focused field above it.
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
@@ -197,6 +203,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         superview.insertSubview(host, belowSubview: self)
         let back = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(edgeSwiped(_:)))
         back.edges = .left
+        back.cancelsTouchesInView = false
+        back.delaysTouchesBegan = false
+        back.delaysTouchesEnded = false
         host.addGestureRecognizer(back)
         let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
         threeFingers.numberOfTouchesRequired = 3
@@ -969,7 +978,6 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?)     { send(touches, phase: 2) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         send(touches, phase: 2)
-        pointers.removeAll()
     }
 }
 

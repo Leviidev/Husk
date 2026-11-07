@@ -38,7 +38,12 @@ static struct {
     tl_javaapp_config cfg;
     char apk[1024], data[512], ext[512], pkg[200], activity[260], application[260], frame_dir[512], angle_egl[600], angle_gles[600];
     pthread_mutex_t q_lock;
+    pthread_cond_t q_cv;
+    bool q_woken;
     int32_t q[4096]; int qn;                    /* packed input events: phase, id, x bits, y bits */
+    int64_t down_ns[16];
+    uint64_t down_frame[16];
+    atomic_llong defer_until_ns;
     atomic_ulong frames;
     atomic_bool ended, paused, render_requested;
     jobj *gl_view, *gl_renderer;
@@ -51,7 +56,11 @@ static struct {
     pthread_mutex_t t_lock;
     char **text; int ntext, ctext;              /* typed text waiting for Native.pollText: "t<text>", "d", "e", "h" */
     int insets[5];                              /* left, top, right, bottom, keyboard */
-} A = { .q_lock = PTHREAD_MUTEX_INITIALIZER, .t_lock = PTHREAD_MUTEX_INITIALIZER };
+} A = { .q_lock = PTHREAD_MUTEX_INITIALIZER, .q_cv = PTHREAD_COND_INITIALIZER, .t_lock = PTHREAD_MUTEX_INITIALIZER };
+
+void tl_javaapp_wake_gl(void);
+static int64_t now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec; }
+static uint64_t rendered_frame_count(void) { return (uint64_t)atomic_load(&A.frames) + (uint64_t)tl_egl_frames_presented(); }
 
 static jvalue L(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue I(int32_t i) { jvalue v; v.j = (uint32_t)i; return v; }
@@ -274,26 +283,107 @@ NAT(N_packageName) { (void)self; (void)a; *ret = L(jstr(A.pkg)); return true; }
 NAT(N_screenWidth) { (void)self; (void)a; *ret = I(A.cfg.width); return true; }
 NAT(N_screenHeight) { (void)self; (void)a; *ret = I(A.cfg.height); return true; }
 NAT(N_density) { (void)self; (void)a; *ret = F(A.cfg.density > 0 ? A.cfg.density : 3.0f); return true; }
-NAT(N_requestRender) { (void)self; (void)a; (void)ret; atomic_store(&A.render_requested, true); return true; }
+NAT(N_requestRender) { (void)self; (void)a; (void)ret; atomic_store(&A.render_requested, true); tl_javaapp_wake_gl(); return true; }
 NAT(N_setContentView) { (void)self; (void)ret; A.content = a[0].l; return true; }
 NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrate((int)a[0].j); return true; }
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
-NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
-NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
+NAT(N_exit)
+{
+    (void)self; (void)a; (void)ret;
+    tl_log_line("javaapp: the app finished");
+    atomic_store(&A.ended, true);
+    pthread_mutex_lock(&A.q_lock); pthread_cond_broadcast(&A.q_cv); pthread_mutex_unlock(&A.q_lock);
+    tl_javaapp_wake_gl();
+    return true;
+}
+NAT(N_uptimeNanos) { (void)self; (void)a; *ret = J(now_ns()); return true; }
 NAT(N_pollInput)
 {
     (void)self; (void)a;
     pthread_mutex_lock(&A.q_lock);
-    int n = A.qn / 4;
-    if (!n) { pthread_mutex_unlock(&A.q_lock); *ret = L(NULL); return true; }
-    jobj *arr = tl_jni_new_prim_array('I', (uint32_t)(1 + A.qn));
+    int total = A.qn / 4;
+    if (!total) { atomic_store(&A.defer_until_ns, 0); pthread_mutex_unlock(&A.q_lock); *ret = L(NULL); return true; }
+    int64_t t_now = now_ns();
+    uint64_t f_now = rendered_frame_count();
+    uint32_t batch_down = 0;
+    int take = 0;
+    int64_t defer_until = 0;
+    for (int k = 0; k < total; k++) {
+        int32_t phase = A.q[4 * k], id = A.q[4 * k + 1];
+        if (phase == 0 && id >= 0 && id < 16) {
+            batch_down |= (1u << id);
+            A.down_ns[id] = t_now;
+            A.down_frame[id] = f_now;
+        } else if ((phase == 2 || phase == 3) && id >= 0 && id < 16) {
+            int64_t hold_until = A.down_ns[id] + 16000000ll;
+            bool same_batch = (batch_down & (1u << id)) != 0;
+            bool no_frame_yet = (f_now <= A.down_frame[id]) && (t_now < hold_until);
+            if (same_batch || no_frame_yet) {
+                defer_until = t_now < hold_until ? hold_until : (t_now + 8000000ll);
+                break;
+            }
+        }
+        take++;
+    }
+    atomic_store(&A.defer_until_ns, defer_until);
+    if (!take) { pthread_mutex_unlock(&A.q_lock); *ret = L(NULL); return true; }
+    int words = take * 4;
+    jobj *arr = tl_jni_new_prim_array('I', (uint32_t)(1 + words));
     arr->refs = 1u << 30;
     int32_t *v = arr->arr.data;
-    v[0] = n;
-    memcpy(v + 1, A.q, (size_t)A.qn * 4);
-    A.qn = 0;
+    v[0] = take;
+    memcpy(v + 1, A.q, (size_t)words * 4);
+    if (words < A.qn) memmove(A.q, A.q + words, (size_t)(A.qn - words) * 4);
+    A.qn -= words;
     pthread_mutex_unlock(&A.q_lock);
     *ret = L(arr);
+    return true;
+}
+NAT(N_prepareMainWait)
+{
+    (void)self; (void)a; (void)ret;
+    pthread_mutex_lock(&A.q_lock);
+    A.q_woken = false;
+    pthread_mutex_unlock(&A.q_lock);
+    return true;
+}
+NAT(N_wakeMainLooper)
+{
+    (void)self; (void)a; (void)ret;
+    pthread_mutex_lock(&A.q_lock);
+    A.q_woken = true;
+    pthread_cond_broadcast(&A.q_cv);
+    pthread_mutex_unlock(&A.q_lock);
+    return true;
+}
+NAT(N_waitMainLooper)
+{
+    (void)self; (void)ret;
+    int64_t ms = a[0].j;
+    if (ms < 0) ms = 0;
+    else if (ms > 100) ms = 100;
+    pthread_mutex_lock(&A.q_lock);
+    int64_t wait_ns = ms * 1000000ll;
+    if (A.qn > 0) {
+        int64_t def = atomic_load(&A.defer_until_ns);
+        if (def <= 0) { pthread_mutex_unlock(&A.q_lock); return true; }
+        int32_t front_id = A.q[1];
+        int64_t rem = def - now_ns();
+        if (rem <= 0 || (front_id >= 0 && front_id < 16 && rendered_frame_count() > A.down_frame[front_id])) {
+            atomic_store(&A.defer_until_ns, 0);
+            pthread_mutex_unlock(&A.q_lock);
+            return true;
+        }
+        if (rem < wait_ns || wait_ns == 0) wait_ns = rem;
+    }
+    if (!A.q_woken && !atomic_load(&A.ended) && wait_ns > 0) {
+        struct timespec rt;
+        clock_gettime(CLOCK_REALTIME, &rt);
+        int64_t end_rt = (int64_t)rt.tv_sec * 1000000000ll + rt.tv_nsec + wait_ns;
+        struct timespec ts = { (time_t)(end_rt / 1000000000ll), (long)(end_rt % 1000000000ll) };
+        pthread_cond_timedwait(&A.q_cv, &A.q_lock, &ts);
+    }
+    pthread_mutex_unlock(&A.q_lock);
     return true;
 }
 
@@ -479,6 +569,7 @@ NAT(N_startGL)
     A.gl_started = true;
     /* the render thread picks it up; released after the version and view, so it never sees the renderer without them */
     __atomic_store_n(&A.gl_renderer, a[1].l, __ATOMIC_RELEASE);
+    tl_javaapp_wake_gl();
     return true;
 }
 
@@ -498,6 +589,9 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "requestRender", "()V", N_requestRender },
     { "setContentView", "(Ljava/lang/Object;)V", N_setContentView },
     { "pollInput", "()[I", N_pollInput },
+    { "prepareMainWait", "()V", N_prepareMainWait },
+    { "waitMainLooper", "(J)V", N_waitMainLooper },
+    { "wakeMainLooper", "()V", N_wakeMainLooper },
     { "vibrate", "(J)V", N_vibrate },
     { "openUrl", "(Ljava/lang/String;)V", N_openUrl },
     { "exit", "()V", N_exit },
@@ -564,8 +658,6 @@ typedef void *EGLDisplay, *EGLSurface, *EGLContext, *EGLConfig;
 typedef int32_t EGLint;
 #define EGL_NONE 0x3038
 
-static int64_t now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec; }
-
 static void log_pending(const char *where)
 {
     char buf[600];
@@ -578,6 +670,7 @@ static void log_pending(const char *where)
 bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any);
 void tl_ui_frame_done(void);
 bool tl_ui_has_frame(void);
+bool tl_ui_frame_pending(void);
 
 typedef struct {
     uint32_t prog, tex, vbo;
@@ -675,21 +768,25 @@ static void ov_draw(overlay *o, int vw, int vh)
  * draws it where the SurfaceView is, under the window's views. A context that cannot share (ANGLE refuses some pairs) reads its
  * frame back into memory instead. */
 typedef struct { EGLContext c; int version; bool readback; } app_ctx;
-typedef struct { EGLSurface pb; int w, h; uint32_t tex[2]; int tw[2], th[2]; int cur; uint8_t *px; size_t px_capacity; } app_surf;
+typedef struct { EGLSurface pb; int w, h; uint32_t tex[3]; int tw[3], th[3]; int cur; uint8_t *px; size_t px_capacity; } app_surf;
 static struct {
     pthread_mutex_t lk;
     pthread_cond_t cv;
     EGLDisplay dpy; EGLConfig cfg; EGLContext ui; bool es3, ready;
     /* the frame to show: a shared texture, or pixels (bottom row first) */
-    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq; bool on;
+    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq, drawn_seq; bool on;
     size_t px_capacity;
-} E2 = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER };
+} E2 = { .lk = PTHREAD_MUTEX_INITIALIZER, .cv = PTHREAD_COND_INITIALIZER };
+
+static pthread_t g_render_thread;
+static atomic_bool g_compositor_active;
 
 static bool e2_wait_ready(void)
 {
     pthread_mutex_lock(&E2.lk);
     struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); ts.tv_sec += 5;
-    while (!E2.ready) if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
+    while (!E2.ready && !atomic_load(&A.ended) && atomic_load(&g_compositor_active))
+        if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
     bool r = E2.ready;
     pthread_mutex_unlock(&E2.lk);
     return r;
@@ -748,7 +845,7 @@ NAT(EN_destroySurface)
     if (!s) return true;
     unsigned (*destroy)(EGLDisplay, EGLSurface) = tl_egl_resolve("eglDestroySurface");
     pthread_mutex_lock(&E2.lk);
-    if (E2.on && (E2.tex == s->tex[0] || E2.tex == s->tex[1])) { E2.on = false; E2.seq++; }
+    if (E2.on && (E2.tex == s->tex[0] || E2.tex == s->tex[1] || E2.tex == s->tex[2])) { E2.on = false; E2.seq++; pthread_cond_broadcast(&E2.cv); }
     pthread_mutex_unlock(&E2.lk);
     if (destroy) destroy(E2.dpy, s->pb);
     free(s->px);
@@ -795,15 +892,17 @@ NAT(EN_swap)
     void (*bindFb)(uint32_t, uint32_t) = gl_fn("glBindFramebuffer");
     void (*readPixels)(int32_t, int32_t, int32_t, int32_t, uint32_t, uint32_t, void *) = gl_fn("glReadPixels");
     void (*pixelStore)(uint32_t, int32_t) = gl_fn("glPixelStorei");
-    void (*finish)(void) = gl_fn("glFinish");
+    void (*flush)(void) = gl_fn("glFlush");
     int32_t fb = 0, active = 0x84C0, tex = 0, pack = 4;
-    if (c->version >= 2) getIntegerv(0x8CA6, &fb);                /* the app's framebuffer: the frame is the surface's own */
+    uint32_t fb_target = c->version >= 3 ? 0x8CA8u : 0x8D40u;
+    uint32_t fb_query = c->version >= 3 ? 0x8CAAu : 0x8CA6u;
+    if (c->version >= 2) getIntegerv(fb_query, &fb);              /* the app's framebuffer: the frame is the surface's own */
     getIntegerv(0x84E0, &active);
-    if (fb && bindFb) bindFb(0x8D40, 0);
+    if (fb && bindFb) bindFb(fb_target, 0);
     if (c->readback) {
         getIntegerv(0x0D05, &pack);
         if (!tl_rgba_buffer_reserve(&s->px, &s->px_capacity, s->w, s->h)) {
-            if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+            if (fb && bindFb) bindFb(fb_target, (uint32_t)fb);
             tl_log_line("javaapp: readback frame allocation failed (%dx%d)", s->w, s->h);
             ret->z = false;
             return true;
@@ -814,7 +913,7 @@ NAT(EN_swap)
         pthread_mutex_lock(&E2.lk);
         if (!tl_rgba_buffer_reserve(&E2.px, &E2.px_capacity, s->w, s->h)) {
             pthread_mutex_unlock(&E2.lk);
-            if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+            if (fb && bindFb) bindFb(fb_target, (uint32_t)fb);
             tl_log_line("javaapp: compositor frame allocation failed (%dx%d)", s->w, s->h);
             ret->z = false;
             return true;
@@ -835,22 +934,30 @@ NAT(EN_swap)
         } else copyTexSub(0x0DE1, 0, 0, 0, 0, 0, s->w, s->h);
         bindTex(0x0DE1, (uint32_t)tex);
         activeTex((uint32_t)active);
-        finish();
-        s->cur ^= 1;
+        if (flush) flush();
+        s->cur = (s->cur + 1) % 3;
         pthread_mutex_lock(&E2.lk);
         E2.tex = s->tex[k]; E2.pw = s->w; E2.ph = s->h;
     }
+    uint64_t prev_seq = E2.seq;
     E2.x = a[2].i; E2.y = a[3].i; E2.w = a[4].i > 0 ? a[4].i : s->w; E2.h = a[5].i > 0 ? a[5].i : s->h;
-    E2.on = true; E2.seq++;
+    E2.on = true; E2.seq = prev_seq + 1;
+    pthread_cond_broadcast(&E2.cv);
+    if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq) {
+        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 16000000L;
+        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+        while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq)
+            if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
+    }
     pthread_mutex_unlock(&E2.lk);
-    if (fb && bindFb) bindFb(0x8D40, (uint32_t)fb);
+    if (fb && bindFb) bindFb(fb_target, (uint32_t)fb);
     ret->z = true;
     return true;
 }
 /* the GL thread Husk drives GLSurfaceView from: there EGL10 answers for the context it made */
-static pthread_t g_render_thread;
-NAT(EN_isRenderThread) { (void)self; (void)a; ret->j = 0; ret->z = pthread_equal(pthread_self(), g_render_thread) != 0; return true; }
-NAT(EN_hide) { (void)self; (void)a; (void)ret; pthread_mutex_lock(&E2.lk); E2.on = false; E2.seq++; pthread_mutex_unlock(&E2.lk); return true; }
+NAT(EN_isRenderThread) { (void)self; (void)a; ret->j = 0; ret->z = g_render_thread && pthread_equal(pthread_self(), g_render_thread) != 0; return true; }
+NAT(EN_hide) { (void)self; (void)a; (void)ret; pthread_mutex_lock(&E2.lk); E2.on = false; E2.seq++; pthread_cond_broadcast(&E2.cv); pthread_mutex_unlock(&E2.lk); return true; }
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_eglnative[] = {
     { "createContext", "(IJ)J", EN_createContext }, { "destroyContext", "(J)V", EN_destroyContext },
     { "createSurface", "(II)J", EN_createSurface }, { "destroySurface", "(J)V", EN_destroySurface },
@@ -893,7 +1000,27 @@ static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
     viewport(0, 0, vw, vh);
 }
 /* For EGL: whether this runtime's compositor holds the screen, and an app's own EGL window's frame for it (NULL: no longer shown) */
-bool tl_javaapp_compositing(void) { pthread_mutex_lock(&E2.lk); bool r = E2.ready; pthread_mutex_unlock(&E2.lk); return r; }
+bool tl_javaapp_compositing(void)
+{
+    if (!atomic_load(&g_compositor_active)) return false;
+    if (g_render_thread && pthread_equal(pthread_self(), g_render_thread)) return false;
+    if (A.gl_thread_started && pthread_equal(pthread_self(), A.gl_thread)) return false;
+    return e2_wait_ready();
+}
+void *tl_javaapp_ui_context(void)
+{
+    if (!tl_javaapp_compositing()) return NULL;
+    pthread_mutex_lock(&E2.lk);
+    void *u = E2.ready ? E2.ui : NULL;
+    pthread_mutex_unlock(&E2.lk);
+    return u;
+}
+void tl_javaapp_wake_gl(void)
+{
+    pthread_mutex_lock(&E2.lk);
+    pthread_cond_broadcast(&E2.cv);
+    pthread_mutex_unlock(&E2.lk);
+}
 void tl_javaapp_app_pixels(const void *px, int w, int h)
 {
     pthread_mutex_lock(&E2.lk);
@@ -909,6 +1036,55 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
     E2.on = true; E2.seq++;
     pthread_mutex_unlock(&E2.lk);
 }
+void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
+{
+    pthread_mutex_lock(&E2.lk);
+    if (!tex || pw <= 0 || ph <= 0) {
+        E2.on = false; E2.tex = 0; E2.seq++;
+        pthread_cond_broadcast(&E2.cv);
+        pthread_mutex_unlock(&E2.lk);
+        return;
+    }
+    uint64_t prev_seq = E2.seq;
+    E2.tex = tex; E2.pw = pw; E2.ph = ph;
+    E2.x = x; E2.y = y;
+    E2.w = w > 0 ? w : A.cfg.width;
+    E2.h = h > 0 ? h : A.cfg.height;
+    E2.on = true; E2.seq = prev_seq + 1;
+    pthread_cond_broadcast(&E2.cv);
+    if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq) {
+        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 16000000L;
+        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+        while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq)
+            if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
+    }
+    pthread_mutex_unlock(&E2.lk);
+}
+void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h)
+{
+    pthread_mutex_lock(&E2.lk);
+    if (!px || pw <= 0 || ph <= 0) {
+        E2.on = false; E2.seq++;
+        pthread_cond_broadcast(&E2.cv);
+        pthread_mutex_unlock(&E2.lk);
+        return;
+    }
+    if (!tl_rgba_buffer_reserve(&E2.px, &E2.px_capacity, pw, ph)) {
+        pthread_mutex_unlock(&E2.lk);
+        tl_log_line("javaapp: compositor frame allocation failed (%dx%d); keeping previous frame", pw, ph);
+        return;
+    }
+    uint64_t prev_seq = E2.seq;
+    memcpy(E2.px, px, (size_t)pw * (size_t)ph * 4);
+    E2.pw = pw; E2.ph = ph; E2.tex = 0;
+    E2.x = x; E2.y = y;
+    E2.w = w > 0 ? w : A.cfg.width;
+    E2.h = h > 0 ? h : A.cfg.height;
+    E2.on = true; E2.seq = prev_seq + 1;
+    pthread_cond_broadcast(&E2.cv);
+    pthread_mutex_unlock(&E2.lk);
+}
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
 
@@ -921,6 +1097,7 @@ static void *gl_main(void *arg)
     TL_AUTORELEASE_SCOPE(thread_pool);
     (void)arg;
     pthread_setname_np("GLThread");
+    g_render_thread = pthread_self();
     EGLDisplay (*getDisplay)(void *) = tl_egl_resolve("eglGetDisplay");
     unsigned (*initialize)(EGLDisplay, EGLint *, EGLint *) = tl_egl_resolve("eglInitialize");
     unsigned (*bindAPI)(unsigned) = tl_egl_resolve("eglBindAPI");
@@ -930,7 +1107,12 @@ static void *gl_main(void *arg)
     unsigned (*makeCurrent)(EGLDisplay, EGLSurface, EGLSurface, EGLContext) = tl_egl_resolve("eglMakeCurrent");
     unsigned (*swapBuffers)(EGLDisplay, EGLSurface) = tl_egl_resolve("eglSwapBuffers");
     unsigned (*swapInterval)(EGLDisplay, EGLint) = tl_egl_resolve("eglSwapInterval");
-    if (!getDisplay || !createWindowSurface || !swapBuffers) { tl_log_line("javaapp: EGL is not available"); return NULL; }
+    if (!getDisplay || !createWindowSurface || !swapBuffers) {
+        tl_log_line("javaapp: EGL is not available");
+        atomic_store(&g_compositor_active, false);
+        tl_javaapp_wake_gl();
+        return NULL;
+    }
     EGLDisplay dpy = getDisplay(NULL);
     EGLint major = 0, minor = 0;
     initialize(dpy, &major, &minor);
@@ -939,17 +1121,29 @@ static void *gl_main(void *arg)
     const EGLint want3[] = { 0x3040, 0x40, 0x3033, 0x5, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
     const EGLint want2[] = { 0x3040, 0x4, 0x3033, 0x5, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3025, 24, 0x3026, 8, EGL_NONE };
     bool es3 = chooseConfig(dpy, want3, &cfg, 1, &ncfg) && ncfg >= 1;
-    if (!es3 && (!chooseConfig(dpy, want2, &cfg, 1, &ncfg) || ncfg < 1)) { tl_log_line("javaapp: no EGL config"); return NULL; }
-    const EGLint ui_attr[] = { 0x3098, 2, EGL_NONE };
-    EGLContext ui = createContext(dpy, cfg, NULL, ui_attr), app = NULL;
+    if (!es3 && (!chooseConfig(dpy, want2, &cfg, 1, &ncfg) || ncfg < 1)) {
+        tl_log_line("javaapp: no EGL config");
+        atomic_store(&g_compositor_active, false);
+        tl_javaapp_wake_gl();
+        return NULL;
+    }
+    const EGLint ui_attr3[] = { 0x3098, 3, EGL_NONE };
+    const EGLint ui_attr2[] = { 0x3098, 2, EGL_NONE };
+    EGLContext ui = es3 ? createContext(dpy, cfg, NULL, ui_attr3) : NULL;
+    if (!ui) ui = createContext(dpy, cfg, NULL, ui_attr2);
+    EGLContext app = NULL;
     EGLSurface surf = createWindowSurface(dpy, cfg, tl_nwindow_get(), NULL);
-    if (!ui || !surf || !makeCurrent(dpy, surf, surf, ui)) { tl_log_line("javaapp: no GL context"); return NULL; }
+    if (!ui || !surf || !makeCurrent(dpy, surf, surf, ui)) {
+        tl_log_line("javaapp: no GL context");
+        atomic_store(&g_compositor_active, false);
+        tl_javaapp_wake_gl();
+        return NULL;
+    }
     if (swapInterval) swapInterval(dpy, 1);
     overlay ov = { 0 }, appov = { 0 }, appup = { 0 };
     ov_init(&ov);
     ov_init_flip(&appov, true);
     ov_init_flip(&appup, true);
-    g_render_thread = pthread_self();
     pthread_mutex_lock(&E2.lk);
     E2.dpy = dpy; E2.cfg = cfg; E2.ui = ui; E2.es3 = es3; E2.ready = true;
     pthread_cond_broadcast(&E2.cv);
@@ -962,11 +1156,20 @@ static void *gl_main(void *arg)
     tl_log_line("javaapp: Objective-C temporary objects drained after each GL frame");
 #endif
 
+    EGLContext cur_ctx = ui;
     jobj *gl10 = NULL;
     jvalue p1[1];
     int64_t next = now_ns();
     while (!atomic_load(&A.ended)) {
-        if (atomic_load(&A.paused)) { usleep(20000); next = now_ns(); continue; }
+        if (atomic_load(&A.paused)) {
+            pthread_mutex_lock(&E2.lk);
+            E2.drawn_seq = E2.seq;
+            pthread_cond_broadcast(&E2.cv);
+            pthread_mutex_unlock(&E2.lk);
+            usleep(20000);
+            next = now_ns();
+            continue;
+        }
         TL_AUTORELEASE_SCOPE(frame_pool);
         bool drew = false;
         /* the app's renderer, once its GLSurfaceView is on screen */
@@ -983,6 +1186,7 @@ static void *gl_main(void *arg)
             }
             if (!app || !makeCurrent(dpy, surf, surf, app)) { tl_log_line("javaapp: no GL ES %d context for the app", es); A.gl_renderer = NULL; app = NULL; }
             else {
+                cur_ctx = app;
                 tl_log_line("javaapp: the app's GL ES %d context is ready", es);
                 gl10 = dvm_new_object(dvm_class_named("android/opengl/HuskGL10"));
                 dvm_slots(gl10);
@@ -1001,13 +1205,16 @@ static void *gl_main(void *arg)
         const uint8_t *px; int fw, fh; bool any;
         bool fresh = tl_ui_frame_take(&px, &fw, &fh, &any);
         if (fresh) {
-            makeCurrent(dpy, surf, surf, ui);
-            if (any) ov_upload(&ov, px, fw, fh);
-            else ov.tw = ov.th = 0;
+            if (any) {
+                if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
+                ov_upload(&ov, px, fw, fh);
+            } else {
+                ov.tw = ov.th = 0;
+            }
             tl_ui_frame_done();
         }
         if (app) {
-            makeCurrent(dpy, surf, surf, app);
+            if (cur_ctx != app) { makeCurrent(dpy, surf, surf, app); cur_ctx = app; }
             jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
             if (tl_jni_pending()) log_pending("a queued GL event");
             /* the view's surface changed size (laid out again: the app hid the bars, or turned): onSurfaceChanged again, as GLThread does */
@@ -1031,17 +1238,48 @@ static void *gl_main(void *arg)
         bool app_fresh = q != app_seq;
         app_seq = q;
         if (drew || fresh || app_fresh) {
-            makeCurrent(dpy, surf, surf, ui);
-            if (!app) { clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
-            if (!app) app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
-            if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
+            bool ui_vis = tl_ui_has_frame();
+            if (!app || ui_vis) {
+                if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
+                if (!app) {
+                    clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
+                    clear(0x4000);     /* web views show through from under the screen */
+                    app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
+                }
+                if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
+            }
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);
+            if (app_fresh) {
+                pthread_mutex_lock(&E2.lk);
+                if (E2.drawn_seq < q) E2.drawn_seq = q;
+                pthread_cond_broadcast(&E2.cv);
+                pthread_mutex_unlock(&E2.lk);
+            }
+            if (atomic_load(&A.defer_until_ns) != 0) {
+                pthread_mutex_lock(&A.q_lock);
+                pthread_cond_broadcast(&A.q_cv);
+                pthread_mutex_unlock(&A.q_lock);
+            }
         }
-        next += 1000000000ll / 60;
-        int64_t late = now_ns() - next;
-        if (late > 100000000ll) next = now_ns();
-        else if (late < 0) { struct timespec ts = { 0, (long)(-late) }; nanosleep(&ts, NULL); }
+        if (app) {
+            next += 1000000000ll / 60;
+            int64_t late = now_ns() - next;
+            if (late > 100000000ll) next = now_ns();
+            else if (late < 0) { struct timespec ts = { 0, (long)(-late) }; nanosleep(&ts, NULL); }
+        } else {
+            pthread_mutex_lock(&E2.lk);
+            if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.seq == app_seq
+                && !__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !tl_ui_frame_pending()
+                && !atomic_load(&A.render_requested)) {
+                struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+                ts.tv_nsec += 16000000L;
+                if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+                pthread_cond_timedwait(&E2.cv, &E2.lk, &ts);
+            }
+            pthread_mutex_unlock(&E2.lk);
+            next = now_ns();
+        }
     }
     return NULL;
 }
@@ -1173,6 +1411,7 @@ static void *app_main(void *arg)
         tl_log_line("javaapp: the app's main thread ended with %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
         log_pending_stack();
         atomic_store(&A.ended, true);
+        tl_javaapp_wake_gl();
     }
     if (startup_trace) tl_log_line("startup: Java Activity runner returned ok=%d", ok);
     return NULL;
@@ -1193,7 +1432,20 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     atomic_store(&A.ended, false);
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
-    A.qn = 0; A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL; A.gl_started = false;
+    atomic_store(&A.render_requested, false);
+    atomic_store(&A.defer_until_ns, 0);
+    atomic_store(&g_compositor_active, false);
+    pthread_mutex_lock(&A.q_lock);
+    A.qn = 0; A.q_woken = false;
+    memset(A.down_ns, 0, sizeof(A.down_ns));
+    memset(A.down_frame, 0, sizeof(A.down_frame));
+    pthread_mutex_unlock(&A.q_lock);
+    pthread_mutex_lock(&E2.lk);
+    E2.ready = false; E2.on = false; E2.tex = 0; E2.seq = 0; E2.drawn_seq = 0;
+    pthread_mutex_unlock(&E2.lk);
+    g_render_thread = (pthread_t)0;
+    A.gl_thread_started = false; A.app_started = false;
+    A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL; A.gl_started = false;
     /* stores into a library's executable view (data sharing a page with its code, as Unity's does) go through the writable one */
     { void tl_codewrite_enable(void); tl_codewrite_enable(); }
     A.cfg = *cfg;
@@ -1241,20 +1493,40 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
-    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; }
+    atomic_store(&g_compositor_active, true);
+    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; pthread_attr_destroy(&rt); }
+    if (!A.gl_thread_started) atomic_store(&g_compositor_active, false);
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
     A.app_started = pthread_create(&A.app_thread, &at, app_main, NULL) == 0;
+    pthread_attr_destroy(&at);
+    if (!A.app_started) {
+        atomic_store(&A.ended, true);
+        atomic_store(&g_compositor_active, false);
+        tl_javaapp_wake_gl();
+        if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+    }
     return A.app_started;
 }
 
 void tl_javaapp_stop(void)
 {
     atomic_store(&A.ended, true);
+    atomic_store(&g_compositor_active, false);
+    pthread_mutex_lock(&A.q_lock);
+    A.q_woken = true;
+    pthread_cond_broadcast(&A.q_cv);
+    pthread_mutex_unlock(&A.q_lock);
+    pthread_mutex_lock(&E2.lk);
+    pthread_cond_broadcast(&E2.cv);
+    pthread_mutex_unlock(&E2.lk);
     if (A.app_started) { pthread_join(A.app_thread, NULL); A.app_started = false; }
     if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+    g_render_thread = (pthread_t)0;
     A.gl_started = false;
     A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL;
-    pthread_mutex_lock(&A.q_lock); A.qn = 0; pthread_mutex_unlock(&A.q_lock);
+    atomic_store(&A.defer_until_ns, 0);
+    pthread_mutex_lock(&A.q_lock); A.qn = 0; A.q_woken = false; pthread_mutex_unlock(&A.q_lock);
+    pthread_mutex_lock(&E2.lk); E2.ready = false; E2.on = false; E2.tex = 0; pthread_mutex_unlock(&E2.lk);
     jvalue r;
     if (tl_dvm_defines_class("husk/AppRunner")) tl_dvm_call_static("husk/AppRunner", "resetSession", "()V", NULL, &r);
     atomic_store(&A.ended, false);
@@ -1266,14 +1538,20 @@ void tl_javaapp_touch(int phase, int id, float x, float y)
 {
     union { float f; int32_t i; } fx, fy; fx.f = x; fy.f = y;
     pthread_mutex_lock(&A.q_lock);
-    if (A.qn + 4 <= 4096) { A.q[A.qn++] = phase; A.q[A.qn++] = id; A.q[A.qn++] = fx.i; A.q[A.qn++] = fy.i; }
+    if (A.qn + 4 <= 4096) {
+        A.q[A.qn++] = phase; A.q[A.qn++] = id; A.q[A.qn++] = fx.i; A.q[A.qn++] = fy.i;
+        pthread_cond_broadcast(&A.q_cv);
+    }
     pthread_mutex_unlock(&A.q_lock);
 }
 void tl_javaapp_key(int code, bool down) { tl_javaapp_touch(4, code, down ? 1e-45f : 0.0f, 0); }
 void tl_javaapp_back(void) { tl_javaapp_touch(5, 0, 0, 0); }
 void tl_javaapp_set_paused(bool p)
 {
-    if (atomic_exchange(&A.paused, p) != p) tl_javaapp_touch(6, p ? 1 : 0, 0, 0);     /* the activity pauses and resumes with the host */
+    if (atomic_exchange(&A.paused, p) != p) {
+        tl_javaapp_touch(6, p ? 1 : 0, 0, 0);     /* the activity pauses and resumes with the host */
+        tl_javaapp_wake_gl();
+    }
 }
 unsigned long tl_javaapp_frames(void) { return atomic_load(&A.frames); }
 bool tl_javaapp_ended(void) { return atomic_load(&A.ended); }

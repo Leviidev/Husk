@@ -32,6 +32,9 @@ public final class Native {
     public static native void requestRender();
     public static native void setContentView(Object view);
     public static native int[] pollInput();                  // packed touch events, or null
+    public static native void prepareMainWait();
+    public static native void waitMainLooper(long timeoutMs);
+    public static native void wakeMainLooper();
     public static native String[] pollText();                // typed text, deletes and actions from the keyboard
     public static native void showKeyboard(boolean show, int inputType, int imeOptions);
     public static native void setClipboard(String text);

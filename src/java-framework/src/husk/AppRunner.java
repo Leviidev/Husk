@@ -420,7 +420,12 @@ public final class AppRunner {
         for (int i = 0; i < down; i++) if (ids[i] == id) idx = i;
         int action;
         if (phase == 0) {
-            if (idx >= 0 || down >= 16) return;
+            if (idx >= 0) {
+                for (int i = idx; i + 1 < down; i++) { ids[i] = ids[i + 1]; xs[i] = xs[i + 1]; ys[i] = ys[i + 1]; }
+                down--;
+                idx = -1;
+            }
+            if (down >= 16) return;
             idx = down++; ids[idx] = id; xs[idx] = x; ys[idx] = y;
             if (down == 1) downTime = now;
             action = down == 1 ? MotionEvent.ACTION_DOWN : MotionEvent.ACTION_POINTER_DOWN | (idx << 8);
@@ -429,16 +434,24 @@ public final class AppRunner {
             xs[idx] = x; ys[idx] = y;
             action = MotionEvent.ACTION_MOVE;
         } else {
-            if (idx < 0) return;
+            if (idx < 0) {
+                if (phase == 3) down = 0;
+                return;
+            }
             xs[idx] = x; ys[idx] = y;
             action = phase == 3 ? MotionEvent.ACTION_CANCEL : down == 1 ? MotionEvent.ACTION_UP : MotionEvent.ACTION_POINTER_UP | (idx << 8);
         }
         MotionEvent e = MotionEvent.huskObtain(downTime, now, action, down, java.util.Arrays.copyOf(ids, down), java.util.Arrays.copyOf(xs, down), java.util.Arrays.copyOf(ys, down));
-        ViewRoot.dispatchTouch(e);
-        if (phase >= 2) {
-            for (int i = idx; i + 1 < down; i++) { ids[i] = ids[i + 1]; xs[i] = xs[i + 1]; ys[i] = ys[i + 1]; }
-            down--;
-            if (phase == 3) down = 0;
+        try {
+            ViewRoot.dispatchTouch(e);
+        } finally {
+            if (phase >= 2) {
+                if (phase == 3) down = 0;
+                else if (idx >= 0 && idx < down) {
+                    for (int i = idx; i + 1 < down; i++) { ids[i] = ids[i + 1]; xs[i] = xs[i + 1]; ys[i] = ys[i + 1]; }
+                    down--;
+                }
+            }
         }
     }
     static final class ViewRootDispatch { static void key(KeyEvent e) { if (ViewRoot.keyTarget() != null) ViewRoot.dispatchKey(e); else { Activity a = top(); if (a != null) a.dispatchKeyEvent(e); } } }

@@ -18,4 +18,5 @@ subprocess.run([str(args.jdk / ("bin/javac" + suffix)), "-cp", str(jar), "-d", s
 classpath = os.pathsep.join(map(str, (out, jar, ROOT / "build/hung-java/host-stubs.jar")))
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.app.DialogFragmentTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.DisplayCutoutTest"], check=True)
+subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.SurfaceViewFixedSizeTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.ApkUpdateIntentTest"], check=True)

@@ -774,15 +774,51 @@ static void b_ANativeActivity_flags(void *a, uint32_t add, uint32_t remove) { (v
 static void b_ANativeActivity_input(void *a, uint32_t flags) { (void)a; (void)flags; }
 
 
-typedef struct tl_nwindow { atomic_int refs; int width, height, format; void *layer; jobj *texture; void *bits; } tl_nwindow;
-static tl_nwindow g_window = { 1, 1080, 2400, 1, NULL, NULL, NULL };
+typedef struct tl_nwindow { atomic_int refs; int width, height, format; bool fixed_geom; void *layer; jobj *texture, *view; void *bits; } tl_nwindow;
+static tl_nwindow g_window = { 1, 1080, 2400, 1, false, NULL, NULL, NULL, NULL };
 
 void tl_nwindow_configure(int w, int h, void *layer) { g_window.width = w; g_window.height = h; g_window.layer = layer; }
 void tl_nwindow_resize(int w, int h) { g_window.width = w; g_window.height = h; }
 void *tl_nwindow_get(void) { atomic_fetch_add(&g_window.refs, 1); return &g_window; }
 void *tl_nwindow_native(void *window) { return window ? ((tl_nwindow *)window)->layer : NULL; }
-int tl_nwindow_width(void *window) { return window ? ((tl_nwindow *)window)->width : 0; }
-int tl_nwindow_height(void *window) { return window ? ((tl_nwindow *)window)->height : 0; }
+int tl_nwindow_width(void *window)
+{
+    tl_nwindow *w = window;
+    if (!w) return 0;
+    if (w->view && !w->fixed_geom) {
+        int bw = tl_jni_get_field(w->view, "huskBufW", "I").i;
+        if (tl_jni_pending()) { tl_jni_clear(); bw = 0; }
+        if (bw > 0) w->width = bw;
+    }
+    return w->width;
+}
+int tl_nwindow_height(void *window)
+{
+    tl_nwindow *w = window;
+    if (!w) return 0;
+    if (w->view && !w->fixed_geom) {
+        int bh = tl_jni_get_field(w->view, "huskBufH", "I").i;
+        if (tl_jni_pending()) { tl_jni_clear(); bh = 0; }
+        if (bh > 0) w->height = bh;
+    }
+    return w->height;
+}
+bool tl_nwindow_view_bounds(void *window, int *x, int *y, int *vw, int *vh)
+{
+    tl_nwindow *w = window;
+    if (!w || !w->view) return false;
+    int bx = tl_jni_get_field(w->view, "huskViewX", "I").i;
+    int by = tl_jni_get_field(w->view, "huskViewY", "I").i;
+    int bw = tl_jni_get_field(w->view, "huskViewW", "I").i;
+    int bh = tl_jni_get_field(w->view, "huskViewH", "I").i;
+    if (tl_jni_pending()) { tl_jni_clear(); return false; }
+    if (bw <= 0 || bh <= 0) return false;
+    if (x) *x = bx;
+    if (y) *y = by;
+    if (vw) *vw = bw;
+    if (vh) *vh = bh;
+    return true;
+}
 /* A window on a TextureView's SurfaceTexture (a Surface made on one): drawn off-screen, each frame handed to the texture. */
 void *tl_nwindow_texture(void *window) { return window ? ((tl_nwindow *)window)->texture : NULL; }
 /* rgba (w x h, top row first unless flip) to the texture's next frame */
@@ -816,14 +852,36 @@ static void *b_ANativeWindow_fromSurface(void *env, void *surface)
         tl_log_line("ndk: native window on a SurfaceTexture, %dx%d", w->width, w->height);
         return w;
     }
+    jobj *view = surface ? tl_jni_get_field(surface, "huskView", "Landroid/view/SurfaceView;").l : NULL;
+    if (tl_jni_pending()) { tl_jni_clear(); view = NULL; }
+    if (view) {
+        tl_nwindow *w = calloc(1, sizeof(*w));
+        atomic_store(&w->refs, 1); w->format = 1; w->layer = g_window.layer; w->view = tl_jni_ref(view);
+        int bw = tl_jni_get_field(view, "huskBufW", "I").i, bh = tl_jni_get_field(view, "huskBufH", "I").i;
+        if (tl_jni_pending()) { tl_jni_clear(); bw = bh = 0; }
+        w->width = bw > 0 ? bw : g_window.width;
+        w->height = bh > 0 ? bh : g_window.height;
+        jvalue glarg[1]; glarg[0].j = 0; glarg[0].z = true;
+        tl_jni_call(view, "huskSetGL", "(Z)V", glarg);
+        if (tl_jni_pending()) tl_jni_clear();
+        tl_log_line("ndk: native window on a SurfaceView, %dx%d", w->width, w->height);
+        return w;
+    }
     atomic_fetch_add(&g_window.refs, 1); return &g_window;
 }
 static void b_ANativeWindow_acquire(tl_nwindow *w) { if (w) atomic_fetch_add(&w->refs, 1); }
 static void b_ANativeWindow_release(tl_nwindow *w)
 {
     if (!w) return;
-    if (atomic_fetch_sub(&w->refs, 1) == 1 && w != &g_window) { free(w->bits); free(w); }
+    if (atomic_fetch_sub(&w->refs, 1) == 1 && w != &g_window) {
+        if (w->texture) tl_jni_unref(w->texture);
+        if (w->view) tl_jni_unref(w->view);
+        free(w->bits);
+        free(w);
+    }
 }
+void tl_nwindow_acquire(void *window) { b_ANativeWindow_acquire(window); }
+void tl_nwindow_release(void *window) { b_ANativeWindow_release(window); }
 /* software drawing (ANativeWindow_lock): only texture windows have a buffer the app can write */
 typedef struct { int32_t width, height, stride, format; void *bits; uint32_t reserved[6]; } tl_nwbuffer;
 static int b_ANativeWindow_lock(tl_nwindow *w, tl_nwbuffer *out, void *dirty)
@@ -841,13 +899,19 @@ static int b_ANativeWindow_unlockAndPost(tl_nwindow *w)
     tl_nwindow_post(w, w->bits, w->width, w->height, false);
     return 0;
 }
-static int b_ANativeWindow_getWidth(tl_nwindow *w) { return w ? w->width : 0; }
-static int b_ANativeWindow_getHeight(tl_nwindow *w) { return w ? w->height : 0; }
+static int b_ANativeWindow_getWidth(tl_nwindow *w) { return tl_nwindow_width(w); }
+static int b_ANativeWindow_getHeight(tl_nwindow *w) { return tl_nwindow_height(w); }
 static int b_ANativeWindow_getFormat(tl_nwindow *w) { return w ? w->format : 0; }
 static int b_ANativeWindow_setBuffersGeometry(tl_nwindow *w, int width, int height, int format)
 {
     (void)format;
-    if (w && w != &g_window && width > 0 && height > 0 && (width != w->width || height != w->height)) { w->width = width; w->height = height; free(w->bits); w->bits = NULL; }
+    if (!w || w == &g_window) return 0;
+    if (width > 0 && height > 0) {
+        w->fixed_geom = true;
+        if (width != w->width || height != w->height) { w->width = width; w->height = height; free(w->bits); w->bits = NULL; }
+    } else if (width == 0 && height == 0) {
+        w->fixed_geom = false;
+    }
     return 0;
 }
 static void *b_ANativeWindow_toSurface(void *env, void *w) { (void)env; (void)w; return NULL; }

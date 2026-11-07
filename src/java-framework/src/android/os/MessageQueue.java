@@ -4,6 +4,12 @@ package android.os;
 public final class MessageQueue {
     private Message head;
     private boolean quitting;
+    boolean mMain;
+    private static boolean sNativeWakeOk = true;
+    private static void wakeNative() {
+        if (!sNativeWakeOk) return;
+        try { husk.Native.wakeMainLooper(); } catch (UnsatisfiedLinkError e) { sNativeWakeOk = false; }
+    }
     public interface IdleHandler { boolean queueIdle(); }
     public void addIdleHandler(IdleHandler h) {}
     public void removeIdleHandler(IdleHandler h) {}
@@ -14,6 +20,7 @@ public final class MessageQueue {
         if (head == null || when < head.when) { m.next = head; head = m; }
         else { Message p = head; while (p.next != null && p.next.when <= when) p = p.next; m.next = p.next; p.next = m; }
         notifyAll();
+        if (mMain) wakeNative();
         return true;
     }
     synchronized void remove(Handler h, Runnable r, int what, boolean byWhat, Object token) {
@@ -33,7 +40,7 @@ public final class MessageQueue {
     }
     synchronized boolean hasCallback(Handler h, Runnable r) { for (Message p = head; p != null; p = p.next) if (p.target == h && p.callback == r && r != null) return true; return false; }
     synchronized boolean hasAny(Handler h) { for (Message p = head; p != null; p = p.next) if (p.target == h) return true; return false; }
-    synchronized void quit() { quitting = true; notifyAll(); }
+    synchronized void quit() { quitting = true; notifyAll(); if (mMain) wakeNative(); }
 
     private boolean mNativeLooper;
     Message next(boolean main) {
@@ -41,13 +48,28 @@ public final class MessageQueue {
             if (husk.Native.sessionEnded()) { synchronized (this) { quitting = true; } return null; }
             if (main) Looper.deliverInput();
             mNativeLooper = husk.Native.nativeLooperPoll();
+            long mainWait = -1;
             synchronized (this) {
                 if (quitting) return null;
                 long now = SystemClock.uptimeMillis();
                 if (head != null && head.when <= now) { Message m = head; head = m.next; m.next = null; return m; }
-                long wait = head == null ? 8 : Math.min(8, head.when - now);
-                if (!main) wait = head == null ? (mNativeLooper ? 8 : 0) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
-                try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
+                if (main && sNativeWakeOk) {
+                    long w = head == null ? (mNativeLooper ? 8 : 60) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
+                    try {
+                        husk.Native.prepareMainWait();
+                        mainWait = w;
+                    } catch (UnsatisfiedLinkError e) {
+                        sNativeWakeOk = false;
+                    }
+                }
+                if (mainWait < 0) {
+                    long wait = head == null ? 8 : Math.min(8, head.when - now);
+                    if (!main) wait = head == null ? (mNativeLooper ? 8 : 0) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
+                    try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
+                }
+            }
+            if (mainWait >= 0) {
+                try { husk.Native.waitMainLooper(mainWait); } catch (UnsatisfiedLinkError e) { sNativeWakeOk = false; }
             }
         }
     }
