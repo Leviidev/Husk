@@ -8,8 +8,18 @@ public final class InputMethodManager {
         RESULT_SHOWN = 2, RESULT_HIDDEN = 3;
     public boolean showSoftInput(View v, int flags) { return husk.InputMethods.show(v); }
     public boolean showSoftInput(View v, int flags, android.os.ResultReceiver r) { boolean s = husk.InputMethods.show(v); if (r != null) r.send(s ? RESULT_SHOWN : RESULT_UNCHANGED_SHOWN, null); return s; }
-    public boolean hideSoftInputFromWindow(android.os.IBinder token, int flags) { return husk.InputMethods.hide(); }
-    public boolean hideSoftInputFromWindow(android.os.IBinder token, int flags, android.os.ResultReceiver r) { boolean h = husk.InputMethods.hide(); if (r != null) r.send(h ? RESULT_HIDDEN : RESULT_UNCHANGED_HIDDEN, null); return h; }
+    public boolean hideSoftInputFromWindow(android.os.IBinder token, int flags) {
+        if (token != null) {
+            View f = husk.InputMethods.focused();
+            if (f != null && f.getWindowToken() != null && f.getWindowToken() != token) return false;
+        }
+        return husk.InputMethods.hide();
+    }
+    public boolean hideSoftInputFromWindow(android.os.IBinder token, int flags, android.os.ResultReceiver r) {
+        boolean h = hideSoftInputFromWindow(token, flags);
+        if (r != null) r.send(h ? RESULT_HIDDEN : RESULT_UNCHANGED_HIDDEN, null);
+        return h;
+    }
     public void toggleSoftInput(int show, int hide) { if (husk.InputMethods.shown()) husk.InputMethods.hide(); else husk.InputMethods.show(husk.InputMethods.focused()); }
     public void toggleSoftInputFromWindow(android.os.IBinder token, int show, int hide) { toggleSoftInput(show, hide); }
     public boolean isActive() { return husk.InputMethods.focused() != null; }

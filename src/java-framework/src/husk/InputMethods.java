@@ -19,8 +19,10 @@ public final class InputMethods {
     public static View focused() { return sFocused; }
     public static boolean shown() { return sShown; }
     public static void focusChanged(View old, View now) {
-        if (now != null && now.onCheckIsTextEditor()) { start(now); }
-        else if (old != null && old == sFocused) { finish(); hide(); }
+        if (now != null && now.onCheckIsTextEditor()) {
+            start(now);
+            if (sShown && sInfo != null) Native.showKeyboard(true, sInfo.inputType, sInfo.imeOptions);
+        } else if (old != null && old == sFocused) { finish(); hide(); }
     }
     private static void start(View v) {
         if (sFocused == v && sConn != null) return;
@@ -33,6 +35,7 @@ public final class InputMethods {
     public static void restart(View v) { if (v == sFocused) { sConn = null; start(v); if (sShown) Native.showKeyboard(true, sInfo.inputType, sInfo.imeOptions); } }
     public static boolean show(View v) {
         if (v == null) return false;
+        if (!v.isFocused()) v.requestFocus();
         if (v != sFocused) start(v);
         if (sConn == null) return false;
         sShown = true;

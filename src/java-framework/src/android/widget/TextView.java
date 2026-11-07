@@ -920,7 +920,8 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
         if ((mMovement != null || onCheckIsTextEditor()) && isEnabled() && mText instanceof Spannable && mLayout != null) {
             boolean handled = false;
             if (mMovement != null) handled |= mMovement.onTouchEvent(this, (Spannable) mText, e);
-            if (a == MotionEvent.ACTION_UP && isFocused() && onCheckIsTextEditor()) {
+            if (a == MotionEvent.ACTION_UP && onCheckIsTextEditor()) {
+                if (!isFocused()) requestFocus();
                 if (!(mMovement instanceof ArrowKeyMovementMethod)) { int off = getOffsetForPosition(e.getX(), e.getY()); if (off >= 0) Selection.setSelection((Spannable) mText, off); }
                 husk.InputMethods.show(this);
                 handled = true;

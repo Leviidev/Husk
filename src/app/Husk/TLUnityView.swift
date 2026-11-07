@@ -288,16 +288,18 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // screen turning.
         if engine == .flutter, launched { husk_flutter_resize(Int32(w), Int32(h)) }
         // A landscape game is told its size once, when it starts, so it must not start while the screen is still
-        // turning: wait for a surface that is wider than it is tall.
-        // Unity games too: Fruit Ninja is a landscape one. If the screen has not turned after two seconds it is not going to,
-        // and the game starts as it is rather than not at all.
-        if firstLayout == nil, window != nil {
-            firstLayout = Date()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.1) { [weak self] in self?.setNeedsLayout() }
+        // turning: wait for a surface that matches the game's orientation.
+        if !launched, window != nil {
+            let orientationMatch = portrait ? (h >= w) : (w >= h)
+            if orientationMatch {
+                launch(width: w, height: h)
+            } else {
+                HuskOrientation.set(portrait ? .portrait : .landscape)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.setNeedsLayout()
+                }
+            }
         }
-        let waited = firstLayout.map { Date().timeIntervalSince($0) > 2 } ?? false
-        let ready = (portrait ? h > w : w > h) || waited
-        if !launched, window != nil, ready { launch(width: w, height: h) }
     }
 
     private var firstLayout: Date?
@@ -569,26 +571,45 @@ final class TLUnityUIView: UIView, UIKeyInput {
             DispatchQueue.main.async {
                 guard let view = TLUnityUIView.cocosView, view.engine == .java else { return }
                 guard show != 0 else { view.resignFirstResponder(); return }
-                let cls = inputType & 0xF, variation = inputType & 0xFF0
-                switch cls {
-                case 2: view.keyboardType = variation == 0x10 ? .numberPad : .decimalPad           // number (password: digits only)
-                case 3: view.keyboardType = .phonePad
-                case 4: view.keyboardType = .numbersAndPunctuation
-                default: view.keyboardType = variation == 0x20 || variation == 0xD0 ? .emailAddress : variation == 0x10 ? .URL : .default
-                }
-                view.isSecureTextEntry = (cls == 1 && (variation == 0x80 || variation == 0xE0)) || (cls == 2 && variation == 0x10)
+                let newSecure = (cls == 1 && (variation == 0x80 || variation == 0xE0)) || (cls == 2 && variation == 0x10)
                 let multiLine = cls == 1 && inputType & 0x20000 != 0
+                let newReturnKey: UIReturnKeyType
                 switch imeOptions & 0xFF {
-                case 2: view.returnKeyType = .go
-                case 3: view.returnKeyType = .search
-                case 4: view.returnKeyType = .send
-                case 5: view.returnKeyType = .next
-                default: view.returnKeyType = multiLine ? .default : .done
+                case 2: newReturnKey = .go
+                case 3: newReturnKey = .search
+                case 4: newReturnKey = .send
+                case 5: newReturnKey = .next
+                default: newReturnKey = multiLine ? .default : .done
                 }
                 let caps = inputType & 0x7000
-                view.autocapitalizationType = cls != 1 || view.isSecureTextEntry ? .none : caps & 0x1000 != 0 ? .allCharacters : caps & 0x2000 != 0 ? .words : caps & 0x4000 != 0 ? .sentences : .none
-                view.autocorrectionType = cls == 1 && inputType & 0x8000 != 0 ? .yes : .no
-                view.openedByHand = false; if view.isFirstResponder { view.reloadInputViews() } else { view.becomeFirstResponder() }
+                let newCaps: UITextAutocapitalizationType = cls != 1 || newSecure ? .none : caps & 0x1000 != 0 ? .allCharacters : caps & 0x2000 != 0 ? .words : caps & 0x4000 != 0 ? .sentences : .none
+                let newCorrection: UITextAutocorrectionType = cls == 1 && inputType & 0x8000 != 0 ? .yes : .no
+                let newKeyboardType: UIKeyboardType
+                switch cls {
+                case 2: newKeyboardType = variation == 0x10 ? .numberPad : .decimalPad           // number (password: digits only)
+                case 3: newKeyboardType = .phonePad
+                case 4: newKeyboardType = .numbersAndPunctuation
+                default: newKeyboardType = variation == 0x20 || variation == 0xD0 ? .emailAddress : variation == 0x10 ? .URL : .default
+                }
+
+                let traitsChanged = view.keyboardType != newKeyboardType ||
+                                    view.isSecureTextEntry != newSecure ||
+                                    view.returnKeyType != newReturnKey ||
+                                    view.autocapitalizationType != newCaps ||
+                                    view.autocorrectionType != newCorrection
+
+                view.keyboardType = newKeyboardType
+                view.isSecureTextEntry = newSecure
+                view.returnKeyType = newReturnKey
+                view.autocapitalizationType = newCaps
+                view.autocorrectionType = newCorrection
+                view.openedByHand = false
+
+                if view.isFirstResponder {
+                    if traitsChanged { view.reloadInputViews() }
+                } else {
+                    view.becomeFirstResponder()
+                }
             }
         }, { text in
             guard let text else { return }

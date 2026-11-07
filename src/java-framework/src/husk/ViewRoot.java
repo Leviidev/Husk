@@ -113,6 +113,7 @@ public final class ViewRoot implements ViewParent {
     public void remove() {
         if (mRemoved) return;
         mRemoved = true;
+        if (mFocused != null && mFocused == InputMethods.focused()) InputMethods.hide();
         boolean hadFocus = mHasFocus;
         sRoots.remove(this);
         if (sTouchTarget == this) sTouchTarget = null;
@@ -284,6 +285,14 @@ public final class ViewRoot implements ViewParent {
                 if (mLp.type >= 1000 || (mLp.flags & WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS) == 0 && mLp.type != WindowManager.LayoutParams.TYPE_BASE_APPLICATION)
                     area.set(sInsets[0], sInsets[1], sw - sInsets[2], sh - Math.max(sInsets[3], sImeBottom));
                 Gravity.apply(g, w, h, area, mLp.x, mLp.y, out);
+                if (sImeBottom > 0 && out.top < area.top) {
+                    out.top = area.top;
+                    out.bottom = out.top + h;
+                }
+                if (out.left < area.left) {
+                    out.left = area.left;
+                    out.right = out.left + w;
+                }
             }
             mX = out.left; mY = out.top; mW = w; mH = h;
             mView.layout(0, 0, w, h);

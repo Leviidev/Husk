@@ -26,7 +26,7 @@ enum HuskOrientation {
             while let v = vc { v.setNeedsUpdateOfSupportedInterfaceOrientations(); vc = v.presentedViewController }
             scene.requestGeometryUpdate(.iOS(interfaceOrientations: new)) { error in
                 HuskLog.log("ui", "orientation change refused (attempt \(attempt + 1)): \(error.localizedDescription)")
-                guard attempt < 5 else { return }
+                guard attempt < 15 else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     if mask == new { set(new, attempt: attempt + 1) }
                 }
