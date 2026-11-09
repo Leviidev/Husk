@@ -759,31 +759,45 @@ static void *thread_main(void *p)
     if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
     return NULL;
 }
+static pthread_once_t g_thread_stack_once = PTHREAD_ONCE_INIT;
+static _Atomic size_t g_thread_stack_size;
+
+static void init_thread_stack_size(void)
+{
+    /* Leave room for other mappings before the first allocation failure. */
+    size_t mib = tl_mm_address_space_short() ? 8 : 32;
+    atomic_store(&g_thread_stack_size, mib << 20);
+}
+
 NAT(Thread_nativeCreate)
 {
     (void)self; (void)ret;
+    pthread_once(&g_thread_stack_once, init_thread_stack_size);
     start_arg *s = malloc(sizeof(*s));
+    if (!s) return dvm_throw("java/lang/OutOfMemoryError", "Thread.start");
     s->thread = a[0].l;
     dvm_field *pf = s->thread ? thread_peer(s->thread) : NULL;
     if (pf) dvm_slots(s->thread)[pf->slot].j = (int64_t)(uintptr_t)s->thread;     /* alive from here (before it runs: start() then isAlive() is true) */
     pthread_attr_t at; pthread_attr_init(&at);
     pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
     pthread_t th;
-    /* 32 MiB of stack for deep interpreted calls, but that is address space, and an install without extended virtual addressing has
-       only a few GiB (Flutter's heap reservation and TikTok's many threads used it up: OutOfMemoryError: pthread_create). When it is
-       refused, a smaller stack, and the same for the threads after it; dvm_call's overflow check goes by the thread's real stack. */
-    static _Atomic size_t stack = 32u << 20;
+    /* dvm_call checks for overflow against each thread's actual stack. */
     int rc;
     for (;;) {
-        size_t sz = atomic_load(&stack);
+        size_t sz = atomic_load(&g_thread_stack_size);
         pthread_attr_setstacksize(&at, sz);
         rc = pthread_create(&th, &at, thread_main, s);
         if (rc == 0 || sz <= (1u << 20)) break;
         tl_log_line("dvm: a thread with a %zu MiB stack was refused (%d); trying a smaller one", sz >> 20, rc);
-        atomic_store(&stack, sz / 4 < (1u << 20) ? (1u << 20) : sz / 4);
+        size_t smaller = sz / 4 < (1u << 20) ? (1u << 20) : sz / 4;
+        atomic_compare_exchange_strong(&g_thread_stack_size, &sz, smaller);
     }
     pthread_attr_destroy(&at);
-    if (rc != 0) { free(s); return dvm_throw("java/lang/OutOfMemoryError", "pthread_create"); }
+    if (rc != 0) {
+        if (pf) dvm_slots(s->thread)[pf->slot].j = 0;
+        free(s);
+        return dvm_throw("java/lang/OutOfMemoryError", "pthread_create");
+    }
     return true;
 }
 
