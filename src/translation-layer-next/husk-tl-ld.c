@@ -62,13 +62,15 @@ enum {
 #define MAX_DEPS 48
 
 struct tl_lib {
-    char name[96];                 /* as asked for */
+    char name[1024];               /* as asked for: a whole path (a Unity 6 game's are 160 bytes and more, under java-data/lib) */
     char soname[96];
     uint8_t *rx, *rw;              /* image: address of base_vaddr, in each view */
     uint64_t base_vaddr;
     size_t npages;
     uint8_t *pflags;               /* TL_PAGE_* per page */
-    uint8_t *mixed;                /* one per page: 1 when its data is kept in a writable copy after the image (a 4 KiB-page library); see mixed_page */
+    uint8_t *mixed;                /* one per page: nonzero when its data is kept in a writable copy after the image (a 4 KiB-page library); see
+                                      mixed_page. 2: copied only because a dylib copies every data page, and it holds no writable data (see
+                                      copy_holds_data) */
     /* An imported dylib's relocation tables cannot be read from its image: when it was made, patch_library wrote the island pool's
      * stubs into the tail of .rela. These are the tables as the .so has them, copied from its bytes at import; NULL on the JIT path. */
     uint8_t *rela_src, *jmprel_src, *arela_src, *relr_src;
@@ -138,6 +140,20 @@ static bool redirect_data(const tl_lib *L, uint64_t vaddr);
 static inline bool mixed_page(const tl_lib *L, size_t page)
 {
     return L->dup && page < L->npages && L->mixed && L->mixed[page];
+}
+
+/*
+ * Whether rewritten code must name a copied page's copy: it holds writable data. A dylib also copies the read-only data pages
+ * (.rodata: a dylib's execSeg covers them, see map_library), but nothing writes or relocates them, so the copy and the original hold
+ * the same bytes, and code keeps naming the original, as relocations do (image_addr) and as writable_range says it must: code
+ * computes code addresses from tables there. A relative C++ vtable is one -- a method's address is the vtable's plus an offset --
+ * and Unity 6's are in .rodata. Named through the copy, the method's address landed in the copy's range, which is not code: with
+ * JIT, codewrite's fault handler moved the call to the image; without it, iOS ends the app at the call ("CODESIGNING Invalid
+ * Page", Idling to Rule the Gods, Unity Main Thread).
+ */
+static inline bool copy_holds_data(const tl_lib *L, size_t page)
+{
+    return mixed_page(L, page) && L->mixed[page] != 2;
 }
 
 /* Where the image's bytes at rx-space offset `off` are: their own address (in the JIT region's second view, or in the dylib's data
@@ -697,6 +713,7 @@ bool tl_ld_covers(const void *addr, size_t bytes)
 }
 
 const char *tl_ld_lib_name(const tl_lib *lib) { return lib ? lib->name : NULL; }
+const char *tl_ld_lib_soname(const tl_lib *lib) { return lib && lib->soname[0] ? lib->soname : NULL; }
 
 const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void **sym_addr)
 {
@@ -1581,7 +1598,7 @@ static void patch_image(tl_lib *L, size_t *n_tpidr, size_t *n_adrp, size_t *n_ad
                 if (tp >= (uintptr_t)L->rx && tp < (uintptr_t)L->rx + L->npages * PAGE) {
                     size_t tpg = (tp - (uintptr_t)L->rx) / PAGE;
                     uint64_t tv = (uint64_t)(tp - (uintptr_t)L->rx) + L->base_vaddr;
-                    if ((data_page(L, tpg) || writable_range(L, tv, tv + 0x1000) || (mixed_page(L, tpg) && !in_code(L, tv)))
+                    if ((data_page(L, tpg) || writable_range(L, tv, tv + 0x1000) || (copy_holds_data(L, tpg) && !in_code(L, tv)))
                         && !adrp_targets_code(L, w, i, nwords, insn & 0x1Fu, tp)) {
                         w[i] = encode_adrp(insn & 0x1Fu, pc, data_view(L, (const void *)tp));
                         (*n_adrp)++;
@@ -1755,7 +1772,7 @@ static bool redirect_data(const tl_lib *L, uint64_t vaddr)
     size_t page = (size_t)(off / PAGE);
     if (page >= L->npages) return false;
     if (in_code(L, vaddr)) return false;
-    if (mixed_page(L, page)) return true;
+    if (copy_holds_data(L, page)) return true;
     return data_page(L, page) || writable_vaddr(L, vaddr);
 }
 
@@ -2516,7 +2533,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
         if (g_aot.on || g_aot_dir) {
             for (size_t p = 0; p < npages; p++) {
                 if (flags[p] & TL_PAGE_X) continue;
-                if (!mix[p]) { mix[p] = 1; n_mixed++; }
+                if (!mix[p]) { mix[p] = (flags[p] & TL_PAGE_W) ? 1 : 2; n_mixed++; }     /* 2: read-only data (copy_holds_data) */
             }
         }
     }

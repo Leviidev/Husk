@@ -15,6 +15,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-internal.h"
 #include "husk-tl-codewrite.h"
 #include "husk-tl-xmem.h"
+#include "husk-tl-ld.h"
 #include "husk-tl-binder.h"
 
 #include <ctype.h>
@@ -758,11 +759,36 @@ static int b_mknodat(int dirfd, const char *p, unsigned mode, unsigned long dev)
 }
 static int b_mkfifoat(int dirfd, const char *p, unsigned mode) { return b_mknodat(dirfd, p, (mode & 0777) | 0010000, 0); }
 /* TL_FILE_TRACE also says what is asked of the file system without opening anything: which paths a game probes for, and whether they are there. */
+/*
+ * Whether the file trace shows this path: every path once, and paths outside /proc and /sys every time. Unity polls each core's
+ * cpu_capacity and cpufreq/cpuinfo_max_freq several times a second for as long as it runs (none of them exist here), which
+ * buried the rest of a Detailed Log under thousands of lines.
+ */
+bool tl_file_trace_shows(const char *path)
+{
+    if (!path || (strncmp(path, "/proc/", 6) && strncmp(path, "/sys/", 5))) return true;
+    static uint64_t seen[2048];
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    uint64_t h = 1469598103934665603ull;
+    for (const char *c = path; *c; c++) h = (h ^ (uint8_t)*c) * 1099511628211ull;
+    if (!h) h = 1;
+    bool shown = true;
+    pthread_mutex_lock(&lock);
+    for (size_t i = h % 2048, k = 0; k < 2048; i = (i + 1) % 2048, k++) {
+        if (seen[i] == h) { shown = false; break; }
+        if (!seen[i]) { seen[i] = h; break; }
+    }
+    pthread_mutex_unlock(&lock);
+    return shown;
+}
+
 static void ftrace(const char *what, const char *path, int r, int e)
 {
     static int tr = -1;
     if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0;
-    if (tr) tl_log_line("file: %s(%s) -> %d%s", what, path ? path : "(null)", r, r < 0 ? (e == ENOENT ? " ENOENT" : " error") : "");
+    if (tr && tl_file_trace_shows(path))
+        tl_log_line("file: %s(%s) -> %d%s%s", what, path ? path : "(null)", r, r < 0 ? (e == ENOENT ? " ENOENT" : " error") : "",
+                    path && (!strncmp(path, "/proc/", 6) || !strncmp(path, "/sys/", 5)) ? " (shown once)" : "");
 }
 static int b_access(const char *p, int m) { char b[1024]; jar_entry jar; if (jar_lookup(p, &jar)) { if (!jar.found) { tl_set_guest_errno(2); return -1; } if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; } if (vfile_find(p)) { if (m & 2) { tl_set_guest_errno(13); return -1; } return 0; }
     /* the made-up /proc files exist, as b_stat says (Mono's runtime exits with "Mono requires /proc to be mounted" without /proc/self/maps) */
@@ -1107,7 +1133,7 @@ static int prot_filter(int prot, const char *what)
  * and expect it to come back clean. Darwin's MADV_DONTNEED keeps the contents, so the pages are
  * replaced with fresh ones at the same protection instead.
  */
-#define MAX_ANON 4096
+#define MAX_ANON 65536      /* a Unity 6 game with mimalloc and IL2CPP's GC makes thousands; one past the end is never zeroed */
 static struct { uintptr_t addr; size_t len; } g_anon[MAX_ANON];
 static int g_nanon;
 static pthread_mutex_t g_anon_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -1119,6 +1145,10 @@ static void anon_add(void *addr, size_t len)
     anon_remove((uintptr_t)addr, len);                       /* replace what this overlaps, keeping the parts outside it */
     pthread_mutex_lock(&g_anon_lock);
     if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = (uintptr_t)addr; g_anon[g_nanon].len = len; g_nanon++; }
+    else {
+        static bool told;
+        if (!told) { told = true; tl_log_line("bionic: more than %d anonymous mappings: madvise(MADV_DONTNEED) no longer zero-fills the new ones (allocators that count on it may see old data)", MAX_ANON); }
+    }
     pthread_mutex_unlock(&g_anon_lock);
 }
 
@@ -1403,6 +1433,20 @@ size_t tl_mm_address_space_used(size_t *guest)
 }
 
 void *tl_ld_map_code(const char *path, uint64_t off, size_t len, void *at);
+/* Whether a mapping's caller is Unity's engine or its IL2CPP code, which never JIT: their hinted data stays ordinary memory.
+ * By the library's soname, and by its file name: either may be what the loader has (a split APK's libraries are opened by path). */
+static bool is_unity_lib(const char *name)
+{
+    const char *base = name ? strrchr(name, '/') : NULL;
+    base = base ? base + 1 : name;
+    return base && (!strcmp(base, "libunity.so") || !strcmp(base, "libil2cpp.so"));
+}
+static bool unity_data_caller(const void *ret)
+{
+    tl_lib *L = tl_ld_lib_of(ret);
+    return is_unity_lib(tl_ld_lib_soname(L)) || is_unity_lib(tl_ld_lib_name(L));
+}
+
 static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long off)
 {
     if (fd >= 0 && husk_binder_is_fd(fd)) return husk_binder_mmap(fd, len);
@@ -1436,13 +1480,21 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
      * own code with a hint, writes the machine code, then makes it executable with mprotect -- which on a phone "succeeds" and
      * then faults. An anonymous, code-sized, writable mapping hinted near the region comes from the region instead: its stores
      * go through the writable view (code-write emulation), and mprotect there is a yes. TL_PHONE_JIT=1 does this on a Mac too. */
+    /* Not for Unity: libunity and libil2cpp hint ordinary writable data near their own code (IL2CPP does not JIT), and that
+     * data in the region's read-execute view faults on its first store -- Unity 6 games (Idling to Rule the Gods, upstream
+     * #105) died at start with SIGBUS. Their explicitly executable mappings still take the path above. */
     if (addr && !(prot & PROT_EXEC) && (prot & PROT_WRITE) && (flags & 0x20) && !(flags & 0x10) && len <= (32u << 20)
-        && tl_codewrite_enabled() && phone_jit() && tl_xmem_near(addr, 256u << 20)) {
+        && tl_codewrite_enabled() && phone_jit() && tl_xmem_near(addr, 256u << 20) && !unity_data_caller(__builtin_return_address(0))) {
         uint8_t *rx, *rw;
         size_t n = (len + TL_XMEM_PAGE - 1) & ~(size_t)(TL_XMEM_PAGE - 1);
         if (tl_xmem_alloc(n, &rx, &rw)) {
             memset(rw, 0, n);
-            tl_note_once("a JIT's code memory (mmap hinted near the code) comes from the JIT region");
+            static _Atomic int told;
+            if (told++ < 4) {
+                tl_lib *L = tl_ld_lib_of(__builtin_return_address(0));
+                const char *who = tl_ld_lib_soname(L) ? tl_ld_lib_soname(L) : tl_ld_lib_name(L);
+                tl_log_line("bionic: a JIT's code memory (mmap of %zu bytes hinted near the code, by %s) comes from the JIT region", len, who ? who : "?");
+            }
             mm_trace("mmap-jit", rx, len, prot, flags);
             return rx;
         }
@@ -1937,7 +1989,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 278: arc4random_buf((void *)a0, (size_t)a1); return a1;                        /* getrandom */
     case 283: return 0;                                                                 /* membarrier */
     case 134: case 135: return 0;                                                       /* rt_sigaction, rt_sigprocmask: accepted */
-    case 233: return 0;                                                                 /* madvise */
+    case 233: return b_madvise((void *)a0, (size_t)a1, (int)a2);                        /* madvise: DONTNEED zero-fills, as libc's */
     case 122: case 123: return 0;                                                       /* sched_setaffinity / getaffinity */
     case 167: return 0;                                                                 /* prctl */
     case 160: { int tl_bionic_uname(void *); return tl_bionic_uname((void *)a0); }    /* uname: filled in, as the libc call is */
