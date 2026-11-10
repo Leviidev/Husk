@@ -251,6 +251,15 @@
       ],
       "versions": [
         {
+          "version": "0.3.0",
+          "buildVersion": "101",
+          "date": "2026-11-10T23:53:38Z",
+          "localizedDescription": "## What's new?\n- macOS Sonoma 14.6.1 and Ventura 13.6 in the Install tab: smaller downloads (14.1 and 12.3 GB) for devices short on storage\n- Sonoma's and Ventura's graphics drivers work with Henge, including Sonoma's moving wallpaper and video, without green bands\n- A light theme: Settings \u203a Appearance picks System, Light or Dark (the session stays dark while a Mac runs)\n- The screen is a Magic Trackpad 2 to the Mac: macOS's own gestures, tap and hold clicks, and optional volume-button clicks (#54)\n- macOS downloads go on after Henge is closed or killed, and a trash button deletes a downloaded or partial one\n- macOS shuts down and restarts properly, and a Mac can start again without reopening Henge (#50)\n- Installs: a 10 GB Mac no longer runs the phone out of memory two thirds of the way through, the restore streams its ramdisk instead of holding two copies (#39), a second tap can't start a duplicate install (#61), and a Mac finished while the phone locked is still listed\n- JIT: tapping Turn On JIT while it's already turning on no longer leaves a second helper attached (that made the Mac 1.5-2x slower), JIT is prepared when StikDebug attaches a moment after opening Henge (#46), and the helper finds the pairing port itself when iOS reports none (#52)\n- Speed work on how the emulator handles macOS's TLB flushes and code changes, and a 1.5 GB code cache by default where the memory limit allows\n- Lighter macOS (session Details): types a Terminal command that turns off window and Dock animations, widgets, the screen saver and a moving wallpaper; plus a 30 Hz refresh option and Game Mode\n- macOS starts with its clock at zero, as on a real Mac, instead of thinking it has been running (and idle) for days\n- Web lookups go through the device's own DNS (#34)\n- Right-click works (a Control-click, #33), and a physical mouse's right and middle buttons can be swapped (#63)\n- The firmware disk reports its real size and takes large transfers (#31)\n- iOS 17: Metal libraries iOS 17 refuses are relabelled and tried again (black screen with 0 draws, #12); not yet confirmed on an iOS 17 device\n- Henge has its own AltStore/SideStore source: https://raw.githubusercontent.com/Leviidev/Henge/main/repo.json\n\n## Confirmed Working\nmacOS Sonoma 14.6.1 - installs and runs on an iPhone 17 Pro\nmacOS Ventura 13.6 - installs, logs in and browses on an iPhone 17 Pro\nmacOS Tahoe 26.6.2 - installs and sets up on an iPhone 17 Pro\nmacOS 27.2 and Sequoia 15.6.1, as in 0.2\n\n## Known issues\n- Monterey isn't offered: it installs, but its desktop never appears.\n- Sonoma: choosing the dynamic \"Sonoma\" wallpaper can stop the screen updating; opening any app brings it back.\n- Ventura: the Calendar icon in the Dock is missing its date.\n- Emulation is still slow, mostly at login and on macOS 27.\n- Safari's pages may stay blank on macOS 27 (not re-checked since 0.2).\n\n## Installation\nSideload Henge.ipa with SideStore or AltStore, or install Henge.tipa with TrollStore or TrollStore Lite. You can also add Henge's source (above) in SideStore or AltStore. Enable JIT, open the Install tab and install macOS. Needs iOS 17 or later, an A14 or M1 chip or newer, and about 43 GB free (less for Sonoma and Ventura).\n\n## Thanks\nThanks to everyone who sent fixes for this release: @not-nullptr, @liukaixiang817, @giladfr, @FlorencioJP, @hikaruright, @hazerbvisor, @kesku, @Jelly-RayTian, @akshaypainjane and @Symplicityy.\n\n## Issues\nIf any bugs / issues occur, report it to the GitHub or in my Discord Server.\n\nLinks:\nDiscord Server: https://itslevii.dev/discord\nEmail: hello@itslevii.dev",
+          "downloadURL": "https://github.com/Leviidev/Henge/releases/download/0.3/Henge.ipa",
+          "size": 9036911,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "0.2.0",
           "buildVersion": "100",
           "date": "2026-11-07T21:49:27Z",
@@ -277,7 +286,8 @@
           "com.apple.developer.kernel.extended-virtual-addressing"
         ],
         "privacy": {
-          "NSLocalNetworkUsageDescription": "Henge uses the local network to pair with this iPhone for JIT, without a computer."
+          "NSLocalNetworkUsageDescription": "Henge uses the local network to pair with this iPhone for JIT, without a computer.",
+          "NSCameraUsageDescription": "Henge can use the volume buttons as the trackpad's mouse buttons. Receiving those presses needs the camera active; no video is recorded, saved or shown."
         }
       }
     }
