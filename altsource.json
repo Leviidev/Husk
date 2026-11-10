@@ -1,13 +1,14 @@
 {
   "name": "itslevii",
   "identifier": "dev.itslevii.source",
-  "subtitle": "Husk, AetherPS4, Utsuro, Podium and Fathom.",
+  "subtitle": "Husk, AetherPS4, Utsuro, Podium, Fathom and Henge.",
   "description": "Leviidev's apps. Add this source in SideStore or AltStore to install them and get updates.",
   "iconURL": "https://raw.githubusercontent.com/Leviidev/Husk/main/src/app/Husk/Assets.xcassets/AppIcon.appiconset/Icon-Default.png",
   "website": "https://itslevii.dev",
   "tintColor": "#5865F2",
   "featuredApps": [
     "com.husk.app",
+    "com.henge.app",
     "com.aether.ps4ios",
     "com.utsuro.app",
     "com.leviidev.podium",
@@ -232,6 +233,53 @@
           "minOSVersion": "18.0"
         }
       ]
+    },
+    {
+      "name": "Henge",
+      "bundleIdentifier": "com.henge.app",
+      "developerName": "Leviidev",
+      "subtitle": "macOS on your iPhone and iPad.",
+      "localizedDescription": "Henge runs macOS on iPhone and iPad with its own emulator. It downloads Apple's restore image and installs macOS right on the device, no Mac needed. Safari and Discord run, and the clipboard and a shared folder work between macOS and the device. It's emulation, so it runs slower than a real Mac. Henge needs JIT (StikDebug, its built-in StikJIT on iOS 26 or later, TrollStore or a jailbreak), iOS 17 or later, an A14 or M1 chip or newer, and about 43 GB free.",
+      "iconURL": "https://raw.githubusercontent.com/Leviidev/Henge/main/docs/icon.png",
+      "tintColor": "#2E6BFF",
+      "category": "utilities",
+      "screenshots": [
+        "https://raw.githubusercontent.com/Leviidev/Henge/main/Screenshots/macs.png",
+        "https://raw.githubusercontent.com/Leviidev/Henge/main/Screenshots/trackpad.png",
+        "https://raw.githubusercontent.com/Leviidev/Henge/main/Screenshots/install.png",
+        "https://raw.githubusercontent.com/Leviidev/Henge/main/Screenshots/ipad.jpg"
+      ],
+      "versions": [
+        {
+          "version": "0.2.0",
+          "buildVersion": "100",
+          "date": "2026-11-07T21:49:27Z",
+          "localizedDescription": "## What's new?\n- macOS 27 (Golden Gate) installs and runs, as well as macOS Sequoia\n- Choose your Mac's memory, anywhere from 1 to 16 GB\n- Put the Mac on an external display over USB-C, on iOS 27 and on iOS 17-26\n- A bit faster: guest memory lookups were reworked, and macOS 27's constant TLB flushes no longer wipe every app's entries\n- Settings > Performance: refresh rate (60 Hz, or 120 Hz with ProMotion), faster disk writes, quicker wake from idle, superblocks (experimental) and a 1 GB or 1.5 GB code cache (experimental)\n- Colours fixed: macOS no longer looks washed out, and the iPad's P3 screen is colour matched\n- iPad: Retina and Performance screen modes, smoother Magic Keyboard scrolling, a smaller and sharper pointer with a size setting, and iPadOS's hide-keyboard key works\n- The Mac fills squarer iPhones edge to edge\n- Hide the session controls; a three-finger tap brings them back\n- JIT: turn it on from the Install tab before your first Mac, LocalDevVPN connects first when it's off, and JIT on cellular says what's wrong and retries (#22, #23)\n- Free (personal) Apple developer teams can sign the app\n- iPadOS 17 no longer crashes when Metal can't load one of macOS's GPU programs (#12, #24)\n- Henge says when iPadOS won't lock the pointer to it in a window (#18)\n\n## Confirmed Working\nmacOS Golden Gate 27.2 - installs and boots on an iPhone 17 Pro\n10 GB of memory for the Mac on a 12 GB iPhone\nUSB-C external display\nmacOS Sequoia 15.6.1, as in 0.1\n\nThe iPad changes were made and tested by contributors on their own iPads.\n\n## Known issues\n- Golden Gate is still slow: the wallpaper can take a couple of minutes to appear. Speed is the main work for the next release.\n- Web browsing doesn't work on Golden Gate yet (it worked on Sequoia in 0.1).\n\n## Installation\nSideload Henge.ipa with SideStore or AltStore, or install Henge.tipa with TrollStore or TrollStore Lite. Enable JIT, open the Install tab and install macOS. Needs iOS 17 or later, an A14 or M1 chip or newer, and about 43 GB free.\n\n## Thanks\nThanks to everyone who sent fixes for this release: @dnesdan, @braedonsaunders, @gavinnolan, @lemmylin, @lemarlab, @shrimpapplepro, @hungbenjamin402, @sonnx0868 and @AdamLovattDevOps.\n\n## Issues\nIf any bugs / issues occur, report it to the GitHub or in my Discord Server.\n\nLinks:\nDiscord Server: https://itslevii.dev/discord\nEmail: hello@itslevii.dev",
+          "downloadURL": "https://github.com/Leviidev/Henge/releases/download/0.2/Henge.ipa",
+          "size": 8880854,
+          "minOSVersion": "17.0"
+        },
+        {
+          "version": "0.1",
+          "buildVersion": "1",
+          "date": "2026-11-06T13:28:11Z",
+          "localizedDescription": "## What's new?\nThe first release of Henge: macOS on your iPhone and iPad, installed right on the device with no Mac needed.\n\n## Confirmed Working\nmacOS Sequoia 15.6.1 - installs and boots on an iPhone 17 Pro, lock screen in about 15 seconds\nSafari\nDiscord - install, log in, send messages\nClipboard and file sharing between the iPhone and macOS\n\niPad support is new and hasn't run on a real iPad yet.\n\n## Installation\nSideload Henge.ipa with SideStore or AltStore, or install Henge.tipa with TrollStore or TrollStore Lite. Enable JIT, open the Install tab and install macOS. Needs iOS 17 or later, an A14 or M1 chip or newer, and about 43 GB free.\n\n## Issues\nIf any bugs / issues occur, report it to the GitHub or in my Discord Server.\n\nLinks:\nDiscord Server: https://itslevii.dev/discord\nEmail: hello@itslevii.dev",
+          "downloadURL": "https://github.com/Leviidev/Henge/releases/download/0.1/Henge.ipa",
+          "size": 8761298,
+          "minOSVersion": "17.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [
+          "get-task-allow",
+          "dynamic-codesigning",
+          "com.apple.developer.kernel.increased-memory-limit",
+          "com.apple.developer.kernel.extended-virtual-addressing"
+        ],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "Henge uses the local network to pair with this iPhone for JIT, without a computer."
+        }
+      }
     }
   ],
   "news": []

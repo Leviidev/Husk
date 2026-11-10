@@ -6,7 +6,7 @@ Regenerate the AltStore/SideStore source from GitHub releases.
     python3 tools/update-altsource.py
 
 Writes altsource.json here (old address still works) and, when present,
-../husk-work/site/web/public/repo.json — that file is https://itslevii.dev/repo.json.
+../husk-work/site/web/public/repo.json (or $SITE_REPO_JSON) — that file is https://itslevii.dev/repo.json.
 """
 import json
 import os
@@ -14,7 +14,10 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "altsource.json")
-SITE = os.path.expanduser("~/husk-work/site/web/public/repo.json")
+SITE = os.environ.get("SITE_REPO_JSON") or os.path.expanduser("~/husk-work/site/web/public/repo.json")
+# Henge keeps its own source (made by HengeVM's tools/update-source.py); its app entry is copied from there.
+HENGE_LOCAL = os.path.expanduser("~/Documents/Coding/HengeVM/repo.json")
+HENGE_RAW = "https://raw.githubusercontent.com/Leviidev/Henge/main/repo.json"
 
 HUSK_RAW = "https://raw.githubusercontent.com/Leviidev/Husk/main"
 KEEP = 10
@@ -51,6 +54,15 @@ def ipa_versions(repo, keep=KEEP, include_prerelease=False):
         if len(versions) >= keep:
             break
     return versions
+
+
+def henge_app():
+    if os.path.isfile(HENGE_LOCAL):
+        with open(HENGE_LOCAL) as f:
+            return json.load(f)["apps"][0]
+    req = urllib.request.Request(HENGE_RAW, headers={"User-Agent": "husk-altsource"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)["apps"][0]
 
 
 def with_min(versions, min_os):
@@ -162,17 +174,18 @@ def main():
             "category": "utilities",
             "versions": with_min(ipa_versions("Fathom"), "18.0"),
         },
+        henge_app(),
     ]
 
     source = {
         "name": "itslevii",
         "identifier": "dev.itslevii.source",
-        "subtitle": "Husk, AetherPS4, Utsuro, Podium and Fathom.",
+        "subtitle": "Husk, AetherPS4, Utsuro, Podium, Fathom and Henge.",
         "description": "Leviidev's apps. Add this source in SideStore or AltStore to install them and get updates.",
         "iconURL": husk_icon,
         "website": "https://itslevii.dev",
         "tintColor": "#5865F2",
-        "featuredApps": [a["bundleIdentifier"] for a in apps],
+        "featuredApps": ["com.husk.app", "com.henge.app"] + [a["bundleIdentifier"] for a in apps if a["bundleIdentifier"] not in ("com.husk.app", "com.henge.app")],
         "apps": apps,
         "news": [],
     }
