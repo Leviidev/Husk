@@ -266,6 +266,10 @@ struct ContentView: View {
         // network round trip, and nothing on this screen should wait for it.
         Task { await guest.checkForUpdates() }
 
+        if JITLess.enabled {
+            HuskLog.log("ui", "Play without JIT: debugger setup and executable-memory prewarm skipped")
+            return
+        }
         if !JITBootstrap.ready {
             HuskLog.log("ui", "no JIT yet; waiting for a debugger")
             return

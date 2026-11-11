@@ -5,8 +5,8 @@ import QuartzCore
 import AVFoundation
 import UniformTypeIdentifiers
 
-/// The engines the native runtime drives. Both draw into a CAMetalLayer through ANGLE. Starting a different APK
-/// stops the current session first.
+/// Engines the native runtime drives. Java-driven APKs close cooperatively
+/// before a different APK starts; other engines still require a restart.
 enum TLNativeEngine {
     case unity     // Subway Surfers and other Unity games: portrait, driven by UnityPlayer's own thread
     case cocos     // Geometry Dash and other cocos2d-x games: landscape, driven by a GL thread of our own

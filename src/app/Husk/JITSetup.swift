@@ -173,6 +173,9 @@ final class JITCoordinator: ObservableObject {
     static var trollStoreAuto: Bool { UserDefaults.standard.object(forKey: trollStoreAutoKey) as? Bool ?? true }
 
     func enableAtLaunchIfAsked() {
+        // Standalone mode must not start the debugger/LocalDevVPN workflow,
+        // even when "Turn on JIT at launch" was saved from an earlier run.
+        guard !JITLess.enabled else { return }
         if !autoTried, JITBootstrap.isInstalledWithTrollStore, Self.trollStoreAuto {
             autoTried = true
             guard !JITBootstrap.ready else { return }

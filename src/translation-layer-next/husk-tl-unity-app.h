@@ -4,8 +4,8 @@
  *
  * Starting is asynchronous: the engine takes seconds to load, and the UI must stay up
  * meanwhile. The progress is in the log (husk_tl_attempt_log) and in husk_unity_state.
- * Leaving a game's screen pauses it. Starting a different APK stops the current session
- * first (Java apps reset; native engines are asked to quit and their libraries are forgotten).
+ * Minimizing pauses the game. Java-driven APKs can close cooperatively before
+ * another starts; engines without complete teardown still require a restart.
  */
 #ifndef HUSK_TL_UNITY_APP_H
 #define HUSK_TL_UNITY_APP_H

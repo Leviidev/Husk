@@ -36,7 +36,9 @@ The signer now emits one SHA-256 CodeDirectory with a minimal detached CMS,
 separate SHA-256/RSA algorithm identifiers, and the selected issuer path.
 The cache signer revision advances to `s16` so a prior signature is not reused.
 Preparation asks dyld to load each converted library and surfaces a failure
-before Java starts. This is a proposed repair until the new IPA passes on-device
+before Java starts. Standalone mode skips automatic debugger activation and
+JIT-memory prewarming, including saved automatic-JIT preferences.
+This is a proposed repair until the new IPA passes on-device
 signature validation. Matching Team ID and certificate expiry alone do not
 establish that iOS will accept a library.
 
