@@ -198,11 +198,8 @@ extern void tl_va_swscanf(void);
 int tl_vai_fscanf(tl_va_frame *f)
 {
     tl_va_list ap; tl_va_start(f, 2, 0, &ap);
-    void *a[16];
-    for (int i = 0; i < 16; i++) a[i] = (void *)(uintptr_t)tl_va_arg_u64(&ap);
     TL_ERRNO_BEGIN();
-    int r = fscanf(map_stream((void *)f->gp[0]), (const char *)f->gp[1], a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
-                   a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]);
+    int r = tl_scan_file(map_stream((void *)f->gp[0]), (const char *)f->gp[1], &ap);
     TL_ERRNO_END();
     return r;
 }

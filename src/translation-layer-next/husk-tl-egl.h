@@ -36,6 +36,15 @@ void *tl_egl_resolve(const char *name);
 
 unsigned long tl_egl_frames_presented(void);
 
+/* Shared GPU frame handoff. The compositor brackets metadata acquisition and
+ * draw submission with begin/end, and waits before sampling the selected tex.
+ * Its current shared context must remain current throughout these calls. */
+void tl_egl_compositor_context(void *context, bool es3);
+void tl_egl_compositor_frame_begin(void);
+void tl_egl_compositor_frame_wait(unsigned tex);
+void tl_egl_compositor_frame_end(unsigned tex);
+void tl_egl_compositor_frame_reset(void *context, bool current);
+
 #ifdef __cplusplus
 }
 #endif

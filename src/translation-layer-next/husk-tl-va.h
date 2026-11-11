@@ -104,6 +104,9 @@ int tl_format_wide(wchar_t *out, size_t cap, const wchar_t *fmt, tl_va_list *ap)
  * scanf, with guest pointer arguments: up to 96 conversions. `src` is a string.
  */
 int tl_scan_string(const char *src, const char *fmt, tl_va_list *ap);
+int tl_count_scan_args(const char *fmt);
+/* `stream` is a mapped host FILE*, not a guest Bionic FILE*. */
+int tl_scan_file(void *stream, const char *fmt, tl_va_list *ap);
 
 /*
  * Wide scanf (swscanf / vswscanf), reading only the non-suppressed pointer arguments

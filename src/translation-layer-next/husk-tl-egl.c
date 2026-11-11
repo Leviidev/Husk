@@ -14,6 +14,7 @@
 #include "husk-tl-ld.h"
 #include "husk-tl-xmem.h"
 #include "husk-tl-guest-pool.h"
+#include "husk-tl-frame-sync.h"
 
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
@@ -88,6 +89,11 @@ static void (*a_glTexParameteri)(unsigned, unsigned, int);
 static void (*a_glCopyTexImage2D)(unsigned, int, unsigned, int, int, int, int, int);
 static void (*a_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int);
 static void (*a_glFlush)(void);
+static const unsigned char *(*a_glGetString)(unsigned);
+static void (*a_glFinish)(void);
+static void *(*a_glFenceSync)(unsigned, unsigned);
+static void (*a_glWaitSync)(void *, unsigned, uint64_t);
+static void (*a_glDeleteSync)(void *);
 
 #define LOAD(lib, name) do { a_##name = dlsym(lib, #name); if (!a_##name) tl_log_line("egl: ANGLE does not export " #name); } while (0)
 
@@ -123,6 +129,11 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     a_glCopyTexImage2D = a_eglGetProcAddress("glCopyTexImage2D");
     a_glCopyTexSubImage2D = a_eglGetProcAddress("glCopyTexSubImage2D");
     a_glFlush = a_eglGetProcAddress("glFlush");
+    a_glGetString = a_eglGetProcAddress("glGetString");
+    a_glFinish = a_eglGetProcAddress("glFinish");
+    a_glFenceSync = a_eglGetProcAddress("glFenceSync");
+    a_glWaitSync = a_eglGetProcAddress("glWaitSync");
+    a_glDeleteSync = a_eglGetProcAddress("glDeleteSync");
     if (frame_dir) { snprintf(E.frame_dir, sizeof(E.frame_dir), "%s", frame_dir); E.latest_only = frame_every < 0; E.frame_every = frame_every != 0 ? (frame_every < 0 ? -frame_every : frame_every) : 60; }
     E.ready = true;
     pthread_mutex_unlock(&E.lock);
@@ -224,6 +235,8 @@ static pthread_mutex_t g_tex_lock = PTHREAD_MUTEX_INITIALIZER;
 __attribute__((weak)) bool tl_javaapp_compositing(void);
 __attribute__((weak)) void *tl_javaapp_ui_context(void);
 __attribute__((weak)) void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) void tl_javaapp_app_frame_pace(uint64_t prev_seq);
 __attribute__((weak)) void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h);
 __attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
 
@@ -359,8 +372,104 @@ typedef struct {
     unsigned tex[3];
     int tw[3], th[3];
     int cur;
+    tl_frame_sync sync[3];
+    bool retired;
 } comp_surf_entry;
 static comp_surf_entry g_comp_surf[MAX_COMP_SURFACES];
+/* Lock order is handoff -> g_tex_lock / E2.lk. Never retain this lock while
+ * calling the existing frame-pacing callback, which may wait for the UI. */
+static pthread_mutex_t g_frame_handoff = PTHREAD_MUTEX_INITIALIZER;
+static atomic_bool g_compositor_es3;
+
+static void *frame_fence(void) { return a_glFenceSync(0x9117 /* GL_SYNC_GPU_COMMANDS_COMPLETE */, 0); }
+static void frame_wait(void *sync) { a_glWaitSync(sync, 0, UINT64_MAX /* GL_TIMEOUT_IGNORED */); }
+static void frame_drop(void *sync) { a_glDeleteSync(sync); }
+static void frame_flush(void) { a_glFlush(); }
+static void frame_finish(void) { a_glFinish(); }
+static const tl_frame_sync_ops k_frame_sync = { frame_fence, frame_wait, frame_drop, frame_flush, frame_finish };
+
+/* Called from the current shared UI/guest context, with handoff held. EGL
+ * surface destruction itself is allowed with no current context; defer its
+ * GL object deletion until one of these contexts can perform it. */
+static void frame_clean_retired(void)
+{
+    bool can_sync = a_eglGetCurrentContext && comp_ctx_ver(a_eglGetCurrentContext()) >= 3;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES; i++) {
+        comp_surf_entry *entry = &g_comp_surf[i];
+        if (!entry->retired) continue;
+        bool pending = false;
+        for (int k = 0; k < 3; k++) pending |= tl_frame_sync_pending(&entry->sync[k]);
+        if (pending && !can_sync) continue;   /* UI's ES3 context can retire these later */
+        for (int k = 0; k < 3; k++) {
+            tl_frame_sync_reset(&entry->sync[k], &k_frame_sync);
+            if (entry->tex[k] && a_glDeleteTextures) a_glDeleteTextures(1, &entry->tex[k]);
+        }
+        memset(entry, 0, sizeof(*entry));
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+
+/* Only accessed with g_frame_handoff held. The surface registry itself is
+ * protected separately because contexts/surfaces also have non-frame users. */
+static tl_frame_sync *frame_sync_of(unsigned tex)
+{
+    if (!tex) return NULL;
+    tl_frame_sync *found = NULL;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES && !found; i++)
+        for (int k = 0; k < 3; k++)
+            if (g_comp_surf[i].s && g_comp_surf[i].tex[k] == tex) { found = &g_comp_surf[i].sync[k]; break; }
+    pthread_mutex_unlock(&g_tex_lock);
+    return found;
+}
+
+void tl_egl_compositor_context(void *context, bool es3)
+{
+    if (context) comp_ctx_add(context, es3 ? 3 : 2);
+    atomic_store(&g_compositor_es3, es3);
+}
+void tl_egl_compositor_frame_begin(void)
+{
+    pthread_mutex_lock(&g_frame_handoff);
+    frame_clean_retired();
+}
+void tl_egl_compositor_frame_wait(unsigned tex)
+{
+    tl_frame_sync *frame = frame_sync_of(tex);
+    if (frame) tl_frame_sync_before_read(frame, &k_frame_sync);
+}
+void tl_egl_compositor_frame_end(unsigned tex)
+{
+    tl_frame_sync *frame = frame_sync_of(tex);
+    if (frame) tl_frame_sync_after_read(frame, &k_frame_sync);
+    pthread_mutex_unlock(&g_frame_handoff);
+}
+void tl_egl_compositor_frame_reset(void *context, bool current)
+{
+    pthread_mutex_lock(&g_frame_handoff);
+    /* Stop publishing before clearing the registry. Late guest swaps then
+     * remain on their old off-screen surface instead of republishing a frame. */
+    if (tl_javaapp_app_tex_publish) tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
+    bool can_sync = current && comp_ctx_ver(context) >= 3;
+    void *windows[MAX_COMP_SURFACES] = { 0 };
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES; i++) {
+        comp_surf_entry *entry = &g_comp_surf[i];
+        windows[i] = entry->win;
+        for (int k = 0; k < 3; k++) {
+            if (can_sync) tl_frame_sync_reset(&entry->sync[k], &k_frame_sync);
+            else tl_frame_sync_abandon(&entry->sync[k]);
+            if (current && entry->tex[k] && a_glDeleteTextures) a_glDeleteTextures(1, &entry->tex[k]);
+        }
+        memset(entry, 0, sizeof(*entry));
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES; i++) if (windows[i]) tl_nwindow_release(windows[i]);
+    atomic_store(&g_compositor_es3, false);
+    comp_ctx_remove(context);
+    pthread_mutex_unlock(&g_frame_handoff);
+}
 
 /* The current frame of a surface, read back (bottom-up RGBA, in a buffer of this thread's). */
 static const uint8_t *read_back_rect(EGLDisplay d, EGLSurface s, int max_w, int max_h, EGLint *pw, EGLint *ph)
@@ -374,14 +483,25 @@ static const uint8_t *read_back_rect(EGLDisplay d, EGLSurface s, int max_w, int 
     size_t need = (size_t)w * (size_t)h * 4;
     if (need > cap) { free(buf); buf = malloc(need); cap = buf ? need : 0; }
     if (!buf) return NULL;
+    int version = a_eglGetCurrentContext ? comp_ctx_ver(a_eglGetCurrentContext()) : 0;
+    if (!version && a_glGetString) {
+        /* An unshared context is absent from the compositor registry, but may
+         * still have separate ES3 READ/DRAW bindings. Use ANGLE's raw string,
+         * not the version-reporting compatibility shim. */
+        const char *raw = (const char *)a_glGetString(0x1F02 /* GL_VERSION */);
+        if (raw && !strncmp(raw, "OpenGL ES ", 10) && raw[10] >= '1' && raw[10] <= '9') version = raw[10] - '0';
+    }
+    bool es3 = version >= 3;
+    unsigned fb_target = es3 ? 0x8CA8u /* GL_READ_FRAMEBUFFER */ : 0x8D40u /* GL_FRAMEBUFFER */;
+    unsigned fb_query = es3 ? 0x8CAAu /* GL_READ_FRAMEBUFFER_BINDING */ : 0x8CA6u /* GL_FRAMEBUFFER_BINDING */;
     int old_fb = 0, old_pack = 0;
-    a_glGetIntegerv(0x8CAA /* GL_READ_FRAMEBUFFER_BINDING */, &old_fb);
+    a_glGetIntegerv(fb_query, &old_fb);
     a_glGetIntegerv(0x0D05 /* GL_PACK_ALIGNMENT */, &old_pack);
-    if (old_fb) a_glBindFramebuffer(0x8CA8 /* GL_READ_FRAMEBUFFER */, 0);
+    if (old_fb) a_glBindFramebuffer(fb_target, 0);
     a_glPixelStorei(0x0D05, 1);
     a_glReadPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, buf);
     a_glPixelStorei(0x0D05, old_pack);
-    if (old_fb) a_glBindFramebuffer(0x8CA8, (unsigned)old_fb);
+    if (old_fb) a_glBindFramebuffer(fb_target, (unsigned)old_fb);
     *pw = w; *ph = h;
     return buf;
 }
@@ -404,24 +524,39 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
         return s;
     }
     if (tl_javaapp_compositing && tl_javaapp_compositing()) {
+        pthread_mutex_lock(&g_frame_handoff);
+        /* Reset may have ended this compositor while surface creation was
+         * waiting. Never register an old share group's surface after reset. */
+        if (!tl_javaapp_compositing()) {
+            pthread_mutex_unlock(&g_frame_handoff);
+            return NULL;
+        }
         int ww = tl_nwindow_width(win), wh = tl_nwindow_height(win);
         if (ww < 1) ww = 1;
         if (wh < 1) wh = 1;
         EGLint pb[] = { EGL_WIDTH, ww, EGL_HEIGHT, wh, EGL_NONE };
         EGLSurface s = a_eglCreatePbufferSurface(d, cfg, pb);
+        bool registered = false;
         if (s) {
             tl_nwindow_acquire(win);
             pthread_mutex_lock(&g_tex_lock);
             for (int i = 0; i < MAX_COMP_SURFACES; i++) {
-                if (!g_comp_surf[i].s) {
+                if (!g_comp_surf[i].s && !g_comp_surf[i].retired) {
                     memset(&g_comp_surf[i], 0, sizeof(g_comp_surf[i]));
                     g_comp_surf[i].s = s;
                     g_comp_surf[i].win = win;
+                    registered = true;
                     break;
                 }
             }
             pthread_mutex_unlock(&g_tex_lock);
+            if (!registered) {
+                a_eglDestroySurface(d, s);
+                tl_nwindow_release(win);
+                s = NULL;
+            }
         }
+        pthread_mutex_unlock(&g_frame_handoff);
         tl_log_line("egl: window %dx%d -> surface %p, composited under the app's views", pb[1], pb[3], s);
         return s;
     }
@@ -450,8 +585,8 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
 static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
 {
     void *tex_win = NULL, *comp_win = NULL;
-    unsigned del_tex[3] = { 0, 0, 0 };
     bool comp = false;
+    pthread_mutex_lock(&g_frame_handoff);
     pthread_mutex_lock(&g_tex_lock);
     for (int i = 0; i < MAX_TEX_SURFACES && s; i++) {
         if (g_tex_surf[i].s == s) {
@@ -463,8 +598,9 @@ static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
     for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
         if (g_comp_surf[i].s == s) {
             comp_win = g_comp_surf[i].win;
-            memcpy(del_tex, g_comp_surf[i].tex, sizeof(del_tex));
-            memset(&g_comp_surf[i], 0, sizeof(g_comp_surf[i]));
+            g_comp_surf[i].s = NULL;
+            g_comp_surf[i].win = NULL;
+            g_comp_surf[i].retired = true;
             comp = true;
         }
     }
@@ -473,11 +609,10 @@ static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
     if (comp) {
         if (tl_javaapp_app_tex) tl_javaapp_app_tex(0, 0, 0, 0, 0, 0, 0);
         else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
-        if (a_glDeleteTextures && comp_ctx_ver(a_eglGetCurrentContext()) > 0) {
-            for (int k = 0; k < 3; k++) if (del_tex[k]) a_glDeleteTextures(1, &del_tex[k]);
-        }
+        if (comp_ctx_ver(a_eglGetCurrentContext()) > 0) frame_clean_retired();
         if (comp_win) tl_nwindow_release(comp_win);
     }
+    pthread_mutex_unlock(&g_frame_handoff);
     return a_eglDestroySurface(d, s);
 }
 static EGLSurface w_eglCreatePbufferSurface(EGLDisplay d, EGLConfig c, const EGLint *at) { return a_eglCreatePbufferSurface(d, cfg_real(c), at); }
@@ -554,6 +689,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     void *win = NULL;
     int k = 0, tw = 0, th = 0;
     unsigned tex_id = 0;
+    pthread_mutex_lock(&g_frame_handoff);
     pthread_mutex_lock(&g_tex_lock);
     for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
         if (g_comp_surf[i].s == s) {
@@ -567,12 +703,12 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         }
     }
     pthread_mutex_unlock(&g_tex_lock);
-    if (slot < 0) return false;
+    if (slot < 0) { pthread_mutex_unlock(&g_frame_handoff); return false; }
 
     EGLint surf_w = 0, surf_h = 0;
     a_eglQuerySurface(d, s, EGL_WIDTH, &surf_w);
     a_eglQuerySurface(d, s, EGL_HEIGHT, &surf_h);
-    if (surf_w <= 0 || surf_h <= 0) return true;
+    if (surf_w <= 0 || surf_h <= 0) { pthread_mutex_unlock(&g_frame_handoff); return true; }
 
     int win_w = win ? tl_nwindow_width(win) : 0;
     int win_h = win ? tl_nwindow_height(win) : 0;
@@ -584,9 +720,16 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     }
 
     int ver = a_eglGetCurrentContext ? comp_ctx_ver(a_eglGetCurrentContext()) : 0;
-    if (ver >= 2 && tl_javaapp_app_tex && a_glGetIntegerv && a_glBindFramebuffer
+    tl_frame_sync *frame = &g_comp_surf[slot].sync[k];
+    /* Core GL sync entry points require an ES3 current context. If a surface
+     * moves to an ES2 producer with outstanding ES3 fences, use readback until
+     * a compatible context can recycle that cache slot. */
+    bool compatible = ver >= 3 || !tl_frame_sync_pending(frame);
+    if (ver >= 2 && compatible && tl_javaapp_app_tex_publish && tl_javaapp_app_frame_pace && a_glGetIntegerv && a_glBindFramebuffer
         && a_glActiveTexture && a_glBindTexture && a_glGenTextures && a_glTexParameteri
-        && a_glCopyTexImage2D && a_glCopyTexSubImage2D) {
+        && a_glCopyTexImage2D && a_glCopyTexSubImage2D && a_glFinish) {
+        frame_clean_retired();
+        tl_frame_sync_before_write(frame, &k_frame_sync);
         unsigned fb_target = ver >= 3 ? 0x8CA8u /* GL_READ_FRAMEBUFFER */ : 0x8D40u /* GL_FRAMEBUFFER */;
         unsigned fb_query = ver >= 3 ? 0x8CAAu /* GL_READ_FRAMEBUFFER_BINDING */ : 0x8CA6u /* GL_FRAMEBUFFER_BINDING */;
         int old_fb = 0, old_active = 0x84C0, old_tex = 0;
@@ -610,7 +753,8 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         a_glBindTexture(0x0DE1, (unsigned)old_tex);
         a_glActiveTexture((unsigned)old_active);
         if (old_fb) a_glBindFramebuffer(fb_target, (unsigned)old_fb);
-        if (a_glFlush) a_glFlush();
+        bool asynchronous = ver >= 3 && atomic_load(&g_compositor_es3) && a_glFenceSync && a_glWaitSync && a_glDeleteSync && a_glFlush;
+        tl_frame_sync_after_write(frame, &k_frame_sync, asynchronous);
 
         pthread_mutex_lock(&g_tex_lock);
         if (g_comp_surf[slot].s == s) {
@@ -621,7 +765,11 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         }
         pthread_mutex_unlock(&g_tex_lock);
 
-        tl_javaapp_app_tex(tex_id, cw, ch, vx, vy, vw, vh);
+        uint64_t prev_seq = tl_javaapp_app_tex_publish(tex_id, cw, ch, vx, vy, vw, vh);
+        pthread_mutex_unlock(&g_frame_handoff);
+        /* Waiting for UI pacing while owning the texture handoff would stop
+         * that same UI from acquiring the next frame. */
+        tl_javaapp_app_frame_pace(prev_seq);
         if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
         if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited GPU %dx%d -> %dx%d)", n, cw, ch, vw, vh);
         return true;
@@ -633,6 +781,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         if (tl_javaapp_app_pixels_rect) tl_javaapp_app_pixels_rect(px, rw, rh, vx, vy, vw, vh);
         else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, rw, rh);
     }
+    pthread_mutex_unlock(&g_frame_handoff);
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
     if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited CPU %dx%d -> %dx%d)", n, rw, rh, vw, vh);
     return true;

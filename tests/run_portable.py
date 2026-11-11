@@ -45,7 +45,12 @@ def main():
     net_functions = [re.search(r"static int " + name + r"\(int f\)\n\{.*?\n\}", net_source, re.S)[0]
                      for name in ("ai_flags_to_darwin", "ni_flags_to_darwin")]
     (out / "net_flags_under_test.h").write_text("\n".join(net_functions), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test"):
+    android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
+    publication = [re.search(pattern, android_source, re.S)[0] for pattern in (
+        r"uint64_t tl_javaapp_app_tex_publish\([^)]*\)\n\{.*?\n\}",
+        r"void tl_javaapp_app_frame_pace\([^)]*\)\n\{.*?\n\}")]
+    (out / "frame_publication_under_test.h").write_text("\n\n".join(publication), encoding="utf-8")
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
@@ -133,6 +138,9 @@ def main():
     va_source = (ROOT / "src/translation-layer-next/husk-tl-va.c").read_text(encoding="utf-8")
     trutien_snippets = [
         re.search(r"static bool lib_uses_compressed_heap\([^)]*\)\n\{.*?\n\}", unity_app_source, re.S)[0],
+        re.search(r"int tl_count_scan_args\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
+        re.search(r"int tl_scan_string\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
+        re.search(r"int tl_scan_file\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
         re.search(r"int tl_count_wide_scan_args\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
         re.search(r"int tl_scan_wide\([^)]*\)\n\{.*?\n\}", va_source, re.S)[0],
         re.search(r"static char \*b_tmpnam\([^)]*\)\n\{.*?\n\}", source, re.S)[0],

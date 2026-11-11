@@ -993,11 +993,13 @@ static dvm_native_fn egl_native_lookup(const char *name, const char *sig)
 /* drawing the app's frame on the render thread: a quad at the view's place, the frame's bottom row first */
 static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
 {
+    tl_egl_compositor_frame_begin();
     pthread_mutex_lock(&E2.lk);
     bool on = E2.on; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
     if (on && !tex && E2.px) { ov_upload(up, E2.px, E2.pw, E2.ph); }
     pthread_mutex_unlock(&E2.lk);
-    if (!on) return;
+    if (!on) { tl_egl_compositor_frame_end(0); return; }
+    tl_egl_compositor_frame_wait(tex);
     void (*viewport)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glViewport");
     void (*useProgram)(uint32_t) = gl_fn("glUseProgram");
     void (*disable)(uint32_t) = gl_fn("glDisable");
@@ -1016,6 +1018,7 @@ static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
     attrPtr(0, 2, 0x1406, 0, 0, NULL);
     enableAttr(0);
     draw(0x0005, 0, 4);
+    tl_egl_compositor_frame_end(tex);
     viewport(0, 0, vw, vh);
 }
 /* For EGL: whether this runtime's compositor holds the screen, and an app's own EGL window's frame for it (NULL: no longer shown) */
@@ -1055,14 +1058,16 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
     E2.on = true; E2.seq++;
     pthread_mutex_unlock(&E2.lk);
 }
-void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
+/* Publication is nonblocking so EGL can keep the frame ownership lock until
+ * the texture and its matching dimensions become visible together. */
+uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
 {
     pthread_mutex_lock(&E2.lk);
     if (!tex || pw <= 0 || ph <= 0) {
         E2.on = false; E2.tex = 0; E2.seq++;
         pthread_cond_broadcast(&E2.cv);
         pthread_mutex_unlock(&E2.lk);
-        return;
+        return 0;
     }
     uint64_t prev_seq = E2.seq;
     E2.tex = tex; E2.pw = pw; E2.ph = ph;
@@ -1071,6 +1076,12 @@ void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h
     E2.h = h > 0 ? h : A.cfg.height;
     E2.on = true; E2.seq = prev_seq + 1;
     pthread_cond_broadcast(&E2.cv);
+    pthread_mutex_unlock(&E2.lk);
+    return prev_seq;
+}
+void tl_javaapp_app_frame_pace(uint64_t prev_seq)
+{
+    pthread_mutex_lock(&E2.lk);
     if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq) {
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 16000000L;
@@ -1079,6 +1090,11 @@ void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h
             if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
     }
     pthread_mutex_unlock(&E2.lk);
+}
+void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
+{
+    uint64_t prev_seq = tl_javaapp_app_tex_publish(tex, pw, ph, x, y, w, h);
+    tl_javaapp_app_frame_pace(prev_seq);
 }
 void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h)
 {
@@ -1149,7 +1165,7 @@ static void *gl_run(void *arg)
     const EGLint ui_attr3[] = { 0x3098, 3, EGL_NONE };
     const EGLint ui_attr2[] = { 0x3098, 2, EGL_NONE };
     EGLContext ui = es3 ? createContext(dpy, cfg, NULL, ui_attr3) : NULL;
-    if (!ui) ui = createContext(dpy, cfg, NULL, ui_attr2);
+    if (!ui) { ui = createContext(dpy, cfg, NULL, ui_attr2); es3 = false; }
     EGLContext app = NULL;
     EGLSurface surf = createWindowSurface(dpy, cfg, tl_nwindow_get(), NULL);
     E2.dpy = dpy; E2.ui = ui; E2.screen = surf;
@@ -1164,6 +1180,7 @@ static void *gl_run(void *arg)
     ov_init(&ov);
     ov_init_flip(&appov, true);
     ov_init_flip(&appup, true);
+    tl_egl_compositor_context(ui, es3);
     pthread_mutex_lock(&E2.lk);
     E2.dpy = dpy; E2.cfg = cfg; E2.ui = ui; E2.es3 = es3; E2.ready = true;
     pthread_cond_broadcast(&E2.cv);
@@ -1302,6 +1319,10 @@ static void *gl_run(void *arg)
             next = now_ns();
         }
     }
+    /* Fence cleanup needs a current member of the shared group. A separate
+     * GLSurfaceView renderer may have left its private app context current. */
+    bool reset_current = makeCurrent(dpy, surf, surf, ui);
+    tl_egl_compositor_frame_reset(ui, reset_current);
     makeCurrent(dpy, NULL, NULL, NULL);
     return NULL;
 }

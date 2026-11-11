@@ -306,15 +306,74 @@ int tl_format_wide(wchar_t *out, size_t cap, const wchar_t *fmt, tl_va_list *ap)
     return (int)wn;
 }
 
+int tl_count_scan_args(const char *fmt)
+{
+    if (!fmt) return 0;
+    int seq = 0, max_pos = 0;
+    for (const char *f = fmt; *f;) {
+        if (*f != '%') { f++; continue; }
+        f++;
+        if (!*f) break;
+        if (*f == '%') { f++; continue; }
+        int pos = 0;
+        const char *p = f;
+        while (*p >= '0' && *p <= '9') {
+            if (pos <= 1000) pos = pos * 10 + (int)(*p - '0');
+            p++;
+        }
+        bool has_pos = (p > f && *p == '$');
+        if (has_pos) f = p + 1;
+        bool suppress = (*f == '*');
+        if (suppress) f++;
+        while (*f >= '0' && *f <= '9') f++;
+        if (*f == 'm') f++;
+        while (*f == 'h' || *f == 'l' || *f == 'j' || *f == 'z' || *f == 't' || *f == 'L' || *f == 'q') f++;
+        if (!*f) break;
+        if (*f == '[') {
+            f++;
+            if (*f == '^') f++;
+            if (*f == ']') f++;
+            while (*f && *f != ']') f++;
+            if (*f == ']') f++;
+        } else {
+            f++;
+        }
+        if (!suppress) {
+            if (has_pos) { if (pos > max_pos) max_pos = pos; }
+            else seq++;
+        }
+    }
+    return max_pos > seq ? max_pos : seq;
+}
+
 int tl_scan_string(const char *src, const char *fmt, tl_va_list *ap)
 {
-    /* Every output is a pointer, so the arguments are read blind -- more than any call needs -- and the host's sscanf takes only as many as the format asks for. A game that
-     * parses a wide table with one call needs the room: GTA's timecyc.dat has fifty-two fields to a line. */
+    if (!src || !fmt || !ap) { errno = EINVAL; return EOF; }
+    /* All outputs are pointers, but only the arguments named by the format
+     * exist. Reading extra slots can run beyond the caller's argument stack. */
     enum { N = 96 };
-    void *a[N];
-    for (int i = 0; i < N; i++) a[i] = (void *)(uintptr_t)tl_va_arg_u64(ap);
+    int want = tl_count_scan_args(fmt);
+    if (want > N) { errno = E2BIG; return EOF; }
+    void *a[N] = {0};
+    for (int i = 0; i < want; i++) a[i] = (void *)(uintptr_t)tl_va_arg_u64(ap);
     { static int tr = -1; if (tr < 0) tr = getenv("TL_SCAN_TRACE") ? 1 : 0; if (tr) tl_log_line("scan: sscanf(\"%.80s\", \"%s\")", src, fmt); }
     return sscanf(src, fmt, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15],
+                  a[16], a[17], a[18], a[19], a[20], a[21], a[22], a[23], a[24], a[25], a[26], a[27], a[28], a[29], a[30], a[31],
+                  a[32], a[33], a[34], a[35], a[36], a[37], a[38], a[39], a[40], a[41], a[42], a[43], a[44], a[45], a[46], a[47],
+                  a[48], a[49], a[50], a[51], a[52], a[53], a[54], a[55], a[56], a[57], a[58], a[59], a[60], a[61], a[62], a[63],
+                  a[64], a[65], a[66], a[67], a[68], a[69], a[70], a[71], a[72], a[73], a[74], a[75], a[76], a[77], a[78], a[79],
+                  a[80], a[81], a[82], a[83], a[84], a[85], a[86], a[87], a[88], a[89], a[90], a[91], a[92], a[93], a[94], a[95]);
+}
+
+int tl_scan_file(void *stream, const char *fmt, tl_va_list *ap)
+{
+    if (!stream || !fmt || !ap) { errno = EINVAL; return EOF; }
+    enum { N = 96 };
+    int want = tl_count_scan_args(fmt);
+    if (want > N) { errno = E2BIG; return EOF; }
+    void *a[N] = {0};
+    for (int i = 0; i < want; i++) a[i] = (void *)(uintptr_t)tl_va_arg_u64(ap);
+    return fscanf((FILE *)stream, fmt, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15],
                   a[16], a[17], a[18], a[19], a[20], a[21], a[22], a[23], a[24], a[25], a[26], a[27], a[28], a[29], a[30], a[31],
                   a[32], a[33], a[34], a[35], a[36], a[37], a[38], a[39], a[40], a[41], a[42], a[43], a[44], a[45], a[46], a[47],
                   a[48], a[49], a[50], a[51], a[52], a[53], a[54], a[55], a[56], a[57], a[58], a[59], a[60], a[61], a[62], a[63],
@@ -371,7 +430,7 @@ int tl_scan_wide(const wchar_t *src, const wchar_t *fmt, tl_va_list *ap)
     }
     enum { N = 64 };
     int want = tl_count_wide_scan_args(fmt);
-    if (want > N) want = N;
+    if (want > N) { errno = E2BIG; return EOF; }
     void *a[N] = {0};
     for (int i = 0; i < want; i++) a[i] = (void *)(uintptr_t)tl_va_arg_u64(ap);
     return swscanf(src, fmt, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15],

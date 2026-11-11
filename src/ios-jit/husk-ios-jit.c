@@ -196,7 +196,7 @@ void husk_ios_jit_install_trap_handler(void)
  */
 void husk_ios_jit_log_footprint(const char *tag)
 {
-    task_vm_info_data_t info;
+    task_vm_info_data_t info = {0};
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count)
         != KERN_SUCCESS) {
@@ -219,6 +219,19 @@ void husk_ios_jit_log_footprint(const char *tag)
              info.phys_footprint / (1024.0 * 1024.0),
              info.resident_size  / (1024.0 * 1024.0),
              avail / (1024.0 * 1024.0));
+    /* RSS alone misses compressed/private resource charges. Keep the kernel's
+     * accounting categories visible when investigating a silent termination;
+     * these counters overlap and must not be added as independent GPU bytes. */
+    HUSK_LOG("memory-components[%s]: internal=%.1f MiB  external=%.1f MiB  "
+             "compressed=%.1f MiB  reusable=%.1f MiB",
+             tag ? tag : "", info.internal / (1024.0 * 1024.0),
+             info.external / (1024.0 * 1024.0), info.compressed / (1024.0 * 1024.0),
+             info.reusable / (1024.0 * 1024.0));
+    if (count >= TASK_VM_INFO_REV3_COUNT) {
+        HUSK_LOG("graphics-ledger[%s]: footprint=%.1f MiB  compressed=%.1f MiB",
+                 tag ? tag : "", info.ledger_tag_graphics_footprint / (1024.0 * 1024.0),
+                 info.ledger_tag_graphics_footprint_compressed / (1024.0 * 1024.0));
+    }
 }
 
 size_t husk_ios_available_memory(void)
