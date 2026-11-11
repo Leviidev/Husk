@@ -1017,6 +1017,21 @@ final class QemuRunner: ObservableObject {
         // to it is not something this code can see, so it is simply not offered.
         var candidates = [5120, 4096, 3584, 3072, 2560, 2048]
 
+        // The probe below leaves the file truncated to whichever size mapped,
+        // and QEMU refuses a backing file smaller than the machine ("backing
+        // store size ... is too small for 'size' option"). Without a snapshot
+        // pinning the size, the anonymous budget can land between two of the
+        // fixed steps -- 4358 MiB against a 4096 MiB file -- and every launch
+        // then dies in qemu_init, each one recording a lower failure that the
+        // budget still exceeds. Offering the budget itself as a candidate means
+        // the size that maps is the size the guest is given. Capped at the
+        // largest fixed step, which is as far as this probe is trusted.
+        let budgetCandidate = min(anonymousTarget, candidates[0])
+        if !candidates.contains(budgetCandidate) {
+            candidates.append(budgetCandidate)
+            candidates.sort(by: >)
+        }
+
         // Fold a failed attempt into the permanent floor before using it.
         if let attempted = readInt(ramAttemptPath), readInt(ramProvenPath) != attempted {
             let worst = min(attempted, readInt(ramFailedPath) ?? Int.max)
@@ -1030,7 +1045,9 @@ final class QemuRunner: ObservableObject {
                               + "staying below it")
         }
         let fileBackedTarget = ramFileReady ? largestMappableMiB(candidates) : nil
-        let target = fileBackedTarget.map { max(anonymousTarget, $0) } ?? anonymousTarget
+        // Never larger than the file: the anonymous budget was already offered
+        // above, so if it did not map, the smaller size that did is the ceiling.
+        let target = fileBackedTarget ?? anonymousTarget
 
         QemuRunner.shared.lastGuestMiB = target
         try? String(target).write(toFile: ramAttemptPath, atomically: true, encoding: .utf8)
