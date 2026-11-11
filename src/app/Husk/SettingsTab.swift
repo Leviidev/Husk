@@ -669,6 +669,8 @@ struct JITSettings: View {
     @AppStorage(JITCoordinator.autoEnableKey) private var autoJIT = false
     @AppStorage(JITCoordinator.trollStoreAutoKey) private var trollStoreJIT = true
     @State private var keepAttached = JITBootstrap.keepDebuggerAttached
+    @AppStorage(JITMemoryBudget.settingKey) private var memoryMiB = JITMemoryBudget.defaultMiB
+    @State private var memoryText = String(JITMemoryBudget.megabytes())
 
     private var pairingLabel: String {
         switch jit.pairingSource {
@@ -685,6 +687,34 @@ struct JITSettings: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+
+            Section {
+                HStack {
+                    Text("Memory size")
+                    Spacer()
+                    TextField("512", text: $memoryText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 90)
+                        .accessibilityLabel("JIT memory in MB")
+                    Text("MB").foregroundStyle(.secondary)
+                }
+                Button("Save memory setting") {
+                    if let value = JITMemoryBudget.validMegabytes(memoryText) {
+                        memoryMiB = value
+                        memoryText = String(value)
+                    }
+                }
+                .disabled(JITMemoryBudget.validMegabytes(memoryText) == nil
+                          || JITMemoryBudget.validMegabytes(memoryText) == memoryMiB)
+                if !memoryText.isEmpty, JITMemoryBudget.validMegabytes(memoryText) == nil {
+                    Text("Enter a whole number from 2 to 1024 MB.").font(.caption).foregroundStyle(.orange)
+                }
+            } header: {
+                Text("JIT memory")
+            } footer: {
+                Text("JIT uses the size set here for all apps. Close and reopen Husk after changing this setting.")
+            }
 
             Section {
                 Picker("Method", selection: $jit.method) {
@@ -721,6 +751,8 @@ struct JITSettings: View {
                           mono: false)
                 DetailRow(label: "Executable memory",
                           value: JITBootstrap.isLive ? "granted" : "not claimed", mono: false)
+                DetailRow(label: "Code memory", value: "\(husk_jit_budget_region_bytes() >> 20) MiB", mono: false)
+                DetailRow(label: "Next launch budget", value: "\(JITBootstrap.jitBytes >> 20) MiB", mono: false)
                 // The two routes, named separately. Either one is enough, and
                 // when someone reports "JIT does not work" these two rows are
                 // the whole diagnosis.
