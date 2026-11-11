@@ -83,6 +83,14 @@ def main():
         str(ROOT / "tests/translation-layer/getcwd_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
     run("getcwd", [str(exe), fixture.resolve().as_posix()])
     if os.name != "nt":   # needs mmap/pthread; the registry test is POSIX-only
+        pthread_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-pthread.c").read_text(encoding="utf-8")
+        registry = "typedef struct session_thread" + pthread_source.split("typedef struct session_thread", 1)[1].split("const char *tl_ld_symbol_at", 1)[0]
+        join = re.search(r"int tl_guest_pthread_join\([^)]*\)\n\{.*?\n\}", pthread_source, re.S)[0]
+        (out / "thread_registry_under_test.h").write_text(registry + "\n" + join, encoding="utf-8")
+        exe = out / "thread_registry_test"
+        run("thread registry compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+            str(ROOT / "tests/translation-layer/thread_registry_test.c"), "-pthread", "-o", str(exe)])
+        run("thread registry including blocked TLS teardown", [str(exe)])
         exe = out / "fallback_alloc_test"
         run("fallback allocator compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
             str(ROOT / "tests/translation-layer/fallback_alloc_test.c"),

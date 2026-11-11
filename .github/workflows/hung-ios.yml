@@ -126,7 +126,7 @@ jobs:
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -I src/translation-layer -I src/translation-layer-next -fsyntax-only src/translation-layer-next/husk-tl-vhtg-quest.c
       - name: Host models and Apple autorelease lifetime
         run: python3 tests/run_portable.py --sanitize
-      - name: Production CMS signer against Apple CoreTrust
+      - name: Production CMS signer against Apple Security
         run: python3 tests/test_codesign_apple.py -v
       - name: Build the modified app with the upstream packager
         run: |

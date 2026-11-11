@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Exercise the production signer with a temporary test identity on macOS.
 
-No developer credentials or phone are used. CoreTrust verifies the CMS digest
-and RSA signature separately from certificate trust, which a test CA cannot pass.
+No developer credentials or phone are used. Apple Security verifies the CMS
+separately from certificate trust, which a temporary test CA cannot pass.
 """
 import ctypes
 import hashlib
@@ -36,9 +36,9 @@ def blobs(path):
     return data, result
 
 
-@unittest.skipUnless(platform.system() == 'Darwin', 'requires Apple Security and CoreTrust')
+@unittest.skipUnless(platform.system() == 'Darwin', 'requires Apple Security')
 class AppleSignerTest(unittest.TestCase):
-    def test_production_cms_passes_coretrust_and_detects_tampering(self):
+    def test_production_cms_passes_apple_verification_and_detects_tampering(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
             def run(*args, **kwargs):
@@ -69,6 +69,40 @@ class AppleSignerTest(unittest.TestCase):
             run('openssl', 'cms', '-verify', '-binary', '-noverify', '-inform', 'DER',
                 '-in', work / 'cms.der', '-content', work / 'directory.bin', '-out', work / 'verified.bin')
             self.assertEqual((work / 'verified.bin').read_bytes(), cd)
+            security = ctypes.CDLL('/System/Library/Frameworks/Security.framework/Security')
+            foundation = ctypes.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
+            pointer = ctypes.c_void_p
+            foundation.CFDataCreate.argtypes = [pointer, pointer, ctypes.c_long]
+            foundation.CFDataCreate.restype = pointer
+            foundation.CFRelease.argtypes = [pointer]
+            security.SecPolicyCreateBasicX509.restype = pointer
+            security.CMSDecoderCreate.argtypes = [ctypes.POINTER(pointer)]
+            security.CMSDecoderSetDetachedContent.argtypes = [pointer, pointer]
+            security.CMSDecoderUpdateMessage.argtypes = [pointer, pointer, ctypes.c_size_t]
+            security.CMSDecoderFinalizeMessage.argtypes = [pointer]
+            security.CMSDecoderCopySignerStatus.argtypes = [pointer, ctypes.c_size_t, pointer, ctypes.c_bool,
+                                                            ctypes.POINTER(ctypes.c_int), ctypes.POINTER(pointer),
+                                                            ctypes.POINTER(ctypes.c_int32)]
+            def apple_verify(content):
+                decoder, trust = pointer(), pointer()
+                status, trust_result = ctypes.c_int(), ctypes.c_int32()
+                value = foundation.CFDataCreate(None, content, len(content))
+                policy = security.SecPolicyCreateBasicX509()
+                try:
+                    self.assertEqual(security.CMSDecoderCreate(ctypes.byref(decoder)), 0)
+                    self.assertEqual(security.CMSDecoderSetDetachedContent(decoder, value), 0)
+                    self.assertEqual(security.CMSDecoderUpdateMessage(decoder, cms, len(cms)), 0)
+                    self.assertEqual(security.CMSDecoderFinalizeMessage(decoder), 0)
+                    result = security.CMSDecoderCopySignerStatus(decoder, 0, policy, False,
+                        ctypes.byref(status), ctypes.byref(trust), ctypes.byref(trust_result))
+                    self.assertEqual(result, 0)
+                    return status.value
+                finally:
+                    for reference in (decoder, trust, value, policy):
+                        if reference: foundation.CFRelease(reference)
+            self.assertEqual(apple_verify(cd), 1, 'Apple CMSDecoder rejected the production signature')
+            self.assertNotEqual(apple_verify(cd[:-1] + bytes([cd[-1] ^ 1])), 1)
+            print('PASS: production page hashes, OpenSSL and Apple Security CMS agree; tampering rejected')
             library = None
             for candidate in ('/System/Library/PrivateFrameworks/CoreTrust.framework/CoreTrust', '/usr/lib/libCoreTrust.dylib'):
                 try:
@@ -76,7 +110,9 @@ class AppleSignerTest(unittest.TestCase):
                     break
                 except OSError:
                     pass
-            self.assertIsNotNone(library, 'CoreTrust is required on the Apple QA runner')
+            if library is None or not hasattr(library, 'CTVerifyAmfiCMS'):
+                print('NOT TESTED: private CoreTrust verifier is unavailable on this host; iOS trust still requires device validation')
+                return
             verify = library.CTVerifyAmfiCMS
             verify.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t,
                                ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32),
@@ -89,7 +125,7 @@ class AppleSignerTest(unittest.TestCase):
             digest = hashlib.sha256(cd).digest()
             self.assertEqual(check(digest), 0, 'CoreTrust rejected the production CMS')
             self.assertNotEqual(check(bytes(32)), 0, 'CoreTrust must reject a different CodeDirectory digest')
-            print('PASS: production page hashes, OpenSSL CMS and Apple CoreTrust agree; tampering rejected')
+            print('PASS: additional Apple CoreTrust CMS verification; tampering rejected')
 
 
 if __name__ == '__main__':

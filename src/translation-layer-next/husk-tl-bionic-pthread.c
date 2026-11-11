@@ -585,6 +585,7 @@ static int b_create(pthread_t *out, const guest_attr *attr, void *(*fn)(void *),
     pthread_attr_destroy(&a);
     if (r) { tl_guest_thread_release((void *)(uintptr_t)c->tracked); free(c); return rc(r); }
     tl_guest_thread_register((uintptr_t)t, c->tracked);
+    if (c->tracked && attr && (attr->flags & GATTR_DETACHED)) (void)session_thread_detach(t);
     atomic_store(&c->ready, true);
     *out = t;
     return 0;

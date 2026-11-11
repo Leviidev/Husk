@@ -71,9 +71,11 @@ including the loader and AOT converter, cross-compiled for ARM64 macOS with Zig.
 Windows cannot execute the Apple runtime or Swift/iOS checks.
 
 CI additionally runs real Apple autorelease lifetime checks, Swift lifecycle
-models, the production CMS signer with an ephemeral test identity, and Apple
-CoreTrust CMS signature verification. The test identity is not a developer
-certificate, so that test does not establish device certificate trust.
+models, and the production CMS signer with an ephemeral test identity against
+OpenSSL and Apple Security's CMSDecoder. A separate CoreTrust check is attempted
+only when that private verifier is available on the host. The test identity is
+not a developer certificate, so these checks do not establish iOS certificate
+trust.
 
 Required device checks for the new IPA are: JIT-less library validation, all
 three games starting, returning home and switching/reopening repeatedly,
