@@ -101,6 +101,23 @@ after the read returns, avoiding a file-backed destination fault during kernel
 copyout. A host test also exercises a private source-file mapping across
 multiple buffer boundaries. The new copy path still needs device validation.
 
+### Device shutdown stall observed after the old build
+
+The user reported system lag and Face ID failing after opening Husk, recovering
+after reboot. The 12:11:30 local-time panic report records a watchdog timeout
+with 93 seconds without watchdogd checkins during shutdown, before VFS shutdown
+started. The old Husk process (f7ce1f9) still had one `TH_WAIT | TH_UNINT` kernel
+thread after termination was requested. The snapshot reports no memory
+pressure. This supports the observed shutdown stall; it does not establish a
+biometric hardware fault or prove the cause of the Face ID symptom.
+
+After reboot, InstallationProxy confirms 0ca4d88 installed successfully. Husk
+is closed, and the latest application log is still from f7ce1f9: the new build
+has not been launched for further testing. Runtime/installation attempts were
+stopped while investigating system recovery. The regression test now rejects
+any filesystem read directly into the private source-file mapping, since the
+old code can otherwise pass byte-for-byte tests on host kernels.
+
 Required device checks for the new IPA are: JIT-less library validation, all
 three games starting, returning home and switching/reopening repeatedly,
 playing past the previous memory-pressure point, scene stability, and server

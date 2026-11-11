@@ -1,11 +1,37 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "husk-tl-aot-data.h"
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
+
+static uintptr_t mapped_begin, mapped_end;
+static size_t checked_reads;
+
+/* The iOS failure was a kernel copyout into a private mapping of the file
+ * being read. Host kernels may allow it, so check this I/O constraint as well
+ * as the resulting bytes. Other implementations using independent storage
+ * remain valid; only an overlapping read destination is forbidden. */
+static size_t checked_fread(void *destination, size_t size, size_t count, FILE *file)
+{
+    assert(size == 0 || count <= SIZE_MAX / size);
+    size_t bytes = size * count;
+    uintptr_t begin = (uintptr_t)destination;
+    assert(bytes <= UINTPTR_MAX - begin);
+    if (bytes && mapped_end > mapped_begin && begin < mapped_end && begin + bytes > mapped_begin) {
+        fputs("FAIL: filesystem read targets the private source-file mapping\n", stderr);
+        exit(77);
+    }
+    checked_reads++;
+    return fread(destination, size, count, file);
+}
+
+#define fread checked_fread
+#include "husk-tl-aot-data.h"
+#undef fread
 
 int main(void)
 {
@@ -48,7 +74,10 @@ int main(void)
         assert(mapped);
         memcpy(mapped, initial_large, bytes);
 #endif
+        mapped_begin = (uintptr_t)mapped;
+        mapped_end = mapped_begin + bytes;
         assert(tl_aot_restore_data(mapped + start, restored, original, start, copied));
+        mapped_begin = mapped_end = 0;
         assert(!memcmp(mapped, initial_large, start + copied));
         for (size_t i = start + copied; i < start + restored; i++) assert(mapped[i] == 0);
         assert(!memcmp(mapped + start + restored, initial_large + start + restored, bytes - start - restored));
@@ -60,6 +89,7 @@ int main(void)
     }
     free(initial_large);
     fclose(original);
-    puts("PASS: repeated file-backed images restore initial data and BSS without touching adjacent memory");
+    assert(checked_reads > 0);
+    puts("PASS: repeated file-backed images restore data/BSS and never pass their private mapping to filesystem reads");
     return 0;
 }
