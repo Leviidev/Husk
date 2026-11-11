@@ -60,6 +60,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// mean time one frame takes it. Refreshed once a second from the runtime's own counters.
     private let stats = UILabel()
     private var statsTimer: Timer?
+    private var lifecycleObservers: [NSObjectProtocol] = []
 
     /// Called when three fingers tap at once: the way back to the interface while it is hidden.
     var onThreeFingerTap: (() -> Void)?
@@ -119,9 +120,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: its views are told (an adjustResize window shrinks above it).
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
-                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                     self?.keyboardMoved(note)
-                }
+                })
             }
         } else if engine == .flutter {
             TLUnityUIView.cocosView = self
@@ -132,18 +133,18 @@ final class TLUnityUIView: UIView, UIKeyInput {
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: Flutter is told, and moves the focused field above it.
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
-                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                     self?.keyboardMoved(note)
-                }
+                })
             }
         }
         // The GPU is not the app's while it is in the background: stop drawing, and carry on when it returns.
-        NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
+        lifecycleObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
             husk_unity_set_paused(true)
-        }
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            if self?.window != nil { husk_unity_set_paused(false) }
-        }
+        })
+        lifecycleObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            if self?.window != nil, !APKSession.shared.closing { husk_unity_set_paused(false) }
+        })
     }
 
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
@@ -193,7 +194,21 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_flutter_set_keyboard_inset(Int32((covered * contentScaleFactor).rounded()))
     }
 
-    deinit { statsTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
+    func discardSession() {
+        statsTimer?.invalidate(); statsTimer = nil
+        lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        lifecycleObservers.removeAll()
+        onStats = nil; onThreeFingerTap = nil
+        if isFirstResponder { resignFirstResponder() }
+        if engine == .java { husk_java_web_attach(nil, nil, 1, 1) }
+        webHost?.removeFromSuperview(); webHost = nil
+        pointers.removeAll()
+        layer.contents = nil
+    }
+    deinit {
+        statsTimer?.invalidate()
+        lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
+    }
 
     private func updateStats() {
         var p = husk_unity_perf()
@@ -240,7 +255,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         statsTimer?.invalidate()
         statsTimer = nil
         if window != nil {
-            husk_unity_set_paused(false)
+            if !APKSession.shared.closing { husk_unity_set_paused(false) }
             statsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.updateStats() }
         } else {
             husk_unity_set_paused(true)
@@ -742,6 +757,10 @@ struct TLUnityScreen: UIViewRepresentable {
     /// engine cannot be started twice, so coming back to the game must show the same layer, not a new one.
     private static var shared: [String: TLUnityUIView] = [:]
 
+    static func discard(apk: String) {
+        shared.removeValue(forKey: apk)?.discardSession()
+    }
+
     /// The game's one view, made the first time it is asked for.
     static func view(apk: String, extraApks: [String], dataDir: String, engine: TLNativeEngine, portrait: Bool, scale: CGFloat) -> TLUnityUIView {
         if let view = shared[apk] { return view }
@@ -800,6 +819,7 @@ final class TLUnityModel: ObservableObject {
         case Int32(HUSK_UNITY_RUNNING):  return "Running"
         case Int32(HUSK_UNITY_FAILED):   return "Could not start — see the log"
         case Int32(HUSK_UNITY_ENDED):    return "The game exited"
+        case Int32(HUSK_UNITY_STOPPING): return "Closing APK…"
         default:                         return "Starting"
         }
     }
@@ -829,6 +849,7 @@ struct TLCocosAttemptView: View {
     let app: TLApp
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = TLUnityModel()
+    @ObservedObject private var apkSession = APKSession.shared
     /// Why the app stopped, when its log says: shown over the screen
     @State private var stoppedWhy: AppDiagnosis?
     @AppStorage("husk.tl.unity.showLog") private var showLogSetting = false
@@ -929,6 +950,7 @@ struct TLCocosAttemptView: View {
                 .transition(.opacity)
             }
         }
+        .disabled(apkSession.closing)
         .statusBarHidden(true)
         .huskHideSystemOverlays()
         // Swipes near the edges are the game's.
@@ -959,6 +981,7 @@ struct TLCocosAttemptView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in dismiss() }
         .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { dismiss() } } }
+        .overlay { APKStoppingOverlay(app: app) { dismiss() } }
     }
 
     /// While the pad is being edited: what to do with the control picked, in a small panel in the middle of the screen.
@@ -998,9 +1021,12 @@ struct TLCocosAttemptView: View {
     private var bar: some View {
         HStack(spacing: 12) {
             Button { dismiss() } label: {
-                Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
+                Label("Pause and Return", systemImage: "chevron.backward").font(.system(size: 13, weight: .semibold))
             }
             .tint(.white)
+            if engine == .java {
+                CloseAPKButton(app: app, compact: true)
+            }
             if engine == .flutter {
                 Button { husk_flutter_back() } label: {
                     Label("Back", systemImage: "chevron.backward").font(.system(size: 13, weight: .semibold))

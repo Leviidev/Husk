@@ -13,6 +13,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
+#include "husk-tl-session.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -217,7 +218,14 @@ static int b_connect(int fd, const void *g, socklen_t glen)
     struct sockaddr_storage s;
     socklen_t n = sa_to_darwin(g, glen, &s);
     if (!n) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; }
-    TL_ERRNO_BEGIN(); int r = connect(fd, (struct sockaddr *)&s, n); int e = errno; TL_ERRNO_END();
+    TL_ERRNO_BEGIN();
+    tl_session_io io;
+    bool entered = tl_session_io_begin(&io, fd);
+    int r = entered ? connect(fd, (struct sockaddr *)&s, n) : -1;
+    int e = errno;
+    if (entered) tl_session_io_end(&io);
+    errno = e;
+    TL_ERRNO_END();
     { char ip[64] = "?"; if (s.ss_family == AF_INET) inet_ntop(AF_INET, &((struct sockaddr_in *)&s)->sin_addr, ip, sizeof(ip)); NTRACE("connect(fd %d, %s) -> %d errno %d", fd, ip, r, e); }
     return r;
 }
@@ -228,7 +236,8 @@ static int accept_common(int fd, void *g, socklen_t *glen, int flags)
 {
     struct sockaddr_storage s; socklen_t sl = sizeof(s);
     TL_ERRNO_BEGIN();
-    int c = accept(fd, (struct sockaddr *)&s, &sl);
+    tl_session_io io; int c = -1;
+    if (tl_session_io_begin(&io, fd)) { c = accept(fd, (struct sockaddr *)&s, &sl); tl_session_io_end(&io); }
     if (c >= 0) {
         if (flags & G_SOCK_CLOEXEC) fcntl(c, F_SETFD, FD_CLOEXEC);
         if (flags & G_SOCK_NONBLOCK) fcntl(c, F_SETFL, fcntl(c, F_GETFL) | O_NONBLOCK);
@@ -243,11 +252,15 @@ static int b_accept4(int fd, void *g, socklen_t *glen, int flags) { return accep
 
 static long b_send(int fd, const void *p, size_t n, int flags)
 {
-    TL_ERRNO_BEGIN(); long r = send(fd, p, n, msg_flags_to_darwin(flags)); int e = errno; TL_ERRNO_END(); NTRACE("send(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
+    TL_ERRNO_BEGIN(); tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = send(fd, p, n, msg_flags_to_darwin(flags)); tl_session_io_end(&io); }
+    int e = errno; TL_ERRNO_END(); NTRACE("send(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
 }
 static long b_recv(int fd, void *p, size_t n, int flags)
 {
-    TL_ERRNO_BEGIN(); long r = recv(fd, p, n, msg_flags_to_darwin(flags)); int e = errno; TL_ERRNO_END(); NTRACE("recv(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
+    TL_ERRNO_BEGIN(); tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = recv(fd, p, n, msg_flags_to_darwin(flags)); tl_session_io_end(&io); }
+    int e = errno; TL_ERRNO_END(); NTRACE("recv(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
 }
 static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, socklen_t glen);
 static long b___sendto_chk(int fd, const void *p, size_t n, size_t bl, int flags, const void *g, socklen_t glen) { (void)bl; return b_sendto(fd, p, n, flags, g, glen); }
@@ -255,7 +268,9 @@ static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, 
 {
     struct sockaddr_storage s; socklen_t sl = 0;
     if (g) { sl = sa_to_darwin(g, glen, &s); if (!sl) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; } }
-    TL_ERRNO_BEGIN(); long r = sendto(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, sl); TL_ERRNO_END(); return r;
+    TL_ERRNO_BEGIN(); tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = sendto(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, sl); tl_session_io_end(&io); }
+    TL_ERRNO_END(); return r;
 }
 static long b_recvfrom(int fd, void *p, size_t n, int flags, void *g, socklen_t *glen);
 /* FORTIFY's recvfrom: the same, with the size of the buffer it fills. */
@@ -264,7 +279,8 @@ static long b_recvfrom(int fd, void *p, size_t n, int flags, void *g, socklen_t 
 {
     struct sockaddr_storage s; socklen_t sl = sizeof(s);
     TL_ERRNO_BEGIN();
-    long r = recvfrom(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, g ? &sl : NULL);
+    tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = recvfrom(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, g ? &sl : NULL); tl_session_io_end(&io); }
     if (r >= 0 && g && glen) *glen = sa_from_darwin((struct sockaddr *)&s, g, *glen);
     int e = errno;
     TL_ERRNO_END();
@@ -285,7 +301,9 @@ static long b_sendmsg(int fd, const guest_msghdr *g, int flags)
         m.msg_name = &s;
     }
     m.msg_iov = g->iov; m.msg_iovlen = (int)g->iovlen;
-    TL_ERRNO_BEGIN(); long r = sendmsg(fd, &m, msg_flags_to_darwin(flags)); TL_ERRNO_END(); return r;
+    TL_ERRNO_BEGIN(); tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = sendmsg(fd, &m, msg_flags_to_darwin(flags)); tl_session_io_end(&io); }
+    TL_ERRNO_END(); return r;
 }
 static long b_recvmsg(int fd, guest_msghdr *g, int flags)
 {
@@ -294,7 +312,8 @@ static long b_recvmsg(int fd, guest_msghdr *g, int flags)
     if (g->name) { m.msg_name = &s; m.msg_namelen = sizeof(s); }
     m.msg_iov = g->iov; m.msg_iovlen = (int)g->iovlen;
     TL_ERRNO_BEGIN();
-    long r = recvmsg(fd, &m, msg_flags_to_darwin(flags));
+    tl_session_io io; long r = -1;
+    if (tl_session_io_begin(&io, fd)) { r = recvmsg(fd, &m, msg_flags_to_darwin(flags)); tl_session_io_end(&io); }
     if (r >= 0) {
         if (g->name) g->namelen = sa_from_darwin((struct sockaddr *)&s, g->name, g->namelen);
         g->controllen = 0;

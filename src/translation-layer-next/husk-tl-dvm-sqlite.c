@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <pthread.h>
 
 #include "husk-tl-dvm-internal.h"
 
@@ -38,6 +39,24 @@ static int coll_binary(void *u, int la, const void *a, int lb, const void *b)
 
 /* open(path, flags): Android's OPEN_READONLY (1) / CREATE_IF_NECESSARY (0x10000000); the handle, or 0 (errorOf(0) says why) */
 static char g_open_error[512];
+typedef struct connection { sqlite3 *db; struct connection *next; } connection;
+static connection *g_connections;
+static pthread_mutex_t g_connections_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Java owners are discarded at a session boundary, including owners which never called close(). */
+void tl_sqlite_reset_session(void)
+{
+    pthread_mutex_lock(&g_connections_lock);
+    while (g_connections) {
+        connection *c = g_connections; g_connections = c->next;
+        sqlite3_stmt *statement;
+        while ((statement = sqlite3_next_stmt(c->db, NULL))) sqlite3_finalize(statement);
+        sqlite3_close_v2(c->db); /* also rolls back abandoned transactions */
+        free(c);
+    }
+    g_open_error[0] = 0;
+    pthread_mutex_unlock(&g_connections_lock);
+}
 NAT(S_open)
 {
     (void)self;
@@ -76,10 +95,23 @@ NAT(S_open)
     sqlite3_busy_timeout(db, 2500);
     sqlite3_create_collation(db, "LOCALIZED", SQLITE_UTF8, NULL, coll_nocase);
     sqlite3_create_collation(db, "UNICODE", SQLITE_UTF8, NULL, coll_binary);
+    connection *c = malloc(sizeof(*c));
+    if (!c) { sqlite3_close(db); snprintf(g_open_error, sizeof(g_open_error), "Out of memory"); *ret = J(0); return true; }
+    c->db = db;
+    pthread_mutex_lock(&g_connections_lock); c->next = g_connections; g_connections = c; pthread_mutex_unlock(&g_connections_lock);
     *ret = J((int64_t)(uintptr_t)db);
     return true;
 }
-NAT(S_close) { (void)self; (void)ret; if (DB) sqlite3_close_v2(DB); return true; }
+NAT(S_close)
+{
+    (void)self; (void)ret;
+    pthread_mutex_lock(&g_connections_lock);
+    connection **p = &g_connections;
+    while (*p && (*p)->db != DB) p = &(*p)->next;
+    if (*p) { connection *c = *p; *p = c->next; sqlite3_close_v2(c->db); free(c); }
+    pthread_mutex_unlock(&g_connections_lock);
+    return true;
+}
 NAT(S_errmsg) { (void)self; *ret = L(dvm_new_string_utf8(DB ? sqlite3_errmsg(DB) : g_open_error)); return true; }
 NAT(S_errcode) { (void)self; *ret = I(DB ? sqlite3_extended_errcode(DB) : SQLITE_CANTOPEN); return true; }
 NAT(S_exec)

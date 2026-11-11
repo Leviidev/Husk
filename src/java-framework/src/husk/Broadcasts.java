@@ -8,6 +8,7 @@ import java.util.ArrayList;
 /** Broadcasts within the app: to receivers registered at run time and those in the manifest; the system's own few (battery) answered. */
 public final class Broadcasts {
     private static final ArrayList<Object[]> sReceivers = new ArrayList<>();
+    public static void resetSession() { sReceivers.clear(); }
     private Broadcasts() {}
     public static Intent register(BroadcastReceiver r, IntentFilter f) {
         synchronized (sReceivers) { sReceivers.add(new Object[] { r, f }); }

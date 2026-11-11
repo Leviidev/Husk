@@ -27,6 +27,7 @@
 
 #include "husk-tl-dvm-internal.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-session.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
@@ -162,13 +163,12 @@ static int stream_write(int id, const int16_t *in, int frames, bool blocking)
     double step = (double)s->rate / OUT_RATE;
     int done = 0;
     while (done < frames) {
+        if (tl_session_stopping()) break;
         while (s->used && s->count >= RING - 1) {
-            if (!blocking) goto out;
-            if (!s->playing) {
-                /* a paused track that is full: Android's write blocks; wait (the app plays or flushes it from another thread) */
-                struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); ts.tv_nsec += 50 * 1000000; if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
-                pthread_cond_timedwait(&M.room, &M.mu, &ts);
-            } else pthread_cond_wait(&M.room, &M.mu);
+            if (!blocking || tl_session_stopping()) goto out;
+            struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts); ts.tv_nsec += 20 * 1000000;
+            if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+            pthread_cond_timedwait(&M.room, &M.mu, &ts);
         }
         if (!s->used) break;
         /* produce output frames while there is input: linear interpolation between prev and the current input frame */
@@ -195,12 +195,20 @@ out:
 
 /* ------------------------------------------------------------------ decoding */
 
-typedef struct {
+typedef struct decoder {
     stb_vorbis *ogg;
     ExtAudioFileRef ext; AudioFileID af;
     uint8_t *data; size_t len;
     int rate, channels; int64_t frames;
+    struct decoder *next;
 } decoder;
+static decoder *g_decoders;
+static pthread_mutex_t g_decoder_lock = PTHREAD_MUTEX_INITIALIZER;
+static decoder *dec_track(decoder *d)
+{
+    pthread_mutex_lock(&g_decoder_lock); d->next = g_decoders; g_decoders = d; pthread_mutex_unlock(&g_decoder_lock);
+    return d;
+}
 
 static OSStatus mem_read(void *u, SInt64 pos, UInt32 n, void *buf, UInt32 *got)
 {
@@ -224,7 +232,7 @@ static decoder *dec_open(uint8_t *data, size_t len)
             d->rate = (int)i.sample_rate; d->channels = i.channels > 2 ? 2 : i.channels;
             d->frames = stb_vorbis_stream_length_in_samples(d->ogg);
             if (i.channels > 2) d->channels = 2;
-            return d;
+            return dec_track(d);
         }
         tl_log_line("audio: an Ogg file stb_vorbis cannot read (error %d)", err);
         free(d); return NULL;
@@ -242,7 +250,7 @@ static decoder *dec_open(uint8_t *data, size_t len)
     SInt64 fr = 0; sz = sizeof(fr);
     ExtAudioFileGetProperty(d->ext, kExtAudioFileProperty_FileLengthFrames, &sz, &fr);
     d->frames = fr;
-    return d;
+    return dec_track(d);
 }
 static int dec_read(decoder *d, int16_t *buf, int frames)
 {
@@ -260,11 +268,29 @@ static void dec_seek(decoder *d, int64_t frame)
 static void dec_close(decoder *d)
 {
     if (!d) return;
+    pthread_mutex_lock(&g_decoder_lock);
+    decoder **p = &g_decoders; while (*p && *p != d) p = &(*p)->next;
+    if (!*p) { pthread_mutex_unlock(&g_decoder_lock); return; }
+    *p = d->next;
+    pthread_mutex_unlock(&g_decoder_lock);
     if (d->ogg) stb_vorbis_close(d->ogg);
     if (d->ext) ExtAudioFileDispose(d->ext);
     if (d->af) AudioFileClose(d->af);
     free(d->data);
     free(d);
+}
+
+void tl_audio_reset_session(void)
+{
+    /* Called only after all app calls/workers drained; the process-level mixer holds no Java objects. */
+    pthread_mutex_lock(&M.mu);
+    for (int i = 0; i < MAX_STREAMS; i++) free(M.s[i].ring);
+    for (int i = 0; i < MAX_SAMPLES; i++) free(M.smp[i].pcm);
+    memset(M.s, 0, sizeof(M.s)); memset(M.smp, 0, sizeof(M.smp)); memset(M.v, 0, sizeof(M.v));
+    M.next_voice = 1;
+    pthread_cond_broadcast(&M.room);
+    pthread_mutex_unlock(&M.mu);
+    while (g_decoders) dec_close(g_decoders);
 }
 
 /* ------------------------------------------------------------------ natives (husk.Audio) */

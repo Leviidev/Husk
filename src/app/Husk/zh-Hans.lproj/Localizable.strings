@@ -437,3 +437,14 @@
 "Email" = "电子邮件";
 "Privacy policy" = "隐私政策";
 "View on Google Play" = "在 Google Play 上查看";
+
+"Fully Close APK" = "彻底关闭 APK";
+"Fully close this APK?" = "彻底关闭此 APK？";
+"Husk stays open. The next launch starts the app from the beginning." = "Husk 会保持打开，下次启动此应用时会从头开始运行。";
+"Husk stays open. The next launch starts the app from the beginning. Saved data is kept; unsaved changes may be lost." = "Husk 会保持打开，下次启动此应用时会从头开始运行。已保存的数据会保留，未保存的内容可能丢失。";
+"The APK is still stopping" = "APK 尚未完全停止";
+"Closing APK…" = "正在关闭 APK…";
+"Return to Library" = "返回应用库";
+"Husk is still releasing this APK's resources and will finish closing it automatically. The app cannot be resumed while it is stopping." = "Husk 仍在释放此 APK 的资源，完成后会自动关闭。停止期间无法恢复操作。";
+"Husk is releasing the app's resources. You can return to the library while it finishes." = "Husk 正在释放应用资源。等待期间可以返回应用库。";
+"A task in the app has not finished yet. Wait a moment and try Fully Close APK again. Husk has kept the session to avoid losing or corrupting its data." = "应用中仍有任务未结束。请稍等后再次点击“彻底关闭 APK”。Husk 已保留当前会话，避免损坏数据。";

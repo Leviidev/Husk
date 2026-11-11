@@ -127,6 +127,7 @@ private func fileBytes(_ paths: [String]) -> String {
 /// A translation-layer game: Play, its settings, what it is, and removing it.
 struct GamePage: View {
     let app: TLApp
+    @ObservedObject private var apkSession = APKSession.shared
     @ObservedObject private var showcase = ShowcaseStore.shared
 
     @ObservedObject private var store = TranslationLayerStore.shared
@@ -190,6 +191,13 @@ struct GamePage: View {
                 }
             }
 
+            if loadedNow && app.screenEngine == .java {
+                Section {
+                    CloseAPKButton(app: app)
+                } footer: {
+                    Text("Husk stays open. The next launch starts the app from the beginning.")
+                }
+            }
             // what the files say before it starts: a damaged APK, the wrong CPU, a missing piece, protection that refuses Husk
             if let d = preflight {
                 Section {
@@ -270,6 +278,7 @@ struct GamePage: View {
         .listStyle(.insetGrouped)
         .navigationTitle(app.label)
         .navigationBarTitleDisplayMode(.inline)
+        .disabled(apkSession.closing)
         .fullScreenCover(isPresented: $playing, onDismiss: askHowItRan) { TLAttemptView(app: app) }
         .sheet(item: $reporting) { CompatReportSheet(subject: $0) }
         .sheet(item: Binding(get: { backupFile.map(IdentifiedURL.init) }, set: { backupFile = $0?.url })) { f in
@@ -358,6 +367,7 @@ struct GamePage: View {
 
     /// This game's engine is loaded in this run of Husk, so its files may be open: no restoring under it.
     private var loadedNow: Bool {
+        _ = apkSession.revision
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }) else { return false }
         return loaded == app.apks.first
     }

@@ -42,6 +42,10 @@ bool tl_xmem_open(size_t host_bytes, char *err, size_t errlen);
  * constant for every allocation. Returns false when the region is exhausted.
  */
 bool tl_xmem_alloc(size_t bytes, uint8_t **rx, uint8_t **rw);
+/* Process-lifetime runtime images and host dispatch stubs remain usable across APK sessions.
+ * Their resident pages need not be allocated again when checking a warm launch's budget. */
+bool tl_xmem_alloc_shared(size_t bytes, uint8_t **rx, uint8_t **rw);
+size_t tl_xmem_shared_used(void);
 
 /* rw - rx for the region, valid after tl_xmem_open succeeds. */
 ptrdiff_t tl_xmem_delta(void);
