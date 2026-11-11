@@ -13,8 +13,19 @@ static inline bool tl_aot_restore_data(void *address, size_t memory_bytes, FILE 
                                      uint64_t file_offset, size_t file_bytes)
 {
     if (file_bytes > memory_bytes || file_offset > INT64_MAX) return false;
-    if (file_bytes && (fseeko(file, (off_t)file_offset, SEEK_SET) ||
-                      fread(address, 1, file_bytes, file) != file_bytes)) return false;
+    if (file_bytes && fseeko(file, (off_t)file_offset, SEEK_SET)) return false;
+    /* The destination is a private dyld mapping of this same file. Do not let
+     * read(2)'s copyout fault those file-backed pages while the filesystem is
+     * reading the vnode: on iOS this can block the loader in the kernel. Read
+     * into ordinary stack memory, then fault/write the mapping in userspace. */
+    uint8_t buffer[4096];
+    for (size_t offset = 0; offset < file_bytes; ) {
+        size_t count = file_bytes - offset;
+        if (count > sizeof(buffer)) count = sizeof(buffer);
+        if (fread(buffer, 1, count, file) != count) return false;
+        memcpy((uint8_t *)address + offset, buffer, count);
+        offset += count;
+    }
     memset((uint8_t *)address + file_bytes, 0, memory_bytes - file_bytes);
     return true;
 }

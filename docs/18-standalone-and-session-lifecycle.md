@@ -91,6 +91,16 @@ omitted the root. This establishes a concrete difference from host-only CMS
 verification. The signer now preserves the selected root and includes the
 public Apple Inc. Root alongside WWDR G3 when constructing that path.
 
+Extending that reversible repair to all 18 Tru Tien libraries passed the full
+preparation step in 0.2 seconds with `debugged at launch: false` and
+`TL_NO_XMEM`. Java then blocked during `aot_import`; an Instruments stackshot
+showed the loader sleeping in the filesystem read below that function. Its
+data reset read directly into dyld's private mapping of the same source file.
+The reset now reads into a small ordinary buffer and copies to the mapping
+after the read returns, avoiding a file-backed destination fault during kernel
+copyout. A host test also exercises a private source-file mapping across
+multiple buffer boundaries. The new copy path still needs device validation.
+
 Required device checks for the new IPA are: JIT-less library validation, all
 three games starting, returning home and switching/reopening repeatedly,
 playing past the previous memory-pressure point, scene stability, and server
