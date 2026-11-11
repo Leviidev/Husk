@@ -21,6 +21,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-memory.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-godot.h"
@@ -635,7 +636,13 @@ void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_optio
     g_java_host.share = share; g_java_host.orientation = orientation;
 }
 static bool java_running(void) { return atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA; }
-void husk_java_memory_warning(void) { if (java_running()) tl_javaapp_touch(10, 0, 0, 0); }
+void husk_java_memory_warning(void)
+{
+    if (java_running()) {
+        tl_host_log_memory_breakdown("game-memory-warning");
+        tl_javaapp_touch(10, 0, 0, 0);
+    }
+}
 void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard)
 {
     g_java_insets[0] = left; g_java_insets[1] = top; g_java_insets[2] = right; g_java_insets[3] = bottom;

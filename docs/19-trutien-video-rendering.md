@@ -44,6 +44,10 @@ Memory warning diagnostics now include internal, external, compressed and
 graphics-ledger counters. These accounting categories can overlap and are not
 an independent measurement of GPU allocation. They help attribute the
 footprint/RSS difference in a subsequent run.
+These diagnostics live in the app's rebuilt translation layer. The optional
+dependency-reuse build uses a pinned QEMU dylib, so changing QEMU's JIT logging
+source alone does not change the packaged implementation. Delivery checks
+require both new diagnostic format strings in the app executable.
 
 Game resolution, font assets, texture quality, visible-player settings and
 memory-warning delivery are preserved. No user APK, video, font or device log

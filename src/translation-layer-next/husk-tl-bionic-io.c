@@ -96,6 +96,28 @@ void tl_host_memory_info(tl_memory_info *info)
     }
 }
 
+/* The pinned QEMU dependency owns husk_ios_jit_log_footprint. Keep extended
+ * warning diagnostics in the app's rebuilt translation layer so an upstream
+ * dependency build cannot silently omit a new log format. Kernel accounting
+ * categories overlap; these are not independent measurements of GPU bytes. */
+void tl_host_log_memory_breakdown(const char *tag)
+{
+    task_vm_info_data_t vm = {0};
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&vm, &count) != KERN_SUCCESS) {
+        tl_log_line("memory-components[%s]: task_info failed", tag ? tag : "");
+        return;
+    }
+    const double mib = 1024.0 * 1024.0;
+    tl_log_line("memory-components[%s]: internal=%.1f MiB external=%.1f MiB compressed=%.1f MiB reusable=%.1f MiB",
+                tag ? tag : "", vm.internal / mib, vm.external / mib, vm.compressed / mib, vm.reusable / mib);
+    if (count >= TASK_VM_INFO_REV3_COUNT) {
+        tl_log_line("graphics-ledger[%s]: footprint=%.1f MiB compressed=%.1f MiB",
+                    tag ? tag : "", vm.ledger_tag_graphics_footprint / mib,
+                    vm.ledger_tag_graphics_footprint_compressed / mib);
+    }
+}
+
 /* ------------------------------------------------------------ path mapping */
 
 /*

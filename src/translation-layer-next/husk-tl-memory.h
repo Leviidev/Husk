@@ -9,6 +9,7 @@ typedef struct tl_memory_info {
     unsigned threads;
 } tl_memory_info;
 void tl_host_memory_info(tl_memory_info *info);
+void tl_host_log_memory_breakdown(const char *tag);
 
 static inline void tl_memory_proc_meminfo(char *out, size_t size, const tl_memory_info *info)
 {
