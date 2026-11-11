@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-dexindex.h"
@@ -35,9 +36,24 @@ static uint32_t hash_str(const char *s) { uint32_t h = 2166136261u; while (*s) {
 
 /* --------------------------------------------------------------- objects */
 
+static _Noreturn void object_allocation_failed(void)
+{
+    /* Callers require a complete object. Reporting this through tl_jni_throw would allocate another one. */
+    static const char message[] = "jni: could not allocate a Java object or its storage\n";
+    (void)write(STDERR_FILENO, message, sizeof(message) - 1);
+    abort();
+}
+
+static void *object_calloc(size_t count, size_t size)
+{
+    void *p = calloc(count, size);
+    if (!p) object_allocation_failed();
+    return p;
+}
+
 static jobj *obj_alloc(uint8_t kind, tl_jclass *cls)
 {
-    jobj *o = calloc(1, sizeof(*o));
+    jobj *o = object_calloc(1, sizeof(*o));
     o->refs = 1;
     o->kind = kind;
     o->cls = cls;
@@ -102,8 +118,9 @@ static tl_jclass *tl_jni_declare_linked(const char *name, const char *super)
     pthread_mutex_lock(&g_lock);
     tl_jclass *c = find_class_locked(name);
     if (!c) {
-        c = calloc(1, sizeof(*c));
+        c = object_calloc(1, sizeof(*c));
         c->name = strdup(name);
+        if (!c->name) object_allocation_failed();
         uint32_t h = hash_str(name) % NBUCKETS;
         c->next = g_classes[h];
         g_classes[h] = c;
@@ -153,7 +170,7 @@ jobj *tl_jni_new_object(tl_jclass *cls)
     jobj *o = obj_alloc(TL_K_OBJECT, cls);
     if (tl_dvm && cls && cls->dvm) {
         uint32_t n = tl_dvm->instance_slots(cls);
-        if (n) { o->fields = calloc(n, sizeof(jvalue)); o->nfields = n; }
+        if (n) { o->fields = object_calloc(n, sizeof(jvalue)); o->nfields = n; }
     }
     return o;
 }
@@ -162,6 +179,7 @@ jobj *tl_jni_new_string(const char *utf8)
 {
     jobj *o = obj_alloc(TL_K_STRING, tl_jni_class("java/lang/String"));
     o->str.utf8 = strdup(utf8 ? utf8 : "");
+    if (!o->str.utf8) object_allocation_failed();
     return o;
 }
 
@@ -178,7 +196,7 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len)
     char cn[4] = { '[', etype, 0 };
     jobj *o = obj_alloc(TL_K_PRIM_ARRAY, tl_jni_class(cn));
     o->arr.esz = esz_of(etype); o->arr.etype = etype; o->arr.len = len;
-    o->arr.data = calloc(len ? len : 1, o->arr.esz);
+    o->arr.data = object_calloc(len ? len : 1, o->arr.esz);
     return o;
 }
 
@@ -188,7 +206,7 @@ jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len)
     snprintf(cn, sizeof(cn), "[L%s;", elem ? elem->name : "java/lang/Object");
     jobj *o = obj_alloc(TL_K_OBJ_ARRAY, tl_jni_class(cn));
     o->oarr.len = len;
-    o->oarr.v = calloc(len ? len : 1, sizeof(jobj *));
+    o->oarr.v = object_calloc(len ? len : 1, sizeof(jobj *));
     return o;
 }
 

@@ -32,9 +32,6 @@ enum HuskLog {
     fileprivate static let crashBuf =
         UnsafeMutableRawPointer.allocate(byteCount: 8192, alignment: 16)
 
-    /// Frame pointers for the crash backtrace, taken before they are needed.
-    fileprivate static let crashFrames =
-        UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 64)
     private static var pipeWriteFD: Int32 = -1
     private static var started = false
     private static let writeLock = NSLock()
@@ -202,15 +199,23 @@ enum HuskLog {
     /// than treat it as fatal. Stealing them here would break JIT detection.
     /// SIGPIPE is already set to SIG_IGN in start() and must stay that way.
     private static func installCrashHandlers() {
+        // Static properties initialize on first access. Allocate the scratch buffer before any handler can run.
+        _ = crashBuf
         let fatal: [Int32] = [SIGSEGV, SIGABRT, SIGILL, SIGFPE, SIGSYS]
         for sig in fatal {
             signal(sig) { received in
-                // Async-signal-safe only: write(2) straight to the fds, no
-                // allocation, no locks, no Swift runtime.
-                let msg = "\n*** FATAL SIGNAL \(received) -- process is dying ***\n"
-                msg.withCString { p in
-                    let n = strlen(p)
-                    if HuskLog.rawLogFD >= 0 { _ = write(HuskLog.rawLogFD, p, n) }
+                signal(received, SIG_DFL)
+                // Keep the marker numeric for CrashReport without allocating a Swift String.
+                let msg: StaticString
+                switch received {
+                case SIGSEGV: msg = "\n*** FATAL SIGNAL 11 -- process is dying ***\n"
+                case SIGABRT: msg = "\n*** FATAL SIGNAL 6 -- process is dying ***\n"
+                case SIGILL: msg = "\n*** FATAL SIGNAL 4 -- process is dying ***\n"
+                case SIGFPE: msg = "\n*** FATAL SIGNAL 8 -- process is dying ***\n"
+                default: msg = "\n*** FATAL SIGNAL 12 -- process is dying ***\n"
+                }
+                if HuskLog.rawLogFD >= 0 {
+                    _ = write(HuskLog.rawLogFD, msg.utf8Start, msg.utf8CodeUnitCount)
                 }
                 // Drain whatever C wrote but the reader thread never got to.
                 //
@@ -243,25 +248,8 @@ enum HuskLog {
                         }
                     }
                 }
-                // Where it died.
-                //
-                // Six months of "FATAL SIGNAL 11" with no frames is six months
-                // of guessing which of QEMU, ANGLE, the audio ring or our own
-                // Swift was at fault. backtrace_symbols_fd is documented
-                // async-signal-safe and writes straight to a descriptor, which
-                // is the only reason it can be used here -- and the frame
-                // buffer is taken at startup because nothing in a signal
-                // handler may allocate.
-                if HuskLog.rawLogFD >= 0 {
-                    let header = "\n--- backtrace ---\n"
-                    header.withCString { p in
-                        _ = write(HuskLog.rawLogFD, p, strlen(p))
-                    }
-                    let n = backtrace(HuskLog.crashFrames, 64)
-                    backtrace_symbols_fd(HuskLog.crashFrames, n, HuskLog.rawLogFD)
-                }
+                // iOS records the stack in its crash report. Unwinding here can allocate.
                 if HuskLog.rawLogFD >= 0 { fsync(HuskLog.rawLogFD) }
-                signal(received, SIG_DFL)
                 raise(received)
             }
         }
