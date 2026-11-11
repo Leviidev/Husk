@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "husk-tl-bionic.h"
+#include "husk-tl-guest-thread.h"
 
 extern void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
 
@@ -205,14 +206,14 @@ static void player_start_thread(sl_object *o)
     if (o->thread_started) return;
     atomic_store(&o->thread_run, true);
     pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setstacksize(&a, 1u << 20);
-    o->thread_started = pthread_create(&o->thread, &a, player_pump, o) == 0;
+    o->thread_started = tl_guest_pthread_create(&o->thread, &a, player_pump, o) == 0;
     pthread_attr_destroy(&a);
 }
 static void player_stop_thread(sl_object *o)
 {
     if (!o->thread_started) return;
     atomic_store(&o->thread_run, false);
-    pthread_join(o->thread, NULL);
+    tl_guest_pthread_join(o->thread, NULL);
     o->thread_started = false;
 }
 

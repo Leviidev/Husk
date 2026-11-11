@@ -10,7 +10,7 @@ import SwiftUI
 struct AppDiagnosis: Identifiable, Equatable {
     enum Kind: String {
         case badAPK, unsupportedCPU, missingSplits, protected, needsGoogle, missingFeature, javaCrash, nativeCrash, closedItself,
-             missingFunction, noProgress, noJIT, graphicsFailure, fileAccess, networkTimeout, permissionFailure, emulatorBoot
+             missingFunction, noProgress, noJIT, codeSignature, graphicsFailure, fileAccess, networkTimeout, permissionFailure, emulatorBoot
     }
     let id = UUID()
     let kind: Kind
@@ -36,6 +36,7 @@ struct AppDiagnosis: Identifiable, Equatable {
         case .missingFunction: return "NATIVE_SYMBOL_CALLED"
         case .noProgress: return "STARTUP_OR_MEMORY_SUSPECTED"
         case .noJIT: return "JIT_UNAVAILABLE"
+        case .codeSignature: return "CODE_SIGNATURE_INVALID"
         case .graphicsFailure: return "GRAPHICS_INIT_FAILED"
         case .fileAccess: return "FILE_ACCESS_FAILED"
         case .networkTimeout: return "NETWORK_TIMEOUT"
@@ -43,7 +44,7 @@ struct AppDiagnosis: Identifiable, Equatable {
         case .emulatorBoot: return "EMULATOR_BOOT_FAILED"
         }
     }
-    var severity: String { blocksLaunch || kind == .nativeCrash || kind == .javaCrash || kind == .noJIT ? "error" : "warning" }
+    var severity: String { blocksLaunch || kind == .nativeCrash || kind == .javaCrash || kind == .noJIT || kind == .codeSignature ? "error" : "warning" }
     var verificationStatus: String { "UNVERIFIED" }
 
     static func == (a: AppDiagnosis, b: AppDiagnosis) -> Bool { a.kind == b.kind && a.title == b.title && a.detail == b.detail }
@@ -59,6 +60,7 @@ struct AppDiagnosis: Identifiable, Equatable {
         case .javaCrash, .nativeCrash: return "exclamationmark.triangle.fill"
         case .noProgress: return "hourglass"
         case .noJIT: return "bolt.slash"
+        case .codeSignature: return "checkmark.seal"
         case .graphicsFailure: return "display"
         case .fileAccess: return "folder.badge.questionmark"
         case .networkTimeout: return "network"
@@ -110,6 +112,24 @@ struct AppDiagnosis: Identifiable, Equatable {
     /// The reason a run stopped, from its log; nil when nothing in it explains the end (the app closed the normal way).
     static func fromLog(_ text: String) -> AppDiagnosis? {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+
+        // A rejected converted runtime library makes System's initialiser fail
+        // later. Report the loader error rather than calling System a missing API.
+        let runtimeStopped = lines.contains {
+            $0.contains("main thread ended with ") || $0.contains("libcore's natives did not all load")
+                || $0.contains("the game could not be started") || $0.contains("the app finished")
+        }
+        if runtimeStopped, let line = lines.first(where: {
+            !$0.contains("[prev]") && $0.contains("its dylib does not load:")
+                && ($0.contains("code signature invalid") || $0.contains("different Team IDs") || $0.contains("not valid for use in process"))
+        }) {
+            let library = line.components(separatedBy: "ld: ").last?.components(separatedBy: ":").first ?? "a converted library"
+            return AppDiagnosis(kind: .codeSignature, title: "iOS rejected a converted library",
+                                detail: "iOS refused the signature of \(library), so the runtime could not start. "
+                                    + "Refresh Husk in the store that installed it, import that store's current certificate in Settings > Play without JIT, "
+                                    + "then remove the converted games so Husk can sign them again. If this repeats, share the report; the signer needs investigation.",
+                                evidence: line)
+        }
 
         // No executable memory: on iOS with TXM only a debugger can grant it, and without it the loader cannot load Android's own
         // libraries, so everything after (java.lang.System failing to initialise, missing natives) follows from this
@@ -177,6 +197,15 @@ struct AppDiagnosis: Identifiable, Equatable {
             let short = name.split(separator: ".").last.map(String.init) ?? name
             let message = what.dropFirst(name.count).drop { $0 == ":" || $0 == " " }
             let firstPart = message.components(separatedBy: " | caused by").first ?? String(message)
+            if short == "NoClassDefFoundError", firstPart.contains("failed to initialise") {
+                let initialFailure = lines.first {
+                    !$0.contains("[prev]") && ($0.contains(".<clinit> threw ") || $0.contains("dvm: initialising "))
+                }
+                return AppDiagnosis(kind: .javaCrash, title: "Java initialisation failed",
+                                    detail: "A Java class failed during startup. This message does not mean the class is missing. "
+                                        + "The report records the first initialisation error and any native-library loading errors.",
+                                    evidence: initialFailure ?? l)
+            }
             if ["NoSuchMethodError", "NoClassDefFoundError", "UnsatisfiedLinkError", "AbstractMethodError", "NoSuchFieldError",
                 "IncompatibleClassChangeError"].contains(short) {
                 return AppDiagnosis(kind: .missingFeature, title: "Uses something Husk does not have yet",

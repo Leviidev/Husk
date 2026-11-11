@@ -39,6 +39,20 @@ public final class AppRunner {
         sFactory = android.app.AppComponentFactory.DEFAULT;
         Looper.setInputSink(null);
         Manifest.reset();
+        ViewRoot.resetSession();
+        InputMethods.resetSession();
+        Broadcasts.resetSession();
+        ContextImpl.resetSession();
+        android.content.ContentResolver.resetSession();
+        android.content.res.Resources.resetSession();
+        android.content.pm.ApplicationInfo.resetSession();
+        android.app.LoadedApk.resetSession();
+        android.app.ActivityThread.resetSession();
+        android.app.Application.huskSet(null);
+        android.net.ConnectivityManager.resetSession();
+        android.webkit.WebView.huskResetSession();
+        Web.resetSession();
+        Thread.setDefaultUncaughtExceptionHandler(null);
     }
 
     private static ClassLoader sLoader;
@@ -96,6 +110,10 @@ public final class AppRunner {
     private static boolean usesFactory() { return sFactory != android.app.AppComponentFactory.DEFAULT; }
 
     public static void run(String activityClass, String applicationClass) throws Exception {
+        try { runSession(activityClass, applicationClass); }
+        finally { shutdown(); }
+    }
+    private static void runSession(String activityClass, String applicationClass) throws Exception {
         android.webkit.MimeTypeMap.huskInstallDefault();
         KeyStoreProvider.install();
         Looper.prepareMainLooper();
@@ -139,6 +157,22 @@ public final class AppRunner {
         main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         launch(activityClass, main, null, -1, launcher);
         Looper.loop();
+    }
+    private static void shutdown() {
+        // Run on the game's main thread. SDLActivity.onDestroy sends quit
+        // to SDL_main and joins it; clearing a stack alone never did this.
+        while (!sStack.isEmpty()) {
+            Activity a = sStack.remove(sStack.size() - 1);
+            try { if (a.isResumedHusk()) a.huskPause(); }
+            catch (Throwable t) { android.util.Log.w("Husk", "close onPause", t); }
+            try { a.huskStop(); }
+            catch (Throwable t) { android.util.Log.w("Husk", "close onStop", t); }
+            try { a.huskDestroy(); }
+            catch (Throwable t) { android.util.Log.w("Husk", "close onDestroy", t); }
+        }
+        Services.shutdown();
+        ViewRoot.shutdown();
+        android.webkit.WebView.huskShutdownSession();
     }
     public static Application application() { Application a = android.app.ActivityThread.currentActivityThread().huskInitialApplication(); return a != null ? a : sApp; }
     /** LoadedApk.makeApplication: the app's Application class (or the plain one) made through the loader and attached, not created
@@ -377,6 +411,16 @@ public final class AppRunner {
                 if (phase == 7) { InputMethods.deliverPending(); continue; }
                 if (phase == 8) { applyInsets(); continue; }
                 if (phase == 9) { Web.deliver(); continue; }
+                if (phase == 10) {
+                    int level = android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL;
+                    Application app = application();
+                    if (app != null) { app.onTrimMemory(level); app.onLowMemory(); }
+                    for (Activity activity : new ArrayList<>(sStack)) {
+                        activity.onTrimMemory(level);
+                        activity.onLowMemory();
+                    }
+                    continue;
+                }
                 if (phase == 4) {
                     long t = SystemClock.uptimeMillis();
                     KeyEvent ke = new KeyEvent(t, t, ev[3 + 4 * k] != 0 ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP, id, 0);

@@ -4,6 +4,12 @@ package android.app;
  *  friends): one per process, answering from what AppRunner set up. */
 public final class ActivityThread {
     private static final ActivityThread sCurrent = new ActivityThread();
+    public static void resetSession() {
+        sCurrent.mPackages.clear(); sCurrent.mResourcePackages.clear();
+        sCurrent.mProviderMap.clear(); sCurrent.mAllApplications.clear();
+        sCurrent.mBoundApplication = null; sCurrent.mInitialApplication = null;
+        sCurrent.mInstrumentation = new Instrumentation();
+    }
     /* What packers and plugin loaders walk by reflection (AOSP's names): the APK record by package, the bound app's data, the
        first Application and all of them. AppRunner fills them in at launch; a loader shell may change them. */
     static volatile ActivityThread sCurrentActivityThread = sCurrent;

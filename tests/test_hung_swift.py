@@ -19,14 +19,89 @@ class SwiftModelTests(unittest.TestCase):
         if not cls.compiler:
             raise unittest.SkipTest("swiftc unavailable: Swift model tests require a Swift toolchain")
 
-    def compile_run(self, source, main):
+    def compile_run(self, source, main, async_main=False):
         with tempfile.TemporaryDirectory() as temp:
             p = Path(temp)
             (p / "Model.swift").write_text(source, encoding="utf-8")
             (p / "main.swift").write_text("import Foundation\n#if canImport(CoreGraphics)\nimport CoreGraphics\n#endif\n" + main, encoding="utf-8")
             exe = p / "models"
-            subprocess.run([self.compiler, str(p / "Model.swift"), str(p / "main.swift"), "-o", str(exe)], check=True)
+            flags = ["-parse-as-library"] if async_main else []
+            subprocess.run([self.compiler] + flags + [str(p / "Model.swift"), str(p / "main.swift"), "-o", str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
+
+    def test_native_session_serializes_close_and_preserves_failed_session(self):
+        source = (ROOT / "src/app/Husk/TLUnityView.swift").read_text(encoding="utf-8")
+        source = "@MainActor\nfinal class TLNativeSession:" + source.split("final class TLNativeSession:", 1)[1].split("/// Polls the runtime", 1)[0]
+        source = "import Foundation\n" + source
+        source += '''
+protocol ObservableObject: AnyObject {}
+@propertyWrapper struct Published<Value> { var wrappedValue: Value }
+@MainActor enum TLUnityScreen {
+    static var cache: [String: NSObject] = [:]
+    static func cached(_ path: String) -> NSObject? { cache[path] }
+    static func release(_ path: String) { cache[path] = nil }
+}
+@MainActor enum HuskLog { static func log(_ category: String, _ message: String) {} }
+let HUSK_UNITY_RUNNING: Int32 = 2
+final class FakeRuntime: @unchecked Sendable {
+    static let shared = FakeRuntime()
+    let lock = NSLock()
+    private var path: UnsafeMutablePointer<CChar>?
+    private var result = true
+    private var attempts = 0
+    func configure(_ name: String, _ result: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        free(path); path = strdup(name); self.result = result
+    }
+    func loaded() -> UnsafePointer<CChar>? {
+        lock.lock(); defer { lock.unlock() }
+        return path.map { UnsafePointer($0) }
+    }
+    func calls() -> Int { lock.lock(); defer { lock.unlock() }; return attempts }
+    func stop() -> Bool {
+        Thread.sleep(forTimeInterval: 0.03)
+        lock.lock(); defer { lock.unlock() }
+        attempts += 1
+        if result { free(path); path = nil }
+        return result
+    }
+}
+func husk_native_loaded_apk() -> UnsafePointer<CChar>? { FakeRuntime.shared.loaded() }
+func husk_unity_state() -> Int32 { 2 }
+func husk_native_can_stop() -> Bool { true }
+func husk_native_stop(_ timeout: UInt32) -> Bool { FakeRuntime.shared.stop() }
+func husk_java_web_attach(_ screen: UnsafeMutableRawPointer?, _ container: UnsafeMutableRawPointer?, _ scale: Float, _ fresh: Int32) {}
+'''
+        self.compile_run(source, '''
+@main struct TestMain {
+    @MainActor static func main() async {
+        let runtime = FakeRuntime.shared
+        let session = TLNativeSession.shared
+        runtime.configure("first.apk", true)
+        TLUnityScreen.cache["first.apk"] = NSObject()
+        async let first = session.prepare(for: "second.apk")
+        async let duplicate = session.prepare(for: "second.apk")
+        let results = await (first, duplicate)
+        precondition(results.0 && results.1 && runtime.calls() == 1)
+        precondition(TLUnityScreen.cache["first.apk"] == nil && !session.stopping)
+        runtime.configure("second.apk", false)
+        TLUnityScreen.cache["second.apk"] = NSObject()
+        let failed = await session.prepare(for: "third.apk")
+        precondition(!failed && session.lastError != nil)
+        precondition(TLUnityScreen.cache["second.apk"] != nil && !session.stopping)
+        runtime.configure("second.apk", true)
+        let retried = await session.prepare(for: "third.apk")
+        precondition(retried && TLUnityScreen.cache["second.apk"] == nil)
+        runtime.configure("third.apk", true)
+        let staleClose = await session.stop(only: "first.apk")
+        precondition(staleClose && runtime.calls() == 3)
+        runtime.configure("ps4:game", true)
+        let console = await session.prepare(for: "fourth.apk")
+        precondition(!console && runtime.calls() == 3)
+        print("PASS: native session serializes duplicate close, preserves failed sessions, retries, releases old views and ignores stale close")
+    }
+}
+''', async_main=True)
 
     def test_production_diagnosis_classification(self):
         source = (ROOT / "src/app/Husk/AppDiagnosis.swift").read_text(encoding="utf-8")
@@ -57,6 +132,17 @@ precondition(AppDiagnosis.fromLog("file: open(data) -> -1 ENOENT\\nthe app finis
 precondition(AppDiagnosis.fromLog("SecurityException Permission denied\\nthe app finished")?.kind == .permissionFailure)
 precondition(AppDiagnosis.fromLog("QEMU boot failed")?.kind == .emulatorBoot)
 precondition(AppDiagnosis.fromLog("startup: heartbeat frames=1000 delta=900") == nil)
+let signatureError = "ld: libjavacore.so: its dylib does not load: code signature invalid (errno=1)"
+let systemFailure = "javaapp: the app's main thread ended with java.lang.NoClassDefFoundError: java/lang/System failed to initialise"
+precondition(AppDiagnosis.fromLog(signatureError) == nil)
+let signatureDiagnosis = AppDiagnosis.fromLog(signatureError + "\\n" + systemFailure)!
+precondition(signatureDiagnosis.kind == .codeSignature && signatureDiagnosis.errorCode == "CODE_SIGNATURE_INVALID")
+precondition(signatureDiagnosis.severity == "error" && signatureDiagnosis.evidence == signatureError)
+precondition(!signatureDiagnosis.detail.contains("VPN"))
+precondition(AppDiagnosis.fromLog("[prev] " + signatureError + "\\n" + systemFailure)?.kind == .javaCrash)
+precondition(AppDiagnosis.fromLog(systemFailure)?.kind == .javaCrash)
+let clinit = "dvm: java/lang/System.<clinit> threw java.lang.NullPointerException"
+precondition(AppDiagnosis.fromLog(clinit + "\\n" + systemFailure)?.evidence == clinit)
 let memory = "unity: alive: 1000 frames (+60), 12 MiB left before jetsam"
 let pressure = AppDiagnosis.fromLog(memory)!
 precondition(pressure.detail.contains("does not confirm"))

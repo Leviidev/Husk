@@ -41,6 +41,16 @@ def main():
     flags = ["-std=gnu11", "-O1", "-g", "-Wall", "-Wextra", "-Werror", "-UNDEBUG", f"-I{ROOT / 'src/translation-layer'}"]
     if args.sanitize and os.name != "nt":
         flags += ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+    net_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-net.c").read_text(encoding="utf-8")
+    net_functions = [re.search(r"static int " + name + r"\(int f\)\n\{.*?\n\}", net_source, re.S)[0]
+                     for name in ("ai_flags_to_darwin", "ni_flags_to_darwin")]
+    (out / "net_flags_under_test.h").write_text("\n".join(net_functions), encoding="utf-8")
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test"):
+        exe = out / (name + (".exe" if os.name == "nt" else ""))
+        thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
+        run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+            str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
+        run(name, [str(exe)])
     for name in ("plan_test", "elf_import_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         run(name + " compile", compiler + flags + [str(ROOT / f"tests/translation-layer/{name}.c"), str(ROOT / "src/translation-layer/husk-tl-elf.c"), "-o", str(exe)])

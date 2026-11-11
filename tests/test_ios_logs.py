@@ -21,6 +21,17 @@ class ReadOnlyAFC:
     async def fclose(self,handle): self.closes+=1
 
 class LogMirrorTests(unittest.IsolatedAsyncioTestCase):
+    def test_synced_and_retired_crash_names_are_collected_without_other_apps(self):
+        for remote, leaf in (
+            ('/Husk-2026-11-11-090500.ips', 'Husk-2026-11-11-090500.ips'),
+            ('/Husk.cpu_resource-2026-11-11-084237.ips.synced', 'Husk.cpu_resource-2026-11-11-084237.ips'),
+            ('/Retired/Husk-2026-11-08-203553.ips.synced', 'Husk-2026-11-08-203553.ips'),
+            ('/JetsamEvent-2026-11-11-090500.ips.synced', 'JetsamEvent-2026-11-11-090500.ips'),
+        ):
+            self.assertEqual(capture.crash_leaf(remote), leaf)
+        for remote in ('/Other-2026.ips', '/Retired/Other.ips', '/Retired/../Husk-test.ips', '/Husk-test.ips/extra'):
+            self.assertIsNone(capture.crash_leaf(remote))
+
     async def test_incremental_read_and_no_duplicate_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
             target=Path(tmp)/'husk.log';afc=ReadOnlyAFC(b'first\n');cursors={}

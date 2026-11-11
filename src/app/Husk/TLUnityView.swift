@@ -1157,9 +1157,15 @@ struct TLUnityScreen: UIViewRepresentable {
     var avoidUnsafeArea = true
     var onStats: ((String) -> Void)? = nil
     var onThreeFingerTap: (() -> Void)? = nil
-    /// One view per game for the life of the process. The engine's GPU surface belongs to this view's layer and an
-    /// engine cannot be started twice, so coming back to the game must show the same layer, not a new one.
+    /// Keep the surface while a game runs or is minimized. Cooperative close
+    /// releases it after the native session has drained.
     private static var shared: [String: TLUnityUIView] = [:]
+    static func cached(_ apk: String) -> TLUnityUIView? { shared[apk] }
+    static func release(_ apk: String) {
+        guard let view = shared.removeValue(forKey: apk) else { return }
+        view.onStats = nil; view.onThreeFingerTap = nil
+        view.removeFromSuperview()
+    }
 
     /// The game's one view, made the first time it is asked for.
     static func view(apk: String, extraApks: [String], dataDir: String, engine: TLNativeEngine, portrait: Bool, scale: CGFloat) -> TLUnityUIView {
@@ -1180,6 +1186,53 @@ struct TLUnityScreen: UIViewRepresentable {
         host.game.onStats = onStats; host.game.onThreeFingerTap = onThreeFingerTap
         host.game.avoidUnsafeArea = avoidUnsafeArea
         host.game.setNeedsLayout()
+    }
+}
+
+/// Close APKs on a worker while the library stays responsive. Retain the cached
+/// layer until native threads finish. A failed close prevents the next launch.
+@MainActor
+final class TLNativeSession: ObservableObject {
+    static let shared = TLNativeSession()
+    @Published private(set) var stopping = false
+    @Published var lastError: String?
+    private var pending: Task<Bool, Never>?
+
+    func prepare(for apk: String) async -> Bool {
+        if let pending, !(await pending.value) { return false }
+        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }) else { return true }
+        if loaded == apk && husk_unity_state() == Int32(HUSK_UNITY_RUNNING) { return true }
+        return await stop()
+    }
+
+    func close(_ apk: String) { Task { _ = await stop(only: apk) } }
+
+    func stop(only apk: String? = nil) async -> Bool {
+        if let pending { return await pending.value }
+        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }),
+              apk == nil || apk == loaded else { return true }
+        guard !loaded.hasPrefix("ps4:"), husk_native_can_stop() else {
+            lastError = "This engine still needs Husk closed before another game can start."
+            return false
+        }
+        stopping = true
+        lastError = nil
+        let task = Task { @MainActor in
+            defer { self.pending = nil; self.stopping = false }
+            let layerOwner = TLUnityScreen.cached(loaded)
+            let ok = await Task.detached(priority: .userInitiated) { husk_native_stop(8000) }.value
+            withExtendedLifetime(layerOwner) {}
+            if ok {
+                husk_java_web_attach(nil, nil, 1, 1)
+                TLUnityScreen.release(loaded)
+                HuskLog.log("tl", "closed previous APK; ready for another game without restarting Husk")
+            } else {
+                self.lastError = "The previous game has not finished closing. Wait a moment and try Play again. Its session has been kept to avoid a crash."
+            }
+            return ok
+        }
+        pending = task
+        return await task.value
     }
 }
 
@@ -1218,6 +1271,7 @@ final class TLUnityModel: ObservableObject {
         case Int32(HUSK_UNITY_RUNNING):  return "Running"
         case Int32(HUSK_UNITY_FAILED):   return "Could not start — see the log"
         case Int32(HUSK_UNITY_ENDED):    return "The game exited"
+        case Int32(HUSK_UNITY_STOPPING): return "Closing the game…"
         default:                         return "Starting"
         }
     }
@@ -1372,6 +1426,7 @@ struct TLCocosAttemptView: View {
             model.stop()
             UIApplication.shared.isIdleTimerDisabled = false
             HuskOrientation.set(HuskOrientation.standard)
+            if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in dismiss() }
         .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { dismiss() } } }

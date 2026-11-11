@@ -68,6 +68,9 @@ static unsigned long engine_frames(void);
 
 static struct {
     atomic_int state;
+    atomic_bool loader_done;
+    pthread_t loader;
+    bool loader_started;
     int engine;
     char apk[1024], data[1024], package[160], angle[1024], ca[1024], vulkan[1024];
     char extra[15][1024];
@@ -75,6 +78,8 @@ static struct {
     void *layer;
     int width, height;
 } A;
+static atomic_uint session_serial;
+static pthread_mutex_t stop_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* -------------------------------------------------------------- crash report */
 
@@ -165,11 +170,16 @@ static void guest_exit(int status)
  * leaves nothing else to tell a frozen game from a killed one, or a jetsam kill from a crash. */
 static void *heartbeat_thread(void *arg)
 {
-    (void)arg;
+    unsigned serial = (unsigned)(uintptr_t)arg;
     pthread_setname_np("husk-unity-hb");
     unsigned long last = 0;
     for (int tick = 0;; tick++) {
         if (tick < 40) usleep(500000); else sleep(3);          /* twice a second for the first twenty seconds */
+        pthread_mutex_lock(&stop_lock);
+        if (atomic_load(&session_serial) != serial || atomic_load(&A.state) != HUSK_UNITY_RUNNING) {
+            pthread_mutex_unlock(&stop_lock);
+            return NULL;
+        }
         unsigned long f = engine_frames();
 #if TARGET_OS_IPHONE
         tl_log_line("unity: alive: %lu frames (+%lu), %zu MiB left before jetsam", f, f - last, os_proc_available_memory() >> 20);
@@ -186,8 +196,13 @@ static void *heartbeat_thread(void *arg)
               tl_log_line("unity: a variadic shim's implementation (%s) changed callee-saved registers (%llu times; x21 then %#llx, diff mask %#llx)",
                           nm, (unsigned long long)seen, (unsigned long long)tl_va_clobber.x21, (unsigned long long)tl_va_clobber.mask);
           } }
-        if ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended())) atomic_store(&A.state, HUSK_UNITY_ENDED);
-        { int st = atomic_load(&A.state); if (st == HUSK_UNITY_ENDED || st == HUSK_UNITY_FAILED || st == HUSK_UNITY_IDLE) return NULL; }
+        if ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended())) {
+            int expected = HUSK_UNITY_RUNNING;
+            atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_ENDED);
+        }
+        int st = atomic_load(&A.state);
+        pthread_mutex_unlock(&stop_lock);
+        if (st != HUSK_UNITY_RUNNING) return NULL;
     }
 }
 
@@ -313,7 +328,7 @@ static bool app_needs_compressed_heap(void)
     return false;
 }
 
-static void *launch_thread(void *arg)
+static void *launch_run(void *arg)
 {
     (void)arg;
     pthread_setname_np("husk-native-start");
@@ -451,7 +466,8 @@ static void *launch_thread(void *arg)
     }
     atomic_store(&A.state, HUSK_UNITY_RUNNING);
     pthread_t hb;
-    if (pthread_create(&hb, NULL, heartbeat_thread, NULL) == 0) pthread_detach(hb);
+    if (pthread_create(&hb, NULL, heartbeat_thread, (void *)(uintptr_t)atomic_load(&session_serial)) == 0) pthread_detach(hb);
+    if (A.engine == ENGINE_JAVA) return NULL;
     /*
      * This thread loaded the game's libraries and ran their JNI_OnLoad, which on Android is the UI thread, and that thread
      * never ends. Some code relies on it: Geode 5 takes this thread as the game's main thread and keeps thread-local state
@@ -461,25 +477,53 @@ static void *launch_thread(void *arg)
     for (;;) pause();
 }
 
-void husk_native_unload(void)
+static void loader_done(void *unused) { (void)unused; atomic_store(&A.loader_done, true); }
+static void *launch_thread(void *arg)
 {
+    pthread_cleanup_push(loader_done, NULL);
+    launch_run(arg);
+    pthread_cleanup_pop(1);
+    return NULL;
+}
+
+bool husk_native_can_stop(void)
+{
+    return atomic_load(&A.state) == HUSK_UNITY_IDLE || A.engine == ENGINE_JAVA;
+}
+bool husk_native_stop(unsigned timeout_ms)
+{
+    bool ok = false;
+    pthread_mutex_lock(&stop_lock);
+    for (unsigned waited = 0; atomic_load(&A.state) == HUSK_UNITY_STARTING && waited < timeout_ms; waited += 10) usleep(10000);
     int st = atomic_load(&A.state);
-    if (st == HUSK_UNITY_IDLE) return;
-    for (int i = 0; i < 200 && atomic_load(&A.state) == HUSK_UNITY_STARTING; i++) usleep(50000);
-    st = atomic_load(&A.state);
-    if (st == HUSK_UNITY_IDLE) return;
+    if (st == HUSK_UNITY_IDLE) { ok = true; goto done; }
+    if (st == HUSK_UNITY_STARTING || !husk_native_can_stop()) {
+        tl_log_line("native: this engine has not reached a state that supports close");
+        goto done;
+    }
     husk_unity_set_paused(true);
-    if (A.engine == ENGINE_JAVA) tl_javaapp_stop();
-    else if (A.engine == ENGINE_COCOS) tl_cocos_stop();
-    else if (A.engine == ENGINE_GODOT) tl_godot_stop();
-    else if (A.engine == ENGINE_UNITY) tl_unity_stop();
+    atomic_store(&A.state, HUSK_UNITY_STOPPING);
+    if (tl_dvm_running() && !tl_javaapp_try_stop(timeout_ms)) goto done;
+    if (A.loader_started) {
+        for (unsigned waited = 0; !atomic_load(&A.loader_done) && waited < timeout_ms; waited += 10) usleep(10000);
+        if (!atomic_load(&A.loader_done)) goto done;
+        pthread_join(A.loader, NULL);
+        A.loader_started = false;
+    }
     if (tl_dvm_running()) tl_dvm_drop_app();
     tl_ld_reset_session();
     A.nextra = 0;
     A.apk[0] = 0;
+    A.layer = NULL;
+    atomic_fetch_add(&session_serial, 1);
     atomic_store(&A.state, HUSK_UNITY_IDLE);
     tl_log_line("native: session cleared; another app can start");
+    ok = true;
+done:
+    pthread_mutex_unlock(&stop_lock);
+    return ok;
 }
+void husk_native_unload(void) { (void)husk_native_stop(8000); }
 
 static bool launch(int engine, const char *apk, const char *data_dir, void *metal_layer, int width, int height,
                    const char *angle_dylib, const char *ca_bundle)
@@ -487,16 +531,19 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
     int expected = HUSK_UNITY_IDLE;
     if (!apk || !data_dir || !metal_layer || width <= 0 || height <= 0 || !angle_dylib) return false;
     int st = atomic_load(&A.state);
-    if (st == HUSK_UNITY_STARTING) return false;
+    if (st == HUSK_UNITY_STARTING || st == HUSK_UNITY_STOPPING) return false;
     if (st != HUSK_UNITY_IDLE) {
         if (st == HUSK_UNITY_RUNNING && A.apk[0] && !strcmp(A.apk, apk)) return false;
         if (A.apk[0] && strcmp(A.apk, apk) != 0) {
             tl_log_line("native: %s is still loaded; close Husk to start %s", A.apk, apk);
             return false;
         }
-        husk_native_unload();
+        return false; /* the UI closes the previous session asynchronously */
     }
     if (!atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_STARTING)) return false;
+    atomic_fetch_add(&session_serial, 1);
+    atomic_store(&A.loader_done, false);
+    A.loader_started = false;
     A.engine = engine;
     snprintf(A.apk, sizeof(A.apk), "%s", apk);
     snprintf(A.data, sizeof(A.data), "%s", data_dir);
@@ -507,11 +554,12 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
     pthread_attr_t at;
     pthread_attr_init(&at);
     pthread_attr_setstacksize(&at, 4u << 20);
-    pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    if (engine != ENGINE_JAVA) pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
     pthread_t t;
     int rc = pthread_create(&t, &at, launch_thread, NULL);
     pthread_attr_destroy(&at);
     if (rc) { atomic_store(&A.state, HUSK_UNITY_FAILED); return false; }
+    if (engine == ENGINE_JAVA) { A.loader = t; A.loader_started = true; }
     return true;
 }
 
@@ -587,6 +635,7 @@ void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_optio
     g_java_host.share = share; g_java_host.orientation = orientation;
 }
 static bool java_running(void) { return atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA; }
+void husk_java_memory_warning(void) { if (java_running()) tl_javaapp_touch(10, 0, 0, 0); }
 void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard)
 {
     g_java_insets[0] = left; g_java_insets[1] = top; g_java_insets[2] = right; g_java_insets[3] = bottom;
@@ -697,7 +746,10 @@ const char *husk_native_loaded_apk(void)
 
 int husk_unity_state(void)
 {
-    if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended()))) atomic_store(&A.state, HUSK_UNITY_ENDED);
+    if (atomic_load(&A.state) == HUSK_UNITY_RUNNING && ((A.engine == ENGINE_COCOS && tl_cocos_ended()) || (A.engine == ENGINE_GODOT && tl_godot_ended()) || (A.engine == ENGINE_GAMEMAKER && tl_gm_ended()) || (A.engine == ENGINE_JAVA && tl_javaapp_ended()))) {
+        int expected = HUSK_UNITY_RUNNING;
+        atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_ENDED);
+    }
     return atomic_load(&A.state);
 }
 static unsigned long engine_frames(void)

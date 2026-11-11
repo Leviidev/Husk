@@ -65,6 +65,10 @@ public final class MessageQueue {
                 if (mainWait < 0) {
                     long wait = head == null ? 8 : Math.min(8, head.when - now);
                     if (!main) wait = head == null ? (mNativeLooper ? 8 : 0) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
+                    // A session close wakes the native main queue, but helper
+                    // loopers have individual monitors. Bound their sleep so
+                    // HandlerThread can observe sessionEnded and exit too.
+                    if (!main) wait = wait <= 0 ? 50 : Math.min(wait, 50);
                     try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
                 }
             }

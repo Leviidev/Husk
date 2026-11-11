@@ -16,6 +16,11 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 #include "husk-tl-ld.h"
+#define TL_SESSION_IMPLEMENTATION
+#include "husk-tl-session.h"
+#define TL_GUEST_POOL_IMPLEMENTATION
+#include "husk-tl-guest-pool.h"
+#include "husk-tl-guest-thread.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -418,7 +423,109 @@ static int b_getattr_np(pthread_t t, guest_attr *a)
     return 0;
 }
 
-typedef struct { void *(*fn)(void *); void *arg; } start_ctx;
+typedef struct { void *(*fn)(void *); void *arg; bool tracked; atomic_bool ready; } start_ctx;
+
+typedef struct session_thread {
+    pthread_t thread;
+    int join_state;  /* 0 unclaimed, 1 guest join, 2 reaper join, 3 joined */
+    bool detached;
+    struct session_thread *next;
+} session_thread;
+static pthread_mutex_t session_threads_lock = PTHREAD_MUTEX_INITIALIZER;
+static session_thread *session_threads;
+static bool session_tracking_failed;
+static pthread_t session_reaper;
+static bool session_reaper_started, session_reaper_ok;
+static atomic_bool session_reaper_done;
+
+void tl_guest_thread_register(uintptr_t thread, bool tracked)
+{
+    if (!tracked) return;
+    session_thread *entry = calloc(1, sizeof(*entry));
+    pthread_mutex_lock(&session_threads_lock);
+    if (entry) {
+        entry->thread = (pthread_t)thread;
+        entry->next = session_threads;
+        session_threads = entry;
+    } else session_tracking_failed = true;
+    pthread_mutex_unlock(&session_threads_lock);
+}
+static int session_thread_detach(pthread_t thread)
+{
+    int result = -1;
+    pthread_mutex_lock(&session_threads_lock);
+    for (session_thread *p = session_threads; p; p = p->next) {
+        if (pthread_equal(thread, p->thread)) {
+            result = p->detached || p->join_state ? EINVAL : 0;
+            if (!result) p->detached = true;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&session_threads_lock);
+    return result;
+}
+static void *session_reap_worker(void *unused)
+{
+    (void)unused;
+    pthread_mutex_lock(&session_threads_lock);
+    session_thread *list = session_threads;
+    pthread_mutex_unlock(&session_threads_lock);
+    bool ok = true;
+    for (session_thread *p = list; p; p = p->next) {
+        pthread_mutex_lock(&session_threads_lock);
+        while (p->join_state == 1) {
+            pthread_mutex_unlock(&session_threads_lock);
+            usleep(1000);
+            pthread_mutex_lock(&session_threads_lock);
+        }
+        bool needs_join = p->join_state != 3;
+        if (needs_join) p->join_state = 2;
+        pthread_mutex_unlock(&session_threads_lock);
+        if (!needs_join) continue;
+        int error = pthread_join(p->thread, NULL);
+        pthread_mutex_lock(&session_threads_lock);
+        p->join_state = error ? 0 : 3;
+        pthread_mutex_unlock(&session_threads_lock);
+        if (error) { ok = false; break; }
+    }
+    pthread_mutex_lock(&session_threads_lock);
+    while (ok && session_threads) {
+        session_thread *next = session_threads->next;
+        free(session_threads);
+        session_threads = next;
+    }
+    session_reaper_ok = ok;
+    atomic_store(&session_reaper_done, true);
+    pthread_mutex_unlock(&session_threads_lock);
+    return NULL;
+}
+bool tl_guest_session_reap(unsigned timeout_ms)
+{
+    if (tl_guest_session_threads()) return false;
+    pthread_mutex_lock(&session_threads_lock);
+    if (session_tracking_failed) { pthread_mutex_unlock(&session_threads_lock); return false; }
+    if (!session_reaper_started) {
+        atomic_store(&session_reaper_done, false);
+        if (pthread_create(&session_reaper, NULL, session_reap_worker, NULL)) {
+            pthread_mutex_unlock(&session_threads_lock); return false;
+        }
+        session_reaper_started = true;
+    }
+    pthread_mutex_unlock(&session_threads_lock);
+    /* A TLS destructor may block even after its entry point returned. Keep the
+       join on its own worker and retain the old session when the budget ends. */
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint64_t deadline = (uint64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000 + timeout_ms;
+    while (!atomic_load(&session_reaper_done)) {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if ((uint64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000 >= deadline) return false;
+        usleep(1000);
+    }
+    pthread_join(session_reaper, NULL);
+    session_reaper_started = false;
+    return session_reaper_ok;
+}
 
 const char *tl_ld_symbol_at(const void *addr, const char **lib_name, const void **sym_addr);
 
@@ -434,8 +541,13 @@ void tl_thread_altstack(void)
 }
 static void *start_thunk(void *p)
 {
+    while (!atomic_load(&((start_ctx *)p)->ready)) sched_yield();
     start_ctx c = *(start_ctx *)p;
     free(p);
+    void *r;
+    pthread_cleanup_push(tl_guest_thread_release, (void *)(uintptr_t)c.tracked);
+    tl_guest_pool_begin();
+    pthread_cleanup_push(tl_guest_pool_end, NULL);
     /* a stack of its own for fault handlers: a crash that leaves the thread's stack unusable is then still reported (macOS kills a
        thread it can not deliver a signal to with SIGILL, and nothing is said) */
     tl_thread_altstack();
@@ -445,8 +557,10 @@ static void *start_thunk(void *p)
         const char *sym = tl_ld_symbol_at((const void *)c.fn, &ln, &sa);
         tl_log_line("thread: started, entry %s %s+%#lx", ln ? ln : "?", sym ? sym : "?", sa ? (unsigned long)((const char *)c.fn - (const char *)sa) : 0ul);
     }
-    void *r = c.fn(c.arg);
+    r = c.fn(c.arg);
     if (g_thread_trace) { char nm[32] = ""; pthread_getname_np(pthread_self(), nm, sizeof(nm)); tl_log_line("thread: '%s' EXITED", nm); }
+    pthread_cleanup_pop(1);
+    pthread_cleanup_pop(1);
     return r;
 }
 
@@ -460,15 +574,64 @@ static int b_create(pthread_t *out, const guest_attr *attr, void *(*fn)(void *),
     if (stack < (16u << 20)) stack = 16u << 20;
     stack = (stack + 16383) & ~(size_t)16383;
     pthread_attr_setstacksize(&a, stack);
-    if (attr && (attr->flags & GATTR_DETACHED)) pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
     start_ctx *c = malloc(sizeof(*c));
+    if (!c) { pthread_attr_destroy(&a); return 12; }
+    if (!tl_guest_thread_reserve(&c->tracked)) { free(c); pthread_attr_destroy(&a); return 11; }
+    atomic_init(&c->ready, false);
+    if (!c->tracked && attr && (attr->flags & GATTR_DETACHED)) pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
     c->fn = fn; c->arg = arg;
     pthread_t t;
     int r = pthread_create(&t, &a, start_thunk, c);
     pthread_attr_destroy(&a);
-    if (r) { free(c); return rc(r); }
+    if (r) { tl_guest_thread_release((void *)(uintptr_t)c->tracked); free(c); return rc(r); }
+    tl_guest_thread_register((uintptr_t)t, c->tracked);
+    atomic_store(&c->ready, true);
     *out = t;
     return 0;
+}
+
+int tl_guest_pthread_create(pthread_t *out, const pthread_attr_t *attr, void *(*fn)(void *), void *arg)
+{
+    start_ctx *context = malloc(sizeof(*context));
+    if (!context) return ENOMEM;
+    if (!tl_guest_thread_reserve(&context->tracked)) { free(context); return EAGAIN; }
+    context->fn = fn; context->arg = arg;
+    atomic_init(&context->ready, false);
+    int detached = PTHREAD_CREATE_JOINABLE;
+    if (attr) pthread_attr_getdetachstate(attr, &detached);
+    if (context->tracked && detached != PTHREAD_CREATE_JOINABLE) {
+        tl_guest_thread_release((void *)1); free(context); return EINVAL;
+    }
+    pthread_t thread;
+    int error = pthread_create(&thread, attr, start_thunk, context);
+    if (error) {
+        tl_guest_thread_release((void *)(uintptr_t)context->tracked);
+        free(context); return error;
+    }
+    tl_guest_thread_register((uintptr_t)thread, context->tracked);
+    atomic_store(&context->ready, true);
+    *out = thread;
+    return 0;
+}
+int tl_guest_pthread_join(pthread_t thread, void **result)
+{
+    session_thread *entry = NULL;
+    pthread_mutex_lock(&session_threads_lock);
+    for (session_thread *p = session_threads; p; p = p->next) {
+        if (pthread_equal(thread, p->thread)) { entry = p; break; }
+    }
+    if (entry && (entry->detached || entry->join_state)) {
+        pthread_mutex_unlock(&session_threads_lock); return EINVAL;
+    }
+    if (entry) entry->join_state = 1;
+    pthread_mutex_unlock(&session_threads_lock);
+    int error = pthread_join(thread, result);
+    if (entry) {
+        pthread_mutex_lock(&session_threads_lock);
+        entry->join_state = error ? 0 : 3;
+        pthread_mutex_unlock(&session_threads_lock);
+    }
+    return error;
 }
 
 static int b_kill(pthread_t t, int sig)
@@ -485,8 +648,15 @@ static int b_setname_np(pthread_t t, const char *name)
     return 0;
 }
 
-static int b_join(pthread_t t, void **ret) { return rc(pthread_join(t, ret)); }
-static int b_detach(pthread_t t) { return rc(pthread_detach(t)); }
+static int b_join(pthread_t t, void **ret)
+{
+    return rc(tl_guest_pthread_join(t, ret));
+}
+static int b_detach(pthread_t t)
+{
+    int result = session_thread_detach(t);
+    return result < 0 ? rc(pthread_detach(t)) : rc(result);
+}
 
 /* sigset_t is one 64-bit word on bionic, bit (sig-1); Darwin's is a 32-bit mask. */
 static uint32_t sigset_to_darwin(uint64_t g)

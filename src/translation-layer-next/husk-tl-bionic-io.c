@@ -17,12 +17,17 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-xmem.h"
 #include "husk-tl-binder.h"
 #include "husk-tl-path.h"
+#include "husk-tl-memory.h"
 
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <execinfo.h>
 #include <TargetConditionals.h>
+#include <sys/sysctl.h>
+#if TARGET_OS_IPHONE
+#include <os/proc.h>
+#endif
 #include <stdbool.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -54,6 +59,42 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include <libkern/OSCacheControl.h>
 #include <unistd.h>
 #include <utime.h>
+
+void tl_host_memory_info(tl_memory_info *info)
+{
+    memset(info, 0, sizeof(*info));
+    size_t bytes = sizeof(info->total);
+    (void)sysctlbyname("hw.memsize", &info->total, &bytes, NULL, 0);
+    task_vm_info_data_t vm = {0};
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&vm, &count) == KERN_SUCCESS) {
+        info->resident = vm.resident_size;
+        info->peak_resident = vm.resident_size_peak;
+        info->footprint = vm.phys_footprint;
+        info->virtual_bytes = vm.virtual_size;
+    }
+#if TARGET_OS_IPHONE
+    /* The game's caches must fit the process's remaining jetsam budget, even
+       when the phone still has free RAM outside this app's limit. */
+    info->available = os_proc_available_memory();
+#else
+    vm_statistics64_data_t stats = {0};
+    count = HOST_VM_INFO64_COUNT;
+    mach_port_t host = mach_host_self();
+    vm_size_t page_size = 0;
+    if (host_page_size(host, &page_size) == KERN_SUCCESS &&
+        host_statistics64(host, HOST_VM_INFO64, (host_info64_t)&stats, &count) == KERN_SUCCESS)
+        info->available = ((uint64_t)stats.free_count + stats.inactive_count) * page_size;
+    mach_port_deallocate(mach_task_self(), host);
+#endif
+    thread_act_array_t threads;
+    count = 0;
+    if (task_threads(mach_task_self(), &threads, &count) == KERN_SUCCESS) {
+        info->threads = count;
+        for (mach_msg_type_number_t i = 0; i < count; i++) mach_port_deallocate(mach_task_self(), threads[i]);
+        vm_deallocate(mach_task_self(), (vm_address_t)threads, count * sizeof(*threads));
+    }
+}
 
 /* ------------------------------------------------------------ path mapping */
 
@@ -131,7 +172,8 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         return buf;
     }
     if (!strcmp(path, "/proc/meminfo")) {
-        snprintf(buf, n, "MemTotal:       11722000 kB\nMemFree:         3000000 kB\nMemAvailable:    5000000 kB\nBuffers:           10000 kB\nCached:          2000000 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\n");
+        tl_memory_info info; tl_host_memory_info(&info);
+        tl_memory_proc_meminfo(buf, n, &info);
         return buf;
     }
     if (!strncmp(path, "/sys/devices/system/cpu/", 24) && (strstr(path, "/present") || strstr(path, "/possible") || strstr(path, "/online"))) {
@@ -145,7 +187,8 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         return buf;
     }
     if (!strcmp(path, "/proc/self/status")) {
-        snprintf(buf, n, "Name:\tapp_process64\nState:\tR (running)\nTgid:\t%d\nPid:\t%d\nPPid:\t1\nUid:\t10001\t10001\t10001\t10001\nThreads:\t8\nVmRSS:\t  300000 kB\n", getpid(), getpid());
+        tl_memory_info info; tl_host_memory_info(&info);
+        tl_memory_proc_status(buf, n, &info, getpid());
         return buf;
     }
     return NULL;

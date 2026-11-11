@@ -22,6 +22,10 @@ void tl_audio_install(void);
 
 /* Silence the output and stop the clock while the game is not on screen (writers block until resumed). */
 void tl_audio_set_paused(bool paused);
+/* After guest mixers have joined, dispose the old queue and its samples so
+   the next APK can open a different rate/channel configuration. */
+void tl_audio_reset(void);
+void tl_audio_begin_close(void);
 
 #ifdef __cplusplus
 }

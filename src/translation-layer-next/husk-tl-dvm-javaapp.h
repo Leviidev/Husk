@@ -59,5 +59,8 @@ unsigned long tl_javaapp_frames(void);
 bool tl_javaapp_ended(void);
 /* End the current Java app: the looper returns, the GL thread joins. Call before loading another. */
 void tl_javaapp_stop(void);
+/* False leaves the session closed to new threads, with its classes/libraries
+   intact. A later call can retry after the game's threads finish. */
+bool tl_javaapp_try_stop(unsigned timeout_ms);
 
 #endif

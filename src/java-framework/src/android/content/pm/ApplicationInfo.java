@@ -9,6 +9,7 @@ public class ApplicationInfo extends PackageItemInfo implements android.os.Parce
     public static final int CATEGORY_UNDEFINED = -1, CATEGORY_GAME = 0, CATEGORY_AUDIO = 1, CATEGORY_VIDEO = 2, CATEGORY_IMAGE = 3, CATEGORY_SOCIAL = 4, CATEGORY_NEWS = 5,
         CATEGORY_MAPS = 6, CATEGORY_PRODUCTIVITY = 7, CATEGORY_ACCESSIBILITY = 8;
     private static ApplicationInfo sSelf;
+    public static synchronized void resetSession() { sSelf = null; }
     public String taskAffinity, permission, processName, className, sourceDir, publicSourceDir, dataDir, nativeLibraryDir, deviceProtectedDataDir, manageSpaceActivityName,
         backupAgentName, appComponentFactory, nativeLibraryRootDir, primaryCpuAbi;
     public String[] splitSourceDirs, splitPublicSourceDirs, splitNames, sharedLibraryFiles, resourceDirs;

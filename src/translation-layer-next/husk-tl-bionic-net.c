@@ -454,23 +454,43 @@ typedef struct guest_addrinfo {
 
 static int ai_flags_to_darwin(int f)
 {
+    /* Bionic uses the BSD flags, not glibc's. In particular 0x400 is
+       AI_ADDRCONFIG and 0x8 is AI_NUMERICSERV. Treating 0x400 as
+       NUMERICSERV changes which addresses libcore/curl can connect to. */
+    if (f & ~0xf0f) return -1;
     int r = 0;
     if (f & 0x1) r |= AI_PASSIVE;
     if (f & 0x2) r |= AI_CANONNAME;
     if (f & 0x4) r |= AI_NUMERICHOST;
-    if (f & 0x8) r |= AI_V4MAPPED;
-    if (f & 0x10) r |= AI_ALL;
-    if (f & 0x20) r |= AI_ADDRCONFIG;
-    if (f & 0x400) r |= AI_NUMERICSERV;
+    if (f & 0x8) r |= AI_NUMERICSERV;
+    if (f & 0x100) r |= AI_ALL;
+    if (f & 0x200) r |= AI_V4MAPPED_CFG;
+    if (f & 0x400) r |= AI_ADDRCONFIG;
+    if (f & 0x800) r |= AI_V4MAPPED;
+    return r;
+}
+
+static int ni_flags_to_darwin(int f)
+{
+    if (f & ~0x1f) return -1;
+    int r = 0;
+    if (f & 0x1) r |= NI_NOFQDN;
+    if (f & 0x2) r |= NI_NUMERICHOST;
+    if (f & 0x4) r |= NI_NAMEREQD;
+    if (f & 0x8) r |= NI_NUMERICSERV;
+    if (f & 0x10) r |= NI_DGRAM;
     return r;
 }
 
 static int b_getaddrinfo(const char *node, const char *service, const guest_addrinfo *gh, guest_addrinfo **res)
 {
+    if (!res) return 4;                                             /* EAI_FAIL */
+    *res = NULL;
     struct addrinfo hints, *dres = NULL, *hp = NULL;
     if (gh) {
         memset(&hints, 0, sizeof(hints));
         hints.ai_flags = ai_flags_to_darwin(gh->ai_flags);
+        if (hints.ai_flags < 0) return 3;                            /* EAI_BADFLAGS */
         int fam = dom_to_darwin(gh->ai_family);
         if (fam < 0) return 5;                                      /* EAI_FAMILY */
         hints.ai_family = fam;
@@ -478,7 +498,7 @@ static int b_getaddrinfo(const char *node, const char *service, const guest_addr
         hints.ai_protocol = gh->ai_protocol;
         hp = &hints;
     }
-    int r = getaddrinfo(node, service, hp, &dres);
+    TL_ERRNO_BEGIN(); int r = getaddrinfo(node, service, hp, &dres); TL_ERRNO_END();
     NTRACE("getaddrinfo(%s, %s, family %d flags %#x socktype %d) -> %d", node ? node : "(null)", service ? service : "(null)",
            gh ? gh->ai_family : -1, gh ? gh->ai_flags : -1, gh ? gh->ai_socktype : -1, r);
     if (r) return r;                                                /* EAI_* values agree with bionic's */
@@ -487,6 +507,11 @@ static int b_getaddrinfo(const char *node, const char *service, const guest_addr
         if (a->ai_family != AF_INET && a->ai_family != AF_INET6 && a->ai_family != AF_UNIX) continue;
         size_t canon = a->ai_canonname ? strlen(a->ai_canonname) + 1 : 0;
         guest_addrinfo *g = calloc(1, sizeof(*g) + 128 + canon);
+        if (!g) {
+            while (head) { guest_addrinfo *next = head->ai_next; free(head); head = next; }
+            freeaddrinfo(dres);
+            return 6;                                              /* EAI_MEMORY */
+        }
         g->ai_flags = 0; g->ai_family = dom_from_darwin(a->ai_family); g->ai_socktype = a->ai_socktype; g->ai_protocol = a->ai_protocol;
         g->ai_addr = (uint8_t *)(g + 1);
         g->ai_addrlen = sa_from_darwin(a->ai_addr, g->ai_addr, 128);
@@ -513,18 +538,18 @@ static void b_freeaddrinfo(guest_addrinfo *a)
 
 static const char *b_gai_strerror(int e) { return gai_strerror(e); }
 
-static int b_getnameinfo(const void *g, socklen_t glen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, int flags)
+static int b_getnameinfo(const void *g, socklen_t glen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
 {
     struct sockaddr_storage s;
     socklen_t n = sa_to_darwin(g, glen, &s);
     if (!n) return 5;
-    int f = 0;
-    if (flags & 1) f |= NI_NUMERICHOST;
-    if (flags & 2) f |= NI_NUMERICSERV;
-    if (flags & 4) f |= NI_NOFQDN;
-    if (flags & 8) f |= NI_NAMEREQD;
-    if (flags & 16) f |= NI_DGRAM;
-    return getnameinfo((struct sockaddr *)&s, n, host, hostlen, serv, servlen, f);
+    int f = ni_flags_to_darwin(flags);
+    if (f < 0) return 3;
+    if (hostlen > UINT32_MAX || servlen > UINT32_MAX) return 14;      /* EAI_OVERFLOW */
+    TL_ERRNO_BEGIN();
+    int r = getnameinfo((struct sockaddr *)&s, n, host, (socklen_t)hostlen, serv, (socklen_t)servlen, f);
+    TL_ERRNO_END();
+    return r;
 }
 
 /* hostent: the same layout; only the address family number differs. */

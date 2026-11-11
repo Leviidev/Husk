@@ -18,6 +18,10 @@ public final class ContextImpl extends Context {
     private static final HashMap<String, SharedPreferences> sPrefs = new HashMap<>();
     private static AssetManager sAssets;
     private static Resources sResources;
+    public static synchronized void resetSession() {
+        sApp = null; sApplication = null; sAssets = null; sResources = null;
+        sServices.clear(); sPrefs.clear();
+    }
     private final Resources mResources;
     /* AOSP's names, read by packers and loader shells: the APK record, the process's ActivityThread and a loader of the context's own */
     final android.app.LoadedApk mPackageInfo = android.app.LoadedApk.self();

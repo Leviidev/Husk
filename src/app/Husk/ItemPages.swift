@@ -131,6 +131,7 @@ struct GamePage: View {
 
     @ObservedObject private var store = TranslationLayerStore.shared
     @ObservedObject private var jit = JITCoordinator.shared
+    @ObservedObject private var nativeSession = TLNativeSession.shared
     @Environment(\.dismiss) private var dismiss
     @State private var playing = false
     @State private var confirmRemove = false
@@ -146,11 +147,12 @@ struct GamePage: View {
 
     private var runs: Bool { app.report?.canRun == true }
 
-    /// Another session is still in this process: Play would have to unload it, which is what made games slow and crash.
+    /// QEMU and engines without complete teardown still own this process.
     private var blockedBy: String? {
         if Router.shared.androidStarted { return "Android" }
         let apk = app.apks.first
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != apk else { return nil }
+        if !loaded.hasPrefix("ps4:"), husk_native_can_stop() { return nil }
         return Self.name(ofLoaded: loaded)
     }
 
@@ -277,6 +279,11 @@ struct GamePage: View {
         } message: {
             Text(prepareFailed ?? "")
         }
+        .alert("The game is still closing", isPresented: Binding(get: { nativeSession.lastError != nil }, set: { if !$0 { nativeSession.lastError = nil } })) {
+            Button("OK", role: .cancel) { nativeSession.lastError = nil }
+        } message: {
+            Text(nativeSession.lastError ?? "")
+        }
         .confirmationDialog("Close Husk?", isPresented: $confirmQuit, titleVisibility: .visible) {
             Button("Close Husk") {
                 Router.shared.switchTo(app.id)
@@ -307,6 +314,19 @@ struct GamePage: View {
     /// Play: in JIT-less mode the game's libraries are converted and signed first (once); with Geode on, whatever it is missing
     /// (a newer release, its resources) is fetched first.
     private func play() {
+        guard preparing == nil, !nativeSession.stopping else { return }
+        guard let apk = app.apks.first else { return }
+        preparing = "Preparing game…"
+        Task { @MainActor in
+            let ready: Bool
+            if app.report?.webKind != nil { ready = true }
+            else { ready = await nativeSession.prepare(for: apk) }
+            preparing = nil
+            if ready { prepareLibraries() }
+        }
+    }
+
+    private func prepareLibraries() {
         if JITLess.enabled, SigningCertificate.credentials() != nil, preparing == nil {
             preparing = "Preparing for JIT-less mode…"
             Task {
@@ -425,6 +445,9 @@ struct GamePage: View {
             } else {
                 BigButton(title: "Add Geometry Dash First", systemImage: "plus", prominent: false) { }.disabled(true)
             }
+        } else if nativeSession.stopping {
+            HStack(spacing: 10) { ProgressView(); Text("Closing previous game…").foregroundStyle(.secondary) }
+                .frame(maxWidth: .infinity).frame(height: 50)
         } else if let preparing {
             HStack(spacing: 10) { ProgressView(); Text(preparing).foregroundStyle(.secondary).lineLimit(1) }
                 .frame(maxWidth: .infinity).frame(height: 50)

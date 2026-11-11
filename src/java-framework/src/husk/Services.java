@@ -11,6 +11,13 @@ import java.util.HashMap;
 public final class Services {
     private static final HashMap<String, Service> sRunning = new HashMap<>();
     private static final HashMap<ServiceConnection, String> sBound = new HashMap<>();
+    public static void shutdown() {
+        for (Service service : new java.util.ArrayList<>(sRunning.values())) {
+            try { service.onDestroy(); }
+            catch (Throwable t) { android.util.Log.w("Husk", "close service", t); }
+        }
+        sRunning.clear(); sBound.clear();
+    }
     private Services() {}
     private static Manifest.Component find(Intent i) {
         if (i.getComponent() != null) { for (Manifest.Component c : Manifest.services) if (c.name.equals(i.getComponent().getClassName())) return c; }

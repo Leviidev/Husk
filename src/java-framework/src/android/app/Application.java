@@ -46,7 +46,11 @@ public class Application extends android.content.ContextWrapper implements andro
     public void onCreate() {}
     public void onTerminate() {}
     public void onLowMemory() { for (ComponentCallbacks c : new ArrayList<>(mComponentCallbacks)) c.onLowMemory(); }
-    public void onTrimMemory(int level) {}
+    public void onTrimMemory(int level) {
+        for (ComponentCallbacks callback : new ArrayList<>(mComponentCallbacks))
+            if (callback instanceof android.content.ComponentCallbacks2)
+                ((android.content.ComponentCallbacks2) callback).onTrimMemory(level);
+    }
     public void onConfigurationChanged(android.content.res.Configuration c) { for (ComponentCallbacks cb : new ArrayList<>(mComponentCallbacks)) cb.onConfigurationChanged(c); }
     @Override public Context getApplicationContext() { return this; }
     public void registerActivityLifecycleCallbacks(ActivityLifecycleCallbacks c) { synchronized (mCallbacks) { mCallbacks.add(c); } }

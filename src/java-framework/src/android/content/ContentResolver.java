@@ -17,6 +17,11 @@ public class ContentResolver {
     private static final HashMap<String, ContentProvider> sProviders = new HashMap<>();
     private static final ArrayList<Object[]> sObservers = new ArrayList<>();
     private static ContentResolver sSelf;
+    public static synchronized void resetSession() {
+        synchronized (sProviders) { sProviders.clear(); }
+        synchronized (sObservers) { sObservers.clear(); }
+        sSelf = null;
+    }
     private final Context mContext;
     public ContentResolver(Context c) { mContext = c; }
     public static synchronized ContentResolver self() { if (sSelf == null) sSelf = new ContentResolver(null); return sSelf; }

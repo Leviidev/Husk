@@ -60,8 +60,18 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
 
     private static final HashMap<Integer, WebView> sViews = new HashMap<>();
     private static int sNextId = 1;
-    private static final ExecutorService sIo = Executors.newFixedThreadPool(4, r -> { Thread t = new Thread(r, "Chrome_IOThread"); t.setDaemon(true); return t; });
-    private static final ExecutorService sBridge = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "JavaBridge"); t.setDaemon(true); return t; });
+    private static ExecutorService sIo = newIoExecutor();
+    private static ExecutorService sBridge = newBridgeExecutor();
+    private static ExecutorService newIoExecutor() { return Executors.newFixedThreadPool(4, r -> { Thread t = new Thread(r, "Chrome_IOThread"); t.setDaemon(true); return t; }); }
+    private static ExecutorService newBridgeExecutor() { return Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "JavaBridge"); t.setDaemon(true); return t; }); }
+    public static void huskShutdownSession() {
+        for (WebView view : new ArrayList<>(sViews.values())) view.destroy();
+        sIo.shutdownNow(); sBridge.shutdownNow();
+    }
+    public static void huskResetSession() {
+        sViews.clear(); sNextId = 1;
+        sIo = newIoExecutor(); sBridge = newBridgeExecutor();
+    }
 
     private final int mId;
     private final Handler mHandler = new Handler(Looper.getMainLooper());

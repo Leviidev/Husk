@@ -13,6 +13,7 @@
 #include "husk-tl-autorelease.h"
 #include "husk-tl-aosp.h"
 #include "husk-tl-dvm.h"
+#include "husk-tl-session.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <fcntl.h>
@@ -26,6 +27,10 @@
 #include <unistd.h>
 
 #include "husk-tl-bionic.h"
+#include "husk-tl-audio.h"
+#include "husk-tl-memory.h"
+#include "husk-tl-guest-thread.h"
+#include "husk-tl-guest-pool.h"
 #include "husk-tl-egl.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
@@ -46,6 +51,7 @@ static struct {
     atomic_llong defer_until_ns;
     atomic_ulong frames;
     atomic_bool ended, paused, render_requested;
+    atomic_bool app_done, gl_done;
     jobj *gl_view, *gl_renderer;
     int gl_version;
     pthread_t gl_thread, app_thread;
@@ -283,6 +289,18 @@ NAT(N_packageName) { (void)self; (void)a; *ret = L(jstr(A.pkg)); return true; }
 NAT(N_screenWidth) { (void)self; (void)a; *ret = I(A.cfg.width); return true; }
 NAT(N_screenHeight) { (void)self; (void)a; *ret = I(A.cfg.height); return true; }
 NAT(N_density) { (void)self; (void)a; *ret = F(A.cfg.density > 0 ? A.cfg.density : 3.0f); return true; }
+NAT(N_memoryInfo)
+{
+    (void)self; (void)a;
+    tl_memory_info info; tl_host_memory_info(&info);
+    jobj *values = tl_jni_new_prim_array('J', 4);
+    if (!values) { *ret = L(NULL); return true; }
+    int64_t *data = values->arr.data;
+    data[0] = (int64_t)info.total; data[1] = (int64_t)info.available;
+    data[2] = (int64_t)info.resident; data[3] = (int64_t)info.footprint;
+    *ret = L(values);
+    return true;
+}
 NAT(N_requestRender) { (void)self; (void)a; (void)ret; atomic_store(&A.render_requested, true); tl_javaapp_wake_gl(); return true; }
 NAT(N_setContentView) { (void)self; (void)ret; A.content = a[0].l; return true; }
 NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrate((int)a[0].j); return true; }
@@ -585,6 +603,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "screenWidth", "()I", N_screenWidth },
     { "screenHeight", "()I", N_screenHeight },
     { "density", "()F", N_density },
+    { "memoryInfo", "()[J", N_memoryInfo },
     { "startGL", "(Ljava/lang/Object;Ljava/lang/Object;I)V", N_startGL },
     { "requestRender", "()V", N_requestRender },
     { "setContentView", "(Ljava/lang/Object;)V", N_setContentView },
@@ -772,7 +791,7 @@ typedef struct { EGLSurface pb; int w, h; uint32_t tex[3]; int tw[3], th[3]; int
 static struct {
     pthread_mutex_t lk;
     pthread_cond_t cv;
-    EGLDisplay dpy; EGLConfig cfg; EGLContext ui; bool es3, ready;
+    EGLDisplay dpy; EGLConfig cfg; EGLContext ui, renderer; EGLSurface screen; bool es3, ready;
     /* the frame to show: a shared texture, or pixels (bottom row first) */
     uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq, drawn_seq; bool on;
     size_t px_capacity;
@@ -1092,7 +1111,7 @@ static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pth
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
  */
-static void *gl_main(void *arg)
+static void *gl_run(void *arg)
 {
     TL_AUTORELEASE_SCOPE(thread_pool);
     (void)arg;
@@ -1133,6 +1152,7 @@ static void *gl_main(void *arg)
     if (!ui) ui = createContext(dpy, cfg, NULL, ui_attr2);
     EGLContext app = NULL;
     EGLSurface surf = createWindowSurface(dpy, cfg, tl_nwindow_get(), NULL);
+    E2.dpy = dpy; E2.ui = ui; E2.screen = surf;
     if (!ui || !surf || !makeCurrent(dpy, surf, surf, ui)) {
         tl_log_line("javaapp: no GL context");
         atomic_store(&g_compositor_active, false);
@@ -1184,6 +1204,7 @@ static void *gl_main(void *arg)
                 const EGLint attr2[] = { 0x3098, 2, EGL_NONE };
                 app = createContext(dpy, cfg, NULL, attr2);
             }
+            E2.renderer = app;
             if (!app || !makeCurrent(dpy, surf, surf, app)) { tl_log_line("javaapp: no GL ES %d context for the app", es); A.gl_renderer = NULL; app = NULL; }
             else {
                 cur_ctx = app;
@@ -1281,6 +1302,7 @@ static void *gl_main(void *arg)
             next = now_ns();
         }
     }
+    makeCurrent(dpy, NULL, NULL, NULL);
     return NULL;
 }
 
@@ -1386,7 +1408,7 @@ static void log_pending_stack(void)
     }
 }
 
-static void *app_main(void *arg)
+static void *app_run(void *arg)
 {
     void tl_thread_altstack(void); tl_thread_altstack();
     (void)arg;
@@ -1417,6 +1439,24 @@ static void *app_main(void *arg)
     return NULL;
 }
 
+static void thread_done(void *flag) { atomic_store((atomic_bool *)flag, true); }
+static void *app_main(void *arg)
+{
+    pthread_cleanup_push(thread_done, &A.app_done);
+    app_run(arg);
+    pthread_cleanup_pop(1);
+    return NULL;
+}
+static void *gl_main(void *arg)
+{
+    /* This host loop has nested per-frame pools of its own. */
+    tl_guest_pool_end(NULL);
+    pthread_cleanup_push(thread_done, &A.gl_done);
+    gl_run(arg);
+    pthread_cleanup_pop(1);
+    return NULL;
+}
+
 /* An empty file in the native library directory for each library the APKs carry: ClassLoader.findLibrary() and File.exists() checks
  * find it (Unity asks the class loader where libil2cpp is), while loading still takes the library from the APK by its name. */
 static void stub_lib(const char *name, uint64_t size, void *dir)
@@ -1429,6 +1469,10 @@ static void stub_lib(const char *name, uint64_t size, void *dir)
 
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
+    if (!tl_guest_session_begin()) {
+        tl_log_line("javaapp: the previous session has not finished closing");
+        return false;
+    }
     atomic_store(&A.ended, false);
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
@@ -1445,6 +1489,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     pthread_mutex_unlock(&E2.lk);
     g_render_thread = (pthread_t)0;
     A.gl_thread_started = false; A.app_started = false;
+    atomic_store(&A.app_done, false);
+    atomic_store(&A.gl_done, false);
     A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL; A.gl_started = false;
     /* stores into a library's executable view (data sharing a page with its code, as Unity's does) go through the writable one */
     { void tl_codewrite_enable(void); tl_codewrite_enable(); }
@@ -1494,22 +1540,26 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     atomic_store(&g_compositor_active, true);
-    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; pthread_attr_destroy(&rt); }
+    { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = tl_guest_pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; pthread_attr_destroy(&rt); }
     if (!A.gl_thread_started) atomic_store(&g_compositor_active, false);
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
-    A.app_started = pthread_create(&A.app_thread, &at, app_main, NULL) == 0;
+    A.app_started = tl_guest_pthread_create(&A.app_thread, &at, app_main, NULL) == 0;
     pthread_attr_destroy(&at);
     if (!A.app_started) {
         atomic_store(&A.ended, true);
         atomic_store(&g_compositor_active, false);
         tl_javaapp_wake_gl();
-        if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+        if (A.gl_thread_started) { tl_guest_pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
     }
     return A.app_started;
 }
 
-void tl_javaapp_stop(void)
+bool tl_javaapp_try_stop(unsigned timeout_ms)
 {
+    int64_t deadline = now_ns() + (int64_t)timeout_ms * 1000000;
+    /* Leaving the view paused writers. They must be able to drain while the
+       Activity tears down SDL/AAudio, or its onDestroy joins them forever. */
+    tl_audio_begin_close();
     atomic_store(&A.ended, true);
     atomic_store(&g_compositor_active, false);
     pthread_mutex_lock(&A.q_lock);
@@ -1519,8 +1569,44 @@ void tl_javaapp_stop(void)
     pthread_mutex_lock(&E2.lk);
     pthread_cond_broadcast(&E2.cv);
     pthread_mutex_unlock(&E2.lk);
-    if (A.app_started) { pthread_join(A.app_thread, NULL); A.app_started = false; }
-    if (A.gl_thread_started) { pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+    while ((A.app_started && !atomic_load(&A.app_done)) ||
+           (A.gl_thread_started && !atomic_load(&A.gl_done))) {
+        if (now_ns() >= deadline) {
+            tl_log_line("javaapp: close timed out waiting for the Activity/render loop; session retained");
+            return false;
+        }
+        usleep(10000);
+    }
+    tl_guest_session_close();
+    while (tl_guest_session_threads()) {
+        if (now_ns() >= deadline) {
+            tl_log_line("javaapp: close waiting for %u guest threads; session retained", tl_guest_session_threads());
+            return false;
+        }
+        usleep(10000);
+    }
+    int64_t remaining_ns = deadline - now_ns();
+    unsigned remaining_ms = remaining_ns > 0 ? (unsigned)(remaining_ns / 1000000) : 0;
+    if (!tl_guest_session_reap(remaining_ms)) {
+        tl_log_line("javaapp: could not join every guest thread; session retained");
+        return false;
+    }
+    A.app_started = false;
+    A.gl_thread_started = false;
+    tl_audio_reset();
+    /* All contexts are now unbound on their owning threads. Destroy only the
+       compositor's own objects here; the game's lifecycle owns its contexts. */
+    unsigned (*destroy_surface)(EGLDisplay, EGLSurface) = tl_egl_resolve("eglDestroySurface");
+    unsigned (*destroy_context)(EGLDisplay, EGLContext) = tl_egl_resolve("eglDestroyContext");
+    if (destroy_surface && E2.screen) destroy_surface(E2.dpy, E2.screen);
+    if (destroy_context && E2.renderer) destroy_context(E2.dpy, E2.renderer);
+    if (destroy_context && E2.ui) destroy_context(E2.dpy, E2.ui);
+    E2.screen = NULL; E2.renderer = NULL; E2.ui = NULL;
+    free(E2.px); E2.px = NULL; E2.px_capacity = 0;
+    pthread_mutex_lock(&A.t_lock);
+    for (int i = 0; i < A.ntext; i++) free(A.text[i]);
+    free(A.text); A.text = NULL; A.ntext = 0; A.ctext = 0;
+    pthread_mutex_unlock(&A.t_lock);
     g_render_thread = (pthread_t)0;
     A.gl_started = false;
     A.gl_view = NULL; A.gl_renderer = NULL; A.content = NULL;
@@ -1528,11 +1614,17 @@ void tl_javaapp_stop(void)
     pthread_mutex_lock(&A.q_lock); A.qn = 0; A.q_woken = false; pthread_mutex_unlock(&A.q_lock);
     pthread_mutex_lock(&E2.lk); E2.ready = false; E2.on = false; E2.tex = 0; pthread_mutex_unlock(&E2.lk);
     jvalue r;
+    tl_jni_clear();
     if (tl_dvm_defines_class("husk/AppRunner")) tl_dvm_call_static("husk/AppRunner", "resetSession", "()V", NULL, &r);
-    atomic_store(&A.ended, false);
+    if (tl_jni_pending()) {
+        tl_log_line("javaapp: framework reset failed; session retained");
+        return false;
+    }
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
+    return tl_guest_session_finish();
 }
+void tl_javaapp_stop(void) { (void)tl_javaapp_try_stop(8000); }
 
 void tl_javaapp_touch(int phase, int id, float x, float y)
 {

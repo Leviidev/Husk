@@ -5,6 +5,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
+#include "husk-tl-guest-thread.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -451,13 +452,13 @@ static int b_AAudioStream_requestStart(aa_stream *s)
     if (!s->cb) return AA_OK;                                       /* written streams play as write() is called */
     if (atomic_exchange(&s->run, true)) return AA_OK;
     pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setstacksize(&a, 1u << 20);
-    s->thread_started = pthread_create(&s->thread, &a, aa_pump, s) == 0;
+    s->thread_started = tl_guest_pthread_create(&s->thread, &a, aa_pump, s) == 0;
     pthread_attr_destroy(&a);
     return AA_OK;
 }
 static int aa_stop(aa_stream *s, int state)
 {
-    if (atomic_exchange(&s->run, false) && s->thread_started) { pthread_join(s->thread, NULL); s->thread_started = false; }
+    if (atomic_exchange(&s->run, false) && s->thread_started) { tl_guest_pthread_join(s->thread, NULL); s->thread_started = false; }
     atomic_store(&s->state, state);
     return AA_OK;
 }

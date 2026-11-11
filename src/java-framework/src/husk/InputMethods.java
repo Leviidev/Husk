@@ -15,6 +15,7 @@ public final class InputMethods {
     private static InputConnection sConn;
     private static EditorInfo sInfo;
     private static boolean sShown;
+    public static void resetSession() { sFocused = null; sConn = null; sInfo = null; sShown = false; }
     private InputMethods() {}
     public static View focused() { return sFocused; }
     public static boolean shown() { return sShown; }

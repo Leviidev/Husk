@@ -25,6 +25,7 @@
 #include "husk-tl-arm32.h"
 #include "husk-tl-xmem.h"
 #include "husk-tl-codewrite.h"
+#include "husk-tl-aot-data.h"
 
 /* The project's log sink, and the bionic shim's surface. */
 void  tl_log_line(const char *fmt, ...);
@@ -233,12 +234,14 @@ bool tl_ld_add_apk(const char *path)
 }
 
 static void *(*g_plt_filter)(tl_lib *, const char *, void *);
+static void reset_app_bindings(void);
 void tl_ld_set_plt_filter(void *(*filter)(tl_lib *, const char *, void *)) { g_plt_filter = filter; }
 
 void tl_ld_reset_session(void)
 {
     pthread_mutex_lock(&g_big);
     g_plt_filter = NULL;
+    reset_app_bindings();
     for (int i = 0; i < G.napks; i++) tl_zip_close(&G.apks[i]);
     G.napks = 0;
     g_nsplits = 0;
@@ -2384,6 +2387,26 @@ static bool aot_import(const char *name, const uint8_t *file, size_t flen, uint6
     for (size_t p = 0; !why && p < npages; p++)
         if (mixed && mixed[p] && !aot_mapped(mh, PAGE + size + p * PAGE, 1)) why = "its segments do not cover the image";
     if (why) { tl_log_line("ld: %s: its dylib is not used: %s", name, why); return false; }   /* (it stays loaded: dyld cannot be asked to forget it safely) */
+    /* A repeated dlopen returns the existing Mach-O mapping. Reusing its old
+     * .data/BSS would retain SDL globals, allocators and JNI state across games. */
+    FILE *original = fopen(path, "rb");
+    if (!original) { tl_log_line("ld: %s: cannot reset its dylib's data", name); return false; }
+    const uint8_t *command = (const uint8_t *)(mh + 1);
+    bool fresh = true;
+    for (uint32_t i = 0; fresh && i < mh->ncmds; i++) {
+        const struct load_command *lc = (const struct load_command *)command;
+        if (lc->cmd == LC_SEGMENT_64) {
+            const struct segment_command_64 *segment = (const struct segment_command_64 *)lc;
+            if (segment->initprot & VM_PROT_WRITE) {
+                fresh = !(segment->initprot & VM_PROT_EXECUTE) &&
+                    tl_aot_restore_data((uint8_t *)(uintptr_t)mh + segment->vmaddr, (size_t)segment->vmsize,
+                                        original, segment->fileoff, (size_t)segment->filesize);
+            }
+        }
+        command += lc->cmdsize;
+    }
+    fclose(original);
+    if (!fresh) { tl_log_line("ld: %s: its dylib's initial data could not be restored", name); return false; }
     *rx = x; *rw = x; *dup = n_mixed ? x + size : NULL;
     /* Stores into the r-x image (Unity static constructors, RELRO writes) go to the copies, the way Geode stores go through xmem. */
     tl_codewrite_enable();
@@ -2972,6 +2995,16 @@ static bool relocate(tl_lib *L)
 static char *g_search[32];
 static bool g_search_app[32];
 static int g_nsearch;
+static void reset_app_bindings(void)
+{
+    g_ninterpose = 0;
+    int keep = 0;
+    for (int i = 0; i < g_nsearch; i++) {
+        if (g_search_app[i]) free(g_search[i]);
+        else { g_search[keep] = g_search[i]; g_search_app[keep++] = false; }
+    }
+    g_nsearch = keep;
+}
 static void add_search_dir(const char *dir, bool app)
 {
     for (int i = 0; i < g_nsearch; i++) if (!strcmp(g_search[i], dir)) return;

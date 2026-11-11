@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-enum { HUSK_UNITY_IDLE = 0, HUSK_UNITY_STARTING = 1, HUSK_UNITY_RUNNING = 2, HUSK_UNITY_FAILED = 3, HUSK_UNITY_ENDED = 4 };
+enum { HUSK_UNITY_IDLE = 0, HUSK_UNITY_STARTING = 1, HUSK_UNITY_RUNNING = 2, HUSK_UNITY_FAILED = 3, HUSK_UNITY_ENDED = 4, HUSK_UNITY_STOPPING = 5 };
 
 /*
  * Start the game in `apk`. `metal_layer` is the CAMetalLayer it draws into, `width`/`height` its
@@ -163,7 +163,15 @@ void husk_gamepad_update(int slot, unsigned buttons, float lx, float ly, float r
 
 /* The APK of the game started this session, or NULL when none is loaded. */
 const char *husk_native_loaded_apk(void);
-/* Stop the current app and forget its libraries. User-facing Play does not switch games this way. */
+/* Java-driven APKs support cooperative close. Other engines still need their
+   own complete teardown before they can share this process with another APK. */
+bool husk_native_can_stop(void);
+/* Call off the UI thread. On failure the old session remains loaded; never
+   start a new APK over it. A later call may retry after its threads finish. */
+bool husk_native_stop(unsigned timeout_ms);
+/* Queue Android's low-memory callbacks on the game's main looper. */
+void husk_java_memory_warning(void);
+/* Compatibility entry point for developer tools; observes the same checks. */
 void husk_native_unload(void);
 
 /* Whether the running game has no touch controls of its own and wants the on-screen controller (a PC game through DXVK). */

@@ -25,7 +25,7 @@ static struct {
     int rate, channels;
     int16_t *ring;
     size_t head, count;           /* frames */
-    bool paused, failed;
+    bool paused, failed, closing;
 } A = { .mu = PTHREAD_MUTEX_INITIALIZER, .cv = PTHREAD_COND_INITIALIZER };
 
 /* The audio thread asks for samples; an empty ring is silence, never a wait. */
@@ -112,11 +112,13 @@ static void host_write(const int16_t *samples, int frames, int channels, int rat
 static void ring_write(const int16_t *samples, int frames, int channels, int rate)
 {
     pthread_mutex_lock(&A.mu);
+    if (A.closing) { pthread_mutex_unlock(&A.mu); sleep_for(frames, rate); return; }
     if (!A.q && !A.failed) { if (!open_queue(rate, channels)) A.failed = true; }
     if (A.failed || channels != A.channels) { pthread_mutex_unlock(&A.mu); sleep_for(frames, rate); return; }
     int done = 0;
     while (done < frames) {
-        while (A.count >= RING_FRAMES || A.paused) pthread_cond_wait(&A.cv, &A.mu);
+        while (!A.closing && (A.count >= RING_FRAMES || A.paused)) pthread_cond_wait(&A.cv, &A.mu);
+        if (A.closing) { pthread_mutex_unlock(&A.mu); sleep_for(frames - done, rate); return; }
         size_t room = RING_FRAMES - A.count, n = (size_t)(frames - done) < room ? (size_t)(frames - done) : room;
         size_t tail = (A.head + A.count) % RING_FRAMES;
         for (size_t i = 0; i < n; i++)
@@ -156,6 +158,29 @@ void tl_audio_set_paused(bool paused)
     pthread_mutex_lock(&A.mu);
     A.paused = paused;
     if (A.q) { if (paused) AudioQueuePause(A.q); else AudioQueueStart(A.q, NULL); }
+    pthread_cond_broadcast(&A.cv);
+    pthread_mutex_unlock(&A.mu);
+}
+
+void tl_audio_reset(void)
+{
+    /* Dispose waits for AudioQueue's own callbacks. Never hold A.mu while
+       waiting: on_buffer takes it before returning. Guest writers are joined. */
+    if (A.q) AudioQueueDispose(A.q, true);
+    pthread_mutex_lock(&A.mu);
+    A.q = NULL;
+    free(A.ring); A.ring = NULL;
+    memset(A.bufs, 0, sizeof(A.bufs));
+    A.head = 0; A.count = 0; A.rate = 0; A.channels = 0;
+    A.paused = false; A.failed = false; A.closing = false;
+    pthread_cond_broadcast(&A.cv);
+    pthread_mutex_unlock(&A.mu);
+}
+
+void tl_audio_begin_close(void)
+{
+    pthread_mutex_lock(&A.mu);
+    A.closing = true;
     pthread_cond_broadcast(&A.cv);
     pthread_mutex_unlock(&A.mu);
 }

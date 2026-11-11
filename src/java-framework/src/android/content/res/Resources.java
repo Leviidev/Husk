@@ -22,6 +22,7 @@ public class Resources {
     static ResTable sApp, sFramework;
     static final Object sLock = new Object();
     private static Resources sSystem;
+    public static void resetSession() { synchronized (sLock) { sApp = null; sSystem = null; } }
 
     private final AssetManager mAssets;
     private final DisplayMetrics mMetrics = new DisplayMetrics();

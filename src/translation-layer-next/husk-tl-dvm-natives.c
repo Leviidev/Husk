@@ -8,6 +8,7 @@
 #include "husk-tl-dvm-internal.h"
 
 #include <math.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -710,13 +711,20 @@ NAT(Thread_holdsLock)
     *ret = Z(dvm_holds_lock(a[0].l)); return true;
 }
 
-typedef struct { jobj *thread; } start_arg;
+#include "husk-tl-session.h"
+#include "husk-tl-guest-pool.h"
+typedef struct { jobj *thread; bool tracked; atomic_bool ready; } start_arg;
 static void *thread_main(void *p)
 {
     void tl_thread_altstack(void); tl_thread_altstack();
     start_arg *s = p;
+    while (!atomic_load(&s->ready)) sched_yield();
     t_thread = s->thread;
+    bool tracked = s->tracked;
     free(s);
+    pthread_cleanup_push(tl_guest_thread_release, (void *)(uintptr_t)tracked);
+    tl_guest_pool_begin();
+    pthread_cleanup_push(tl_guest_pool_end, NULL);
     jobj *t = t_thread;
     jvalue nm; dvm_class *c = dvm_class_of(dvm_object_class(t));
     dvm_field *nf = c ? dvm_find_field(c, "name", false) : NULL;
@@ -757,20 +765,37 @@ static void *thread_main(void *p)
     if (!lf) { dvm_class *tc = dvm_class_of(dvm_class_named("java/lang/Thread")); lf = tc ? dvm_find_field(tc, "lock", false) : NULL; }
     jobj *lk = lf ? dvm_slots(t)[lf->slot].l : NULL;
     if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
+    pthread_cleanup_pop(1);
+    pthread_cleanup_pop(1);
     return NULL;
 }
 NAT(Thread_nativeCreate)
 {
     (void)self; (void)ret;
     start_arg *s = malloc(sizeof(*s));
+    if (!s) return dvm_throw("java/lang/OutOfMemoryError", "thread allocation");
+    if (!tl_guest_thread_reserve(&s->tracked)) {
+        free(s);
+        return dvm_throw("java/lang/IllegalStateException", "The game is closing");
+    }
+    atomic_init(&s->ready, false);
     s->thread = a[0].l;
     dvm_field *pf = s->thread ? thread_peer(s->thread) : NULL;
     if (pf) dvm_slots(s->thread)[pf->slot].j = (int64_t)(uintptr_t)s->thread;     /* alive from here (before it runs: start() then isAlive() is true) */
     pthread_attr_t at; pthread_attr_init(&at);
     pthread_attr_setstacksize(&at, 32u << 20);
-    pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    if (!s->tracked) pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
     pthread_t th;
-    if (pthread_create(&th, &at, thread_main, s) != 0) { free(s); return dvm_throw("java/lang/OutOfMemoryError", "pthread_create"); }
+    int error = pthread_create(&th, &at, thread_main, s);
+    pthread_attr_destroy(&at);
+    if (error) {
+        if (pf) dvm_slots(s->thread)[pf->slot].j = 0;
+        tl_guest_thread_release((void *)(uintptr_t)s->tracked);
+        free(s);
+        return dvm_throw("java/lang/OutOfMemoryError", "pthread_create");
+    }
+    tl_guest_thread_register((uintptr_t)th, s->tracked);
+    atomic_store(&s->ready, true);
     return true;
 }
 

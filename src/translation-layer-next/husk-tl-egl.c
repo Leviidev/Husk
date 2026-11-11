@@ -13,6 +13,7 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-xmem.h"
+#include "husk-tl-guest-pool.h"
 
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
@@ -636,7 +637,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited CPU %dx%d -> %dx%d)", n, rw, rh, vw, vh);
     return true;
 }
-static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
+static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
 {
     void *texwin = tex_window_of(s);
     if (texwin) { tex_swap(d, s, texwin); return EGL_TRUE; }
@@ -656,6 +657,13 @@ static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
     }
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
     return E.frame_dir[0] ? EGL_TRUE : a_eglSwapBuffers(d, s);
+}
+
+static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
+{
+    EGLBoolean ok = swap_buffers(d, s);
+    tl_guest_pool_frame();
+    return ok;
 }
 
 /* The damage-region swaps (Flutter's engine, HWUI): the same as a whole swap here -- through the wrapper, so a frame reaches the

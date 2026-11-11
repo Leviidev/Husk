@@ -390,7 +390,12 @@ static NSArray<NSString *> *nstrs(jobj *arr)
     if (arr && arr->kind == TL_K_OBJ_ARRAY) for (uint32_t i = 0; i < arr->oarr.len; i++) [out addObject:nstr(arr->oarr.v[i]) ?: @""];
     return out;
 }
-static void on_main(dispatch_block_t b) { dispatch_async(dispatch_get_main_queue(), b); }
+static atomic_uint g_view_epoch;
+static void on_main(dispatch_block_t b)
+{
+    unsigned epoch = atomic_load(&g_view_epoch);
+    dispatch_async(dispatch_get_main_queue(), ^{ if (atomic_load(&g_view_epoch) == epoch) b(); });
+}
 static void dispatch_sync_main_safe(dispatch_block_t b) { if ([NSThread isMainThread]) b(); else dispatch_async(dispatch_get_main_queue(), b); }
 static HuskWeb *view_of(int wid) { return g_views[@(wid)]; }
 
@@ -768,10 +773,15 @@ void tl_web_attach(void *screen_view, void *container, float scale, bool fresh)
     float s = scale > 0 ? scale : 1;
     dispatch_block_t b = ^{
         if (fresh) {
+            atomic_fetch_add(&g_view_epoch, 1);
             /* a new app on a new screen: whatever the last one left goes */
             for (HuskWeb *h in g_views.allValues) [h teardown];
             [g_views removeAllObjects];
             [g_pending removeAllObjects];
+            pthread_mutex_lock(&g_ev_lock);
+            for (int i = 0; i < g_nev; i++) free(g_ev[i]);
+            free(g_ev); g_ev = NULL; g_nev = 0; g_cev = 0;
+            pthread_mutex_unlock(&g_ev_lock);
             pthread_mutex_lock(&g_hit_lock);
             g_nhits = 0;
             pthread_mutex_unlock(&g_hit_lock);

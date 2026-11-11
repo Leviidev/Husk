@@ -36,8 +36,8 @@
  *        BlobWrapper containing a CMS (PKCS#7) SignedData DER structure.
  *        Signs the SHA-256 digest of the CodeDirectory (CDHash) using the
  *        developer's RSA or ECDSA private key.
- *        Contains Apple-specific signed attributes (1.2.840.113635.100.9.1
- *        and 1.2.840.113635.100.9.2) embedding the CDHashes.
+ *        Carries contentType, signingTime and messageDigest for the single
+ *        detached SHA-256 CodeDirectory.
  *
  * Uncertainties & Known Limits:
  * - Developer certificate chains must be valid X.509 DER. If intermediate CA
@@ -384,35 +384,22 @@ static bool parse_cert_der(const uint8_t *cert_der, size_t cert_len, cert_meta *
     return true;
 }
 
-/* ------------------------------------------------------------------ Base64 Encoder */
-
-static char *b64_encode(const uint8_t *data, size_t len) {
-    static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    size_t out_len = 4 * ((len + 2) / 3);
-    char *out = (char *)malloc(out_len + 1);
-    if (!out) return NULL;
-    size_t i = 0, j = 0;
-    while (i < len) {
-        size_t rem = len - i;
-        uint32_t a = data[i++];
-        uint32_t b = (rem > 1) ? data[i++] : 0;
-        uint32_t c = (rem > 2) ? data[i++] : 0;
-        uint32_t triple = (a << 16) | (b << 8) | c;
-        out[j++] = tbl[(triple >> 18) & 0x3F];
-        out[j++] = tbl[(triple >> 12) & 0x3F];
-        out[j++] = (rem > 1) ? tbl[(triple >> 6) & 0x3F] : '=';
-        out[j++] = (rem > 2) ? tbl[triple & 0x3F] : '=';
-    }
-    out[j] = '\0';
-    return out;
-}
-
 /* ------------------------------------------------------------------ CMS SignedData Generator */
 
-static const uint8_t sha256_alg_null[] = {
-    0x30, 0x0d,
-      0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
-      0x05, 0x00
+typedef struct { const uint8_t *der; size_t len; } cms_cert;
+static int cms_cert_compare(const void *a, const void *b)
+{
+    const cms_cert *x = a, *y = b;
+    size_t n = x->len < y->len ? x->len : y->len;
+    int order = memcmp(x->der, y->der, n);
+    return order ? order : (x->len > y->len) - (x->len < y->len);
+}
+
+/* CMS keeps the digest and RSA algorithm separate (RFC 3370 / RFC 5754).
+ * SHA-256 parameters are absent; RSA PKCS#1 v1.5 parameters are NULL. */
+static const uint8_t sha256_alg[] = {
+    0x30, 0x0b,
+      0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01
 };
 
 /*
@@ -505,49 +492,9 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
     der_put_length(&attrs, 34);
     der_put_tlv(&attrs, 0x04, cdhash, 32);
 
-    /* 4. Apple CDHash (OID 1.2.840.113635.100.9.2 -> SEQUENCE of { sha256, hash }) */
-    static const uint8_t a3_hdr[] = {
-        0x30, 0x3c,
-          0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x09, 0x02,
-          0x31, 0x2f,
-            0x30, 0x2d,
-              0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
-              0x04, 0x20
-    };
-    buf_put(&attrs, a3_hdr, sizeof(a3_hdr));
-    buf_put(&attrs, cdhash, 32);
-
-    /* 5. Apple CDHashes plist (OID 1.2.840.113635.100.9.1 -> base64 20-byte truncated CDHash) */
-    char *b64 = b64_encode(cdhash, 20);
-    char plist[512];
-    int plen = snprintf(plist, sizeof(plist),
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
-        "<plist version=\"1.0\">\n"
-        "<dict>\n"
-        "\t<key>cdhashes</key>\n"
-        "\t<array>\n"
-        "\t\t<data>\n"
-        "\t\t%s\n"
-        "\t\t</data>\n"
-        "\t</array>\n"
-        "</dict>\n"
-        "</plist>\n", b64 ? b64 : "");
-    free(b64);
-
-    cs_buf a4_inner;
-    buf_init(&a4_inner);
-    der_put_tlv(&a4_inner, 0x04, (const uint8_t *)plist, (size_t)plen);
-    der_wrap(&a4_inner, 0x31, 0); /* SET */
-    static const uint8_t oid_apple_cdhashes[] = { 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x09, 0x01 };
-    cs_buf a4;
-    buf_init(&a4);
-    buf_put(&a4, oid_apple_cdhashes, sizeof(oid_apple_cdhashes));
-    buf_put(&a4, a4_inner.b, a4_inner.n);
-    der_wrap(&a4, 0x30, 0); /* SEQUENCE */
-    buf_put(&attrs, a4.b, a4.n);
-    buf_free(&a4_inner);
-    buf_free(&a4);
+    /* One SHA-256 CodeDirectory is the detached content. No hash-agility
+     * attributes are needed for alternate CodeDirectories: there are none.
+     * These three attributes are already in canonical DER SET order. */
 
     /* RFC 5652: Compute digest over EXPLICIT SET OF tag (0x31) + length + attribute contents */
     cs_buf to_hash;
@@ -591,7 +538,7 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
     der_wrap(&sinfo, 0x30, sid_start);
 
     /* digestAlgorithm: sha256 */
-    buf_put(&sinfo, sha256_alg_null, sizeof(sha256_alg_null));
+    buf_put(&sinfo, sha256_alg, sizeof(sha256_alg));
 
     /* [0] IMPLICIT signedAttrs */
     buf_put_byte(&sinfo, 0xa0);
@@ -599,11 +546,11 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
     buf_put(&sinfo, attrs.b, attrs.n);
     buf_free(&attrs);
 
-    /* signatureAlgorithm: sha256WithRSAEncryption (1.2.840.113549.1.1.11) or ecdsa-with-SHA256 */
+    /* signatureAlgorithm: rsaEncryption or ecdsa-with-SHA256 */
     if (meta->is_rsa) {
         static const uint8_t rsa_alg_null[] = {
             0x30, 0x0d,
-              0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b,
+              0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
               0x05, 0x00
         };
         buf_put(&sinfo, rsa_alg_null, sizeof(rsa_alg_null));
@@ -629,7 +576,7 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
     /* digestAlgorithms SET OF { sha256 } */
     cs_buf dalg;
     buf_init(&dalg);
-    buf_put(&dalg, sha256_alg_null, sizeof(sha256_alg_null));
+    buf_put(&dalg, sha256_alg, sizeof(sha256_alg));
     der_wrap(&dalg, 0x31, 0);
     buf_put(&sdata, dalg.b, dalg.n);
     buf_free(&dalg);
@@ -638,10 +585,10 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
     static const uint8_t encap[] = { 0x30, 0x0b, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01 };
     buf_put(&sdata, encap, sizeof(encap));
 
-    /* [0] IMPLICIT certificates — leaf first, then unique intermediates. Never a self-signed root. */
+    /* Include the actual issuer path, not every certificate found in the host
+     * CMS. A refresh may leave another developer leaf or an expired WWDR there.
+     * CertificateSet is SET OF, so DER sorts the complete encodings. */
     size_t certs_start = sdata.n;
-    int ncerts = 1;
-    buf_put(&sdata, leaf_cert_der, leaf_cert_len);
     if (extra_certs) {
         CFIndex count = CFArrayGetCount(extra_certs);
         for (CFIndex i = 0; i < count; i++) {
@@ -650,21 +597,35 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
             if (cd) {
                 const uint8_t *p = CFDataGetBytePtr(cd);
                 size_t n = (size_t)CFDataGetLength(cd);
-                if (n != leaf_cert_len || memcmp(p, leaf_cert_der, leaf_cert_len) != 0) {
-                    if (!chain_has(p, n) && !cert_is_root(p, n)) {
-                        buf_put(&sdata, p, n);
-                        ncerts++;
-                    }
-                }
+                chain_add(p, n);
                 CFRelease(cd);
             }
         }
     }
-    for (int i = 0; i < g_nchain; i++)
-        if (g_chain[i].len != leaf_cert_len || memcmp(g_chain[i].der, leaf_cert_der, leaf_cert_len) != 0) {
-            buf_put(&sdata, g_chain[i].der, g_chain[i].len);
-            ncerts++;
+    cms_cert selected[CHAIN_MAX + 1] = { { leaf_cert_der, leaf_cert_len } };
+    int ncerts = 1;
+    cert_meta current = *meta;
+    for (int depth = 0; depth < CHAIN_MAX; depth++) {
+        int parent = -1;
+        cert_meta issuer;
+        for (int i = 0; i < g_nchain; i++) {
+            cert_meta candidate;
+            if (!parse_cert_der(g_chain[i].der, g_chain[i].len, &candidate)
+                || candidate.not_after_epoch <= (int64_t)time(NULL)
+                || candidate.subject_len != current.issuer_len
+                || memcmp(candidate.subject_ptr, current.issuer_ptr, current.issuer_len)) continue;
+            bool seen = false;
+            for (int k = 0; k < ncerts; k++)
+                if (selected[k].len == g_chain[i].len && !memcmp(selected[k].der, g_chain[i].der, g_chain[i].len)) seen = true;
+            if (seen) continue;
+            parent = i; issuer = candidate; break;
         }
+        if (parent < 0) break; /* the root is supplied by the OS trust store */
+        selected[ncerts++] = (cms_cert){ g_chain[parent].der, g_chain[parent].len };
+        current = issuer;
+    }
+    qsort(selected, (size_t)ncerts, sizeof(selected[0]), cms_cert_compare);
+    for (int i = 0; i < ncerts; i++) buf_put(&sdata, selected[i].der, selected[i].len);
     der_wrap(&sdata, 0xa0, certs_start);
     tl_log_line("sign: CMS certificates %d (leaf + intermediates, no root)", ncerts);
 

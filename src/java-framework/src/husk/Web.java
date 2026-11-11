@@ -28,6 +28,7 @@ public final class Web {
     public static native boolean cookieClear(boolean sessionOnly);
     public static native boolean cookieAny();
     private static boolean sApp;
+    public static void resetSession() { sApp = false; }
     /** Before any web view or cookie: which app's data store they are. */
     public static synchronized void ensureApp() { if (!sApp) { sApp = true; app(Native.packageName()); } }
 

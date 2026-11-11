@@ -5,6 +5,7 @@
 #include "husk-tl-internal.h"
 
 #include <errno.h>
+#include <dlfcn.h>
 #include <mach-o/fixup-chains.h>
 #include <mach-o/loader.h>
 #include <stdio.h>
@@ -257,6 +258,18 @@ static int prepare_one(const char *name, const uint8_t *data, size_t len, const 
         }
     }
     if (!ok) { snprintf(err, errlen, "%s: %s", name, e2); unlink(path); return -1; }
+    /* The signer's success only proves that bytes were written. Ask dyld to
+     * validate the actual signature before booting Java. Converted dylibs have
+     * no Mach-O initialisers; ELF initialisation remains the loader's job. */
+    if (!dlopen(path, RTLD_NOW | RTLD_LOCAL)) {
+        const char *why = dlerror();
+        const char *detail = why && strstr(why, "code signature invalid")
+            ? "iOS rejected its signature. Refresh Husk and import the matching store certificate; include this report if it repeats."
+            : why ? why : "signature validation failed";
+        snprintf(err, errlen, "%s: iOS could not load the converted library: %.160s", name, detail);
+        tl_log_line("aot: %s: signature/load validation failed: %s", name, why ? why : "unknown error");
+        return -1;
+    }
     return 1;
 }
 
@@ -380,10 +393,9 @@ int husk_aot_prepare(const char *const *apks, int napks, const char *cache_dir, 
         }
         if (owned) free((void *)data);
         if (r < 0) {
-            /* one library that will not convert must not stop the rest: JIT-less still runs on those that did */
-            tl_log_line("aot: %s skipped: %s", libs[k].name, err);
-            if (errlen) err[0] = 0;
-            continue;
+            tl_log_line("aot: preparing %s failed: %s", libs[k].name, err);
+            ready = -1;
+            goto out;
         }
         ready += r;
     }

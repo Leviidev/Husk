@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import json
 import os
 from contextlib import contextmanager
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import sys
 
@@ -106,6 +106,12 @@ async def mirror_log(afc, remote, target, cursors, limit=MAX_LOG_BYTES):
             'tailOnly': size > limit, 'changed': bool(changed)}
 
 
+def crash_leaf(remote):
+    """Apple may mark exported reports .ips.synced or move them to Retired."""
+    match = re.fullmatch(r'/?(?:Retired/)?((?:Husk[-.][^/\\]+|JetsamEvent-[^/\\]+)\.ips)(?:\.synced)?', remote)
+    return match[1] if match else None
+
+
 async def collect_crashes(device, output):
     """Copy only Husk reports and Jetsam snapshots mentioning Husk; never remove them."""
     from pymobiledevice3.services.crash_reports import CrashReportsManager
@@ -117,10 +123,17 @@ async def collect_crashes(device, output):
         except (TimeoutError, OSError):
             pass
         names = await manager.ls()
-        candidates = sorted((p for p in names if re.fullmatch(r'/?Husk-[^/\\]+\.ips', p)), reverse=True)[:8]
-        candidates += sorted((p for p in names if re.fullmatch(r'/?JetsamEvent-[^/\\]+\.ips', p)), reverse=True)[:5]
-        for remote in candidates:
-            leaf = PurePosixPath(remote).name
+        try:
+            names += await manager.ls('/Retired')
+        except OSError:
+            pass
+        reports = [(p, crash_leaf(p)) for p in names if crash_leaf(p)]
+        def report_date(item):
+            found = re.search(r'\d{4}-\d{2}-\d{2}-\d{6}', item[1])
+            return found[0] if found else item[1]
+        candidates = sorted((p for p in reports if p[1].startswith('Husk')), key=report_date, reverse=True)[:8]
+        candidates += sorted((p for p in reports if p[1].startswith('JetsamEvent-')), key=report_date, reverse=True)[:5]
+        for remote, leaf in candidates:
             target = output / leaf
             if target.exists():
                 saved.append(leaf)
@@ -144,7 +157,7 @@ async def collect_crashes(device, output):
     kept = []
     for prefix, count in (('Husk', 8), ('JetsamEvent', 2)):
         owned = sorted((p for p in output.iterdir() if p.is_file() and
-                        re.fullmatch(prefix+r'-[^/\\]+\.ips', p.name)), reverse=True)
+                        re.fullmatch(prefix+r'[-.][^/\\]+\.ips', p.name)), reverse=True)
         kept += owned[:count]
         for old in owned[count:]:
             old.unlink()

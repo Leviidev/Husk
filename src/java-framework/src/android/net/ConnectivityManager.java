@@ -38,6 +38,7 @@ public class ConnectivityManager {
     /* as Android: callbacks come on the connectivity thread unless the app gives a handler (the main thread may be busy for a
        long while at start-up, and WorkManager gives up on a constraint whose callback is a second late) */
     private static android.os.Handler sThread;
+    public static synchronized void resetSession() { sThread = null; }
     private static synchronized android.os.Handler connectivityThread() {
         if (sThread == null) { android.os.HandlerThread t = new android.os.HandlerThread("ConnectivityThread"); t.start(); sThread = new android.os.Handler(t.getLooper()); }
         return sThread;

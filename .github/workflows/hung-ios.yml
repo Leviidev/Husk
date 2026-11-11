@@ -10,6 +10,10 @@ on:
         type: choice
         options: [upstream, source]
         default: upstream
+      publish_release:
+        description: Publish the validated IPA and corresponding source as a release
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -120,6 +124,10 @@ jobs:
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -fsyntax-only src/translation-layer-next/husk-tl-bionic-iconv.c
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -I src/translation-layer -I src/translation-layer-next -I src/ios-jit -fsyntax-only src/translation-layer-next/husk-tl-bionic-io.c
           xcrun --sdk iphoneos clang -target arm64-apple-ios15.5 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -std=gnu11 -Wall -Wextra -Werror -I src/translation-layer -I src/translation-layer-next -fsyntax-only src/translation-layer-next/husk-tl-vhtg-quest.c
+      - name: Host models and Apple autorelease lifetime
+        run: python3 tests/run_portable.py --sanitize
+      - name: Production CMS signer against Apple CoreTrust
+        run: python3 tests/test_codesign_apple.py -v
       - name: Build the modified app with the upstream packager
         run: |
           if [ "$HUNG_DEPENDENCY_MODE" = source ]; then
@@ -147,14 +155,15 @@ jobs:
             LICENSE
       - name: Create GitHub Release with IPA
         uses: softprops/action-gh-release@v2
-        if: success()
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release
         with:
           tag_name: v-fixed-${{ github.run_number }}
-          name: "Hung APK Player - Tru Tiên Fixed (Build ${{ github.run_number }})"
-          body: "Bản build IPA sửa lỗi iconv, mallopt và chuẩn hóa dấu gạch chéo ngược đường dẫn cho Angelica Engine (Tru Tiên)."
+          name: "HUNG APK PLAYER - Runtime build ${{ github.run_number }}"
+          body: "Runtime memory, network ABI and cooperative game lifecycle changes. See the source and validation notes for device test status."
           files: |
             build/HUNG-APK-PLAYER.ipa
             build/HUNG-APK-PLAYER.ipa.sha256
+            build/HUNG-APK-PLAYER-source.zip
       - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4

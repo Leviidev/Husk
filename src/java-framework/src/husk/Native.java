@@ -28,6 +28,8 @@ public final class Native {
     public static native int screenWidth();
     public static native int screenHeight();
     public static native float density();
+    /** Physical RAM, remaining process budget, RSS and physical footprint (bytes). */
+    public static native long[] memoryInfo();
     public static native void startGL(Object view, Object renderer, int esVersion);
     public static native void requestRender();
     public static native void setContentView(Object view);

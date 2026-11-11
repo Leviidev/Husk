@@ -91,6 +91,7 @@ final class CrashReport: ObservableObject {
                 guard running != nil else { return }
                 HuskLog.log("runtime", "memory warning while game active; \(runningDisplay); thermal=\(ProcessInfo.processInfo.thermalState.rawValue)")
                 HuskLog.logFootprint("game-memory-warning")
+                husk_java_memory_warning()
             })
             observers.append(nc.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { _ in
                 guard running != nil else { return }

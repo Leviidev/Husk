@@ -21,6 +21,17 @@ public final class ViewRoot implements ViewParent {
     private static int[] sInsets = { 0, 0, 0, 0 };     /* left, top, right, bottom: the notch / status bar and home indicator areas */
     private static int sImeBottom;
     private static ViewRoot sTouchTarget;
+    public static void shutdown() {
+        for (ViewRoot root : new ArrayList<>(sRoots)) {
+            try { root.remove(); }
+            catch (Throwable t) { android.util.Log.w("Husk", "close window", t); }
+        }
+    }
+    public static void resetSession() {
+        sRoots.clear(); sScreen = null; sCanvas = null; sMain = null;
+        sTouchTarget = null; sScheduled = false; sPresentedAny = false;
+        sInsets = new int[] {0, 0, 0, 0}; sImeBottom = 0;
+    }
 
     final View mView;
     WindowManager.LayoutParams mLp;

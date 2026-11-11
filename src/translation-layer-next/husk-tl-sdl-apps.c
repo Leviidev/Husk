@@ -143,7 +143,12 @@ static void luajit_openlibs(void *L)
 
 /* The same for any app (the Java runtime's), when there is no executable memory at all (JIT-less mode): LuaJIT's machine code
  * could never run, and its answer to the refused mprotect is a panic. */
-void tl_luajit_interpreter_only(void) { tl_ld_interpose("luaL_openlibs", (void *)luajit_openlibs); }
+void tl_luajit_interpreter_only(void)
+{
+    g_real_openlibs = NULL;
+    g_jit_setmode = NULL;
+    tl_ld_interpose("luaL_openlibs", (void *)luajit_openlibs);
+}
 
 /* ------------------------------------------------------------------ install */
 
