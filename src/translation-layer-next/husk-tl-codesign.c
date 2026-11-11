@@ -417,20 +417,13 @@ static bool chain_has(const uint8_t *der, size_t len)
     return false;
 }
 
-static bool cert_is_root(const uint8_t *der, size_t len)
-{
-    cert_meta m;
-    if (!parse_cert_der(der, len, &m) || !m.issuer_ptr || !m.subject_ptr) return true;
-    return m.issuer_len == m.subject_len && memcmp(m.issuer_ptr, m.subject_ptr, m.issuer_len) == 0;
-}
-
-/* Intermediates only: a self-signed root in the CMS bag makes iOS AMFI report
- * "code signature invalid" even when macOS codesign --verify accepts the same blob. */
+/* CoreTrust's code-signing path needs the complete issuer path in the CMS,
+ * including the Apple root. A valid RSA signature without that certificate
+ * failed on-device with 0x9010d; adding the root made the same SDL image load. */
 static bool chain_add(const uint8_t *der, size_t len)
 {
     if (!der || len < 64 || len > 8192 || der[0] != 0x30) return false;
     if (chain_has(der, len) || g_nchain >= CHAIN_MAX) return false;
-    if (cert_is_root(der, len)) return false;
     uint8_t *copy = (uint8_t *)malloc(len);
     if (!copy) return false;
     memcpy(copy, der, len);
@@ -443,9 +436,11 @@ static bool chain_add(const uint8_t *der, size_t len)
 /* SideStore/AltStore .p12 files hold only the leaf. Always embed Apple's public WWDR G3
  * so iOS can build a trust path (CSSMERR_TP_NOT_TRUSTED / errno=1 otherwise). */
 #include "husk-tl-codesign-wwdr.inc"
+#include "husk-tl-codesign-root.inc"
 static void ensure_wwdr_in_chain(void)
 {
     chain_add(k_apple_wwdr_g3, sizeof(k_apple_wwdr_g3));
+    chain_add(k_apple_root_ca, sizeof(k_apple_root_ca));
 }
 
 static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
@@ -620,14 +615,16 @@ static bool build_cms_signed_data(const uint8_t *cdhash, size_t cdhash_len,
             if (seen) continue;
             parent = i; issuer = candidate; break;
         }
-        if (parent < 0) break; /* the root is supplied by the OS trust store */
+        if (parent < 0) break;
         selected[ncerts++] = (cms_cert){ g_chain[parent].der, g_chain[parent].len };
         current = issuer;
+        if (current.subject_len == current.issuer_len &&
+            !memcmp(current.subject_ptr, current.issuer_ptr, current.subject_len)) break;
     }
     qsort(selected, (size_t)ncerts, sizeof(selected[0]), cms_cert_compare);
     for (int i = 0; i < ncerts; i++) buf_put(&sdata, selected[i].der, selected[i].len);
     der_wrap(&sdata, 0xa0, certs_start);
-    tl_log_line("sign: CMS certificates %d (leaf + intermediates, no root)", ncerts);
+    tl_log_line("sign: CMS certificates %d (selected signer and complete issuer path)", ncerts);
 
     /* Append signerInfos SET OF */
     buf_put(&sdata, sinfo.b, sinfo.n);

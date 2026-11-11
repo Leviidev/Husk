@@ -9,6 +9,7 @@ import ctypes
 import hashlib
 from pathlib import Path
 import platform
+import re
 import struct
 import subprocess
 import tempfile
@@ -48,9 +49,25 @@ class AppleSignerTest(unittest.TestCase):
                 '-framework', 'Security', '-framework', 'CoreFoundation', '-o', work / 'signer')
             run('cc', '-dynamiclib', '-x', 'c', '-', '-o', work / 'test.dylib', input=b'int test_value(void) { return 42; }\n')
             run('openssl', 'req', '-new', '-x509', '-newkey', 'rsa:2048', '-nodes',
-                '-keyout', work / 'key.pem', '-out', work / 'cert.pem', '-days', '2',
+                '-keyout', work / 'root.key', '-out', work / 'root.pem', '-days', '2',
+                '-subj', '/CN=Husk temporary root test')
+            run('openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
+                '-keyout', work / 'issuer.key', '-out', work / 'issuer.csr',
+                '-subj', '/CN=Husk temporary issuer test')
+            (work / 'ca.ext').write_text('basicConstraints=critical,CA:TRUE,pathlen:0\nkeyUsage=critical,keyCertSign,cRLSign\n')
+            run('openssl', 'x509', '-req', '-in', work / 'issuer.csr', '-CA', work / 'root.pem',
+                '-CAkey', work / 'root.key', '-set_serial', '2', '-days', '2',
+                '-extfile', work / 'ca.ext', '-out', work / 'issuer.pem')
+            run('openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
+                '-keyout', work / 'key.pem', '-out', work / 'leaf.csr',
                 '-subj', '/CN=Husk temporary signer test/OU=ABCDEFGHIJ')
+            (work / 'leaf.ext').write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=codeSigning\n')
+            run('openssl', 'x509', '-req', '-in', work / 'leaf.csr', '-CA', work / 'issuer.pem',
+                '-CAkey', work / 'issuer.key', '-set_serial', '3', '-days', '2',
+                '-extfile', work / 'leaf.ext', '-out', work / 'cert.pem')
+            (work / 'chain.pem').write_bytes((work / 'issuer.pem').read_bytes() + (work / 'root.pem').read_bytes())
             run('openssl', 'pkcs12', '-export', '-inkey', work / 'key.pem', '-in', work / 'cert.pem',
+                '-certfile', work / 'chain.pem',
                 '-keypbe', 'PBE-SHA1-3DES', '-certpbe', 'PBE-SHA1-3DES', '-macalg', 'sha1',
                 '-out', work / 'test.p12', '-passout', 'pass:temporary-test')
             run(work / 'signer', work / 'test.dylib', work / 'test.p12', 'temporary-test')
@@ -69,6 +86,13 @@ class AppleSignerTest(unittest.TestCase):
             run('openssl', 'cms', '-verify', '-binary', '-noverify', '-inform', 'DER',
                 '-in', work / 'cms.der', '-content', work / 'directory.bin', '-out', work / 'verified.bin')
             self.assertEqual((work / 'verified.bin').read_bytes(), cd)
+            run('openssl', 'pkcs7', '-inform', 'DER', '-in', work / 'cms.der',
+                '-print_certs', '-out', work / 'embedded.pem')
+            embedded = (work / 'embedded.pem').read_text()
+            self.assertEqual(len(re.findall('BEGIN CERTIFICATE', embedded)), 3,
+                             'CMS must retain the matching leaf, issuer and root, excluding unrelated Apple roots')
+            run('openssl', 'cms', '-verify', '-binary', '-purpose', 'any', '-CAfile', work / 'root.pem',
+                '-inform', 'DER', '-in', work / 'cms.der', '-content', work / 'directory.bin', '-out', work / 'verified.bin')
             security = ctypes.CDLL('/System/Library/Frameworks/Security.framework/Security')
             foundation = ctypes.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
             pointer = ctypes.c_void_p
@@ -102,7 +126,7 @@ class AppleSignerTest(unittest.TestCase):
                         if reference: foundation.CFRelease(reference)
             self.assertEqual(apple_verify(cd), 1, 'Apple CMSDecoder rejected the production signature')
             self.assertNotEqual(apple_verify(cd[:-1] + bytes([cd[-1] ^ 1])), 1)
-            print('PASS: production page hashes, OpenSSL and Apple Security CMS agree; tampering rejected')
+            print('PASS: production page hashes, complete three-certificate issuer path, OpenSSL and Apple Security CMS agree; tampering rejected')
             library = None
             for candidate in ('/System/Library/PrivateFrameworks/CoreTrust.framework/CoreTrust', '/usr/lib/libCoreTrust.dylib'):
                 try:

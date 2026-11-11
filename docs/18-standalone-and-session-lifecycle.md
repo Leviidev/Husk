@@ -34,7 +34,7 @@ local directories. No private key or password was exported.
 
 The signer now emits one SHA-256 CodeDirectory with a minimal detached CMS,
 separate SHA-256/RSA algorithm identifiers, and the selected issuer path.
-The cache signer revision advances to `s16` so a prior signature is not reused.
+The cache signer revision advances to `s17` so a prior signature is not reused.
 Preparation asks dyld to load each converted library and surfaces a failure
 before Java starts. Standalone mode skips automatic debugger activation and
 JIT-memory prewarming, including saved automatic-JIT preferences.
@@ -78,6 +78,18 @@ OpenSSL and Apple Security's CMSDecoder. A separate CoreTrust check is attempted
 only when that private verifier is available on the host. The test identity is
 not a developer certificate, so these checks do not establish iOS certificate
 trust.
+
+### Follow-up on the installed f7ce1f9 build
+
+The device rejected the s16 SDL signature even though page hashes, RSA signature
+and the developer certificate's presence in installed profiles were verified.
+The CMS carried the developer leaf and WWDR G3 but omitted the Apple root.
+A reversible cache experiment supplied the complete public Apple issuer path
+without changing executable pages or the signed CodeDirectory. The device then
+accepted SDL and preparation continued to libc++_shared, whose signature still
+omitted the root. This establishes a concrete difference from host-only CMS
+verification. The signer now preserves the selected root and includes the
+public Apple Inc. Root alongside WWDR G3 when constructing that path.
 
 Required device checks for the new IPA are: JIT-less library validation, all
 three games starting, returning home and switching/reopening repeatedly,
