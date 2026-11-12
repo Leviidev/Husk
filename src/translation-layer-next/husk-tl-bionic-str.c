@@ -577,7 +577,15 @@ static void b_sincosf(float x, float *s, float *c) { *s = sinf(x); *c = cosf(x);
 static const char *b_strerror(int e) { return strerror(tl_errno_from_guest(e)); }
 static int b_strerror_r(int e, char *buf, size_t n)
 {
+    int saved_errno = errno;
     int r = strerror_r(tl_errno_from_guest(e), buf, n);
+    /* Bionic formats unknown errors successfully; Darwin writes a message but returns EINVAL. OpenSSL probes Linux-only
+     * error numbers (e.g. 117) at startup, and its compatibility wrapper mistakes that nonzero result for a string pointer. */
+    if (r == EINVAL) {
+        int len = snprintf(buf, n, "Unknown error %d", e);
+        r = len < 0 || (size_t)len >= n ? ERANGE : 0;
+    }
+    errno = saved_errno;
     return r ? tl_errno_to_guest(r) : 0;
 }
 static const char *b_strsignal(int sig)
