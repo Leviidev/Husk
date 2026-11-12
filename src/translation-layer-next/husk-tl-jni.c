@@ -616,6 +616,10 @@ static uint32_t jni_GetVersion(void *env) { (void)env; return 0x00010006; }
 static jo jni_FindClass(void *env, const char *name)
 {
     (void)env;
+    if (tl_dvm && tl_dvm->caller_class) {
+        tl_jclass *scoped = tl_dvm->caller_class(name);
+        if (scoped) return scoped->mirror;
+    }
     bool array = name[0] == '[';
     bool framework = !strncmp(name, "android/", 8) || !strncmp(name, "java/", 5) || !strncmp(name, "javax/", 6)
                   || !strncmp(name, "dalvik/", 7) || !strncmp(name, "libcore/", 8) || !strncmp(name, "sun/", 4)

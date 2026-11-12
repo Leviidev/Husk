@@ -46,4 +46,6 @@ public final class Native {
     public static native void openUrl(String url);
     public static native void exit();
     public static native long uptimeNanos();
+    /** Give a guest process its own definitions of the APK's classes (the boot framework stays shared). */
+    public static native boolean registerProcessLoader(ClassLoader loader);
 }

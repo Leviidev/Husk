@@ -16,6 +16,15 @@ public final class Parcel {
     private int mSize, mPos;
     private final ArrayList<Object> mObjects = new ArrayList<>();
     private Parcel() {}
+    public Parcel huskCopy(ClassLoader loader) {
+        Parcel p = obtain(); p.mBuf = mBuf.clone(); p.mSize = mSize;
+        for (Object o : mObjects) p.mObjects.add(husk.Processes.copy(o, loader));
+        return p;
+    }
+    public void huskReplace(Parcel source) {
+        mBuf = source.mBuf.clone(); mSize = source.mSize; mPos = 0;
+        mObjects.clear(); mObjects.addAll(source.mObjects);
+    }
     public static Parcel obtain() { return new Parcel(); }
     public static Parcel obtain(IBinder b) { return new Parcel(); }
     public void recycle() { mSize = 0; mPos = 0; mObjects.clear(); }

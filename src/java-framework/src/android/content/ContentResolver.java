@@ -24,8 +24,14 @@ public class ContentResolver {
         if (authorities == null) return;
         synchronized (sProviders) { for (String a : authorities.split(";")) sProviders.put(a.trim(), p); }
     }
+    public static ContentProvider huskRegistered(String authority) { synchronized (sProviders) { return sProviders.get(authority); } }
+    public static void huskReset() { synchronized (sProviders) { sProviders.clear(); } synchronized (sObservers) { sObservers.clear(); } sSelf = null; }
     private static ContentProvider provider(Uri u) { if (u == null || !SCHEME_CONTENT.equals(u.getScheme())) return null; return byAuthority(u.getAuthority()); }
-    private static ContentProvider byAuthority(String a) { ContentProvider p; synchronized (sProviders) { p = sProviders.get(a); } return p != null ? p : husk.GmsProviders.forAuthority(a); }
+    private static ContentProvider byAuthority(String a) {
+        ContentProvider p = huskRegistered(a);
+        if (p == null) p = husk.Processes.provider(a);
+        return p != null ? p : husk.GmsProviders.forAuthority(a);
+    }
     public final ContentProviderClient acquireContentProviderClient(Uri u) { ContentProvider p = provider(u); return p == null ? null : new ContentProviderClient(p); }
     public final ContentProviderClient acquireContentProviderClient(String a) { ContentProvider p = byAuthority(a); return p == null ? null : new ContentProviderClient(p); }
     public final ContentProviderClient acquireUnstableContentProviderClient(Uri u) { return acquireContentProviderClient(u); }
@@ -79,7 +85,7 @@ public class ContentResolver {
     public final int delete(Uri u, String sel, String[] args) { ContentProvider p = provider(u); return p == null ? 0 : p.delete(u, sel, args); }
     public final int bulkInsert(Uri u, ContentValues[] v) { int n = 0; for (ContentValues c : v) if (insert(u, c) != null) n++; return n; }
     public final Bundle call(Uri u, String method, String arg, Bundle extras) { ContentProvider p = provider(u); return p == null ? null : p.call(method, arg, extras); }
-    public final Bundle call(String authority, String method, String arg, Bundle extras) { ContentProvider p; synchronized (sProviders) { p = sProviders.get(authority); } return p == null ? null : p.call(method, arg, extras); }
+    public final Bundle call(String authority, String method, String arg, Bundle extras) { ContentProvider p = byAuthority(authority); return p == null ? null : p.call(method, arg, extras); }
     public final java.io.InputStream openInputStream(Uri u) throws java.io.FileNotFoundException {
         if (u == null) throw new java.io.FileNotFoundException("null uri");
         String s = u.getScheme();
@@ -109,7 +115,7 @@ public class ContentResolver {
         ContentProvider p = provider(u);
         if (p != null) {
             android.os.ParcelFileDescriptor pfd = p.openFile(u, mode);
-            if (pfd != null) return new java.io.FileOutputStream(pfd.getFileDescriptor());
+            if (pfd != null) return new android.os.ParcelFileDescriptor.AutoCloseOutputStream(pfd);
         }
         throw new java.io.FileNotFoundException("No content provider: " + u);
     }

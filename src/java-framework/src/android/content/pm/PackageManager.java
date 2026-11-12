@@ -39,8 +39,7 @@ public class PackageManager {
     private static boolean mine(String pkg) { return pkg != null && pkg.equals(husk.Native.packageName()); }
     /* the process a component names (android:process: ":x" is the app's own "<package>:x"), the app's process when it names none */
     private static String process(husk.Manifest.Component c) {
-        String pkg = husk.Native.packageName();
-        return c.process == null || c.process.isEmpty() ? pkg : c.process.startsWith(":") ? pkg + c.process : c.process;
+        return husk.Manifest.processName(c);
     }
     private static ActivityInfo activity(husk.Manifest.Component c) {
         ActivityInfo a = new ActivityInfo();
@@ -50,7 +49,7 @@ public class PackageManager {
         return a;
     }
     private static ServiceInfo service(husk.Manifest.Component c) { ServiceInfo s = new ServiceInfo(); s.name = c.name; s.packageName = husk.Native.packageName(); s.exported = c.exported; s.enabled = c.enabled; s.metaData = c.metaData; s.permission = c.permission; s.processName = process(c); return s; }
-    private static ProviderInfo provider(husk.Manifest.Component c) { ProviderInfo p = new ProviderInfo(); p.name = c.name; p.packageName = husk.Native.packageName(); p.authority = c.authorities; p.exported = c.exported; p.metaData = c.metaData; p.processName = process(c); return p; }
+    private static ProviderInfo provider(husk.Manifest.Component c) { ProviderInfo p = new ProviderInfo(); p.name = c.name; p.packageName = husk.Native.packageName(); p.authority = husk.Manifest.authorities(c); p.exported = c.exported; p.metaData = c.metaData; p.processName = process(c); p.applicationInfo = ApplicationInfo.self(); p.grantUriPermissions = c.grantUriPermissions; p.enabled = c.enabled; p.initOrder = c.initOrder; return p; }
     public PackageInfo getPackageInfo(String pkg, int flags) throws NameNotFoundException {
         if ("android".equals(pkg)) {
             // the platform itself (okhttp, Play libraries and WebView checks read its version)
@@ -102,7 +101,7 @@ public class PackageManager {
     public ServiceInfo getServiceInfo(ComponentName c, int flags) throws NameNotFoundException { for (husk.Manifest.Component s : husk.Manifest.services) if (s.name.equals(c.getClassName())) return service(s); throw new NameNotFoundException(c.toString()); }
     public ServiceInfo getServiceInfo(ComponentName c, ComponentInfoFlags flags) throws NameNotFoundException { return getServiceInfo(c, 0); }
     public ProviderInfo getProviderInfo(ComponentName c, int flags) throws NameNotFoundException { for (husk.Manifest.Component p : husk.Manifest.providers) if (p.name.equals(c.getClassName())) return provider(p); throw new NameNotFoundException(c.toString()); }
-    public ProviderInfo resolveContentProvider(String authority, int flags) { for (husk.Manifest.Component p : husk.Manifest.providers) if (p.authorities != null && java.util.Arrays.asList(p.authorities.split(";")).contains(authority)) return provider(p); return null; }
+    public ProviderInfo resolveContentProvider(String authority, int flags) { for (husk.Manifest.Component p : husk.Manifest.providers) if (p.authorities != null && java.util.Arrays.asList(husk.Manifest.authorities(p).split(";")).contains(authority)) return provider(p); return null; }
     public List<ProviderInfo> queryContentProviders(String process, int uid, int flags) { ArrayList<ProviderInfo> l = new ArrayList<>(); for (husk.Manifest.Component p : husk.Manifest.providers) l.add(provider(p)); return l; }
     public boolean hasSystemFeature(String name) { return hasSystemFeature(name, 0); }
     /* Pixel-like: apps refuse to start when a common phone feature is missing. TV/watch/car stay false. */
@@ -822,7 +821,7 @@ public class PackageManager {
     public android.content.pm.PackageManager.Property getProperty(java.lang.String p0, android.content.ComponentName p1) { return null; }
     public android.content.pm.PackageManager.Property getProperty(java.lang.String p0, java.lang.String p1) { return null; }
     public android.content.pm.PackageManager.Property getPropertyAsUser(java.lang.String p0, java.lang.String p1, java.lang.String p2, int p3) { return null; }
-    public android.content.pm.ProviderInfo getProviderInfo(android.content.ComponentName p0, android.content.pm.PackageManager.ComponentInfoFlags p1) { return null; }
+    public android.content.pm.ProviderInfo getProviderInfo(android.content.ComponentName p0, android.content.pm.PackageManager.ComponentInfoFlags p1) throws NameNotFoundException { return getProviderInfo(p0,(int)p1.getValue()); }
     public android.content.pm.ActivityInfo getReceiverInfo(android.content.ComponentName p0, android.content.pm.PackageManager.ComponentInfoFlags p1) { return null; }
     public android.content.res.Resources getResourcesForApplication(android.content.pm.ApplicationInfo p0, android.content.res.Configuration p1) { return null; }
     public android.content.res.Resources getResourcesForApplicationAsUser(java.lang.String p0, int p1) { return null; }
@@ -923,7 +922,7 @@ public class PackageManager {
     public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent p0, android.content.pm.PackageManager.ResolveInfoFlags p1, int p2) { return null; }
     public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent p0, java.lang.String p1, int p2, int p3) { return null; }
     public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent p0, java.lang.String p1, android.content.pm.PackageManager.ResolveInfoFlags p2, int p3) { return null; }
-    public android.content.pm.ProviderInfo resolveContentProvider(java.lang.String p0, android.content.pm.PackageManager.ComponentInfoFlags p1) { return null; }
+    public android.content.pm.ProviderInfo resolveContentProvider(java.lang.String p0, android.content.pm.PackageManager.ComponentInfoFlags p1) { return resolveContentProvider(p0,(int)p1.getValue()); }
     public android.content.pm.ProviderInfo resolveContentProviderAsUser(java.lang.String p0, int p1, int p2) { return null; }
     public android.content.pm.ProviderInfo resolveContentProviderAsUser(java.lang.String p0, android.content.pm.PackageManager.ComponentInfoFlags p1, int p2) { return null; }
     public android.content.pm.ProviderInfo resolveContentProviderForUid(java.lang.String p0, android.content.pm.PackageManager.ComponentInfoFlags p1, int p2) { return null; }

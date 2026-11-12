@@ -4,6 +4,11 @@ package android.app;
  *  friends): one per process, answering from what AppRunner set up. */
 public final class ActivityThread {
     private static final ActivityThread sCurrent = new ActivityThread();
+    private static final java.util.Map<husk.Processes.State, ActivityThread> sProcesses = new java.util.HashMap<>();
+    public static synchronized void huskReset() {
+        sProcesses.clear(); sCurrent.mPackages.clear(); sCurrent.mResourcePackages.clear(); sCurrent.mAllApplications.clear();
+        sCurrent.mInitialApplication = null; sCurrent.mBoundApplication = null; sCurrent.mProviderMap.clear();
+    }
     /* What packers and plugin loaders walk by reflection (AOSP's names): the APK record by package, the bound app's data, the
        first Application and all of them. AppRunner fills them in at launch; a loader shell may change them. */
     static volatile ActivityThread sCurrentActivityThread = sCurrent;
@@ -27,13 +32,13 @@ public final class ActivityThread {
 
     /** Husk: the app's Application was made (AppRunner.run). */
     public static void huskBind(Application app) {
-        ActivityThread t = sCurrent;
+        ActivityThread t = currentActivityThread();
         LoadedApk apk = LoadedApk.self();
         apk.huskSetApplication(app);
         AppBindData d = new AppBindData();
         d.info = apk;
         d.appInfo = apk.getApplicationInfo();
-        d.processName = apk.getPackageName();
+        d.processName = husk.Processes.current().name;
         t.mBoundApplication = d;
         t.mInitialApplication = app;
         t.mPackages.put(apk.getPackageName(), new java.lang.ref.WeakReference<>(apk));
@@ -43,12 +48,18 @@ public final class ActivityThread {
     public Application huskInitialApplication() { return mInitialApplication; }
     public void huskAddApplication(Application app) { synchronized (mAllApplications) { if (!mAllApplications.contains(app)) mAllApplications.add(app); } }
 
-    public static ActivityThread currentActivityThread() { return sCurrent; }
+    public static synchronized ActivityThread currentActivityThread() {
+        husk.Processes.State process = husk.Processes.current();
+        if (process == husk.Processes.main()) return sCurrent;
+        ActivityThread t = sProcesses.get(process);
+        if (t == null) { t = new ActivityThread(); sProcesses.put(process, t); }
+        return t;
+    }
     public static Application currentApplication() { return husk.AppRunner.application(); }
     public Instrumentation getInstrumentation() { return mInstrumentation; }
     public static String currentPackageName() { Application a = currentApplication(); return a != null ? a.getPackageName() : null; }
     public static String currentOpPackageName() { return currentPackageName(); }
-    public static String currentProcessName() { return currentPackageName(); }
+    public static String currentProcessName() { return husk.Processes.current().name; }
     public static boolean isSystem() { return false; }
 
     public Application getApplication() { return currentApplication(); }

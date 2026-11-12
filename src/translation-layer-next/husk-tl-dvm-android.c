@@ -277,6 +277,7 @@ NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrat
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
 NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
 NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
+NAT(N_registerProcessLoader) { (void)self; *ret = I(dvm_register_process_loader(a[0].l)); return true; }
 NAT(N_pollInput)
 {
     (void)self; (void)a;
@@ -497,6 +498,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "openUrl", "(Ljava/lang/String;)V", N_openUrl },
     { "exit", "()V", N_exit },
     { "uptimeNanos", "()J", N_uptimeNanos },
+    { "registerProcessLoader", "(Ljava/lang/ClassLoader;)Z", N_registerProcessLoader },
     { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
     { "splitPaths", "()[Ljava/lang/String;", N_splitPaths },
     { "nativeLooperPrepare", "()V", N_looperPrepare },

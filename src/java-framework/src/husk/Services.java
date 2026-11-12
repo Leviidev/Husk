@@ -12,6 +12,13 @@ public final class Services {
     private static final HashMap<String, Service> sRunning = new HashMap<>();
     private static final HashMap<ServiceConnection, String> sBound = new HashMap<>();
     private Services() {}
+    public static void huskReset() { sRunning.clear(); sBound.clear(); }
+    private static void post(Manifest.Component component, Runnable action) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Processes.State process = Processes.component(component); process.start();
+            try (Processes.Scope ignored = Processes.enter(process)) { action.run(); }
+        });
+    }
     private static Manifest.Component find(Intent i) {
         if (i.getComponent() != null) { for (Manifest.Component c : Manifest.services) if (c.name.equals(i.getComponent().getClassName())) return c; }
         if (i.getAction() != null) for (Manifest.Component c : Manifest.services) for (Manifest.Filter f : c.filters) if (f.actions.contains(i.getAction())) return c;
@@ -30,7 +37,7 @@ public final class Services {
     public static ComponentName start(Context from, Intent i) {
         Manifest.Component c = find(i);
         if (c == null) return null;
-        new Handler(Looper.getMainLooper()).post(() -> {
+        post(c, () -> {
             try { Service s = create(c); s.onStartCommand(i, 0, 1); } catch (Throwable t) { android.util.Log.e("Husk", "service " + c.name + " failed", t); }
         });
         return new ComponentName(Native.packageName(), c.name);
@@ -52,13 +59,14 @@ public final class Services {
         }
         Manifest.Component c = find(i);
         if (c == null) return false;
-        new Handler(Looper.getMainLooper()).post(() -> {
+        Handler caller = new Handler(Looper.getMainLooper());
+        post(c, () -> {
             try {
                 Service s = create(c);
                 IBinder b = s.onBind(i);
                 sBound.put(conn, c.name);
                 ComponentName cn = new ComponentName(Native.packageName(), c.name);
-                if (b != null) conn.onServiceConnected(cn, b); else conn.onNullBinding(cn);
+                caller.post(() -> { if (b != null) conn.onServiceConnected(cn, b); else conn.onNullBinding(cn); });
             } catch (Throwable t) { android.util.Log.e("Husk", "binding " + c.name + " failed", t); }
         });
         return true;

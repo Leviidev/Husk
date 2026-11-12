@@ -8,7 +8,8 @@ public class ApplicationInfo extends PackageItemInfo implements android.os.Parce
         FLAG_USES_CLEARTEXT_TRAFFIC = 134217728, FLAG_EXTRACT_NATIVE_LIBS = 268435456, FLAG_HARDWARE_ACCELERATED = 536870912, FLAG_SUSPENDED = 1073741824, FLAG_MULTIARCH = 0x80000000;
     public static final int CATEGORY_UNDEFINED = -1, CATEGORY_GAME = 0, CATEGORY_AUDIO = 1, CATEGORY_VIDEO = 2, CATEGORY_IMAGE = 3, CATEGORY_SOCIAL = 4, CATEGORY_NEWS = 5,
         CATEGORY_MAPS = 6, CATEGORY_PRODUCTIVITY = 7, CATEGORY_ACCESSIBILITY = 8;
-    private static ApplicationInfo sSelf;
+    private static final java.util.Map<husk.Processes.State,ApplicationInfo> sRecords = new java.util.HashMap<>();
+    public static synchronized void huskReset() { sRecords.clear(); }
     public String taskAffinity, permission, processName, className, sourceDir, publicSourceDir, dataDir, nativeLibraryDir, deviceProtectedDataDir, manageSpaceActivityName,
         backupAgentName, appComponentFactory, nativeLibraryRootDir, primaryCpuAbi;
     public String[] splitSourceDirs, splitPublicSourceDirs, splitNames, sharedLibraryFiles, resourceDirs;
@@ -34,10 +35,12 @@ public class ApplicationInfo extends PackageItemInfo implements android.os.Parce
         } catch (Throwable t) { return real; }
     }
     public static synchronized ApplicationInfo self() {
+        husk.Processes.State process = husk.Processes.current();
+        ApplicationInfo sSelf = sRecords.get(process);
         if (sSelf == null) {
             husk.Manifest.read();
             ApplicationInfo a = new ApplicationInfo();
-            a.packageName = a.processName = husk.Native.packageName();
+            a.packageName = husk.Native.packageName(); a.processName = husk.Manifest.processName(null);
             a.dataDir = a.deviceProtectedDataDir = husk.Native.dataDir();
             a.sourceDir = a.publicSourceDir = husk.Native.apkPath();
             // the splits, as Android lists them: SoLoader and Play's libraries look for native code and assets in them
@@ -66,12 +69,13 @@ public class ApplicationInfo extends PackageItemInfo implements android.os.Parce
             a.name = husk.Manifest.applicationClass;
             a.theme = husk.Manifest.appTheme; a.labelRes = husk.Manifest.appLabel; a.icon = husk.Manifest.appIcon;
             a.targetSdkVersion = husk.Manifest.targetSdk; a.minSdkVersion = husk.Manifest.minSdk;
-            a.flags = FLAG_HAS_CODE | FLAG_INSTALLED | FLAG_ALLOW_BACKUP | FLAG_SUPPORTS_RTL | FLAG_HARDWARE_ACCELERATED | (husk.Manifest.debuggable ? FLAG_DEBUGGABLE : 0) | (husk.Manifest.largeHeap ? FLAG_LARGE_HEAP : 0)
+            a.flags = FLAG_HAS_CODE | FLAG_INSTALLED | (husk.Manifest.allowBackup ? FLAG_ALLOW_BACKUP : 0) | FLAG_SUPPORTS_RTL | FLAG_HARDWARE_ACCELERATED | (husk.Manifest.debuggable ? FLAG_DEBUGGABLE : 0) | (husk.Manifest.largeHeap ? FLAG_LARGE_HEAP : 0)
                 | (husk.Manifest.extractNativeLibs ? FLAG_EXTRACT_NATIVE_LIBS : 0);   /* Qt looks for its plugins in nativeLibraryDir then */
             a.metaData = husk.Manifest.appMetaData;
             a.appComponentFactory = husk.Manifest.appComponentFactory;
             a.uid = android.os.Process.myUid();
             sSelf = a;
+            sRecords.put(process, a);
         }
         return sSelf;
     }
