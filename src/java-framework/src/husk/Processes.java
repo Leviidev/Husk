@@ -104,6 +104,7 @@ public final class Processes {
     }
     public static Scope enter(State s) { return new Scope(s); }
     public static void reset() {
+        Geo.reset();
         resetProcesses();
     }
     private static synchronized void resetProcesses() {

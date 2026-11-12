@@ -95,6 +95,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Husk uses the local network to pair with this iPhone for JIT, without a computer.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Android apps running in Husk use your location for maps and navigation while you use Husk.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>

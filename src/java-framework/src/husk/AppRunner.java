@@ -129,6 +129,7 @@ public final class AppRunner {
         installProviders(app);
         Looper.setInputSink(AppRunner::deliver);
         applyInsets();
+        try {
         app.onCreate();
         /* as the system after boot: receivers in the manifest hear the device is up and the user is present, so WorkManager
            and the app's own start-up jobs run before the first activity */
@@ -145,6 +146,7 @@ public final class AppRunner {
         main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         launch(activityClass, main, null, -1, launcher);
         Looper.loop();
+        } finally { Geo.reset(); }
     }
     public static Application application() { return Processes.current().application != null ? Processes.current().application : sApp; }
     /** Start a non-default Android process with its own APK classes and Application. */
