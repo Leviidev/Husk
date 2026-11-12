@@ -237,9 +237,43 @@ static int check(const char *dylib, const char *so, const char *fn, long arg)
     return 0;
 }
 
+/* Section flags, independently of PT_LOAD permissions, define the metadata that
+ * must stay in the relocated data view. A merged R-X load must not hide it. */
+static int check_metadata(const char *path)
+{
+    elf E; if (!elf_open(&E, path)) return 1;
+    tl_ld_aot_image A; if (!build(&E, path, &A)) return 1;
+    if (E.eh->e_shentsize < 64 || E.eh->e_shoff + (uint64_t)E.eh->e_shentsize * E.eh->e_shnum > E.flen) return 1;
+    size_t data_pages = 0, code_pages = 0;
+    for (unsigned i = 0; i < E.eh->e_shnum; i++) {
+        const uint8_t *sh = E.file + E.eh->e_shoff + (size_t)i * E.eh->e_shentsize;
+        uint64_t flags, addr, size;
+        memcpy(&flags, sh + 8, 8); memcpy(&addr, sh + 16, 8); memcpy(&size, sh + 32, 8);
+        if (!(flags & 2) || !size) continue; /* SHF_ALLOC */
+        if (addr < A.base_vaddr || addr - A.base_vaddr + size > A.npages * PAGE) return 1;
+        uint64_t start = addr - A.base_vaddr, end = start + size;
+        if (!(flags & 4)) { /* allocated data, including .eh_frame and .gcc_except_table */
+            for (size_t p = start / PAGE; p <= (end - 1) / PAGE; p++) {
+                if (!(A.page_class[p] & 2)) { fprintf(stderr, "FAIL: metadata section %u page %zu has no relocated copy\n", i, p); return 1; }
+                data_pages++;
+            }
+        } else {
+            for (size_t p = (start + PAGE - 1) / PAGE; p < end / PAGE; p++) {
+                if ((A.page_class[p] & 3) != 1) { fprintf(stderr, "FAIL: pure code page %zu was copied as data\n", p); return 1; }
+                code_pages++;
+            }
+        }
+    }
+    tl_ld_aot_free(&A);
+    if (!data_pages || !code_pages) { fprintf(stderr, "FAIL: fixture must contain data and full code pages\n"); return 1; }
+    printf("OK: %zu metadata page checks, %zu pure code page checks\n", data_pages, code_pages);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     tl_ld_set_verbosity(getenv("TL_VERBOSE") ? atoi(getenv("TL_VERBOSE")) : 0);
+    if (argc == 3 && !strcmp(argv[1], "--check-metadata")) return check_metadata(argv[2]);
     if (argc >= 4 && !strcmp(argv[1], "--prepare")) {
         uint8_t *p12 = NULL; size_t p12len = 0;
         if (getenv("TL_P12") && !(p12 = slurp(getenv("TL_P12"), &p12len))) return 1;
