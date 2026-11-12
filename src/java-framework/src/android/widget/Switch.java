@@ -45,7 +45,13 @@ public class Switch extends CompoundButton {
     public void setSwitchTextAppearance(Context c, int r) {} public void setSwitchTypeface(Typeface t) {}
     private float dp(float v) { return v * getResources().getDisplayMetrics().density; }
     @Override protected void onMeasure(int ws, int hs) {
-        mSwitchWidth = Math.max(mSwitchMinWidth, mTrack != null && mTrack.getIntrinsicWidth() > 0 ? mTrack.getIntrinsicWidth() : (int) dp(52));
+        // A stretchable track may be only a few pixels wide. Reserve space for both thumb positions, as Android does.
+        Rect thumbPadding = new Rect(), trackPadding = new Rect();
+        if (mThumb != null) mThumb.getPadding(thumbPadding);
+        if (mTrack != null) mTrack.getPadding(trackPadding);
+        int thumbWidth = mThumb != null && mThumb.getIntrinsicWidth() > 0
+            ? Math.max(0, mThumb.getIntrinsicWidth() - thumbPadding.left - thumbPadding.right) : (int) dp(24);
+        mSwitchWidth = Math.max(mSwitchMinWidth, 2 * thumbWidth + trackPadding.left + trackPadding.right);
         mSwitchHeight = Math.max(mThumb != null && mThumb.getIntrinsicHeight() > 0 ? mThumb.getIntrinsicHeight() : 0, (int) dp(32));
         super.onMeasure(ws, hs);
         if (getMeasuredHeight() < mSwitchHeight) setMeasuredDimension(getMeasuredWidthAndState(), mSwitchHeight);
@@ -71,7 +77,11 @@ public class Switch extends CompoundButton {
             mTrack.setBounds(left, cy - mSwitchHeight / 2, right, cy + mSwitchHeight / 2);
             if (mTrackTint != null) mTrack.setTintList(mTrackTint);
             mTrack.setState(state); mTrack.draw(c);
-            int tx = left + (int) ((mSwitchWidth - tw) * mPos);
+            Rect thumbPadding = new Rect(), trackPadding = new Rect();
+            mThumb.getPadding(thumbPadding); mTrack.getPadding(trackPadding);
+            int contentWidth = Math.max(0, tw - thumbPadding.left - thumbPadding.right);
+            int travel = Math.max(0, mSwitchWidth - contentWidth - trackPadding.left - trackPadding.right);
+            int tx = left + trackPadding.left - thumbPadding.left + (int) (travel * mPos);
             mThumb.setBounds(tx, cy - th / 2, tx + tw, cy + th / 2);
             if (mThumbTint != null) mThumb.setTintList(mThumbTint);
             mThumb.setState(state); mThumb.draw(c);

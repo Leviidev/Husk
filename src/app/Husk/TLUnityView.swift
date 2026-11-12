@@ -167,7 +167,17 @@ final class TLUnityUIView: UIView, UIKeyInput {
         threeFingers.delaysTouchesEnded = false
         host.addGestureRecognizer(threeFingers)
         webHost = host
+        updateWebHostFrame()
         husk_java_web_attach(Unmanaged.passUnretained(self).toOpaque(), Unmanaged.passUnretained(host).toOpaque(), Float(contentScaleFactor), fresh ? 1 : 0)
+    }
+
+    /// The web layer is a sibling below the Metal view, so it must receive the same bounds and transform when fitted to a host.
+    func updateWebHostFrame() {
+        guard let webHost else { return }
+        webHost.transform = .identity
+        webHost.bounds = bounds
+        webHost.center = center
+        webHost.transform = transform
     }
 
     override func willMove(toSuperview newSuperview: UIView?) {
@@ -182,8 +192,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private func keyboardMoved(_ note: Notification) {
         guard let window, let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         let hiding = note.name == UIResponder.keyboardWillHideNotification
-        let mine = convert(bounds, to: window)
-        let covered = hiding ? 0 : max(0, mine.maxY - window.convert(end, from: nil).minY)
+        let keyboard = convert(window.convert(end, from: nil), from: window)
+        let covered = hiding ? 0 : min(bounds.height, max(0, bounds.maxY - keyboard.minY))
         if engine == .java {
             let k = contentScaleFactor, inset = windowed ? UIEdgeInsets.zero : window.safeAreaInsets
             husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), Int32((covered * k).rounded()))
@@ -210,7 +220,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     override func layoutSubviews() {
         super.layoutSubviews()
         stats.frame = CGRect(x: bounds.width - 148, y: bounds.height - 22, width: 142, height: 16)
-        if let webHost, webHost.frame != frame { webHost.frame = frame }
+        updateWebHostFrame()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
@@ -240,6 +250,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         statsTimer?.invalidate()
         statsTimer = nil
         if window != nil {
+            if launched, engine == .java { attachWebHost(fresh: false) }
             husk_unity_set_paused(false)
             statsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.updateStats() }
         } else {
@@ -883,6 +894,21 @@ struct TLCocosAttemptView: View {
             Color.black.ignoresSafeArea()
             Group {
                 if let apk = app.apks.first {
+                    if engine == .java {
+                        // Android apps need their entire window, including their own toolbar, below Husk's controls.
+                        // The host also scales an already-running fixed-size surface when Hide changes the available space.
+                        VStack(spacing: 0) {
+                            if !uiHidden { bar }
+                            TLWindowScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir,
+                                           engine: engine, portrait: portrait, scale: settings.resolution.scale,
+                                           onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if !uiHidden, showLog { logPanel.frame(width: 320).padding(.top, 30) }
+                        }
+                        // Android's adjustResize already handles the IME. SwiftUI must keep the Metal viewport at its full size.
+                        .ignoresSafeArea(.keyboard)
+                    } else {
                     // The game always has the whole screen: it is told its size once, as it starts, so nothing may take space from it.
                     // The bar and the log are drawn over it instead, and hiding them shows everything underneath.
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,
@@ -899,9 +925,10 @@ struct TLCocosAttemptView: View {
                         }
                     }
                     .ignoresSafeArea()
+                    }
                 }
             }
-            if !uiHidden {
+            if !uiHidden, engine != .java {
                 VStack(spacing: 0) {
                     bar
                     if showLog {
