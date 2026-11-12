@@ -29,6 +29,7 @@
 #include "husk-tl-text-color.h"
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n);
+void tl_log_line(const char *fmt, ...);
 
 /* ================================================================== the Paint packet (android.graphics.Paint.mP) */
 
