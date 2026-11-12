@@ -15,6 +15,9 @@ public class DisplayMetrics {
         density = husk.Native.density();
         scaledDensity = density;
         densityDpi = (int) (density * 160);
+        // UIKit exposes logical scale and pixel bounds, not a measured panel
+        // size in inches. Retain Android's logical-density approximation here;
+        // this is not a claim about the host panel's physical PPI.
         xdpi = ydpi = densityDpi;
     }
     public boolean equals(DisplayMetrics o) { return o != null && widthPixels == o.widthPixels && heightPixels == o.heightPixels && densityDpi == o.densityDpi && density == o.density; }

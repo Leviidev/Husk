@@ -24,9 +24,19 @@ public class SystemProperties {
             case "ro.product.name": return Build.PRODUCT;
             case "ro.product.device": return Build.DEVICE;
             case "ro.product.manufacturer": return Build.MANUFACTURER;
+            case "ro.product.board": return Build.BOARD;
+            case "ro.soc.manufacturer": return Build.SOC_MANUFACTURER;
+            case "ro.soc.model": return Build.SOC_MODEL;
+            case "ro.boot.hardware.sku": return Build.SKU;
+            case "ro.boot.product.hardware.sku": return Build.ODM_SKU;
             case "ro.product.cpu.abi": return "arm64-v8a";
             case "ro.product.cpu.abilist": case "ro.product.cpu.abilist64": return "arm64-v8a";
             case "ro.hardware": return Build.HARDWARE;
+            case "ro.board.platform": return Build.BOARD;
+            case "ro.vendor.build.fingerprint": return Build.FINGERPRINT;
+            case "ro.sf.lcd_density":
+                try { return husk.Native.deviceProperty(key); }
+                catch (UnsatisfiedLinkError unavailable) { return null; }
             case "ro.debuggable": case "ro.secure": return key.equals("ro.secure") ? "1" : "0";
             case "persist.sys.locale": return java.util.Locale.getDefault().toLanguageTag();
         }

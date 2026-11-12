@@ -156,7 +156,7 @@ print("PASS: production Swift diagnostics preserve uncertainty and ignore recove
         source = source.replace("import SwiftUI", "import Foundation").replace("import UIKit", "")
         source += '''
 enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryDirectory()) } }
-@MainActor final class UIScreen { static let main = UIScreen(); var scale: CGFloat { 3 } }
+@MainActor final class UIScreen { static let main = UIScreen(); var scale: CGFloat { 2 }; var nativeScale: CGFloat { 3 } }
 '''
         self.compile_run(source, '''
 let old = try JSONDecoder().decode(TLAppSettings.self, from: Data("{}".utf8))
@@ -175,8 +175,36 @@ precondition(decoded == settings)
 precondition(decoded.startupDiagnostics && decoded.orientation == .portrait)
 precondition(!decoded.avoidUnsafeArea)
 precondition(!decoded.questOnlyCutout)
+var trutien = old
+precondition(!trutien.applyNativeDisplayProfile(packageName: "unrelated.game") && trutien.resolution == .high)
+precondition(trutien.applyNativeDisplayProfile(packageName: "vn.trutien.client") && trutien.resolution == .native)
+precondition(trutien.nativeDisplayProfileVersion == 1)
+trutien.resolution = .medium
+let migrated = try JSONDecoder().decode(TLAppSettings.self, from: JSONEncoder().encode(trutien))
+trutien = migrated
+precondition(!trutien.applyNativeDisplayProfile(packageName: "vn.trutien.client") && trutien.resolution == .medium)
 print("PASS: per-app diagnostic profile survives Codable roundtrip and legacy settings")
 ''')
+
+    def test_native_resolution_uses_physical_panel_scale(self):
+        source = (ROOT / "src/app/Husk/TLAppSettings.swift").read_text(encoding="utf-8")
+        source = source.split("// MARK: - The settings page")[0]
+        source = source.replace("import SwiftUI", "import Foundation").replace("import UIKit", "")
+        source += '''
+enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryDirectory()) } }
+@MainActor final class UIScreen { static let main = UIScreen(); var scale: CGFloat { 2 }; var nativeScale: CGFloat { 3 } }
+'''
+        self.compile_run(source, '''
+@main struct Run {
+    @MainActor static func main() {
+        precondition(TLAppSettings.Resolution.native.scale == 3)
+        precondition(TLAppSettings.Resolution.high.scale == 2)
+        precondition(TLAppSettings.Resolution.medium.scale == 1.5)
+        precondition(TLAppSettings.Resolution.low.scale == 1)
+        print("PASS: native resolution uses the panel scale while explicit lower resolution choices retain their requested scale")
+    }
+}
+''', async_main=True)
 
     def test_production_host_layout_converges_without_redundant_writes(self):
         source = (ROOT / "src/app/Husk/TLGameViewport.swift").read_text(encoding="utf-8")

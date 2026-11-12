@@ -29,6 +29,8 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-audio.h"
 #include "husk-tl-memory.h"
+#include "husk-tl-host-device.h"
+#include "husk-tl-display-timing.h"
 #include "husk-tl-guest-thread.h"
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-egl.h"
@@ -289,6 +291,15 @@ NAT(N_packageName) { (void)self; (void)a; *ret = L(jstr(A.pkg)); return true; }
 NAT(N_screenWidth) { (void)self; (void)a; *ret = I(A.cfg.width); return true; }
 NAT(N_screenHeight) { (void)self; (void)a; *ret = I(A.cfg.height); return true; }
 NAT(N_density) { (void)self; (void)a; *ret = F(A.cfg.density > 0 ? A.cfg.density : 3.0f); return true; }
+NAT(N_refreshRate) { (void)self; (void)a; *ret = F(TL_JAVA_DISPLAY_HZ); return true; }
+NAT(N_maxRefreshRate) { (void)self; (void)a; float hz = A.cfg.max_refresh_rate; *ret = F(hz >= 1.0f && hz <= 1000.0f ? hz : TL_JAVA_DISPLAY_HZ); return true; }
+NAT(N_deviceProperty)
+{
+    (void)self;
+    const char *value = tl_host_device_property(tl_jni_string(a[0].l));
+    *ret = L(value ? jstr(value) : NULL);
+    return true;
+}
 NAT(N_memoryInfo)
 {
     (void)self; (void)a;
@@ -603,6 +614,9 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "screenWidth", "()I", N_screenWidth },
     { "screenHeight", "()I", N_screenHeight },
     { "density", "()F", N_density },
+    { "refreshRate", "()F", N_refreshRate },
+    { "maxRefreshRate", "()F", N_maxRefreshRate },
+    { "deviceProperty", "(Ljava/lang/String;)Ljava/lang/String;", N_deviceProperty },
     { "memoryInfo", "()[J", N_memoryInfo },
     { "startGL", "(Ljava/lang/Object;Ljava/lang/Object;I)V", N_startGL },
     { "requestRender", "()V", N_requestRender },
@@ -1323,7 +1337,7 @@ static void *gl_run(void *arg)
             }
         }
         if (app) {
-            next += 1000000000ll / 60;
+            next += 1000000000ll / TL_JAVA_DISPLAY_HZ;
             int64_t late = now_ns() - next;
             if (late > 100000000ll) next = now_ns();
             else if (late < 0) { struct timespec ts = { 0, (long)(-late) }; nanosleep(&ts, NULL); }

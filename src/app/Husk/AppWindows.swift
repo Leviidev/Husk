@@ -16,7 +16,7 @@ import UIKit
     static var defaultWindowed: Bool { UserDefaults.standard.bool(forKey: defaultKey) }
 
     static func opensInWindow(_ app: TLApp) -> Bool {
-        switch TLAppSettings.load(app.id).window {
+        switch TLAppSettings.load(app.id, packageName: app.packageName).window {
         case .window: return true
         case .fullScreen: return false
         case .auto: return defaultWindowed
@@ -90,7 +90,7 @@ private struct AppWindow: View {
     private static let bar: CGFloat = 36
     private static let minSize = CGSize(width: 180, height: 140)
 
-    private var settings: TLAppSettings { TLAppSettings.load(app.id) }
+    private var settings: TLAppSettings { TLAppSettings.load(app.id, packageName: app.packageName) }
     private var portrait: Bool { app.drawsPortrait(settings) }
 
     /// A first place for the window: the app's own shape, as large as fits comfortably, in the middle of the screen.
@@ -166,7 +166,8 @@ private struct AppWindow: View {
             WebAppSurface(app: app)
         } else if let apk = app.apks.first {
             TLWindowScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: app.nativeDataDir,
-                           engine: app.screenEngine, portrait: portrait, scale: settings.resolution.scale)
+                           engine: app.screenEngine, portrait: portrait, scale: settings.resolution.scale,
+                           nativeResolution: settings.resolution == .native)
                 .overlay {
                     if model.frames == 0 {
                         VStack(spacing: 10) {
@@ -314,10 +315,11 @@ struct TLWindowScreen: UIViewRepresentable {
     let engine: TLNativeEngine
     let portrait: Bool
     let scale: CGFloat
+    var nativeResolution = false
 
     func makeUIView(context: Context) -> TLWindowHost {
         TLWindowHost(game: TLUnityScreen.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine,
-                                              portrait: portrait, scale: scale))
+                                              portrait: portrait, scale: scale, nativeResolution: nativeResolution))
     }
     func updateUIView(_ view: TLWindowHost, context: Context) { view.setNeedsLayout() }
 }

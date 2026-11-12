@@ -20,6 +20,7 @@ static int guest_errno;
 void tl_set_guest_errno(int e) { guest_errno = e; }
 int tl_errno_to_guest(int e) { return e; } /* EINVAL/ERANGE share these values. */
 void tl_log_line(const char *fmt, ...) { (void)fmt; }
+void tl_trutien_text_set_package(const char *package_name) { (void)package_name; }
 /* Exact production getcwd wrapper and package configuration, extracted by runner. */
 #include "getcwd_under_test.h"
 

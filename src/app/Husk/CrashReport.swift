@@ -75,7 +75,7 @@ final class CrashReport: ObservableObject {
     /// (a Geometry Dash session closed that way). The note goes when Husk stops being active and comes back with it.
     static func gameStarted(_ app: TLApp) {
         running = app
-        let settings = TLAppSettings.load(app.id)
+        let settings = TLAppSettings.load(app.id, packageName: app.packageName)
         runningDisplay = "requestedResolution=\(settings.resolution.rawValue) requestedScale=\(settings.resolution.scale) cutoutHUD=\(settings.avoidUnsafeArea) questOnly=\(settings.questOnlyCutout) windowed=\(AppWindows.opensInWindow(app))"
         HuskLog.log("runtime", "game display: \(runningDisplay)")
         writeMarker()

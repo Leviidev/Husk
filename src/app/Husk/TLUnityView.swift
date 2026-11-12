@@ -101,12 +101,16 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// Called when three fingers tap at once: the way back to the interface while it is hidden.
     var onThreeFingerTap: (() -> Void)?
 
-    init(apk: String, extraApks: [String] = [], dataDir: String, engine: TLNativeEngine, portrait: Bool = false, scale: CGFloat = 2) {
+    private let nativeResolution: Bool
+
+    init(apk: String, extraApks: [String] = [], dataDir: String, engine: TLNativeEngine, portrait: Bool = false, scale: CGFloat = 2,
+         nativeResolution: Bool = false) {
         self.apk = apk
         self.portrait = portrait
         self.dataDir = dataDir
         self.engine = engine
         self.extraApks = extraApks
+        self.nativeResolution = nativeResolution
         super.init(frame: .zero)
         backgroundColor = .black
         isMultipleTouchEnabled = true
@@ -275,6 +279,13 @@ final class TLUnityUIView: UIView, UIKeyInput {
         if stats.frame != statsFrame { stats.frame = statsFrame }
         layoutWebHost()
         guard bounds.width > 0, bounds.height > 0 else { return }
+        // Resolve the actual attached screen before launch (including external displays).
+        // A running engine retains its launch dimensions until its session closes.
+        if nativeResolution, !launched, let screen = window?.screen {
+            let scale = screen.nativeScale
+            if contentScaleFactor != scale { contentScaleFactor = scale }
+            if let metal = layer as? CAMetalLayer, metal.contentsScale != scale { metal.contentsScale = scale }
+        }
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
@@ -390,6 +401,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
             // Husk's Dalvik runtime: libcore, ICU and Husk's Java framework, carried in the app.
             husk_java_set_quest_only_cutout(TLAppSettings.load(appID).questOnlyCutout ? 1 : 0)
             husk_java_set_runtime((Bundle.main.resourcePath ?? "") + "/java-runtime", Float(contentScaleFactor))
+            let screen = window?.screen ?? UIScreen.main
+            husk_java_set_display_max_refresh(Float(screen.maximumFramesPerSecond))
+            HuskLog.log("tl", "host display: nativePixels=\(screen.nativeBounds.size) nativeScale=\(screen.nativeScale) renderScale=\(contentScaleFactor) refreshCapability=\(screen.maximumFramesPerSecond) Hz")
             husk_java_set_night_mode(traitCollection.userInterfaceStyle == .dark ? 1 : 0)
             attachWebHost(fresh: true)
             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
@@ -1154,6 +1168,7 @@ struct TLUnityScreen: UIViewRepresentable {
     var engine: TLNativeEngine = .unity
     var portrait = false
     var scale: CGFloat = 2
+    var nativeResolution = false
     var avoidUnsafeArea = true
     var onStats: ((String) -> Void)? = nil
     var onThreeFingerTap: (() -> Void)? = nil
@@ -1168,15 +1183,18 @@ struct TLUnityScreen: UIViewRepresentable {
     }
 
     /// The game's one view, made the first time it is asked for.
-    static func view(apk: String, extraApks: [String], dataDir: String, engine: TLNativeEngine, portrait: Bool, scale: CGFloat) -> TLUnityUIView {
+    static func view(apk: String, extraApks: [String], dataDir: String, engine: TLNativeEngine, portrait: Bool, scale: CGFloat,
+                     nativeResolution: Bool = false) -> TLUnityUIView {
         if let view = shared[apk] { return view }
-        let view = TLUnityUIView(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
+        let view = TLUnityUIView(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale,
+                                nativeResolution: nativeResolution)
         shared[apk] = view
         return view
     }
 
     func makeUIView(context: Context) -> TLWindowHost {
-        let view = Self.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale)
+        let view = Self.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine, portrait: portrait, scale: scale,
+                             nativeResolution: nativeResolution)
         view.avoidUnsafeArea = avoidUnsafeArea
         view.onStats = onStats
         view.onThreeFingerTap = onThreeFingerTap
@@ -1322,7 +1340,7 @@ struct TLCocosAttemptView: View {
 
     init(app: TLApp) {
         self.app = app
-        let loaded = TLAppSettings.load(app.id)
+        let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
         _settings = State(initialValue: loaded)
         _uiHidden = State(initialValue: loaded.cleanView)
     }
@@ -1357,7 +1375,8 @@ struct TLCocosAttemptView: View {
                 if let apk = app.apks.first {
                     // Keep all render pixels, including behind the camera. The guest positions its HUD from cutout data.
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,
-                                  scale: settings.resolution.scale, avoidUnsafeArea: settings.avoidUnsafeArea,
+                                  scale: settings.resolution.scale, nativeResolution: settings.resolution == .native,
+                                  avoidUnsafeArea: settings.avoidUnsafeArea,
                                   onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
                         .ignoresSafeArea(.container)

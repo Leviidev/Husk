@@ -1,17 +1,26 @@
 package android.os;
 
 public class Build {
-    public static final String MODEL = "Pixel 8", MANUFACTURER = "Google", BRAND = "google", DEVICE = "shiba", PRODUCT = "shiba";
-    public static final String HARDWARE = "shiba", BOARD = "shiba", DISPLAY = "UP1A.231105.001", ID = "UP1A.231105.001", TAGS = "release-keys", TYPE = "user";
+    private static String host(String key, String fallback) {
+        try {
+            String value = husk.Native.deviceProperty(key);
+            return value != null && !value.isEmpty() ? value : fallback;
+        } catch (UnsatisfiedLinkError unavailable) { return fallback; }
+    }
+    public static final String MODEL = host("ro.product.model", "Apple device"), MANUFACTURER = "Apple", BRAND = "apple",
+                               DEVICE = host("ro.product.device", MODEL), PRODUCT = host("ro.product.name", MODEL);
+    public static final String HARDWARE = host("ro.hardware", MODEL), BOARD = host("ro.product.board", MODEL),
+                               DISPLAY = host("ro.build.display.id", "Husk on " + MODEL), ID = "HUSK", TAGS = "release-keys", TYPE = "user";
     /* Android 12's system-on-chip fields: engines print them (Unity reads SOC_MODEL into its device info and cannot take null). */
-    public static final String SOC_MANUFACTURER = "Google", SOC_MODEL = "Tensor G3", SKU = "shiba", ODM_SKU = "shiba";
+    public static final String SOC_MANUFACTURER = "Apple", SOC_MODEL = host("ro.soc.model", "Apple ARM64"),
+                               SKU = host("ro.boot.hardware.sku", BOARD), ODM_SKU = host("ro.boot.product.hardware.sku", BOARD);
     public static final String BRAND_FOR_ATTESTATION = BRAND, DEVICE_FOR_ATTESTATION = DEVICE, MANUFACTURER_FOR_ATTESTATION = MANUFACTURER,
                                MODEL_FOR_ATTESTATION = MODEL, PRODUCT_FOR_ATTESTATION = PRODUCT;
     public static final boolean IS_USER = true;
     public static String getRadioVersion() { return ""; }
     public static boolean is64BitAbi(String abi) { return abi != null && abi.contains("64"); }
     public static boolean isBuildConsistent() { return true; }
-    public static final String FINGERPRINT = "google/shiba/shiba:14/UP1A.231105.001/11000000:user/release-keys", HOST = "husk", USER = "husk";
+    public static final String FINGERPRINT = host("ro.build.fingerprint", "apple/host/host:14/HUSK/11000000:user/release-keys"), HOST = "husk", USER = "husk";
     public static final String SERIAL = "unknown", BOOTLOADER = "unknown", RADIO = "unknown";
     public static final String CPU_ABI = "arm64-v8a", CPU_ABI2 = "armeabi-v7a";
     public static final String[] SUPPORTED_ABIS = { "arm64-v8a", "armeabi-v7a", "armeabi" }, SUPPORTED_64_BIT_ABIS = { "arm64-v8a" }, SUPPORTED_32_BIT_ABIS = { "armeabi-v7a", "armeabi" };

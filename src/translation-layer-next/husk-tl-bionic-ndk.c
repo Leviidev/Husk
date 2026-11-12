@@ -6,6 +6,8 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 #include "husk-tl-guest-thread.h"
+#include "husk-tl-display-timing.h"
+#include "husk-tl-host-device.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -145,7 +147,7 @@ static int b_ALooper_pollAll(int timeout_ms, int *out_fd, int *out_events, void 
  * times its frames with it (API 29+). One clock thread ticks at 60 Hz and pokes every choreographer that has callbacks waiting; the
  * owner thread's looper runs them with that tick's time, as Android's does.
  */
-#define VSYNC_NS 16666667ll
+#define VSYNC_NS TL_JAVA_VSYNC_NS
 typedef struct chcb { int kind; void *fn, *data; int64_t not_before; struct chcb *next; } chcb;    /* kind 0: frame, 1: frame64, 2: vsync */
 typedef struct tl_choreo { tl_looper *looper; int pipe[2]; pthread_mutex_t mu; chcb *pending; void *rate_fn, *rate_data; struct tl_choreo *next; } tl_choreo;
 static __thread tl_choreo *t_choreo;
@@ -272,10 +274,17 @@ static tl_aconfig *b_AConfiguration_new(void)
     tl_aconfig *c = calloc(1, sizeof(*c));
     memcpy(c->language, "en", 2); memcpy(c->country, "US", 2);
     c->orientation = 2; c->density = 480; c->screen_long = 2; c->screen_size = 2;
+    const char *density = tl_host_device_property("ro.sf.lcd_density");
+    if (density && atoi(density) > 0) c->density = atoi(density);
     return c;
 }
 static void b_AConfiguration_delete(tl_aconfig *c) { free(c); }
-static void b_AConfiguration_fromAssetManager(tl_aconfig *c, void *mgr) { (void)c; (void)mgr; }
+static void b_AConfiguration_fromAssetManager(tl_aconfig *c, void *mgr)
+{
+    (void)mgr;
+    const char *density = tl_host_device_property("ro.sf.lcd_density");
+    if (c && density && atoi(density) > 0) c->density = atoi(density);
+}
 static void b_AConfiguration_getLanguage(tl_aconfig *c, char *out) { out[0] = c->language[0]; out[1] = c->language[1]; }
 static void b_AConfiguration_getCountry(tl_aconfig *c, char *out) { out[0] = c->country[0]; out[1] = c->country[1]; }
 static int b_AConfiguration_getOrientation(tl_aconfig *c) { return c->orientation; }

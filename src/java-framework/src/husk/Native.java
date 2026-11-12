@@ -28,6 +28,12 @@ public final class Native {
     public static native int screenWidth();
     public static native int screenHeight();
     public static native float density();
+    /** Current cadence of Husk's Android-compatible virtual display, in Hz. */
+    public static native float refreshRate();
+    /** Maximum refresh capability of the actual attached physical host screen, in Hz. */
+    public static native float maxRefreshRate();
+    /** Real host hardware properties; unknown keys return null. Android API/ABI fields remain runtime contracts. */
+    public static native String deviceProperty(String key);
     /** Physical RAM, remaining process budget, RSS and physical footprint (bytes). */
     public static native long[] memoryInfo();
     public static native void startGL(Object view, Object renderer, int esVersion);

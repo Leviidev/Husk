@@ -890,7 +890,7 @@ struct TLClassicAttemptView: View {
 
     init(app: TLApp) {
         self.app = app
-        let loaded = TLAppSettings.load(app.id)
+        let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
         _settings = State(initialValue: loaded)
         _uiHidden = State(initialValue: loaded.cleanView)
         cleanLayout = loaded.cleanView

@@ -72,9 +72,47 @@ def main():
     opacity += [re.search(r"static void " + name + r"\([^\n]*\)\n\{.*?\n\}", android_source, re.S)[0]
                 for name in ("app_frame_draw", "ov_draw")]
     (out / "window_opacity_under_test.h").write_text("\n".join(opacity), encoding="utf-8")
+    bionic_source = (ROOT / "src/translation-layer-next/husk-tl-bionic.c").read_text(encoding="utf-8")
+    host_facts = [re.search(pattern, bionic_source, re.S)[0] for pattern in (
+        r"static const struct \{ const char \*k, \*v; \} k_props\[\] = \{.*?\n\};",
+        r"const char \*tl_sysprop\([^\n]*\)\n\{.*?\n\}",
+        r"static const void \*bionic___system_property_find\([^\n]*\)\n\{.*?\n\}",
+        r"static int bionic___system_property_read\([^\n]*\)\n\{.*?\n\}",
+        r"typedef void \(\*guest_prop_cb\)\([^\n]*;",
+        r"static void bionic___system_property_read_callback\([^\n]*\)\n\{.*?\n\}",
+        r"static int bionic___system_property_get\([^\n]*\)\n\{.*?\n\}",
+        r"typedef struct \{[^\n]+\} guest_sysinfo;",
+        r"static int bionic_sysinfo\([^\n]*\)\n\{.*?\n\}",
+        r"static long bionic_sysconf\([^\n]*\)\n\{.*?\n\}")]
+    (out / "bionic_host_facts_under_test.h").write_text("\n".join(host_facts), encoding="utf-8")
+    host_device_source = (ROOT / "src/translation-layer-next/husk-tl-host-device.c").read_text(encoding="utf-8")
+    density_functions = [re.search(pattern, host_device_source, re.S)[0] for pattern in (
+        r"static atomic_int display_density;",
+        r"void tl_host_set_display_density\([^\n]*\)\n\{.*?\n\}",
+        r"static const char \*display_density_property\([^\n]*\)\n\{.*?\n\}")]
+    (out / "host_density_under_test.h").write_text("\n".join(density_functions), encoding="utf-8")
+    unity_source = (ROOT / "src/translation-layer-next/husk-tl-unity-app.c").read_text(encoding="utf-8")
+    display_facts = re.search(r"void husk_java_set_display_max_refresh\([^)]*\)\n\{.*?\n\}", unity_source, re.S)[0]
+    display_facts += "\n" + re.search(r"NAT\(N_refreshRate\) [^\n]+", android_source)[0]
+    display_facts += "\n" + re.search(r"NAT\(N_maxRefreshRate\) [^\n]+", android_source)[0]
+    display_facts += "\n" + re.search(r"static tl_aconfig \*b_AConfiguration_new\([^)]*\)\n\{.*?\n\}", ndk_source, re.S)[0]
+    display_facts += "\n" + re.search(r"static void b_AConfiguration_fromAssetManager\([^)]*\)\n\{.*?\n\}", ndk_source, re.S)[0]
+    (out / "display_facts_under_test.h").write_text(display_facts, encoding="utf-8")
+    loader_source = (ROOT / "src/translation-layer-next/husk-tl-ld.c").read_text(encoding="utf-8")
+    entry_install = re.search(r"static bool patch_trutien_text_entries\([^\n]*\)\n\{.*?\n\}", loader_source, re.S)[0]
+    (out / "entry_filter_install_under_test.h").write_text(entry_install, encoding="utf-8")
+    entry_bridges = [re.search(r"__attribute__\(\(naked, used\)\) void " + name + r"\([^\n]*\)\n\{.*?\n\}", loader_source, re.S)[0]
+                     for name in ("tl_entry_filter_common", "tl_entry_filter_return")]
+    (out / "entry_filter_bridges_under_test.h").write_text("\n".join(entry_bridges), encoding="utf-8")
     for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "pthread_once_test", "window_opacity_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
+        run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+            str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
+        run(name, [str(exe)])
+    for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "trutien_text_filter_test", "entry_filter_test"):
+        exe = out / (name + (".exe" if os.name == "nt" else ""))
+        thread_flags = ["-pthread"] if os.name != "nt" and name == "trutien_text_filter_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])
@@ -83,6 +121,12 @@ def main():
         str(ROOT / "tests/translation-layer/trutien_text_probe_test.c"),
         str(ROOT / "src/translation-layer-next/husk-tl-trutien-text.c"), "-o", str(probe_exe)])
     run("trutien text probe", [str(probe_exe)])
+    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+        exe = out / "entry_filter_apple_arm64"
+        run("Apple ARM64 entry filter ABI compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+            str(ROOT / "tests/translation-layer/entry_filter_apple_arm64.c"),
+            str(ROOT / "src/translation-layer-next/husk-tl-trutien-text.c"), "-pthread", "-o", str(exe)])
+        run("actual Apple ARM64 text entry/return ABI", [str(exe)])
     for name in ("plan_test", "elf_import_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         run(name + " compile", compiler + flags + [str(ROOT / f"tests/translation-layer/{name}.c"), str(ROOT / "src/translation-layer/husk-tl-elf.c"), "-o", str(exe)])

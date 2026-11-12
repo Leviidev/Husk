@@ -17,6 +17,7 @@ typedef struct tl_javaapp_config {
     const char *package_name;        /* NULL: the manifest's */
     int width, height;               /* the screen, in pixels */
     float density;                   /* pixels per dp */
+    float max_refresh_rate;          /* attached physical screen capability, distinct from virtual display cadence */
     void *metal_layer;
     const char *angle_egl, *angle_gles;
     const char *frame_dir;           /* host tests: frames written here */

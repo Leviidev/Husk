@@ -44,7 +44,7 @@ struct TLAppSettings: Codable, Equatable {
             case .low: return 1
             case .medium: return 1.5
             case .high: return 2
-            case .native: return UIScreen.main.scale
+            case .native: return UIScreen.main.nativeScale
             }
         }
     }
@@ -80,6 +80,8 @@ struct TLAppSettings: Codable, Equatable {
     var orientation: Orientation = .auto
     var window: WindowMode = .auto
     var resolution: Resolution = .high
+    /// One-time upgrade requested for Tru Tien; later explicit resolution choices remain unchanged.
+    var nativeDisplayProfileVersion = 0
     /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
     var avoidUnsafeArea = true
     /// VHTG's inspected native profile adjusts quests and the two walk/sit buttons separately.
@@ -107,6 +109,7 @@ struct TLAppSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
         resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .high
+        nativeDisplayProfileVersion = try c.decodeIfPresent(Int.self, forKey: .nativeDisplayProfileVersion) ?? 0
         avoidUnsafeArea = try c.decodeIfPresent(Bool.self, forKey: .avoidUnsafeArea) ?? true
         questOnlyCutout = try c.decodeIfPresent(Bool.self, forKey: .questOnlyCutout) ?? true
         showStats = try c.decodeIfPresent(Bool.self, forKey: .showStats) ?? true
@@ -125,8 +128,17 @@ struct TLAppSettings: Codable, Equatable {
         TranslationLayer.root.appendingPathComponent(id, isDirectory: true).appendingPathComponent("settings.json")
     }
 
-    static func load(_ id: String) -> TLAppSettings {
-        (try? Data(contentsOf: url(id))).flatMap { try? JSONDecoder().decode(TLAppSettings.self, from: $0) } ?? TLAppSettings()
+    @discardableResult mutating func applyNativeDisplayProfile(packageName: String?) -> Bool {
+        guard packageName == "vn.trutien.client", nativeDisplayProfileVersion < 1 else { return false }
+        resolution = .native
+        nativeDisplayProfileVersion = 1
+        return true
+    }
+
+    static func load(_ id: String, packageName: String? = nil) -> TLAppSettings {
+        var settings = (try? Data(contentsOf: url(id))).flatMap { try? JSONDecoder().decode(TLAppSettings.self, from: $0) } ?? TLAppSettings()
+        if settings.applyNativeDisplayProfile(packageName: packageName) { settings.save(id) }
+        return settings
     }
 
     func save(_ id: String) {
@@ -155,7 +167,7 @@ struct TLAppSettingsView: View {
 
     init(app: TLApp) {
         self.app = app
-        _settings = State(initialValue: TLAppSettings.load(app.id))
+        _settings = State(initialValue: TLAppSettings.load(app.id, packageName: app.packageName))
         _name = State(initialValue: app.label)
     }
 

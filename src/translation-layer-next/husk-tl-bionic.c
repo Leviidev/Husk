@@ -25,6 +25,8 @@
 
 #include "husk-tl-ld.h"
 #include "husk-tl-va.h"
+#include "husk-tl-host-device.h"
+#include "husk-tl-memory.h"
 
 /* ------------------------------------------------------------------ errno */
 
@@ -109,20 +111,21 @@ static const struct { const char *k, *v; } k_props[] = {
     { "ro.build.version.sdk", "34" }, { "ro.build.version.release", "14" },
     { "ro.build.version.release_or_codename", "14" }, { "ro.build.version.codename", "REL" },
     { "ro.build.version.incremental", "11000000" }, { "ro.build.version.security_patch", "2026-10-05" },
-    { "ro.build.id", "UP1A.231105.001" }, { "ro.build.display.id", "UP1A.231105.001" },
+    { "ro.build.id", "HUSK" }, { "ro.build.display.id", "Husk" },
     { "ro.build.type", "user" }, { "ro.build.tags", "release-keys" },
-    { "ro.build.fingerprint", "google/shiba/shiba:14/UP1A.231105.001/11000000:user/release-keys" },
-    { "ro.product.manufacturer", "Google" }, { "ro.product.brand", "google" },
-    { "ro.product.model", "Pixel 8" }, { "ro.product.name", "shiba" }, { "ro.product.device", "shiba" },
-    { "ro.product.board", "shiba" }, { "ro.product.cpu.abi", "arm64-v8a" },
-    { "ro.product.cpu.abilist", "arm64-v8a" }, { "ro.hardware", "shiba" }, { "ro.board.platform", "gs301" },
-    { "ro.soc.manufacturer", "Google" }, { "ro.soc.model", "Tensor G3" },
+    { "ro.build.fingerprint", "apple/host/host:14/HUSK/11000000:user/release-keys" },
+    { "ro.product.manufacturer", "Apple" }, { "ro.product.brand", "apple" },
+    { "ro.product.model", "Apple device" }, { "ro.product.name", "Apple device" }, { "ro.product.device", "Apple device" },
+    { "ro.product.board", "Apple device" }, { "ro.product.cpu.abi", "arm64-v8a" },
+    { "ro.product.cpu.abilist", "arm64-v8a" }, { "ro.hardware", "Apple device" }, { "ro.board.platform", "Apple device" },
+    { "ro.soc.manufacturer", "Apple" }, { "ro.soc.model", "Apple ARM64" },
+    { "ro.boot.hardware.sku", "unknown" }, { "ro.boot.product.hardware.sku", "unknown" },
     { "ro.opengles.version", "196610" }, { "ro.kernel.qemu", "0" }, { "ro.debuggable", "0" },
     { "ro.secure", "1" }, { "ro.zygote", "zygote64" }, { "ro.config.low_ram", "false" },
     { "ro.sf.lcd_density", "420" }, { "ro.hwui.use_vulkan", "" }, { "persist.sys.locale", "en-US" },
     { "persist.sys.timezone", "UTC" }, { "gsm.operator.iso-country", "us" }, { "ro.carrier", "unknown" },
     { "ro.com.google.clientidbase", "android-google" }, { "debug.hwui.renderer", "" },
-    { "ro.vendor.build.fingerprint", "google/shiba/shiba:14/UP1A.231105.001/11000000:user/release-keys" },
+    { "ro.vendor.build.fingerprint", "apple/host/host:14/HUSK/11000000:user/release-keys" },
     { "ro.system.build.version.sdk", "34" }, { "ro.product.first_api_level", "34" },
 };
 
@@ -152,6 +155,9 @@ static const char *host_prop(const char *name)
 
 const char *tl_sysprop(const char *name)
 {
+    if (!name) return NULL;
+    const char *device = tl_host_device_property(name);
+    if (device) return device;
     const char *h = host_prop(name);
     if (h) return h;
     for (size_t i = 0; i < sizeof(k_props) / sizeof(k_props[0]); i++) if (!strcmp(k_props[i].k, name)) return k_props[i].v;
@@ -164,12 +170,11 @@ typedef struct { long uptime; unsigned long loads[3], totalram, freeram, sharedr
 static int bionic_sysinfo(guest_sysinfo *si)
 {
     memset(si, 0, sizeof(*si));
-    uint64_t mem = 0; size_t len = sizeof(mem);
-    sysctlbyname("hw.memsize", &mem, &len, NULL, 0);
+    tl_memory_info info; tl_host_memory_info(&info);
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
     si->uptime = ts.tv_sec;
-    si->totalram = (unsigned long)mem;
-    si->freeram = (unsigned long)(mem / 4);
+    si->totalram = (unsigned long)info.total;
+    si->freeram = (unsigned long)(info.available < info.total ? info.available : info.total);
     si->mem_unit = 1;
     si->procs = 1;
     return 0;
@@ -194,8 +199,10 @@ static int bionic___system_property_read(const void *pi, char *name, char *value
     if (!pi) return 0;
     const struct { const char *k, *v; } *p = pi;
     if (name) snprintf(name, 32, "%s", p->k);
-    if (value) snprintf(value, 92, "%s", p->v);
-    return (int)strlen(p->v);
+    const char *v = tl_sysprop(p->k);
+    if (!v) v = p->v;
+    if (value) snprintf(value, 92, "%s", v);
+    return (int)strlen(v);
 }
 
 /* __system_property_foreach: each property Husk answers, as a find() handle */
@@ -249,7 +256,8 @@ static void bionic___system_property_read_callback(const void *pi, guest_prop_cb
 {
     if (!pi || !cb) return;
     const struct { const char *k, *v; } *p = pi;
-    cb(cookie, p->k, p->v, 0);
+    const char *v = tl_sysprop(p->k);
+    cb(cookie, p->k, v ? v : p->v, 0);
 }
 static uint32_t bionic___system_property_serial(const void *pi) { (void)pi; return 0; }
 static uint32_t bionic___system_property_area_serial(void) { return 0; }
@@ -561,8 +569,8 @@ static long bionic_sysconf(int name)
     case 38:   return 1024;                                  /* _SC_IOV_MAX */
     case 39: case 40: return 16384;                          /* _SC_PAGESIZE / _SC_PAGE_SIZE */
     case 96: case 97: return getenv("TL_NCPU") ? atol(getenv("TL_NCPU")) : (long)sysconf(_SC_NPROCESSORS_ONLN);   /* _SC_NPROCESSORS_CONF / ONLN */
-    case 98: { uint64_t m = 0; size_t l = sizeof(m); sysctlbyname("hw.memsize", &m, &l, NULL, 0); return (long)(m / 16384); }
-    case 99: { uint64_t m = 0; size_t l = sizeof(m); sysctlbyname("hw.memsize", &m, &l, NULL, 0); return (long)(m / 16384 / 2); }
+    case 98: { tl_memory_info info; tl_host_memory_info(&info); return (long)(info.total / 16384); }
+    case 99: { tl_memory_info info; tl_host_memory_info(&info); return (long)((info.available < info.total ? info.available : info.total) / 16384); }
     case 100:  return 200809;                                /* _SC_MONOTONIC_CLOCK */
     case 0x4a: return 16384;                                 /* _SC_THREAD_STACK_MIN-ish */
     default:

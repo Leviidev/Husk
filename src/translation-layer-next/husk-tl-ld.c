@@ -27,6 +27,7 @@
 #include "husk-tl-codewrite.h"
 #include "husk-tl-aot-data.h"
 #include "husk-tl-trutien-text.h"
+#include "husk-tl-entry-filter.h"
 
 /* The project's log sink, and the bionic shim's surface. */
 void  tl_log_line(const char *fmt, ...);
@@ -1058,6 +1059,73 @@ __attribute__((naked, used)) void tl_probe_common(void)
 #endif
 }
 
+/* Entry callbacks receive a writable snapshot of x0..x28. Unlike a C wrapper
+ * around the guest function, this bridge does not repack any fixed stack
+ * arguments (Darwin packs small integers differently from Android AAPCS64).
+ * No callback may throw or retain the frame. The outer signed stub owns x29,
+ * x30, x16 and x17 until the original entry instruction resumes. */
+__attribute__((naked, used)) void tl_entry_filter_common(void)
+{
+#if defined(__aarch64__)
+    __asm__ volatile(
+        "stp x29, x30, [sp, #-16]!\n"
+        "mov x29, sp\n"
+        "sub sp, sp, #768\n"
+        "stp x0, x1, [sp, #0]\n"   "stp x2, x3, [sp, #16]\n"   "stp x4, x5, [sp, #32]\n"   "stp x6, x7, [sp, #48]\n"
+        "stp x8, x9, [sp, #64]\n"  "stp x10, x11, [sp, #80]\n" "stp x12, x13, [sp, #96]\n" "stp x14, x15, [sp, #112]\n"
+        "stp x16, x17, [sp, #128]\n" "stp x18, x19, [sp, #144]\n" "stp x20, x21, [sp, #160]\n" "stp x22, x23, [sp, #176]\n"
+        "stp x24, x25, [sp, #192]\n" "stp x26, x27, [sp, #208]\n" "str x28, [sp, #224]\n"
+        "mrs x9, nzcv\n" "str x9, [sp, #232]\n"
+        "stp q0, q1, [sp, #240]\n"  "stp q2, q3, [sp, #272]\n"  "stp q4, q5, [sp, #304]\n"  "stp q6, q7, [sp, #336]\n"
+        "stp q8, q9, [sp, #368]\n"  "stp q10, q11, [sp, #400]\n" "stp q12, q13, [sp, #432]\n" "stp q14, q15, [sp, #464]\n"
+        "stp q16, q17, [sp, #496]\n" "stp q18, q19, [sp, #528]\n" "stp q20, q21, [sp, #560]\n" "stp q22, q23, [sp, #592]\n"
+        "stp q24, q25, [sp, #624]\n" "stp q26, q27, [sp, #656]\n" "stp q28, q29, [sp, #688]\n" "stp q30, q31, [sp, #720]\n"
+        "mov x0, sp\n" "add x1, x29, #40\n" "mov x2, x17\n" "bl _tl_trutien_text_enter\n"
+        "ldr x9, [sp, #232]\n" "msr nzcv, x9\n"
+        "ldp q0, q1, [sp, #240]\n"  "ldp q2, q3, [sp, #272]\n"  "ldp q4, q5, [sp, #304]\n"  "ldp q6, q7, [sp, #336]\n"
+        "ldp q8, q9, [sp, #368]\n"  "ldp q10, q11, [sp, #400]\n" "ldp q12, q13, [sp, #432]\n" "ldp q14, q15, [sp, #464]\n"
+        "ldp q16, q17, [sp, #496]\n" "ldp q18, q19, [sp, #528]\n" "ldp q20, q21, [sp, #560]\n" "ldp q22, q23, [sp, #592]\n"
+        "ldp q24, q25, [sp, #624]\n" "ldp q26, q27, [sp, #656]\n" "ldp q28, q29, [sp, #688]\n" "ldp q30, q31, [sp, #720]\n"
+        "ldp x0, x1, [sp, #0]\n"   "ldp x2, x3, [sp, #16]\n"   "ldp x4, x5, [sp, #32]\n"   "ldp x6, x7, [sp, #48]\n"
+        "ldp x8, x9, [sp, #64]\n"  "ldp x10, x11, [sp, #80]\n" "ldp x12, x13, [sp, #96]\n" "ldp x14, x15, [sp, #112]\n"
+        "ldp x16, x17, [sp, #128]\n" "ldp x18, x19, [sp, #144]\n" "ldp x20, x21, [sp, #160]\n" "ldp x22, x23, [sp, #176]\n"
+        "ldp x24, x25, [sp, #192]\n" "ldp x26, x27, [sp, #208]\n" "ldr x28, [sp, #224]\n"
+        "mov sp, x29\n" "ldp x29, x30, [sp], #16\n" "ret\n");
+#endif
+}
+
+/* Normal-return bridge: preserve the original return value and complete saved
+ * machine state while releasing only this text call's scratch lifetime. */
+__attribute__((naked, used)) void tl_entry_filter_return(void)
+{
+#if defined(__aarch64__)
+    __asm__ volatile(
+        "stp x29, x30, [sp, #-16]!\n"
+        "mov x29, sp\n"
+        "sub sp, sp, #768\n"
+        "stp x0, x1, [sp, #0]\n"   "stp x2, x3, [sp, #16]\n"   "stp x4, x5, [sp, #32]\n"   "stp x6, x7, [sp, #48]\n"
+        "stp x8, x9, [sp, #64]\n"  "stp x10, x11, [sp, #80]\n" "stp x12, x13, [sp, #96]\n" "stp x14, x15, [sp, #112]\n"
+        "stp x16, x17, [sp, #128]\n" "stp x18, x19, [sp, #144]\n" "stp x20, x21, [sp, #160]\n" "stp x22, x23, [sp, #176]\n"
+        "stp x24, x25, [sp, #192]\n" "stp x26, x27, [sp, #208]\n" "str x28, [sp, #224]\n"
+        "mrs x9, nzcv\n" "str x9, [sp, #232]\n"
+        "stp q0, q1, [sp, #240]\n"  "stp q2, q3, [sp, #272]\n"  "stp q4, q5, [sp, #304]\n"  "stp q6, q7, [sp, #336]\n"
+        "stp q8, q9, [sp, #368]\n"  "stp q10, q11, [sp, #400]\n" "stp q12, q13, [sp, #432]\n" "stp q14, q15, [sp, #464]\n"
+        "stp q16, q17, [sp, #496]\n" "stp q18, q19, [sp, #528]\n" "stp q20, q21, [sp, #560]\n" "stp q22, q23, [sp, #592]\n"
+        "stp q24, q25, [sp, #624]\n" "stp q26, q27, [sp, #656]\n" "stp q28, q29, [sp, #688]\n" "stp q30, q31, [sp, #720]\n"
+        "bl _tl_trutien_text_leave\n" "str x0, [x29, #8]\n"
+        "ldr x9, [sp, #232]\n" "msr nzcv, x9\n"
+        "ldp q0, q1, [sp, #240]\n"  "ldp q2, q3, [sp, #272]\n"  "ldp q4, q5, [sp, #304]\n"  "ldp q6, q7, [sp, #336]\n"
+        "ldp q8, q9, [sp, #368]\n"  "ldp q10, q11, [sp, #400]\n" "ldp q12, q13, [sp, #432]\n" "ldp q14, q15, [sp, #464]\n"
+        "ldp q16, q17, [sp, #496]\n" "ldp q18, q19, [sp, #528]\n" "ldp q20, q21, [sp, #560]\n" "ldp q22, q23, [sp, #592]\n"
+        "ldp q24, q25, [sp, #624]\n" "ldp q26, q27, [sp, #656]\n" "ldp q28, q29, [sp, #688]\n" "ldp q30, q31, [sp, #720]\n"
+        "ldp x0, x1, [sp, #0]\n"   "ldp x2, x3, [sp, #16]\n"   "ldp x4, x5, [sp, #32]\n"   "ldp x6, x7, [sp, #48]\n"
+        "ldp x8, x9, [sp, #64]\n"  "ldp x10, x11, [sp, #80]\n" "ldp x12, x13, [sp, #96]\n" "ldp x14, x15, [sp, #112]\n"
+        "ldp x16, x17, [sp, #128]\n" "ldp x18, x19, [sp, #144]\n" "ldp x20, x21, [sp, #160]\n" "ldp x22, x23, [sp, #176]\n"
+        "ldp x24, x25, [sp, #192]\n" "ldp x26, x27, [sp, #208]\n" "ldr x28, [sp, #224]\n"
+        "mov sp, x29\n" "ldp x29, x30, [sp], #16\n" "ret\n");
+#endif
+}
+
 bool tl_ld_probe(tl_lib *L, uint64_t vaddr, void (*cb)(uint64_t *regs))
 {
     uint64_t off = vaddr - L->base_vaddr;
@@ -1135,6 +1203,10 @@ bool tl_ld_hook_symbol(tl_lib *L, const char *symbol, void *hook_fn)
  */
 #define SLOT_SVC   0              /* the address of tl_svc_common */
 #define SLOT_VX18  8              /* the virtual x18's byte offset from the thread's TSD base */
+#define SLOT_ENTRY_COMMON 16      /* text pre-filter register-preserving dispatcher */
+#define SLOT_TEXT_FONT    24
+#define SLOT_TEXT_EXTENT  32
+#define SLOT_TEXT_HUD     40
 
 /* adrp Xd, <the 4 KiB page of target>, for an instruction at pc; false when the target is out of adrp's reach (+-4 GiB) */
 static bool e_adrp_ok(const void *pc, const void *target)
@@ -2421,6 +2493,16 @@ static void fill_data_slots(tl_lib *L)
     uint64_t svc = (uint64_t)(uintptr_t)tl_svc_common, vx18 = (uint64_t)(g_vx18_off < 0 ? 0 : g_vx18_off);
     memcpy(L->slots + SLOT_SVC, &svc, 8);
     memcpy(L->slots + SLOT_VX18, &vx18, 8);
+    void tl_trutien_font_filter(uint64_t *regs);
+    void tl_trutien_extent_filter(uint64_t *regs);
+    void tl_trutien_hud_filter(uint64_t *regs);
+    const uint64_t entry_values[] = {
+        (uint64_t)(uintptr_t)tl_entry_filter_common,
+        (uint64_t)(uintptr_t)tl_trutien_font_filter,
+        (uint64_t)(uintptr_t)tl_trutien_extent_filter,
+        (uint64_t)(uintptr_t)tl_trutien_hud_filter,
+    };
+    memcpy(L->slots + SLOT_ENTRY_COMMON, entry_values, sizeof(entry_values));
     uint64_t *t = (uint64_t *)L->tcb;
     t[0] = (uint64_t)(uintptr_t)L->tcb;       /* self */
     t[1] = 1000; t[2] = 1000;
@@ -2600,7 +2682,9 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     bool go = memmem(file, flen, go_magic, sizeof(go_magic) - 1) != NULL;
     /* Stub pages after the image: one literal slot, a few probes, a stub for every raw
      * system call, and one for every instruction that names the reserved register x18. */
-    size_t stub_bytes = 16 + 8192;
+    /* The JIT path stores runtime slots at the start of this pool. Keep the
+     * full cache-line prefix free; signed AOT images use a separate RW page. */
+    size_t stub_bytes = 64 + 8192 + 3 * TL_ENTRY_FILTER_BYTES;
     for (int r = 0; r < ncode; r++) {
         const uint32_t *wv = (const uint32_t *)(file + code[r].foff);
         for (size_t k = 0, cnt = (size_t)(code[r].size / 4); k < cnt; k++) {
@@ -2675,7 +2759,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     }
     for (int r = 0; r < ncode; r++) { L->code[r].start = code[r].vaddr; L->code[r].end = code[r].vaddr + code[r].size; }
     L->ncode = ncode;
-    L->stub_rx = rx + npages * PAGE; L->stub_rw = rw + npages * PAGE; L->stub_used = 16; L->stub_cap = nstub * PAGE; L->nstub = nstub;
+    L->stub_rx = rx + npages * PAGE; L->stub_rw = rw + npages * PAGE; L->stub_used = 64; L->stub_cap = nstub * PAGE; L->nstub = nstub;
     /* In the JIT region the slots ride in the stub pages' writable view; a dylib has a page of its own after the stubs, because its
      * stub pages execute and a page cannot be both executable and writable. */
     L->slots = (imported || g_aot.on) ? rw + (npages + nstub) * PAGE : L->stub_rw;
@@ -2779,6 +2863,51 @@ static bool island(tl_lib *L)
     return true;
 }
 
+static bool patch_trutien_text_entries(tl_lib *L)
+{
+    /* An imported signed image is immutable. This path runs only before
+     * signing a fresh AOT image, or on the existing writable JIT view. */
+    if (L->aot || strcmp(base_name(L->name), "libmain.so")
+        || !lib_find(L, "_ZN18AUIRichTextPrinter14ms_TextPrinterE")) return false;
+    static const struct { const char *name; uint32_t first; unsigned slot; } entries[] = {
+        { "_ZN9A3DFTFont8TextOutWEiiPKwjbjfifbjf", 0x39488008u, SLOT_TEXT_FONT },
+        { "_ZN9A3DFTFont13GetTextExtentEPKwib", 0xA9BA7BFDu, SLOT_TEXT_EXTENT },
+        { "_ZN12CHudDrawList7AddTextEPKwRK7HUDRECTdjiiji", 0x6DB82BEBu, SLOT_TEXT_HUD },
+    };
+    enum { count = sizeof(entries) / sizeof(entries[0]), bytes = count * TL_ENTRY_FILTER_BYTES };
+    if (!L->rw || !L->rx || !L->slots || !L->pflags || !L->stub_rx || !L->stub_rw
+        || L->npages > SIZE_MAX / PAGE || L->npages * PAGE < 4
+        || L->stub_used > L->stub_cap || L->stub_cap - L->stub_used < bytes) return false;
+    size_t offsets[count]; uint32_t code[count][TL_ENTRY_FILTER_WORDS], branches[count];
+    for (unsigned i = 0; i < count; i++) {
+        const elf_sym *s = lib_find(L, entries[i].name);
+        if (!s || !s->st_shndx || (s->st_info & 15) != 2 || s->st_size < 4 || s->st_value < L->base_vaddr) {
+            tl_log_line("trutien-text: unsupported text entry profile; no entry filters installed");
+            return false;
+        }
+        uint64_t off = s->st_value - L->base_vaddr;
+        if ((off & 3) || off > L->npages * PAGE - 4 || !(L->pflags[off / PAGE] & TL_PAGE_X)) return false;
+        uint32_t first; memcpy(&first, L->rw + off, 4);
+        if (first != entries[i].first
+            || !tl_entry_filter_encode(code[i], &branches[i], (uintptr_t)(L->rx + off),
+                (uintptr_t)(L->stub_rx + L->stub_used + i * TL_ENTRY_FILTER_BYTES),
+                (uintptr_t)(L->slots + SLOT_ENTRY_COMMON), (uintptr_t)(L->slots + entries[i].slot), first)) {
+            tl_log_line("trutien-text: unsupported text prologue or branch range; no entry filters installed");
+            return false;
+        }
+        offsets[i] = (size_t)off;
+    }
+    /* Commit only after draw, measurement and HUD have all passed preflight.
+     * There are no allocations, callbacks or fallible operations below. */
+    for (unsigned i = 0; i < count; i++) {
+        memcpy(L->stub_rw + L->stub_used + i * TL_ENTRY_FILTER_BYTES, code[i], sizeof(code[i]));
+        memcpy(L->rw + offsets[i], &branches[i], 4);
+    }
+    L->stub_used += bytes;
+    tl_log_line("trutien-text: signed-safe draw/measurement/HUD entry filters installed");
+    return true;
+}
+
 static void patch_library(tl_lib *L, size_t *t, size_t *a, size_t *ad, size_t *sv)
 {
     /* The relocation table is dead now that the image is relocated. Its tail becomes a second pool of stubs, for the
@@ -2787,6 +2916,7 @@ static void patch_library(tl_lib *L, size_t *t, size_t *a, size_t *ad, size_t *s
     mono_aot_code_only(L);
     patch_image(L, t, a, ad, sv);
     skip_boringssl_selfcheck(L);
+    (void)patch_trutien_text_entries(L);
 }
 
 /*

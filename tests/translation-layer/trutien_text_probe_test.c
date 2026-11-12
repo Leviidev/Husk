@@ -15,7 +15,7 @@ static void *root, *printer;
 const char *tl_ld_lib_name(const tl_lib *lib) { assert(lib); return library_name; }
 static void *get_tag(const void *p, const uint32_t *text, int pos, int len)
 {
-    assert(p == &printer && pos == 1 && len == 11 && text[0] == '^');
+    assert(p == &printer && pos == 0 && len == 11 && text[0] == '^');
     queries++;
     return registered ? &root : NULL;
 }
@@ -42,9 +42,11 @@ void tl_log_line(const char *fmt, ...)
 {
     va_list ap; va_start(ap, fmt); vsnprintf(message, sizeof(message), fmt, ap); va_end(ap); messages++;
 }
+void tl_entry_filter_return(void) {}
 int main(void)
 {
     tl_lib *lib = (tl_lib *)(uintptr_t)1;
+    tl_trutien_text_set_package("vn.trutien.client");
     tl_trutien_text_probe(lib); assert(!lookups && !messages);
     library_name = "libmain.so";
     tl_trutien_text_probe(lib); assert(lookups == 3 && !queries && !messages);

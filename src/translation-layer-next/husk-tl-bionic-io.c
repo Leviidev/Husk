@@ -153,6 +153,8 @@ const char *tl_data_dir(void) { return g_data_dir[0] ? g_data_dir : "/tmp"; }
 
 void tl_set_guest_package(const char *pkg)
 {
+    void tl_trutien_text_set_package(const char *package_name);
+    tl_trutien_text_set_package(pkg);
     g_guest_data_dir[0] = 0;
     if (!pkg || !*pkg) return;
     for (const char *c = pkg; *c; c++)
