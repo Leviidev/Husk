@@ -1202,6 +1202,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
     husk_aosp_set_session(A.pkg, cfg->width, cfg->height);
+    if (cfg->activity_class) snprintf(A.activity, sizeof(A.activity), "%s", cfg->activity_class);
+    if (cfg->application_class) snprintf(A.application, sizeof(A.application), "%s", cfg->application_class);
     tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
@@ -1211,6 +1213,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    if (cfg->extra_dex && !tl_dvm_add_apk(cfg->extra_dex)) { tl_log_line("javaapp: extra test DEX did not open"); return false; }
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
