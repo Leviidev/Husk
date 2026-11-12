@@ -176,6 +176,9 @@ static void *heartbeat_thread(void *arg)
     unsigned serial = (unsigned)(uintptr_t)arg;
     pthread_setname_np("husk-unity-hb");
     unsigned long last = 0;
+#if TARGET_OS_IPHONE
+    uint64_t next_memory_report_ns = 0;
+#endif
     for (int tick = 0;; tick++) {
         if (tick < 40) usleep(500000); else sleep(3);          /* twice a second for the first twenty seconds */
         pthread_mutex_lock(&stop_lock);
@@ -186,6 +189,16 @@ static void *heartbeat_thread(void *arg)
         unsigned long f = engine_frames();
 #if TARGET_OS_IPHONE
         tl_log_line("unity: alive: %lu frames (+%lu), %zu MiB left before jetsam", f, f - last, os_proc_available_memory() >> 20);
+        if (A.engine == ENGINE_JAVA) {
+            struct timespec now;
+            if (clock_gettime(CLOCK_MONOTONIC, &now) == 0) {
+                uint64_t ns = (uint64_t)now.tv_sec * UINT64_C(1000000000) + (uint64_t)now.tv_nsec;
+                if (ns >= next_memory_report_ns) {
+                    tl_host_log_memory_breakdown("game-periodic");
+                    next_memory_report_ns = ns + UINT64_C(30000000000);
+                }
+            }
+        }
 #else
         tl_log_line("unity: alive: %lu frames (+%lu)", f, f - last);
 #endif

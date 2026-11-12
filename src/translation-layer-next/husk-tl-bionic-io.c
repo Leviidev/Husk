@@ -109,6 +109,11 @@ void tl_host_log_memory_breakdown(const char *tag)
         return;
     }
     const double mib = 1024.0 * 1024.0;
+#if TARGET_OS_IPHONE
+    tl_log_line("memory-budget[%s]: footprint=%.1f MiB resident=%.1f MiB available-before-jetsam=%.1f MiB",
+                tag ? tag : "", vm.phys_footprint / mib, vm.resident_size / mib,
+                os_proc_available_memory() / mib);
+#endif
     tl_log_line("memory-components[%s]: internal=%.1f MiB external=%.1f MiB compressed=%.1f MiB reusable=%.1f MiB",
                 tag ? tag : "", vm.internal / mib, vm.external / mib, vm.compressed / mib, vm.reusable / mib);
     if (count >= TASK_VM_INFO_REV3_COUNT) {

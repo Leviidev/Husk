@@ -68,6 +68,11 @@ def main():
     ui_session_begin = re.search(r"static bool javaapp_begin_session\([^)]*\)\n\{.*?\n\}", android_source, re.S)[0]
     (out / "ui_frame_publication_under_test.h").write_text(ui_publication + "\n" + ui_session_begin, encoding="utf-8")
     egl_source = (ROOT / "src/translation-layer-next/husk-tl-egl.c").read_text(encoding="utf-8")
+    context_caps = egl_source.split("#define MAX_COMP_CONTEXTS", 1)[1].split("static EGLBoolean w_eglDestroyContext", 1)[0]
+    context_caps = "#define MAX_COMP_CONTEXTS" + context_caps
+    context_caps += "\n" + re.search(r"static EGLBoolean w_eglMakeCurrent\([^)]*\)\n\{.*?\n\}", egl_source, re.S)[0]
+    context_caps += "\n" + re.search(r"void tl_egl_compositor_context\([^)]*\)\n\{.*?\n\}", egl_source, re.S)[0]
+    (out / "egl_context_caps_under_test.h").write_text(context_caps, encoding="utf-8")
     surface_lifecycle = [re.search(pattern, egl_source, re.S)[0] for pattern in (
         r"static EGLBoolean w_eglDestroySurface\([^)]*\)\n\{.*?\n\}",
         r"static bool comp_swap\([^)]*\)\n\{.*?\n\}")]
@@ -112,7 +117,7 @@ def main():
     entry_bridges = [re.search(r"__attribute__\(\(naked, used\)\) void " + name + r"\([^\n]*\)\n\{.*?\n\}", loader_source, re.S)[0]
                      for name in ("tl_entry_filter_common", "tl_entry_filter_return")]
     (out / "entry_filter_bridges_under_test.h").write_text("\n".join(entry_bridges), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "pthread_once_test", "window_opacity_test"):
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",

@@ -121,6 +121,10 @@ static void *(*a_glFenceSync)(unsigned, unsigned);
 static void (*a_glWaitSync)(void *, unsigned, uint64_t);
 static void (*a_glDeleteSync)(void *);
 static void (*a_glFlush)(void);
+static bool comp_ctx_can_sync(void *context)
+{
+    return context && context_version >= 3 && a_glFenceSync && a_glWaitSync && a_glDeleteSync && a_glFlush;
+}
 static void (*a_glFinish)(void) = finish;
 static void get_int(unsigned at, int *value) { *value = at == 0x84E0 ? 0x84C0 : 0; }
 static void (*a_glGetIntegerv)(unsigned, int *) = get_int;

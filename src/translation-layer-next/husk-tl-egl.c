@@ -15,6 +15,7 @@
 #include "husk-tl-xmem.h"
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-frame-sync.h"
+#include "husk-tl-gl-capabilities.h"
 
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
@@ -245,13 +246,15 @@ __attribute__((weak)) void tl_javaapp_app_pixels_rect(const void *px, int pw, in
 __attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
 
 #define MAX_COMP_CONTEXTS 32
-static struct { EGLContext c; int ver; } g_comp_ctx[MAX_COMP_CONTEXTS];
+static struct { EGLContext c; int ver, actual; bool observed; } g_comp_ctx[MAX_COMP_CONTEXTS];
 static int comp_ctx_ver(EGLContext c)
 {
     if (!c) return 0;
     int v = 0;
     pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { v = g_comp_ctx[i].ver; break; }
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) {
+        v = g_comp_ctx[i].actual ? g_comp_ctx[i].actual : g_comp_ctx[i].ver; break;
+    }
     pthread_mutex_unlock(&g_tex_lock);
     return v;
 }
@@ -259,16 +262,55 @@ static void comp_ctx_add(EGLContext c, int ver)
 {
     if (!c || ver <= 0) return;
     pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { g_comp_ctx[i].ver = ver; pthread_mutex_unlock(&g_tex_lock); return; }
-    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (!g_comp_ctx[i].c) { g_comp_ctx[i].c = c; g_comp_ctx[i].ver = ver; break; }
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) {
+        g_comp_ctx[i].ver = ver; g_comp_ctx[i].actual = 0; g_comp_ctx[i].observed = false;
+        pthread_mutex_unlock(&g_tex_lock); return;
+    }
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (!g_comp_ctx[i].c) {
+        g_comp_ctx[i].c = c; g_comp_ctx[i].ver = ver;
+        g_comp_ctx[i].actual = 0; g_comp_ctx[i].observed = false; break;
+    }
     pthread_mutex_unlock(&g_tex_lock);
 }
 static void comp_ctx_remove(EGLContext c)
 {
     if (!c) return;
     pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) { g_comp_ctx[i].c = NULL; g_comp_ctx[i].ver = 0; }
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) memset(&g_comp_ctx[i], 0, sizeof(g_comp_ctx[i]));
     pthread_mutex_unlock(&g_tex_lock);
+}
+static bool comp_ctx_can_sync(EGLContext c)
+{
+    if (!c || !a_glFenceSync || !a_glWaitSync || !a_glDeleteSync || !a_glFlush) return false;
+    bool can_sync = false;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) {
+        can_sync = g_comp_ctx[i].observed && g_comp_ctx[i].actual >= 3; break;
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    return can_sync;
+}
+static void comp_ctx_observe_current(EGLContext c)
+{
+    if (!c || !a_eglGetCurrentContext || a_eglGetCurrentContext() != c) return;
+    bool inspect = false;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c) {
+        inspect = !g_comp_ctx[i].observed; break;
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    if (!inspect) return;
+    const char *raw = a_glGetString ? (const char *)a_glGetString(0x1F02 /* GL_VERSION */) : NULL;
+    int actual = tl_gl_es_version_major(raw), requested = 0;
+    bool recorded = false;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_CONTEXTS; i++) if (g_comp_ctx[i].c == c && !g_comp_ctx[i].observed) {
+        requested = g_comp_ctx[i].ver;
+        g_comp_ctx[i].actual = actual; g_comp_ctx[i].observed = true; recorded = true; break;
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    if (recorded) tl_log_line("egl: shared context %p requested ES %d, actual ES %d; core-sync=%s (raw %.96s)",
+        c, requested, actual, comp_ctx_can_sync(c) ? "GPU fences" : "synchronous fallback", raw ? raw : "unavailable");
 }
 
 static EGLBoolean w_eglDestroyContext(EGLDisplay d, EGLContext c)
@@ -281,6 +323,7 @@ PASS_BOOL(eglSurfaceAttrib, (EGLDisplay d, EGLSurface s, EGLint at, EGLint v), (
 static EGLBoolean w_eglMakeCurrent(EGLDisplay d, EGLSurface dr, EGLSurface rd, EGLContext c)
 {
     EGLBoolean ok = E.ready ? a_eglMakeCurrent(d, dr, rd, c) : EGL_FALSE;
+    if (ok) comp_ctx_observe_current(c);
     static int trace = -1;
     if (trace < 0) trace = getenv("TL_EGL_TRACE") ? 1 : 0;
     if (trace || !ok) {
@@ -401,7 +444,7 @@ static const tl_frame_sync_ops k_frame_sync = { frame_fence, frame_wait, frame_d
  * GL object deletion until one of these contexts can perform it. */
 static void frame_clean_retired(void)
 {
-    bool can_sync = a_eglGetCurrentContext && comp_ctx_ver(a_eglGetCurrentContext()) >= 3;
+    bool can_sync = a_eglGetCurrentContext && comp_ctx_can_sync(a_eglGetCurrentContext());
     pthread_mutex_lock(&g_tex_lock);
     for (int i = 0; i < MAX_COMP_SURFACES; i++) {
         comp_surf_entry *entry = &g_comp_surf[i];
@@ -434,8 +477,8 @@ static tl_frame_sync *frame_sync_of(unsigned tex)
 
 void tl_egl_compositor_context(void *context, bool es3)
 {
-    if (context) comp_ctx_add(context, es3 ? 3 : 2);
-    atomic_store(&g_compositor_es3, es3);
+    if (context) { comp_ctx_add(context, es3 ? 3 : 2); comp_ctx_observe_current(context); }
+    atomic_store(&g_compositor_es3, context && comp_ctx_can_sync(context));
 }
 void tl_egl_compositor_frame_begin(void)
 {
@@ -460,7 +503,7 @@ void tl_egl_compositor_frame_reset(void *context, bool current)
      * remain on their old off-screen surface instead of republishing a frame. */
     if (tl_javaapp_app_tex_publish) tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
     g_published_comp_surface = NULL;
-    bool can_sync = current && comp_ctx_ver(context) >= 3;
+    bool can_sync = current && comp_ctx_can_sync(context);
     void *windows[MAX_COMP_SURFACES] = { 0 };
     pthread_mutex_lock(&g_tex_lock);
     for (int i = 0; i < MAX_COMP_SURFACES; i++) {
@@ -740,7 +783,8 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     /* Core GL sync entry points require an ES3 current context. If a surface
      * moves to an ES2 producer with outstanding ES3 fences, use readback until
      * a compatible context can recycle that cache slot. */
-    bool compatible = ver >= 3 || !tl_frame_sync_pending(frame);
+    bool producer_sync = a_eglGetCurrentContext && comp_ctx_can_sync(a_eglGetCurrentContext());
+    bool compatible = producer_sync || !tl_frame_sync_pending(frame);
     if (ver >= 2 && compatible && tl_javaapp_app_tex_publish && tl_javaapp_app_frame_pace && a_glGetIntegerv && a_glBindFramebuffer
         && a_glActiveTexture && a_glBindTexture && a_glGenTextures && a_glTexParameteri
         && a_glCopyTexImage2D && a_glCopyTexSubImage2D && a_glFinish) {
@@ -769,7 +813,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         a_glBindTexture(0x0DE1, (unsigned)old_tex);
         a_glActiveTexture((unsigned)old_active);
         if (old_fb) a_glBindFramebuffer(fb_target, (unsigned)old_fb);
-        bool asynchronous = ver >= 3 && atomic_load(&g_compositor_es3) && a_glFenceSync && a_glWaitSync && a_glDeleteSync && a_glFlush;
+        bool asynchronous = producer_sync && atomic_load(&g_compositor_es3);
         tl_frame_sync_after_write(frame, &k_frame_sync, asynchronous);
 
         pthread_mutex_lock(&g_tex_lock);
