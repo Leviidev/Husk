@@ -61,6 +61,11 @@ extern void (*tl_guest_exit_hook)(int status);   /* set by an app host: exit() f
 void *tl_bionic_find(const char *name);
 bool  tl_bionic_is_system_lib(const char *soname);
 
+/* Scratch files stay in the explicitly selected host directory. Empty/invalid
+ * TL_TMP or TMPDIR values fail instead of falling back to a different folder. */
+const char *tl_temporary_dir(void);
+int tl_anonymous_temp_file(void); /* host fd, immediately unlinked; host errno */
+
 /* Whether the process is short of address space (an iOS app without the extended-virtual-addressing entitlement):
  * husk-tl-bionic-io.c. */
 bool  tl_mm_address_space_short(void);

@@ -59,6 +59,7 @@ static int dom_from_darwin(int d) { return d == AF_UNIX ? G_AF_UNIX : d == AF_IN
 static socklen_t sa_to_darwin(const void *g, socklen_t glen, struct sockaddr_storage *out)
 {
     memset(out, 0, sizeof(*out));
+    errno = EAFNOSUPPORT;
     if (!g || glen < 2) return 0;
     const uint8_t *p = g;
     uint16_t fam = (uint16_t)(p[0] | (p[1] << 8));
@@ -91,10 +92,15 @@ static socklen_t sa_to_darwin(const void *g, socklen_t glen, struct sockaddr_sto
         if (abstract || strlen(path) > sizeof(s->sun_path) - 1) {
             uint64_t h = 1469598103934665603ull;
             for (const char *q = path; *q; q++) h = (h ^ (uint8_t)*q) * 1099511628211ull;
-            const char *tmp = getenv("TMPDIR"); if (!tmp || !*tmp || strlen(tmp) > sizeof(s->sun_path) - 22) tmp = "/tmp";
-            char dir[600]; snprintf(dir, sizeof(dir), "%s%ss", tmp, tmp[strlen(tmp) - 1] == '/' ? "" : "/");
-            mkdir(dir, 0700);
-            snprintf(path, sizeof(path), "%s/%c%016llx", dir, abstract ? 'a' : 'p', (unsigned long long)h);
+            const char *tmp = tl_temporary_dir();
+            if (!tmp || !*tmp) { errno = ENOENT; return 0; }
+            if (tmp[0] != '/') { errno = EINVAL; return 0; }
+            char dir[600];
+            int length = snprintf(dir, sizeof(dir), "%s%ss", tmp, tmp[strlen(tmp) - 1] == '/' ? "" : "/");
+            if (length < 0 || (size_t)length >= sizeof(dir)) { errno = ENAMETOOLONG; return 0; }
+            length = snprintf(path, sizeof(path), "%s/%c%016llx", dir, abstract ? 'a' : 'p', (unsigned long long)h);
+            if (length < 0 || (size_t)length >= sizeof(s->sun_path)) { errno = ENAMETOOLONG; return 0; }
+            if (mkdir(dir, 0700) && errno != EEXIST) return 0;
         }
         n = strlen(path);
         if (n > sizeof(s->sun_path) - 1) n = sizeof(s->sun_path) - 1;
@@ -199,7 +205,7 @@ static int b_bind(int fd, const void *g, socklen_t glen)
 {
     struct sockaddr_storage s;
     socklen_t n = sa_to_darwin(g, glen, &s);
-    if (!n) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; }
+    if (!n) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; }
     /* a short name made for an address (see sa_to_darwin) outlives the app's own unlink of the long path: a socket left there by an
        earlier run goes first, as the app's unlink would have taken it */
     if (s.ss_family == AF_UNIX) {
@@ -216,7 +222,7 @@ static int b_connect(int fd, const void *g, socklen_t glen)
 {
     struct sockaddr_storage s;
     socklen_t n = sa_to_darwin(g, glen, &s);
-    if (!n) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; }
+    if (!n) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; }
     TL_ERRNO_BEGIN(); int r = connect(fd, (struct sockaddr *)&s, n); int e = errno; TL_ERRNO_END();
     { char ip[64] = "?"; if (s.ss_family == AF_INET) inet_ntop(AF_INET, &((struct sockaddr_in *)&s)->sin_addr, ip, sizeof(ip)); NTRACE("connect(fd %d, %s) -> %d errno %d", fd, ip, r, e); }
     return r;
@@ -254,7 +260,7 @@ static long b___sendto_chk(int fd, const void *p, size_t n, size_t bl, int flags
 static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, socklen_t glen)
 {
     struct sockaddr_storage s; socklen_t sl = 0;
-    if (g) { sl = sa_to_darwin(g, glen, &s); if (!sl) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; } }
+    if (g) { sl = sa_to_darwin(g, glen, &s); if (!sl) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; } }
     TL_ERRNO_BEGIN(); long r = sendto(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, sl); TL_ERRNO_END(); return r;
 }
 static long b_recvfrom(int fd, void *p, size_t n, int flags, void *g, socklen_t *glen);
@@ -281,7 +287,7 @@ static long b_sendmsg(int fd, const guest_msghdr *g, int flags)
     struct sockaddr_storage s;
     if (g->name) {
         m.msg_namelen = sa_to_darwin(g->name, g->namelen, &s);
-        if (!m.msg_namelen) { tl_set_guest_errno(G_EAFNOSUPPORT); return -1; }
+        if (!m.msg_namelen) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; }
         m.msg_name = &s;
     }
     m.msg_iov = g->iov; m.msg_iovlen = (int)g->iovlen;
