@@ -65,6 +65,8 @@
 #include <mach-o/fat.h>
 #include <CommonCrypto/CommonDigest.h>
 #include <CommonCrypto/CommonHMAC.h>
+#include <CommonCrypto/CommonCryptor.h>
+#include <CommonCrypto/CommonKeyDerivation.h>
 #include <Security/Security.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -729,6 +731,18 @@ static void macos_cleanup_temp_keychain(SecKeychainRef kc, const char *kc_path) 
  * Same PKCS#12 MAC as OpenSSL (RFC 7292 B.2 + HMAC of authSafe). No OpenSSL.
  */
 
+static void p12_wipe(void *memory, size_t n)
+{
+    volatile uint8_t *p = memory;
+    while (n--) *p++ = 0;
+}
+
+static void p12_wipe_free(void *memory, size_t n)
+{
+    if (memory) p12_wipe(memory, n);
+    free(memory);
+}
+
 static void pkcs12_hash(int sha256, const uint8_t *in, size_t n, uint8_t *out)
 {
     if (sha256) CC_SHA256(in, (CC_LONG)n, out);
@@ -744,7 +758,7 @@ static bool pkcs12_key_gen(const uint8_t *pass, size_t passlen, const uint8_t *s
     size_t Plen = passlen ? ((passlen + (size_t)v - 1) / (size_t)v) * (size_t)v : 0;
     uint8_t *D = (uint8_t *)malloc(Dlen), *S = (uint8_t *)malloc(Slen ? Slen : 1), *P = (uint8_t *)malloc(Plen ? Plen : 1);
     uint8_t *I = (uint8_t *)malloc(Slen + Plen ? Slen + Plen : 1), *A = (uint8_t *)malloc((size_t)u), *B = (uint8_t *)malloc((size_t)v);
-    if (!D || !S || !P || !I || !A || !B) { free(D); free(S); free(P); free(I); free(A); free(B); return false; }
+    if (!D || !S || !P || !I || !A || !B) { free(D); free(S); p12_wipe_free(P, Plen); p12_wipe_free(I, Slen + Plen); p12_wipe_free(A, (size_t)u); p12_wipe_free(B, (size_t)v); return false; }
     memset(D, id, Dlen);
     if (Slen) for (size_t i = 0; i < Slen; i++) S[i] = salt[i % saltlen];
     if (Plen) for (size_t i = 0; i < Plen; i++) P[i] = pass[i % passlen];
@@ -754,11 +768,11 @@ static bool pkcs12_key_gen(const uint8_t *pass, size_t passlen, const uint8_t *s
     int outpos = 0;
     while (outpos < n) {
         uint8_t *Ai = (uint8_t *)malloc(Dlen + Ilen);
-        if (!Ai) { free(D); free(S); free(P); free(I); free(A); free(B); return false; }
+        if (!Ai) { free(D); free(S); p12_wipe_free(P, Plen); p12_wipe_free(I, Slen + Plen); p12_wipe_free(A, (size_t)u); p12_wipe_free(B, (size_t)v); return false; }
         memcpy(Ai, D, Dlen);
         memcpy(Ai + Dlen, I, Ilen);
         pkcs12_hash(u == 32, Ai, Dlen + Ilen, A);
-        free(Ai);
+        p12_wipe_free(Ai, Dlen + Ilen);
         for (int j = 1; j < iter; j++) pkcs12_hash(u == 32, A, (size_t)u, A);
         int take = n - outpos < u ? n - outpos : u;
         memcpy(out + outpos, A, (size_t)take);
@@ -773,7 +787,7 @@ static bool pkcs12_key_gen(const uint8_t *pass, size_t passlen, const uint8_t *s
             }
         }
     }
-    free(D); free(S); free(P); free(I); free(A); free(B);
+    free(D); free(S); p12_wipe_free(P, Plen); p12_wipe_free(I, Slen + Plen); p12_wipe_free(A, (size_t)u); p12_wipe_free(B, (size_t)v);
     return true;
 }
 
@@ -803,6 +817,7 @@ static bool oid_eq(const uint8_t *p, size_t n, const uint8_t *oid, size_t on)
 /* 1 = MAC matches this passphrase, 0 = mismatch, -1 = no MAC / not a PFX we can read (try Security anyway). */
 static int pkcs12_mac_check(const uint8_t *p12, size_t len, const char *password)
 {
+    if (!p12 || !len) return -1;
     size_t pos = 0;
     uint8_t tag; size_t hl, vl;
     if (!parse_tlv(p12, len, &pos, &tag, &hl, &vl) || tag != 0x30) return -1;
@@ -810,12 +825,23 @@ static int pkcs12_mac_check(const uint8_t *p12, size_t len, const char *password
     size_t slen = vl, sp = 0;
     if (!parse_tlv(seq, slen, &sp, &tag, &hl, &vl) || tag != 0x02) return -1; /* version */
     sp += hl + vl;
-    size_t auth_off = sp;
-    if (!parse_tlv(seq, slen, &sp, &tag, &hl, &vl)) return -1;
-    const uint8_t *auth = seq + auth_off;
-    size_t auth_len = hl + vl;
+    if (!parse_tlv(seq, slen, &sp, &tag, &hl, &vl) || tag != 0x30) return -1;
+    const uint8_t *ci = seq + sp + hl;
+    size_t cilen = vl, cp = 0;
     sp += hl + vl;
-    if (sp >= slen) return 1; /* no macData: OpenSSL treats this as an empty-password success */
+    /* RFC 7292 section 4: the MAC covers the contents of authSafe's OCTET STRING,
+     * not the enclosing ContentInfo. An absent MAC cannot verify a password. */
+    if (sp >= slen) return -1;
+    if (!parse_tlv(ci, cilen, &cp, &tag, &hl, &vl) || tag != 0x06) return -1;
+    static const uint8_t oid_data[] = { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01 };
+    if (!oid_eq(ci + cp + hl, vl, oid_data, sizeof(oid_data))) return -1;
+    cp += hl + vl;
+    if (!parse_tlv(ci, cilen, &cp, &tag, &hl, &vl) || tag != 0xa0) return -1;
+    const uint8_t *content = ci + cp + hl;
+    size_t content_len = vl, op = 0;
+    if (!parse_tlv(content, content_len, &op, &tag, &hl, &vl) || tag != 0x04) return -1;
+    const uint8_t *auth = content + op + hl;
+    size_t auth_len = vl;
     if (!parse_tlv(seq, slen, &sp, &tag, &hl, &vl) || tag != 0x30) return -1;
     const uint8_t *mac = seq + sp + hl;
     size_t maclen = vl, mp = 0;
@@ -843,22 +869,37 @@ static int pkcs12_mac_check(const uint8_t *p12, size_t len, const char *password
     size_t salt_len = vl;
     mp += hl + vl;
     int iter = 1;
-    if (mp < maclen && parse_tlv(mac, maclen, &mp, &tag, &hl, &vl) && tag == 0x02) {
-        iter = 0;
-        for (size_t i = 0; i < vl; i++) iter = (iter << 8) | mac[mp + hl + i];
-        if (iter < 1) iter = 1;
+    if (mp < maclen) {
+        if (!parse_tlv(mac, maclen, &mp, &tag, &hl, &vl) || tag != 0x02 || !vl || vl > 4
+            || (mac[mp + hl] & 0x80)) return -1;
+        uint32_t count = 0;
+        for (size_t i = 0; i < vl; i++) count = (count << 8) | mac[mp + hl + i];
+        /* Leave unusually expensive or malformed KDF parameters to Security.framework. */
+        if (!count || count > 1000000) return -1;
+        iter = (int)count;
     }
     int u = sha256 ? 32 : 20;
     if ((int)digest_len != u) return -1;
     CFDataRef bmp = pkcs12_bmp(password ? password : "");
     uint8_t key[32];
     bool okgen = pkcs12_key_gen(CFDataGetBytePtr(bmp), (size_t)CFDataGetLength(bmp), salt, salt_len, 3, iter, key, u, u, 64);
+    p12_wipe(CFDataGetMutableBytePtr((CFMutableDataRef)bmp), (size_t)CFDataGetLength(bmp));
     CFRelease(bmp);
     if (!okgen) return -1;
     uint8_t got[32];
     CCHmac(sha256 ? kCCHmacAlgSHA256 : kCCHmacAlgSHA1, key, (size_t)u, auth, auth_len, got);
-    return memcmp(got, digest, (size_t)u) == 0 ? 1 : 0;
+    p12_wipe(key, sizeof(key));
+    uint8_t different = 0;
+    for (int i = 0; i < u; i++) different |= got[i] ^ digest[i];
+    return different ? 0 : 1;
 }
+
+int husk_p12_check_password(const uint8_t *p12, size_t p12_len, const char *password)
+{
+    return pkcs12_mac_check(p12, p12_len, password);
+}
+
+#include "husk-tl-pkcs12.inc"
 
 static OSStatus pkcs12_import_once(CFDataRef data, CFTypeRef passphrase, bool omit_pass,
 #if !TARGET_OS_IPHONE
@@ -891,20 +932,22 @@ static OSStatus pkcs12_open(CFDataRef data, const char *password,
     const uint8_t *bytes = CFDataGetBytePtr(data);
     size_t nbytes = (size_t)CFDataGetLength(data);
     int empty_mac = pkcs12_mac_check(bytes, nbytes, "");
-    int given_mac = (password && password[0]) ? pkcs12_mac_check(bytes, nbytes, password) : 0;
+    int given_mac = (password && password[0]) ? pkcs12_mac_check(bytes, nbytes, password) : empty_mac;
 
-    const char *text[4];
+    tl_log_line("sign: PKCS#12 MAC supplied=%d empty=%d (1=verified, 0=mismatch, -1=unavailable)", given_mac, empty_mac);
+    const char *text[2];
     int ntext = 0;
     /* Feather: empty MAC wins over a leftover SideStore/AltStore password. */
     if (empty_mac == 1) {
         text[ntext++] = "";
-        if (password && password[0] && given_mac == 1) text[ntext++] = password;
+        if (password && password[0]) text[ntext++] = password;
     } else {
         if (password && password[0]) text[ntext++] = password;
         text[ntext++] = "";
     }
 
-    OSStatus st = errSecParam;
+    OSStatus st = errSecParam, first_status = errSecParam;
+    bool first = true;
     for (int t = 0; t < ntext; t++) {
         CFStringRef pass = CFStringCreateWithCString(kCFAllocatorDefault, text[t], kCFStringEncodingUTF8);
         if (!pass) pass = CFStringCreateWithCString(kCFAllocatorDefault, text[t], kCFStringEncodingISOLatin1);
@@ -913,10 +956,9 @@ static OSStatus pkcs12_open(CFDataRef data, const char *password,
         bool omit[4];
         int nv = 0;
         variants[nv] = pass; omit[nv] = false; nv++;
-        if (text[t][0]) { variants[nv] = CFSTR(""); omit[nv] = false; nv++; }
         /* No kCFNull passphrase: iOS 27's SecPKCS12Import hands it to CFStringCreateExternalRepresentation, which raises
          * "unrecognized selector" on NSNull and aborts the app at launch. Omitting the key below is the NULL case. */
-        variants[nv] = pass; omit[nv] = true; nv++; /* no passphrase key: OpenSSL NULL, 0 */
+        if (!text[t][0]) { variants[nv] = pass; omit[nv] = true; nv++; } /* no passphrase key */
         for (int i = 0; i < nv; i++) {
             CFArrayRef got = NULL;
             st = pkcs12_import_once(data, variants[i], omit[i],
@@ -924,6 +966,9 @@ static OSStatus pkcs12_open(CFDataRef data, const char *password,
                                     kc,
 #endif
                                     &got);
+            if (first) { first_status = st; first = false; }
+            tl_log_line("sign: PKCS#12 import %s status=%d items=%ld", omit[i] ? "omitted" : (text[t][0] ? "supplied" : "empty"),
+                        (int)st, got ? (long)CFArrayGetCount(got) : 0L);
             if (st == errSecSuccess && got && CFArrayGetCount(got) > 0) {
                 *items = got;
                 CFRelease(pass);
@@ -933,7 +978,8 @@ static OSStatus pkcs12_open(CFDataRef data, const char *password,
         }
         CFRelease(pass);
     }
-    return st;
+    /* Do not replace the supplied/verified password's error with an empty-password fallback's error. */
+    return first_status;
 }
 
 bool husk_p12_info(const uint8_t *p12, size_t p12_len, const char *password,
@@ -964,7 +1010,7 @@ bool husk_p12_info(const uint8_t *p12, size_t p12_len, const char *password,
         macos_cleanup_temp_keychain(kc, kc_path);
 #endif
         if (items) CFRelease(items);
-        if (err && errlen > 0) snprintf(err, errlen, "SecPKCS12Import failed (status %d, invalid password or corrupted .p12)", (int)st);
+        if (err && errlen > 0) snprintf(err, errlen, "SecPKCS12Import failed (status %d)", (int)st);
         return false;
     }
 
@@ -973,9 +1019,6 @@ bool husk_p12_info(const uint8_t *p12, size_t p12_len, const char *password,
     SecCertificateRef cert = NULL;
     if (identity) {
         SecIdentityCopyCertificate(identity, &cert);
-    } else {
-        cert = (SecCertificateRef)CFDictionaryGetValue(dict, kSecImportItemCertChain);
-        if (cert) CFRetain(cert);
     }
 
     if (!cert) {
@@ -983,7 +1026,20 @@ bool husk_p12_info(const uint8_t *p12, size_t p12_len, const char *password,
 #if !TARGET_OS_IPHONE
         macos_cleanup_temp_keychain(kc, kc_path);
 #endif
-        if (err && errlen > 0) snprintf(err, errlen, "No certificate found in .p12 bundle");
+        if (err && errlen > 0) snprintf(err, errlen, "No signing identity in .p12: a certificate and its private key are required");
+        return false;
+    }
+
+    SecKeyRef key = NULL;
+    OSStatus key_status = SecIdentityCopyPrivateKey(identity, &key);
+    if (key) CFRelease(key);
+    if (key_status != errSecSuccess) {
+        CFRelease(cert);
+        CFRelease(items);
+#if !TARGET_OS_IPHONE
+        macos_cleanup_temp_keychain(kc, kc_path);
+#endif
+        if (err && errlen > 0) snprintf(err, errlen, "Signing private key is unavailable (status %d)", (int)key_status);
         return false;
     }
 

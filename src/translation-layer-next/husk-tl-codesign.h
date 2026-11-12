@@ -10,6 +10,21 @@
 extern "C" {
 #endif
 
+/* Verify the PFX integrity MAC without importing or exposing its private key.
+ * 1 = verified, 0 = mismatch (wrong password or modified data), -1 = unavailable
+ * (no MAC, unsupported parameters or malformed data). A verified MAC alone does
+ * not establish that Security.framework can import a signing identity. */
+int husk_p12_check_password(const uint8_t *p12, size_t p12_len, const char *password);
+
+/* Repack a MAC-authenticated single identity in memory for Security.framework.
+ * Supports PBES2/PBKDF2/AES-CBC and SHA1/3DES encryption. Preserves certificate
+ * data, PKCS#8 key and localKeyID, dropping unrelated bag attributes. The output
+ * uses SHA1/3DES with the same password. Caller frees *output with free().
+ * Returns false for a bad MAC, unsupported structure/algorithm or allocation failure;
+ * outputs are initialized to NULL/0, and no keychain or file is modified. */
+bool husk_p12_copy_compatible(const uint8_t *p12, size_t p12_len, const char *password,
+                              uint8_t **output, size_t *output_length);
+
 /*
  * Reads Apple Developer certificate metadata from a PKCS#12 (.p12) bundle.
  *
