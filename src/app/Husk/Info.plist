@@ -211,5 +211,7 @@
 			</dict>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Android apps use the camera to take photos and capture routes when you choose to start recording.</string>
 </dict>
 </plist>

@@ -121,8 +121,16 @@ public class PackageManager {
     };
     public boolean hasSystemFeature(String name, int version) {
         if (name == null) return false;
+        if (name.startsWith("android.hardware.camera")) {
+            java.util.List<String> ids = java.util.Arrays.asList(husk.CameraNative.ids());
+            if (FEATURE_CAMERA_ANY.equals(name)) return !ids.isEmpty();
+            if (FEATURE_CAMERA.equals(name)) return ids.contains("0");
+            if (FEATURE_CAMERA_FRONT.equals(name)) return ids.contains("1");
+            // The bridge currently exposes basic streams and fixed/infinity focus, without flash, RAW or manual sensor control.
+            return false;
+        }
         if (name.startsWith("android.hardware.touchscreen") || name.startsWith("android.hardware.faketouch")
-                || name.startsWith("android.hardware.camera") || name.startsWith("android.hardware.wifi")
+                || name.startsWith("android.hardware.wifi")
                 || name.startsWith("android.hardware.opengles") || name.startsWith("android.hardware.vulkan")
                 || name.startsWith("android.hardware.sensor.accelerometer") || name.startsWith("android.hardware.audio")
                 || name.startsWith("android.software.webview") || name.startsWith("android.software.opengles"))
@@ -138,11 +146,10 @@ public class PackageManager {
         return false;
     }
     public FeatureInfo[] getSystemAvailableFeatures() {
-        FeatureInfo[] f = new FeatureInfo[FEATURES_YES.length + 1];
-        for (int i = 0; i < FEATURES_YES.length; i++) { f[i] = new FeatureInfo(); f[i].name = FEATURES_YES[i]; }
-        f[FEATURES_YES.length] = new FeatureInfo();
-        f[FEATURES_YES.length].reqGlEsVersion = ConfigurationInfo.huskDevice().reqGlEsVersion;
-        return f;
+        java.util.ArrayList<FeatureInfo> features = new java.util.ArrayList<>();
+        for (String name : FEATURES_YES) if (hasSystemFeature(name)) { FeatureInfo f = new FeatureInfo(); f.name = name; features.add(f); }
+        FeatureInfo gl = new FeatureInfo(); gl.reqGlEsVersion = ConfigurationInfo.huskDevice().reqGlEsVersion; features.add(gl);
+        return features.toArray(new FeatureInfo[0]);
     }
     public String[] getSystemSharedLibraryNames() {
         return new String[] { "android.test.base", "android.test.mock", "android.test.runner", "org.apache.http.legacy",
@@ -171,6 +178,11 @@ public class PackageManager {
         ArrayList<ResolveInfo> l = new ArrayList<>();
         husk.Manifest.Component c = husk.Manifest.resolve(i);
         if (c != null) { ResolveInfo r = new ResolveInfo(); r.activityInfo = activity(c); l.add(r); }
+        else if (husk.PhotoCapture.handles(i) && husk.CameraNative.ids().length > 0) {
+            ResolveInfo r = new ResolveInfo(); r.activityInfo = new ActivityInfo();
+            r.activityInfo.name = "husk.PhotoCapture"; r.activityInfo.packageName = "android";
+            r.nonLocalizedLabel = "Camera"; l.add(r);
+        }
         else if (i.getData() != null && ("http".equals(i.getData().getScheme()) || "https".equals(i.getData().getScheme()) || "mailto".equals(i.getData().getScheme()))) {
             ResolveInfo r = new ResolveInfo(); r.activityInfo = new ActivityInfo(); r.activityInfo.name = "com.android.browser.Browser"; r.activityInfo.packageName = "com.android.browser"; r.nonLocalizedLabel = "Browser"; l.add(r);
         }

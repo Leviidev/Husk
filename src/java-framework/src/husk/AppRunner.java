@@ -146,7 +146,7 @@ public final class AppRunner {
         main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         launch(activityClass, main, null, -1, launcher);
         Looper.loop();
-        } finally { Geo.reset(); }
+        } finally { Cameras.reset(); PhotoCapture.reset(); Geo.reset(); }
     }
     public static Application application() { return Processes.current().application != null ? Processes.current().application : sApp; }
     /** Start a non-default Android process with its own APK classes and Application. */
@@ -296,6 +296,11 @@ public final class AppRunner {
         if (Intent.ACTION_SEND.equals(action)) {
             String text = i.getStringExtra(Intent.EXTRA_TEXT);
             if (text != null) Native.share(text);
+            return;
+        }
+        if (PhotoCapture.handles(i)) {
+            final Activity caller = from instanceof Activity ? (Activity) from : top();
+            sHandler.post(() -> PhotoCapture.take(caller, i, request));
             return;
         }
         if (Documents.handles(i)) {

@@ -105,6 +105,8 @@ public final class Processes {
     public static Scope enter(State s) { return new Scope(s); }
     public static void reset() {
         Geo.reset();
+        Cameras.reset();
+        PhotoCapture.reset();
         resetProcesses();
     }
     private static synchronized void resetProcesses() {

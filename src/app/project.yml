@@ -112,9 +112,13 @@ targets:
           - "CoreVideo"
           - "-framework"
           - "Accelerate"
-          # Native Android location bridge.
+          # Native Android location and camera bridges.
           - "-framework"
           - "CoreLocation"
+          - "-framework"
+          - "AVFoundation"
+          - "-framework"
+          - "CoreImage"
           # Security verifies the licence signature Minecraft's UI engine checks through Java's Signature class.
           - "-framework"
           - "Security"

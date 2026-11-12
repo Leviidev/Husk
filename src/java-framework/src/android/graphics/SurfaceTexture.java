@@ -52,6 +52,10 @@ public class SurfaceTexture {
         synchronized (mLock) {
             if (!mLocked) return;
             mBackCanvas.restore();
+            // Restore the bitmap context before that buffer becomes a frame or is reused for another Canvas.
+            // Keeping the old Canvas alive stacked coordinate flips on successive camera frames and leaked native canvases.
+            mBackCanvas.huskRelease(); mBackCanvas = null;
+            if (mReleased) { mLocked = false; mLock.notifyAll(); return; }
             Bitmap f = mFront; mFront = mBack; mBack = f;
             if (mBack != null && (mBack.getWidth() != mFront.getWidth() || mBack.getHeight() != mFront.getHeight())) mBack = null;
             mBackCanvas = mBack != null ? new Canvas(mBack) : null;
@@ -89,6 +93,6 @@ public class SurfaceTexture {
     public long getTimestamp() { return mTimestamp; }
     public int getDataSpace() { return 0; }
     public boolean isSingleBuffered() { return false; }
-    public void release() { synchronized (mLock) { mReleased = true; mLock.notifyAll(); } }
+    public void release() { synchronized (mLock) { mReleased = true; if (!mLocked && mBackCanvas != null) { mBackCanvas.huskRelease(); mBackCanvas = null; } mLock.notifyAll(); } }
     public boolean isReleased() { return mReleased; }
 }

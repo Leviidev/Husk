@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DC60A996BB1C0B22A9A4C326 /* husk-tl-dvm-camera.m in Sources */ = {isa = PBXBuildFile; fileRef = 7ADA05A9D64EED5B8C24B829 /* husk-tl-dvm-camera.m */; };
 		001416DA738AA665BBDEBF59 /* husk-tl-jni-minecraft.c in Sources */ = {isa = PBXBuildFile; fileRef = 3ACE2921134A2C3A3DC93272 /* husk-tl-jni-minecraft.c */; };
 		010359771DB45AA97E28E3DC /* PlayAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F0F48E2692FC022D05BDDE /* PlayAPI.swift */; };
 		01477DF8338132EF917CEB30 /* husk-tl-dvm-android.c in Sources */ = {isa = PBXBuildFile; fileRef = CD10D68F646D92E86A28E5A6 /* husk-tl-dvm-android.c */; };
@@ -273,6 +274,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7ADA05A9D64EED5B8C24B829 /* husk-tl-dvm-camera.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-dvm-camera.m"; sourceTree = "<group>"; };
 		0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskBridgeFS.swift; sourceTree = "<group>"; };
 		02BDBFFD3329C33172416AEB /* husk-tl-ld.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-ld.h"; sourceTree = "<group>"; };
 		036699CBF5693E75237EF112 /* PlayDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayDevice.swift; sourceTree = "<group>"; };
@@ -771,6 +773,7 @@
 				14467C88832643891E985F27 /* husk-tl-dvm-proxy.c */,
 				98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */,
 				7ADA05A9D64EED5B8C24B828 /* husk-tl-dvm-location.m */,
+				7ADA05A9D64EED5B8C24B829 /* husk-tl-dvm-camera.m */,
 				DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */,
 				B08C946B21AA94C98AF6D394 /* husk-tl-dvm-web.m */,
 				642A69428A8151E1B1F75CBB /* husk-tl-dvm.c */,
@@ -1284,6 +1287,7 @@
 				1FAAA8BDAF1033F3755A9B9E /* husk-tl-dvm-proxy.c in Sources */,
 				A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */,
 				DC60A996BB1C0B22A9A4C325 /* husk-tl-dvm-location.m in Sources */,
+				DC60A996BB1C0B22A9A4C326 /* husk-tl-dvm-camera.m in Sources */,
 				A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */,
 				E89F2DBA752CE5EB77AF9B4A /* husk-tl-dvm-web.m in Sources */,
 				0571BFDC9E02848C62133B4E /* husk-tl-dvm.c in Sources */,
@@ -1452,6 +1456,10 @@
 					"-framework",
 					CoreLocation,
 					"-framework",
+					AVFoundation,
+					"-framework",
+					CoreImage,
+					"-framework",
 					Accelerate,
 					"-framework",
 					Security,
@@ -1536,6 +1544,10 @@
 					CoreVideo,
 					"-framework",
 					CoreLocation,
+					"-framework",
+					AVFoundation,
+					"-framework",
+					CoreImage,
 					"-framework",
 					Accelerate,
 					"-framework",
