@@ -65,7 +65,7 @@ static __weak HView *g_screen;    /* the app's GL view */
 static HView *g_container;
 static float g_scale = 1;         /* surface pixels per point */
 static pthread_mutex_t g_hit_lock = PTHREAD_MUTEX_INITIALIZER;
-typedef struct { int id; bool visible, touchable; float x, y, w, h; } hit_rect;   /* points */
+typedef struct { int id; bool visible, touchable; float x, y, w, h; CGRect *blocked; int nblocked, scroll_axes; } hit_rect;   /* points */
 static hit_rect g_hits[16];
 static int g_nhits;
 
@@ -223,7 +223,7 @@ static NSString *bridge_js(void)
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic) bool apiLoad;            /* the next navigation is the app's own loadUrl: not offered to shouldOverrideUrlLoading */
 @property (nonatomic, strong) NSMutableArray<NSString *> *scripts;
-@property (nonatomic) bool edgeLinked;
+@property (nonatomic, weak) HView *gestureHost;
 @end
 
 @implementation HuskWeb
@@ -394,13 +394,29 @@ static void on_main(dispatch_block_t b) { dispatch_async(dispatch_get_main_queue
 static void dispatch_sync_main_safe(dispatch_block_t b) { if ([NSThread isMainThread]) b(); else dispatch_async(dispatch_get_main_queue(), b); }
 static HuskWeb *view_of(int wid) { return g_views[@(wid)]; }
 
-static void update_hits(int wid, bool visible, bool touchable, CGRect r)
+static void link_host_pans(HuskWeb *h)
+{
+#if TARGET_OS_IPHONE
+    if (h.gestureHost == g_container) return;
+    /* The host's recognizers arbitrate before WebKit, including after the running app moves to a new host. */
+    for (UIGestureRecognizer *g in g_container.gestureRecognizers)
+        if ([g isKindOfClass:UIPanGestureRecognizer.class]) [h.web.scrollView.panGestureRecognizer requireGestureRecognizerToFail:g];
+    h.gestureHost = g_container;
+#else
+    (void)h;
+#endif
+}
+
+static void update_hits(int wid, bool visible, bool touchable, CGRect r, CGRect *blocked, int nblocked, int scroll_axes)
 {
     pthread_mutex_lock(&g_hit_lock);
     int i = 0;
     while (i < g_nhits && g_hits[i].id != wid) i++;
     if (i == g_nhits && g_nhits < 16) g_nhits++;
-    if (i < 16) g_hits[i] = (hit_rect){ wid, visible, touchable, (float)r.origin.x, (float)r.origin.y, (float)r.size.width, (float)r.size.height };
+    if (i < 16) {
+        free(g_hits[i].blocked);
+        g_hits[i] = (hit_rect){ wid, visible, touchable, (float)r.origin.x, (float)r.origin.y, (float)r.size.width, (float)r.size.height, blocked, nblocked, scroll_axes };
+    } else free(blocked);
     int n = 0;
     for (int k = 0; k < g_nhits; k++) if (g_hits[k].visible) n++;
     pthread_mutex_unlock(&g_hit_lock);
@@ -409,7 +425,12 @@ static void update_hits(int wid, bool visible, bool touchable, CGRect r)
 static void forget_hits(int wid)
 {
     pthread_mutex_lock(&g_hit_lock);
-    for (int i = 0; i < g_nhits; i++) if (g_hits[i].id == wid) { g_hits[i] = g_hits[--g_nhits]; break; }
+    for (int i = 0; i < g_nhits; i++) if (g_hits[i].id == wid) {
+        free(g_hits[i].blocked);
+        g_hits[i] = g_hits[--g_nhits];
+        memset(&g_hits[g_nhits], 0, sizeof(g_hits[0]));
+        break;
+    }
     int n = 0;
     for (int k = 0; k < g_nhits; k++) if (g_hits[k].visible) n++;
     pthread_mutex_unlock(&g_hit_lock);
@@ -445,20 +466,23 @@ NAT(W_frame)
     int wid = a[0].i;
     bool vis = a[5].i != 0, touchable = a[6].i != 0;
     CGRect r = CGRectMake(a[1].i / g_scale, a[2].i / g_scale, a[3].i / g_scale, a[4].i / g_scale);
-    update_hits(wid, vis, touchable, r);
+    jobj *array = a[7].l;
+    int count = array && array->kind == TL_K_PRIM_ARRAY ? (int)(array->arr.len / 4) : 0;
+    CGRect *blocked = count ? calloc((size_t)count, sizeof(*blocked)) : NULL;
+    if (count && !blocked) return false;
+    const int32_t *values = count ? array->arr.data : NULL;
+    for (int i = 0; i < count; i++) {
+        const int32_t *v = values + i * 4;
+        blocked[i] = CGRectMake(v[0] / g_scale, v[1] / g_scale, (v[2] - v[0]) / g_scale, (v[3] - v[1]) / g_scale);
+    }
+    update_hits(wid, vis, touchable, r, blocked, count, a[8].i);
     on_main(^{
         HuskWeb *h = view_of(wid);
         if (!h) return;
         /* the screen may have had no superview when the web view was made */
         if (!g_container) ensure_container();
         if (g_container && !h.web.superview) [g_container addSubview:h.web];
-#if TARGET_OS_IPHONE
-        /* the back swipe from the screen's edge wins over the page's own scrolling */
-        if (!h.edgeLinked) {
-            for (UIGestureRecognizer *g in g_container.gestureRecognizers)
-                if ([g isKindOfClass:UIScreenEdgePanGestureRecognizer.class]) { [h.web.scrollView.panGestureRecognizer requireGestureRecognizerToFail:g]; h.edgeLinked = true; }
-        }
-#endif
+        link_host_pans(h);
 #if TARGET_OS_IPHONE
         if (g_screen && g_container && g_container.superview == g_screen.superview && !CGRectEqualToRect(g_container.frame, g_screen.frame)) g_container.frame = g_screen.frame;
 #endif
@@ -735,7 +759,7 @@ NAT(W_cookieAny)
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_web[] = {
     { "create", "(I)V", W_create },
     { "destroy", "(I)V", W_destroy },
-    { "frame", "(IIIIIZZ)V", W_frame },
+    { "frame", "(IIIIIZZ[II)V", W_frame },
     { "load", "(ILjava/lang/String;[Ljava/lang/String;[B)V", W_load },
     { "loadData", "(I[BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", W_loadData },
     { "eval", "(ILjava/lang/String;I)V", W_eval },
@@ -773,6 +797,8 @@ void tl_web_attach(void *screen_view, void *container, float scale, bool fresh)
             [g_views removeAllObjects];
             [g_pending removeAllObjects];
             pthread_mutex_lock(&g_hit_lock);
+            for (int i = 0; i < g_nhits; i++) free(g_hits[i].blocked);
+            memset(g_hits, 0, sizeof(g_hits));
             g_nhits = 0;
             pthread_mutex_unlock(&g_hit_lock);
             atomic_store(&g_visible_webs, 0);
@@ -784,9 +810,20 @@ void tl_web_attach(void *screen_view, void *container, float scale, bool fresh)
         g_container = box;
         g_screen = view;
         g_scale = s;
+        for (HuskWeb *h in g_views.allValues) link_host_pans(h);
         set_screen_opaque(atomic_load(&g_visible_webs) == 0);
     };
     if ([NSThread isMainThread]) b(); else dispatch_sync(dispatch_get_main_queue(), b);
+}
+
+static bool hit_contains(const hit_rect *r, float x, float y)
+{
+    if (!r->id || !r->visible || !r->touchable || x < r->x || y < r->y || x >= r->x + r->w || y >= r->y + r->h) return false;
+    for (int i = 0; i < r->nblocked; i++) {
+        CGRect b = r->blocked[i];
+        if (x >= b.origin.x && y >= b.origin.y && x < b.origin.x + b.size.width && y < b.origin.y + b.size.height) return false;
+    }
+    return true;
 }
 
 bool tl_web_hit(float x, float y)
@@ -795,10 +832,25 @@ bool tl_web_hit(float x, float y)
     pthread_mutex_lock(&g_hit_lock);
     for (int i = 0; i < g_nhits && !hit; i++) {
         const hit_rect *r = &g_hits[i];
-        hit = r->id && r->visible && r->touchable && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h;
+        hit = hit_contains(r, x, y);
     }
     pthread_mutex_unlock(&g_hit_lock);
     return hit;
+}
+
+int tl_web_parent_scroll_axes(float x, float y)
+{
+    int axes = 0;
+    pthread_mutex_lock(&g_hit_lock);
+    for (int i = 0; i < g_nhits; i++) {
+        const hit_rect *r = &g_hits[i];
+        if (hit_contains(r, x, y)) {
+            axes = r->scroll_axes;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_hit_lock);
+    return axes;
 }
 
 bool tl_web_any_visible(void) { return atomic_load(&g_visible_webs) > 0; }
@@ -829,7 +881,7 @@ bool tl_web_tap(float px, float py)
     pthread_mutex_lock(&g_hit_lock);
     for (int i = 0; i < g_nhits; i++) {
         const hit_rect *r = &g_hits[i];
-        if (r->id && r->visible && r->touchable && x >= r->x && y >= r->y && x < r->x + r->w && y < r->y + r->h) { wid = r->id; ox = r->x; oy = r->y; break; }
+        if (hit_contains(r, x, y)) { wid = r->id; ox = r->x; oy = r->y; break; }
     }
     pthread_mutex_unlock(&g_hit_lock);
     if (!wid) return false;
