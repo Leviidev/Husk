@@ -118,7 +118,6 @@ private func fileBytes(_ paths: [String]) -> String {
 
 @MainActor private func turnOnJIT() {
     let jit = JITCoordinator.shared
-    if HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
     jit.enable()
 }
 
