@@ -25,7 +25,12 @@ static void *test_realloc(void *pixels, size_t bytes)
  * lock stand-in checks ownership on every exit, and can deterministically
  * publish just before a consumer acquires the lock to reproduce the old
  * fresh-before-lock race without a timing-dependent threaded test. */
-typedef int pthread_mutex_t;
+/* POSIX stdlib headers may already declare pthread_mutex_t. Rename the
+ * production spelling only in this extraction test instead of redeclaring it. */
+typedef int test_mutex;
+#define pthread_mutex_t test_mutex
+#define pthread_mutex_lock test_mutex_lock
+#define pthread_mutex_unlock test_mutex_unlock
 #define PTHREAD_MUTEX_INITIALIZER 0
 static void (*before_lock)(void);
 static void pthread_mutex_lock(pthread_mutex_t *mutex)
