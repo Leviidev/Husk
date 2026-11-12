@@ -12,11 +12,12 @@ rendering paths that do not call those entries. The expanded profile covers:
   list boxes.
 - FreeType horizontal, vertical, floating-position and clipped drawing, plus
   text extent measurement and HUD submission.
-- Legacy bitmap-font drawing and both extent-measurement entry points.
+- Legacy bitmap-font drawing, 3D character/NPC head labels, and both
+  extent-measurement entry points.
 - Java Canvas/TextView drawing and Paint measurement, bounds, line breaks and
   per-unit widths through their CoreText string bridge.
 
-The native profile has 13 exact exported symbol/prologue pairs. It is applied
+The native profile has 17 exact exported symbol/prologue pairs. It is applied
 before AOT signing, never by editing an imported signed image. AOT version 12
 requires conversion again so installed older native code cannot miss the new
 entries. The common bridge passes the original Android stack pointer without
@@ -24,6 +25,14 @@ repacking arguments. Clipped drawing's stack count is restored on return.
 The list-box input struct is copied with its text pointer replaced; the
 original struct and output arguments remain intact. Per-thread nested scratch
 storage lives until the original draw/layout function returns normally.
+
+HUD layout measures one source unit at a time, then draws chunks using original
+source offsets. `HudTextLayout` and `HudTextDraw` retain a scoped read-only
+source view instead of replacing their string. A reused per-unit mask lets
+both HUD measurement and counted drawing hide even a one-character slice of a
+control, without changing those source offsets or repeatedly scanning the full
+string. `AddText` receives its adjusted explicit count, avoiding reads past the
+sanitized copy. The scope and mask end with their owning wrapper call.
 
 Both UTF-16 and UTF-32 use the same parser: six hexadecimal digits, or leaked
 four/five-digit fragments, after a caret. Repeated carets are suppressed with

@@ -14,11 +14,13 @@ typedef void (*tl_trutien_text_filter)(uint64_t *regs, void *guest_sp);
 void tl_trutien_font_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_extent_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_hud_filter(uint64_t *regs, void *guest_sp);
+void tl_trutien_hud_counted_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_plain_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_float_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_clipped_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_legacy_extent_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_params_filter(uint64_t *regs, void *guest_sp);
+void tl_trutien_hud_context_filter(uint64_t *regs, void *guest_sp);
 void tl_trutien_text_enter(uint64_t *regs, uint64_t *saved_link, tl_trutien_text_filter filter, void *guest_sp);
 uintptr_t tl_trutien_text_leave(void);
 #endif

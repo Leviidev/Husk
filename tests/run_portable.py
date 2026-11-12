@@ -121,8 +121,9 @@ def main():
     for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "text_color_test", "graphics_text_test", "trutien_text_filter_test", "entry_filter_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "trutien_text_filter_test" else []
+        math_flags = ["-lm"] if os.name != "nt" and name == "graphics_text_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
-            str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
+            str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)] + math_flags)
         run(name, [str(exe)])
     probe_exe = out / ("trutien_text_probe_test" + (".exe" if os.name == "nt" else ""))
     run("trutien text probe compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",

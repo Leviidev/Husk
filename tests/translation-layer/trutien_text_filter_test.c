@@ -78,6 +78,16 @@ static void *worker(void *unused)
     regs_init(regs); regs[1] = (uintptr_t)source; regs[5] = ulen(source);
     tl_trutien_float_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[1], wanted); assert(regs[5] == ulen(wanted));
+    regs_init(regs); regs[1] = (uintptr_t)source; regs[7] = ulen(source);
+    memcpy(before, regs, sizeof(regs));
+    tl_trutien_hud_counted_filter(regs, NULL);
+    expect((const uint32_t *)(uintptr_t)regs[1], wanted); assert(regs[7] == ulen(wanted));
+    unchanged(before, regs, 1, 7);
+    /* HUD chunks can be bounded without a NUL: never inspect the next chunk. */
+    uint32_t hud_chunk[] = { '^','F','F','F','F','X','^','D','D','D','D' };
+    regs_init(regs); regs[1] = (uintptr_t)hud_chunk; regs[7] = 6;
+    tl_trutien_hud_counted_filter(regs, NULL);
+    expect((const uint32_t *)(uintptr_t)regs[1], U"X"); assert(regs[7] == 1);
     regs_init(regs); regs[2] = (uintptr_t)source; regs[3] = ulen(source);
     tl_trutien_legacy_extent_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[2], wanted); assert(regs[3] == ulen(wanted));
@@ -107,6 +117,35 @@ static void *worker(void *unused)
     for (unsigned i = 0; i < 14; i++) if (i != 1) assert(copy[i] == input[i]);
     unchanged(before, regs, 0, -1); assert(!memcmp(input, input_before, sizeof(input)));
     assert(tl_trutien_text_leave() == 0x56789);
+
+    /* HUD layout uses count-one measures and later draws split chunks. The
+     * outer scope retains raw source indices; inner calls hide partial tags. */
+    static const uint32_t scoped[] = U"^FFCB4ABan ^FFFFViệt";
+    uint64_t scope_link = 0x67890;
+    regs_init(regs); regs[1] = (uintptr_t)scoped; memcpy(before, regs, sizeof(regs));
+    tl_trutien_text_enter(regs, &scope_link, tl_trutien_hud_context_filter, NULL);
+    assert(scope_link == (uintptr_t)tl_entry_filter_return && !memcmp(before, regs, sizeof(regs)));
+    for (size_t i = 0; i < ulen(scoped); i++) {
+        bool hidden = i < 7 || (i >= 11 && i < 16);
+        uint64_t inner_link = 0x78900 + i;
+        regs_init(regs); regs[1] = (uintptr_t)(scoped + i); regs[2] = 1;
+        tl_trutien_text_enter(regs, &inner_link, tl_trutien_extent_filter, NULL);
+        assert(regs[2] == (hidden ? 0 : 1));
+        if (hidden) {
+            expect((const uint32_t *)(uintptr_t)regs[1], U"");
+            assert(tl_trutien_text_leave() == 0x78900 + i);
+        } else assert(inner_link == 0x78900 + i && regs[1] == (uintptr_t)(scoped + i));
+    }
+    uint64_t chunk_link = 0x89000;
+    regs_init(regs); regs[1] = (uintptr_t)(scoped + 3); regs[7] = 2;
+    tl_trutien_text_enter(regs, &chunk_link, tl_trutien_hud_counted_filter, NULL);
+    assert(regs[7] == 0); expect((const uint32_t *)(uintptr_t)regs[1], U"");
+    assert(tl_trutien_text_leave() == 0x89000);
+    assert(tl_trutien_text_leave() == 0x67890);
+    regs_init(regs); regs[1] = (uintptr_t)(scoped + 3); regs[7] = 2;
+    memcpy(before, regs, sizeof(regs));
+    tl_trutien_hud_counted_filter(regs, NULL);
+    assert(!memcmp(before, regs, sizeof(regs))); /* no stale scope */
 
     static const uint32_t ordinary[] = U"x^2 ^^ ^ABC ^GHIJKL Việt A\u0302 \U0001f642 \uf1ff";
     regs_init(regs); regs[1] = (uintptr_t)ordinary;

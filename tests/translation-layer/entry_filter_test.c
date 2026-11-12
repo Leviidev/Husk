@@ -33,8 +33,10 @@ static uintptr_t loaded_slot(const uint32_t *code, uintptr_t pc, unsigned reg)
 #define SLOT_TEXT_CLIPPED 64u
 #define SLOT_TEXT_LEGACY_EXTENT 72u
 #define SLOT_TEXT_PARAMS 80u
+#define SLOT_TEXT_HUD_COUNTED 88u
+#define SLOT_TEXT_HUD_CONTEXT 96u
 #define PREFIX 128u
-#define ENTRIES 13u
+#define ENTRIES 17u
 typedef struct { uint64_t st_value, st_size; uint8_t st_info; uint16_t st_shndx; } elf_sym;
 typedef struct {
     const char *name;
@@ -60,9 +62,13 @@ static const char *const names[] = {
     "_ZN7A3DFont13GetTextExtentEPKwiPiS2_",
     "_ZN10A3DFontMan13GetTextExtentEjPKwiPiS2_",
     "_Z17AUI_TextOutFormatR16TAG_OP_IN_PARAMSR17TAG_OP_OUT_PARAMS",
+    "_ZN7A3DFont9TextOut3DEPKwP11A3DViewportRK10A3DVECTOR3ij",
+    "_ZN12CHudDrawList11MeasureTextEPKwdi",
+    "_Z13HudTextLayoutR12CHudDrawListPKwdddjP12HUDTEXTBLOCK",
+    "_Z11HudTextDrawR12CHudDrawListPKwRK12HUDTEXTBLOCKddddii",
 };
-static const uint32_t firsts[] = { 0x39488008u, 0xA9BA7BFDu, 0x6DB82BEBu, 0xA9BC7BFDu, 0xD10303FFu, 0x39488008u, 0xD10503FFu, 0x39488008u, 0xF9400408u, 0xF9400408u, 0xF9400808u, 0xA9BB7BFDu, 0xD10383FFu };
-static const unsigned slots[] = { SLOT_TEXT_FONT, SLOT_TEXT_EXTENT, SLOT_TEXT_HUD, SLOT_TEXT_PLAIN, SLOT_TEXT_HUD, SLOT_TEXT_FONT, SLOT_TEXT_FLOAT, SLOT_TEXT_CLIPPED, SLOT_TEXT_PLAIN, SLOT_TEXT_PLAIN, SLOT_TEXT_EXTENT, SLOT_TEXT_LEGACY_EXTENT, SLOT_TEXT_PARAMS };
+static const uint32_t firsts[] = { 0x39488008u, 0xA9BA7BFDu, 0x6DB82BEBu, 0xA9BC7BFDu, 0xD10303FFu, 0x39488008u, 0xD10503FFu, 0x39488008u, 0xF9400408u, 0xF9400408u, 0xF9400808u, 0xA9BB7BFDu, 0xD10383FFu, 0xF9400408u, 0x2F00E401u, 0xD10203FFu, 0xD10403FFu };
+static const unsigned slots[] = { SLOT_TEXT_FONT, SLOT_TEXT_EXTENT, SLOT_TEXT_HUD_COUNTED, SLOT_TEXT_PLAIN, SLOT_TEXT_HUD, SLOT_TEXT_FONT, SLOT_TEXT_FLOAT, SLOT_TEXT_CLIPPED, SLOT_TEXT_PLAIN, SLOT_TEXT_PLAIN, SLOT_TEXT_EXTENT, SLOT_TEXT_LEGACY_EXTENT, SLOT_TEXT_PARAMS, SLOT_TEXT_HUD, SLOT_TEXT_EXTENT, SLOT_TEXT_HUD_CONTEXT, SLOT_TEXT_HUD_CONTEXT };
 static const char *base_name(const char *path) { const char *p = strrchr(path, '/'); return p ? p + 1 : path; }
 static const elf_sym *lib_find(const tl_lib *lib, const char *name)
 {

@@ -68,6 +68,10 @@ typedef struct {
     /* Verified const TAG_OP_IN_PARAMS layout: 0x70 bytes, wchar_t* at +8.
      * AUI list-box rendering retains this clone until its wrapper returns. */
     uint64_t params[TEXT_SCRATCH_SLOTS][14];
+    const uint32_t *context[TEXT_SCRATCH_SLOTS];
+    size_t context_len[TEXT_SCRATCH_SLOTS];
+    uint8_t *hidden[TEXT_SCRATCH_SLOTS];
+    size_t hidden_capacity[TEXT_SCRATCH_SLOTS];
     unsigned depth;
 } text_scratch;
 static pthread_key_t text_key;
@@ -79,7 +83,9 @@ static void text_scratch_free(void *value)
 {
     text_scratch *s = value;
     if (!s) return;
-    for (unsigned i = 0; i < TEXT_SCRATCH_SLOTS; i++) free(s->buffers[i]);
+    for (unsigned i = 0; i < TEXT_SCRATCH_SLOTS; i++) {
+        free(s->buffers[i]); free(s->hidden[i]);
+    }
     free(s);
 }
 static void text_key_init(void) { text_key_error = pthread_key_create(&text_key, text_scratch_free); }
@@ -105,6 +111,7 @@ void tl_trutien_text_enter(uint64_t *regs, uint64_t *saved_link, tl_trutien_text
     s->links[slot] = (uintptr_t)*saved_link;
     s->changed[slot] = false;
     s->stack_count[slot] = NULL;
+    s->context[slot] = NULL;
     filter(regs, guest_sp);
     if (s->changed[slot])
         *saved_link = (uintptr_t)tl_entry_filter_return;
@@ -130,11 +137,24 @@ static const uint32_t *text_without_color_controls(const uint32_t *text, int cou
     while (len < bound && text[len]) len++;
     /* An unbounded string needs a terminator within the inspection limit. */
     if (count < 0 && len == bound) return text;
-    for (size_t i = 0; i < len; i++)
-        if (tl_text_color_end32(text, i, len) != i) { has_control = true; break; }
-    if (!has_control) return text;
     text_scratch *s = text_scratch_get();
     if (!s) return text;
+    const uint8_t *hidden = NULL;
+    /* HUD layout measures individual source units, then drawing consumes
+     * ranges using those original indices. A scoped full-source view hides
+     * controls across split ranges without changing that index contract. */
+    for (unsigned depth = s->depth; depth > 0; depth--) {
+        unsigned i = depth - 1;
+        uintptr_t base = (uintptr_t)s->context[i], at = (uintptr_t)text;
+        if (!base || at < base || (at - base) % sizeof(uint32_t)) continue;
+        size_t offset = (at - base) / sizeof(uint32_t);
+        if (offset > s->context_len[i] || len > s->context_len[i] - offset) continue;
+        hidden = s->hidden[i] + offset;
+        break;
+    }
+    for (size_t i = 0; i < len; i++)
+        if (hidden ? hidden[i] != 0 : tl_text_color_end32(text, i, len) != i) { has_control = true; break; }
+    if (!has_control) return text;
     unsigned slot = s->depth ? s->depth - 1 : 0;
     if (s->capacity[slot] < len + 1) {
         uint32_t *next = realloc(s->buffers[slot], (len + 1) * sizeof(uint32_t));
@@ -144,9 +164,15 @@ static const uint32_t *text_without_color_controls(const uint32_t *text, int cou
     uint32_t *out = s->buffers[slot];
     size_t at = 0, controls = 0;
     for (size_t i = 0; i < len;) {
-        size_t end = tl_text_color_end32(text, i, len);
-        if (end != i) { i = end; controls++; }
-        else out[at++] = text[i++];
+        if (hidden) {
+            if (hidden[i]) { if (!i || !hidden[i - 1]) controls++; }
+            else out[at++] = text[i];
+            i++;
+        } else {
+            size_t end = tl_text_color_end32(text, i, len);
+            if (end != i) { controls++; i = end; }
+            else out[at++] = text[i++];
+        }
     }
     out[at] = 0;
     if (s->depth) s->changed[slot] = true;
@@ -169,6 +195,7 @@ static void filter_text_args(uint64_t *regs, unsigned text_reg, int count_reg)
 void tl_trutien_font_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 3, 7); }
 void tl_trutien_extent_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, 2); }
 void tl_trutien_hud_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, -1); }
+void tl_trutien_hud_counted_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, 7); }
 void tl_trutien_plain_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 3, -1); }
 void tl_trutien_float_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, 5); }
 void tl_trutien_legacy_extent_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 2, 3); }
@@ -207,4 +234,33 @@ void tl_trutien_params_filter(uint64_t *regs, void *guest_sp)
     memcpy(s->params[slot], params, sizeof(s->params[slot]));
     memcpy((uint8_t *)s->params[slot] + 8, &next, sizeof(next));
     regs[0] = (uint64_t)(uintptr_t)s->params[slot];
+}
+void tl_trutien_hud_context_filter(uint64_t *regs, void *guest_sp)
+{
+    (void)guest_sp;
+    if (!tl_trutien_text_active() || !regs[1]) return;
+    text_scratch *s = text_scratch_get();
+    if (!s || !s->depth) return;
+    const uint32_t *text = (const uint32_t *)(uintptr_t)regs[1];
+    size_t len = 0;
+    while (len < TEXT_LIMIT && text[len]) len++;
+    if (len == TEXT_LIMIT) return;
+    bool controls = false;
+    for (size_t i = 0; i < len; i++)
+        if (tl_text_color_end32(text, i, len) != i) { controls = true; break; }
+    if (!controls) return;
+    unsigned slot = s->depth - 1;
+    if (s->hidden_capacity[slot] < len) {
+        uint8_t *next = realloc(s->hidden[slot], len);
+        if (!next) return;
+        s->hidden[slot] = next; s->hidden_capacity[slot] = len;
+    }
+    memset(s->hidden[slot], 0, len);
+    for (size_t i = 0; i < len;) {
+        size_t end = tl_text_color_end32(text, i, len);
+        if (end != i) { memset(s->hidden[slot] + i, 1, end - i); i = end; }
+        else i++;
+    }
+    s->context[slot] = text; s->context_len[slot] = len;
+    s->changed[slot] = true; /* Own the view until the layout/draw returns. */
 }

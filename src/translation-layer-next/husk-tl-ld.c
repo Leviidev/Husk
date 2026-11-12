@@ -1212,8 +1212,10 @@ bool tl_ld_hook_symbol(tl_lib *L, const char *symbol, void *hook_fn)
 #define SLOT_TEXT_CLIPPED 64
 #define SLOT_TEXT_LEGACY_EXTENT 72
 #define SLOT_TEXT_PARAMS  80
+#define SLOT_TEXT_HUD_COUNTED 88
+#define SLOT_TEXT_HUD_CONTEXT 96
 #define SLOT_PREFIX_BYTES 128
-#define TEXT_ENTRY_BUDGET 16
+#define TEXT_ENTRY_BUDGET 24
 
 /* adrp Xd, <the 4 KiB page of target>, for an instruction at pc; false when the target is out of adrp's reach (+-4 GiB) */
 static bool e_adrp_ok(const void *pc, const void *target)
@@ -2510,6 +2512,8 @@ static void fill_data_slots(tl_lib *L)
         (uint64_t)(uintptr_t)tl_trutien_clipped_filter,
         (uint64_t)(uintptr_t)tl_trutien_legacy_extent_filter,
         (uint64_t)(uintptr_t)tl_trutien_params_filter,
+        (uint64_t)(uintptr_t)tl_trutien_hud_counted_filter,
+        (uint64_t)(uintptr_t)tl_trutien_hud_context_filter,
     };
     memcpy(L->slots + SLOT_ENTRY_COMMON, entry_values, sizeof(entry_values));
     uint64_t *t = (uint64_t *)L->tcb;
@@ -2881,7 +2885,7 @@ static bool patch_trutien_text_entries(tl_lib *L)
     static const struct { const char *name; uint32_t first; unsigned slot; } entries[] = {
         { "_ZN9A3DFTFont8TextOutWEiiPKwjbjfifbjf", 0x39488008u, SLOT_TEXT_FONT },
         { "_ZN9A3DFTFont13GetTextExtentEPKwib", 0xA9BA7BFDu, SLOT_TEXT_EXTENT },
-        { "_ZN12CHudDrawList7AddTextEPKwRK7HUDRECTdjiiji", 0x6DB82BEBu, SLOT_TEXT_HUD },
+        { "_ZN12CHudDrawList7AddTextEPKwRK7HUDRECTdjiiji", 0x6DB82BEBu, SLOT_TEXT_HUD_COUNTED },
         /* Classic AUI must be filtered before layout splits a control into
          * glyph runs. Both full-string boundaries consume 32-bit wchar_t. */
         { "_Z17AUI_TextOutFormatP9A3DFTFontiiPKwP5ARectIiEiPiibS6_P9A2DSpritePN5abase6vectorI20_AUITEXTAREA_EMOTIONNS9_13default_allocEEES6_biibP15EditBoxItemsSetPNSA_IS8_SC_EEfbPNSA_I16FONT_WITH_SHADOWSC_EEiP15TEXTITEM_RCINFOb", 0xA9BC7BFDu, SLOT_TEXT_PLAIN },
@@ -2895,6 +2899,10 @@ static bool patch_trutien_text_entries(tl_lib *L)
         { "_ZN7A3DFont13GetTextExtentEPKwiPiS2_", 0xF9400808u, SLOT_TEXT_EXTENT },
         { "_ZN10A3DFontMan13GetTextExtentEjPKwiPiS2_", 0xA9BB7BFDu, SLOT_TEXT_LEGACY_EXTENT },
         { "_Z17AUI_TextOutFormatR16TAG_OP_IN_PARAMSR17TAG_OP_OUT_PARAMS", 0xD10383FFu, SLOT_TEXT_PARAMS },
+        { "_ZN7A3DFont9TextOut3DEPKwP11A3DViewportRK10A3DVECTOR3ij", 0xF9400408u, SLOT_TEXT_HUD },
+        { "_ZN12CHudDrawList11MeasureTextEPKwdi", 0x2F00E401u, SLOT_TEXT_EXTENT },
+        { "_Z13HudTextLayoutR12CHudDrawListPKwdddjP12HUDTEXTBLOCK", 0xD10203FFu, SLOT_TEXT_HUD_CONTEXT },
+        { "_Z11HudTextDrawR12CHudDrawListPKwRK12HUDTEXTBLOCKddddii", 0xD10403FFu, SLOT_TEXT_HUD_CONTEXT },
     };
     enum { count = sizeof(entries) / sizeof(entries[0]), bytes = count * TL_ENTRY_FILTER_BYTES };
     if (!L->rw || !L->rx || !L->slots || !L->pflags || !L->stub_rx || !L->stub_rw

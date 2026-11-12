@@ -20,7 +20,10 @@ static inline bool tl_entry_filter_first_supported(uint32_t first)
         || first == 0xD10503FFu /* sub sp, sp, #320 */
         || first == 0xF9400408u /* ldr x8, [x0, #8] */
         || first == 0xF9400808u /* ldr x8, [x0, #16] */
-        || first == 0xA9BB7BFDu; /* stp x29, x30, [sp, #-80]! */
+        || first == 0xA9BB7BFDu /* stp x29, x30, [sp, #-80]! */
+        || first == 0x2F00E401u /* movi d1, #0 */
+        || first == 0xD10203FFu /* sub sp, sp, #128 */
+        || first == 0xD10403FFu; /* sub sp, sp, #256 */
 }
 
 static inline bool tl_entry_filter_branch(uintptr_t from, uintptr_t to, uint32_t *out)
