@@ -9,7 +9,8 @@ import android.content.pm.ApplicationInfo;
  * activities, services and providers through mClassLoader, so a loader the app installs here takes effect.
  */
 public final class LoadedApk {
-    private static LoadedApk sSelf;
+    private static final java.util.Map<husk.Processes.State, LoadedApk> sRecords = new java.util.HashMap<>();
+    public static synchronized void huskReset() { sRecords.clear(); }
 
     final ActivityThread mActivityThread;
     final String mPackageName;
@@ -33,7 +34,12 @@ public final class LoadedApk {
         mDataDir = mApplicationInfo.dataDir;
         mLibDir = mApplicationInfo.nativeLibraryDir;
     }
-    public static synchronized LoadedApk self() { if (sSelf == null) sSelf = new LoadedApk(); return sSelf; }
+    public static synchronized LoadedApk self() {
+        husk.Processes.State process = husk.Processes.current();
+        LoadedApk apk = sRecords.get(process);
+        if (apk == null) { apk = new LoadedApk(); sRecords.put(process, apk); }
+        return apk;
+    }
 
     /** The loader the app's components come from: one the app put here, or the app's own. */
     public ClassLoader getClassLoader() { return mClassLoader != null ? mClassLoader : husk.AppRunner.baseClassLoader(); }

@@ -12,12 +12,12 @@ public final class CameraManager {
     public static boolean isHiddenPhysicalCamera(java.lang.String p0) { return false; }
     public static boolean physicalCallbacksAreEnabledForUnavailableCamera() { return false; }
     public static java.lang.String reportExtensionSessionStats(android.hardware.CameraExtensionSessionStats p0) { return null; }
-    public android.hardware.camera2.CameraCharacteristics getCameraCharacteristics(java.lang.String p0) { return null; }
-    public android.hardware.camera2.CameraCharacteristics getCameraCharacteristics(java.lang.String p0, boolean p1) { return null; }
+    public android.hardware.camera2.CameraCharacteristics getCameraCharacteristics(java.lang.String p0) { return husk.Cameras.characteristics(p0); }
+    public android.hardware.camera2.CameraCharacteristics getCameraCharacteristics(java.lang.String p0, boolean p1) { return getCameraCharacteristics(p0); }
     public android.hardware.camera2.CameraDevice.CameraDeviceSetup getCameraDeviceSetup(java.lang.String p0) { return null; }
     public android.hardware.camera2.CameraExtensionCharacteristics getCameraExtensionCharacteristics(java.lang.String p0) { return null; }
-    public java.lang.String[] getCameraIdList() { return new String[0]; }   /* a device with no cameras: apps check the list before opening one */
-    public java.lang.String[] getCameraIdListNoLazy() { return new String[0]; }
+    public java.lang.String[] getCameraIdList() { return husk.CameraNative.ids(); }
+    public java.lang.String[] getCameraIdListNoLazy() { return getCameraIdList(); }
     public android.hardware.ICameraService getCameraService() { return (android.hardware.ICameraService) huskProps.get("CameraService"); }
     public android.content.AttributionSourceState getClientAttribution() { return (android.content.AttributionSourceState) huskProps.get("ClientAttribution"); }
     public android.content.AttributionSourceState getClientAttribution(int p0, boolean p1) { return null; }
@@ -32,15 +32,15 @@ public final class CameraManager {
     public boolean isCameraDeviceSharingSupported(java.lang.String p0) { return false; }
     public boolean isCameraServiceDisabled() { return (huskProps.get("CameraServiceDisabled") instanceof Boolean ? (Boolean) huskProps.get("CameraServiceDisabled") : false); }
     public boolean isConcurrentSessionConfigurationSupported(java.util.Map p0) { return false; }
-    public void openCamera(java.lang.String p0, int p1, java.util.concurrent.Executor p2, android.hardware.camera2.CameraDevice.StateCallback p3) {}
-    public void openCamera(java.lang.String p0, android.hardware.camera2.CameraDevice.StateCallback p1, android.os.Handler p2) {}
-    public void openCamera(java.lang.String p0, java.util.concurrent.Executor p1, android.hardware.camera2.CameraDevice.StateCallback p2) {}
+    public void openCamera(java.lang.String p0, int p1, java.util.concurrent.Executor p2, android.hardware.camera2.CameraDevice.StateCallback p3) { openCamera(p0,p2,p3); }
+    public void openCamera(java.lang.String p0, android.hardware.camera2.CameraDevice.StateCallback p1, android.os.Handler p2) { husk.Cameras.open(p0,husk.Cameras.executor(p2),p1); }
+    public void openCamera(java.lang.String p0, java.util.concurrent.Executor p1, android.hardware.camera2.CameraDevice.StateCallback p2) { husk.Cameras.open(p0,p1,p2); }
     public void openCamera(java.lang.String p0, boolean p1, android.os.Handler p2, android.hardware.camera2.CameraDevice.StateCallback p3) {}
     public void openCameraImpl(java.lang.String p0, android.hardware.camera2.CameraDevice.StateCallback p1, java.util.concurrent.Executor p2, int p3, android.content.res.CameraCompatibilityInfo p4, boolean p5) {}
     public void openSharedCamera(java.lang.String p0, java.util.concurrent.Executor p1, android.hardware.camera2.CameraDevice.StateCallback p2) {}
     public android.hardware.camera2.CameraCharacteristics prepareCameraCharacteristics(java.lang.String p0, android.hardware.camera2.impl.CameraMetadataNative p1, android.hardware.ICameraService p2) { return null; }
-    public void registerAvailabilityCallback(android.hardware.camera2.CameraManager.AvailabilityCallback p0, android.os.Handler p1) {}
-    public void registerAvailabilityCallback(java.util.concurrent.Executor p0, android.hardware.camera2.CameraManager.AvailabilityCallback p1) {}
+    public void registerAvailabilityCallback(android.hardware.camera2.CameraManager.AvailabilityCallback p0, android.os.Handler p1) { registerAvailabilityCallback(husk.Cameras.executor(p1),p0); }
+    public void registerAvailabilityCallback(java.util.concurrent.Executor p0, android.hardware.camera2.CameraManager.AvailabilityCallback p1) { for(String id:getCameraIdList()) p0.execute(() -> p1.onCameraAvailable(id)); }
     public void registerDeviceStateListener(android.hardware.camera2.CameraCharacteristics p0) {}
     public void registerTorchCallback(android.hardware.camera2.CameraManager.TorchCallback p0, android.os.Handler p1) {}
     public void registerTorchCallback(java.util.concurrent.Executor p0, android.hardware.camera2.CameraManager.TorchCallback p1) {}

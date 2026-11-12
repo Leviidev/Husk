@@ -277,6 +277,7 @@ NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrat
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
 NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
 NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
+NAT(N_registerProcessLoader) { (void)self; *ret = I(dvm_register_process_loader(a[0].l)); return true; }
 NAT(N_pollInput)
 {
     (void)self; (void)a;
@@ -497,6 +498,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "openUrl", "(Ljava/lang/String;)V", N_openUrl },
     { "exit", "()V", N_exit },
     { "uptimeNanos", "()J", N_uptimeNanos },
+    { "registerProcessLoader", "(Ljava/lang/ClassLoader;)Z", N_registerProcessLoader },
     { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
     { "splitPaths", "()[Ljava/lang/String;", N_splitPaths },
     { "nativeLooperPrepare", "()V", N_looperPrepare },
@@ -527,10 +529,14 @@ dvm_native_fn tl_sensors_native(const char *name, const char *sig);
 dvm_native_fn tl_sqlite_native(const char *name, const char *sig);
 dvm_native_fn tl_media_native(const char *name, const char *sig);
 dvm_native_fn tl_web_native(const char *name, const char *sig);
+dvm_native_fn tl_location_native(const char *name, const char *sig);
+dvm_native_fn tl_camera_native(const char *name, const char *sig);
 bool tl_web_any_visible(void);
 dvm_native_fn dvm_android_native(const char *cls, const char *name, const char *sig)
 {
     if (!strcmp(cls, "husk/Sqlite")) return tl_sqlite_native(name, sig);
+    if (!strcmp(cls, "husk/GeoNative")) return tl_location_native(name, sig);
+    if (!strcmp(cls, "husk/CameraNative")) return tl_camera_native(name, sig);
     if (!strcmp(cls, "husk/MediaCodecNative")) return tl_media_native(name, sig);
     if (!strcmp(cls, "husk/Web")) return tl_web_native(name, sig);
     if (!strcmp(cls, "husk/Sensors")) return tl_sensors_native(name, sig);
@@ -892,6 +898,31 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
 
+/* A GLSurfaceView can sit above controls or inside another view. Its renderer must get a framebuffer of the surface's
+ * dimensions: drawing a short viewport at the bottom of the host framebuffer leaves the top of the actual view empty. */
+static void renderer_rect(jobj *array, int rect[4])
+{
+    jvalue a = L(array);
+    tl_jni_call(A.gl_view, "huskSurfaceRect", "([I)V", &a);
+    if (tl_jni_pending()) { log_pending("the GL surface's frame"); rect[0] = rect[1] = 0; rect[2] = A.cfg.width; rect[3] = A.cfg.height; return; }
+    memcpy(rect, array->arr.data, 4 * sizeof(int));
+    if (rect[2] <= 0 || rect[3] <= 0) { rect[2] = A.cfg.width; rect[3] = A.cfg.height; }
+}
+static bool renderer_target(const int rect[4], app_surf **surface)
+{
+    bool partial = rect[0] != 0 || rect[1] != 0 || rect[2] != A.cfg.width || rect[3] != A.cfg.height;
+    if (*surface && (!partial || (*surface)->w != rect[2] || (*surface)->h != rect[3])) {
+        jvalue a = J((int64_t)(uintptr_t)*surface), r;
+        EN_destroySurface(NULL, &a, &r); *surface = NULL;
+    }
+    if (partial && !*surface) {
+        jvalue a[2] = { I(rect[2]), I(rect[3]) }, r;
+        EN_createSurface(NULL, a, &r); *surface = (app_surf *)(uintptr_t)r.j;
+        tl_log_line("javaapp: GL view %dx%d at %d,%d: %s", rect[2], rect[3], rect[0], rect[1], *surface ? "composited surface" : "no framebuffer");
+    }
+    return partial && *surface != NULL;
+}
+
 /*
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
@@ -939,6 +970,11 @@ static void *gl_main(void *arg)
     tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
 
     jobj *gl10 = NULL;
+    jobj *rect_array = tl_jni_new_prim_array('I', 4); rect_array->refs = 1u << 30;
+    int view_rect[4] = { 0, 0, A.cfg.width, A.cfg.height };
+    app_ctx driver_context = {0};
+    app_surf *driver_surface = NULL;
+    bool partial_surface = false;
     jvalue p1[1];
     int64_t next = now_ns();
     while (!atomic_load(&A.ended)) {
@@ -948,16 +984,26 @@ static void *gl_main(void *arg)
         if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !app) {
             /* GLSurfaceView's default is OpenGL ES 1 (fixed function, through ANGLE's ES1 front end); 2 and 3 as asked */
             int es = A.gl_version >= 3 && es3 ? 3 : A.gl_version <= 1 ? 1 : 2;
+            renderer_rect(rect_array, view_rect);
+            bool needs_compositor = view_rect[0] != 0 || view_rect[1] != 0 || view_rect[2] != A.cfg.width || view_rect[3] != A.cfg.height;
             const EGLint attr[] = { 0x3098, es, EGL_NONE };
-            app = createContext(dpy, cfg, NULL, attr);
+            app = createContext(dpy, cfg, needs_compositor ? ui : NULL, attr);
+            bool shared = needs_compositor && app != NULL;
+            if (!app && needs_compositor) app = createContext(dpy, cfg, NULL, attr);
             if (!app && es == 1) {
                 tl_log_line("javaapp: no GL ES 1 context; the app gets ES 2");
                 es = 2;
                 const EGLint attr2[] = { 0x3098, 2, EGL_NONE };
-                app = createContext(dpy, cfg, NULL, attr2);
+                app = createContext(dpy, cfg, needs_compositor ? ui : NULL, attr2); shared = needs_compositor && app != NULL;
+                if (!app && needs_compositor) app = createContext(dpy, cfg, NULL, attr2);
             }
             if (!app || !makeCurrent(dpy, surf, surf, app)) { tl_log_line("javaapp: no GL ES %d context for the app", es); A.gl_renderer = NULL; app = NULL; }
             else {
+                driver_context.c = app; driver_context.version = es; driver_context.readback = !shared;
+                renderer_rect(rect_array, view_rect);
+                partial_surface = renderer_target(view_rect, &driver_surface);
+                EGLSurface target = partial_surface ? driver_surface->pb : surf;
+                makeCurrent(dpy, target, target, app);
                 tl_log_line("javaapp: the app's GL ES %d context is ready", es);
                 gl10 = dvm_new_object(dvm_class_named("android/opengl/HuskGL10"));
                 dvm_slots(gl10);
@@ -967,7 +1013,7 @@ static void *gl_main(void *arg)
                 jvalue p2[2] = { L(gl10), L(eglcfg) };
                 tl_jni_call(A.gl_renderer, "onSurfaceCreated", "(Ljavax/microedition/khronos/opengles/GL10;Ljavax/microedition/khronos/egl/EGLConfig;)V", p2);
                 if (tl_jni_pending()) log_pending("onSurfaceCreated");
-                jvalue p3[3] = { L(gl10), I(A.cfg.width), I(A.cfg.height) };
+                jvalue p3[3] = { L(gl10), I(view_rect[2]), I(view_rect[3]) };
                 tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
                 if (tl_jni_pending()) log_pending("onSurfaceChanged");
                 p1[0] = L(gl10);
@@ -982,7 +1028,10 @@ static void *gl_main(void *arg)
             tl_ui_frame_done();
         }
         if (app) {
-            makeCurrent(dpy, surf, surf, app);
+            renderer_rect(rect_array, view_rect);
+            partial_surface = renderer_target(view_rect, &driver_surface);
+            EGLSurface target = partial_surface ? driver_surface->pb : surf;
+            makeCurrent(dpy, target, target, app);
             jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
             if (tl_jni_pending()) log_pending("a queued GL event");
             /* the view's surface changed size (laid out again: the app hid the bars, or turned): onSurfaceChanged again, as GLThread does */
@@ -999,6 +1048,10 @@ static void *gl_main(void *arg)
             if (draw.z || fresh || atomic_exchange(&A.render_requested, false)) {
                 tl_jni_call(A.gl_renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
                 if (tl_jni_pending()) log_pending("onDrawFrame");
+                if (partial_surface) {
+                    jvalue a[6] = { J((int64_t)(uintptr_t)driver_surface), J((int64_t)(uintptr_t)&driver_context), I(view_rect[0]), I(view_rect[1]), I(view_rect[2]), I(view_rect[3]) }, r;
+                    EN_swap(NULL, a, &r);
+                }
                 drew = true;
             }
         }
@@ -1007,8 +1060,8 @@ static void *gl_main(void *arg)
         app_seq = q;
         if (drew || fresh || app_fresh) {
             makeCurrent(dpy, surf, surf, ui);
-            if (!app) { clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
-            if (!app) app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
+            if (!app || partial_surface) { clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1); clear(0x4000); }     /* web views show through from under the screen */
+            if (!app || partial_surface) app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
             if (tl_ui_has_frame()) ov_draw(&ov, A.cfg.width, A.cfg.height);
             swapBuffers(dpy, surf);
             atomic_fetch_add(&A.frames, 1);
@@ -1200,6 +1253,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
     husk_aosp_set_session(A.pkg, cfg->width, cfg->height);
+    if (cfg->activity_class) snprintf(A.activity, sizeof(A.activity), "%s", cfg->activity_class);
+    if (cfg->application_class) snprintf(A.application, sizeof(A.application), "%s", cfg->application_class);
     tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
     if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
@@ -1209,6 +1264,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
     if (!tl_ld_add_apk(cfg->apk_path)) return false;
     if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    if (cfg->extra_dex && !tl_dvm_add_apk(cfg->extra_dex)) { tl_log_line("javaapp: extra test DEX did not open"); return false; }
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; }
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);

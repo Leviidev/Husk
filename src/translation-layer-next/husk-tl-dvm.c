@@ -26,6 +26,7 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static dvm_dex *g_dex[256];
 static int g_add_ns, g_next_ns;    /* the namespace dex_add gives the dexes it adds now (DexFile at run time) */
+static bool g_add_process;
 static int g_nboot_dex = -1;     /* the boot class path's dexes are g_dex[0 .. g_nboot_dex) */
 static int g_ndex;
 
@@ -126,7 +127,12 @@ static bool dex_add(const uint8_t *b, size_t size, const char *label)
     for (uint32_t i = 0; i < d->ncls; i++) {
         const char *desc = dex_type(d, rd32(b + d->cls_off + 32 * i));
         char name[512]; desc_to_name(desc, name, sizeof(name));
-        if (cdef_find(name)) {
+        cdef *previous = cdef_find(name);
+        if (previous) {
+            /* A process inherits the boot framework, never a second copy of its API classes. */
+            bool boot = false;
+            if (g_add_process) for (int k = 0; k < g_nboot_dex; k++) if (previous->dex == g_dex[k]) boot = true;
+            if (boot) continue;
             /* a run-time loader's class named like one already defined: its own, in its namespace (name@ns) */
             if (!d->ns) continue;
             char key[540]; snprintf(key, sizeof(key), "%s@%d", name, d->ns);
@@ -357,6 +363,7 @@ static tl_jclass *resolve_type(dvm_dex *d, uint32_t idx)
     tl_jclass *c = __atomic_load_n(&d->tcache[idx], __ATOMIC_ACQUIRE);
     if (c) return c;
     const char *desc = dex_type(d, idx);
+    if (d->ns && desc[0] == '[' && d->loader) c = dvm_class_for_loader(desc, d->loader);
     if (d->ns && desc[0] == 'L') {
         /* a run-time loader's code sees its own classes first */
         char name[512], key[540]; desc_to_name(desc, name, sizeof(name)); snprintf(key, sizeof(key), "%s@%d", name, d->ns);
@@ -2089,7 +2096,15 @@ static bool hook_find_field(tl_jclass *jc, const char *name, const char *sig, bo
 }
 static uint32_t hook_slots(tl_jclass *jc) { dvm_class *c = dvm_class_of(jc); return c ? c->nslots : 0; }
 
-static const tl_dvm_hooks k_hooks = { hook_attach, hook_ensure_init, hook_find_method, hook_invoke, hook_find_field, hook_slots };
+static tl_jclass *hook_caller_class(const char *name)
+{
+    for (int i = t_depth - 1; i >= 0 && i < 8192; i--) {
+        dvm_method *m = t_frames[i];
+        if (m && m->cls->dex && m->cls->dex->ns && m->cls->dex->loader) return dvm_class_for_loader(name, m->cls->dex->loader);
+    }
+    return NULL;
+}
+static const tl_dvm_hooks k_hooks = { hook_attach, hook_ensure_init, hook_find_method, hook_invoke, hook_find_field, hook_slots, hook_caller_class };
 
 static bool g_running;
 
@@ -2152,6 +2167,14 @@ void dvm_mirror_loader(jobj *mirror)
 {
     dvm_class *c = (dvm_class *)mirror->klass.jc->dvm;
     jobj *rt = c && c->dex && c->dex->ns ? c->dex->loader : NULL;
+    if (c && c->name[0] == '[') {
+        const char *elem = c->name; while (*elem == '[') elem++;
+        if (*elem == 'L') {
+            char key[540]; snprintf(key, sizeof(key), "%.*s", (int)strcspn(elem + 1, ";"), elem + 1);
+            cdef *def = cdef_find(key);
+            if (def && def->dex->ns) rt = def->dex->loader;
+        }
+    }
     dvm_field *f = g_app_loader || rt ? class_loader_field() : NULL;
     if (!f || !mirror->fields || f->slot >= mirror->nfields || mirror->fields[f->slot].l) return;
     if (rt) mirror->fields[f->slot].l = rt;
@@ -2173,6 +2196,54 @@ void dvm_set_app_loader(jobj *loader)
 static struct { char *path; int first, count; } g_opened[256];
 static int g_nopened;
 static pthread_mutex_t g_open_lock = PTHREAD_MUTEX_INITIALIZER;
+
+bool dvm_register_process_loader(jobj *loader)
+{
+    if (!loader || g_nboot_dex < 0) return false;
+    pthread_mutex_lock(&g_open_lock);
+    int end = g_ndex, count = 0;
+    for (int i = g_nboot_dex; i < end; i++) if (!g_dex[i]->ns) count++;
+    if (!count || g_ndex + count > 256) { pthread_mutex_unlock(&g_open_lock); return false; }
+    g_add_ns = ++g_next_ns;
+    g_add_process = true;
+    bool ok = true;
+    for (int i = g_nboot_dex; i < end && ok; i++) {
+        dvm_dex *source = g_dex[i];
+        if (source->ns) continue;
+        uint8_t *copy = malloc(source->size);
+        if (!copy) { ok = false; break; }
+        memcpy(copy, source->b, source->size);
+        ok = dex_add(copy, source->size, source->name);
+        if (ok) { g_dex[g_ndex - 1]->loader = loader; loader->refs = 1u << 30; }
+        else free(copy);
+    }
+    g_add_ns = 0;
+    g_add_process = false;
+    pthread_mutex_unlock(&g_open_lock);
+    return ok;
+}
+
+tl_jclass *dvm_class_for_loader(const char *name, jobj *loader)
+{
+    if (loader) for (int i = g_nboot_dex; i >= 0 && i < g_ndex; i++) {
+        dvm_dex *d = g_dex[i];
+        if (!d->ns || d->loader != loader) continue;
+        const char *elem = name;
+        while (*elem == '[') elem++;
+        char key[600];
+        if (elem != name && *elem == 'L') {
+            const char *semi = strchr(elem, ';');
+            if (!semi) break;
+            snprintf(key, sizeof(key), "%.*s@%d", (int)(semi - elem - 1), elem + 1, d->ns);
+            if (!cdef_find(key)) continue;
+            snprintf(key, sizeof(key), "%.*s@%d;", (int)(semi - name), name, d->ns);
+            return tl_jni_class(key);
+        }
+        snprintf(key, sizeof(key), "%s@%d", name, d->ns);
+        if (cdef_find(key)) return tl_jni_class(key);
+    }
+    return dvm_class_named(name);
+}
 
 static bool boot_dex(dvm_dex *d)
 {

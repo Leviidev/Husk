@@ -15,6 +15,8 @@ typedef struct tl_javaapp_config {
     const char *apk_path;
     const char *data_dir;            /* the app's private folder */
     const char *package_name;        /* NULL: the manifest's */
+    /* Optional compatibility-test entry points/DEX; leave NULL to run the unchanged APK's manifest entry points. */
+    const char *activity_class, *application_class, *extra_dex;
     int width, height;               /* the screen, in pixels */
     float density;                   /* pixels per dp */
     void *metal_layer;

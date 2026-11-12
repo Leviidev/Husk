@@ -199,10 +199,10 @@ public final class ViewRoot implements ViewParent {
     private static void doFrame() {
         sScheduled = false;
         ArrayList<ViewRoot> roots = new ArrayList<>(sRoots);
-        for (ViewRoot r : roots) if (!r.mRemoved) r.performLayout();
-        for (ViewRoot r : roots) if (!r.mRemoved && r.mObserver.dispatchOnPreDraw()) { scheduleFrame(); }
+        for (ViewRoot r : roots) if (!r.mRemoved) try (Processes.Scope ignored = Processes.enter(Processes.owner(r.mView.getContext()))) { r.performLayout(); }
+        for (ViewRoot r : roots) if (!r.mRemoved) try (Processes.Scope ignored = Processes.enter(Processes.owner(r.mView.getContext()))) { if (r.mObserver.dispatchOnPreDraw()) scheduleFrame(); }
         drawAll(roots);
-        for (ViewRoot r : roots) if (!r.mRemoved) r.mObserver.dispatchOnDraw();
+        for (ViewRoot r : roots) if (!r.mRemoved) try (Processes.Scope ignored = Processes.enter(Processes.owner(r.mView.getContext()))) { r.mObserver.dispatchOnDraw(); }
     }
     private static Boolean sDump;
     private long mLastDump;
@@ -330,7 +330,7 @@ public final class ViewRoot implements ViewParent {
             sCanvas.clipRect(0, 0, r.mW, r.mH);
             if (r.mLp.alpha < 1f) sCanvas.saveLayerAlpha(0, 0, r.mW, r.mH, Math.round(r.mLp.alpha * 255));
             drew = true;
-            try {
+            try (Processes.Scope ignored = Processes.enter(Processes.owner(r.mView.getContext()))) {
                 r.mView.draw(sCanvas);
             } catch (RuntimeException e) {
                 android.util.Log.e("ViewRoot", "drawing the window threw", e);

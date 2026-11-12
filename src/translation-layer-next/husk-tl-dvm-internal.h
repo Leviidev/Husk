@@ -118,4 +118,7 @@ extern _Thread_local int t_depth;
 dvm_native_fn dvm_intrinsic(const char *cls, const char *name, const char *sig);
 void dvm_natives_init(void);
 
+/* Guest-process class namespaces; NULL loader retains the ordinary boot/application lookup. */
+bool dvm_register_process_loader(jobj *loader);
+tl_jclass *dvm_class_for_loader(const char *name, jobj *loader);
 #endif

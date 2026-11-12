@@ -7,8 +7,13 @@ import java.util.*;
 public final class HuskSharedPreferences implements SharedPreferences {
     private final File file;
     private final HashMap<String, Object> map = new HashMap<>();
-    private final java.util.concurrent.CopyOnWriteArrayList<OnSharedPreferenceChangeListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
-    private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
+    private static final class Listener {
+        final OnSharedPreferenceChangeListener callback;
+        final husk.Processes.State process = husk.Processes.current();
+        final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        Listener(OnSharedPreferenceChangeListener callback) { this.callback = callback; }
+    }
+    private final java.util.concurrent.CopyOnWriteArrayList<Listener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static final java.util.concurrent.ExecutorService WRITER = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "SharedPreferencesWriter"); t.setDaemon(true); return t; });
     private final java.util.concurrent.atomic.AtomicBoolean writePending = new java.util.concurrent.atomic.AtomicBoolean();
 
@@ -64,14 +69,18 @@ public final class HuskSharedPreferences implements SharedPreferences {
     public synchronized float getFloat(String k, float d) { Object v = map.get(k); return v instanceof Float ? (Float) v : d; }
     public synchronized boolean getBoolean(String k, boolean d) { Object v = map.get(k); return v instanceof Boolean ? (Boolean) v : d; }
     public synchronized boolean contains(String k) { return map.containsKey(k); }
-    public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener l) { if (l != null && !listeners.contains(l)) listeners.add(l); }
-    public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener l) { listeners.remove(l); }
+    public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener l) { if (l == null) return; for (Listener record : listeners) if (record.callback == l) return; listeners.add(new Listener(l)); }
+    public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener l) { for (Listener record : listeners) if (record.callback == l) listeners.remove(record); }
     /* As Android's: an editor's changes go to memory at once (under the preferences' lock), apply() writes the file in the
        background (one write for a burst), listeners hear each changed key on the main thread. Editors may be shared between threads. */
     private void notifyChanged(List<String> keys) {
         if (listeners.isEmpty() || keys.isEmpty()) return;
-        Runnable r = () -> { for (OnSharedPreferenceChangeListener l : listeners) for (String k : keys) l.onSharedPreferenceChanged(this, k); };
-        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) r.run(); else MAIN.post(r);
+        for (Listener record : listeners) {
+            Runnable r = () -> { for (String k : keys) record.callback.onSharedPreferenceChanged(this, k); };
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                try (husk.Processes.Scope ignored = husk.Processes.enter(record.process)) { r.run(); }
+            } else record.handler.post(r);
+        }
     }
     private List<String> toMemory(boolean clear, Set<String> removes, Map<String, Object> puts) {
         ArrayList<String> changed = new ArrayList<>();

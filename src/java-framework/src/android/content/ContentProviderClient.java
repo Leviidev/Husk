@@ -19,7 +19,7 @@ public class ContentProviderClient implements AutoCloseable {
     public android.content.ContentProviderResult[] applyBatch(java.lang.String p0, java.util.ArrayList p1) { return null; }
     public android.content.ContentProviderResult[] applyBatch(java.util.ArrayList p0) { return null; }
     public int bulkInsert(android.net.Uri p0, android.content.ContentValues[] p1) { return 0; }
-    public android.os.Bundle call(java.lang.String p0, java.lang.String p1, java.lang.String p2, android.os.Bundle p3) { return null; }
+    public android.os.Bundle call(java.lang.String authority, java.lang.String method, java.lang.String arg, android.os.Bundle extras) { return call(method, arg, extras); }
     public android.net.Uri canonicalize(android.net.Uri p0) { return null; }
     public int checkUriPermission(android.net.Uri p0, int p1, int p2) { return 0; }
     public int delete(android.net.Uri p0, android.os.Bundle p1) { return 0; }

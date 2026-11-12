@@ -11,6 +11,20 @@ public class Surface implements android.os.Parcelable {
     Producer mProducer;
     /** The SurfaceView this surface belongs to (EGL draws where it is). */
     public SurfaceView huskView;
+    /** Camera capture consumer, when this surface belongs to an ImageReader. */
+    public android.media.ImageReader huskReader;
+    private android.graphics.Bitmap huskCameraFrame;
+    public void huskPostRgba(long address, int width, int height, boolean flip) {
+        if (huskTexture != null) { huskTexture.huskPostRgba(address,width,height,flip); return; }
+        if (!isValid() || mProducer == null) return;
+        if (huskCameraFrame == null || huskCameraFrame.getWidth()!=width || huskCameraFrame.getHeight()!=height)
+            huskCameraFrame=android.graphics.Bitmap.createBitmap(width,height,android.graphics.Bitmap.Config.ARGB_8888);
+        huskCameraFrame.huskSetRgba(address);
+        Canvas canvas=lockCanvas(null);
+        if(canvas==null)return;
+        try { canvas.drawBitmap(huskCameraFrame,null,new Rect(0,0,canvas.getWidth(),canvas.getHeight()),null); }
+        finally { unlockCanvasAndPost(canvas); }
+    }
     private boolean mReleased;
     public Surface() {}
     /** The SurfaceTexture this surface feeds, when made on one. */

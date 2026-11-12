@@ -4,14 +4,15 @@ package android.os;
 public class Binder implements IBinder {
     private IInterface mOwner;
     private String mDescriptor;
+    private final husk.Processes.State mProcess = husk.Processes.current();
     public Binder() {}
     public Binder(String descriptor) { mDescriptor = descriptor; }
-    public static final int getCallingPid() { return android.os.Process.myPid(); }
+    public static final int getCallingPid() { return husk.Processes.callingPid(); }
     public static final int getCallingUid() { return android.os.Process.myUid(); }
     public static final int getCallingUidOrThrow() { return getCallingUid(); }
     public static final UserHandle getCallingUserHandle() { return UserHandle.getUserHandleForUid(getCallingUid()); }
-    public static final long clearCallingIdentity() { return 0; }
-    public static final void restoreCallingIdentity(long token) {}
+    public static final long clearCallingIdentity() { return husk.Processes.clearCallingIdentity(); }
+    public static final void restoreCallingIdentity(long token) { husk.Processes.restoreCallingIdentity(token); }
     public static final int getThreadStrictModePolicy() { return 0; }
     public static final void setThreadStrictModePolicy(int policyMask) {}
     public static final void flushPendingCommands() {}
@@ -21,7 +22,7 @@ public class Binder implements IBinder {
     public String getInterfaceDescriptor() { return mDescriptor; }
     public boolean pingBinder() { return true; }
     public boolean isBinderAlive() { return true; }
-    public IInterface queryLocalInterface(String descriptor) { if (mDescriptor != null && mDescriptor.equals(descriptor)) return mOwner; return null; }
+    public IInterface queryLocalInterface(String descriptor) { if (husk.Processes.current() == mProcess && mDescriptor != null && mDescriptor.equals(descriptor)) return mOwner; return null; }
     protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
         if (code == INTERFACE_TRANSACTION) { if (reply != null) reply.writeString(getInterfaceDescriptor()); return true; }
         return false;
@@ -30,6 +31,16 @@ public class Binder implements IBinder {
     public void dumpAsync(java.io.FileDescriptor fd, String[] args) {}
     protected void dump(java.io.FileDescriptor fd, java.io.PrintWriter fout, String[] args) {}
     public final boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+        if (husk.Processes.current() != mProcess) {
+            ClassLoader caller = husk.AppRunner.classLoader();
+            Parcel received = data == null ? null : data.huskCopy(mProcess.loader);
+            Parcel response = reply == null ? null : Parcel.obtain();
+            try {
+                boolean result = mProcess.call(() -> transact(code, received, response, flags));
+                if (reply != null) { Parcel returned = response.huskCopy(caller); reply.huskReplace(returned); returned.recycle(); }
+                return result;
+            } finally { if (received != null) received.recycle(); if (response != null) response.recycle(); }
+        }
         if (data != null) data.setDataPosition(0);
         boolean r = onTransact(code, data, reply, flags);
         if (reply != null) reply.setDataPosition(0);
