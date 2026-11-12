@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 import SwiftUI
 
-/// The way to turn on JIT, said plainly: StikJIT is built into Husk, and it is the recommended way.
-///
-/// Android and the Translation Layer's games both need memory they can write and then execute, which on iOS takes an attached
-/// debugger. Husk can be that debugger itself -- StikJIT, in the app, with no computer and no other app -- so this is the first
-/// thing shown wherever JIT is missing, with the other methods one tap further. Once JIT is on it shrinks to a line saying so.
+/// Offers the selected JIT method wherever JIT is missing. Once JIT is on, it shrinks to a confirmation.
 struct JITCard: View {
     @ObservedObject private var jit = JITCoordinator.shared
     /// One line instead of a card: for the library, where it sits above the games rather than being the page.
@@ -13,13 +9,8 @@ struct JITCard: View {
 
     private var isOn: Bool { JITBootstrap.ready }
 
-    /// The way the card offers: StikJIT where Husk has it (iOS 26 and later), and otherwise whatever this device has -- TrollStore, a
-    /// jailbreak -- since StikJIT cannot run on an iOS before 26.
-    private var offered: JITMethod {
-        if HuskBuiltInJIT.isAvailable { return .builtIn }
-        let resolved = jit.resolvedMethod
-        return resolved == .builtIn ? .builtIn : resolved
-    }
+    /// Match the selected method, including Automatic's resolution, so the card and the app page enable the same debugger.
+    private var offered: JITMethod { jit.resolvedMethod }
 
     var body: some View {
         if compact {
@@ -56,7 +47,6 @@ struct JITCard: View {
                     ProgressView()
                 } else {
                     Button {
-                        if offered == .builtIn, HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
                         jit.enable()
                     } label: {
                         Text("Turn On")
@@ -145,8 +135,6 @@ struct JITCard: View {
                 }
             } else {
                 Button {
-                    // The one this card offers, whatever "Automatic" would have picked.
-                    if offered == .builtIn, HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
                     jit.enable()
                 } label: {
                     HStack {
