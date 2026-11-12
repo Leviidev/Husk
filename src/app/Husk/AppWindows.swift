@@ -313,12 +313,21 @@ struct TLWindowScreen: UIViewRepresentable {
     let engine: TLNativeEngine
     let portrait: Bool
     let scale: CGFloat
+    var onStats: ((String) -> Void)? = nil
+    var onThreeFingerTap: (() -> Void)? = nil
 
     func makeUIView(context: Context) -> TLWindowHost {
-        TLWindowHost(game: TLUnityScreen.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine,
-                                              portrait: portrait, scale: scale))
+        let game = TLUnityScreen.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine,
+                                      portrait: portrait, scale: scale)
+        game.onStats = onStats
+        game.onThreeFingerTap = onThreeFingerTap
+        return TLWindowHost(game: game)
     }
-    func updateUIView(_ view: TLWindowHost, context: Context) { view.setNeedsLayout() }
+    func updateUIView(_ view: TLWindowHost, context: Context) {
+        view.game.onStats = onStats
+        view.game.onThreeFingerTap = onThreeFingerTap
+        view.setNeedsLayout()
+    }
 }
 
 final class TLWindowHost: UIView {
@@ -345,6 +354,7 @@ final class TLWindowHost: UIView {
             game.bounds = CGRect(origin: .zero, size: size)
             game.center = CGPoint(x: bounds.midX, y: bounds.midY)
             game.transform = CGAffineTransform(scaleX: k, y: k)
+            game.updateWebHostFrame()
         } else {
             game.transform = .identity
             game.frame = bounds

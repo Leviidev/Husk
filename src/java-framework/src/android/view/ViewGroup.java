@@ -421,13 +421,9 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     // ---- drawing
-    @Override protected void dispatchDraw(Canvas c) {
-        int save = c.save();
-        if (mClipToPadding) c.clipRect(mScrollX + mPaddingLeft, mScrollY + mPaddingTop, mScrollX + getWidth() - mPaddingRight, mScrollY + getHeight() - mPaddingBottom);
-        int n = mChildrenCount;
-        View[] kids = mChildren.clone();
+    /** Stable back-to-front order, shared by drawing and hit testing (including elevation and custom drawing order). */
+    private int[] orderedChildIndices(View[] kids, int n) {
         boolean order = mChildrenDrawingOrder;
-        // children with a higher Z draw later
         int[] idx = new int[n];
         for (int i = 0; i < n; i++) idx[i] = order ? getChildDrawingOrder(n, i) : i;
         boolean anyZ = false;
@@ -438,6 +434,15 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             java.util.Arrays.sort(o, (a, b) -> Float.compare(k[a].getZ(), k[b].getZ()));
             for (int i = 0; i < n; i++) idx[i] = o[i];
         }
+        return idx;
+    }
+    @Override protected void dispatchDraw(Canvas c) {
+        int save = c.save();
+        if (mClipToPadding) c.clipRect(mScrollX + mPaddingLeft, mScrollY + mPaddingTop, mScrollX + getWidth() - mPaddingRight, mScrollY + getHeight() - mPaddingBottom);
+        int n = mChildrenCount;
+        View[] kids = mChildren.clone();
+        // children with a higher Z draw later
+        int[] idx = orderedChildIndices(kids, n);
         for (int i = 0; i < n; i++) {
             View child = kids[idx[i]];
             if (child == null) continue;
@@ -502,9 +507,10 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             float x = e.getX(ai), y = e.getY(ai);
             View target = null;
             // a pointer down where a child already has pointers joins that child (split touches); otherwise the topmost child under it
-            for (int i = mChildrenCount - 1; i >= 0 && target == null; i--) {
-                int ci = mChildrenDrawingOrder ? getChildDrawingOrder(mChildrenCount, i) : i;
-                View c = mChildren[ci];
+            View[] kids = mChildren.clone(); int count = mChildrenCount;
+            int[] order = orderedChildIndices(kids, count);
+            for (int i = count - 1; i >= 0 && target == null; i--) {
+                View c = kids[order[i]];
                 if (c == null || (c.getVisibility() != VISIBLE && c.getAnimation() == null)) continue;
                 if (!isTransformedTouchPointInView(x, y, c, null)) continue;
                 int bits = bitsOf(c) | (1 << id);
