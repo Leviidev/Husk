@@ -166,7 +166,7 @@ bool tl_ld_aot_build(const char *name, const uint8_t *file, size_t flen, tl_ld_a
 /* What a dylib made from a library records about it (section __TEXT,__husk_manifest), so the loader only imports a dylib that was
  * made from this exact file by a compatible loader. */
 #define TL_AOT_MAGIC   "HUSKAOT1"
-#define TL_AOT_VERSION 11u         /* RW-slot text entry filters; older signed code must be converted again */
+#define TL_AOT_VERSION 12u         /* Full-string/layout filters and guest-stack counts; reconvert older signed code */
 typedef struct tl_aot_manifest {
     char magic[8];
     uint32_t version, page;            /* TL_AOT_VERSION; 16384 */

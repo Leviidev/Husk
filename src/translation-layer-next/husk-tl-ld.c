@@ -1080,7 +1080,7 @@ __attribute__((naked, used)) void tl_entry_filter_common(void)
         "stp q8, q9, [sp, #368]\n"  "stp q10, q11, [sp, #400]\n" "stp q12, q13, [sp, #432]\n" "stp q14, q15, [sp, #464]\n"
         "stp q16, q17, [sp, #496]\n" "stp q18, q19, [sp, #528]\n" "stp q20, q21, [sp, #560]\n" "stp q22, q23, [sp, #592]\n"
         "stp q24, q25, [sp, #624]\n" "stp q26, q27, [sp, #656]\n" "stp q28, q29, [sp, #688]\n" "stp q30, q31, [sp, #720]\n"
-        "mov x0, sp\n" "add x1, x29, #40\n" "mov x2, x17\n" "bl _tl_trutien_text_enter\n"
+        "mov x0, sp\n" "add x1, x29, #40\n" "mov x2, x17\n" "add x3, x29, #48\n" "bl _tl_trutien_text_enter\n"
         "ldr x9, [sp, #232]\n" "msr nzcv, x9\n"
         "ldp q0, q1, [sp, #240]\n"  "ldp q2, q3, [sp, #272]\n"  "ldp q4, q5, [sp, #304]\n"  "ldp q6, q7, [sp, #336]\n"
         "ldp q8, q9, [sp, #368]\n"  "ldp q10, q11, [sp, #400]\n" "ldp q12, q13, [sp, #432]\n" "ldp q14, q15, [sp, #464]\n"
@@ -1207,6 +1207,13 @@ bool tl_ld_hook_symbol(tl_lib *L, const char *symbol, void *hook_fn)
 #define SLOT_TEXT_FONT    24
 #define SLOT_TEXT_EXTENT  32
 #define SLOT_TEXT_HUD     40
+#define SLOT_TEXT_PLAIN   48
+#define SLOT_TEXT_FLOAT   56
+#define SLOT_TEXT_CLIPPED 64
+#define SLOT_TEXT_LEGACY_EXTENT 72
+#define SLOT_TEXT_PARAMS  80
+#define SLOT_PREFIX_BYTES 128
+#define TEXT_ENTRY_BUDGET 16
 
 /* adrp Xd, <the 4 KiB page of target>, for an instruction at pc; false when the target is out of adrp's reach (+-4 GiB) */
 static bool e_adrp_ok(const void *pc, const void *target)
@@ -2493,14 +2500,16 @@ static void fill_data_slots(tl_lib *L)
     uint64_t svc = (uint64_t)(uintptr_t)tl_svc_common, vx18 = (uint64_t)(g_vx18_off < 0 ? 0 : g_vx18_off);
     memcpy(L->slots + SLOT_SVC, &svc, 8);
     memcpy(L->slots + SLOT_VX18, &vx18, 8);
-    void tl_trutien_font_filter(uint64_t *regs);
-    void tl_trutien_extent_filter(uint64_t *regs);
-    void tl_trutien_hud_filter(uint64_t *regs);
     const uint64_t entry_values[] = {
         (uint64_t)(uintptr_t)tl_entry_filter_common,
         (uint64_t)(uintptr_t)tl_trutien_font_filter,
         (uint64_t)(uintptr_t)tl_trutien_extent_filter,
         (uint64_t)(uintptr_t)tl_trutien_hud_filter,
+        (uint64_t)(uintptr_t)tl_trutien_plain_filter,
+        (uint64_t)(uintptr_t)tl_trutien_float_filter,
+        (uint64_t)(uintptr_t)tl_trutien_clipped_filter,
+        (uint64_t)(uintptr_t)tl_trutien_legacy_extent_filter,
+        (uint64_t)(uintptr_t)tl_trutien_params_filter,
     };
     memcpy(L->slots + SLOT_ENTRY_COMMON, entry_values, sizeof(entry_values));
     uint64_t *t = (uint64_t *)L->tcb;
@@ -2684,7 +2693,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
      * system call, and one for every instruction that names the reserved register x18. */
     /* The JIT path stores runtime slots at the start of this pool. Keep the
      * full cache-line prefix free; signed AOT images use a separate RW page. */
-    size_t stub_bytes = 64 + 8192 + 3 * TL_ENTRY_FILTER_BYTES;
+    size_t stub_bytes = SLOT_PREFIX_BYTES + 8192 + TEXT_ENTRY_BUDGET * TL_ENTRY_FILTER_BYTES;
     for (int r = 0; r < ncode; r++) {
         const uint32_t *wv = (const uint32_t *)(file + code[r].foff);
         for (size_t k = 0, cnt = (size_t)(code[r].size / 4); k < cnt; k++) {
@@ -2759,7 +2768,7 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     }
     for (int r = 0; r < ncode; r++) { L->code[r].start = code[r].vaddr; L->code[r].end = code[r].vaddr + code[r].size; }
     L->ncode = ncode;
-    L->stub_rx = rx + npages * PAGE; L->stub_rw = rw + npages * PAGE; L->stub_used = 64; L->stub_cap = nstub * PAGE; L->nstub = nstub;
+    L->stub_rx = rx + npages * PAGE; L->stub_rw = rw + npages * PAGE; L->stub_used = SLOT_PREFIX_BYTES; L->stub_cap = nstub * PAGE; L->nstub = nstub;
     /* In the JIT region the slots ride in the stub pages' writable view; a dylib has a page of its own after the stubs, because its
      * stub pages execute and a page cannot be both executable and writable. */
     L->slots = (imported || g_aot.on) ? rw + (npages + nstub) * PAGE : L->stub_rw;
@@ -2873,6 +2882,19 @@ static bool patch_trutien_text_entries(tl_lib *L)
         { "_ZN9A3DFTFont8TextOutWEiiPKwjbjfifbjf", 0x39488008u, SLOT_TEXT_FONT },
         { "_ZN9A3DFTFont13GetTextExtentEPKwib", 0xA9BA7BFDu, SLOT_TEXT_EXTENT },
         { "_ZN12CHudDrawList7AddTextEPKwRK7HUDRECTdjiiji", 0x6DB82BEBu, SLOT_TEXT_HUD },
+        /* Classic AUI must be filtered before layout splits a control into
+         * glyph runs. Both full-string boundaries consume 32-bit wchar_t. */
+        { "_Z17AUI_TextOutFormatP9A3DFTFontiiPKwP5ARectIiEiPiibS6_P9A2DSpritePN5abase6vectorI20_AUITEXTAREA_EMOTIONNS9_13default_allocEEES6_biibP15EditBoxItemsSetPNSA_IS8_SC_EEfbPNSA_I16FONT_WITH_SHADOWSC_EEiP15TEXTITEM_RCINFOb", 0xA9BC7BFDu, SLOT_TEXT_PLAIN },
+        { "_Z15AUI_GetTextRectP9A3DFTFontPKwRiS3_S3_iP15EditBoxItemsSetiiPN5abase6vectorIP9A2DSpriteNS6_13default_allocEEEfPNS7_I16FONT_WITH_SHADOWSA_EEbi", 0xD10303FFu, SLOT_TEXT_HUD },
+        { "_ZN9A3DFTFont11TextOutVertEiiPKwjbjfifbjfj", 0x39488008u, SLOT_TEXT_FONT },
+        { "_ZN9A3DFTFont8TextOutFEffPKwjbjfif", 0xD10503FFu, SLOT_TEXT_FLOAT },
+        { "_ZN9A3DFTFont9DrawTextWEiiPKwjP5ARectIiEbjfifbjf", 0x39488008u, SLOT_TEXT_CLIPPED },
+        /* Legacy bitmap fonts use NUL text; their height is not a count. */
+        { "_ZN7A3DFont8TextOutWEiiPKwjifb", 0xF9400408u, SLOT_TEXT_PLAIN },
+        { "_ZN7A3DFont9DrawTextWEiiPKwjP5ARectIiEif", 0xF9400408u, SLOT_TEXT_PLAIN },
+        { "_ZN7A3DFont13GetTextExtentEPKwiPiS2_", 0xF9400808u, SLOT_TEXT_EXTENT },
+        { "_ZN10A3DFontMan13GetTextExtentEjPKwiPiS2_", 0xA9BB7BFDu, SLOT_TEXT_LEGACY_EXTENT },
+        { "_Z17AUI_TextOutFormatR16TAG_OP_IN_PARAMSR17TAG_OP_OUT_PARAMS", 0xD10383FFu, SLOT_TEXT_PARAMS },
     };
     enum { count = sizeof(entries) / sizeof(entries[0]), bytes = count * TL_ENTRY_FILTER_BYTES };
     if (!L->rw || !L->rx || !L->slots || !L->pflags || !L->stub_rx || !L->stub_rw
@@ -2897,14 +2919,14 @@ static bool patch_trutien_text_entries(tl_lib *L)
         }
         offsets[i] = (size_t)off;
     }
-    /* Commit only after draw, measurement and HUD have all passed preflight.
+    /* Commit only after all draw and layout entries have passed preflight.
      * There are no allocations, callbacks or fallible operations below. */
     for (unsigned i = 0; i < count; i++) {
         memcpy(L->stub_rw + L->stub_used + i * TL_ENTRY_FILTER_BYTES, code[i], sizeof(code[i]));
         memcpy(L->rw + offsets[i], &branches[i], 4);
     }
     L->stub_used += bytes;
-    tl_log_line("trutien-text: signed-safe draw/measurement/HUD entry filters installed");
+    tl_log_line("trutien-text: signed-safe full-string/layout/font/HUD entry filters installed (%u entries)", (unsigned)count);
     return true;
 }
 

@@ -55,6 +55,14 @@ def main():
         r"void tl_javaapp_app_pixels_rect\([^)]*\)\n\{.*?\n\}")]
     (out / "frame_publication_under_test.h").write_text("\n\n".join(publication), encoding="utf-8")
     graphics_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-graphics.c").read_text(encoding="utf-8")
+    graphics_text = [re.search(pattern, graphics_source, re.S)[0] for pattern in (
+        r"static CFStringRef cfstr_mapped\([^)]*\)\n\{.*?\n\}",
+        r"static CFStringRef cfstr\([^)]*\)\n\{.*?\n\}",
+        r"NAT\(G_txMeasure\)\n\{.*?\n\}",
+        r"NAT\(G_txBounds\)\n\{.*?\n\}",
+        r"NAT\(G_txBreak\)\n\{.*?\n\}",
+        r"NAT\(G_txWidths\)\n\{.*?\n\}")]
+    (out / "graphics_text_under_test.h").write_text("\n\n".join(graphics_text), encoding="utf-8")
     ui_publication = graphics_source.split("/* ================================================================== the frame on screen */", 1)[1].split(
         "static const struct { const char *name, *sig; dvm_native_fn fn; } k_gfx[]", 1)[0]
     ui_session_begin = re.search(r"static bool javaapp_begin_session\([^)]*\)\n\{.*?\n\}", android_source, re.S)[0]
@@ -110,7 +118,7 @@ def main():
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])
-    for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "trutien_text_filter_test", "entry_filter_test"):
+    for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "text_color_test", "graphics_text_test", "trutien_text_filter_test", "entry_filter_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "trutien_text_filter_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",

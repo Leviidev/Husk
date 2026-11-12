@@ -20,6 +20,7 @@ subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, 
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.DisplayCutoutTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.SurfaceViewFixedSizeTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.DisplayFactsTest"], check=True)
+subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.graphics.TextArrayContextTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.ApkUpdateIntentTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.app.MemoryInfoTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.os.HostDeviceProfileTest"], check=True)

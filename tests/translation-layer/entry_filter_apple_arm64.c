@@ -12,8 +12,14 @@
 void tl_entry_filter_common(void);
 
 uint64_t text_entry_capture[28];
-uint64_t text_return_capture[3];
-void *text_entry_slots[] = { tl_entry_filter_common, tl_trutien_hud_filter };
+uint64_t text_return_capture[4];
+static bool clipped;
+static void filter_entry(uint64_t *regs, void *guest_sp)
+{
+    if (clipped) tl_trutien_clipped_filter(regs, guest_sp);
+    else tl_trutien_hud_filter(regs, guest_sp);
+}
+void *text_entry_slots[] = { tl_entry_filter_common, filter_entry };
 static unsigned calls;
 static const uint32_t text[] = U"^FFCB4AThất Lý động ^FFFF";
 static const uint32_t clean[] = U"Thất Lý động ";
@@ -27,20 +33,23 @@ uint64_t call_text_entry(uint64_t, const uint32_t *, uint64_t, uint64_t, uint64_
                          double, double, double, double, double, double, double, double);
 static void invoke(unsigned depth)
 {
-    uint64_t value = call_text_entry(depth, text, 102, 103, 104, 105, 106, 107, 0xa0a0, 0xb0b0,
+    uint64_t count = sizeof(text) / sizeof(text[0]) - 1;
+    uint64_t value = call_text_entry(depth, text, 102, clipped ? (uintptr_t)text : 103, 104, 105, 106, 107, clipped ? count : 0xa0a0, 0xb0b0,
                                     1.25, 2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25);
     assert(value == 0x1234 && text_return_capture[0] == 0x1234);
     double fp;
     memcpy(&fp, &text_return_capture[1], sizeof(fp));
     assert(fp == 2.5 && text_return_capture[2] == 0x60000000);
+    assert(text_return_capture[3] == (clipped ? count : 0xa0a0));
 }
 void text_entry_body(uint64_t depth, const uint32_t *filtered)
 {
     calls++;
+    if (clipped) filtered = (const uint32_t *)(uintptr_t)text_entry_capture[3];
     assert(!memcmp(filtered, clean, sizeof(clean)));
-    assert(text_entry_capture[0] == depth && text_entry_capture[1] == (uintptr_t)filtered);
-    for (unsigned i = 2; i < 8; i++) assert(text_entry_capture[i] == 100 + i);
-    assert(text_entry_capture[8] == 0xa0a0 && text_entry_capture[9] == 0xb0b0);
+    assert(text_entry_capture[0] == depth && text_entry_capture[1] == (uintptr_t)(clipped ? text : filtered));
+    for (unsigned i = 2; i < 8; i++) if (!clipped || i != 3) assert(text_entry_capture[i] == 100 + i);
+    assert(text_entry_capture[8] == (clipped ? sizeof(clean) / sizeof(clean[0]) - 1 : 0xa0a0) && text_entry_capture[9] == 0xb0b0);
     for (unsigned i = 0; i < 8; i++) {
         double fp;
         memcpy(&fp, &text_entry_capture[12 + i * 2], sizeof(fp));
@@ -59,6 +68,7 @@ __asm__(
     "bl _test_text_entry\n"
     "adrp x9, _text_return_capture@PAGE\n add x9, x9, _text_return_capture@PAGEOFF\n"
     "str x0, [x9]\n str d0, [x9, #8]\n mrs x10, nzcv\n str x10, [x9, #16]\n"
+    "ldr x10, [sp]\n str x10, [x9, #24]\n"
     "ldp x29, x30, [sp, #16]\n add sp, sp, #32\n ret\n"
     ".p2align 2\n_test_text_entry:\n b _test_text_stub\n"
     "_test_text_resume:\n"
@@ -82,7 +92,9 @@ int main(void)
 {
     tl_trutien_text_set_package("vn.trutien.client");
     invoke(9);
-    assert(calls == 10 && !memcmp(text, U"^FFCB4AThất Lý động ^FFFF", sizeof(text)));
-    puts("PASS: real Apple ARM64 entry/return bridges preserve integer/FP/stack arguments, return values, flags and ten nested text lifetimes without JIT");
+    clipped = true;
+    invoke(9);
+    assert(calls == 20 && !memcmp(text, U"^FFCB4AThất Lý động ^FFFF", sizeof(text)));
+    puts("PASS: real Apple ARM64 entry/return bridges preserve integer/FP/stack arguments, restore clipped stack counts, return values, flags and ten nested text lifetimes without JIT");
     return 0;
 }

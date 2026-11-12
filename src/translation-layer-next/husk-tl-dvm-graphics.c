@@ -25,6 +25,8 @@
 #include "husk-tl-dvm-javaapp.h"
 #include "husk-tl-frame-buffer.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-trutien-text.h"
+#include "husk-tl-text-color.h"
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n);
 
@@ -674,15 +676,33 @@ static CGPathRef build_path(const float *f, int n)
 
 /* ================================================================== text */
 
-static CFStringRef cfstr(jobj *s, int start, int end)
+static atomic_uint text_color_reports;
+
+static CFStringRef cfstr_mapped(jobj *s, int start, int end, tl_text_color_view16 *mapped)
 {
     int32_t n = 0;
     const uint16_t *u = s ? tl_dvm_string_chars(s, &n) : NULL;
-    if (!u) return CFStringCreateWithCharacters(NULL, NULL, 0);
+    if (!u) {
+        if (mapped) *mapped = (tl_text_color_view16){0};
+        return CFStringCreateWithCharacters(NULL, NULL, 0);
+    }
     if (start < 0) start = 0;
+    if (start > n) start = n;
     if (end > n || end < 0) end = n;
     if (end < start) end = start;
-    return CFStringCreateWithCharacters(NULL, u + start, end - start);
+    tl_text_color_view16 view = tl_text_color_view16_make(u, (size_t)n, (size_t)start,
+        (size_t)end, tl_trutien_text_active(), mapped != NULL);
+    if (view.count != view.source_count && atomic_fetch_add(&text_color_reports, 1) < 4)
+        tl_log_line("trutien-text: hidden Java draw/measure color controls (%zu -> %zu UTF-16 units)", view.source_count, view.count);
+    CFStringRef str = CFStringCreateWithCharacters(NULL, view.text, (CFIndex)view.count);
+    if (mapped) *mapped = view;
+    else tl_text_color_view16_dispose(&view);
+    return str;
+}
+
+static CFStringRef cfstr(jobj *s, int start, int end)
+{
+    return cfstr_mapped(s, start, end, NULL);
 }
 
 static CTLineRef make_line(CFStringRef str, const int32_t *p, gface *g)
@@ -1252,7 +1272,8 @@ NAT(G_txBounds)
 NAT(G_txBreak)
 {
     (void)self;
-    CFStringRef s = cfstr(a[0].l, a[1].i, a[2].i);
+    tl_text_color_view16 view;
+    CFStringRef s = cfstr_mapped(a[0].l, a[1].i, a[2].i, &view);
     const int32_t *p = paint_of(a[4].l);
     CTFontRef f = sized((gface *)(uintptr_t)a[5].j, pf(p, P_TEXTSIZE));
     const void *k[] = { kCTFontAttributeName }; const void *v[] = { f };
@@ -1262,30 +1283,33 @@ NAT(G_txBreak)
     float sx = pf(p, P_SCALEX) > 0 ? pf(p, P_SCALEX) : 1;
     double w = a[3].f / sx;
     CFIndex n = a[6].z ? CTTypesetterSuggestLineBreak(ts, 0, w) : CTTypesetterSuggestClusterBreak(ts, 0, w);
-    *ret = Ii((int32_t)n);
+    *ret = Ii((int32_t)tl_text_color_source16(&view, n < 0 ? 0 : (size_t)n));
     CFRelease(ts); CFRelease(as); CFRelease(attrs); CFRelease(s); CFRelease(f);
+    tl_text_color_view16_dispose(&view);
     return true;
 }
 /* (String, int start, int end, int[] paint, long typeface, float[] out) -> advances per UTF-16 unit */
 NAT(G_txWidths)
 {
     (void)self; (void)ret;
-    CFStringRef s = cfstr(a[0].l, a[1].i, a[2].i);
+    tl_text_color_view16 view;
+    CFStringRef s = cfstr_mapped(a[0].l, a[1].i, a[2].i, &view);
     const int32_t *p = paint_of(a[3].l);
     float *o = arr_data(a[5].l);
-    CFIndex n = CFStringGetLength(s);
-    if (o && (CFIndex)arr_len(a[5].l) >= n) {
+    size_t n = view.source_count;
+    if (o && arr_len(a[5].l) >= n) {
         CTLineRef line = make_line(s, p, (gface *)(uintptr_t)a[4].j);
         float sx = pf(p, P_SCALEX) > 0 ? pf(p, P_SCALEX) : 1;
         double prev = 0;
-        for (CFIndex i = 0; i < n; i++) {
-            double x = CTLineGetOffsetForStringIndex(line, i + 1, NULL);
+        for (size_t i = 0; i < n; i++) {
+            double x = CTLineGetOffsetForStringIndex(line, (CFIndex)tl_text_color_visible16(&view, i + 1), NULL);
             o[i] = (float)((x - prev) * sx);
             prev = x;
         }
         CFRelease(line);
     }
     CFRelease(s);
+    tl_text_color_view16_dispose(&view);
     return true;
 }
 

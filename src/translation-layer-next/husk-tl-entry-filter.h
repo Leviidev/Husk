@@ -7,13 +7,20 @@
 
 enum { TL_ENTRY_FILTER_WORDS = 16, TL_ENTRY_FILTER_BYTES = 64 };
 
-/* These are the verified, non-PC-relative first instructions of the three
- * supported Tru Tien text entries. No arbitrary instruction is relocated. */
+/* Verified non-PC-relative first instructions of supported Tru Tien text
+ * entries. The installer also checks the exact symbol/prologue pairing. */
 static inline bool tl_entry_filter_first_supported(uint32_t first)
 {
     return first == 0x39488008u /* ldrb w8, [x0, #0x220] */
         || first == 0xA9BA7BFDu /* stp x29, x30, [sp, #-96]! */
-        || first == 0x6DB82BEBu; /* stp d11, d10, [sp, #-128]! */
+        || first == 0x6DB82BEBu /* stp d11, d10, [sp, #-128]! */
+        || first == 0xA9BC7BFDu /* stp x29, x30, [sp, #-64]! */
+        || first == 0xD10303FFu /* sub sp, sp, #192 */
+        || first == 0xD10383FFu /* sub sp, sp, #224 */
+        || first == 0xD10503FFu /* sub sp, sp, #320 */
+        || first == 0xF9400408u /* ldr x8, [x0, #8] */
+        || first == 0xF9400808u /* ldr x8, [x0, #16] */
+        || first == 0xA9BB7BFDu; /* stp x29, x30, [sp, #-80]! */
 }
 
 static inline bool tl_entry_filter_branch(uintptr_t from, uintptr_t to, uint32_t *out)

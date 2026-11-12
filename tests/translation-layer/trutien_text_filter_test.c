@@ -47,44 +47,82 @@ static void *worker(void *unused)
     regs_init(regs); regs[1] = (uintptr_t)source;
     memcpy(before, regs, sizeof(regs));
     tl_trutien_text_set_package("another.game");
-    tl_trutien_hud_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_hud_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     tl_trutien_text_set_package(NULL);
-    tl_trutien_hud_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_hud_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     tl_trutien_text_set_package("vn.trutien.client");
     regs_init(regs); regs[3] = (uintptr_t)source; regs[7] = UINT32_MAX;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_font_filter(regs);
+    tl_trutien_font_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[3], wanted);
     assert(regs[7] == ulen(wanted)); unchanged(before, regs, 3, 7);
     expect(source, U"^FFCB4AThất Lý động ^DDDD^^ffff00Tiếng Việt^FFFF");
 
     regs_init(regs); regs[1] = (uintptr_t)source; regs[2] = ulen(source);
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_extent_filter(regs);
+    tl_trutien_extent_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[1], wanted);
     assert(regs[2] == ulen(wanted)); unchanged(before, regs, 1, 2);
 
     regs_init(regs); regs[1] = (uintptr_t)source;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_hud_filter(regs);
+    tl_trutien_hud_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[1], wanted);
     unchanged(before, regs, 1, -1);
+
+    regs_init(regs); regs[3] = (uintptr_t)source;
+    memcpy(before, regs, sizeof(regs));
+    tl_trutien_plain_filter(regs, NULL);
+    expect((const uint32_t *)(uintptr_t)regs[3], wanted);
+    unchanged(before, regs, 3, -1); /* legacy font height is preserved */
+    regs_init(regs); regs[1] = (uintptr_t)source; regs[5] = ulen(source);
+    tl_trutien_float_filter(regs, NULL);
+    expect((const uint32_t *)(uintptr_t)regs[1], wanted); assert(regs[5] == ulen(wanted));
+    regs_init(regs); regs[2] = (uintptr_t)source; regs[3] = ulen(source);
+    tl_trutien_legacy_extent_filter(regs, NULL);
+    expect((const uint32_t *)(uintptr_t)regs[2], wanted); assert(regs[3] == ulen(wanted));
+
+    /* DrawTextW consumes its count in the first Android stack slot. Only the
+     * low four bytes change while drawing, and all caller bytes are restored. */
+    uint64_t stack_args[3] = { 0xfedcba9800000000ull | ulen(source), 0x123456789abcdef0ull, 0x1122334455667788ull };
+    uint64_t stack_before[3]; memcpy(stack_before, stack_args, sizeof(stack_args));
+    uint64_t clipped_link = 0x45678;
+    regs_init(regs); regs[3] = (uintptr_t)source; memcpy(before, regs, sizeof(regs));
+    tl_trutien_text_enter(regs, &clipped_link, tl_trutien_clipped_filter, stack_args);
+    assert(clipped_link == (uintptr_t)tl_entry_filter_return);
+    expect((const uint32_t *)(uintptr_t)regs[3], wanted); unchanged(before, regs, 3, -1);
+    assert(stack_args[0] == (0xfedcba9800000000ull | ulen(wanted)));
+    assert(stack_args[1] == stack_before[1] && stack_args[2] == stack_before[2]);
+    assert(tl_trutien_text_leave() == 0x45678 && !memcmp(stack_args, stack_before, sizeof(stack_args)));
+
+    uint64_t input[14], input_before[14];
+    for (unsigned i = 0; i < 14; i++) input[i] = 0xaa000000u + i;
+    input[1] = (uintptr_t)source; memcpy(input_before, input, sizeof(input));
+    regs_init(regs); regs[0] = (uintptr_t)input; memcpy(before, regs, sizeof(regs));
+    uint64_t params_link = 0x56789;
+    tl_trutien_text_enter(regs, &params_link, tl_trutien_params_filter, NULL);
+    assert(params_link == (uintptr_t)tl_entry_filter_return);
+    const uint64_t *copy = (const uint64_t *)(uintptr_t)regs[0];
+    assert(copy != input); expect((const uint32_t *)(uintptr_t)copy[1], wanted);
+    for (unsigned i = 0; i < 14; i++) if (i != 1) assert(copy[i] == input[i]);
+    unchanged(before, regs, 0, -1); assert(!memcmp(input, input_before, sizeof(input)));
+    assert(tl_trutien_text_leave() == 0x56789);
 
     static const uint32_t ordinary[] = U"x^2 ^^ ^ABC ^GHIJKL Việt A\u0302 \U0001f642 \uf1ff";
     regs_init(regs); regs[1] = (uintptr_t)ordinary;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_hud_filter(regs);
+    tl_trutien_hud_filter(regs, NULL);
     assert(!memcmp(before, regs, sizeof(regs)));
 
     /* Count-limited strings need no trailing NUL, and a token outside the
      * caller's count must neither be read nor removed. */
     uint32_t limited[] = { '^','F','F','F','F','F','F','X' };
     regs_init(regs); regs[3] = (uintptr_t)limited; regs[7] = 7;
-    tl_trutien_font_filter(regs);
+    tl_trutien_font_filter(regs, NULL);
     expect((const uint32_t *)(uintptr_t)regs[3], U""); assert(regs[7] == 0);
     regs_init(regs); regs[3] = (uintptr_t)limited; regs[7] = 3;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_font_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_font_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
 
     /* Scratch storage is bounded and reused. Failed growth leaves the raw
      * arguments unchanged, rather than publishing a truncated/dangling copy. */
@@ -92,16 +130,16 @@ static void *worker(void *unused)
     fail_resize = true;
     regs_init(regs); regs[1] = (uintptr_t)source;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_hud_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_hud_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     fail_resize = false;
     for (unsigned i = 0; i < TEXT_SCRATCH_SLOTS; i++) {
         regs_init(regs); regs[1] = (uintptr_t)source;
-        tl_trutien_hud_filter(regs);
+        tl_trutien_hud_filter(regs, NULL);
     }
     unsigned warmed = resizes;
     for (unsigned i = 0; i < 10000; i++) {
         regs_init(regs); regs[1] = (uintptr_t)source;
-        tl_trutien_hud_filter(regs); expect((const uint32_t *)(uintptr_t)regs[1], wanted);
+        tl_trutien_hud_filter(regs, NULL); expect((const uint32_t *)(uintptr_t)regs[1], wanted);
     }
     assert(resizes == warmed);
 
@@ -111,14 +149,14 @@ static void *worker(void *unused)
     uint64_t link;
     for (unsigned i = 0; i < TEXT_SCRATCH_SLOTS; i++) {
         regs_init(regs); regs[1] = (uintptr_t)source; link = 0x10000u + i;
-        tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter);
+        tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter, NULL);
         assert(link == (uintptr_t)tl_entry_filter_return);
         nested[i] = (const uint32_t *)(uintptr_t)regs[1];
         for (unsigned j = 0; j <= i; j++) expect(nested[j], wanted);
     }
     regs_init(regs); regs[1] = (uintptr_t)source; link = 0x20000;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter);
+    tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter, NULL);
     assert(link == 0x20000 && !memcmp(before, regs, sizeof(regs)));
     for (unsigned i = TEXT_SCRATCH_SLOTS; i > 0; i--) {
         expect(nested[i-1], wanted);
@@ -126,16 +164,16 @@ static void *worker(void *unused)
     }
     assert(!((text_scratch *)pthread_getspecific(text_key))->depth);
     regs_init(regs); regs[1] = (uintptr_t)ordinary; link = 0x30000;
-    tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter);
+    tl_trutien_text_enter(regs, &link, tl_trutien_hud_filter, NULL);
     assert(link == 0x30000 && !((text_scratch *)pthread_getspecific(text_key))->depth);
 
     /* The original positive count remains intact when it exceeds the fixed
      * inspection bound. Null text and count zero are also no-ops. */
     regs_init(regs); regs[3] = (uintptr_t)source; regs[7] = TEXT_LIMIT + 1;
     memcpy(before, regs, sizeof(regs));
-    tl_trutien_font_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_font_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     regs[3] = 0; regs[7] = 100; memcpy(before, regs, sizeof(regs));
-    tl_trutien_font_filter(regs); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_font_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     cleanup();
     return NULL;
 }

@@ -197,10 +197,14 @@ public class Paint {
     public FontMetricsInt getFontMetricsInt() { FontMetricsInt m = new FontMetricsInt(); getFontMetricsInt(m); return m; }
     public float getFontSpacing() { return getFontMetrics(null); }
 
+    private static String textArray(char[] t, int index, int count) {
+        if (index < 0 || count < 0 || index > t.length - count) throw new StringIndexOutOfBoundsException();
+        return new String(t);
+    }
     public float measureText(String s) { return s == null ? 0 : husk.Gfx.txMeasure(s, 0, s.length(), mP, huskFace()); }
     public float measureText(String s, int start, int end) { return husk.Gfx.txMeasure(s, start, end, mP, huskFace()); }
     public float measureText(CharSequence s, int start, int end) { return measureText(s.toString(), start, end); }
-    public float measureText(char[] t, int index, int count) { return measureText(new String(t, index, count)); }
+    public float measureText(char[] t, int index, int count) { return measureText(textArray(t, index, count), index, index + count); }
     public float getRunAdvance(CharSequence t, int start, int end, int cs, int ce, boolean rtl, int offset) { return measureText(t.toString(), start, offset); }
     public float getRunAdvance(char[] t, int start, int end, int cs, int ce, boolean rtl, int offset) { return measureText(new String(t), start, offset); }
     public int getOffsetForAdvance(CharSequence t, int start, int end, int cs, int ce, boolean rtl, float advance) {
@@ -215,18 +219,18 @@ public class Paint {
         if (measured != null && measured.length > 0) measured[0] = measureText(str, start, start + n);
         return n;
     }
-    public int breakText(char[] t, int index, int count, float maxWidth, float[] measured) { return breakText(new String(t, index, count), 0, count, true, maxWidth, measured); }
+    public int breakText(char[] t, int index, int count, float maxWidth, float[] measured) { return breakText(textArray(t, index, count), index, index + count, true, maxWidth, measured); }
     public int getTextWidths(String s, int start, int end, float[] widths) { husk.Gfx.txWidths(s, start, end, mP, huskFace(), widths); return end - start; }
     public int getTextWidths(String s, float[] widths) { return getTextWidths(s, 0, s.length(), widths); }
     public int getTextWidths(CharSequence s, int start, int end, float[] widths) { return getTextWidths(s.toString(), start, end, widths); }
-    public int getTextWidths(char[] t, int index, int count, float[] widths) { return getTextWidths(new String(t, index, count), widths); }
+    public int getTextWidths(char[] t, int index, int count, float[] widths) { return getTextWidths(textArray(t, index, count), index, index + count, widths); }
     public void getTextBounds(String s, int start, int end, Rect bounds) {
         int[] o = new int[4];
         husk.Gfx.txBounds(s, start, end, mP, huskFace(), o);
         bounds.set(o[0], o[1], o[2], o[3]);
     }
     public void getTextBounds(CharSequence s, int start, int end, Rect bounds) { getTextBounds(s.toString(), start, end, bounds); }
-    public void getTextBounds(char[] t, int index, int count, Rect bounds) { getTextBounds(new String(t, index, count), 0, count, bounds); }
+    public void getTextBounds(char[] t, int index, int count, Rect bounds) { getTextBounds(textArray(t, index, count), index, index + count, bounds); }
     public void getTextPath(String s, int start, int end, float x, float y, Path path) { path.addRect(x, y + ascent(), x + measureText(s, start, end), y + descent(), Path.Direction.CW); }
     public boolean hasGlyph(String s) { return true; }
     public float getUnderlinePosition() { return getTextSize() / 9; }

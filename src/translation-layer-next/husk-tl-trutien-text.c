@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "husk-tl-trutien-text.h"
+#include "husk-tl-text-color.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -13,6 +14,7 @@ void tl_trutien_text_set_package(const char *package_name)
 {
     atomic_store(&text_enabled, package_name && !strcmp(package_name, "vn.trutien.client"));
 }
+bool tl_trutien_text_active(void) { return atomic_load(&text_enabled); }
 
 void tl_trutien_text_probe(tl_lib *lib)
 {
@@ -52,8 +54,8 @@ void tl_trutien_text_probe(tl_lib *lib)
  * color token has six hex digits; four/five-digit fragments seen in labels
  * are also hidden. Short mathematical carets and all nonhex text survive.
  * An escaped caret immediately preceding a leaked token is hidden with it.
- * This acts only on the three verified native entry points, not on Java,
- * chat storage, network data, resource packages or source strings. */
+ * This acts at verified native draw/layout boundaries. The Java graphics
+ * bridge shares the same grammar; source strings and stored data stay intact. */
 #define TEXT_LIMIT 65536u
 #define TEXT_SCRATCH_SLOTS 64u
 typedef struct {
@@ -61,6 +63,11 @@ typedef struct {
     size_t capacity[TEXT_SCRATCH_SLOTS];
     uintptr_t links[TEXT_SCRATCH_SLOTS];
     bool changed[TEXT_SCRATCH_SLOTS];
+    void *stack_count[TEXT_SCRATCH_SLOTS];
+    int32_t original_count[TEXT_SCRATCH_SLOTS];
+    /* Verified const TAG_OP_IN_PARAMS layout: 0x70 bytes, wchar_t* at +8.
+     * AUI list-box rendering retains this clone until its wrapper returns. */
+    uint64_t params[TEXT_SCRATCH_SLOTS][14];
     unsigned depth;
 } text_scratch;
 static pthread_key_t text_key;
@@ -89,7 +96,7 @@ static text_scratch *text_scratch_get(void)
     return s;
 }
 extern void tl_entry_filter_return(void);
-void tl_trutien_text_enter(uint64_t *regs, uint64_t *saved_link, void (*filter)(uint64_t *regs))
+void tl_trutien_text_enter(uint64_t *regs, uint64_t *saved_link, tl_trutien_text_filter filter, void *guest_sp)
 {
     if (!atomic_load(&text_enabled)) return;
     text_scratch *s = text_scratch_get();
@@ -97,7 +104,8 @@ void tl_trutien_text_enter(uint64_t *regs, uint64_t *saved_link, void (*filter)(
     unsigned slot = s->depth++;
     s->links[slot] = (uintptr_t)*saved_link;
     s->changed[slot] = false;
-    filter(regs);
+    s->stack_count[slot] = NULL;
+    filter(regs, guest_sp);
     if (s->changed[slot])
         *saved_link = (uintptr_t)tl_entry_filter_return;
     else s->depth--;
@@ -107,20 +115,10 @@ uintptr_t tl_trutien_text_leave(void)
     text_scratch *s = pthread_getspecific(text_key);
     /* Reached only from a substituted LR after a successful enter. */
     if (!s || !s->depth) abort();
-    return s->links[--s->depth];
-}
-static bool color_hex(uint32_t c)
-{
-    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
-}
-static size_t color_control_end(const uint32_t *text, size_t pos, size_t len)
-{
-    if (text[pos] != '^') return pos;
-    size_t start = pos;
-    while (start < len && text[start] == '^') start++;
-    size_t end = start;
-    while (end < len && end - start < 6 && color_hex(text[end])) end++;
-    return end - start >= 4 ? end : pos;
+    unsigned slot = --s->depth;
+    if (s->stack_count[slot])
+        memcpy(s->stack_count[slot], &s->original_count[slot], sizeof(int32_t));
+    return s->links[slot];
 }
 static const uint32_t *text_without_color_controls(const uint32_t *text, int count, int *result_count)
 {
@@ -133,7 +131,7 @@ static const uint32_t *text_without_color_controls(const uint32_t *text, int cou
     /* An unbounded string needs a terminator within the inspection limit. */
     if (count < 0 && len == bound) return text;
     for (size_t i = 0; i < len; i++)
-        if (color_control_end(text, i, len) != i) { has_control = true; break; }
+        if (tl_text_color_end32(text, i, len) != i) { has_control = true; break; }
     if (!has_control) return text;
     text_scratch *s = text_scratch_get();
     if (!s) return text;
@@ -146,7 +144,7 @@ static const uint32_t *text_without_color_controls(const uint32_t *text, int cou
     uint32_t *out = s->buffers[slot];
     size_t at = 0, controls = 0;
     for (size_t i = 0; i < len;) {
-        size_t end = color_control_end(text, i, len);
+        size_t end = tl_text_color_end32(text, i, len);
         if (end != i) { i = end; controls++; }
         else out[at++] = text[i++];
     }
@@ -168,6 +166,45 @@ static void filter_text_args(uint64_t *regs, unsigned text_reg, int count_reg)
     regs[text_reg] = (uint64_t)(uintptr_t)next;
     if (count_reg >= 0) regs[count_reg] = (uint32_t)next_count;
 }
-void tl_trutien_font_filter(uint64_t *regs) { filter_text_args(regs, 3, 7); }
-void tl_trutien_extent_filter(uint64_t *regs) { filter_text_args(regs, 1, 2); }
-void tl_trutien_hud_filter(uint64_t *regs) { filter_text_args(regs, 1, -1); }
+void tl_trutien_font_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 3, 7); }
+void tl_trutien_extent_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, 2); }
+void tl_trutien_hud_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, -1); }
+void tl_trutien_plain_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 3, -1); }
+void tl_trutien_float_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 1, 5); }
+void tl_trutien_legacy_extent_filter(uint64_t *regs, void *guest_sp) { (void)guest_sp; filter_text_args(regs, 2, 3); }
+void tl_trutien_clipped_filter(uint64_t *regs, void *guest_sp)
+{
+    if (!tl_trutien_text_active() || !guest_sp) return;
+    text_scratch *s = text_scratch_get();
+    /* A stack edit requires an active return bridge to restore the caller's
+     * exact argument bytes after DrawTextW consumes the sanitized count. */
+    if (!s || !s->depth) return;
+    int32_t count;
+    memcpy(&count, guest_sp, sizeof(count));
+    int next_count = count;
+    const uint32_t *text = (const uint32_t *)(uintptr_t)regs[3];
+    const uint32_t *next = text_without_color_controls(text, count, &next_count);
+    if (next == text) return;
+    unsigned slot = s->depth - 1;
+    s->stack_count[slot] = guest_sp;
+    s->original_count[slot] = count;
+    memcpy(guest_sp, &next_count, sizeof(int32_t));
+    regs[3] = (uint64_t)(uintptr_t)next;
+}
+void tl_trutien_params_filter(uint64_t *regs, void *guest_sp)
+{
+    (void)guest_sp;
+    if (!tl_trutien_text_active() || !regs[0]) return;
+    text_scratch *s = text_scratch_get();
+    if (!s || !s->depth) return;
+    const void *params = (const void *)(uintptr_t)regs[0];
+    const uint32_t *text;
+    memcpy(&text, (const uint8_t *)params + 8, sizeof(text));
+    int count = -1;
+    const uint32_t *next = text_without_color_controls(text, count, &count);
+    if (next == text) return;
+    unsigned slot = s->depth - 1;
+    memcpy(s->params[slot], params, sizeof(s->params[slot]));
+    memcpy((uint8_t *)s->params[slot] + 8, &next, sizeof(next));
+    regs[0] = (uint64_t)(uintptr_t)s->params[slot];
+}
