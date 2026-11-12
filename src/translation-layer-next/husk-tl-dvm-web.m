@@ -106,7 +106,12 @@ static void set_screen_opaque(bool opaque)
     g_screen.layer.opaque = opaque;
     for (CALayer *l in g_screen.layer.sublayers) l.opaque = opaque;
 #else
-    (void)opaque;
+    if (!g_screen) return;
+    // The native WebViews live below the screen on macOS too. ANGLE's Metal
+    // layer must composite its clear pixels instead of covering those views.
+    g_screen.layer.opaque = opaque;
+    g_screen.layer.backgroundColor = (opaque ? NSColor.blackColor : NSColor.clearColor).CGColor;
+    for (CALayer *layer in g_screen.layer.sublayers) layer.opaque = opaque;
 #endif
 }
 
@@ -802,6 +807,26 @@ bool tl_web_hit(float x, float y)
 }
 
 bool tl_web_any_visible(void) { return atomic_load(&g_visible_webs) > 0; }
+
+/* Native pages are below the GPU screen. The compositor clears these rectangles
+ * after the app's GL scene and before Java's UI, whose controls still cover the
+ * page normally. A transparent Java WebView alone would expose a stale opaque
+ * app frame rather than the native page. Coordinates here are surface pixels. */
+int tl_web_visible_rects(float *rectangles, int capacity)
+{
+    if (!rectangles || capacity <= 0) return 0;
+    int count = 0;
+    pthread_mutex_lock(&g_hit_lock);
+    for (int i = 0; i < g_nhits && count < capacity; i++) {
+        const hit_rect *hit = &g_hits[i];
+        if (!hit->id || !hit->visible || hit->w <= 0 || hit->h <= 0) continue;
+        float *rect = rectangles + count++ * 4;
+        rect[0] = hit->x * g_scale; rect[1] = hit->y * g_scale;
+        rect[2] = hit->w * g_scale; rect[3] = hit->h * g_scale;
+    }
+    pthread_mutex_unlock(&g_hit_lock);
+    return count;
+}
 
 #if !TARGET_OS_IPHONE
 /* The harness: a run loop on the main thread for WebKit, taps as clicks, and the web views' pixels for screenshots. */

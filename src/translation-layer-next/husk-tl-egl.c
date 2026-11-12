@@ -72,6 +72,7 @@ static EGLint (*a_eglGetError)(void);
 static EGLBoolean (*a_eglWaitGL)(void);
 static EGLBoolean (*a_eglWaitNative)(EGLint);
 static EGLBoolean (*a_eglReleaseThread)(void);
+static void (*a_glFinish)(void);
 static void (*a_glReadPixels)(int, int, int, int, unsigned, unsigned, void *);
 static void (*a_glGetIntegerv)(unsigned, int *);
 static void (*a_glBindFramebuffer)(unsigned, unsigned);
@@ -99,6 +100,7 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     a_eglGetPlatformDisplayEXT = a_eglGetProcAddress ? a_eglGetProcAddress("eglGetPlatformDisplayEXT") : NULL;
     if (!a_eglGetPlatformDisplayEXT) { tl_log_line("egl: ANGLE has no eglGetPlatformDisplayEXT"); pthread_mutex_unlock(&E.lock); return false; }
     /* GLES functions this layer itself calls (frame capture) */
+    a_glFinish = a_eglGetProcAddress("glFinish");
     a_glReadPixels = a_eglGetProcAddress("glReadPixels");
     a_glGetIntegerv = a_eglGetProcAddress("glGetIntegerv");
     a_glBindFramebuffer = a_eglGetProcAddress("glBindFramebuffer");
@@ -106,7 +108,7 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     if (frame_dir) { snprintf(E.frame_dir, sizeof(E.frame_dir), "%s", frame_dir); E.latest_only = frame_every < 0; E.frame_every = frame_every != 0 ? (frame_every < 0 ? -frame_every : frame_every) : 60; }
     E.ready = true;
     pthread_mutex_unlock(&E.lock);
-    tl_log_line("egl: ANGLE loaded%s%s", frame_dir ? ", off-screen, frames to " : "", frame_dir ? frame_dir : "");
+    tl_log_line("egl: ANGLE loaded%s%s", frame_dir ? ", frame capture to " : "", frame_dir ? frame_dir : "");
     return true;
 }
 
@@ -298,6 +300,10 @@ static const uint8_t *read_back(EGLDisplay d, EGLSurface s, EGLint *pw, EGLint *
     a_glBindFramebuffer(0x8CA8 /* GL_READ_FRAMEBUFFER */, 0);
     a_glPixelStorei(0x0D05, 1);
     a_glReadPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, buf);
+    /* Complete this ANGLE/Metal frame before another context consumes it.
+     * The CPU bytes already exist; this boundary fixes stale final frames
+     * across the offscreen compositor handoff, rather than CPU read timing. */
+    if (a_glFinish) a_glFinish();
     a_glPixelStorei(0x0D05, old_pack);
     a_glBindFramebuffer(0x8CA8, (unsigned)old_fb);
     *pw = w; *ph = h;
@@ -328,7 +334,9 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
         tl_log_line("egl: window %dx%d -> surface %p, composited under the app's views", pb[1], pb[3], s);
         return s;
     }
-    if (E.frame_dir[0] || g_offscreen_windows) {
+    /* Capture can accompany a real host window. The headless harness has no
+     * native layer; a desktop App must still present when capture is enabled. */
+    if ((E.frame_dir[0] && !tl_nwindow_native(win)) || g_offscreen_windows) {
         EGLint pb[] = { EGL_WIDTH, tl_nwindow_width(win), EGL_HEIGHT, tl_nwindow_height(win), EGL_NONE };
         EGLSurface s = a_eglCreatePbufferSurface(d, cfg, pb);
         if (!s) {
@@ -450,7 +458,7 @@ static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
         fprintf(stderr, "egl: calls so far, by function: %s\n", hist);
     }
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
-    return E.frame_dir[0] ? EGL_TRUE : a_eglSwapBuffers(d, s);
+    return a_eglSwapBuffers(d, s);
 }
 
 /* The damage-region swaps (Flutter's engine, HWUI): the same as a whole swap here -- through the wrapper, so a frame reaches the

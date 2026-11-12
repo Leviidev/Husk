@@ -54,6 +54,7 @@ public class SurfaceView extends View {
     public int[] huskSurfaceSize() { int w = mSurfaceW > 0 ? mSurfaceW : getWidth(), h = mSurfaceH > 0 ? mSurfaceH : getHeight(); return new int[] { w > 0 ? w : husk.Native.screenWidth(), h > 0 ? h : husk.Native.screenHeight() }; }
     /** EGL draws on this view: it keeps its area clear for the frame under the window. */
     public void huskSetGL(boolean gl) { mGL = gl; postInvalidate(); }
+    @Override protected boolean huskHasNativeContent() { return mGL || !mHasFrame; }
     public void setZOrderOnTop(boolean onTop) { mZOnTop = onTop; }
     public void setZOrderMediaOverlay(boolean o) {}
     public void setSecure(boolean s) {}
