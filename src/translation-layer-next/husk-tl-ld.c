@@ -2515,7 +2515,18 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
          * original is mapped read-only. Build and import must agree on which pages were copied (n_mixed in the manifest). */
         if (g_aot.on || g_aot_dir) {
             for (size_t p = 0; p < npages; p++) {
-                if (flags[p] & TL_PAGE_X) continue;
+                /* A merged R-X PT_LOAD may also contain .eh_frame, LSDA and read-only
+                 * data (MapKit). Those bytes must share the data copy's relocation
+                 * view. Only pages covered entirely by an executable section can
+                 * omit the copy; a boundary page can contain both code and metadata. */
+                bool all_code = false;
+                if (flags[p] & TL_PAGE_X) {
+                    uint64_t lo = base_vaddr + p * PAGE, hi = lo + PAGE;
+                    for (int r = 0; r < ncode; r++) {
+                        if (code[r].vaddr <= lo && code[r].size >= hi - code[r].vaddr) { all_code = true; break; }
+                    }
+                }
+                if (all_code) continue;
                 if (!mix[p]) { mix[p] = 1; n_mixed++; }
             }
         }
