@@ -12,9 +12,7 @@ import java.util.HashMap;
 
 /** The app's base context: one for the process, as ContextImpl is on Android (activities and the application wrap it). */
 public final class ContextImpl extends Context {
-    private static ContextImpl sApp;
-    private static Context sApplication;
-    private static final HashMap<String, Object> sServices = new HashMap<>();
+    private final Processes.State mProcess = Processes.current();
     private static final HashMap<String, SharedPreferences> sPrefs = new HashMap<>();
     private static AssetManager sAssets;
     private static Resources sResources;
@@ -29,16 +27,17 @@ public final class ContextImpl extends Context {
 
     private ContextImpl(Resources r) { mResources = r; }
     public static synchronized ContextImpl app() {
-        if (sApp == null) {
+        Processes.State process = Processes.current();
+        if (process.context == null) {
             if (sAssets == null) sAssets = new AssetManager();
             if (sResources == null) sResources = new Resources(sAssets);
-            sApp = new ContextImpl(sResources);
+            process.context = new ContextImpl(sResources);
         }
-        return sApp;
+        return process.context;
     }
     /** A base context of its own (an activity's: its own theme), sharing the app's resources. */
     public static ContextImpl forActivity() { app(); return new ContextImpl(sResources); }
-    public static void setApplication(Context a) { sApplication = a; }
+    public static void setApplication(Context a) { if (a instanceof android.app.Application) Processes.current().application = (android.app.Application)a; }
     /** The theme an activity or the app gets when the manifest names none: what the target SDK selects on Android. */
     public static int defaultTheme() {
         Manifest.read();
@@ -55,7 +54,7 @@ public final class ContextImpl extends Context {
     @Override public PackageManager getPackageManager() { return PackageManager.self(); }
     @Override public ContentResolver getContentResolver() { return ContentResolver.self(); }
     @Override public Looper getMainLooper() { return Looper.getMainLooper(); }
-    @Override public Context getApplicationContext() { return sApplication != null ? sApplication : this; }
+    @Override public Context getApplicationContext() { return mProcess.application != null ? mProcess.application : this; }
     @Override public void setTheme(int resid) { if (mThemeId != resid) { mThemeId = resid; mTheme = null; } }
     @Override public Resources.Theme getTheme() {
         if (mTheme == null) {
@@ -65,7 +64,7 @@ public final class ContextImpl extends Context {
         }
         return mTheme;
     }
-    @Override public ClassLoader getClassLoader() { return mClassLoader != null ? mClassLoader : AppRunner.classLoader(); }
+    @Override public ClassLoader getClassLoader() { return mClassLoader != null ? mClassLoader : mPackageInfo.getClassLoader(); }
     @Override public String getPackageName() { return Native.packageName(); }
     @Override public ApplicationInfo getApplicationInfo() { return ApplicationInfo.self(); }
     @Override public String getPackageResourcePath() { return getApplicationInfo().sourceDir; }
@@ -82,9 +81,10 @@ public final class ContextImpl extends Context {
     }
     @Override public SharedPreferences getSharedPreferences(String name, int mode) {
         if (name == null) name = "null";
+        String cacheKey = Native.dataDir() + "/" + name;
         synchronized (sPrefs) {
-            SharedPreferences p = sPrefs.get(name);
-            if (p == null) { p = new android.content.HuskSharedPreferences(new File(dir("shared_prefs"), name + ".xml")); sPrefs.put(name, p); }
+            SharedPreferences p = sPrefs.get(cacheKey);
+            if (p == null) { p = new android.content.HuskSharedPreferences(new File(dir("shared_prefs"), name + ".xml")); sPrefs.put(cacheKey, p); }
             return p;
         }
     }
@@ -113,6 +113,7 @@ public final class ContextImpl extends Context {
     @Override public void unregisterComponentCallbacks(ComponentCallbacks c) { mCallbacks.remove(c); }
 
     @Override public Object getSystemService(String name) {
+        java.util.Map<String,Object> sServices = mProcess.services;
         if (name == null) return null;
         if (LAYOUT_INFLATER_SERVICE.equals(name)) {
             synchronized (sServices) { Object s = sServices.get(name); if (s == null) { s = new PhoneLayoutInflater(getApplicationContext() != null ? getApplicationContext() : this); sServices.put(name, s); } return s; }

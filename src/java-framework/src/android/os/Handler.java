@@ -4,6 +4,7 @@ public class Handler {
     public interface Callback { boolean handleMessage(Message msg); }
     final Looper mLooper;
     final Callback mCallback;
+    private final husk.Processes.State mProcess = husk.Processes.current();
     public Handler() { this(Looper.myLooper() != null ? Looper.myLooper() : Looper.getMainLooper(), null); }
     public Handler(Callback cb) { this(Looper.myLooper() != null ? Looper.myLooper() : Looper.getMainLooper(), cb); }
     public Handler(Looper l) { this(l, null); }
@@ -12,6 +13,9 @@ public class Handler {
     public final Looper getLooper() { return mLooper; }
     public void handleMessage(Message msg) {}
     public void dispatchMessage(Message msg) {
+        try (husk.Processes.Scope ignored = husk.Processes.enter(mProcess)) { dispatchInProcess(msg); }
+    }
+    private void dispatchInProcess(Message msg) {
         if (msg.callback != null) { msg.callback.run(); return; }
         if (mCallback != null && mCallback.handleMessage(msg)) return;
         handleMessage(msg);

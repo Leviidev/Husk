@@ -39,12 +39,14 @@ public final class AppRunner {
         sFactory = android.app.AppComponentFactory.DEFAULT;
         Looper.setInputSink(null);
         Manifest.reset();
+        Processes.reset();
     }
 
     private static ClassLoader sLoader;
     /** The app's class loader, as Android gives every app: a PathClassLoader over its APK and splits. Its classes say they come from
      *  it (Class.getClassLoader), and resources in the APKs are found through it. */
     public static ClassLoader classLoader() {
+        if (Processes.current() != Processes.main() && Processes.current().loader != null) return Processes.current().loader;
         // a packer's stub may have put a loader over the app's real code into LoadedApk.mClassLoader: components come from it
         ClassLoader swapped = android.app.LoadedApk.self().getClassLoader();
         if (swapped != baseClassLoader() && swapped != sAdopted) {
@@ -57,7 +59,8 @@ public final class AppRunner {
     }
     private static ClassLoader sAdopted;
     /** The loader the app was launched with (its APK and splits, or what its component factory gave). */
-    public static ClassLoader baseClassLoader() { return sLoader != null ? sLoader : AppRunner.class.getClassLoader(); }
+    public static ClassLoader mainClassLoader() { return sLoader != null ? sLoader : AppRunner.class.getClassLoader(); }
+    public static ClassLoader baseClassLoader() { return Processes.current().loader != null ? Processes.current().loader : mainClassLoader(); }
     private static void installClassLoader() {
         try {
             StringBuilder path = new StringBuilder(Native.apkPath());
@@ -104,7 +107,9 @@ public final class AppRunner {
            reports the exception and lets the thread end, as Husk did before. */
         if (Thread.getDefaultUncaughtExceptionHandler() == null) Thread.setDefaultUncaughtExceptionHandler(new UncaughtLogger());
         Manifest.read();
+        Processes.configureMain();
         installClassLoader();
+        Processes.main().loader = sLoader;
         installComponentFactory();
         android.app.LoadedApk.self().huskSetClassLoader(baseClassLoader());
         ContextImpl base = ContextImpl.app();
@@ -116,6 +121,7 @@ public final class AppRunner {
         }
         catch (ClassNotFoundException e) { android.util.Log.w("Husk", "no application class " + appCls); app = new Application(); }
         sApp = app;
+        Processes.main().application = app;
         android.app.ActivityThread.huskBind(app);
         Application.huskSet(app);
         ContextImpl.setApplication(app);
@@ -140,7 +146,23 @@ public final class AppRunner {
         launch(activityClass, main, null, -1, launcher);
         Looper.loop();
     }
-    public static Application application() { Application a = android.app.ActivityThread.currentActivityThread().huskInitialApplication(); return a != null ? a : sApp; }
+    public static Application application() { return Processes.current().application != null ? Processes.current().application : sApp; }
+    /** Start a non-default Android process with its own APK classes and Application. */
+    static void startProcess(Processes.State process) throws Exception {
+        String cls = Manifest.applicationClass;
+        android.app.AppComponentFactory factory = android.app.AppComponentFactory.DEFAULT;
+        String f = Manifest.appComponentFactory;
+        if (f != null && !f.isEmpty()) try { factory = (android.app.AppComponentFactory)Class.forName(f, true, process.loader).newInstance(); }
+        catch (ClassNotFoundException e) { android.util.Log.w("Husk", "process component factory " + f + ": " + e); }
+        process.factory = factory;
+        Application app = cls == null ? new Application() : factory.instantiateApplication(process.loader, cls);
+        process.application = app;
+        android.app.ActivityThread.huskBind(app);
+        android.app.LoadedApk.self().huskSetClassLoader(process.loader);
+        app.huskAttach(ContextImpl.app());
+        installProviders(app);
+        app.onCreate();
+    }
     /** LoadedApk.makeApplication: the app's Application class (or the plain one) made through the loader and attached, not created
      *  (whoever asked calls onCreate, as Instrumentation.callApplicationOnCreate does). */
     public static Application makeApplication(String cls, ClassLoader loader) {
@@ -171,14 +193,17 @@ public final class AppRunner {
         java.util.Collections.sort(ordered, (x, y) -> Integer.compare(y.initOrder, x.initOrder));
         for (Manifest.Component p : ordered) {
             if (!p.enabled) continue;
+            // Each process starts only its own providers, before its own Application.onCreate.
+            if (!Manifest.processName(p).equals(Processes.current().name)) continue;
             try {
-                ContentProvider cp = usesFactory() ? sFactory.instantiateProvider(classLoader(), p.name)
-                        : (ContentProvider) Class.forName(p.name, true, classLoader()).newInstance();
+                android.app.AppComponentFactory factory = Processes.current() == Processes.main() ? sFactory : Processes.current().factory;
+                ContentProvider cp = factory.instantiateProvider(classLoader(), p.name);
                 ProviderInfo info = new ProviderInfo();
-                info.name = p.name; info.authority = p.authorities; info.packageName = Native.packageName(); info.exported = p.exported; info.metaData = p.metaData; info.grantUriPermissions = p.grantUriPermissions;
+                info.name = p.name; info.authority = Manifest.authorities(p); info.packageName = Native.packageName(); info.exported = p.exported; info.metaData = p.metaData; info.grantUriPermissions = p.grantUriPermissions;
                 info.applicationInfo = app.getApplicationInfo();
+                info.processName = Processes.current().name;
                 cp.attachInfo(app, info);
-                ContentResolver.register(p.authorities, cp);
+                ContentResolver.register(info.authority, Processes.transport(cp, Processes.current()));
             } catch (Throwable t) {
                 android.util.Log.w("Husk", "content provider " + p.name + " did not start: " + t);
             }
@@ -193,19 +218,29 @@ public final class AppRunner {
         return Native.packageName();
     }
     static Activity launch(String cls, Intent intent, Activity caller, int request, Manifest.Component info) throws Exception {
+        Processes.State process = Processes.component(info);
+        process.start();
+        try (Processes.Scope ignored = Processes.enter(process)) {
+            Intent received = new Intent(intent);
+            if (intent.getExtras() != null) received.replaceExtras((Bundle)Processes.copy(intent.getExtras(), classLoader()));
+            return launchInProcess(cls, received, caller, request, info);
+        }
+    }
+    private static Activity launchInProcess(String cls, Intent intent, Activity caller, int request, Manifest.Component info) throws Exception {
         android.util.Log.d("Husk", "launch " + cls);
         Activity prev = top();
-        Activity a = usesFactory() ? sFactory.instantiateActivity(classLoader(), cls, intent) : (Activity) Class.forName(cls, true, classLoader()).newInstance();
+        android.app.AppComponentFactory factory = Processes.current() == Processes.main() ? sFactory : Processes.current().factory;
+        Activity a = factory.instantiateActivity(classLoader(), cls, intent);
         ContextImpl base = ContextImpl.forActivity();
-        a.huskAttach(base, sApp, intent, info, caller, request);
-        if (prev != null && prev.isResumedHusk()) prev.huskPause();
+        a.huskAttach(base, application(), intent, info, caller, request);
+        if (prev != null && prev.isResumedHusk()) try (Processes.Scope ignored = Processes.enter(Processes.owner(prev))) { prev.huskPause(); }
         sStack.add(a);
         a.huskCreate(null);
         if (!a.isFinishing()) { a.huskStart(); a.huskResume(); }
         if (prev != null && !a.isFinishing()) {
             final Activity p = prev;
             // the one below stops once the new one covers it (a translucent or floating window leaves it visible)
-            if (!a.getWindow().isFloating()) p.huskStop();
+            if (!a.getWindow().isFloating()) try (Processes.Scope ignored = Processes.enter(Processes.owner(p))) { p.huskStop(); }
         }
         return a;
     }
@@ -285,6 +320,9 @@ public final class AppRunner {
     /** Activity.finish: the one below comes back (with the result when it asked for one). */
     public static void finish(Activity a) { sHandler.post(() -> finishNow(a, true)); }
     private static void finishNow(Activity a, boolean resumeBelow) {
+        try (Processes.Scope ignored = Processes.enter(Processes.owner(a))) { finishInProcess(a, resumeBelow); }
+    }
+    private static void finishInProcess(Activity a, boolean resumeBelow) {
         android.util.Log.d("Husk", "finish " + a.getClass().getName());
         int idx = sStack.indexOf(a);
         if (idx < 0) return;
@@ -292,9 +330,13 @@ public final class AppRunner {
         if (a.isResumedHusk()) a.huskPause();
         sStack.remove(idx);
         Activity below = top();
-        if (wasTop && below != null && resumeBelow) {
+        if (wasTop && below != null && resumeBelow) try (Processes.Scope ignored = Processes.enter(Processes.owner(below))) {
             Activity caller = a.huskCaller();
-            if (caller != null && a.huskRequestCode() >= 0 && caller == below) below.huskActivityResult(a.huskRequestCode(), a.huskResultCode(), a.huskResultData());
+            if (caller != null && a.huskRequestCode() >= 0 && caller == below) {
+                Intent result = a.huskResultData();
+                if (result != null) { result = new Intent(result); if (result.getExtras() != null) result.replaceExtras((Bundle)Processes.copy(result.getExtras(), classLoader())); }
+                below.huskActivityResult(a.huskRequestCode(), a.huskResultCode(), result);
+            }
             if (!below.isResumedHusk()) {
                 if (!below.huskVisible()) { below.huskRestart(); below.huskStart(); }
                 below.huskResume();
@@ -331,6 +373,9 @@ public final class AppRunner {
     // ---- input from Husk
     /** events: [n, then n x (phase, id, xbits, ybits)] -- phase 0 down, 1 move, 2 up, 3 cancel; 4 key (id = code, x = down); 5 back; 6 host pause (id 1) / resume (0); 7 text waiting; 8 insets changed; 9 web view events waiting */
     private static void deliver(int[] ev) {
+        try (Processes.Scope ignored = Processes.enter(top() != null ? Processes.owner(top()) : Processes.main())) { deliverInProcess(ev); }
+    }
+    private static void deliverInProcess(int[] ev) {
         int n = ev[0];
         for (int k = 0; k < n; k++) {
             int phase = ev[1 + 4 * k], id = ev[2 + 4 * k];
