@@ -18,11 +18,11 @@ public final class Manifest {
     public static final class Filter {
         public final ArrayList<String> actions = new ArrayList<>(), categories = new ArrayList<>(), schemes = new ArrayList<>(), mimeTypes = new ArrayList<>(), hosts = new ArrayList<>();
     }
-    public static String packageName, applicationClass, versionName, appComponentFactory;
+    public static String packageName, applicationClass, versionName, appComponentFactory, applicationProcess;
     /** android:installLocation (-1 when the manifest does not say; some apps check theirs, #167). */
     public static int installLocation = -1;
     public static int versionCode, minSdk = 21, targetSdk = 34, appTheme, appLabel, appIcon, appFlags;
-    public static boolean debuggable, largeHeap, hardwareAccelerated = true, extractNativeLibs = true;
+    public static boolean debuggable, largeHeap, hardwareAccelerated = true, extractNativeLibs = true, allowBackup = true;
     public static Bundle appMetaData = new Bundle();
     public static final ArrayList<Component> activities = new ArrayList<>(), services = new ArrayList<>(), receivers = new ArrayList<>(), providers = new ArrayList<>();
     public static final ArrayList<String> permissions = new ArrayList<>(), libraries = new ArrayList<>();
@@ -38,9 +38,9 @@ public final class Manifest {
     /** Another APK is about to start in this process: forget this one. */
     public static synchronized void reset() {
         sRead = false;
-        packageName = applicationClass = versionName = appComponentFactory = null;
+        packageName = applicationClass = versionName = appComponentFactory = applicationProcess = null;
         installLocation = -1; versionCode = 0; minSdk = 21; targetSdk = 34; appTheme = appLabel = appIcon = appFlags = 0;
-        debuggable = largeHeap = false; hardwareAccelerated = extractNativeLibs = true;
+        debuggable = largeHeap = false; hardwareAccelerated = extractNativeLibs = allowBackup = true;
         appMetaData = new Bundle();
         activities.clear(); services.clear(); receivers.clear(); providers.clear();
         permissions.clear(); libraries.clear();
@@ -81,6 +81,7 @@ public final class Manifest {
                 case "uses-library": libraries.add(p.getAttributeValue(NS, "name")); break;
                 case "application":
                     inApp = true;
+                    applicationProcess = p.getAttributeValue(NS, "process");
                     applicationClass = full(p.getAttributeValue(NS, "name"));
                     appTheme = p.getAttributeResourceValue(NS, "theme", 0);
                     appLabel = p.getAttributeResourceValue(NS, "label", 0);
@@ -88,6 +89,7 @@ public final class Manifest {
                     debuggable = p.getAttributeBooleanValue(NS, "debuggable", false);
                     largeHeap = p.getAttributeBooleanValue(NS, "largeHeap", false);
                     extractNativeLibs = p.getAttributeBooleanValue(NS, "extractNativeLibs", true);
+                    allowBackup = p.getAttributeBooleanValue(NS, "allowBackup", true);
                     hardwareAccelerated = p.getAttributeBooleanValue(NS, "hardwareAccelerated", true);
                     appComponentFactory = full(p.getAttributeValue(NS, "appComponentFactory"));
                     break;
@@ -111,7 +113,7 @@ public final class Manifest {
                     cur.windowSoftInputMode = p.getAttributeIntValue(NS, "windowSoftInputMode", 0);
                     cur.exported = p.getAttributeBooleanValue(NS, "exported", false);
                     cur.enabled = p.getAttributeBooleanValue(NS, "enabled", true);
-                    cur.authorities = p.getAttributeValue(NS, "authorities");
+                    cur.authorities = attrOrRef(p, "authorities");
                     cur.grantUriPermissions = p.getAttributeBooleanValue(NS, "grantUriPermissions", false);
                     cur.process = p.getAttributeValue(NS, "process");
                     cur.permission = p.getAttributeValue(NS, "permission");
@@ -185,6 +187,14 @@ public final class Manifest {
         if (ref != 0) return "@" + ref;
         return p.getAttributeValue(NS, name);
     }
+    public static String processName(Component c) {
+        String p = val(c != null && c.process != null && !c.process.isEmpty() ? c.process : applicationProcess);
+        if (p == null || p.isEmpty()) return Native.packageName();
+        if (p.startsWith("@")) throw new IllegalStateException("Unresolved process name: " + p);
+        return p.startsWith(":") ? Native.packageName() + p : p;
+    }
+    /** Authorities may name a string resource, just like process names and intent data attributes. */
+    public static String authorities(Component c) { return val(c.authorities); }
     private static String val(String v) {
         if (v == null || !v.startsWith("@")) return v;
         try { return husk.ContextImpl.app().getResources().getString(Integer.parseInt(v.substring(1))); } catch (Throwable t) { return v; }

@@ -965,7 +965,8 @@ NAT(Class_getNameNative)
 {
     (void)a;
     char buf[512]; dotted(self->klass.jc->name, buf, sizeof(buf));
-    char *at = strchr(buf, '@'); if (at) *at = 0;              /* a class in a run-time loader's own namespace (name@n) */
+    char *at = strchr(buf, '@');
+    if (at) { char *semi = strchr(at, ';'); if (semi) memmove(at, semi, strlen(semi) + 1); else *at = 0; }
     *ret = L(dvm_new_string_utf8(buf));
     return true;
 }
@@ -976,7 +977,7 @@ NAT(Class_classForName)
     if (!n) return npe("className");
     char jn[512]; snprintf(jn, sizeof(jn), "%s", n);
     for (char *p = jn; *p; p++) if (*p == '.') *p = '/';
-    tl_jclass *jc = dvm_class_named(jn);
+    tl_jclass *jc = dvm_class_for_loader(jn, a[2].l);
     if (!jc && (!strncmp(jn, "android/", 8) || !strncmp(jn, "java/", 5))) jc = tl_jni_find_declared(jn);
     if (!jc) return dvm_throw("java/lang/ClassNotFoundException", "%s", n);
     if (a[1].z && dvm_class_of(jc) && !dvm_ensure_init(dvm_class_of(jc))) return false;
@@ -1841,7 +1842,7 @@ NAT(VMCL_findLoaded)
     if (!n) { *ret = L(NULL); return true; }
     char jn[512]; snprintf(jn, sizeof(jn), "%s", n);
     for (char *p = jn; *p; p++) if (*p == '.') *p = '/';
-    tl_jclass *jc = dvm_class_named(jn);
+    tl_jclass *jc = dvm_class_for_loader(jn, a[0].l);
     *ret = L(jc ? jc->mirror : NULL);
     return true;
 }

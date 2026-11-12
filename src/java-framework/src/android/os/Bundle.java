@@ -19,6 +19,11 @@ public final class Bundle extends BaseBundle implements Cloneable, Parcelable {
     public Bundle deepCopy() { return new Bundle(this); }
     public void setClassLoader(ClassLoader l) { mLoader = l; }
     public ClassLoader getClassLoader() { return mLoader; }
+    public Bundle huskCopy(ClassLoader loader) {
+        Bundle b = new Bundle(loader);
+        for (java.util.Map.Entry<String,Object> e : map.entrySet()) b.map.put(e.getKey(), husk.Processes.copy(e.getValue(), loader));
+        return b;
+    }
     public boolean hasFileDescriptors() { return false; }
     public void putAll(Bundle b) { if (b != null) map.putAll(b.map); }
     public void putByte(String k, byte v) { map.put(k, v); }

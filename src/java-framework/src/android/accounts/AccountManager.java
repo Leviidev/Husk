@@ -1,26 +1,63 @@
 package android.accounts;
 public class AccountManager {
+    private static final java.util.Map<OnAccountsUpdateListener,Object[]> LISTENERS = new java.util.HashMap<>();
+    public static void huskReset() { synchronized (LISTENERS) { LISTENERS.clear(); } }
+    public static void huskChanged() {
+        java.util.Map<OnAccountsUpdateListener,Object[]> listeners;
+        synchronized (LISTENERS) { listeners = new java.util.HashMap<>(LISTENERS); }
+        for (java.util.Map.Entry<OnAccountsUpdateListener,Object[]> e : listeners.entrySet()) {
+            Account[] all = husk.Accounts.all(null); String[] types = (String[])e.getValue()[1];
+            java.util.ArrayList<Account> selected = new java.util.ArrayList<>();
+            for (Account a : all) if (types == null || java.util.Arrays.asList(types).contains(a.type)) selected.add(a);
+            Account[] accounts = selected.toArray(new Account[0]);
+            ((android.os.Handler)e.getValue()[0]).post(() -> e.getKey().onAccountsUpdated(accounts));
+        }
+    }
     public static AccountManager get(android.content.Context c) { return new AccountManager(); }
-    public Account[] getAccounts() { return new Account[0]; } public Account[] getAccountsByType(String t) { return new Account[0]; }
-    public String getUserData(Account a, String k) { return null; } public String peekAuthToken(Account a, String t) { return null; }
+    public Account[] getAccounts() { return husk.Accounts.all(null); } public Account[] getAccountsByType(String t) { return husk.Accounts.all(t); }
+    public String getUserData(Account a, String k) { return husk.Accounts.get(a, "user/" + k); } public String peekAuthToken(Account a, String t) { return husk.Accounts.get(a, "token/" + t); }
 
-    /* No accounts live on this phone: lookups answer empty, and what needs an account fails the way Android's does without one. */
-    public Account[] getAccountsAsUser(int u) { return new Account[0]; }
-    public Account[] getAccountsByTypeAsUser(String t, android.os.UserHandle u) { return new Account[0]; }
-    public Account[] getAccountsByTypeForPackage(String t, String pkg) { return new Account[0]; }
-    public Account[] getAccountsForPackage(String pkg, int uid) { return new Account[0]; }
-    public AuthenticatorDescription[] getAuthenticatorTypes() { return new AuthenticatorDescription[0]; }
-    public AuthenticatorDescription[] getAuthenticatorTypesAsUser(int u) { return new AuthenticatorDescription[0]; }
-    public String blockingGetAuthToken(Account a, String t, boolean notify) throws OperationCanceledException, java.io.IOException, AuthenticatorException { throw new AuthenticatorException("no such account"); }
-    public AccountManagerFuture getAccountsByTypeAndFeatures(String type, String[] features, AccountManagerCallback cb, android.os.Handler h) { return done(new Account[0], null, cb, h); }
+    /* Guest-package accounts only: the host's Apple accounts and other imported APKs are never visible here. */
+    public Account[] getAccountsAsUser(int u) { return getAccounts(); }
+    public Account[] getAccountsByTypeAsUser(String t, android.os.UserHandle u) { return getAccountsByType(t); }
+    public Account[] getAccountsByTypeForPackage(String t, String pkg) { return husk.Native.packageName().equals(pkg) ? getAccountsByType(t) : new Account[0]; }
+    public Account[] getAccountsForPackage(String pkg, int uid) { return husk.Native.packageName().equals(pkg) ? getAccounts() : new Account[0]; }
+    public AuthenticatorDescription[] getAuthenticatorTypes() {
+        husk.Manifest.read();
+        java.util.ArrayList<AuthenticatorDescription> out = new java.util.ArrayList<>();
+        android.content.res.Resources resources = husk.ContextImpl.app().getResources();
+        String ns = "http://schemas.android.com/apk/res/android";
+        for (husk.Manifest.Component service : husk.Manifest.services) {
+            if (!service.enabled || service.metaData == null) continue;
+            boolean authenticator = false;
+            for (husk.Manifest.Filter filter : service.filters) if (filter.actions.contains(ACTION_AUTHENTICATOR_INTENT)) authenticator = true;
+            int xml = service.metaData.getInt(AUTHENTICATOR_META_DATA_NAME, 0);
+            if (!authenticator || xml == 0) continue;
+            try (android.content.res.XmlResourceParser parser = resources.getXml(xml)) {
+                while (parser.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) if (parser.getEventType() == org.xmlpull.v1.XmlPullParser.START_TAG && "account-authenticator".equals(parser.getName())) {
+                    int ref = parser.getAttributeResourceValue(ns, "accountType", 0);
+                    String type = ref == 0 ? parser.getAttributeValue(ns, "accountType") : resources.getString(ref);
+                    if (type != null && !type.isEmpty()) out.add(new AuthenticatorDescription(type, husk.Native.packageName(),
+                        parser.getAttributeResourceValue(ns, "label", 0), parser.getAttributeResourceValue(ns, "icon", 0),
+                        parser.getAttributeResourceValue(ns, "smallIcon", 0), parser.getAttributeResourceValue(ns, "accountPreferences", 0),
+                        parser.getAttributeBooleanValue(ns, "customTokens", false)));
+                    break;
+                }
+            } catch (Exception e) { android.util.Log.w("AccountManager", "authenticator " + service.name + ": " + e); }
+        }
+        return out.toArray(new AuthenticatorDescription[0]);
+    }
+    public AuthenticatorDescription[] getAuthenticatorTypesAsUser(int u) { return getAuthenticatorTypes(); }
+    public String blockingGetAuthToken(Account a, String t, boolean notify) throws OperationCanceledException, java.io.IOException, AuthenticatorException { String token = peekAuthToken(a, t); if (token != null) return token; throw new AuthenticatorException("no stored auth token"); }
+    public AccountManagerFuture getAccountsByTypeAndFeatures(String type, String[] features, AccountManagerCallback cb, android.os.Handler h) { return done(features == null || features.length == 0 ? getAccountsByType(type) : new Account[0], null, cb, h); }
     public AccountManagerFuture hasFeatures(Account a, String[] features, AccountManagerCallback cb, android.os.Handler h) { return done(Boolean.FALSE, null, cb, h); }
     public AccountManagerFuture getAuthToken(Account a, String t, android.os.Bundle o, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no such account"), cb, h); }
     public AccountManagerFuture getAuthToken(Account a, String t, android.os.Bundle o, boolean notify, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no such account"), cb, h); }
     public AccountManagerFuture getAuthToken(Account a, String t, boolean notify, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no such account"), cb, h); }
     public AccountManagerFuture getAuthTokenByFeatures(String type, String t, String[] f, android.app.Activity act, android.os.Bundle ao, android.os.Bundle o, AccountManagerCallback cb, android.os.Handler h) { return done(null, new OperationCanceledException("no accounts"), cb, h); }
     public AccountManagerFuture addAccount(String type, String t, String[] f, android.os.Bundle o, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("accounts cannot be added here"), cb, h); }
-    public AccountManagerFuture removeAccount(Account a, AccountManagerCallback cb, android.os.Handler h) { return done(Boolean.FALSE, null, cb, h); }
-    public AccountManagerFuture removeAccount(Account a, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { android.os.Bundle b = new android.os.Bundle(); b.putBoolean("booleanResult", false); return done(b, null, cb, h); }
+    public AccountManagerFuture removeAccount(Account a, AccountManagerCallback cb, android.os.Handler h) { return done(removeAccountExplicitly(a), null, cb, h); }
+    public AccountManagerFuture removeAccount(Account a, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { android.os.Bundle b = new android.os.Bundle(); b.putBoolean("booleanResult", removeAccountExplicitly(a)); return done(b, null, cb, h); }
     public AccountManagerFuture confirmCredentials(Account a, android.os.Bundle o, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no such account"), cb, h); }
     public AccountManagerFuture updateCredentials(Account a, String t, android.os.Bundle o, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no such account"), cb, h); }
     public AccountManagerFuture editProperties(String type, android.app.Activity act, AccountManagerCallback cb, android.os.Handler h) { return done(null, new AuthenticatorException("no authenticator"), cb, h); }
@@ -118,12 +155,15 @@ public class AccountManager {
     }
     public static android.os.Bundle sanitizeResult(android.os.Bundle p0) { return null; }
     public android.accounts.AccountManagerFuture addAccountAsUser(java.lang.String p0, java.lang.String p1, java.lang.String[] p2, android.os.Bundle p3, android.app.Activity p4, android.accounts.AccountManagerCallback p5, android.os.Handler p6, android.os.UserHandle p7) { return null; }
-    public boolean addAccountExplicitly(android.accounts.Account p0, java.lang.String p1, android.os.Bundle p2) { return false; }
-    public boolean addAccountExplicitly(android.accounts.Account p0, java.lang.String p1, android.os.Bundle p2, java.util.Map p3) { return false; }
-    public void addOnAccountsUpdatedListener(android.accounts.OnAccountsUpdateListener p0, android.os.Handler p1, boolean p2) {}
-    public void addOnAccountsUpdatedListener(android.accounts.OnAccountsUpdateListener p0, android.os.Handler p1, boolean p2, java.lang.String[] p3) {}
+    public boolean addAccountExplicitly(Account a, String password, android.os.Bundle extras) { return husk.Accounts.add(a, password, extras); }
+    public boolean addAccountExplicitly(Account a, String password, android.os.Bundle extras, java.util.Map visibility) { return addAccountExplicitly(a, password, extras); }
+    public void addOnAccountsUpdatedListener(OnAccountsUpdateListener listener, android.os.Handler handler, boolean update) { addOnAccountsUpdatedListener(listener, handler, update, null); }
+    public void addOnAccountsUpdatedListener(OnAccountsUpdateListener listener, android.os.Handler handler, boolean update, String[] types) {
+        synchronized (LISTENERS) { LISTENERS.put(listener, new Object[] { handler != null ? handler : new android.os.Handler(android.os.Looper.getMainLooper()), types }); }
+        if (update) huskChanged();
+    }
     public void addSharedAccountsFromParentUser(android.os.UserHandle p0, android.os.UserHandle p1) {}
-    public void clearPassword(android.accounts.Account p0) {}
+    public void clearPassword(Account a) { setPassword(a, null); }
     public android.accounts.AccountManagerFuture confirmCredentialsAsUser(android.accounts.Account p0, android.os.Bundle p1, android.app.Activity p2, android.accounts.AccountManagerCallback p3, android.os.Handler p4, android.os.UserHandle p5) { return null; }
     public android.accounts.AccountManagerFuture copyAccountToUser(android.accounts.Account p0, android.os.UserHandle p1, android.os.UserHandle p2, android.os.Handler p3, android.accounts.AccountManagerCallback p4) { return null; }
     public android.content.IntentSender createRequestAccountAccessIntentSenderAsUser(android.accounts.Account p0, java.lang.String p1, android.os.UserHandle p2) { return null; }
@@ -134,19 +174,19 @@ public class AccountManager {
     public int getAccountVisibility(android.accounts.Account p0, java.lang.String p1) { return 0; }
     public java.util.Map getAccountsAndVisibilityForPackage(java.lang.String p0, java.lang.String p1) { return new java.util.HashMap(); }
     public java.util.Map getPackagesAndVisibilityForAccount(android.accounts.Account p0) { return new java.util.HashMap(); }
-    public java.lang.String getPassword(android.accounts.Account p0) { return null; }
+    public String getPassword(Account a) { return husk.Accounts.get(a, "password"); }
     public java.lang.String getPreviousName(android.accounts.Account p0) { return null; }
     public boolean hasAccountAccess(android.accounts.Account p0, java.lang.String p1, android.os.UserHandle p2) { return false; }
-    public void invalidateAuthToken(java.lang.String p0, java.lang.String p1) {}
+    public void invalidateAuthToken(String type, String token) { husk.Accounts.invalidate(type, token); }
     public boolean notifyAccountAuthenticated(android.accounts.Account p0) { return false; }
     public android.accounts.AccountManagerFuture removeAccountAsUser(android.accounts.Account p0, android.accounts.AccountManagerCallback p1, android.os.Handler p2, android.os.UserHandle p3) { return null; }
     public android.accounts.AccountManagerFuture removeAccountAsUser(android.accounts.Account p0, android.app.Activity p1, android.accounts.AccountManagerCallback p2, android.os.Handler p3, android.os.UserHandle p4) { return null; }
-    public boolean removeAccountExplicitly(android.accounts.Account p0) { return false; }
-    public void removeOnAccountsUpdatedListener(android.accounts.OnAccountsUpdateListener p0) {}
+    public boolean removeAccountExplicitly(Account a) { return husk.Accounts.remove(a); }
+    public void removeOnAccountsUpdatedListener(OnAccountsUpdateListener listener) { synchronized (LISTENERS) { LISTENERS.remove(listener); } }
     public boolean setAccountVisibility(android.accounts.Account p0, java.lang.String p1, int p2) { return false; }
-    public void setAuthToken(android.accounts.Account p0, java.lang.String p1, java.lang.String p2) {}
-    public void setPassword(android.accounts.Account p0, java.lang.String p1) {}
-    public void setUserData(android.accounts.Account p0, java.lang.String p1, java.lang.String p2) {}
+    public void setAuthToken(Account a, String type, String token) { husk.Accounts.set(a, "token/" + type, token); }
+    public void setPassword(Account a, String password) { husk.Accounts.set(a, "password", password); }
+    public void setUserData(Account a, String key, String value) { husk.Accounts.set(a, "user/" + key, value); }
     public boolean someUserHasAccount(android.accounts.Account p0) { return false; }
     public android.accounts.AccountManagerFuture startAddAccountSession(java.lang.String p0, java.lang.String p1, java.lang.String[] p2, android.os.Bundle p3, android.app.Activity p4, android.accounts.AccountManagerCallback p5, android.os.Handler p6) { return null; }
     public android.accounts.AccountManagerFuture startUpdateCredentialsSession(android.accounts.Account p0, java.lang.String p1, android.os.Bundle p2, android.app.Activity p3, android.accounts.AccountManagerCallback p4, android.os.Handler p5) { return null; }

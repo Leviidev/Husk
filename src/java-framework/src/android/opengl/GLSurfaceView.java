@@ -32,6 +32,8 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     private volatile long resized;
     /** @hide Husk's GL thread: the size to give onSurfaceChanged, once (0: none new). */
     public final long huskTakeResize() { long r = resized; resized = 0; return r; }
+    /** The renderer's surface occupies this rectangle inside the host window, not necessarily the entire screen. */
+    public final void huskSurfaceRect(int[] rect) { getLocationOnScreen(rect); rect[2] = getWidth(); rect[3] = getHeight(); }
     public void surfaceDestroyed(android.view.SurfaceHolder h) {}
     public void surfaceRedrawNeeded(android.view.SurfaceHolder h) { requestRender(); }
     public void surfaceRedrawNeededAsync(android.view.SurfaceHolder h, Runnable done) { requestRender(); done.run(); }
@@ -55,7 +57,7 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public void queueEvent(Runnable r) { synchronized (queue) { queue.add(r); } husk.Native.requestRender(); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); start(); }
     private void start() {
-        if (renderer == null || started) return;
+        if (renderer == null || started || !isAttachedToWindow() || getWidth() <= 0 || getHeight() <= 0) return;
         started = true;
         // an app with its own context factory asks for its GL ES version there (EGL_CONTEXT_CLIENT_VERSION), not here
         if (!versionSet && contextFactory != null) {

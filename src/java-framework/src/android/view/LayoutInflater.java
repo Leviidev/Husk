@@ -18,7 +18,8 @@ public abstract class LayoutInflater {
     public interface Filter { boolean onLoadClass(Class clazz); }
     private static final String TAG_MERGE = "merge", TAG_INCLUDE = "include", TAG_1995 = "blink", TAG_REQUEST_FOCUS = "requestFocus", TAG_TAG = "tag";
     private static final int[] ATTRS_THEME = { android.R.attr.theme };
-    private static final HashMap<String, Constructor<? extends View>> sConstructors = new HashMap<>();
+    private static final java.util.Map<ClassLoader, HashMap<String, Constructor<? extends View>>> sConstructors = new java.util.WeakHashMap<>();
+    public static void huskReset() { synchronized (sConstructors) { sConstructors.clear(); } }
     static final Class<?>[] mConstructorSignature = { Context.class, AttributeSet.class };
 
     protected final Context mContext;
@@ -122,15 +123,16 @@ public abstract class LayoutInflater {
     }
     public final View createView(Context viewContext, String name, String prefix, AttributeSet attrs) throws ClassNotFoundException, InflateException {
         String full = prefix != null ? prefix + name : name;
+        ClassLoader loader = viewContext.getClassLoader();
         Constructor<? extends View> ctor;
-        synchronized (sConstructors) { ctor = sConstructors.get(full); }
+        synchronized (sConstructors) { HashMap<String, Constructor<? extends View>> cache = sConstructors.get(loader); ctor = cache == null ? null : cache.get(full); }
         try {
             if (ctor == null) {
-                Class<? extends View> clazz = Class.forName(full, false, mContext.getClassLoader()).asSubclass(View.class);
+                Class<? extends View> clazz = Class.forName(full, false, loader).asSubclass(View.class);
                 if (mFilter != null && !mFilter.onLoadClass(clazz)) throw new InflateException(attrs.getPositionDescription() + ": Class not allowed to be inflated " + full);
                 ctor = clazz.getConstructor(mConstructorSignature);
                 ctor.setAccessible(true);
-                synchronized (sConstructors) { sConstructors.put(full, ctor); }
+                synchronized (sConstructors) { HashMap<String, Constructor<? extends View>> cache = sConstructors.get(loader); if (cache == null) { cache = new HashMap<>(); sConstructors.put(loader, cache); } cache.put(full, ctor); }
             }
             Object last = mConstructorArgs[0];
             mConstructorArgs[0] = viewContext;

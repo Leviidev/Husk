@@ -168,10 +168,10 @@ public class ActivityManager {
     public boolean isLowRamDevice() { return false; }
     public static boolean isRunningInTestHarness() { return false; }
     public static boolean isUserAMonkey() { return false; }
-    public static void getMyMemoryState(RunningAppProcessInfo out) { out.importance = RunningAppProcessInfo.IMPORTANCE_FOREGROUND; out.processName = husk.Native.packageName(); out.pid = android.os.Process.myPid(); }
+    public static void getMyMemoryState(RunningAppProcessInfo out) { out.importance = RunningAppProcessInfo.IMPORTANCE_FOREGROUND; out.processName = husk.Processes.current().name; out.pid = android.os.Process.myPid(); }
     public java.util.List<RunningAppProcessInfo> getRunningAppProcesses() {
         java.util.ArrayList<RunningAppProcessInfo> l = new java.util.ArrayList<>();
-        l.add(new RunningAppProcessInfo(husk.Native.packageName(), android.os.Process.myPid(), new String[] { husk.Native.packageName() }));
+        for (husk.Processes.State p : husk.Processes.all()) l.add(new RunningAppProcessInfo(p.name, p.pid, new String[] { husk.Native.packageName() }));
         return l;
     }
     public java.util.List<RunningTaskInfo> getRunningTasks(int max) { return new java.util.ArrayList<>(); }

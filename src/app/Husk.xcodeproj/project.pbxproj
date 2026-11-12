@@ -148,6 +148,7 @@
 		9FEF908189C2E5FC922BE76C /* husk-tl-flutter.c in Sources */ = {isa = PBXBuildFile; fileRef = 4476B48BE189C26B8AF64804 /* husk-tl-flutter.c */; };
 		A54C512C3F8A473DA99EDE1E /* husk-tl-codesign-wwdr.inc in Resources */ = {isa = PBXBuildFile; fileRef = 32E9612FD8E1C13F34DBB916 /* husk-tl-codesign-wwdr.inc */; };
 		A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */ = {isa = PBXBuildFile; fileRef = 98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */; };
+		DC60A996BB1C0B22A9A4C325 /* husk-tl-dvm-location.m in Sources */ = {isa = PBXBuildFile; fileRef = 7ADA05A9D64EED5B8C24B828 /* husk-tl-dvm-location.m */; };
 		A5FCAB5ADEA3F871ADF5621F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 943555841385E4C7C7D1ACFE /* InfoPlist.strings */; };
 		A687EB34AE28E4CBBA4136BF /* husk-tl-geode.c in Sources */ = {isa = PBXBuildFile; fileRef = 9235AEC134C86769DDF7E880 /* husk-tl-geode.c */; };
 		A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */ = {isa = PBXBuildFile; fileRef = DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */; };
@@ -438,6 +439,7 @@
 		9736391C1BCE43667293DB7B /* Geode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geode.swift; sourceTree = "<group>"; };
 		97E83F7EE31FE180D0FA3105 /* husk-tl-http.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-http.h"; sourceTree = "<group>"; };
 		98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-dvm-sensors.m"; sourceTree = "<group>"; };
+		7ADA05A9D64EED5B8C24B828 /* husk-tl-dvm-location.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "husk-tl-dvm-location.m"; sourceTree = "<group>"; };
 		9C0AD6C357A94EB7BA2ADF00 /* husk-tl-flutter-text.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-flutter-text.c"; sourceTree = "<group>"; };
 		9C254830956F062F72F2EF2D /* husk-tl-jni-godot.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "husk-tl-jni-godot.c"; sourceTree = "<group>"; };
 		9DA435135C98A8EFBDEAF79A /* husk-tl-sdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-sdl.h"; sourceTree = "<group>"; };
@@ -768,6 +770,7 @@
 				7AD4F32F70E9594D17CB047B /* husk-tl-dvm-natives.c */,
 				14467C88832643891E985F27 /* husk-tl-dvm-proxy.c */,
 				98CA30D667315D8B8BBBA19C /* husk-tl-dvm-sensors.m */,
+				7ADA05A9D64EED5B8C24B828 /* husk-tl-dvm-location.m */,
 				DC6A345F190285ADF810B168 /* husk-tl-dvm-sqlite.c */,
 				B08C946B21AA94C98AF6D394 /* husk-tl-dvm-web.m */,
 				642A69428A8151E1B1F75CBB /* husk-tl-dvm.c */,
@@ -1280,6 +1283,7 @@
 				56ED443ACD8A526DE9AB07B9 /* husk-tl-dvm-natives.c in Sources */,
 				1FAAA8BDAF1033F3755A9B9E /* husk-tl-dvm-proxy.c in Sources */,
 				A593A625D4A8E73F69E71D23 /* husk-tl-dvm-sensors.m in Sources */,
+				DC60A996BB1C0B22A9A4C325 /* husk-tl-dvm-location.m in Sources */,
 				A6EEA5B31AF4AC4AA056F674 /* husk-tl-dvm-sqlite.c in Sources */,
 				E89F2DBA752CE5EB77AF9B4A /* husk-tl-dvm-web.m in Sources */,
 				0571BFDC9E02848C62133B4E /* husk-tl-dvm.c in Sources */,
@@ -1446,6 +1450,8 @@
 					"-framework",
 					CoreVideo,
 					"-framework",
+					CoreLocation,
+					"-framework",
 					Accelerate,
 					"-framework",
 					Security,
@@ -1528,6 +1534,8 @@
 					CoreMedia,
 					"-framework",
 					CoreVideo,
+					"-framework",
+					CoreLocation,
 					"-framework",
 					Accelerate,
 					"-framework",

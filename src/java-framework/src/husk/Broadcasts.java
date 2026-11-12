@@ -9,8 +9,9 @@ import java.util.ArrayList;
 public final class Broadcasts {
     private static final ArrayList<Object[]> sReceivers = new ArrayList<>();
     private Broadcasts() {}
+    public static void huskReset() { synchronized (sReceivers) { sReceivers.clear(); } }
     public static Intent register(BroadcastReceiver r, IntentFilter f) {
-        synchronized (sReceivers) { sReceivers.add(new Object[] { r, f }); }
+        synchronized (sReceivers) { sReceivers.add(new Object[] { r, f, Processes.current() }); }
         if (f != null && f.hasAction(Intent.ACTION_BATTERY_CHANGED)) return android.os.BatteryManager.huskStickyIntent();
         if (f != null && f.hasAction(android.net.ConnectivityManager.CONNECTIVITY_ACTION)) {
             Intent i = new Intent(android.net.ConnectivityManager.CONNECTIVITY_ACTION);
@@ -26,19 +27,29 @@ public final class Broadcasts {
      *  boot, in the background): a receiver throwing on it is logged rather than ending the app the user opened (Gmail's
      *  TimeZoneDataBaseUpgradeReceiver) */
     public static void send(Context from, Intent i, boolean system) {
-        final Context ctx = AppRunner.application() != null ? AppRunner.application() : from;
-        ArrayList<BroadcastReceiver> targets = new ArrayList<>();
-        synchronized (sReceivers) { for (Object[] e : sReceivers) if (((IntentFilter) e[1]).hasAction(i.getAction())) targets.add((BroadcastReceiver) e[0]); }
+        ArrayList<Object[]> targets = new ArrayList<>();
+        synchronized (sReceivers) { for (Object[] e : sReceivers) if (((IntentFilter) e[1]).hasAction(i.getAction())) targets.add(e); }
         for (Manifest.Component c : Manifest.receivers) {
             boolean match = i.getComponent() != null && c.name.equals(i.getComponent().getClassName());
             for (Manifest.Filter f : c.filters) if (f.actions.contains(i.getAction())) match = true;
             if (!match) continue;
-            try { targets.add((BroadcastReceiver) Class.forName(c.name, true, AppRunner.classLoader()).newInstance()); } catch (Throwable t) { android.util.Log.w("Husk", "receiver " + c.name + ": " + t); }
+            if (c.enabled) targets.add(new Object[] { c, null, Processes.component(c) });
         }
         Handler h = new Handler(Looper.getMainLooper());
-        for (BroadcastReceiver r : targets) h.post(() -> {
-            if (!system) { r.onReceive(ctx, i); return; }
-            try { r.onReceive(ctx, i); } catch (RuntimeException e) { android.util.Log.w("Husk", "receiver " + r.getClass().getName() + " threw on " + i.getAction(), e); }
+        for (Object[] target : targets) h.post(() -> {
+            Processes.State process = (Processes.State)target[2]; process.start();
+            try (Processes.Scope ignored = Processes.enter(process)) {
+                BroadcastReceiver r;
+                try {
+                    r = target[0] instanceof BroadcastReceiver ? (BroadcastReceiver)target[0]
+                        : process.factory.instantiateReceiver(AppRunner.classLoader(), ((Manifest.Component)target[0]).name, i);
+                } catch (Exception e) { android.util.Log.w("Husk", "receiver " + target[0] + ": " + e); return; }
+                Intent received = new Intent(i);
+                if (i.getExtras() != null) received.replaceExtras((android.os.Bundle)Processes.copy(i.getExtras(), AppRunner.classLoader()));
+                Context ctx = process.application != null ? process.application : from;
+                if (!system) { r.onReceive(ctx, received); return; }
+                try { r.onReceive(ctx, received); } catch (RuntimeException e) { android.util.Log.w("Husk", "receiver " + r.getClass().getName() + " threw on " + i.getAction(), e); }
+            }
         });
     }
 }

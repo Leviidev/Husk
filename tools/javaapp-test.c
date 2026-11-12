@@ -234,7 +234,7 @@ static void *run(void *p)
     } else {
         snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex"); boot[nb] = paths[nb]; nb++;
     }
-    snprintf(paths[nb], sizeof(paths[nb]), "/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar"); boot[nb] = paths[nb]; nb++;
+    snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_HTTP_LEGACY") ? getenv("TL_HTTP_LEGACY") : "/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar"); boot[nb] = paths[nb]; nb++;
     if (aosp) { void husk_aosp_start_system(void); husk_aosp_start_system(); }
     { char v[800];
       snprintf(v, sizeof(v), "%s", art); setenv("ANDROID_ART_ROOT", v, 0);
@@ -247,7 +247,7 @@ static void *run(void *p)
     { char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/lib64", art); tl_ld_add_search_dir(d); }
     /* the system's fonts and their list (/system/fonts, fonts.xml), as the app ships them: Qt and Skia read them by path */
     { void tl_set_system_fonts_dir(const char *); tl_set_system_fonts_dir(getenv("TL_SYSFONTS") ? getenv("TL_SYSFONTS") : "/Volumes/GTAV/husk2/root/system"); }
-    { void tl_set_cacerts_dir(const char *); static char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/cacerts", art); tl_set_cacerts_dir(d); }   /* the trusted roots, as the app ships them */
+    { void tl_set_cacerts_dir(const char *); static char d[800]; snprintf(d, sizeof(d), "%s/../com.android.conscrypt/cacerts", art); tl_set_cacerts_dir(getenv("TL_CACERTS") ? getenv("TL_CACERTS") : d); }   /* the trusted roots, as the app ships them */
     { char d[800]; snprintf(d, sizeof(d), "%s/lib64", art); tl_dvm_load_natives(d); }
     /* scratch (data, frames) under TL_TMP: by default the work folder on the big drive, not the GTAV drive, which drops under load */
     const char *scratch = getenv("TL_TMP") ? getenv("TL_TMP") : "/Users/davi/husk-work/tmp";
@@ -279,6 +279,7 @@ static void *run(void *p)
     if (argc <= 4) { int tl_manifest_orientation(const char *); if (tl_manifest_orientation(apk) == 0) { int t = w; w = h; h = t; fprintf(stderr, "javaapp: landscape (the manifest asks for it)\n"); } }
     if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
     tl_javaapp_config cfg = { .apk_path = apk, .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
+                              .activity_class = getenv("TL_ACTIVITY"), .application_class = getenv("TL_APPLICATION"), .extra_dex = getenv("TL_EXTRA_DEX"),
                               .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
                               .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -1,
                               .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",
