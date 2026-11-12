@@ -82,6 +82,29 @@ struct AppDiagnosis: Identifiable, Equatable {
     static func fromLog(_ text: String) -> AppDiagnosis? {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
 
+        if lines.contains(where: { $0.contains("executable memory is turned off (TL_NO_XMEM)") }),
+           let l = lines.first(where: { $0.contains("its dylib does not load") && $0.contains("file system sandbox blocked mmap()") }) {
+            return AppDiagnosis(kind: .noJIT, title: "iOS blocked the converted libraries",
+                                detail: "The libraries were prepared, but iOS refused to execute them from Husk's data folder. "
+                                    + "Use a build with these libraries embedded and signed during installation, or install Husk "
+                                    + "with a development profile and enable JIT.",
+                                evidence: l)
+        }
+
+        // With Play without JIT on, missing or unusable libcore dylibs leave System without its natives. Diagnose the loader's
+        // failure before the resulting NoClassDefFoundError, which would otherwise look like an unsupported Android API.
+        if lines.contains(where: { $0.contains("executable memory is turned off (TL_NO_XMEM)") }),
+           let l = lines.first(where: { line in
+               ["ld: libjavacore.so:", "ld: libopenjdk.so:"].contains(where: { line.contains($0) })
+                   && ["no dylib made ahead of time", "its dylib does not load", "its dylib is not used"].contains(where: { line.contains($0) })
+           }) {
+            return AppDiagnosis(kind: .noJIT, title: "Play without JIT is not ready",
+                                detail: "Husk could not load its Java runtime for this mode. In Settings → Play without JIT, import the "
+                                    + "certificate used to install Husk, then try again to prepare the libraries. Or turn Play without JIT off, "
+                                    + "close and reopen Husk, and turn on JIT before starting the app.",
+                                evidence: l)
+        }
+
         // No executable memory: on iOS with TXM only a debugger can grant it, and without it the loader cannot load Android's own
         // libraries, so everything after (java.lang.System failing to initialise, missing natives) follows from this
         if let l = lines.first(where: { $0.contains("no StikDebug JIT region") }) {
