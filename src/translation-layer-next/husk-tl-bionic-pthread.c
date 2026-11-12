@@ -341,12 +341,14 @@ static int b_sem_getvalue(void *g, int *v)
 
 static int b_once(_Atomic int *once, void (*fn)(void))
 {
+    /* Bionic's ABI is 0=not started, 1=underway, 2=complete:
+     * https://android.googlesource.com/platform/bionic/+/refs/heads/main/libc/bionic/pthread_once.cpp */
     int expect = 0;
-    if (atomic_compare_exchange_strong(once, &expect, 2)) {
+    if (atomic_compare_exchange_strong(once, &expect, 1)) {
         fn();
-        atomic_store(once, 1);
+        atomic_store(once, 2);
     } else {
-        while (atomic_load(once) == 2) sched_yield();
+        while (atomic_load(once) == 1) sched_yield();
     }
     return 0;
 }

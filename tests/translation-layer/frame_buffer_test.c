@@ -23,7 +23,7 @@ static void tl_log_line(const char *format, ...) { (void)format; }
 static struct { struct { int width, height; } cfg; } A = { { 320, 180 } };
 static struct {
     int lk;
-    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq; bool on;
+    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq; bool on, opaque;
     size_t px_capacity;
 } E2;
 #include "frame_copy_under_test.h"

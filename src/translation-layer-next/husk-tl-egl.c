@@ -24,6 +24,7 @@ int tl_nwindow_height(void *window);
 void tl_nwindow_acquire(void *window);
 void tl_nwindow_release(void *window);
 bool tl_nwindow_view_bounds(void *window, int *x, int *y, int *vw, int *vh);
+bool tl_nwindow_is_opaque(void *window);
 
 typedef void *EGLDisplay, *EGLSurface, *EGLContext, *EGLConfig, *EGLNativeWindowType;
 typedef int32_t EGLint;
@@ -236,7 +237,10 @@ __attribute__((weak)) bool tl_javaapp_compositing(void);
 __attribute__((weak)) void *tl_javaapp_ui_context(void);
 __attribute__((weak)) void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h);
 __attribute__((weak)) uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) uint64_t tl_javaapp_app_tex_publish_with_opacity(uint32_t tex, int pw, int ph, int x, int y, int w, int h, bool opaque);
 __attribute__((weak)) void tl_javaapp_app_frame_pace(uint64_t prev_seq);
+__attribute__((weak)) bool tl_javaapp_app_pixels_rect_publish(const void *px, int pw, int ph, int x, int y, int w, int h);
+__attribute__((weak)) bool tl_javaapp_app_pixels_rect_publish_with_opacity(const void *px, int pw, int ph, int x, int y, int w, int h, bool opaque);
 __attribute__((weak)) void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h);
 __attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
 
@@ -379,6 +383,10 @@ static comp_surf_entry g_comp_surf[MAX_COMP_SURFACES];
 /* Lock order is handoff -> g_tex_lock / E2.lk. Never retain this lock while
  * calling the existing frame-pacing callback, which may wait for the UI. */
 static pthread_mutex_t g_frame_handoff = PTHREAD_MUTEX_INITIALIZER;
+/* The last published frame belongs to this surface, which can differ from
+ * the one Android destroys after replacing a SurfaceView. Handoff protects
+ * both ownership and publication, including the CPU readback fallback. */
+static EGLSurface g_published_comp_surface;
 static atomic_bool g_compositor_es3;
 
 static void *frame_fence(void) { return a_glFenceSync(0x9117 /* GL_SYNC_GPU_COMMANDS_COMPLETE */, 0); }
@@ -451,6 +459,7 @@ void tl_egl_compositor_frame_reset(void *context, bool current)
     /* Stop publishing before clearing the registry. Late guest swaps then
      * remain on their old off-screen surface instead of republishing a frame. */
     if (tl_javaapp_app_tex_publish) tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
+    g_published_comp_surface = NULL;
     bool can_sync = current && comp_ctx_ver(context) >= 3;
     void *windows[MAX_COMP_SURFACES] = { 0 };
     pthread_mutex_lock(&g_tex_lock);
@@ -607,8 +616,14 @@ static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
     pthread_mutex_unlock(&g_tex_lock);
     if (tex_win) tl_nwindow_release(tex_win);
     if (comp) {
-        if (tl_javaapp_app_tex) tl_javaapp_app_tex(0, 0, 0, 0, 0, 0, 0);
-        else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
+        /* An old surface may outlive the first frame of its replacement.
+         * Retire its resources without blanking that replacement's frame. */
+        if (g_published_comp_surface == s) {
+            if (tl_javaapp_app_tex_publish) tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
+            else if (tl_javaapp_app_tex) tl_javaapp_app_tex(0, 0, 0, 0, 0, 0, 0);
+            else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
+            g_published_comp_surface = NULL;
+        }
         if (comp_ctx_ver(a_eglGetCurrentContext()) > 0) frame_clean_retired();
         if (comp_win) tl_nwindow_release(comp_win);
     }
@@ -718,6 +733,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     if (!win || !tl_nwindow_view_bounds(win, &vx, &vy, &vw, &vh)) {
         vx = 0; vy = 0; vw = 0; vh = 0;
     }
+    bool opaque = tl_nwindow_is_opaque(win);
 
     int ver = a_eglGetCurrentContext ? comp_ctx_ver(a_eglGetCurrentContext()) : 0;
     tl_frame_sync *frame = &g_comp_surf[slot].sync[k];
@@ -765,21 +781,35 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
         }
         pthread_mutex_unlock(&g_tex_lock);
 
-        uint64_t prev_seq = tl_javaapp_app_tex_publish(tex_id, cw, ch, vx, vy, vw, vh);
+        uint64_t prev_seq = tl_javaapp_app_tex_publish_with_opacity
+            ? tl_javaapp_app_tex_publish_with_opacity(tex_id, cw, ch, vx, vy, vw, vh, opaque)
+            : tl_javaapp_app_tex_publish(tex_id, cw, ch, vx, vy, vw, vh);
+        g_published_comp_surface = s;
         pthread_mutex_unlock(&g_frame_handoff);
         /* Waiting for UI pacing while owning the texture handoff would stop
          * that same UI from acquiring the next frame. */
         tl_javaapp_app_frame_pace(prev_seq);
         if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
-        if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited GPU %dx%d -> %dx%d)", n, cw, ch, vw, vh);
+        if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited GPU %dx%d -> %dx%d, opaque=%d)", n, cw, ch, vw, vh, opaque);
         return true;
     }
 
     EGLint rw = 0, rh = 0;
     const uint8_t *px = read_back_rect(d, s, cw, ch, &rw, &rh);
     if (px) {
-        if (tl_javaapp_app_pixels_rect) tl_javaapp_app_pixels_rect(px, rw, rh, vx, vy, vw, vh);
-        else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(px, rw, rh);
+        if (tl_javaapp_app_pixels_rect_publish_with_opacity) {
+            if (tl_javaapp_app_pixels_rect_publish_with_opacity(px, rw, rh, vx, vy, vw, vh, opaque))
+                g_published_comp_surface = s;
+        } else if (tl_javaapp_app_pixels_rect_publish) {
+            if (tl_javaapp_app_pixels_rect_publish(px, rw, rh, vx, vy, vw, vh))
+                g_published_comp_surface = s;
+        } else if (tl_javaapp_app_pixels_rect) {
+            tl_javaapp_app_pixels_rect(px, rw, rh, vx, vy, vw, vh);
+            g_published_comp_surface = s;
+        } else if (tl_javaapp_app_pixels) {
+            tl_javaapp_app_pixels(px, rw, rh);
+            g_published_comp_surface = s;
+        }
     }
     pthread_mutex_unlock(&g_frame_handoff);
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);

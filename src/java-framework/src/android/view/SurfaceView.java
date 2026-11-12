@@ -17,7 +17,9 @@ public class SurfaceView extends View {
     private Bitmap mFront, mBack;
     private Canvas mBackCanvas;
     private boolean mCreated, mLocked, mZOnTop, mFixed, mHasFrame;
-    private int mFixedW, mFixedH, mFormat = PixelFormat.OPAQUE, mSurfaceW, mSurfaceH;
+    private int mFixedW, mFixedH, mSurfaceW, mSurfaceH;
+    /** Android composition opacity is independent of the EGL buffer's alpha channel. */
+    public volatile int huskCompositionFormat = PixelFormat.OPAQUE;
     /** Live surface buffer size and on-screen view bounds read directly by native ANativeWindow / EGL compositor. */
     public volatile int huskBufW, huskBufH, huskViewX, huskViewY, huskViewW, huskViewH;
     private final Paint mClear = new Paint(), mBlit = new Paint(Paint.FILTER_BITMAP_FLAG);
@@ -37,7 +39,7 @@ public class SurfaceView extends View {
             syncNativeBounds();
             post(() -> sizeChanged());
         }
-        public void setFormat(int f) { mFormat = f; }
+        public void setFormat(int f) { huskCompositionFormat = f; }
         public void setKeepScreenOn(boolean b) { SurfaceView.this.setKeepScreenOn(b); }
         public Canvas lockCanvas() { return lock(null); }
         public Canvas lockCanvas(Rect dirty) { return lock(dirty); }
@@ -125,7 +127,7 @@ public class SurfaceView extends View {
         if (created || w != mSurfaceW || h != mSurfaceH) {
             mSurfaceW = w; mSurfaceH = h;
             syncNativeBounds();
-            for (SurfaceHolder.Callback c : callbacks()) c.surfaceChanged(mHolder, mFormat, w, h);
+            for (SurfaceHolder.Callback c : callbacks()) c.surfaceChanged(mHolder, huskCompositionFormat, w, h);
             for (SurfaceHolder.Callback c : callbacks()) if (c instanceof SurfaceHolder.Callback2) ((SurfaceHolder.Callback2) c).surfaceRedrawNeeded(mHolder);
         }
     }

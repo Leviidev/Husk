@@ -690,10 +690,11 @@ bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any);
 void tl_ui_frame_done(void);
 bool tl_ui_has_frame(void);
 bool tl_ui_frame_pending(void);
+void tl_ui_frame_reset(void);
 
 typedef struct {
     uint32_t prog, tex, vbo;
-    int tw, th;
+    int tw, th, opaque_uniform;
 } overlay;
 
 static uint32_t ov_shader(uint32_t kind, const char *src)
@@ -712,11 +713,12 @@ static void ov_init_flip(overlay *o, bool bottom_up)
     static const char *vs_top = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
     static const char *vs_bottom = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 + p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
     const char *vs = bottom_up ? vs_bottom : vs_top;
-    static const char *fs = "precision mediump float; uniform sampler2D s; varying vec2 t; void main() { gl_FragColor = texture2D(s, t); }";
+    static const char *fs = "precision mediump float; uniform sampler2D s; uniform bool forceOpaque; varying vec2 t; void main() { vec4 c = texture2D(s, t); gl_FragColor = vec4(c.rgb, forceOpaque ? 1.0 : c.a); }";
     uint32_t (*createProgram)(void) = gl_fn("glCreateProgram");
     void (*attach)(uint32_t, uint32_t) = gl_fn("glAttachShader");
     void (*bindAttrib)(uint32_t, uint32_t, const char *) = gl_fn("glBindAttribLocation");
     void (*link)(uint32_t) = gl_fn("glLinkProgram");
+    int (*uniformLocation)(uint32_t, const char *) = gl_fn("glGetUniformLocation");
     void (*genTex)(int32_t, uint32_t *) = gl_fn("glGenTextures");
     void (*genBuf)(int32_t, uint32_t *) = gl_fn("glGenBuffers");
     void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
@@ -726,6 +728,7 @@ static void ov_init_flip(overlay *o, bool bottom_up)
     attach(o->prog, ov_shader(0x8B30, fs));
     bindAttrib(o->prog, 0, "p");
     link(o->prog);
+    o->opaque_uniform = uniformLocation(o->prog, "forceOpaque");
     genTex(1, &o->tex);
     static const float quad[] = { -1, -1, 1, -1, -1, 1, 1, 1 };
     genBuf(1, &o->vbo);
@@ -772,6 +775,8 @@ static void ov_draw(overlay *o, int vw, int vh)
     enable(0x0BE2);
     blendFunc(1, 0x0303);                                                  /* premultiplied: ONE, ONE_MINUS_SRC_ALPHA */
     useProgram(o->prog);
+    void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
+    uniform1i(o->opaque_uniform, 0); /* Java UI always retains its premultiplied alpha. */
     activeTex(0x84C0);
     bindTex(0x0DE1, o->tex);
     bindBuf(0x8892, o->vbo);
@@ -793,7 +798,7 @@ static struct {
     pthread_cond_t cv;
     EGLDisplay dpy; EGLConfig cfg; EGLContext ui, renderer; EGLSurface screen; bool es3, ready;
     /* the frame to show: a shared texture, or pixels (bottom row first) */
-    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq, drawn_seq; bool on;
+    uint32_t tex; uint8_t *px; int pw, ph; int x, y, w, h; uint64_t seq, drawn_seq; bool on, opaque;
     size_t px_capacity;
 } E2 = { .lk = PTHREAD_MUTEX_INITIALIZER, .cv = PTHREAD_COND_INITIALIZER };
 
@@ -960,6 +965,7 @@ NAT(EN_swap)
     }
     uint64_t prev_seq = E2.seq;
     E2.x = a[2].i; E2.y = a[3].i; E2.w = a[4].i > 0 ? a[4].i : s->w; E2.h = a[5].i > 0 ? a[5].i : s->h;
+    E2.opaque = false; /* Legacy EGLNative has no SurfaceView composition contract. */
     E2.on = true; E2.seq = prev_seq + 1;
     pthread_cond_broadcast(&E2.cv);
     if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq) {
@@ -995,7 +1001,7 @@ static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
 {
     tl_egl_compositor_frame_begin();
     pthread_mutex_lock(&E2.lk);
-    bool on = E2.on; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
+    bool on = E2.on, opaque = E2.opaque; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
     if (on && !tex && E2.px) { ov_upload(up, E2.px, E2.pw, E2.ph); }
     pthread_mutex_unlock(&E2.lk);
     if (!on) { tl_egl_compositor_frame_end(0); return; }
@@ -1012,6 +1018,8 @@ static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
     viewport(x, vh - y - h, w, h);
     disable(0x0B71); disable(0x0B44); disable(0x0C11); disable(0x0B90); disable(0x0BE2);
     useProgram(o->prog);
+    void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
+    uniform1i(o->opaque_uniform, opaque ? 1 : 0);
     activeTex(0x84C0);
     bindTex(0x0DE1, tex ? tex : up->tex);
     bindBuf(0x8892, o->vbo);
@@ -1053,24 +1061,24 @@ void tl_javaapp_app_pixels(const void *px, int w, int h)
         return;
     }
     memcpy(E2.px, px, (size_t)w * (size_t)h * 4);
-    E2.pw = w; E2.ph = h; E2.tex = 0;
+    E2.pw = w; E2.ph = h; E2.tex = 0; E2.opaque = false;
     E2.x = 0; E2.y = 0; E2.w = A.cfg.width; E2.h = A.cfg.height;
     E2.on = true; E2.seq++;
     pthread_mutex_unlock(&E2.lk);
 }
 /* Publication is nonblocking so EGL can keep the frame ownership lock until
  * the texture and its matching dimensions become visible together. */
-uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
+uint64_t tl_javaapp_app_tex_publish_with_opacity(uint32_t tex, int pw, int ph, int x, int y, int w, int h, bool opaque)
 {
     pthread_mutex_lock(&E2.lk);
     if (!tex || pw <= 0 || ph <= 0) {
-        E2.on = false; E2.tex = 0; E2.seq++;
+        E2.on = false; E2.tex = 0; E2.opaque = false; E2.seq++;
         pthread_cond_broadcast(&E2.cv);
         pthread_mutex_unlock(&E2.lk);
         return 0;
     }
     uint64_t prev_seq = E2.seq;
-    E2.tex = tex; E2.pw = pw; E2.ph = ph;
+    E2.tex = tex; E2.pw = pw; E2.ph = ph; E2.opaque = opaque;
     E2.x = x; E2.y = y;
     E2.w = w > 0 ? w : A.cfg.width;
     E2.h = h > 0 ? h : A.cfg.height;
@@ -1078,6 +1086,10 @@ uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, 
     pthread_cond_broadcast(&E2.cv);
     pthread_mutex_unlock(&E2.lk);
     return prev_seq;
+}
+uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, int w, int h)
+{
+    return tl_javaapp_app_tex_publish_with_opacity(tex, pw, ph, x, y, w, h, false);
 }
 void tl_javaapp_app_frame_pace(uint64_t prev_seq)
 {
@@ -1096,29 +1108,39 @@ void tl_javaapp_app_tex(uint32_t tex, int pw, int ph, int x, int y, int w, int h
     uint64_t prev_seq = tl_javaapp_app_tex_publish(tex, pw, ph, x, y, w, h);
     tl_javaapp_app_frame_pace(prev_seq);
 }
-void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h)
+/* EGL changes surface ownership only when the compositor accepted this frame. */
+bool tl_javaapp_app_pixels_rect_publish_with_opacity(const void *px, int pw, int ph, int x, int y, int w, int h, bool opaque)
 {
     pthread_mutex_lock(&E2.lk);
     if (!px || pw <= 0 || ph <= 0) {
-        E2.on = false; E2.seq++;
+        E2.on = false; E2.opaque = false; E2.seq++;
         pthread_cond_broadcast(&E2.cv);
         pthread_mutex_unlock(&E2.lk);
-        return;
+        return true;
     }
     if (!tl_rgba_buffer_reserve(&E2.px, &E2.px_capacity, pw, ph)) {
         pthread_mutex_unlock(&E2.lk);
         tl_log_line("javaapp: compositor frame allocation failed (%dx%d); keeping previous frame", pw, ph);
-        return;
+        return false;
     }
     uint64_t prev_seq = E2.seq;
     memcpy(E2.px, px, (size_t)pw * (size_t)ph * 4);
-    E2.pw = pw; E2.ph = ph; E2.tex = 0;
+    E2.pw = pw; E2.ph = ph; E2.tex = 0; E2.opaque = opaque;
     E2.x = x; E2.y = y;
     E2.w = w > 0 ? w : A.cfg.width;
     E2.h = h > 0 ? h : A.cfg.height;
     E2.on = true; E2.seq = prev_seq + 1;
     pthread_cond_broadcast(&E2.cv);
     pthread_mutex_unlock(&E2.lk);
+    return true;
+}
+bool tl_javaapp_app_pixels_rect_publish(const void *px, int pw, int ph, int x, int y, int w, int h)
+{
+    return tl_javaapp_app_pixels_rect_publish_with_opacity(px, pw, ph, x, y, w, h, false);
+}
+void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h)
+{
+    (void)tl_javaapp_app_pixels_rect_publish(px, pw, ph, x, y, w, h);
 }
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
@@ -1488,9 +1510,19 @@ static void stub_lib(const char *name, uint64_t size, void *dir)
     if (stat(p, &st) != 0) { int fd = open(p, O_CREAT | O_WRONLY, 0755); if (fd >= 0) close(fd); }
 }
 
+static bool javaapp_begin_session(void)
+{
+    if (!tl_guest_session_begin()) return false;
+    /* The previous session can return to idle only after all guest/GL workers
+     * have drained and been reaped. No new workers exist yet, so no UI borrow
+     * or late publisher can carry the old game's overlay into this session. */
+    tl_ui_frame_reset();
+    return true;
+}
+
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
-    if (!tl_guest_session_begin()) {
+    if (!javaapp_begin_session()) {
         tl_log_line("javaapp: the previous session has not finished closing");
         return false;
     }
@@ -1506,7 +1538,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     memset(A.down_frame, 0, sizeof(A.down_frame));
     pthread_mutex_unlock(&A.q_lock);
     pthread_mutex_lock(&E2.lk);
-    E2.ready = false; E2.on = false; E2.tex = 0; E2.seq = 0; E2.drawn_seq = 0;
+    E2.ready = false; E2.on = false; E2.opaque = false; E2.tex = 0; E2.seq = 0; E2.drawn_seq = 0;
     pthread_mutex_unlock(&E2.lk);
     g_render_thread = (pthread_t)0;
     A.gl_thread_started = false; A.app_started = false;

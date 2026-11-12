@@ -47,15 +47,42 @@ def main():
     (out / "net_flags_under_test.h").write_text("\n".join(net_functions), encoding="utf-8")
     android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
     publication = [re.search(pattern, android_source, re.S)[0] for pattern in (
+        r"uint64_t tl_javaapp_app_tex_publish_with_opacity\([^)]*\)\n\{.*?\n\}",
         r"uint64_t tl_javaapp_app_tex_publish\([^)]*\)\n\{.*?\n\}",
-        r"void tl_javaapp_app_frame_pace\([^)]*\)\n\{.*?\n\}")]
+        r"void tl_javaapp_app_frame_pace\([^)]*\)\n\{.*?\n\}",
+        r"bool tl_javaapp_app_pixels_rect_publish_with_opacity\([^)]*\)\n\{.*?\n\}",
+        r"bool tl_javaapp_app_pixels_rect_publish\([^)]*\)\n\{.*?\n\}",
+        r"void tl_javaapp_app_pixels_rect\([^)]*\)\n\{.*?\n\}")]
     (out / "frame_publication_under_test.h").write_text("\n\n".join(publication), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test"):
+    graphics_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-graphics.c").read_text(encoding="utf-8")
+    ui_publication = graphics_source.split("/* ================================================================== the frame on screen */", 1)[1].split(
+        "static const struct { const char *name, *sig; dvm_native_fn fn; } k_gfx[]", 1)[0]
+    ui_session_begin = re.search(r"static bool javaapp_begin_session\([^)]*\)\n\{.*?\n\}", android_source, re.S)[0]
+    (out / "ui_frame_publication_under_test.h").write_text(ui_publication + "\n" + ui_session_begin, encoding="utf-8")
+    egl_source = (ROOT / "src/translation-layer-next/husk-tl-egl.c").read_text(encoding="utf-8")
+    surface_lifecycle = [re.search(pattern, egl_source, re.S)[0] for pattern in (
+        r"static EGLBoolean w_eglDestroySurface\([^)]*\)\n\{.*?\n\}",
+        r"static bool comp_swap\([^)]*\)\n\{.*?\n\}")]
+    (out / "surface_lifecycle_under_test.h").write_text("\n\n".join(surface_lifecycle), encoding="utf-8")
+    pthread_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-pthread.c").read_text(encoding="utf-8")
+    once = re.search(r"static int b_once\([^\n]*\)\n\{.*?\n\}", pthread_source, re.S)[0]
+    (out / "pthread_once_under_test.h").write_text(once, encoding="utf-8")
+    ndk_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-ndk.c").read_text(encoding="utf-8")
+    opacity = [re.search(r"bool tl_nwindow_is_opaque\([^\n]*\)\n\{.*?\n\}", ndk_source, re.S)[0]]
+    opacity += [re.search(r"static void " + name + r"\([^\n]*\)\n\{.*?\n\}", android_source, re.S)[0]
+                for name in ("app_frame_draw", "ov_draw")]
+    (out / "window_opacity_under_test.h").write_text("\n".join(opacity), encoding="utf-8")
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "pthread_once_test", "window_opacity_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])
+    probe_exe = out / ("trutien_text_probe_test" + (".exe" if os.name == "nt" else ""))
+    run("trutien text probe compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+        str(ROOT / "tests/translation-layer/trutien_text_probe_test.c"),
+        str(ROOT / "src/translation-layer-next/husk-tl-trutien-text.c"), "-o", str(probe_exe)])
+    run("trutien text probe", [str(probe_exe)])
     for name in ("plan_test", "elf_import_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         run(name + " compile", compiler + flags + [str(ROOT / f"tests/translation-layer/{name}.c"), str(ROOT / "src/translation-layer/husk-tl-elf.c"), "-o", str(exe)])

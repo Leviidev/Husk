@@ -23,6 +23,7 @@
 
 #include "husk-tl-dvm-internal.h"
 #include "husk-tl-dvm-javaapp.h"
+#include "husk-tl-frame-buffer.h"
 #include "husk-tl-internal.h"
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n);
@@ -1444,20 +1445,20 @@ NAT(G_pathLength)
 static struct {
     pthread_mutex_t lock;
     uint8_t *px; int w, h;          /* the latest frame the view system drew */
+    size_t capacity;
+    bool pending_any;             /* visibility belonging to px/w/h, under lock */
     atomic_bool fresh;
-    atomic_bool any;
+    atomic_bool consumed_any;      /* visibility of the frame the GL thread uploaded */
 } S = { .lock = PTHREAD_MUTEX_INITIALIZER };
 
 __attribute__((weak)) void tl_javaapp_wake_gl(void);
 
 static bool bitmap_has_visible_pixels(const uint8_t *px, size_t bytes)
 {
-    const uint64_t *w64 = (const uint64_t *)px;
-    size_t n64 = bytes / 8;
-    for (size_t i = 0; i < n64; i++) {
-        if (w64[i] != 0) return true;
-    }
-    for (size_t i = n64 * 8; i < bytes; i++) {
+    /* bm_new uses premultiplied-last, 32-bit big-endian RGBA. Native bitmap
+     * writers can leave RGB behind when alpha is zero; alpha still defines
+     * whether the bitmap contains any visible UI content. */
+    for (size_t i = 3; i < bytes; i += 4) {
         if (px[i] != 0) return true;
     }
     return false;
@@ -1468,23 +1469,28 @@ NAT(G_present)
 {
     (void)self; (void)ret;
     gbitmap *b = H(gbitmap, 0);
-    if (!b) {
-        atomic_store(&S.any, false);
-        atomic_store(&S.fresh, true);
-        if (tl_javaapp_wake_gl) tl_javaapp_wake_gl();
+    size_t bytes = b ? b->stride * (size_t)b->h : 0;
+    bool visible = b && bitmap_has_visible_pixels(b->px, bytes);
+    pthread_mutex_lock(&S.lock);
+    /* A transparent SurfaceView may be traversed at the UI refresh rate even
+     * while its native game renders less often. Only a visible -> empty change
+     * needs a compositor frame; repeated empty views have nothing to upload. */
+    if (!visible && !S.pending_any) {
+        pthread_mutex_unlock(&S.lock);
         return true;
     }
-    size_t bytes = b->stride * (size_t)b->h;
-    bool visible = bitmap_has_visible_pixels(b->px, bytes);
     if (visible) {
-        pthread_mutex_lock(&S.lock);
-        if (S.w != b->w || S.h != b->h) { free(S.px); S.px = malloc(bytes); S.w = b->w; S.h = b->h; }
-        if (S.px) memcpy(S.px, b->px, bytes);
-        else visible = false;
-        pthread_mutex_unlock(&S.lock);
+        /* Failed growth must not discard the last complete view frame. */
+        if (!tl_rgba_buffer_reserve(&S.px, &S.capacity, b->w, b->h)) {
+            pthread_mutex_unlock(&S.lock);
+            return true;
+        }
+        memcpy(S.px, b->px, bytes);
+        S.w = b->w; S.h = b->h;
     }
-    atomic_store(&S.any, visible);
+    S.pending_any = visible;
     atomic_store(&S.fresh, true);
+    pthread_mutex_unlock(&S.lock);
     if (tl_javaapp_wake_gl) tl_javaapp_wake_gl();
     return true;
 }
@@ -1492,14 +1498,34 @@ NAT(G_present)
 /* For the GL thread: when there is a new frame, its pixels (locked until tl_ui_frame_done). */
 bool tl_ui_frame_take(const uint8_t **px, int *w, int *h, bool *any)
 {
-    if (!atomic_exchange(&S.fresh, false)) return false;
+    if (!atomic_load(&S.fresh)) return false;
     pthread_mutex_lock(&S.lock);
-    *px = S.px; *w = S.w; *h = S.h; *any = atomic_load(&S.any);
+    if (!atomic_exchange(&S.fresh, false)) {
+        pthread_mutex_unlock(&S.lock);
+        return false;
+    }
+    *px = S.px; *w = S.w; *h = S.h; *any = S.pending_any;
     return true;
 }
-void tl_ui_frame_done(void) { pthread_mutex_unlock(&S.lock); }
-bool tl_ui_has_frame(void) { return atomic_load(&S.any); }
+void tl_ui_frame_done(void)
+{
+    atomic_store(&S.consumed_any, S.pending_any);
+    pthread_mutex_unlock(&S.lock);
+}
+bool tl_ui_has_frame(void) { return atomic_load(&S.consumed_any); }
 bool tl_ui_frame_pending(void) { return atomic_load(&S.fresh); }
+/* Called only after accepting a new session, before its producer/GL threads
+ * start. A rejected start must retain the closing session's borrowed frames. */
+void tl_ui_frame_reset(void)
+{
+    pthread_mutex_lock(&S.lock);
+    free(S.px);
+    S.px = NULL; S.capacity = 0; S.w = S.h = 0;
+    S.pending_any = false;
+    atomic_store(&S.fresh, false);
+    atomic_store(&S.consumed_any, false);
+    pthread_mutex_unlock(&S.lock);
+}
 
 static const struct { const char *name, *sig; dvm_native_fn fn; } k_gfx[] = {
     { "bmNew", "(II)J", G_bmNew },

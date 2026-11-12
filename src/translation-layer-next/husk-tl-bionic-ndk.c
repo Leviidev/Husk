@@ -820,6 +820,17 @@ bool tl_nwindow_view_bounds(void *window, int *x, int *y, int *vw, int *vh)
     if (vh) *vh = bh;
     return true;
 }
+bool tl_nwindow_is_opaque(void *window)
+{
+    tl_nwindow *w = window;
+    /* Only a SurfaceView declares this composition contract. TextureView,
+     * unknown windows and missing fields preserve their sampled alpha. */
+    if (!w || !w->view || w->texture) return false;
+    int format = tl_jni_get_field(w->view, "huskCompositionFormat", "I").i;
+    if (tl_jni_pending()) { tl_jni_clear(); return false; }
+    return format == -1 /* OPAQUE */ || format == 2 /* RGBX_8888 */
+        || format == 3 /* RGB_888 */ || format == 4 /* RGB_565 */;
+}
 /* A window on a TextureView's SurfaceTexture (a Surface made on one): drawn off-screen, each frame handed to the texture. */
 void *tl_nwindow_texture(void *window) { return window ? ((tl_nwindow *)window)->texture : NULL; }
 /* rgba (w x h, top row first unless flip) to the texture's next frame */

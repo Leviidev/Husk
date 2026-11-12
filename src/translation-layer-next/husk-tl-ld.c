@@ -26,6 +26,7 @@
 #include "husk-tl-xmem.h"
 #include "husk-tl-codewrite.h"
 #include "husk-tl-aot-data.h"
+#include "husk-tl-trutien-text.h"
 
 /* The project's log sink, and the bionic shim's surface. */
 void  tl_log_line(const char *fmt, ...);
@@ -3139,6 +3140,7 @@ static bool init_locked(tl_lib *L)
     L->state = 4;
     if (G.verbosity >= 1) tl_log_line("ld: %-36s initialised (%s%zu constructors)", L->name, L->init ? "DT_INIT + " : "", (size_t)(L->init_arraysz / 8));
     if (g_on_init) g_on_init(L);
+    tl_trutien_text_probe(L);
     return true;
 }
 

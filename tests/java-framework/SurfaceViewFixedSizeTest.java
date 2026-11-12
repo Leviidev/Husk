@@ -3,6 +3,7 @@ package android.view;
 
 import android.app.Activity;
 import android.graphics.Rect;
+import android.graphics.PixelFormat;
 
 /**
  * Verifies Android AOSP SurfaceView fixed-size buffer vs full-screen view layout contract:
@@ -21,6 +22,12 @@ public final class SurfaceViewFixedSizeTest {
         SurfaceView sv = new SurfaceView(host);
         check(!sv.isFixedSize(), "SurfaceView starts non-fixed");
         check(sv.getHolder().getSurface().huskView == sv, "Surface binds back to owning SurfaceView");
+        check(sv.huskCompositionFormat == PixelFormat.OPAQUE, "native composition starts opaque independently of EGL alpha");
+        sv.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        check(sv.huskCompositionFormat == PixelFormat.TRANSLUCENT, "explicit translucent composition retains alpha");
+        sv.getHolder().setFormat(PixelFormat.RGBA_8888);
+        check(sv.huskCompositionFormat == PixelFormat.RGBA_8888, "RGBA composition retains alpha");
+        sv.getHolder().setFormat(PixelFormat.OPAQUE);
 
         // Simulate SDL/Tru Tien sequence: layout at 1864x860 first, then setFixedSize(1568, 724).
         int atMostW = View.MeasureSpec.makeMeasureSpec(1864, View.MeasureSpec.AT_MOST);
