@@ -87,8 +87,8 @@ bool tl_guest_session_wait_close(int64_t ns)
         int64_t cur_ns = (int64_t)now.tv_sec * 1000000000ll + now.tv_nsec;
         int64_t left = end_ns - cur_ns;
         if (left <= 0) break;
-        struct timespec rel = { (time_t)(left / 1000000000ll), (long)(left % 1000000000ll) };
 #ifdef __APPLE__
+        struct timespec rel = { (time_t)(left / 1000000000ll), (long)(left % 1000000000ll) };
         pthread_cond_timedwait_relative_np(&tl_session_sleep_cv, &tl_session_sleep_mu, &rel);
 #else
         struct timespec rt;
