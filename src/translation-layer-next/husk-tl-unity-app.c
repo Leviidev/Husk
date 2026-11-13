@@ -15,6 +15,9 @@
 #include <sys/ucontext.h>
 #include <unistd.h>
 #include <TargetConditionals.h>
+#ifdef __APPLE__
+#include <malloc/malloc.h>
+#endif
 #if TARGET_OS_IPHONE
 #include <os/proc.h>
 #endif
@@ -669,8 +672,7 @@ void husk_native_memory_pressure(int level)
     if (tl_dvm_running() && tl_jar_cache_trim) tl_jar_cache_trim(level >= 2 ? 0 : (16u << 20));
     if (java_running()) tl_javaapp_touch(10, 0, 0, 0);
 #ifdef __APPLE__
-    void malloc_zone_pressure_relief(void *zone, size_t goal);
-    malloc_zone_pressure_relief(NULL, 0);
+    (void)malloc_zone_pressure_relief(NULL, 0);
 #endif
 }
 void husk_java_memory_warning(void)
