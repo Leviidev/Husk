@@ -19,6 +19,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-jni.h"
+#include "husk-tl-host-device.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -31,6 +32,11 @@ void tl_log_line(const char *fmt, ...);
 
 #define NS 1000000000ll
 #define VSYNC_NS (NS / 60)
+static inline int64_t vsync_ns(void)
+{
+    float hz = tl_host_display_max_refresh();
+    return (hz >= 1.0f && hz <= 1000.0f) ? (int64_t)(1000000000.0 / (double)hz) : VSYNC_NS;
+}
 
 static jvalue vl(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue vi(int i) { jvalue v; v.j = 0; v.i = i; return v; }
@@ -593,9 +599,10 @@ static void post_frame(jobj *self, jobj *cb, int64_t delay_ns)
 {
     looper *l = looper_of(self);
     if (!l || !cb) return;
+    int64_t interval = vsync_ns();
     int64_t t = now_ns() + delay_ns;
     ev *e = calloc(1, sizeof(*e));
-    e->when = (t / VSYNC_NS + 1) * VSYNC_NS;       /* the next 60 Hz boundary after t */
+    e->when = (t / interval + 1) * interval;       /* the next display vsync boundary after t */
     e->frame = tl_jni_ref(cb);
     enqueue(l, e);
 }
@@ -612,8 +619,8 @@ static void Choreo_removeFrameCallback(tl_jcall *c)
     }
     pthread_mutex_unlock(&l->mu);
 }
-static void Choreo_getFrameTimeNanos(tl_jcall *c)     { c->ret = vj(now_ns() / VSYNC_NS * VSYNC_NS); }
-static void Choreo_getFrameIntervalNanos(tl_jcall *c) { c->ret = vj(VSYNC_NS); }
+static void Choreo_getFrameTimeNanos(tl_jcall *c)     { int64_t v = vsync_ns(); c->ret = vj(now_ns() / v * v); }
+static void Choreo_getFrameIntervalNanos(tl_jcall *c) { c->ret = vj(vsync_ns()); }
 
 /* ------------------------------------------------------------ install */
 

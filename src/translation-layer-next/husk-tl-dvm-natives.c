@@ -19,6 +19,7 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-session.h"
+#include "husk-tl-qos.h"
 #include <strings.h>
 
 static jvalue J(int64_t v) { jvalue r; r.j = v; return r; }
@@ -713,6 +714,30 @@ NAT(Thread_holdsLock)
     *ret = Z(dvm_holds_lock(a[0].l)); return true;
 }
 
+static int thread_java_priority(jobj *t)
+{
+    if (!t) return 5;
+    dvm_class *c = dvm_class_of(dvm_object_class(t));
+    dvm_field *pf = c ? dvm_find_field(c, "priority", false) : NULL;
+    int p = pf ? dvm_slots(t)[pf->slot].i : 5;
+    return (p >= 1 && p <= 10) ? p : 5;
+}
+NAT(Thread_setNativeName)
+{
+    (void)ret;
+    if (self == dvm_current_thread() && a[0].l) {
+        const char *n = tl_jni_string(a[0].l);
+        if (n && *n) { pthread_setname_np(n); tl_qos_apply_name(n); }
+    }
+    return true;
+}
+NAT(Thread_setPriority0)
+{
+    (void)a; (void)ret;
+    if (self == dvm_current_thread()) tl_qos_apply_java_priority(thread_java_priority(self));
+    return true;
+}
+
 #include "husk-tl-session.h"
 #include "husk-tl-guest-pool.h"
 typedef struct { jobj *thread; bool tracked; atomic_bool ready; } start_arg;
@@ -728,9 +753,10 @@ static void *thread_main(void *p)
     tl_guest_pool_begin();
     pthread_cleanup_push(tl_guest_pool_end, NULL);
     jobj *t = t_thread;
+    tl_qos_apply_java_priority(thread_java_priority(t));
     jvalue nm; dvm_class *c = dvm_class_of(dvm_object_class(t));
     dvm_field *nf = c ? dvm_find_field(c, "name", false) : NULL;
-    if (nf) { nm = t->fields[nf->slot]; const char *n = tl_jni_string(nm.l); if (n) pthread_setname_np(n); }
+    if (nf) { nm = t->fields[nf->slot]; const char *n = tl_jni_string(nm.l); if (n) { pthread_setname_np(n); tl_qos_apply_name(n); } }
     dvm_method *run = dvm_find_virtual(dvm_object_class(t), "run", "()V");
     jvalue r;
     if (run && !dvm_call(run, t, NULL, &r)) {
@@ -1978,8 +2004,8 @@ static const entry k_natives[] = {
     { "java/lang/Thread", "nativeCreate", "(Ljava/lang/Thread;JZ)V", Thread_nativeCreate },
     { "java/lang/Thread", "nativeGetStatus", "(Z)I", Thread_status },
     { "java/lang/Thread", "nicenessForPriority", "(I)I", Thread_nice },
-    { "java/lang/Thread", "setNativeName", "(Ljava/lang/String;)V", Thread_noop },
-    { "java/lang/Thread", "setPriority0", "(II)V", Thread_noop },
+    { "java/lang/Thread", "setNativeName", "(Ljava/lang/String;)V", Thread_setNativeName },
+    { "java/lang/Thread", "setPriority0", "(II)V", Thread_setPriority0 },
     { "java/lang/Thread", "setNiceness0", "(I)I", Thread_noop },
     { "java/lang/Thread", "yield0", "()V", Thread_noop },
 

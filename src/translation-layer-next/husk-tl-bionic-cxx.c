@@ -8,6 +8,7 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 #include "husk-tl-thread-clock.h"
+#include "husk-tl-qos.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -149,7 +150,14 @@ static int b_getrusage(int who, void *out)
 }
 static int b_sched_get_priority_max(int policy) { return policy == 1 || policy == 2 ? 99 : 0; }
 static int b_sched_get_priority_min(int policy) { return policy == 1 || policy == 2 ? 1 : 0; }
-static int b_pthread_setschedparam(pthread_t t, int policy, const int *param) { (void)t; (void)policy; (void)param; return 0; }
+static int b_pthread_setschedparam(pthread_t t, int policy, const int *param)
+{
+    if (pthread_equal(t, pthread_self())) {
+        if (policy == 1 || policy == 2 || (param && *param > 0)) tl_qos_set_interactive();
+        else tl_qos_set_initiated();
+    }
+    return 0;
+}
 static int b_pthread_getschedparam(pthread_t t, int *policy, int *param) { (void)t; if (policy) *policy = 0; if (param) *param = 0; return 0; }
 static int b_pthread_attr_setschedparam(void *attr, const int *param) { (void)attr; (void)param; return 0; }
 static int b_pthread_gettid_np(pthread_t t) { return tl_thread_clock_tid_of(t); }

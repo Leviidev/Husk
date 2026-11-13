@@ -38,6 +38,7 @@
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-vhtg-quest.h"
+#include "husk-tl-qos.h"
 
 void tl_nwindow_configure(int w, int h, void *layer);
 void *tl_nwindow_get(void);
@@ -1244,7 +1245,12 @@ static void *gl_run(void *arg)
         tl_javaapp_wake_gl();
         return NULL;
     }
+#if defined(__APPLE__)
+    /* Triple-buffered CAMetalLayer handles tear-free presentation without locking the compositor onto 60 Hz vsync cliffs. */
+    if (swapInterval) swapInterval(dpy, 0);
+#else
     if (swapInterval) swapInterval(dpy, 1);
+#endif
     overlay ov = { 0 }, appov = { 0 }, appup = { 0 };
     ov_init(&ov);
     ov_init_flip(&appov, true);
@@ -1364,9 +1370,21 @@ static void *gl_run(void *arg)
             if (!app || ui_vis) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 if (!app) {
-                    clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
-                    clear(0x4000);     /* web views show through from under the screen */
+                    bool opaque_cover = !tl_web_any_visible();
+                    if (opaque_cover) {
+                        pthread_mutex_lock(&E2.lk);
+                        opaque_cover = E2.on && (E2.tex || E2.px) && E2.opaque && E2.x <= 0 && E2.y <= 0 && E2.w >= A.cfg.width && E2.h >= A.cfg.height;
+                        pthread_mutex_unlock(&E2.lk);
+                    }
+                    if (!opaque_cover) {
+                        clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
+                        clear(0x4000);     /* web views show through from under the screen */
+                    }
                     sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
+                    if (opaque_cover && sampled_seq == 0) {
+                        clearColor(0, 0, 0, 1);
+                        clear(0x4000);
+                    }
                 }
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
             }
@@ -1400,7 +1418,9 @@ static void *gl_run(void *arg)
         }
         int thermal = 0;
         { extern int tl_host_thermal_state(void) __attribute__((weak)); if (tl_host_thermal_state) thermal = tl_host_thermal_state(); }
-        int target_hz = thermal >= 3 ? 30 : thermal == 2 ? 45 : TL_JAVA_DISPLAY_HZ;
+        int host_hz = (A.cfg.max_refresh_rate >= (float)TL_JAVA_DISPLAY_HZ && A.cfg.max_refresh_rate <= 240.0f)
+            ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
+        int target_hz = thermal >= 3 ? 60 : thermal == 2 ? (host_hz >= 120 ? 90 : host_hz) : host_hz;
         if (app) {
             next += 1000000000ll / target_hz;
             int64_t late = now_ns() - next;
@@ -1539,6 +1559,7 @@ static void *app_run(void *arg)
     void tl_thread_altstack(void); tl_thread_altstack();
     (void)arg;
     pthread_setname_np("main");
+    tl_qos_set_interactive();
     bool startup_trace = getenv("TL_STARTUP_TRACE") != NULL;
     if (startup_trace) tl_log_line("startup: Java Activity runner begin activity=%s", A.activity);
     jvalue r;
@@ -1577,6 +1598,7 @@ static void *gl_main(void *arg)
 {
     /* This host loop has nested per-frame pools of its own. */
     tl_guest_pool_end(NULL);
+    tl_qos_set_interactive();
     pthread_cleanup_push(thread_done, &A.gl_done);
     gl_run(arg);
     pthread_cleanup_pop(1);

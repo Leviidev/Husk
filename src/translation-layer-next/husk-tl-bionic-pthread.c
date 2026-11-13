@@ -24,6 +24,7 @@
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-guest-thread.h"
 #include "husk-tl-thread-clock.h"
+#include "husk-tl-qos.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -575,6 +576,7 @@ static void *start_thunk(void *p)
     pthread_cleanup_push(tl_guest_thread_release, (void *)(uintptr_t)c.tracked);
     tl_guest_pool_begin();
     pthread_cleanup_push(tl_guest_pool_end, NULL);
+    tl_qos_set_initiated();
     /* a stack of its own for fault handlers: a crash that leaves the thread's stack unusable is then still reported (macOS kills a
        thread it can not deliver a signal to with SIGILL, and nothing is said) */
     tl_thread_altstack();
@@ -673,7 +675,10 @@ static int b_kill(pthread_t t, int sig)
 
 static int b_setname_np(pthread_t t, const char *name)
 {
-    if (pthread_equal(t, pthread_self())) pthread_setname_np(name);
+    if (pthread_equal(t, pthread_self())) {
+        pthread_setname_np(name);
+        tl_qos_apply_name(name);
+    }
     return 0;
 }
 

@@ -1943,7 +1943,8 @@ static int b_clock_gettime(int id, struct timespec *ts)
         tl_set_guest_errno(22 /* EINVAL */);
         return -1;
     }
-    TL_ERRNO_BEGIN(); int r = clock_gettime(clock_to_darwin(id), ts); TL_ERRNO_END();
+    int r = clock_gettime(clock_to_darwin(id), ts);
+    if (__builtin_expect(r != 0, 0)) tl_set_guest_errno(tl_errno_to_guest(errno));
     return r;
 }
 static int b_clock_getres(int id, struct timespec *ts)

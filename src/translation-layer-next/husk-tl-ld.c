@@ -1779,14 +1779,19 @@ static struct { tl_lib *lib; uint64_t init_vaddr, filesz, memsz, align; } g_tlsm
 static int g_ntls;
 static pthread_key_t g_tls_key;
 static pthread_once_t g_tls_once = PTHREAD_ONCE_INIT;
+static atomic_bool g_tls_key_ready;
 
 typedef struct { void *blk[MAX_TLS_MODULES + 1]; } tls_thread;
 static void tls_thread_free(void *p) { tls_thread *t = p; for (int i = 0; i <= MAX_TLS_MODULES; i++) free(t->blk[i]); free(t); }
-static void tls_key_init(void) { pthread_key_create(&g_tls_key, tls_thread_free); }
+static void tls_key_init(void)
+{
+    pthread_key_create(&g_tls_key, tls_thread_free);
+    atomic_store_explicit(&g_tls_key_ready, true, memory_order_release);
+}
 
 static void *tls_block(unsigned module)
 {
-    pthread_once(&g_tls_once, tls_key_init);
+    if (__builtin_expect(!atomic_load_explicit(&g_tls_key_ready, memory_order_acquire), 0)) pthread_once(&g_tls_once, tls_key_init);
     if (module == 0 || module > (unsigned)g_ntls) return NULL;
     tls_thread *t = pthread_getspecific(g_tls_key);
     if (!t) { t = calloc(1, sizeof(*t)); pthread_setspecific(g_tls_key, t); }

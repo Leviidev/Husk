@@ -148,6 +148,11 @@ static int b_ALooper_pollAll(int timeout_ms, int *out_fd, int *out_events, void 
  * owner thread's looper runs them with that tick's time, as Android's does.
  */
 #define VSYNC_NS TL_JAVA_VSYNC_NS
+static inline int64_t choreo_vsync_ns(void)
+{
+    float hz = tl_host_display_max_refresh();
+    return (hz >= 1.0f && hz <= 1000.0f) ? (int64_t)(1000000000.0 / (double)hz) : VSYNC_NS;
+}
 typedef struct chcb { int kind; void *fn, *data; int64_t not_before; struct chcb *next; } chcb;    /* kind 0: frame, 1: frame64, 2: vsync */
 typedef struct tl_choreo { tl_looper *looper; int pipe[2]; pthread_mutex_t mu; chcb *pending; void *rate_fn, *rate_data; struct tl_choreo *next; } tl_choreo;
 static __thread tl_choreo *t_choreo;
@@ -162,7 +167,7 @@ typedef struct { int64_t frame_time, deadline, expected_present; } tl_choreo_fra
 static int64_t b_AChoreographerFrameCallbackData_getFrameTimeNanos(const tl_choreo_frame *d) { return d->frame_time; }
 static size_t b_AChoreographerFrameCallbackData_getFrameTimelinesLength(const tl_choreo_frame *d) { (void)d; return 1; }
 static size_t b_AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex(const tl_choreo_frame *d) { (void)d; return 0; }
-static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineVsyncId(const tl_choreo_frame *d, size_t i) { (void)i; return d->frame_time / VSYNC_NS; }
+static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineVsyncId(const tl_choreo_frame *d, size_t i) { (void)i; return d->frame_time / choreo_vsync_ns(); }
 static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos(const tl_choreo_frame *d, size_t i) { (void)i; return d->expected_present; }
 static int64_t b_AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos(const tl_choreo_frame *d, size_t i) { (void)i; return d->deadline; }
 
@@ -184,7 +189,8 @@ static int choreo_run(int fd, int events, void *data)
     /* in the order they were posted */
     chcb *rev = NULL;
     while (due) { chcb *n = due->next; due->next = rev; rev = due; due = n; }
-    tl_choreo_frame fd_ = { now, now + VSYNC_NS - 2000000, now + 2 * VSYNC_NS };
+    int64_t vsync = choreo_vsync_ns();
+    tl_choreo_frame fd_ = { now, now + vsync - 2000000, now + 2 * vsync };
     for (chcb *cb = rev; cb;) {
         chcb *n = cb->next;
         if (cb->kind == 0) ((void (*)(long, void *))cb->fn)((long)now, cb->data);
@@ -202,7 +208,7 @@ static void *choreo_clock(void *arg)
     pthread_setname_np("husk-vsync");
     int64_t next = mono_ns();
     for (;;) {
-        next += VSYNC_NS;
+        next += choreo_vsync_ns();
         int64_t now = mono_ns();
         if (next > now) { struct timespec ts = { 0, (long)(next - now) }; nanosleep(&ts, NULL); } else next = now;
         atomic_store(&g_vsync_time, next);
@@ -261,7 +267,7 @@ static void b_AChoreographer_registerRefreshRateCallback(tl_choreo *c, void *fn,
 {
     if (!c || !fn) return;
     c->rate_fn = fn; c->rate_data = data;
-    ((void (*)(int64_t, void *))fn)(VSYNC_NS, data);
+    ((void (*)(int64_t, void *))fn)(choreo_vsync_ns(), data);
 }
 static void b_AChoreographer_unregisterRefreshRateCallback(tl_choreo *c, void *fn, void *data) { (void)fn; (void)data; if (c) c->rate_fn = NULL; }
 

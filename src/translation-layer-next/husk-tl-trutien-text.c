@@ -88,10 +88,15 @@ static void text_scratch_free(void *value)
     }
     free(s);
 }
-static void text_key_init(void) { text_key_error = pthread_key_create(&text_key, text_scratch_free); }
+static int text_key_ready;
+static void text_key_init(void)
+{
+    text_key_error = pthread_key_create(&text_key, text_scratch_free);
+    __atomic_store_n(&text_key_ready, 1, __ATOMIC_RELEASE);
+}
 static text_scratch *text_scratch_get(void)
 {
-    pthread_once(&text_key_once, text_key_init);
+    if (!__atomic_load_n(&text_key_ready, __ATOMIC_ACQUIRE)) pthread_once(&text_key_once, text_key_init);
     if (text_key_error) return NULL;
     text_scratch *s = pthread_getspecific(text_key);
     if (!s) {
@@ -133,10 +138,21 @@ static const uint32_t *text_without_color_controls(const uint32_t *text, int cou
     size_t bound = count < 0 ? TEXT_LIMIT : (size_t)count;
     if (bound > TEXT_LIMIT) return text;
     size_t len = 0;
+    bool has_caret = false;
     bool has_control = false;
-    while (len < bound && text[len]) len++;
+    while (len < bound) {
+        uint32_t ch = text[len];
+        if (!ch) break;
+        if (ch == '^') has_caret = true;
+        len++;
+    }
     /* An unbounded string needs a terminator within the inspection limit. */
     if (count < 0 && len == bound) return text;
+    if (!has_caret) {
+        if (!__atomic_load_n(&text_key_ready, __ATOMIC_ACQUIRE)) pthread_once(&text_key_once, text_key_init);
+        text_scratch *cur = !text_key_error ? pthread_getspecific(text_key) : NULL;
+        if (!cur || !cur->depth) return text;
+    }
     text_scratch *s = text_scratch_get();
     if (!s) return text;
     const uint8_t *hidden = NULL;

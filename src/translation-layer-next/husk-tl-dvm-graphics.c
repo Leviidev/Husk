@@ -226,7 +226,7 @@ static gface *face_family(const char *family, int style)
     else if (strstr(fam, "light")) weight = 300;
     else if (strstr(fam, "thin")) weight = 200;
     else if (strstr(fam, "black")) weight = 900;
-    if (strstr(fam, "mono")) { base = CTFontCreateWithName(CFSTR("Menlo"), 12, NULL); own = true; }
+    if (strstr(fam, "mono")) { base = CTFontCreateWithName(CFSTR("Menlo-Regular"), 12, NULL); own = true; }
     else if (strstr(fam, "serif") && !strstr(fam, "sans")) { base = CTFontCreateWithName(CFSTR("Georgia"), 12, NULL); own = true; }
     else if ((base = roboto())) own = false;
     else { base = CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 12, NULL); own = true; }

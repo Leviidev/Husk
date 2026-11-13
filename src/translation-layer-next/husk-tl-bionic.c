@@ -28,6 +28,7 @@
 #include "husk-tl-host-device.h"
 #include "husk-tl-memory.h"
 #include "husk-tl-thread-clock.h"
+#include "husk-tl-qos.h"
 
 int tl_bionic_sched_yield(void);
 
@@ -607,7 +608,12 @@ static int bionic_gettid(void)
 }
 
 static int bionic_getpriority(int which, int who) { (void)which; (void)who; return 0; }
-static int bionic_setpriority(int which, int who, int prio) { (void)which; (void)who; (void)prio; return 0; }
+static int bionic_setpriority(int which, int who, int prio)
+{
+    (void)which;
+    if (who == 0 || who == tl_thread_clock_tid()) tl_qos_apply_nice(prio);
+    return 0;
+}
 
 static int bionic_sched_getaffinity(int pid, size_t size, void *mask)
 {

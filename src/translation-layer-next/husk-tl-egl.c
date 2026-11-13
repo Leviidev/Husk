@@ -1287,12 +1287,67 @@ static const char *const k_es31_stub_names[] = {
 };
 
 static void *egl_resolve(const char *name);
+static const char *egl_intern_name(const char *name)
+{
+    static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
+    static const char *pool[1536];
+    static size_t count;
+    pthread_mutex_lock(&mu);
+    for (size_t i = 0; i < count; i++) {
+        if (!strcmp(pool[i], name)) { const char *s = pool[i]; pthread_mutex_unlock(&mu); return s; }
+    }
+    const char *s = count < 1536 ? strdup(name) : NULL;
+    if (s) pool[count++] = s;
+    pthread_mutex_unlock(&mu);
+    return s;
+}
 void *tl_egl_resolve(const char *name)
 {
-    void *r = egl_resolve(name);
-    static int trace = -1;
+    static int trace = -1, trace_gl = -1;
     if (trace < 0) trace = getenv("TL_EGL_TRACE") ? 1 : 0;
-    if (trace && name[0] == 'e') tl_log_line("egl: resolve %s -> %p", name, r);
+    if (trace_gl < 0) trace_gl = getenv("TL_GL_TRACE") ? 1 : 0;
+    if (!trace && !trace_gl && name && *name) {
+        uint32_t h = 2166136261u;
+        for (const unsigned char *p = (const unsigned char *)name; *p; p++) h = (h ^ *p) * 16777619u;
+        uintptr_t gen = ((uintptr_t)(E.ready ? 1u : 0u)) | ((uintptr_t)(g_es31_shim ? 1u : 0u) << 1) ^ (uintptr_t)E.gles;
+        typedef struct { uint32_t h; const char *key; void *fn; uintptr_t gen; } res_ent;
+        static __thread res_ent t_cache[128];
+        static pthread_mutex_t l2_mu = PTHREAD_MUTEX_INITIALIZER;
+        static res_ent l2_cache[2048];
+        res_ent *te = &t_cache[h & 127u];
+        if (te->h == h && te->gen == gen && te->key && !strcmp(te->key, name)) return te->fn;
+        pthread_mutex_lock(&l2_mu);
+        for (unsigned probe = 0; probe < 64; probe++) {
+            res_ent *g = &l2_cache[(h + probe) & 2047u];
+            if (!g->key) break;
+            if (g->h == h && !strcmp(g->key, name)) {
+                if (g->gen == gen && g->fn) {
+                    *te = *g;
+                    pthread_mutex_unlock(&l2_mu);
+                    return g->fn;
+                }
+                break;
+            }
+        }
+        pthread_mutex_unlock(&l2_mu);
+        void *r = egl_resolve(name);
+        if (r) {
+            const char *interned = egl_intern_name(name);
+            if (interned) {
+                res_ent filled = { h, interned, r, gen };
+                pthread_mutex_lock(&l2_mu);
+                for (unsigned probe = 0; probe < 64; probe++) {
+                    res_ent *g = &l2_cache[(h + probe) & 2047u];
+                    if (!g->key || (g->h == h && !strcmp(g->key, interned))) { *g = filled; break; }
+                }
+                pthread_mutex_unlock(&l2_mu);
+                *te = filled;
+            }
+        }
+        return r;
+    }
+    void *r = egl_resolve(name);
+    if (trace && name && name[0] == 'e') tl_log_line("egl: resolve %s -> %p", name, r);
     return r;
 }
 static void *egl_resolve(const char *name)
