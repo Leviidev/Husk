@@ -1124,11 +1124,18 @@ enum StorageCleaner {
                 s.gameCacheBytes += measureGameCaches(in: appDir)
             }
         }
+        #if canImport(Darwin)
         let home = URL(fileURLWithPath: NSHomeDirectory())
         if let vals = try? home.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
            let free = vals.volumeAvailableCapacityForImportantUsage {
             s.deviceFreeBytes = free
         }
+        #else
+        if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
+           let free = (attrs[.systemFreeSize] as? NSNumber)?.int64Value {
+            s.deviceFreeBytes = free
+        }
+        #endif
         return s
     }
 
@@ -1152,7 +1159,9 @@ enum StorageCleaner {
         let before = measure(activeAppIDs: activeAppIDs)
         purgeTemporaryItems(minAgeSeconds: 0)
         IncomingFiles.clearLeftovers()
+        #if canImport(Darwin)
         URLCache.shared.removeAllCachedResponses()
+        #endif
 
         let fm = FileManager.default
         if let appDirs = try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: [.isDirectoryKey]) {
@@ -1172,7 +1181,11 @@ enum StorageCleaner {
     }
 
     private nonisolated static func measureTemporaryAndIncoming() -> Int64 {
+        #if canImport(Darwin)
         var total: Int64 = Int64(URLCache.shared.currentDiskUsage)
+        #else
+        var total: Int64 = 0
+        #endif
         total += folderSize(IncomingFiles.folder)
         let tmp = FileManager.default.temporaryDirectory
         guard let items = try? FileManager.default.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey]) else { return total }
