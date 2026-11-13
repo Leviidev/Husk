@@ -26,3 +26,4 @@ third_party/gpu/
 # local notes and editor rules, never part of the repo
 /Husk_*.MD
 /.cursor/
+.idea/
