@@ -24,6 +24,7 @@
 #include "husk-tl-ld.h"
 #include "husk-tl-dexindex.h"
 #include "husk-tl-host-device.h"
+#include "husk-tl-thread-clock.h"
 
 /* ------------------------------------------------------------------ state */
 
@@ -508,7 +509,7 @@ static void Env_getExternalStorageState(tl_jcall *c) { c->ret = vl(STR("mounted"
 static void Env_getExternalStorageDirectory(tl_jcall *c) { c->ret = vl(new_file(H.ext_files)); }
 static void Process_setThreadPriority(tl_jcall *c) { (void)c; }
 static void Process_myPid(tl_jcall *c) { c->ret = vi(getpid()); }
-static void Process_myTid(tl_jcall *c) { uint64_t t = 0; pthread_threadid_np(NULL, &t); c->ret = vi((int)t); }
+static void Process_myTid(tl_jcall *c) { c->ret = vi(tl_thread_clock_tid()); }
 /* System.load / loadLibrary: what ART does for a library -- map it, and call its JNI_OnLoad once with the JavaVM. */
 static tl_lib *g_onload_done[96];
 static int g_nonload;

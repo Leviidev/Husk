@@ -21,6 +21,7 @@
 #define TL_GUEST_POOL_IMPLEMENTATION
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-guest-thread.h"
+#include "husk-tl-thread-clock.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -553,6 +554,7 @@ static void *start_thunk(void *p)
     /* a stack of its own for fault handlers: a crash that leaves the thread's stack unusable is then still reported (macOS kills a
        thread it can not deliver a signal to with SIGILL, and nothing is said) */
     tl_thread_altstack();
+    (void)tl_thread_clock_tid();
     if (g_thread_trace < 0) g_thread_trace = getenv("TL_THREAD_TRACE") ? 1 : 0;
     if (g_thread_trace) {
         const char *ln = NULL; const void *sa = NULL;

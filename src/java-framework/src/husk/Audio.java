@@ -27,6 +27,8 @@ public final class Audio {
     public static native void voiceRate(int v, float rate);
     public static native void voiceLoop(int v, int loops);
     public static native void pauseAll(boolean pause);
+    public static native int dupFd(int fd);
+    public static native void closeFd(int fd);
     public static native long decOpen(byte[] data);
     public static native long decOpenFd(int fd, long offset, long length);
     public static native void decInfo(long dec, int[] out);               // rate, channels, duration ms

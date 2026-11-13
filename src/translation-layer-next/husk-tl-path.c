@@ -2,6 +2,8 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-path.h"
 #include <errno.h>
+#include <stdatomic.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -135,6 +137,159 @@ char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char 
     return failure ? NULL : out;
 }
 
+static atomic_uint_fast64_t g_path_cache_gen = 1;
+
+void tl_path_cache_invalidate(void)
+{
+    atomic_fetch_add_explicit(&g_path_cache_gen, 1, memory_order_release);
+}
+
+#ifndef _WIN32
+#define CASE_CACHE_SIZE 512u
+#define CASE_CACHE_PROBE 4u
+
+typedef struct {
+    uint64_t gen;
+    uint64_t dev;
+    uint64_t ino;
+    uint64_t mtime_sec;
+    uint64_t mtime_nsec;
+    uint64_t stamp;
+    uint32_t nlink;
+    uint32_t hash;
+    uint16_t comp_len;
+    uint16_t actual_len;
+    uint8_t state; /* 0 = empty, 1 = negative miss, 2 = positive hit */
+    char query_ci[256];
+    char actual[256];
+} case_cache_entry;
+
+static case_cache_entry g_case_cache[CASE_CACHE_SIZE];
+static atomic_flag g_case_cache_lock = ATOMIC_FLAG_INIT;
+static uint64_t g_case_cache_clock = 0;
+
+static uint32_t case_comp_hash(const char *s, size_t n, char *ci_out)
+{
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < n; i++) {
+        unsigned char c = (unsigned char)s[i];
+        if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+        ci_out[i] = (char)c;
+        h ^= c;
+        h *= 16777619u;
+    }
+    ci_out[n] = '\0';
+    return h;
+}
+
+static uint32_t case_bucket_index(uint64_t dev, uint64_t ino, uint32_t comp_hash)
+{
+    uint64_t x = dev * 0x9e3779b97f4a7c15ULL ^ ino * 0xbf58476d1ce4e5b9ULL ^ comp_hash;
+    x ^= x >> 30;
+    return (uint32_t)(x & (CASE_CACHE_SIZE - 1u));
+}
+
+static void stat_dir_stamp(const struct stat *st, uint64_t *dev, uint64_t *ino,
+                           uint32_t *nlink, uint64_t *ms, uint64_t *mn)
+{
+    *dev = (uint64_t)st->st_dev;
+    *ino = (uint64_t)st->st_ino;
+    *nlink = (uint32_t)st->st_nlink;
+#if defined(__APPLE__)
+    *ms = (uint64_t)st->st_mtimespec.tv_sec;
+    *mn = (uint64_t)st->st_mtimespec.tv_nsec;
+#elif defined(__linux__)
+    *ms = (uint64_t)st->st_mtim.tv_sec;
+    *mn = (uint64_t)st->st_mtim.tv_nsec;
+#else
+    *ms = (uint64_t)st->st_mtime;
+    *mn = 0;
+#endif
+}
+
+static int case_cache_lookup(uint64_t gen, const struct stat *pst, const char *comp, size_t comp_len,
+                             char *actual_out, size_t *actual_len_out)
+{
+    if (comp_len == 0 || comp_len >= 256) return 0;
+    char ci[256];
+    uint32_t h = case_comp_hash(comp, comp_len, ci);
+    uint64_t dev, ino, ms, mn;
+    uint32_t nlink;
+    stat_dir_stamp(pst, &dev, &ino, &nlink, &ms, &mn);
+    uint32_t bucket = case_bucket_index(dev, ino, h);
+
+    while (atomic_flag_test_and_set_explicit(&g_case_cache_lock, memory_order_acquire)) {}
+    int hit = 0;
+    for (uint32_t s = 0; s < CASE_CACHE_PROBE; s++) {
+        case_cache_entry *e = &g_case_cache[(bucket + s) & (CASE_CACHE_SIZE - 1u)];
+        if (e->state != 0 && e->gen == gen && e->hash == h && e->comp_len == (uint16_t)comp_len &&
+            e->dev == dev && e->ino == ino && e->nlink == nlink &&
+            e->mtime_sec == ms && e->mtime_nsec == mn &&
+            memcmp(e->query_ci, ci, comp_len) == 0) {
+            e->stamp = ++g_case_cache_clock;
+            if (e->state == 1) {
+                hit = -1;
+            } else {
+                memcpy(actual_out, e->actual, e->actual_len + 1u);
+                *actual_len_out = e->actual_len;
+                hit = 1;
+            }
+            break;
+        }
+    }
+    atomic_flag_clear_explicit(&g_case_cache_lock, memory_order_release);
+    return hit;
+}
+
+static void case_cache_store(uint64_t gen, const struct stat *pst, const char *comp, size_t comp_len,
+                             bool found, const char *actual, size_t actual_len)
+{
+    if (comp_len == 0 || comp_len >= 256) return;
+    if (found && (actual_len == 0 || actual_len >= 256)) return;
+    if (atomic_load_explicit(&g_path_cache_gen, memory_order_acquire) != gen) return;
+
+    char ci[256];
+    uint32_t h = case_comp_hash(comp, comp_len, ci);
+    uint64_t dev, ino, ms, mn;
+    uint32_t nlink;
+    stat_dir_stamp(pst, &dev, &ino, &nlink, &ms, &mn);
+    uint32_t bucket = case_bucket_index(dev, ino, h);
+
+    while (atomic_flag_test_and_set_explicit(&g_case_cache_lock, memory_order_acquire)) {}
+    case_cache_entry *victim = &g_case_cache[bucket];
+    for (uint32_t s = 0; s < CASE_CACHE_PROBE; s++) {
+        case_cache_entry *e = &g_case_cache[(bucket + s) & (CASE_CACHE_SIZE - 1u)];
+        if (e->state == 0 || e->gen != gen) { victim = e; break; }
+        if (e->hash == h && e->comp_len == (uint16_t)comp_len && e->dev == dev && e->ino == ino &&
+            memcmp(e->query_ci, ci, comp_len) == 0) {
+            victim = e;
+            break;
+        }
+        if (e->stamp < victim->stamp) victim = e;
+    }
+    victim->gen = gen;
+    victim->dev = dev;
+    victim->ino = ino;
+    victim->mtime_sec = ms;
+    victim->mtime_nsec = mn;
+    victim->nlink = nlink;
+    victim->hash = h;
+    victim->comp_len = (uint16_t)comp_len;
+    victim->stamp = ++g_case_cache_clock;
+    memcpy(victim->query_ci, ci, comp_len + 1u);
+    if (found) {
+        victim->state = 2;
+        victim->actual_len = (uint16_t)actual_len;
+        memcpy(victim->actual, actual, actual_len + 1u);
+    } else {
+        victim->state = 1;
+        victim->actual_len = 0;
+        victim->actual[0] = '\0';
+    }
+    atomic_flag_clear_explicit(&g_case_cache_lock, memory_order_release);
+}
+#endif
+
 static bool path_case_resolve_bounded(char *path, size_t cap)
 {
     if (!path || !path[0]) return false;
@@ -142,7 +297,26 @@ static bool path_case_resolve_bounded(char *path, size_t cap)
     if (access(path, 0) == 0) return true;
 #ifndef _WIN32
     size_t len = strlen(path);
+    /* Walk right-to-left to stop at the deepest already-existing ancestor in
+     * 1-2 access() probes rather than scanning from '/' down. */
+    size_t probe = len;
+    while (probe > 0 && path[probe - 1] == '/') probe--;
+    if (probe == 0) return false;
     size_t i = 0;
+    while (probe > 0) {
+        while (probe > 0 && path[probe - 1] != '/') probe--;
+        while (probe > 0 && path[probe - 1] == '/') probe--;
+        if (probe == 0) break;
+        char saved = path[probe];
+        path[probe] = '\0';
+        int exists = access(path, 0);
+        path[probe] = saved;
+        if (exists == 0) {
+            i = probe;
+            break;
+        }
+    }
+
     while (i < len) {
         while (path[i] == '/') i++;
         if (i >= len) break;
@@ -157,7 +331,9 @@ static bool path_case_resolve_bounded(char *path, size_t cap)
         path[i] = '\0';
         if (access(path, 0) != 0) {
             char parent[1024];
-            if (start <= 1) {
+            if (start == 0) {
+                snprintf(parent, sizeof(parent), ".");
+            } else if (start == 1) {
                 snprintf(parent, sizeof(parent), "/");
             } else {
                 size_t p_len = start - 1;
@@ -165,38 +341,64 @@ static bool path_case_resolve_bounded(char *path, size_t cap)
                 if (p_len >= sizeof(parent)) { path[i] = saved; return false; }
                 snprintf(parent, sizeof(parent), "%.*s", (int)p_len, path);
             }
-            DIR *d = opendir(parent);
-            bool found = false;
-            if (d) {
-                struct dirent *de;
-                while ((de = readdir(d))) {
-                    if (strcasecmp(de->d_name, path + start) == 0) {
-                        size_t de_len = strlen(de->d_name);
-                        if (de_len == comp_len) {
-                            memcpy(path + start, de->d_name, comp_len);
-                        } else {
-                            if (cap && (de_len > cap - 1 || len - comp_len > cap - 1 - de_len)) {
-                                path[i] = saved;
-                                closedir(d);
-                                return false;
+
+            struct stat pst;
+            if (stat(parent, &pst) != 0 || !S_ISDIR(pst.st_mode)) {
+                path[i] = saved;
+                return false;
+            }
+            uint64_t gen = atomic_load_explicit(&g_path_cache_gen, memory_order_acquire);
+            char actual[256];
+            size_t actual_len = 0;
+            int cached = case_cache_lookup(gen, &pst, path + start, comp_len, actual, &actual_len);
+            if (cached < 0) {
+                path[i] = saved;
+                return false;
+            }
+            char resolved_buf[1024];
+            const char *resolved_name = actual;
+            bool found = (cached > 0);
+
+            if (!found) {
+                DIR *d = opendir(parent);
+                if (d) {
+                    struct dirent *de;
+                    while ((de = readdir(d))) {
+                        if (strcasecmp(de->d_name, path + start) == 0) {
+                            actual_len = strlen(de->d_name);
+                            if (actual_len < sizeof(resolved_buf)) {
+                                memcpy(resolved_buf, de->d_name, actual_len + 1u);
+                                resolved_name = resolved_buf;
+                                found = true;
                             }
-                            path[i] = saved;
-                            memmove(path + start + de_len, path + i, strlen(path + i) + 1);
-                            memcpy(path + start, de->d_name, de_len);
-                            i = start + de_len;
-                            len = strlen(path);
-                            saved = path[i];
-                            path[i] = '\0';
+                            break;
                         }
-                        found = true;
-                        break;
                     }
+                    closedir(d);
                 }
-                closedir(d);
+                if (comp_len < 256) {
+                    case_cache_store(gen, &pst, path + start, comp_len, found,
+                                     found ? resolved_name : NULL, actual_len);
+                }
             }
             if (!found) {
                 path[i] = saved;
                 return false;
+            }
+            if (actual_len == comp_len) {
+                memcpy(path + start, resolved_name, comp_len);
+            } else {
+                if (cap && (actual_len > cap - 1 || len - comp_len > cap - 1 - actual_len)) {
+                    path[i] = saved;
+                    return false;
+                }
+                path[i] = saved;
+                memmove(path + start + actual_len, path + i, strlen(path + i) + 1);
+                memcpy(path + start, resolved_name, actual_len);
+                i = start + actual_len;
+                len = strlen(path);
+                saved = path[i];
+                path[i] = '\0';
             }
         }
         path[i] = saved;

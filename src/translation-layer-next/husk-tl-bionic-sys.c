@@ -6,9 +6,11 @@
  */
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-thread-clock.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <mach/mach.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
@@ -158,16 +160,207 @@ static int b_pthread_getname_np(pthread_t t, char *buf, size_t n)
     return r ? tl_errno_to_guest(r) : 0;
 }
 
-/* Linux's per-thread CPU clock for another thread has no Darwin clock id: report the calling thread's. */
-static int b_pthread_getcpuclockid(pthread_t t, int *clk) { (void)t; *clk = 3 /* CLOCK_THREAD_CPUTIME_ID */; return 0; }
+#define TL_THREAD_CLOCK_MAX 512u
+
+typedef struct {
+    uint64_t raw_tid;
+    uint64_t last_exec_ns;
+    mach_port_t port;
+    int guest_tid;
+    bool in_use;
+    bool alive;
+    bool has_dtor;
+} tl_thread_slot;
+
+static tl_thread_slot g_thread_slots[TL_THREAD_CLOCK_MAX];
+static pthread_mutex_t g_thread_slots_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_once_t g_thread_slot_once = PTHREAD_ONCE_INIT;
+static pthread_key_t g_thread_slot_key;
+static __thread int t_cached_guest_tid = 0;
+
+static int raw_to_guest_tid(uint64_t raw)
+{
+    int tid = (int)(raw & 0x0fffffffU);
+    return tid > 0 ? tid : 1;
+}
+
+static uint64_t slot_exec_ns_locked(tl_thread_slot *s)
+{
+    if (s->alive && s->port != MACH_PORT_NULL) {
+        thread_basic_info_data_t info;
+        mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
+        if (thread_info(s->port, THREAD_BASIC_INFO, (thread_info_t)&info, &count) == KERN_SUCCESS) {
+            uint64_t us = ((uint64_t)info.user_time.seconds + (uint64_t)info.system_time.seconds) * 1000000ULL +
+                          (uint64_t)info.user_time.microseconds + (uint64_t)info.system_time.microseconds;
+            uint64_t ns = us * 1000ULL;
+            if (ns > s->last_exec_ns) s->last_exec_ns = ns;
+        } else {
+            mach_port_deallocate(mach_task_self(), s->port);
+            s->port = MACH_PORT_NULL;
+            s->alive = false;
+        }
+    }
+    return s->last_exec_ns;
+}
+
+static void tl_thread_slot_dtor(void *p)
+{
+    int idx = (int)(intptr_t)p - 1;
+    if (idx >= 0 && (size_t)idx < TL_THREAD_CLOCK_MAX) {
+        pthread_mutex_lock(&g_thread_slots_mu);
+        tl_thread_slot *s = &g_thread_slots[idx];
+        if (s->in_use) {
+            (void)slot_exec_ns_locked(s);
+            if (s->port != MACH_PORT_NULL) {
+                mach_port_deallocate(mach_task_self(), s->port);
+                s->port = MACH_PORT_NULL;
+            }
+            s->alive = false;
+        }
+        pthread_mutex_unlock(&g_thread_slots_mu);
+    }
+    t_cached_guest_tid = 0;
+}
+
+static void tl_thread_slot_init_key(void)
+{
+    pthread_key_create(&g_thread_slot_key, tl_thread_slot_dtor);
+}
+
+static int register_thread_slot(uint64_t raw, mach_port_t owned_port, bool bind_dtor)
+{
+    int gtid = raw_to_guest_tid(raw);
+    int bound_idx = -1;
+    pthread_mutex_lock(&g_thread_slots_mu);
+    int existing = -1, empty = -1, dead = -1;
+    for (size_t i = 0; i < TL_THREAD_CLOCK_MAX; i++) {
+        tl_thread_slot *s = &g_thread_slots[i];
+        if (s->in_use && s->raw_tid == raw) { existing = (int)i; break; }
+        if (!s->in_use && empty < 0) empty = (int)i;
+        else if (s->in_use && !s->alive && dead < 0) dead = (int)i;
+    }
+    int idx = existing >= 0 ? existing : (empty >= 0 ? empty : dead);
+    if (idx >= 0) {
+        tl_thread_slot *s = &g_thread_slots[idx];
+        if (existing < 0) {
+            memset(s, 0, sizeof(*s));
+            s->in_use = true;
+            s->raw_tid = raw;
+            s->guest_tid = gtid;
+            s->alive = (owned_port != MACH_PORT_NULL);
+            s->port = owned_port;
+            owned_port = MACH_PORT_NULL;
+        } else {
+            gtid = s->guest_tid;
+            if (!s->alive && owned_port != MACH_PORT_NULL) {
+                s->port = owned_port;
+                owned_port = MACH_PORT_NULL;
+                s->alive = true;
+            }
+        }
+        if (bind_dtor && !s->has_dtor) {
+            s->has_dtor = true;
+            bound_idx = idx;
+        }
+    }
+    pthread_mutex_unlock(&g_thread_slots_mu);
+    if (owned_port != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), owned_port);
+    if (bound_idx >= 0) pthread_setspecific(g_thread_slot_key, (void *)(intptr_t)(bound_idx + 1));
+    return gtid;
+}
+
+int tl_thread_clock_tid(void)
+{
+    if (t_cached_guest_tid > 0) return t_cached_guest_tid;
+    pthread_once(&g_thread_slot_once, tl_thread_slot_init_key);
+    uint64_t raw = 0;
+    pthread_threadid_np(NULL, &raw);
+    mach_port_t self_port = mach_thread_self();
+    int gtid = register_thread_slot(raw, self_port, true);
+    t_cached_guest_tid = gtid;
+    return gtid;
+}
+
+int tl_thread_clock_tid_of(pthread_t t)
+{
+    if (!t || pthread_equal(t, pthread_self())) return tl_thread_clock_tid();
+    uint64_t raw = 0;
+    if (pthread_threadid_np(t, &raw) != 0) return 0;
+    mach_port_t borrowed = pthread_mach_thread_np(t);
+    mach_port_t owned = MACH_PORT_NULL;
+    if (borrowed != MACH_PORT_NULL &&
+        mach_port_mod_refs(mach_task_self(), borrowed, MACH_PORT_RIGHT_SEND, 1) == KERN_SUCCESS) {
+        owned = borrowed;
+    }
+    return register_thread_slot(raw, owned, false);
+}
+
+bool tl_thread_clock_gettime(int clock_id, struct timespec *ts)
+{
+    bool per_thread = false;
+    int id_val = 0, which = 0;
+    if (!tl_decode_cpu_clock_id(clock_id, &per_thread, &id_val, &which)) return false;
+    (void)which;
+    if (!per_thread) return clock_gettime(CLOCK_PROCESS_CPUTIME_ID, ts) == 0;
+    if (id_val == 0) return clock_gettime(CLOCK_THREAD_CPUTIME_ID, ts) == 0;
+
+    uint64_t exec_ns = 0;
+    bool found = false;
+    pthread_mutex_lock(&g_thread_slots_mu);
+    for (size_t i = 0; i < TL_THREAD_CLOCK_MAX; i++) {
+        tl_thread_slot *s = &g_thread_slots[i];
+        if (s->in_use && s->guest_tid == id_val) {
+            exec_ns = slot_exec_ns_locked(s);
+            found = true;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_thread_slots_mu);
+    if (!found) return false;
+    if (ts) {
+        ts->tv_sec = (time_t)(exec_ns / 1000000000ULL);
+        ts->tv_nsec = (long)(exec_ns % 1000000000ULL);
+    }
+    return true;
+}
+
+bool tl_thread_clock_getres(int clock_id, struct timespec *ts)
+{
+    if (clock_id >= 0) return false;
+    if (ts) { ts->tv_sec = 0; ts->tv_nsec = 1000; }
+    return true;
+}
+
+const char *tl_thread_schedstat(const char *path, char *buf, size_t n)
+{
+    int tid = 0;
+    if (!tl_parse_task_schedstat_tid(path, &tid)) return NULL;
+    uint64_t exec_ns = 0;
+    pthread_mutex_lock(&g_thread_slots_mu);
+    for (size_t i = 0; i < TL_THREAD_CLOCK_MAX; i++) {
+        tl_thread_slot *s = &g_thread_slots[i];
+        if (s->in_use && s->guest_tid == tid) {
+            exec_ns = slot_exec_ns_locked(s);
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_thread_slots_mu);
+    tl_format_schedstat(buf, n, exec_ns, 0, 1);
+    return buf;
+}
+
+static int b_pthread_getcpuclockid(pthread_t t, int *clk)
+{
+    int tid = tl_thread_clock_tid_of(t);
+    if (clk) *clk = tl_thread_cpu_clock_id(tid);
+    return 0;
+}
 
 /* tgkill: a thread signalling itself (abort paths, stack dumps) works; another thread by Linux id is not reachable. */
 static int b_tgkill(int tgid, int tid, int sig)
 {
     (void)tgid;
-    uint64_t self = 0;
-    pthread_threadid_np(NULL, &self);
-    if ((uint64_t)(uint32_t)tid != (uint32_t)self) { tl_set_guest_errno(3 /* ESRCH */); return -1; }
+    if (tid != tl_thread_clock_tid()) { tl_set_guest_errno(3 /* ESRCH */); return -1; }
     int d = tl_signal_to_darwin(sig);
     if (d <= 0) { tl_set_guest_errno(22); return -1; }
     return pthread_kill(pthread_self(), d) ? -1 : 0;

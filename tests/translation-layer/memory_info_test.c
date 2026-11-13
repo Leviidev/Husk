@@ -19,6 +19,15 @@ int main(void)
     assert(strstr(text, "Threads:\t37\n"));
     assert(strstr(text, "VmRSS:\t1536000 kB"));
     assert(strstr(text, "VmHWM:\t1638400 kB"));
+    assert(strstr(text, "RssAnon:\t1536000 kB\n"));
+    assert(strstr(text, "RssFile:\t0 kB\n"));
+    assert(strstr(text, "RssShmem:\t0 kB\n"));
+    assert(strstr(text, "VmSwap:\t1228800 kB\n"));
+    tl_memory_info clean = { .resident = 500ull << 20, .footprint = 300ull << 20, .threads = 4 };
+    tl_memory_proc_status(text, sizeof(text), &clean, 99);
+    assert(strstr(text, "VmRSS:\t512000 kB\n"));
+    assert(strstr(text, "RssAnon:\t307200 kB\n"));
+    assert(strstr(text, "VmSwap:\t0 kB\n"));
     info.available = info.total * 2;
     tl_memory_proc_meminfo(text, sizeof(text), &info);
     assert(strstr(text, "MemAvailable: 8388608 kB"));

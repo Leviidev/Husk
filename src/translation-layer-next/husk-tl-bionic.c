@@ -27,6 +27,7 @@
 #include "husk-tl-va.h"
 #include "husk-tl-host-device.h"
 #include "husk-tl-memory.h"
+#include "husk-tl-thread-clock.h"
 
 /* ------------------------------------------------------------------ errno */
 
@@ -600,9 +601,7 @@ static int bionic_gethostname(char *name, size_t len) { snprintf(name, len, "loc
 
 static int bionic_gettid(void)
 {
-    uint64_t tid = 0;
-    pthread_threadid_np(NULL, &tid);
-    return (int)tid;
+    return tl_thread_clock_tid();
 }
 
 static int bionic_getpriority(int which, int who) { (void)which; (void)who; return 0; }

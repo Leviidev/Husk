@@ -18,6 +18,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-binder.h"
 #include "husk-tl-path.h"
 #include "husk-tl-memory.h"
+#include "husk-tl-thread-clock.h"
 #include "husk-tl-jni.h"
 
 #include <ctype.h>
@@ -75,9 +76,14 @@ void tl_host_memory_info(tl_memory_info *info)
         info->virtual_bytes = vm.virtual_size;
     }
 #if TARGET_OS_IPHONE
-    /* The game's caches must fit the process's remaining jetsam budget, even
-       when the phone still has free RAM outside this app's limit. */
+    /* The game's caches must fit the process's jetsam budget (current footprint
+       plus headroom), even when the device has more physical RAM overall. */
     info->available = os_proc_available_memory();
+    if (info->available <= UINT64_MAX - info->footprint) {
+        uint64_t budget = info->footprint + info->available;
+        if (budget > 0 && (!info->total || budget < info->total))
+            info->total = budget;
+    }
 #else
     vm_statistics64_data_t stats = {0};
     count = HOST_VM_INFO64_COUNT;
@@ -222,6 +228,7 @@ static const char *synth_content(const char *path, char *buf, size_t n)
         tl_memory_proc_status(buf, n, &info, getpid());
         return buf;
     }
+    if (tl_thread_schedstat(path, buf, n)) return buf;
     return NULL;
 }
 
@@ -280,6 +287,7 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
     if (!buf || !n) return path;
+    const char *original = path;
     char norm[1024];
     if (strstr(path, "//") || strchr(path, '\\')) {
         tl_path_normalize_slashes(path, norm, sizeof(norm));
@@ -436,7 +444,25 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
         }
     }
     if (!is_sys) {
+        /* A guest may chdir into a resource tree before using relative paths.
+         * In particular, VHTG enumerates opendir(".") after chdir(script).
+         * Rebasing that dot onto data_dir silently enumerates the wrong tree
+         * and leaves the game's Lua libraries unloaded. Honor an existing
+         * current-directory entry before the compatibility search roots. */
+        if (path[0] != '/' && access(path, F_OK) == 0) {
+            if (path != norm) return path;
+            size_t length = strlen(path);
+            if (length >= n) return original;
+            memcpy(buf, path, length + 1);
+            return buf;
+        }
         const char *rel = (path[0] == '/') ? path + 1 : path;
+        while (rel[0] == '.' && rel[1] == '/') {
+            const char *after = rel + 2;
+            while (*after == '/') after++;
+            if (!*after) break;
+            rel = after;
+        }
         char probe[1024];
         /* 1. <data_dir>/<rel> */
         int written = snprintf(probe, sizeof(probe), "%s/%s", tl_data_dir(), rel);
@@ -704,6 +730,7 @@ int tl_atomic_open(const char *real, int dflags, unsigned mode)
     free(g_atomic[fd]);
     g_atomic[fd] = strdup(real);
     pthread_mutex_unlock(&g_atomic_lock);
+    tl_path_cache_invalidate();
     return fd;
 }
 
@@ -719,6 +746,7 @@ void tl_atomic_abandon(int fd)
     char tmp[1100];
     snprintf(tmp, sizeof(tmp), "%s.husk-new", real);
     unlink(tmp);
+    tl_path_cache_invalidate();
     free(real);
 }
 
@@ -734,6 +762,7 @@ void tl_atomic_closed(int fd)
     char tmp[1100];
     snprintf(tmp, sizeof(tmp), "%s.husk-new", real);
     if (rename(tmp, real) != 0) tl_log_line("file: could not put the new %s in place (%s)", real, strerror(errno));
+    tl_path_cache_invalidate();
     free(real);
 }
 
@@ -814,9 +843,11 @@ static int b_open(const char *path, int flags, unsigned mode)
         { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s) -> %d (virtual: %llu bytes at %llu of %s)%s", path, fd, (unsigned long long)vf->size, (unsigned long long)vf->off, vf->host, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
         return fd;
     }
+    int dflags = oflags_to_darwin(flags);
     TL_ERRNO_BEGIN();
-    int fd = tl_atomic_open(real, oflags_to_darwin(flags), mode);
-    if (fd == -2) fd = open(real, oflags_to_darwin(flags), mode);
+    int fd = tl_atomic_open(real, dflags, mode);
+    if (fd == -2) fd = open(real, dflags, mode);
+    if (fd >= 0 && (dflags & (O_CREAT | O_TRUNC))) tl_path_cache_invalidate();
     int e = errno;
     TL_ERRNO_END();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s, %#x) -> %d%s", path, flags, fd, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
@@ -945,12 +976,12 @@ static int b_isatty(int fd) { int r = isatty(fd); if (!r) tl_set_guest_errno(25)
 static int b_flock(int fd, int op) { TL_ERRNO_BEGIN(); int r = flock(fd, op); TL_ERRNO_END(); return r; }
 
 #define PATH1(rt, name, call) \
-    static rt b_##name(const char *p) { char b[1024]; TL_ERRNO_BEGIN(); rt r = call(tl_path_resolve(p, b, sizeof(b))); TL_ERRNO_END(); return r; }
+    static rt b_##name(const char *p) { char b[1024]; TL_ERRNO_BEGIN(); rt r = call(tl_path_resolve(p, b, sizeof(b))); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
 PATH1(int, unlink, unlink)
 PATH1(int, rmdir, rmdir)
-static int b_mkdir(const char *p, unsigned mode) { char b[1024]; TL_ERRNO_BEGIN(); int r = mkdir(tl_path_resolve(p, b, sizeof(b)), (mode_t)mode); TL_ERRNO_END(); return r; }
+static int b_mkdir(const char *p, unsigned mode) { char b[1024]; TL_ERRNO_BEGIN(); int r = mkdir(tl_path_resolve(p, b, sizeof(b)), (mode_t)mode); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
 /* FIFOs (Realm signals between its threads through one in its .realm.temp folder); other device nodes are refused, as for an app */
-static int b_mkfifo(const char *p, unsigned mode) { char b[1024]; TL_ERRNO_BEGIN(); int r = mkfifo(tl_path_resolve(p, b, sizeof(b)), (mode_t)(mode & 0777)); TL_ERRNO_END(); return r; }
+static int b_mkfifo(const char *p, unsigned mode) { char b[1024]; TL_ERRNO_BEGIN(); int r = mkfifo(tl_path_resolve(p, b, sizeof(b)), (mode_t)(mode & 0777)); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
 static int b_mknod(const char *p, unsigned mode, unsigned long dev)
 {
     (void)dev;
@@ -989,8 +1020,8 @@ static int b_access(const char *p, int m)
 }
 static int b_chmod(const char *p, unsigned m) { char b[1024]; TL_ERRNO_BEGIN(); int r = chmod(tl_path_resolve(p, b, sizeof(b)), (mode_t)m); TL_ERRNO_END(); return r; }
 static int b_fchmod(int fd, unsigned m) { TL_ERRNO_BEGIN(); int r = fchmod(fd, (mode_t)m); TL_ERRNO_END(); return r; }
-static int b_link(const char *a, const char *b2) { char x[1024], y[1024]; TL_ERRNO_BEGIN(); int r = link(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b2, y, sizeof(y))); TL_ERRNO_END(); return r; }
-static int b_symlink(const char *a, const char *b2) { char y[1024]; TL_ERRNO_BEGIN(); int r = symlink(a, tl_path_resolve(b2, y, sizeof(y))); TL_ERRNO_END(); return r; }
+static int b_link(const char *a, const char *b2) { char x[1024], y[1024]; TL_ERRNO_BEGIN(); int r = link(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b2, y, sizeof(y))); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
+static int b_symlink(const char *a, const char *b2) { char y[1024]; TL_ERRNO_BEGIN(); int r = symlink(a, tl_path_resolve(b2, y, sizeof(y))); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
 static bool is_proc_exe(const char *p) { return p && (!strcmp(p, "/proc/self/exe") || (!strncmp(p, "/proc/", 6) && strstr(p, "/exe") && strlen(strstr(p, "/exe")) == 4)); }
 static long b_readlink(const char *p, char *buf, size_t n)
 {
@@ -1433,15 +1464,19 @@ static void anon_remove(uintptr_t addr, size_t len)
 static void anon_zap(uintptr_t addr, size_t len)
 {
     uintptr_t end = addr + len;
+    uintptr_t page_mask = (uintptr_t)getpagesize() - 1;
     pthread_mutex_lock(&g_anon_lock);
     for (int i = 0; i < g_nanon; i++) {
         uintptr_t a = g_anon[i].addr > addr ? g_anon[i].addr : addr;
         uintptr_t e = g_anon[i].addr + g_anon[i].len < end ? g_anon[i].addr + g_anon[i].len : end;
         if (a >= e) continue;
-        for (uintptr_t p = a & ~(uintptr_t)16383; p < e;) {           /* walk the regions in the range */
+        for (uintptr_t p = a & ~page_mask; p < e;) {                  /* walk the regions in the range */
             vm_address_t ra = p; vm_size_t rs = 0;
             vm_region_basic_info_data_64_t info; mach_msg_type_number_t cnt = VM_REGION_BASIC_INFO_COUNT_64; mach_port_t obj;
             if (vm_region_64(mach_task_self(), &ra, &rs, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &cnt, &obj) != KERN_SUCCESS) break;
+            /* vm_region returns an owned send right even when this region is
+             * skipped below. Repeated allocator purges must not leak ports. */
+            if (obj) mach_port_deallocate(mach_task_self(), obj);
             if (ra > p) { p = ra; continue; }
             uintptr_t re = ra + rs < e ? ra + rs : e;
             if (tl_ld_covers((const void *)(uintptr_t)p, re - p) || tl_xmem_contains((const void *)(uintptr_t)p)) {
@@ -1808,6 +1843,15 @@ static int b_mprotect(void *a, size_t l, int prot)
 static int b_madvise(void *a, size_t l, int adv)
 {
     mm_trace("madvise", a, l, adv, 0);
+    /* Linux requires an aligned start and rounds length to a page. Reject
+     * overflow before anon_zap's page walk can touch a preceding live page. */
+    size_t page = (size_t)getpagesize();
+    if (((uintptr_t)a & (page - 1)) || l > SIZE_MAX - (page - 1)) {
+        tl_set_guest_errno(22); return -1; /* EINVAL */
+    }
+    l = (l + page - 1) & ~(page - 1);
+    if (l > UINTPTR_MAX - (uintptr_t)a) { tl_set_guest_errno(22); return -1; }
+    if (!l) return 0;
     if (adv == 4) { anon_zap((uintptr_t)a, l); return 0; }  /* MADV_DONTNEED: zero-fill on next touch */
     return 0;                                                /* the rest are hints */
 }
@@ -1836,8 +1880,26 @@ static clockid_t clock_to_darwin(int id)
     default: return CLOCK_MONOTONIC;
     }
 }
-static int b_clock_gettime(int id, struct timespec *ts) { TL_ERRNO_BEGIN(); int r = clock_gettime(clock_to_darwin(id), ts); TL_ERRNO_END(); return r; }
-static int b_clock_getres(int id, struct timespec *ts) { TL_ERRNO_BEGIN(); int r = clock_getres(clock_to_darwin(id), ts); TL_ERRNO_END(); return r; }
+static int b_clock_gettime(int id, struct timespec *ts)
+{
+    if (id < 0) {
+        if (tl_thread_clock_gettime(id, ts)) return 0;
+        tl_set_guest_errno(22 /* EINVAL */);
+        return -1;
+    }
+    TL_ERRNO_BEGIN(); int r = clock_gettime(clock_to_darwin(id), ts); TL_ERRNO_END();
+    return r;
+}
+static int b_clock_getres(int id, struct timespec *ts)
+{
+    if (id < 0) {
+        if (tl_thread_clock_getres(id, ts)) return 0;
+        tl_set_guest_errno(22 /* EINVAL */);
+        return -1;
+    }
+    TL_ERRNO_BEGIN(); int r = clock_getres(clock_to_darwin(id), ts); TL_ERRNO_END();
+    return r;
+}
 static int b_gettimeofday(int64_t *tv, void *tz)
 {
     struct timeval t; (void)tz;
@@ -2137,7 +2199,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
 {
     (void)a4; (void)a5;
     switch (nr) {
-    case 178: { uint64_t t = 0; pthread_threadid_np(NULL, &t); return (long)t; }       /* gettid */
+    case 178: return (long)tl_thread_clock_tid();                                           /* gettid */
     case 172: return getpid();
     case 173: return getppid();
     case 174: case 175: return getuid();
@@ -2159,13 +2221,13 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 57: { int r = close((int)a0); if (r == 0) tl_atomic_closed((int)a0); return r < 0 ? -tl_errno_to_guest(errno) : r; }
     case 63: { long r = read((int)a0, (void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
     case 64: { long r = write((int)a0, (const void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
-    case 113: { int r = clock_gettime(clock_to_darwin((int)a0), (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
+    case 113: { int r = b_clock_gettime((int)a0, (struct timespec *)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     case 169: return b_gettimeofday((int64_t *)a0, (void *)a1);
     case 93: case 94: tl_log_line("bionic: exit(%ld) by raw system call", a0); exit((int)a0);
     case 278: arc4random_buf((void *)a0, (size_t)a1); return a1;                        /* getrandom */
     case 283: return 0;                                                                 /* membarrier */
     case 134: case 135: return 0;                                                       /* rt_sigaction, rt_sigprocmask: accepted */
-    case 233: return 0;                                                                 /* madvise */
+    case 233: { int r = b_madvise((void *)a0, (size_t)a1, (int)a2); return r < 0 ? -*tl_guest_errno_ptr() : 0; } /* madvise */
     case 122: case 123: return 0;                                                       /* sched_setaffinity / getaffinity */
     case 167: return 0;                                                                 /* prctl */
     case 160: { int tl_bionic_uname(void *); return tl_bionic_uname((void *)a0); }    /* uname: filled in, as the libc call is */
@@ -2191,7 +2253,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 226: { int r = b_mprotect((void *)a0, (size_t)a1, (int)a2); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     case 79:  { int r = b_fstatat((int)a0, (const char *)a1, (guest_stat *)a2, (int)a3); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     case 80:  { int r = b_fstat((int)a0, (guest_stat *)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
-    case 96: { uint64_t t = 0; pthread_threadid_np(NULL, &t); return (long)t; }        /* set_tid_address */
+    case 96: return (long)tl_thread_clock_tid();                                            /* set_tid_address */
     case 99: return 0;                                                                  /* set_robust_list */
     case 117: return -1;                                                                /* ptrace: EPERM */
     default: break;
@@ -2344,13 +2406,14 @@ static int b_openat(int dirfd, const char *path, int flags, unsigned mode)
 {
     if (at_plain(dirfd, path)) return b_open(path, flags, mode);
     if ((flags & 3) == 0) fill_lib_standin_at(dirfd, path);
-    TL_ERRNO_BEGIN(); int fd = openat(dirfd, path, oflags_to_darwin(flags), mode); TL_ERRNO_END();
+    int dflags = oflags_to_darwin(flags);
+    TL_ERRNO_BEGIN(); int fd = openat(dirfd, path, dflags, mode); if (fd >= 0 && (dflags & (O_CREAT | O_TRUNC))) tl_path_cache_invalidate(); TL_ERRNO_END();
     return fd;
 }
 static int b_unlinkat(int dirfd, const char *path, int flags)
 {
     if (at_plain(dirfd, path)) return (flags & G_AT_REMOVEDIR) ? b_rmdir(path) : b_unlink(path);
-    TL_ERRNO_BEGIN(); int r = unlinkat(dirfd, path, (flags & G_AT_REMOVEDIR) ? AT_REMOVEDIR : 0); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = unlinkat(dirfd, path, (flags & G_AT_REMOVEDIR) ? AT_REMOVEDIR : 0); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END();
     return r;
 }
 static int b_fchmodat(int dirfd, const char *path, unsigned mode, int flags)
@@ -2372,7 +2435,7 @@ static int b_faccessat(int dirfd, const char *path, int mode, int flags)
 static int b_mkdirat(int dirfd, const char *path, unsigned mode)
 {
     if (at_plain(dirfd, path)) return b_mkdir(path, mode);
-    TL_ERRNO_BEGIN(); int r = mkdirat(dirfd, path, (mode_t)mode); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = mkdirat(dirfd, path, (mode_t)mode); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END();
     return r;
 }
 static long b_readlinkat(int dirfd, const char *path, char *buf, size_t n);
@@ -2396,13 +2459,13 @@ static int b_renameat(int ofd, const char *op, int nfd, const char *np)
     }
     char a[1024], b2[1024];
     const char *ho = at_plain(ofd, op) ? tl_path_resolve(op, a, sizeof(a)) : op, *hn = at_plain(nfd, np) ? tl_path_resolve(np, b2, sizeof(b2)) : np;
-    TL_ERRNO_BEGIN(); int r = renameat(at_plain(ofd, op) ? AT_FDCWD : ofd, ho, at_plain(nfd, np) ? AT_FDCWD : nfd, hn); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = renameat(at_plain(ofd, op) ? AT_FDCWD : ofd, ho, at_plain(nfd, np) ? AT_FDCWD : nfd, hn); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END();
     return r;
 }
 static int b_symlinkat(const char *target, int dirfd, const char *path)
 {
     if (at_plain(dirfd, path)) return b_symlink(target, path);
-    TL_ERRNO_BEGIN(); int r = symlinkat(target, dirfd, path); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); int r = symlinkat(target, dirfd, path); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END();
     return r;
 }
 static int b___poll_chk(struct pollfd *fds, unsigned long n, int timeout, size_t fds_size)

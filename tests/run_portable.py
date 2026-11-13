@@ -160,6 +160,19 @@ def main():
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         run(name + " compile", compiler + flags + [str(ROOT / f"tests/translation-layer/{name}.c"), str(ROOT / "src/translation-layer/husk-tl-elf.c"), "-o", str(exe)])
         run(name, [str(exe)])
+    io_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-io.c").read_text(encoding="utf-8")
+    madvise = [re.search(pattern, io_source, re.S)[0] for pattern in (
+        r"static void anon_zap\([^\n]*\)\n\{.*?\n\}",
+        r"static int b_madvise\([^\n]*\)\n\{.*?\n\}")]
+    madvise_case = "    case 233:" + io_source.split("    case 233:", 1)[1].split("\n    case ", 1)[0]
+    madvise += ["static intptr_t syscall_madvise_under_test(intptr_t a0, intptr_t a1, intptr_t a2, intptr_t nr)\n"
+        "{ (void)a0; (void)a1; (void)a2; switch (nr) {\n" + madvise_case + "\n    default: return -38;\n} }\n"]
+    (out / "madvise_under_test.h").write_text("\n\n".join(madvise), encoding="utf-8")
+    exe = out / ("madvise_dispatch_test.exe" if os.name == "nt" else "madvise_dispatch_test")
+    run("raw madvise compile", compiler + flags + [f"-I{out}", str(ROOT / "tests/translation-layer/madvise_dispatch_test.c"), "-o", str(exe)])
+    run("raw madvise reclaim and Linux range validation", [str(exe)])
+    run("raw madvise 4 KiB host compile", compiler + flags + ["-DPAGE=4096", f"-I{out}", str(ROOT / "tests/translation-layer/madvise_dispatch_test.c"), "-o", str(exe)])
+    run("raw madvise 4 KiB host range boundaries", [str(exe)])
     source = (ROOT / "src/translation-layer-next/husk-tl-bionic-str.c").read_text(encoding="utf-8")
     wrapper = re.search(r"static int b_getchar\(void\) \{[^\n]+\}", source)
     assert wrapper and 'TL_WRAP("getchar", b_getchar)' in source
@@ -179,6 +192,21 @@ def main():
     run("Tru Tien log path compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/trutien_log_path_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
     run("Tru Tien deleted log recreation and lookup isolation", [str(exe), log_fixture.resolve().as_posix()])
+    directory_parts = [re.search(pattern, io_source, re.S)[0] for pattern in (
+        r"typedef struct \{ uint64_t d_ino;[^\n]+guest_dirent;",
+        r"typedef struct \{ DIR \*dir;[^\n]+guest_dir;",
+        r"static void \*b_opendir\([^)]*\)\n\{.*?\n\}",
+        r"static int b_closedir\([^\n]+")]
+    if os.name != "nt":
+        directory_parts.append(re.search(r"static void \*b_readdir\([^)]*\)\n\{.*?\n\}", io_source, re.S)[0])
+    directory_parts.insert(2, "static guest_dir *jar_opendir(const char *p) { (void)p; return NULL; }")
+    (out / "relative_directory_under_test.h").write_text("\n".join(directory_parts), encoding="utf-8")
+    cwd_fixture = out / "relative-cwd-fixture"
+    cwd_fixture.mkdir(exist_ok=True)
+    exe = out / ("relative_cwd_test.exe" if os.name == "nt" else "relative_cwd_test")
+    run("Relative cwd directory compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/relative_cwd_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
+    run("VHTG current-directory script recursion", [str(exe), cwd_fixture.resolve().as_posix()])
     snippets = [re.search(pattern, io_source, re.S)[0] for pattern in (
         r"void tl_set_guest_package\([^)]*\)\n\{.*?\n\}",
         r"static char \*b_getcwd\([^)]*\)\n\{.*?\n\}")]
@@ -260,6 +288,31 @@ def main():
     run("Tru Tien VA/heap compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/trutien_va_heap_test.c"), "-o", str(exe)])
     run("Tru Tien VA/heap/vswscanf/tmpnam contracts", [str(exe)])
+    exe = out / ("opensles_player_test.exe" if os.name == "nt" else "opensles_player_test")
+    sl_libs = (["-pthread"] if os.name != "nt" else []) + (["-lm"] if os.name != "nt" else [])
+    run("OpenSL ES player compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+        str(ROOT / "tests/translation-layer/opensles_player_test.c"), "-o", str(exe)] + sl_libs)
+    run("OpenSL ES URI/FD/PCM player and seek/loop contracts", [str(exe)])
+    dvm_audio_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-audio.c").read_text(encoding="utf-8")
+    read_fd_snippet = re.search(r"static uint8_t \*read_fd\([^)]*\)\n\{.*?\n\}", dvm_audio_source, re.S)
+    assert read_fd_snippet
+    (out / "audio_fd_under_test.h").write_text(read_fd_snippet[0] + "\n", encoding="utf-8")
+    exe = out / ("audio_fd_test.exe" if os.name == "nt" else "audio_fd_test")
+    run("Audio FD read compile", compiler + flags + [f"-I{out}",
+        str(ROOT / "tests/translation-layer/audio_fd_test.c"), "-o", str(exe)])
+    run("Audio FD clamping and closed-FD contracts", [str(exe)])
+    path_fixture = out / "path-cache-fixture"
+    (path_fixture / "UserData").mkdir(parents=True, exist_ok=True)
+    (path_fixture / "UserData/SystemSettings.ini").write_text("[Video]\n", encoding="utf-8")
+    exe = out / ("path_cache_test.exe" if os.name == "nt" else "path_cache_test")
+    run("path cache compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+        str(ROOT / "tests/translation-layer/path_cache_test.c"),
+        str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
+    run("path case cache and invalidation contracts", [str(exe), path_fixture.resolve().as_posix()])
+    exe = out / ("thread_clock_test.exe" if os.name == "nt" else "thread_clock_test")
+    run("thread clock compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
+        str(ROOT / "tests/translation-layer/thread_clock_test.c"), "-o", str(exe)])
+    run("per-thread CPU clock and schedstat contracts", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

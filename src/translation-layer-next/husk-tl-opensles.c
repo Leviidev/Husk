@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -19,6 +20,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-guest-thread.h"
+#include "husk-tl-audio-player.h"
 
 extern void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
 
@@ -119,7 +121,7 @@ typedef struct sl_object {
     int kind;
     int state;
     /* the interfaces an object can hand out */
-    const void *vt_engine, *vt_play, *vt_volume, *vt_bq, *vt_config;
+    const void *vt_engine, *vt_play, *vt_volume, *vt_bq, *vt_config, *vt_seek, *vt_prefetch;
     /* a player's queue */
     pthread_mutex_t mu;
     struct { const void *data; uint32_t size; } q[MAX_QUEUE];
@@ -132,6 +134,18 @@ typedef struct sl_object {
     atomic_bool thread_run;
     pthread_t thread;
     bool thread_started;
+    atomic_bool destroy_on_exit;
+    int stream_id;
+    void *decoder;
+    int64_t total_frames, decode_frame, base_frame;
+    uint64_t generation;
+    bool loop, mute, stereo;
+    uint32_t loop_start, loop_end, events, prefetch_events, prefetch_period;
+    int16_t volume_mb, pan;
+    void (*play_cb)(const void *, void *, uint32_t);
+    void *play_ctx;
+    void (*prefetch_cb)(const void *, void *, uint32_t);
+    void *prefetch_ctx;
 } sl_object;
 
 static sl_object *obj_of_object(const void *itf) { return (sl_object *)itf; }
@@ -150,17 +164,25 @@ static uint32_t o_GetInterface(const void *self, const sl_iid *iid, const void *
     if (iid == &k_iid_volume && (o->kind == K_PLAYER || o->kind == K_MIX)) { *out = &o->vt_volume; return SL_OK; }
     if ((iid == &k_iid_asbq || iid == &k_iid_bq) && o->kind == K_PLAYER) { *out = &o->vt_bq; return SL_OK; }
     if (iid == &k_iid_androidcfg && o->kind == K_PLAYER) { *out = &o->vt_config; return SL_OK; }
+    if (iid == &k_iid_x_seek && o->decoder) { *out = &o->vt_seek; return SL_OK; }
+    if (iid == &k_iid_x_prefetchstatus && o->decoder) { *out = &o->vt_prefetch; return SL_OK; }
     *out = NULL;
     return SL_FEATURE_UNSUPPORTED;
 }
 static uint32_t o_RegisterCallback(const void *self, void *cb, void *ctx) { (void)self; (void)cb; (void)ctx; return SL_OK; }
 static void o_AbortAsyncOperation(const void *self) { (void)self; }
 static void player_stop_thread(sl_object *o);
+static void player_release(sl_object *o);
 static void o_Destroy(const void *self)
 {
     sl_object *o = obj_of_object(self);
+    if (o->thread_started && pthread_equal(pthread_self(), o->thread)) {
+        atomic_store(&o->destroy_on_exit, true);
+        atomic_store(&o->thread_run, false);
+        return;
+    }
     if (o->kind == K_PLAYER) player_stop_thread(o);
-    free(o);
+    player_release(o);
 }
 static uint32_t o_SetPriority(const void *self, int32_t p, uint32_t pre) { (void)self; (void)p; (void)pre; return SL_OK; }
 static uint32_t o_GetPriority(const void *self, int32_t *p, uint32_t *pre) { (void)self; if (p) *p = 0; if (pre) *pre = 0; return SL_OK; }
@@ -174,11 +196,28 @@ static sl_object *new_object(int kind)
     if (!o) return NULL;
     o->vt_object = k_vt_object;
     o->kind = kind; o->state = SL_OBJECT_UNREALIZED;
+    o->stream_id = -1; o->loop_end = UINT32_MAX;
     pthread_mutex_init(&o->mu, NULL);
     return o;
 }
 
 /* ---- SLPlayItf and the player's thread */
+static bool player_write(sl_object *o, const int16_t *data, int frames, uint64_t generation)
+{
+    int done = 0;
+    while (done < frames && atomic_load(&o->thread_run)) {
+        pthread_mutex_lock(&o->mu);
+        if (generation != o->generation || atomic_load(&o->play_state) == SL_STOPPED) {
+            pthread_mutex_unlock(&o->mu); return false;
+        }
+        int n = atomic_load(&o->play_state) == SL_PLAYING
+            ? tl_audio_stream_write(o->stream_id, data + (size_t)done * (size_t)o->channels, frames - done) : 0;
+        pthread_mutex_unlock(&o->mu);
+        done += n;
+        if (!n) usleep(1000);
+    }
+    return done == frames;
+}
 static void *player_pump(void *arg)
 {
     sl_object *o = arg;
@@ -186,28 +225,69 @@ static void *player_pump(void *arg)
     while (atomic_load(&o->thread_run)) {
         if (atomic_load(&o->play_state) != SL_PLAYING) { usleep(2000); continue; }
         pthread_mutex_lock(&o->mu);
+        uint64_t generation = o->generation;
+        if (o->decoder) {
+            int16_t pcm[1024 * 2];
+            int64_t end = o->loop && o->loop_end != UINT32_MAX
+                ? (int64_t)o->loop_end * o->rate / 1000 : o->total_frames;
+            if (o->decode_frame >= end && o->loop) {
+                int64_t start = (int64_t)o->loop_start * o->rate / 1000;
+                if (tl_audio_decoder_seek(o->decoder, start)) o->decode_frame = start;
+            }
+            int want = end > o->decode_frame ? (end - o->decode_frame < 1024 ? (int)(end - o->decode_frame) : 1024) : 0;
+            int n = want ? tl_audio_decoder_read(o->decoder, pcm, want) : 0;
+            if (!n && o->loop && o->decode_frame > 0) {
+                /* MP3/VBR headers can overestimate frame count; loop cleanly on actual decoder EOF. */
+                int64_t start = (int64_t)o->loop_start * o->rate / 1000;
+                if (tl_audio_decoder_seek(o->decoder, start)) {
+                    o->decode_frame = start;
+                    want = end > o->decode_frame ? (end - o->decode_frame < 1024 ? (int)(end - o->decode_frame) : 1024) : 0;
+                    n = want ? tl_audio_decoder_read(o->decoder, pcm, want) : 0;
+                }
+            }
+            o->decode_frame += n;
+            if (!n) {
+                void (*cb)(const void *, void *, uint32_t) = NULL; void *ctx = NULL;
+                if (!tl_audio_stream_pending(o->stream_id)) {
+                    atomic_store(&o->play_state, SL_PAUSED);
+                    tl_audio_stream_play(o->stream_id, false);
+                    if (o->events & 1u) { cb = o->play_cb; ctx = o->play_ctx; }
+                }
+                pthread_mutex_unlock(&o->mu);
+                if (cb) cb(&o->vt_play, ctx, 1u);
+                usleep(1000);
+                continue;
+            }
+            pthread_mutex_unlock(&o->mu);
+            player_write(o, pcm, n, generation);
+            continue;
+        }
         const void *data = NULL; uint32_t size = 0;
         if (o->qcount > 0) { data = o->q[o->qhead].data; size = o->q[o->qhead].size; }
         pthread_mutex_unlock(&o->mu);
         if (!data) { usleep(1000); continue; }
-        int ch = o->channels > 0 ? o->channels : 2, rate = o->rate > 0 ? o->rate : 48000;
-        int frames = (int)(size / (2u * (uint32_t)ch));
-        if (tl_cocos_audio_hook) tl_cocos_audio_hook((const int16_t *)data, frames, ch, rate);
-        else { struct timespec ts = { 0, (long)((double)frames * 1e9 / rate) }; nanosleep(&ts, NULL); }
+        int frames = (int)(size / (2u * (uint32_t)o->channels));
+        if (!player_write(o, data, frames, generation)) continue;
         pthread_mutex_lock(&o->mu);
-        if (o->qcount > 0) { o->qhead = (o->qhead + 1) % MAX_QUEUE; o->qcount--; o->qindex++; }
+        void (*cb)(void *, void *) = NULL; void *ctx = NULL;
+        if (generation == o->generation && o->qcount > 0) {
+            o->qhead = (o->qhead + 1) % MAX_QUEUE; o->qcount--; o->qindex++;
+            cb = o->bq_cb; ctx = o->bq_ctx;
+        }
         pthread_mutex_unlock(&o->mu);
-        if (o->bq_cb) o->bq_cb(&o->vt_bq, o->bq_ctx);
+        if (cb) cb(&o->vt_bq, ctx);
     }
+    if (atomic_load(&o->destroy_on_exit)) player_release(o);
     return NULL;
 }
-static void player_start_thread(sl_object *o)
+static bool player_start_thread(sl_object *o)
 {
-    if (o->thread_started) return;
+    if (o->thread_started) return true;
     atomic_store(&o->thread_run, true);
     pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setstacksize(&a, 1u << 20);
     o->thread_started = tl_guest_pthread_create(&o->thread, &a, player_pump, o) == 0;
     pthread_attr_destroy(&a);
+    return o->thread_started;
 }
 static void player_stop_thread(sl_object *o)
 {
@@ -220,19 +300,96 @@ static void player_stop_thread(sl_object *o)
 static uint32_t p_SetPlayState(const void *self, uint32_t state)
 {
     sl_object *o = OBJ_FROM(self, vt_play);
+    if (state < SL_STOPPED || state > SL_PLAYING) return SL_PARAMETER_INVALID;
+    pthread_mutex_lock(&o->mu);
     atomic_store(&o->play_state, (int)state);
-    if (state == SL_PLAYING) player_start_thread(o);
+    tl_audio_stream_play(o->stream_id, state == SL_PLAYING);
+    if (state == SL_STOPPED) {
+        o->generation++; o->base_frame = o->decode_frame = 0;
+        tl_audio_stream_flush(o->stream_id);
+        if (o->decoder) tl_audio_decoder_seek(o->decoder, 0);
+    }
+    bool ok = state != SL_PLAYING || player_start_thread(o);
+    if (!ok) { atomic_store(&o->play_state, SL_STOPPED); tl_audio_stream_play(o->stream_id, false); }
+    pthread_mutex_unlock(&o->mu);
+    if (!ok) return 4;
     return SL_OK;
 }
 static uint32_t p_GetPlayState(const void *self, uint32_t *state) { sl_object *o = OBJ_FROM(self, vt_play); if (state) *state = (uint32_t)atomic_load(&o->play_state); return SL_OK; }
 static uint32_t p_unsupported(void) { return SL_FEATURE_UNSUPPORTED; }
-static uint32_t p_ok(void) { return SL_OK; }
-static const void *const k_vt_play[] = { p_SetPlayState, p_GetPlayState, p_unsupported, p_unsupported, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok };
+static uint32_t milliseconds(int64_t frames, int rate)
+{
+    if (frames <= 0 || rate <= 0) return 0;
+    if (frames > (int64_t)(UINT32_MAX - 1) * rate / 1000) return UINT32_MAX - 1;
+    return (uint32_t)(frames * 1000 / rate);
+}
+static uint32_t p_GetDuration(const void *self, uint32_t *value)
+{ sl_object *o = OBJ_FROM(self, vt_play); if (!value) return SL_PARAMETER_INVALID; *value = o->decoder ? milliseconds(o->total_frames, o->rate) : UINT32_MAX; return SL_OK; }
+static uint32_t p_GetPosition(const void *self, uint32_t *value)
+{
+    sl_object *o = OBJ_FROM(self, vt_play); if (!value) return SL_PARAMETER_INVALID;
+    pthread_mutex_lock(&o->mu);
+    int64_t frame = o->base_frame + (int64_t)tl_audio_stream_position(o->stream_id);
+    if (o->decoder && o->loop) {
+        int64_t start = (int64_t)o->loop_start * o->rate / 1000;
+        int64_t end = o->loop_end == UINT32_MAX ? o->total_frames : (int64_t)o->loop_end * o->rate / 1000;
+        if (end > start && frame >= end) frame = start + (frame - end) % (end - start);
+    } else if (o->decoder && frame > o->total_frames) frame = o->total_frames;
+    *value = milliseconds(frame, o->rate);
+    pthread_mutex_unlock(&o->mu); return SL_OK;
+}
+static uint32_t p_RegisterCallback(const void *self, void (*cb)(const void *, void *, uint32_t), void *ctx)
+{ sl_object *o = OBJ_FROM(self, vt_play); pthread_mutex_lock(&o->mu); o->play_cb = cb; o->play_ctx = ctx; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t p_SetEvents(const void *self, uint32_t events)
+{ sl_object *o = OBJ_FROM(self, vt_play); if (events & ~1u) return SL_FEATURE_UNSUPPORTED; pthread_mutex_lock(&o->mu); o->events = events; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t p_GetEvents(const void *self, uint32_t *events)
+{ sl_object *o = OBJ_FROM(self, vt_play); if (!events) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *events = o->events; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static const void *const k_vt_play[] = { p_SetPlayState, p_GetPlayState, p_GetDuration, p_GetPosition, p_RegisterCallback, p_SetEvents, p_GetEvents, p_unsupported, p_unsupported, p_unsupported, p_unsupported, p_unsupported };
+
+static uint32_t s_SetPosition(const void *self, uint32_t ms, uint32_t mode)
+{
+    sl_object *o = OBJ_FROM(self, vt_seek);
+    if (mode != 1 && mode != 2) return SL_PARAMETER_INVALID;
+    int64_t frame = (int64_t)ms * o->rate / 1000;
+    pthread_mutex_lock(&o->mu);
+    bool ok = frame <= o->total_frames && tl_audio_decoder_seek(o->decoder, frame);
+    if (ok) { o->generation++; o->base_frame = o->decode_frame = frame; tl_audio_stream_flush(o->stream_id); }
+    pthread_mutex_unlock(&o->mu);
+    return ok ? SL_OK : SL_PARAMETER_INVALID;
+}
+static uint32_t s_SetLoop(const void *self, uint32_t enabled, uint32_t start, uint32_t end)
+{
+    sl_object *o = OBJ_FROM(self, vt_seek);
+    int64_t a = (int64_t)start * o->rate / 1000, b = end == UINT32_MAX ? o->total_frames : (int64_t)end * o->rate / 1000;
+    if (enabled && (a >= b || b > o->total_frames)) return SL_PARAMETER_INVALID;
+    pthread_mutex_lock(&o->mu); o->loop = enabled != 0; o->loop_start = start; o->loop_end = end; pthread_mutex_unlock(&o->mu);
+    return SL_OK;
+}
+static uint32_t s_GetLoop(const void *self, uint32_t *enabled, uint32_t *start, uint32_t *end)
+{ sl_object *o = OBJ_FROM(self, vt_seek); if (!enabled || !start || !end) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *enabled = o->loop; *start = o->loop_start; *end = o->loop_end; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static const void *const k_vt_seek[] = { s_SetPosition, s_SetLoop, s_GetLoop };
+
+static uint32_t f_GetStatus(const void *self, uint32_t *status)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); if (!status) return SL_PARAMETER_INVALID; *status = o->decoder ? 2 : 1; return SL_OK; }
+static uint32_t f_GetFill(const void *self, int16_t *fill)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); if (!fill) return SL_PARAMETER_INVALID; *fill = o->decoder ? 1000 : 0; return SL_OK; }
+static uint32_t f_Callback(const void *self, void (*cb)(const void *, void *, uint32_t), void *ctx)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); pthread_mutex_lock(&o->mu); o->prefetch_cb = cb; o->prefetch_ctx = ctx; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t f_SetEvents(const void *self, uint32_t events)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); pthread_mutex_lock(&o->mu); o->prefetch_events = events; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t f_GetEvents(const void *self, uint32_t *events)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); if (!events) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *events = o->prefetch_events; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t f_SetPeriod(const void *self, int16_t period)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); if (period <= 0 || period > 1000) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); o->prefetch_period = (uint32_t)period; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t f_GetPeriod(const void *self, int16_t *period)
+{ sl_object *o = OBJ_FROM(self, vt_prefetch); if (!period) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *period = (int16_t)o->prefetch_period; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static const void *const k_vt_prefetch[] = { f_GetStatus, f_GetFill, f_Callback, f_SetEvents, f_GetEvents, f_SetPeriod, f_GetPeriod };
 
 /* ---- SLAndroidSimpleBufferQueueItf */
 static uint32_t q_Enqueue(const void *self, const void *buf, uint32_t size)
 {
     sl_object *o = OBJ_FROM(self, vt_bq);
+    if (!buf || !size || !o->channels || size % (2u * (uint32_t)o->channels)) return SL_PARAMETER_INVALID;
     pthread_mutex_lock(&o->mu);
     if (o->qcount >= MAX_QUEUE) { pthread_mutex_unlock(&o->mu); return SL_BUFFER_INSUFFICIENT; }
     int tail = (o->qhead + o->qcount) % MAX_QUEUE;
@@ -246,6 +403,8 @@ static uint32_t q_Clear(const void *self)
     sl_object *o = OBJ_FROM(self, vt_bq);
     pthread_mutex_lock(&o->mu);
     o->qcount = 0;
+    o->generation++;
+    tl_audio_stream_flush(o->stream_id);
     pthread_mutex_unlock(&o->mu);
     return SL_OK;
 }
@@ -260,13 +419,39 @@ static uint32_t q_GetState(const void *self, uint32_t *state)       /* { count, 
 static uint32_t q_RegisterCallback(const void *self, void (*cb)(void *, void *), void *ctx)
 {
     sl_object *o = OBJ_FROM(self, vt_bq);
-    o->bq_cb = cb; o->bq_ctx = ctx;
+    pthread_mutex_lock(&o->mu); o->bq_cb = cb; o->bq_ctx = ctx; pthread_mutex_unlock(&o->mu);
     return SL_OK;
 }
 static const void *const k_vt_bq[] = { q_Enqueue, q_Clear, q_GetState, q_RegisterCallback };
 
-/* ---- SLVolumeItf, SLAndroidConfigurationItf: accepted, and nothing done with them */
-static const void *const k_vt_volume[] = { p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok, p_ok };
+/* ---- SLVolumeItf: source gains are applied by the common mixer. */
+static void player_volume_locked(sl_object *o)
+{
+    float gain = o->mute || o->volume_mb == INT16_MIN ? 0 : powf(10.0f, (float)o->volume_mb / 2000.0f);
+    float left = gain, right = gain;
+    if (o->stereo && o->pan > 0) left *= 1.0f - (float)o->pan / 1000;
+    if (o->stereo && o->pan < 0) right *= 1.0f + (float)o->pan / 1000;
+    tl_audio_stream_volume(o->stream_id, left, right);
+}
+static uint32_t v_SetLevel(const void *self, int16_t level)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (level > 0) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); o->volume_mb = level; player_volume_locked(o); pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_GetLevel(const void *self, int16_t *level)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (!level) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *level = o->volume_mb; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_GetMax(const void *self, int16_t *level)
+{ (void)self; if (!level) return SL_PARAMETER_INVALID; *level = 0; return SL_OK; }
+static uint32_t v_SetMute(const void *self, uint32_t mute)
+{ sl_object *o = OBJ_FROM(self, vt_volume); pthread_mutex_lock(&o->mu); o->mute = mute != 0; player_volume_locked(o); pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_GetMute(const void *self, uint32_t *mute)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (!mute) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *mute = o->mute; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_SetStereo(const void *self, uint32_t enabled)
+{ sl_object *o = OBJ_FROM(self, vt_volume); pthread_mutex_lock(&o->mu); o->stereo = enabled != 0; player_volume_locked(o); pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_GetStereo(const void *self, uint32_t *enabled)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (!enabled) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *enabled = o->stereo; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_SetPan(const void *self, int16_t pan)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (pan < -1000 || pan > 1000) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); o->pan = pan; player_volume_locked(o); pthread_mutex_unlock(&o->mu); return SL_OK; }
+static uint32_t v_GetPan(const void *self, int16_t *pan)
+{ sl_object *o = OBJ_FROM(self, vt_volume); if (!pan) return SL_PARAMETER_INVALID; pthread_mutex_lock(&o->mu); *pan = o->pan; pthread_mutex_unlock(&o->mu); return SL_OK; }
+static const void *const k_vt_volume[] = { v_SetLevel, v_GetLevel, v_GetMax, v_SetMute, v_GetMute, v_SetStereo, v_GetStereo, v_SetPan, v_GetPan };
 static uint32_t c_Config(const void *self, const void *key, const void *value, uint32_t size) { (void)self; (void)key; (void)value; (void)size; return SL_OK; }
 static const void *const k_vt_config[] = { c_Config, c_Config };
 
@@ -282,19 +467,50 @@ static uint32_t e_CreateMix(const void *self, const void **out, uint32_t n, cons
 }
 typedef struct { void *locator; void *format; } sl_data;
 typedef struct { uint32_t type, channels, rate_mhz, bits, container, mask, endian; } sl_pcm;
+typedef struct { uint32_t type; const char *uri; } sl_uri;
+typedef struct { uint32_t type; int32_t fd; int64_t offset, length; } sl_fd;
+static void player_release(sl_object *o)
+{
+    if (o->stream_id >= 0) tl_audio_stream_close(o->stream_id);
+    if (o->decoder) tl_audio_decoder_close(o->decoder);
+    pthread_mutex_destroy(&o->mu);
+    free(o);
+}
 static uint32_t e_CreateAudioPlayer(const void *self, const void **out, const sl_data *src, const sl_data *snk, uint32_t n, const void *ids, const void *req)
 {
-    (void)self; (void)snk; (void)n; (void)ids; (void)req;
+    (void)self; (void)snk;
+    if (!out || !src || !src->locator || (n && (!ids || !req))) return SL_PARAMETER_INVALID;
+    *out = NULL;
     sl_object *o = new_object(K_PLAYER);
     if (!o) return 3;
     o->vt_play = k_vt_play; o->vt_volume = k_vt_volume; o->vt_bq = k_vt_bq; o->vt_config = k_vt_config;
-    o->channels = 2; o->rate = 48000;
-    if (src && src->format) {
+    o->vt_seek = k_vt_seek; o->vt_prefetch = k_vt_prefetch; o->prefetch_period = 100;
+    uint32_t locator = *(const uint32_t *)src->locator;
+    if (locator == 1 || locator == 0x800007BCu) {
+        if (locator == 1) o->decoder = tl_audio_decoder_open_uri(((const sl_uri *)src->locator)->uri, &o->rate, &o->channels, &o->total_frames);
+        else {
+            const sl_fd *fd = src->locator;
+            o->decoder = tl_audio_decoder_open_fd(fd->fd, fd->offset, fd->length, &o->rate, &o->channels, &o->total_frames);
+        }
+        if (!o->decoder) { tl_log_line("opensl: URI/FD audio could not be decoded"); player_release(o); return 9; }
+    } else if (locator == SL_DATALOCATOR_BUFFERQUEUE || locator == SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE) {
+        if (!src->format) { player_release(o); return SL_PARAMETER_INVALID; }
         const sl_pcm *f = src->format;
-        if (f->type == SL_DATAFORMAT_PCM) { o->channels = (int)f->channels; o->rate = (int)(f->rate_mhz / 1000); }
+        if (f->type != SL_DATAFORMAT_PCM || f->bits != 16 || f->container != 16 || f->endian != 2 ||
+            f->channels < 1 || f->channels > 2 || f->rate_mhz < 8000000 || f->rate_mhz > 192000000) {
+            player_release(o); return 9;
+        }
+        o->channels = (int)f->channels; o->rate = (int)(f->rate_mhz / 1000);
+    } else { player_release(o); return SL_FEATURE_UNSUPPORTED; }
+    const sl_iid *const *interfaces = ids; const uint32_t *required = req;
+    for (uint32_t i = 0; i < n; i++) {
+        const void *interface = NULL;
+        if (required[i] && o_GetInterface(o, interfaces[i], &interface) != SL_OK) { player_release(o); return SL_FEATURE_UNSUPPORTED; }
     }
+    o->stream_id = tl_audio_stream_open(o->rate, o->channels);
+    if (o->stream_id < 0) { player_release(o); return 3; }
     atomic_store(&o->play_state, SL_STOPPED);
-    tl_log_line("opensl: audio player (%d channels, %d Hz)", o->channels, o->rate);
+    tl_log_line("opensl: %s audio player (%d channels, %d Hz), shared mixer", o->decoder ? "URI/FD" : "buffer queue", o->channels, o->rate);
     *out = o;
     return SL_OK;
 }

@@ -23,10 +23,13 @@
 #include <unistd.h>
 
 #include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <time.h>
 
 #include "husk-tl-dvm-internal.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-audio-player.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
@@ -145,8 +148,11 @@ static int stream_open(int rate, int channels)
     if (id >= 0) {
         stream *s = &M.s[id];
         int16_t *ring = s->ring ? s->ring : malloc(RING * 2 * sizeof(int16_t));
-        memset(s, 0, sizeof(*s));
-        s->ring = ring; s->used = true; s->rate = rate > 0 ? rate : OUT_RATE; s->channels = channels == 1 ? 1 : 2; s->l = s->r = 1.0f;
+        if (!ring) id = -1;
+        else {
+            memset(s, 0, sizeof(*s));
+            s->ring = ring; s->used = true; s->rate = rate > 0 ? rate : OUT_RATE; s->channels = channels == 1 ? 1 : 2; s->l = s->r = 1.0f;
+        }
     }
     pthread_mutex_unlock(&M.mu);
     return id;
@@ -193,6 +199,62 @@ out:
     return done;
 }
 
+int tl_audio_stream_open(int rate, int channels)
+{ return rate > 0 && (channels == 1 || channels == 2) ? stream_open(rate, channels) : -1; }
+int tl_audio_stream_write(int id, const int16_t *pcm, int frames)
+{ return pcm ? stream_write(id, pcm, frames, false) : 0; }
+void tl_audio_stream_play(int id, bool playing)
+{
+    pthread_mutex_lock(&M.mu);
+    if (id >= 0 && id < MAX_STREAMS && M.s[id].used) {
+        M.s[id].playing = playing;
+        pthread_cond_broadcast(&M.room);
+        if (playing) pthread_cond_signal(&M.work);
+    }
+    pthread_mutex_unlock(&M.mu);
+}
+void tl_audio_stream_flush(int id)
+{
+    pthread_mutex_lock(&M.mu);
+    if (id >= 0 && id < MAX_STREAMS && M.s[id].used) {
+        stream *s = &M.s[id];
+        s->head = s->count = 0; s->pos = 0;
+        s->prev[0] = s->prev[1] = 0; s->consumed = s->written_in = 0;
+        pthread_cond_broadcast(&M.room);
+    }
+    pthread_mutex_unlock(&M.mu);
+}
+void tl_audio_stream_volume(int id, float left, float right)
+{
+    pthread_mutex_lock(&M.mu);
+    if (id >= 0 && id < MAX_STREAMS && M.s[id].used) { M.s[id].l = left; M.s[id].r = right; }
+    pthread_mutex_unlock(&M.mu);
+}
+uint64_t tl_audio_stream_position(int id)
+{
+    pthread_mutex_lock(&M.mu);
+    uint64_t position = id >= 0 && id < MAX_STREAMS && M.s[id].used
+        ? M.s[id].consumed * (uint64_t)M.s[id].rate / OUT_RATE : 0;
+    pthread_mutex_unlock(&M.mu);
+    return position;
+}
+int tl_audio_stream_pending(int id)
+{
+    pthread_mutex_lock(&M.mu);
+    int pending = id >= 0 && id < MAX_STREAMS && M.s[id].used ? (int)M.s[id].count : 0;
+    pthread_mutex_unlock(&M.mu);
+    return pending;
+}
+void tl_audio_stream_close(int id)
+{
+    pthread_mutex_lock(&M.mu);
+    if (id >= 0 && id < MAX_STREAMS && M.s[id].used) {
+        M.s[id].used = M.s[id].playing = false; M.s[id].count = 0;
+        pthread_cond_broadcast(&M.room);
+    }
+    pthread_mutex_unlock(&M.mu);
+}
+
 /* ------------------------------------------------------------------ decoding */
 
 typedef struct {
@@ -214,7 +276,9 @@ static SInt64 mem_size(void *u) { return (SInt64)((decoder *)u)->len; }
 
 static decoder *dec_open(uint8_t *data, size_t len)
 {
+    if (!data || !len) return NULL;
     decoder *d = calloc(1, sizeof(*d));
+    if (!d) return NULL;
     d->data = data; d->len = len;
     if (len > 4 && !memcmp(data, "OggS", 4)) {
         int err = 0;
@@ -229,7 +293,13 @@ static decoder *dec_open(uint8_t *data, size_t len)
         tl_log_line("audio: an Ogg file stb_vorbis cannot read (error %d)", err);
         free(d); return NULL;
     }
-    OSStatus st = AudioFileOpenWithCallbacks(d, mem_read, NULL, mem_size, NULL, 0, &d->af);
+    static const AudioFileTypeID hints[] = { 0, kAudioFileMP3Type, kAudioFileMPEG4Type, kAudioFileAAC_ADTSType, kAudioFileWAVEType };
+    OSStatus st = -1;
+    for (size_t i = 0; i < sizeof(hints) / sizeof(hints[0]); i++) {
+        d->af = NULL;
+        st = AudioFileOpenWithCallbacks(d, mem_read, NULL, mem_size, NULL, hints[i], &d->af);
+        if (st == noErr) break;
+    }
     if (st == noErr) st = ExtAudioFileWrapAudioFileID(d->af, false, &d->ext);
     if (st != noErr) { if (d->af) AudioFileClose(d->af); tl_log_line("audio: AudioToolbox cannot read this file (%d)", (int)st); free(d); return NULL; }
     AudioStreamBasicDescription in; UInt32 sz = sizeof(in);
@@ -348,14 +418,74 @@ static uint8_t *copy_bytes(jobj *arr, size_t *len)
 }
 static uint8_t *read_fd(int fd, int64_t off, int64_t len, size_t *out)
 {
-    if (len <= 0) { struct stat st; if (fstat(fd, &st) != 0) return NULL; len = st.st_size - off; }
+    if (fd < 0 || off < 0 || !out) return NULL;
+    struct stat st;
+    bool have_stat = fstat(fd, &st) == 0;
+    if (len <= 0 || (have_stat && S_ISREG(st.st_mode) && off <= st.st_size && len > st.st_size - off)) {
+        if (!have_stat) { tl_log_line("audio: read_fd fstat(%d) failed (%d)", fd, errno); return NULL; }
+        len = st.st_size - off;
+    }
     if (len <= 0 || len > (256 << 20)) return NULL;
     uint8_t *d = malloc((size_t)len);
+    if (!d || off > INT64_MAX - len) { free(d); return NULL; }
     size_t got = 0;
     while (got < (size_t)len) { ssize_t r = pread(fd, d + got, (size_t)len - got, off + (off_t)got); if (r <= 0) break; got += (size_t)r; }
+    if (got != (size_t)len) { tl_log_line("audio: read_fd short read (%zu/%lld, errno=%d)", got, (long long)len, errno); free(d); return NULL; }
     *out = got;
     return d;
 }
+
+void *tl_audio_decoder_open_fd(int fd, int64_t offset, int64_t length,
+                               int *rate, int *channels, int64_t *frames)
+{
+    size_t size = 0;
+    uint8_t *data = read_fd(fd, offset, length, &size);
+    decoder *d = data && size ? dec_open(data, size) : NULL;
+    if (!d) { free(data); return NULL; }
+    if (d->rate <= 0 || d->channels < 1 || d->channels > 2 || d->frames < 0) { dec_close(d); return NULL; }
+    if (rate) *rate = d->rate;
+    if (channels) *channels = d->channels;
+    if (frames) *frames = d->frames;
+    return d;
+}
+static int uri_hex(unsigned char c)
+{ return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; }
+void *tl_audio_decoder_open_uri(const char *uri, int *rate, int *channels, int64_t *frames)
+{
+    if (!uri) return NULL;
+    if (!strncmp(uri, "file://localhost/", 17)) uri += 16;
+    else if (!strncmp(uri, "file://", 7)) { uri += 7; if (*uri != '/') return NULL; }
+    else if (strstr(uri, "://")) return NULL;
+    char path[1024], mapped[1024]; size_t n = 0;
+    for (size_t i = 0; uri[i]; i++) {
+        if (n + 1 >= sizeof(path)) return NULL;
+        unsigned char c = (unsigned char)uri[i];
+        if (c == '%') {
+            if (!uri[i + 1] || !uri[i + 2]) return NULL;
+            int a = uri_hex((unsigned char)uri[i + 1]), b = uri_hex((unsigned char)uri[i + 2]);
+            if (a < 0 || b < 0 || !(c = (unsigned char)(a * 16 + b))) return NULL;
+            i += 2;
+        }
+        path[n++] = (char)c;
+    }
+    path[n] = 0;
+    const char *tl_path_resolve(const char *, char *, size_t);
+    const char *resolved = tl_path_resolve(path, mapped, sizeof(mapped));
+    int fd = open(resolved, O_RDONLY);
+    if (fd < 0) { tl_log_line("audio: open(%s) failed (%d)", resolved, errno); return NULL; }
+    void *d = tl_audio_decoder_open_fd(fd, 0, -1, rate, channels, frames);
+    close(fd);
+    return d;
+}
+int tl_audio_decoder_read(void *d, int16_t *pcm, int frames)
+{ return d && pcm && frames > 0 ? dec_read(d, pcm, frames) : 0; }
+bool tl_audio_decoder_seek(void *opaque, int64_t frame)
+{
+    decoder *d = opaque;
+    if (!d || frame < 0 || frame > d->frames) return false;
+    return d->ogg ? stb_vorbis_seek(d->ogg, (unsigned)frame) != 0 : ExtAudioFileSeek(d->ext, frame) == noErr;
+}
+void tl_audio_decoder_close(void *d) { dec_close(d); }
 
 /* SoundPool: decode once, play by id */
 static int sample_load(uint8_t *data, size_t len)
@@ -424,6 +554,8 @@ NAT(A_voiceLoop) { (void)self; (void)ret; pthread_mutex_lock(&M.mu); voice *v = 
 NAT(A_pauseAll) { (void)self; (void)ret; pthread_mutex_lock(&M.mu); for (int i = 0; i < MAX_VOICES; i++) if (M.v[i].used) M.v[i].paused = a[0].z; if (!a[0].z) pthread_cond_signal(&M.work); pthread_mutex_unlock(&M.mu); return true; }
 
 /* MediaPlayer: a decoder read as it plays */
+NAT(A_dupFd) { (void)self; *ret = I(a[0].i >= 0 ? dup(a[0].i) : -1); return true; }
+NAT(A_closeFd) { (void)self; (void)ret; if (a[0].i >= 0) close(a[0].i); return true; }
 NAT(A_decOpen) { (void)self; size_t len = 0; uint8_t *d = copy_bytes(a[0].l, &len); decoder *dc = d ? dec_open(d, len) : NULL; if (d && !dc) free(d); *ret = J((int64_t)(uintptr_t)dc); return true; }
 NAT(A_decOpenFd) { (void)self; size_t len = 0; uint8_t *d = read_fd(a[0].i, a[1].j, a[2].j, &len); decoder *dc = d ? dec_open(d, len) : NULL; if (d && !dc) free(d); *ret = J((int64_t)(uintptr_t)dc); return true; }
 NAT(A_decInfo)
@@ -467,6 +599,8 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_audio[] = {
     { "voiceRate", "(IF)V", A_voiceRate },
     { "voiceLoop", "(II)V", A_voiceLoop },
     { "pauseAll", "(Z)V", A_pauseAll },
+    { "dupFd", "(I)I", A_dupFd },
+    { "closeFd", "(I)V", A_closeFd },
     { "decOpen", "([B)J", A_decOpen },
     { "decOpenFd", "(IJJ)J", A_decOpenFd },
     { "decInfo", "(J[I)V", A_decInfo },

@@ -34,4 +34,6 @@ bool tl_path_case_resolve(char *path);
  * missing/non-directory parents and insufficient capacity; failure leaves
  * the input unchanged. */
 bool tl_path_case_resolve_parent(char *path, size_t cap);
+/* Bump the directory-component resolution generation after successful filesystem mutations. */
+void tl_path_cache_invalidate(void);
 #endif

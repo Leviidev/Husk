@@ -7,6 +7,7 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
+#include "husk-tl-thread-clock.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -151,7 +152,7 @@ static int b_sched_get_priority_min(int policy) { return policy == 1 || policy =
 static int b_pthread_setschedparam(pthread_t t, int policy, const int *param) { (void)t; (void)policy; (void)param; return 0; }
 static int b_pthread_getschedparam(pthread_t t, int *policy, int *param) { (void)t; if (policy) *policy = 0; if (param) *param = 0; return 0; }
 static int b_pthread_attr_setschedparam(void *attr, const int *param) { (void)attr; (void)param; return 0; }
-static int b_pthread_gettid_np(pthread_t t) { uint64_t id = 0; pthread_threadid_np(t, &id); return (int)id; }
+static int b_pthread_gettid_np(pthread_t t) { return tl_thread_clock_tid_of(t); }
 
 /* pthread_cleanup_push/pop expand to calls with a record on the caller's stack: {prev, routine, arg} */
 typedef struct cleanup_rec { struct cleanup_rec *prev; void (*routine)(void *); void *arg; } cleanup_rec;

@@ -57,14 +57,22 @@ public class SoundPool {
     public int load(AssetFileDescriptor afd, int priority) {
         if (afd == null) return 0;
         final FileDescriptor fd = afd.getFileDescriptor(); final long off = afd.getStartOffset(), len = afd.getLength(); final String asset = afd.huskAssetName();
+        int n = fd != null ? husk.Audio.fdOf(fd) : -1;
+        final int dup = n >= 0 ? husk.Audio.dupFd(n) : -1;
         return enqueue(() -> {
-            int n = fd != null ? husk.Audio.fdOf(fd) : -1;
-            if (n >= 0) return husk.Audio.soundLoadFd(n, off, len);
+            if (dup >= 0) { try { return husk.Audio.soundLoadFd(dup, off, len); } finally { husk.Audio.closeFd(dup); } }
             if (asset != null) { byte[] b = husk.Native.readAsset(asset); if (b != null) return husk.Audio.soundLoad(b); }
             return -1;
         });
     }
-    public int load(FileDescriptor fd, long offset, long length, int priority) { final int n = husk.Audio.fdOf(fd); return enqueue(() -> husk.Audio.soundLoadFd(n, offset, length)); }
+    public int load(FileDescriptor fd, long offset, long length, int priority) {
+        int n = fd != null ? husk.Audio.fdOf(fd) : -1;
+        final int dup = n >= 0 ? husk.Audio.dupFd(n) : -1;
+        return enqueue(() -> {
+            if (dup < 0) return -1;
+            try { return husk.Audio.soundLoadFd(dup, offset, length); } finally { husk.Audio.closeFd(dup); }
+        });
+    }
     public boolean unload(int soundId) { Integer m; synchronized (mLock) { m = mSamples.remove(soundId); } if (m != null) husk.Audio.soundUnload(m); return m != null; }
     public int play(int soundId, float leftVolume, float rightVolume, int priority, int loop, float rate) {
         Integer m;

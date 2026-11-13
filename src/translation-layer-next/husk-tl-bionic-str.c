@@ -31,6 +31,10 @@
 #include "husk-tl-va.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-fallback-alloc.h"
+#include "husk-tl-path.h"
+#ifdef __APPLE__
+#include <malloc/malloc.h>
+#endif
 
 bool tl_xmem_contains(const void *p);
 
@@ -267,6 +271,7 @@ static void *b_fopen(const char *path, const char *mode)
         if (fd >= 0 && !(f = fdopen(fd, mode))) { close(fd); tl_atomic_abandon(fd); }
     }
     if (!f) f = fopen(real, mode);
+    if (f && (mode[0] == 'w' || mode[0] == 'a')) tl_path_cache_invalidate();
     if (!f && errno == ENOENT) { void tl_note_missing_file(const char *path); tl_note_missing_file(path); }
     { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0;
       if (tr) tl_log_line("file: fopen(%s, %s) -> %s%s", path, mode, f ? "ok" : "failed", real != path ? " (mapped)" : ""); }
@@ -279,7 +284,7 @@ static void *b_freopen(const char *path, const char *mode, void *stream)
     FILE *f = map_stream(stream);
     if (is_log_stream(f) || f == stdin) return stream;
     char buf[1024];
-    TL_ERRNO_BEGIN(); FILE *r = freopen(tl_path_resolve(path, buf, sizeof(buf)), mode, f); TL_ERRNO_END();
+    TL_ERRNO_BEGIN(); FILE *r = freopen(tl_path_resolve(path, buf, sizeof(buf)), mode, f); if (r && (mode[0] == 'w' || mode[0] == 'a')) tl_path_cache_invalidate(); TL_ERRNO_END();
     return r;
 }
 static void *b_fdopen(int fd, const char *mode) { TL_ERRNO_BEGIN(); FILE *f = fdopen(fd, mode); TL_ERRNO_END(); return f; }
@@ -353,11 +358,11 @@ static int b_setvbuf(void *f, char *buf, int mode, size_t size)
     /* bionic: _IOFBF 0, _IOLBF 1, _IONBF 2; Darwin: _IOFBF 0, _IOLBF 1, _IONBF 2 -- same. */
     return setvbuf(map_stream(f), buf, mode, size);
 }
-static int b_remove(const char *p) { char buf[1024]; TL_ERRNO_BEGIN(); int r = remove(tl_path_resolve(p, buf, sizeof(buf))); TL_ERRNO_END(); return r; }
+static int b_remove(const char *p) { char buf[1024]; TL_ERRNO_BEGIN(); int r = remove(tl_path_resolve(p, buf, sizeof(buf))); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r; }
 static int b_rename(const char *a, const char *b)
 {
     char x[1024], y[1024];
-    TL_ERRNO_BEGIN(); int r = rename(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b, y, sizeof(y))); TL_ERRNO_END(); return r;
+    TL_ERRNO_BEGIN(); int r = rename(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b, y, sizeof(y))); if (r == 0) tl_path_cache_invalidate(); TL_ERRNO_END(); return r;
 }
 
 /* ----------------------------------------------------------- _chk variants */
@@ -575,7 +580,14 @@ static void *b_calloc(size_t count, size_t size)
 }
 static int b_mallopt(int param, int value)
 {
-    (void)param; (void)value;
+    (void)value;
+#ifdef __APPLE__
+    /* Bionic M_PURGE (-101) / M_PURGE_ALL (-104): relieve purgeable malloc pressure on Jetsam warnings. */
+    if (param == -104 || param == -101)
+        (void)malloc_zone_pressure_relief(NULL, 0);
+#else
+    (void)param;
+#endif
     return 1;
 }
 static void b_free(void *p)

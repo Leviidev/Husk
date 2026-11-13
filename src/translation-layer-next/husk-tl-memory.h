@@ -21,9 +21,13 @@ static inline void tl_memory_proc_meminfo(char *out, size_t size, const tl_memor
 }
 static inline void tl_memory_proc_status(char *out, size_t size, const tl_memory_info *info, int pid)
 {
+    uint64_t anon = (info->footprint && info->resident > info->footprint) ? info->footprint : info->resident;
+    uint64_t swap = (info->footprint > anon) ? (info->footprint - anon) : 0;
     snprintf(out, size, "Name:\tapp_process64\nState:\tR (running)\nTgid:\t%d\nPid:\t%d\nPPid:\t1\n"
-             "Uid:\t10001\t10001\t10001\t10001\nThreads:\t%u\nVmRSS:\t%llu kB\nVmHWM:\t%llu kB\nVmSize:\t%llu kB\n",
+             "Uid:\t10001\t10001\t10001\t10001\nThreads:\t%u\nVmRSS:\t%llu kB\nVmHWM:\t%llu kB\nVmSize:\t%llu kB\n"
+             "RssAnon:\t%llu kB\nRssFile:\t0 kB\nRssShmem:\t0 kB\nVmSwap:\t%llu kB\n",
              pid, pid, info->threads, (unsigned long long)(info->resident / 1024),
-             (unsigned long long)(info->peak_resident / 1024), (unsigned long long)(info->virtual_bytes / 1024));
+             (unsigned long long)(info->peak_resident / 1024), (unsigned long long)(info->virtual_bytes / 1024),
+             (unsigned long long)(anon / 1024), (unsigned long long)(swap / 1024));
 }
 #endif

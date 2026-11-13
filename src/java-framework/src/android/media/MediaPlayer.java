@@ -28,8 +28,14 @@ public class MediaPlayer implements AudioRouting {
     private static final int IDLE = 0, INITIALIZED = 1, PREPARING = 2, PREPARED = 3, STARTED = 4, PAUSED = 5, COMPLETED = 6, STOPPED = 7, ERROR = 8, END = 9;
     private final Object mLock = new Object();
     private final Handler mMain;
+    interface FdOps { int fdOf(FileDescriptor fd); int dup(int fd); void close(int fd); }
+    static FdOps sFdOps = new FdOps() {
+        public int fdOf(FileDescriptor fd) { return husk.Audio.fdOf(fd); }
+        public int dup(int fd) { return husk.Audio.dupFd(fd); }
+        public void close(int fd) { husk.Audio.closeFd(fd); }
+    };
     private int mState = IDLE;
-    private byte[] mBytes; private int mFd = -1; private long mFdOff, mFdLen;
+    private byte[] mBytes; private int mFd = -1; private boolean mOwnsFd; private long mFdOff, mFdLen;
     private long mDec; private int mRate, mChannels, mDuration;
     private int mTrack = -1;
     private Thread mThread;
@@ -74,12 +80,15 @@ public class MediaPlayer implements AudioRouting {
     public void setDataSource(FileDescriptor fd) throws java.io.IOException { setDataSource(fd, 0, -1); }
     public void setDataSource(FileDescriptor fd, long offset, long length) throws java.io.IOException {
         checkIdle();
-        int n = husk.Audio.fdOf(fd);
+        int n = sFdOps.fdOf(fd);
         if (n < 0) throw new java.io.IOException("not a file descriptor Husk can read");
-        mFd = n; mFdOff = offset; mFdLen = length; mState = INITIALIZED;
+        int dup = sFdOps.dup(n);
+        if (dup < 0) throw new java.io.IOException("cannot duplicate file descriptor " + n);
+        if (mOwnsFd && mFd >= 0) sFdOps.close(mFd);
+        mFd = dup; mOwnsFd = true; mFdOff = offset; mFdLen = length; mState = INITIALIZED;
     }
     public void setDataSource(AssetFileDescriptor afd) throws java.io.IOException {
-        if (afd.getFileDescriptor() != null && husk.Audio.fdOf(afd.getFileDescriptor()) >= 0) setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+        if (afd.getFileDescriptor() != null && sFdOps.fdOf(afd.getFileDescriptor()) >= 0) setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
         else if (afd.huskAssetName() != null) { checkIdle(); mBytes = husk.Native.readAsset(afd.huskAssetName()); if (mBytes == null) throw new java.io.IOException("no asset " + afd.huskAssetName()); mState = INITIALIZED; }
         else throw new java.io.IOException("unreadable AssetFileDescriptor");
     }
@@ -177,7 +186,11 @@ public class MediaPlayer implements AudioRouting {
     }
     public void reset() {
         stop();
-        synchronized (mLock) { if (mTrack >= 0) { husk.Audio.trackClose(mTrack); mTrack = -1; } mBytes = null; mFd = -1; mState = IDLE; mSeekTo = -1; }
+        synchronized (mLock) {
+            if (mTrack >= 0) { husk.Audio.trackClose(mTrack); mTrack = -1; }
+            if (mOwnsFd && mFd >= 0) sFdOps.close(mFd);
+            mBytes = null; mFd = -1; mOwnsFd = false; mState = IDLE; mSeekTo = -1;
+        }
     }
     public void release() { reset(); mState = END; mOnCompletion = null; mOnPrepared = null; mOnError = null; mOnSeek = null; }
     public boolean isPlaying() { return mState == STARTED; }
