@@ -1663,7 +1663,7 @@ struct TLGameSwitcherSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .huskDetents([.medium, .large])
     }
 
     private func row(for item: TLApp, active: Bool) -> some View {
