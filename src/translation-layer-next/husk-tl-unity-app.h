@@ -74,7 +74,7 @@ void husk_java_set_display_max_refresh(float refresh_rate);
 /* Push physical host scale, max ProMotion refresh rate (Hz), and P3 wide-gamut support before any engine starts. */
 void husk_host_set_display_metrics(float scale, float max_refresh_rate, int wide_color);
 /* Configure compositor sharpening / OLED contrast / anisotropic filtering preset (0=standard, 1=crisp, 2=proMax). */
-void husk_host_set_visual_quality(int32_t preset);
+void husk_host_set_visual_quality(int preset);
 void husk_java_set_quest_only_cutout(int enabled);
 void husk_java_back(void);
 /* The host's side of a Java app's views: its keyboard (show, EditorInfo input type and IME options), the clipboard (get returns a

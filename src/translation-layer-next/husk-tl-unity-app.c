@@ -661,9 +661,9 @@ void husk_host_set_display_metrics(float scale, float max_refresh_rate, int wide
     tl_host_set_display_wide_color(wide_color);
     husk_java_set_display_max_refresh(max_refresh_rate);
 }
-void husk_host_set_visual_quality(int32_t preset)
+void husk_host_set_visual_quality(int preset)
 {
-    tl_host_set_visual_quality((int)preset);
+    tl_host_set_visual_quality(preset);
 }
 void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_options), void (*set_clipboard)(const char *utf8),
                         char *(*get_clipboard)(void), void (*share)(const char *utf8), void (*orientation)(int android_orientation))
