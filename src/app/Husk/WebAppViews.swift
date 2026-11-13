@@ -58,6 +58,7 @@ final class WebAppHostView: UIView {
 /// A web app full screen: a thin bar to leave it by, and the page below the status bar, in the colour the app asked for.
 struct WebAppScreenView: View {
     let app: TLApp
+    @Environment(\.systemStatusBarVisible) private var systemStatusBarVisible
     @Environment(\.dismiss) private var dismiss
     @State private var color: Color = Color(uiColor: .systemBackground)
 
@@ -78,7 +79,7 @@ struct WebAppScreenView: View {
             .background(Color(uiColor: .systemBackground))
             WebAppSurface(app: app)
         }
-        .background(color.ignoresSafeArea())
+        .background(color.ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all))
         .onAppear {
             HuskOrientation.set(portrait ? .portrait : .landscape)
             refreshColor()

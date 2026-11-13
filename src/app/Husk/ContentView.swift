@@ -22,6 +22,7 @@ struct ContentView: View {
     /// first boot's Android wizard, which runs underneath it -- is shown on
     /// demand from the library.
     @State private var showGuestScreen = false
+    @State private var guestStatusBarItem = AppStatusBar.androidSystem
     @ObservedObject private var router = Router.shared
     @ObservedObject private var jit = JITCoordinator.shared
     @State private var showOnboarding = Onboarding.needed
@@ -129,6 +130,22 @@ struct ContentView: View {
 
         }
         .tint(theme.accentColor)
+        .appStatusBar(for: showGuestScreen && started && runner.isRunning ? guestStatusBarItem : nil)
+        .task(id: showGuestScreen && started && runner.isRunning) {
+            guard showGuestScreen && started && runner.isRunning else { return }
+            guestStatusBarItem = host.launchedPackage.map { "android:" + $0 } ?? AppStatusBar.androidSystem
+            // Android can change apps through its own Home/Back gestures, without going through Husk's launcher.
+            while !Task.isCancelled {
+                let dump = await Task.detached(priority: .utility) {
+                    try? GuestBridge.shared.shell("dumpsys activity activities | grep -E 'topResumedActivity=|mResumedActivity:'", timeout: 3)
+                }.value
+                guard !Task.isCancelled else { return }
+                if let dump, let item = AppStatusBar.androidItem(from: dump) {
+                    guestStatusBarItem = host.packages.contains { "android:" + $0.name == item } ? item : AppStatusBar.androidSystem
+                }
+                do { try await Task.sleep(nanoseconds: 3_000_000_000) } catch { return }
+            }
+        }
         // The user's appearance: the system's, unless they pinned one. Set on the
         // window rather than with .preferredColorScheme — see Theme.apply.
         .onAppear { Theme.apply(appearance) }
@@ -385,6 +402,7 @@ struct ContentView: View {
 /// the honest answer to "is it stuck or is it working?" -- if the guest is drawing,
 /// you can see it.
 struct GuestScreenView: View {
+    @Environment(\.systemStatusBarVisible) private var systemStatusBarVisible
     @ObservedObject private var runner = QemuRunner.shared
     @Binding var showLogs: Bool
     /// True while another tab is covering this one, so the guest's own controls
@@ -397,7 +415,7 @@ struct GuestScreenView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.ignoresSafeArea()
+            Color.black.ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             // The GL surface, not HuskDisplay. ANGLE renders into this layer
             // directly; HuskDisplay uploaded a CPU framebuffer itself, which is
             // the work the GPU path exists to remove. QemuRunner falls back to
@@ -409,14 +427,14 @@ struct GuestScreenView: View {
             // then fails, nothing ever draws into that layer -- so the software
             // display goes on top and takes over. Without this the fallback is
             // invisible: the log says it fell back and the screen stays black.
-            HuskGLScreen().ignoresSafeArea()
+            HuskGLScreen().ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             // Only once GL is known to have FAILED. While the answer is
             // still undecided this must draw nothing: HuskDisplay is opaque,
             // and putting it over the GL layer on the chance that GL might not
             // work is how the guest ends up hidden behind a view that has
             // nothing to show.
             if runner.displayKind == .software {
-                HuskDisplay().ignoresSafeArea()
+                HuskDisplay().ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             }
 
             // Boot progress, over the guest's own screen.
@@ -534,8 +552,6 @@ struct GuestScreenView: View {
         // On the screen rather than the button: the chrome can hide while the
         // document picker is up, and an importer attached to a view that goes
         // away goes away with it.
-        .statusBarHidden(true)
-        .huskHideSystemOverlays()
         .sheet(isPresented: $showControls) {
             ControlsSheet(keyboard: $keyboard)
                 .huskDetents([.height(300)])

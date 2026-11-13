@@ -887,6 +887,7 @@ final class AndroidHost: ObservableObject {
     @Published private(set) var status = "Starting Android…"
     @Published private(set) var packages: [Package] = AndroidHost.loadCatalogue()
     @Published private(set) var busy: String?
+    @Published private(set) var launchedPackage: String?
     /// What just finished. Progress lives in `busy`; this is the sentence after.
     @Published var toast: Toast?
 
@@ -1900,6 +1901,7 @@ final class AndroidHost: ObservableObject {
     }
 
     func launch(_ pkg: String, then: @escaping () -> Void) {
+        launchedPackage = pkg
         markLaunched(pkg)
         busy = "Opening…"
         Task.detached { [weak self] in

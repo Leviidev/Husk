@@ -735,6 +735,7 @@ struct TLAttemptView: View {
 
     var body: some View {
         content
+            .appStatusBar(for: "tl:" + app.id)
             .onAppear { TranslationLayerStore.shared.markPlayed(app); Playtime.begin("tl:" + app.id) }
             .onDisappear { Playtime.end("tl:" + app.id) }
     }
@@ -756,6 +757,7 @@ struct TLAttemptView: View {
 /// same three-finger way to hide it, and the game's own settings.
 struct TLClassicAttemptView: View {
     let app: TLApp
+    @Environment(\.systemStatusBarVisible) private var systemStatusBarVisible
     @StateObject private var runner = TLAttemptRunner()
     @Environment(\.dismiss) private var dismiss
     @AppStorage("husk.tl.showLog") private var showLogSetting = false
@@ -789,7 +791,7 @@ struct TLClassicAttemptView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black.ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             VStack(spacing: 0) {
                 if !cleanLayout {
                     bar.opacity(uiHidden ? 0 : 1).allowsHitTesting(!uiHidden)
@@ -808,7 +810,7 @@ struct TLClassicAttemptView: View {
                         }
                     }
                 }
-                .ignoresSafeArea(.container, edges: cleanLayout ? .all : [.horizontal, .bottom])
+                .ignoresSafeArea(.container, edges: cleanLayout && !systemStatusBarVisible ? .all : [.horizontal, .bottom])
                 if showLog, !uiHidden { logPanel.frame(height: 220) }
             }
             if cleanLayout, !uiHidden {
@@ -828,8 +830,6 @@ struct TLClassicAttemptView: View {
                 .transition(.opacity)
             }
         }
-        .statusBarHidden(true)
-        .huskHideSystemOverlays()
         .huskDefersSystemGestures(on: .all)
         .onAppear {
             HuskOrientation.set(portrait ? .portrait : .landscape)
