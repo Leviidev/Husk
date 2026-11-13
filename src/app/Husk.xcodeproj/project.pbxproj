@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C876A89310A5C994E3FC860D /* AppStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9E05D470CE3272ED4F7CA7 /* AppStatusBar.swift */; };
 		001416DA738AA665BBDEBF59 /* husk-tl-jni-minecraft.c in Sources */ = {isa = PBXBuildFile; fileRef = 3ACE2921134A2C3A3DC93272 /* husk-tl-jni-minecraft.c */; };
 		010359771DB45AA97E28E3DC /* PlayAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F0F48E2692FC022D05BDDE /* PlayAPI.swift */; };
 		01477DF8338132EF917CEB30 /* husk-tl-dvm-android.c in Sources */ = {isa = PBXBuildFile; fileRef = CD10D68F646D92E86A28E5A6 /* husk-tl-dvm-android.c */; };
@@ -272,6 +273,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4A9E05D470CE3272ED4F7CA7 /* AppStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatusBar.swift; sourceTree = "<group>"; };
 		0168E1B352FFD7A4BC207CA5 /* HuskBridgeFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuskBridgeFS.swift; sourceTree = "<group>"; };
 		02BDBFFD3329C33172416AEB /* husk-tl-ld.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "husk-tl-ld.h"; sourceTree = "<group>"; };
 		036699CBF5693E75237EF112 /* PlayDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayDevice.swift; sourceTree = "<group>"; };
@@ -573,6 +575,7 @@
 				0FCF57D3D74B527852EC0327 /* AppIcon.swift */,
 				15D08F1730303C74C1B7DE23 /* AppSource.swift */,
 				D05B2EFC533719ED2E455C24 /* AppTheme.swift */,
+				4A9E05D470CE3272ED4F7CA7 /* AppStatusBar.swift */,
 				FA8F4838EC0E68E364143E79 /* AppWindows.swift */,
 				28D3E1CEE343707BE986FA6E /* Assets.xcassets */,
 				6F40192B3EDAD27D2CBFFC2F /* BootScreen.swift */,
@@ -1164,6 +1167,7 @@
 				4EF06C9496D4D86646EFD631 /* AppIcon.swift in Sources */,
 				8C743346878007F8D22CEA0A /* AppSource.swift in Sources */,
 				F6B3DA43CA16FAF920EF236D /* AppTheme.swift in Sources */,
+				C876A89310A5C994E3FC860D /* AppStatusBar.swift in Sources */,
 				6CA4A4E301BCB015E19AF7A8 /* AppWindows.swift in Sources */,
 				853E83FF7FF5B9A7FDE5E638 /* BootScreen.swift in Sources */,
 				7FA5D73DC2780CACC7399534 /* BundleUnpacker.swift in Sources */,

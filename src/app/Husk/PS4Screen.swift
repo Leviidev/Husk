@@ -139,6 +139,7 @@ private struct PS4Surface: UIViewRepresentable {
 /// Full screen, landscape: the game, the on-screen pad when no controller is paired, and a way out.
 struct PS4PlayView: View {
     let game: PS4Game
+    @Environment(\.systemStatusBarVisible) private var systemStatusBarVisible
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = PS4Model()
     @StateObject private var virtualPad = VirtualPad()
@@ -147,8 +148,8 @@ struct PS4PlayView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            PS4Surface(game: game).ignoresSafeArea()
+            Color.black.ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
+            PS4Surface(game: game).ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             if !model.running {
                 VStack(spacing: 12) {
                     if model.error == nil, model.state <= Int32(HUSK_CONSOLE_BOOTING.rawValue) { ProgressView().tint(.white) }
@@ -179,8 +180,7 @@ struct PS4PlayView: View {
                 .padding(14)
             }
         }
-        .statusBarHidden(true)
-        .huskHideSystemOverlays()
+        .appStatusBar(for: game.libraryID)
         .huskDefersSystemGestures(on: .all)
         .onTapGesture(count: 3) { withAnimation { showBar.toggle() } }
         .onAppear {

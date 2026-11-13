@@ -398,7 +398,7 @@ private struct ScreenshotViewer: View {
             }
             .padding(16)
         }
-        .statusBarHidden()
+        .appStatusBar(for: nil)
     }
 }
 

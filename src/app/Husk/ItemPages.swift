@@ -498,6 +498,9 @@ struct PS4GamePage: View {
                 LabeledContent("Last Played", value: game.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
                 LabeledContent("Folder", value: "PS4 Games/" + game.folder.lastPathComponent)
             }
+            Section("Display") {
+                AppStatusBarToggle(itemID: game.libraryID)
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(game.title)
@@ -574,6 +577,10 @@ struct AndroidAppPage: View {
                     ShowcaseGallery(package: app.name)
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 }
+            }
+
+            Section("Display") {
+                AppStatusBarToggle(itemID: "android:" + app.name)
             }
 
             Section("About") {
@@ -697,6 +704,7 @@ struct AndroidSystemPage: View {
             }
 
             Section("Settings") {
+                AppStatusBarToggle(itemID: AppStatusBar.androidSystem)
                 NavigationLink { PerformanceSettings() } label: { Label("Performance", systemImage: "speedometer") }
                 NavigationLink { InputSettings() } label: { Label("Input", systemImage: "hand.tap") }
                 NavigationLink { NetworkSettings() } label: { Label("Network", systemImage: "globe") }

@@ -827,6 +827,7 @@ final class TLUnityModel: ObservableObject {
 /// status, the frames per second and the time a frame takes -- and, with developer info on, the log beside the game.
 struct TLCocosAttemptView: View {
     let app: TLApp
+    @Environment(\.systemStatusBarVisible) private var systemStatusBarVisible
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = TLUnityModel()
     /// Why the app stopped, when its log says: shown over the screen
@@ -880,7 +881,7 @@ struct TLCocosAttemptView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black.ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
             Group {
                 if let apk = app.apks.first {
                     // The game always has the whole screen: it is told its size once, as it starts, so nothing may take space from it.
@@ -898,7 +899,7 @@ struct TLCocosAttemptView: View {
                                 .overlay(alignment: .center) { if editingPad { padEditor } }
                         }
                     }
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.container, edges: systemStatusBarVisible ? [.horizontal, .bottom] : .all)
                 }
             }
             if !uiHidden {
@@ -929,8 +930,6 @@ struct TLCocosAttemptView: View {
                 .transition(.opacity)
             }
         }
-        .statusBarHidden(true)
-        .huskHideSystemOverlays()
         // Swipes near the edges are the game's.
         .huskDefersSystemGestures(on: .all)
         .onAppear {

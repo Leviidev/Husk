@@ -187,6 +187,7 @@ struct TLAppSettingsView: View {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Performance readout", isOn: $settings.showStats)
+                AppStatusBarToggle(itemID: "tl:" + app.id)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
             } header: {
                 Text("Display")
