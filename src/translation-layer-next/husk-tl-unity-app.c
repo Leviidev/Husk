@@ -653,6 +653,14 @@ void husk_java_set_display_max_refresh(float refresh_rate)
 {
     g_java_max_refresh_rate = refresh_rate >= 1.0f && refresh_rate <= 1000.0f ? refresh_rate : 60.0f;
 }
+void husk_host_set_display_metrics(float scale, float max_refresh_rate, int wide_color)
+{
+    if (scale >= 0.1f && scale <= 16.0f) g_java_density = scale;
+    tl_host_set_display_density(scale);
+    tl_host_set_display_max_refresh(max_refresh_rate);
+    tl_host_set_display_wide_color(wide_color);
+    husk_java_set_display_max_refresh(max_refresh_rate);
+}
 void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_options), void (*set_clipboard)(const char *utf8),
                         char *(*get_clipboard)(void), void (*share)(const char *utf8), void (*orientation)(int android_orientation))
 {

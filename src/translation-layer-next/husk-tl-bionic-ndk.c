@@ -600,19 +600,25 @@ static uint32_t b_xaQueryNumSupportedEngineInterfaces(uint32_t *n) { if (n) *n =
 static uint32_t b_xaQuerySupportedEngineInterfaces(uint32_t i, const void **id) { (void)i; (void)id; return 2; }   /* XA_RESULT_PARAMETER_INVALID */
 
 /* ASharedMemory: an unnamed file of the size asked, as a descriptor to map (Android's is ashmem / memfd) */
-/* ---- thermal state and performance hints (libandroid, API 30-35): a device that is never hot, and hint sessions that accept every
- * report. Unity's Adaptive Performance asks both; weak imports it calls without checking must not be left at zero. */
+/* ---- thermal state and performance hints (libandroid, API 30-35): wired to real host ProcessInfo.thermalState and display cadence. */
+extern int tl_host_thermal_state(void) __attribute__((weak));
+static int current_host_thermal(void) { int s = tl_host_thermal_state ? tl_host_thermal_state() : 0; return s < 0 ? 0 : s > 3 ? 3 : s; }
 static int g_thermal_mgr, g_hint_mgr;
 static void *b_AThermal_acquireManager(void) { return &g_thermal_mgr; }
 static void b_AThermal_releaseManager(void *m) { (void)m; }
-static int b_AThermal_getCurrentThermalStatus(void *m) { (void)m; return 0; }      /* ATHERMAL_STATUS_NONE */
+static int b_AThermal_getCurrentThermalStatus(void *m) { (void)m; return current_host_thermal(); }
 static int b_AThermal_registerThermalStatusListener(void *m, void *cb, void *data) { (void)m; (void)cb; (void)data; return 0; }
 static int b_AThermal_unregisterThermalStatusListener(void *m, void *cb, void *data) { (void)m; (void)cb; (void)data; return 0; }
-static float b_AThermal_getThermalHeadroom(void *m, int forecastSeconds) { (void)m; (void)forecastSeconds; return 0.25f; }
+static float b_AThermal_getThermalHeadroom(void *m, int forecastSeconds)
+{
+    (void)m; (void)forecastSeconds;
+    static const float headroom[] = { 0.2f, 0.5f, 0.85f, 1.0f };
+    return headroom[current_host_thermal()];
+}
 static int b_AThermal_getThermalHeadroomThresholds(void *m, const void **out, size_t *n) { (void)m; if (out) *out = NULL; if (n) *n = 0; return 0; }
 static void *b_APerformanceHint_getManager(void) { return &g_hint_mgr; }
 static void *b_APerformanceHint_createSession(void *m, const int32_t *tids, size_t n, int64_t target) { (void)m; (void)tids; (void)n; (void)target; return calloc(1, 16); }
-static int64_t b_APerformanceHint_getPreferredUpdateRateNanos(void *m) { (void)m; return 16666666; }
+static int64_t b_APerformanceHint_getPreferredUpdateRateNanos(void *m) { (void)m; float hz = tl_host_display_max_refresh(); return (int64_t)(1000000000.0 / (double)hz); }
 static int b_APerformanceHint_ok(void *s, int64_t v) { (void)s; (void)v; return 0; }
 static void b_APerformanceHint_closeSession(void *s) { free(s); }
 static int b_APerformanceHint_setThreads(void *s, const int32_t *tids, size_t n) { (void)s; (void)tids; (void)n; return 0; }

@@ -16,6 +16,24 @@ import UIKit
 /// and sets it as the layer's contents. SwiftUI sees nothing change, so nothing
 /// is re-evaluated; the only per-frame work is making a `CGImage` that points at
 /// memory the producer has promised not to touch until it is released.
+/// Shared Display P3 / sRGB color matching for Metal and CoreGraphics surfaces so iPhone displays never fall back to unmanaged or Android-sRGB output.
+enum HuskDisplayColor {
+    private static let p3 = CGColorSpace(name: CGColorSpace.displayP3) ?? CGColorSpaceCreateDeviceRGB()
+    private static let srgb = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+
+    @MainActor static func wideColor(for traits: UITraitCollection) -> Bool {
+        traits.displayGamut == .P3
+    }
+    @MainActor static func colorSpace(for traits: UITraitCollection) -> CGColorSpace {
+        wideColor(for: traits) ? p3 : srgb
+    }
+    @MainActor static func apply(to layer: CALayer?, traits: UITraitCollection) {
+        guard let metal = layer as? CAMetalLayer else { return }
+        let cs = colorSpace(for: traits)
+        if metal.colorspace !== cs { metal.colorspace = cs }
+    }
+}
+
 final class TLScreenUIView: UIView {
     private let content = CALayer()
     private var link: CADisplayLink?
@@ -102,7 +120,8 @@ final class TLScreenUIView: UIView {
         // not at all. Sixty is the game's own rate, and asking for no more lets a
         // ProMotion screen settle at a rate that divides evenly into it.
         let l = CADisplayLink(target: self, selector: #selector(refresh))
-        l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        let maxHz = Float(max(60, (window?.screen ?? UIScreen.main).maximumFramesPerSecond))
+        l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: maxHz, preferred: maxHz)
         l.add(to: .main, forMode: .common)
         link = l
 
@@ -143,7 +162,7 @@ final class TLScreenUIView: UIView {
                                           | CGBitmapInfo.byteOrder32Big.rawValue)
         guard let image = CGImage(width: Int(w), height: Int(h), bitsPerComponent: 8,
                                   bitsPerPixel: 32, bytesPerRow: bytesPerRow,
-                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmap,
+                                  space: HuskDisplayColor.colorSpace(for: traitCollection), bitmapInfo: bitmap,
                                   provider: provider, decode: nil, shouldInterpolate: false,
                                   intent: .defaultIntent) else { return }
 

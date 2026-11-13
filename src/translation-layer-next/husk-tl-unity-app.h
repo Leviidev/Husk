@@ -71,6 +71,8 @@ bool husk_java_launch(const char *apk, const char *data_dir, void *metal_layer, 
                       const char *angle_dylib, const char *ca_bundle);
 void husk_java_set_runtime(const char *root, float density);
 void husk_java_set_display_max_refresh(float refresh_rate);
+/* Push physical host scale, max ProMotion refresh rate (Hz), and P3 wide-gamut support before any engine starts. */
+void husk_host_set_display_metrics(float scale, float max_refresh_rate, int wide_color);
 void husk_java_set_quest_only_cutout(int enabled);
 void husk_java_back(void);
 /* The host's side of a Java app's views: its keyboard (show, EditorInfo input type and IME options), the clipboard (get returns a

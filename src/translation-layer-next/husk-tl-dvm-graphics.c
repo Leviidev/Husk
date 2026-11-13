@@ -24,6 +24,7 @@
 #include "husk-tl-dvm-internal.h"
 #include "husk-tl-dvm-javaapp.h"
 #include "husk-tl-frame-buffer.h"
+#include "husk-tl-host-device.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-trutien-text.h"
 #include "husk-tl-text-color.h"
@@ -59,9 +60,10 @@ typedef struct gbitmap {
 
 static CGColorSpaceRef rgb(void)
 {
-    static CGColorSpaceRef cs;
-    if (!cs) cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-    return cs;
+    static CGColorSpaceRef srgb, p3;
+    if (!srgb) srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    if (!p3) p3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+    return (tl_host_display_wide_color() && p3) ? p3 : srgb;
 }
 
 static gbitmap *bm_new(int w, int h)
@@ -104,7 +106,11 @@ int tl_AndroidBitmap_lockPixels(void *env, void *bitmap, void **addr)
     return 0;
 }
 int tl_AndroidBitmap_unlockPixels(void *env, void *bitmap) { (void)env; return bm_of_java(bitmap) ? 0 : -1; }
-int32_t tl_AndroidBitmap_getDataSpace(void *env, void *bitmap) { (void)env; (void)bitmap; return 142671872; /* ADATASPACE_SRGB */ }
+int32_t tl_AndroidBitmap_getDataSpace(void *env, void *bitmap)
+{
+    (void)env; (void)bitmap;
+    return tl_host_display_wide_color() ? 143261696 /* ADATASPACE_DISPLAY_P3 */ : 142671872 /* ADATASPACE_SRGB */;
+}
 
 static void bm_free(gbitmap *b)
 {

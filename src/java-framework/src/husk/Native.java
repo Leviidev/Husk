@@ -32,6 +32,8 @@ public final class Native {
     public static native float refreshRate();
     /** Maximum refresh capability of the actual attached physical host screen, in Hz. */
     public static native float maxRefreshRate();
+    /** Whether the host display supports Display P3 wide color gamut. */
+    public static native boolean wideColorGamut();
     /** Real host hardware properties; unknown keys return null. Android API/ABI fields remain runtime contracts. */
     public static native String deviceProperty(String key);
     /** Physical RAM, remaining process budget, RSS and physical footprint (bytes). */

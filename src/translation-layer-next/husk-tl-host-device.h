@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef HUSK_TL_HOST_DEVICE_H
 #define HUSK_TL_HOST_DEVICE_H
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -48,4 +49,9 @@ static inline const char *tl_host_device_lookup(const tl_host_device *info, cons
 const char *tl_host_device_property(const char *name);
 /* Actual host pixels per logical point/dp, set before launching the game. */
 void tl_host_set_display_density(float pixels_per_dp);
+float tl_host_display_density(void);
+void tl_host_set_display_max_refresh(float refresh_rate);
+float tl_host_display_max_refresh(void);
+void tl_host_set_display_wide_color(int wide_color);
+bool tl_host_display_wide_color(void);
 #endif

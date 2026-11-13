@@ -15,6 +15,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-cocos.h"
+#include "husk-tl-host-device.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 
@@ -186,11 +187,11 @@ static void rasterise(const tl_cocos_text_request *r)
     int bw = text_w + (r->shadow ? (int)fabsf(dx) : 0), bh = box_h + (r->shadow ? (int)fabsf(dy) : 0);
     if (bw <= 0 || bh <= 0 || bw > 8192 || bh > 8192) goto done;
 
-    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGColorSpaceRef cs = CGColorSpaceCreateWithName(tl_host_display_wide_color() ? kCGColorSpaceDisplayP3 : kCGColorSpaceSRGB);
+    if (!cs) cs = CGColorSpaceCreateDeviceRGB();
     uint8_t *px = calloc((size_t)bw * (size_t)bh, 4);
     CGContextRef ctx = CGBitmapContextCreate(px, (size_t)bw, (size_t)bh, 8, (size_t)bw * 4, cs, (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
-    CGColorSpaceRelease(cs);
-    if (!ctx) { free(px); goto done; }
+    if (!ctx) { CGColorSpaceRelease(cs); free(px); goto done; }
     CGContextSetAllowsAntialiasing(ctx, true);
     CGContextSetShouldSmoothFonts(ctx, false);
 
@@ -199,7 +200,7 @@ static void rasterise(const tl_cocos_text_request *r)
     if (box_h > total_h) y0 += vAlign == 1 ? 0 : vAlign == 2 ? (box_h - total_h) : vAlign == 3 ? (box_h - total_h) / 2 : 0;
 
     CGFloat fill[4] = { r->r, r->g, r->b, 1 };
-    CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+    CGColorSpaceRef rgb = cs;
     CGColorRef fill_color = CGColorCreate(rgb, fill);
     CGFloat stroke_rgba[4] = { (int)r->stroke_r * 255, (int)r->stroke_g * 255, (int)r->stroke_b * 255, 1 };
     for (int i = 0; i < 3; i++) if (stroke_rgba[i] > 1) stroke_rgba[i] = 1;

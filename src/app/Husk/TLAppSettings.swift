@@ -35,8 +35,8 @@ struct TLAppSettings: Codable, Equatable {
             switch self {
             case .low: return "1 pixel per point. Fastest."
             case .medium: return "1.5 pixels per point."
-            case .high: return "2 pixels per point. The default."
-            case .native: return "Every pixel the screen has. Sharpest, and heaviest."
+            case .high: return "2 pixels per point."
+            case .native: return "Every pixel the screen has. Sharpest, and the default."
             }
         }
         @MainActor var scale: CGFloat {
@@ -79,9 +79,9 @@ struct TLAppSettings: Codable, Equatable {
 
     var orientation: Orientation = .auto
     var window: WindowMode = .auto
-    var resolution: Resolution = .high
-    /// One-time upgrade requested for Tru Tien; later explicit resolution choices remain unchanged.
-    var nativeDisplayProfileVersion = 0
+    var resolution: Resolution = .native
+    /// One-time upgrade to iPhone native Retina pixels for profiles created on older 2x defaults.
+    var nativeDisplayProfileVersion = 2
     /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
     var avoidUnsafeArea = true
     /// VHTG's inspected native profile adjusts quests and the two walk/sit buttons separately.
@@ -108,7 +108,7 @@ struct TLAppSettings: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
-        resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .high
+        resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .native
         nativeDisplayProfileVersion = try c.decodeIfPresent(Int.self, forKey: .nativeDisplayProfileVersion) ?? 0
         avoidUnsafeArea = try c.decodeIfPresent(Bool.self, forKey: .avoidUnsafeArea) ?? true
         questOnlyCutout = try c.decodeIfPresent(Bool.self, forKey: .questOnlyCutout) ?? true
@@ -129,9 +129,11 @@ struct TLAppSettings: Codable, Equatable {
     }
 
     @discardableResult mutating func applyNativeDisplayProfile(packageName: String?) -> Bool {
-        guard packageName == "vn.trutien.client", nativeDisplayProfileVersion < 1 else { return false }
-        resolution = .native
-        nativeDisplayProfileVersion = 1
+        guard nativeDisplayProfileVersion < 2 else { return false }
+        if resolution == .high, nativeDisplayProfileVersion == 0 || packageName != "vn.trutien.client" {
+            resolution = .native
+        }
+        nativeDisplayProfileVersion = 2
         return true
     }
 

@@ -29,7 +29,8 @@ final class HuskMetalView: MTKView {
         self.framebufferOnly = false
         self.isPaused = false
         self.enableSetNeedsDisplay = false
-        self.preferredFramesPerSecond = 60
+        self.preferredFramesPerSecond = UIScreen.main.maximumFramesPerSecond
+        HuskDisplayColor.apply(to: layer, traits: traitCollection)
         self.isMultipleTouchEnabled = false
         self.delegate = self
         self.clearColor = MTLClearColorMake(0, 0, 0, 1)
@@ -53,6 +54,12 @@ final class HuskMetalView: MTKView {
     }
 
     required init(coder: NSCoder) { fatalError("not supported") }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        HuskDisplayColor.apply(to: layer, traits: traitCollection)
+        preferredFramesPerSecond = (window?.screen ?? UIScreen.main).maximumFramesPerSecond
+    }
 
     // MARK: - Touch -> guest
 

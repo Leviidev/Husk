@@ -118,7 +118,8 @@ public class Window {
     public void setElevation(float e) {}
     public float getElevation() { return 0; }
     public void setClipToOutline(boolean c) {}
-    public void setColorMode(int m) {}
+    private int mColorMode = 0; // ActivityInfo.COLOR_MODE_DEFAULT
+    public void setColorMode(int m) { mColorMode = m; }
     public void setSustainedPerformanceMode(boolean e) {}
     public void setPreferMinimalPostProcessing(boolean b) {}
     public void setHideOverlayWindows(boolean b) {}
@@ -144,7 +145,10 @@ public class Window {
     public void makeActive() { mActive = true; }
     public final boolean isDestroyed() { return mDestroyed; }
     public void huskDestroy() { mDestroyed = true; }
-    public boolean isWideColorGamut() { return false; }
+    public boolean isWideColorGamut() {
+        if (mColorMode != 1 /* ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT */) return false;
+        try { return husk.Native.wideColorGamut(); } catch (UnsatisfiedLinkError e) { return false; }
+    }
 
     // ---- the decor
     public View getDecorView() { if (mDecor == null) installDecor(); return mDecor; }
@@ -289,7 +293,7 @@ public class Window {
     public void dispatchOnWindowDismissed(boolean p0, boolean p1) {}
     public void dispatchOnWindowSwipeDismissed() {}
     protected void dispatchWindowAttributesChanged(android.view.WindowManager.LayoutParams p0) {}
-    public int getColorMode() { return 0; }
+    public int getColorMode() { return mColorMode; }
     public android.view.Window getContainer() { return (android.view.Window) huskFill.get("Container"); }
     public float getDesiredHdrHeadroom() { return (huskFill.get("DesiredHdrHeadroom") instanceof Float ? (Float) huskFill.get("DesiredHdrHeadroom") : 0f); }
     protected int getForcedWindowFlags() { return 0; }

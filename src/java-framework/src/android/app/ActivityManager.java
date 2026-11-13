@@ -172,8 +172,24 @@ public class ActivityManager {
         m.threshold = 256L << 20;
         m.lowMemory = m.availMem <= m.threshold;
     }
-    public int getMemoryClass() { return 512; }
-    public int getLargeMemoryClass() { return 512; }
+    private static int huskTotalMemoryMiB(long[] info) {
+        if (info == null || info.length < 1 || info[0] <= 0) return 0;
+        return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, info[0] >> 20));
+    }
+    public static int huskMemoryClassFromInfo(long[] info) {
+        int mib = huskTotalMemoryMiB(info);
+        return mib > 0 ? Math.max(256, Math.min(512, mib / 16)) : 512;
+    }
+    public static int huskLargeMemoryClassFromInfo(long[] info) {
+        int mib = huskTotalMemoryMiB(info);
+        return mib > 0 ? Math.max(512, Math.min(1024, mib / 8)) : 512;
+    }
+    public int getMemoryClass() {
+        try { return huskMemoryClassFromInfo(husk.Native.memoryInfo()); } catch (UnsatisfiedLinkError e) { return 512; }
+    }
+    public int getLargeMemoryClass() {
+        try { return huskLargeMemoryClassFromInfo(husk.Native.memoryInfo()); } catch (UnsatisfiedLinkError e) { return 512; }
+    }
     public boolean isLowRamDevice() { return false; }
     public static boolean isRunningInTestHarness() { return false; }
     public static boolean isUserAMonkey() { return false; }

@@ -125,7 +125,7 @@ static const struct { const char *k, *v; } k_props[] = {
     { "ro.boot.hardware.sku", "unknown" }, { "ro.boot.product.hardware.sku", "unknown" },
     { "ro.opengles.version", "196610" }, { "ro.kernel.qemu", "0" }, { "ro.debuggable", "0" },
     { "ro.secure", "1" }, { "ro.zygote", "zygote64" }, { "ro.config.low_ram", "false" },
-    { "ro.sf.lcd_density", "420" }, { "ro.hwui.use_vulkan", "" }, { "persist.sys.locale", "en-US" },
+    { "ro.sf.lcd_density", "480" }, { "ro.hwui.use_vulkan", "" }, { "persist.sys.locale", "en-US" },
     { "persist.sys.timezone", "UTC" }, { "gsm.operator.iso-country", "us" }, { "ro.carrier", "unknown" },
     { "ro.com.google.clientidbase", "android-google" }, { "debug.hwui.renderer", "" },
     { "ro.vendor.build.fingerprint", "apple/host/host:14/HUSK/11000000:user/release-keys" },

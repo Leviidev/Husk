@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "husk-tl-bionic.h"
+#include "husk-tl-host-device.h"
 
 static jvalue vl(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue vi(int i) { jvalue v; v.j = 0; v.i = i; return v; }
@@ -45,12 +46,21 @@ const char *tl_hle_manifest_meta(const char *key);
 const char *tl_ue4_meta(const char *key)
 {
     /* Not in the manifest: GameActivity computes it from the display's metrics. x dpi, y dpi. */
-    if (!strcmp(key, "ue4.displaymetrics.dpi")) return "440.0,440.0";
+    if (!strcmp(key, "ue4.displaymetrics.dpi")) {
+        static char dpi_buf[32];
+        int dpi = (int)(tl_host_display_density() * 160.0f + 0.5f);
+        snprintf(dpi_buf, sizeof(dpi_buf), "%d.0,%d.0", dpi, dpi);
+        return dpi_buf;
+    }
     /* Likewise AudioManager's answers (PROPERTY_OUTPUT_FRAMES_PER_BUFFER, PROPERTY_OUTPUT_SAMPLE_RATE) and the display's refresh rate. A zero buffer size is not an
      * answer the engine can survive: it rounds its callback buffer up to a multiple of it, and a multiple of zero is never reached. */
     if (!strcmp(key, "audiomanager.framesPerBuffer")) return "256";
     if (!strcmp(key, "audiomanager.optimalSampleRate")) return "48000";
-    if (!strcmp(key, "ue4.display.getRefreshRate")) return "60";
+    if (!strcmp(key, "ue4.display.getRefreshRate")) {
+        static char hz_buf[16];
+        snprintf(hz_buf, sizeof(hz_buf), "%d", (int)(tl_host_display_max_refresh() + 0.5f));
+        return hz_buf;
+    }
     /* A setting forced from the environment ("key=value;key=value", keys without the com.epicgames.ue4.GameActivity. prefix), for trying things. */
     const char *force = getenv("TL_UE4_META");
     if (force) {

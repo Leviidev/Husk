@@ -184,10 +184,11 @@ static EGLBoolean w_eglChooseConfig(EGLDisplay d, const EGLint *at, EGLConfig *c
     /* Android-only attributes (EGL_RECORDABLE_ANDROID, EGL_FRAMEBUFFER_TARGET_ANDROID) match nothing in ANGLE: every
      * config would be refused over a property it cannot have. They are dropped from the request. */
     EGLint filtered[128]; int nf = 0;
-    bool alpha_wanted = false;
+    bool alpha_wanted = false, buffer_capped = false;
     for (int i = 0; at && at[i] != EGL_NONE && nf < 124; i += 2) {
         if (at[i] == 0x3142 || at[i] == 0x3147) continue;
         if (at[i] == 0x3021 /* EGL_ALPHA_SIZE */ && at[i + 1] > 0) alpha_wanted = true;
+        if (at[i] == 0x3020 /* EGL_BUFFER_SIZE */ && at[i + 1] > 0 && at[i + 1] <= 16) buffer_capped = true;
         filtered[nf++] = at[i]; filtered[nf++] = at[i + 1];
     }
     filtered[nf] = EGL_NONE;
@@ -199,14 +200,27 @@ static EGLBoolean w_eglChooseConfig(EGLDisplay d, const EGLint *at, EGLConfig *c
     EGLint total = 0;
     if (ok) {
         EGLConfig all[512];
-        for (int i = 0; i < k; i++) all[total++] = tmp[i];
-        static int no_alias = -1;
-        if (no_alias < 0) no_alias = getenv("TL_EGL_NO_ALIAS") ? 1 : 0;
-        for (int i = 0; i < k && !alpha_wanted && !no_alias && total < 512; i++) {
+        uint8_t full_rgb[256], has_rgba8[256];
+        for (int i = 0; i < k; i++) {
             EGLint a = 0, rr = 0, g = 0, b = 0;
             a_eglGetConfigAttrib(d, tmp[i], 0x3021, &a); a_eglGetConfigAttrib(d, tmp[i], 0x3024, &rr);
             a_eglGetConfigAttrib(d, tmp[i], 0x3023, &g); a_eglGetConfigAttrib(d, tmp[i], 0x3022, &b);
-            if (a == 8 && rr == 8 && g == 8 && b == 8) all[total++] = (EGLConfig)((uintptr_t)tmp[i] | 1);
+            full_rgb[i] = rr >= 8 && g >= 8 && b >= 8;
+            has_rgba8[i] = a == 8 && rr == 8 && g == 8 && b == 8;
+        }
+        /* Place 8-bit-per-channel configs and their opaque 24-bit aliases ahead of 16-bit RGB565 unless caller asked for <=16-bit. */
+        if (!buffer_capped) {
+            for (int i = 0; i < k; i++) if (full_rgb[i]) all[total++] = tmp[i];
+        } else {
+            for (int i = 0; i < k; i++) all[total++] = tmp[i];
+        }
+        static int no_alias = -1;
+        if (no_alias < 0) no_alias = getenv("TL_EGL_NO_ALIAS") ? 1 : 0;
+        for (int i = 0; i < k && !alpha_wanted && !no_alias && total < 512; i++) {
+            if (has_rgba8[i]) all[total++] = (EGLConfig)((uintptr_t)tmp[i] | 1);
+        }
+        if (!buffer_capped) {
+            for (int i = 0; i < k && total < 512; i++) if (!full_rgb[i]) all[total++] = tmp[i];
         }
         if (c) { EGLint m = total < n ? total : n; for (int i = 0; i < m; i++) c[i] = all[i]; total = m; }
         if (r) *r = total;

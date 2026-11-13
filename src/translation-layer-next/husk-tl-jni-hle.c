@@ -250,7 +250,7 @@ static void fill_metrics(jobj *m)
 }
 static void Display_getMetrics(tl_jcall *c) { fill_metrics(c->args[0].l); }
 static void Display_getRotation(tl_jcall *c) { c->ret = vi(0); }
-static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
+static void Display_getRefreshRate(tl_jcall *c) { c->ret = vf(tl_host_display_max_refresh()); }
 static void Display_getDisplayId(tl_jcall *c) { c->ret = vi(0); }
 static void Display_getWidth(tl_jcall *c) { c->ret = vi(H.width); }
 static void Display_getHeight(tl_jcall *c) { c->ret = vi(H.height); }
@@ -271,8 +271,8 @@ static void Display_getSupportedModes(tl_jcall *c)
 static void WindowManager_getDefaultDisplay(tl_jcall *c) { c->ret = vl(H.display); }
 static void Mode_getPhysicalWidth(tl_jcall *c) { c->ret = vi(H.width); }
 static void Mode_getPhysicalHeight(tl_jcall *c) { c->ret = vi(H.height); }
-static void Mode_getRefreshRate(tl_jcall *c) { c->ret = vf(60.f); }
-static void Display_isWideColorGamut(tl_jcall *c) { c->ret = vz(0); }
+static void Mode_getRefreshRate(tl_jcall *c) { c->ret = vf(tl_host_display_max_refresh()); }
+static void Display_isWideColorGamut(tl_jcall *c) { c->ret = vz(tl_host_display_wide_color()); }
 static void Display_isHdr(tl_jcall *c) { c->ret = vz(0); }
 static void Display_getAppVsyncOffsetNanos(tl_jcall *c) { c->ret.j = 0; }
 static void Display_getPresentationDeadlineNanos(tl_jcall *c) { c->ret.j = 1000000; }
@@ -1452,7 +1452,7 @@ void tl_hle_configure(const char *pkg, const char *apk, const char *data, int w,
     snprintf(H.ext_files, sizeof(H.ext_files), "%s/sdcard/Android/data/%s/files", data, pkg);
     snprintf(H.ext_cache, sizeof(H.ext_cache), "%s/sdcard/Android/data/%s/cache", data, pkg);
     snprintf(H.native_lib, sizeof(H.native_lib), "/data/app/lib/arm64");
-    H.width = w; H.height = h; H.density = 3.0f;
+    H.width = w; H.height = h; H.density = tl_host_display_density();
     H.version_name[0] = 0; H.version_code = 0;
     read_manifest_version(apk);
     read_manifest_meta(apk);

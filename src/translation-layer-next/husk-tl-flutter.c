@@ -27,6 +27,7 @@
 #include "husk-tl-flutter-codec.h"
 #include "husk-tl-flutter-plugins.h"
 #include "husk-tl-flutter-text.h"
+#include "husk-tl-host-device.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
@@ -266,7 +267,7 @@ static void J_handleResponse(tl_jcall *c) { (void)c; }
 static void J_onFirstFrame(tl_jcall *c) { (void)c; if (!atomic_exchange(&F.first_frame, true)) tl_log_line("flutter: first frame"); }
 static void J_void(tl_jcall *c) { (void)c; }
 static void J_false(tl_jcall *c) { c->ret = vz(0); }
-static void J_one(tl_jcall *c) { c->ret = vf(1.0f); }
+static void J_refreshRate(tl_jcall *c) { c->ret = vf(tl_host_display_max_refresh()); }
 
 /* getScaledFontSize(fontSize, configurationId): no font scaling. */
 static void J_scaledFont(tl_jcall *c) { c->ret = vf(c->args[0].f); }
@@ -286,7 +287,9 @@ static void J_resolvedLocale(tl_jcall *c)
 static void vsync_cb(int64_t frame_ns, void *data)
 {
     int64_t cookie = (int64_t)(intptr_t)data;
-    jvalue a[3] = { { .j = frame_ns }, { .j = frame_ns + 16666667 }, { .j = cookie } };
+    float hz = tl_host_display_max_refresh();
+    int64_t interval_ns = (int64_t)(1000000000.0 / (double)(hz > 0.0f ? hz : 60.0f) + 0.5);
+    jvalue a[3] = { { .j = frame_ns }, { .j = frame_ns + interval_ns }, { .j = cookie } };
     fj_call("nativeOnVsync", a, 3);
 }
 static void J_asyncWaitForVsync(tl_jcall *c)
@@ -316,7 +319,7 @@ static const tl_jhle k_hle[] = {
     { FJNI, "computePlatformResolvedLocale", "([Ljava/lang/String;)[Ljava/lang/String;", J_resolvedLocale },
     { FJNI, "IsSurfaceControlEnabled", "()Z", J_false },
     { FJNI, "isCodePointEmoji", "(I)Z", J_false },
-    { FJNI, "getRefreshRate", NULL, J_one },
+    { FJNI, "getRefreshRate", NULL, J_refreshRate },
     { NULL, NULL, NULL, NULL }
 };
 
@@ -607,7 +610,7 @@ static void *platform_main(void *arg)
         add_fd(looper, g_post[0], -2 /* ALOOPER_POLL_CALLBACK */, 1 /* input */, (void *)on_post, NULL);
     }
     /* FlutterJNI's display statics, which the engine reads for the refresh rate and the screen it draws for */
-    tl_jni_set_static(FJNI, "refreshRateFPS", "F", vf(60.0f));
+    tl_jni_set_static(FJNI, "refreshRateFPS", "F", vf(tl_host_display_max_refresh()));
     tl_jni_set_static(FJNI, "displayWidth", "F", vf((float)F.cfg.width));
     tl_jni_set_static(FJNI, "displayHeight", "F", vf((float)F.cfg.height));
     tl_jni_set_static(FJNI, "displayDensity", "F", vf(F.ratio));

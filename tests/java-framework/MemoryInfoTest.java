@@ -12,6 +12,11 @@ public final class MemoryInfoTest {
             throw new AssertionError("jetsam headroom must replace the old fixed free-memory answer");
         ActivityManager.huskApplyMemoryInfo(info, new long[] {8L << 30, 12L << 30});
         if (info.availMem != info.totalMem) throw new AssertionError("available exceeds total");
-        System.out.println("PASS: ActivityManager reports changing headroom and low-memory state");
+        if (ActivityManager.huskMemoryClassFromInfo(new long[] {8L << 30, 2L << 30}) != 512
+            || ActivityManager.huskLargeMemoryClassFromInfo(new long[] {8L << 30, 2L << 30}) != 1024
+            || ActivityManager.huskMemoryClassFromInfo(new long[] {4L << 30, 1L << 30}) != 256
+            || ActivityManager.huskLargeMemoryClassFromInfo(new long[] {4L << 30, 1L << 30}) != 512)
+            throw new AssertionError("memory classes must scale cleanly with host RAM");
+        System.out.println("PASS: ActivityManager reports changing headroom, scaled memory class and low-memory state");
     }
 }

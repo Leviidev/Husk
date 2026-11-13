@@ -50,7 +50,9 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         boolean longScreen = Math.max(w, h) * 3 > Math.min(w, h) * 5;
         c.screenLayout = size | (longScreen ? SCREENLAYOUT_LONG_YES : SCREENLAYOUT_LONG_NO) | SCREENLAYOUT_ROUND_NO;
         c.uiMode = UI_MODE_TYPE_NORMAL | (husk.Native.nightMode() ? UI_MODE_NIGHT_YES : UI_MODE_NIGHT_NO);
-        c.colorMode = COLOR_MODE_WIDE_COLOR_GAMUT_YES | COLOR_MODE_HDR_NO;
+        boolean wideColor;
+        try { wideColor = husk.Native.wideColorGamut(); } catch (UnsatisfiedLinkError e) { wideColor = false; }
+        c.colorMode = (wideColor ? COLOR_MODE_WIDE_COLOR_GAMUT_YES : COLOR_MODE_WIDE_COLOR_GAMUT_NO) | COLOR_MODE_HDR_NO;
         c.setLocales(LocaleList.getDefault());
         return c;
     }

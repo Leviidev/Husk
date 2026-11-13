@@ -1,8 +1,27 @@
 package android.graphics;
 public abstract class ColorSpace {
     public enum Named { SRGB, LINEAR_SRGB, EXTENDED_SRGB, LINEAR_EXTENDED_SRGB, BT709, BT2020, DCI_P3, DISPLAY_P3, NTSC_1953, SMPTE_C, ADOBE_RGB, PRO_PHOTO_RGB, ACES, ACESCG, CIE_XYZ, CIE_LAB, BT2020_HLG, BT2020_PQ }
-    private static final ColorSpace SRGB = new ColorSpace() {};
-    public static ColorSpace get(Named n) { return SRGB; }
+    private static final ColorSpace SRGB = new ColorSpace() {
+        @Override public int getDataSpace() { return 142671872; /* DataSpace.DATASPACE_SRGB */ }
+    };
+    private static final ColorSpace DISPLAY_P3 = new ColorSpace() {
+        @Override public String getName() { return "Display P3"; }
+        @Override public boolean isSrgb() { return false; }
+        @Override public boolean isWideGamut() { return true; }
+        @Override public int getDataSpace() { return 143261696; /* DataSpace.DATASPACE_DISPLAY_P3 */ }
+        @Override public int getId() { return Named.DISPLAY_P3.ordinal(); }
+    };
+    private static final ColorSpace DCI_P3 = new ColorSpace() {
+        @Override public String getName() { return "DCI-P3"; }
+        @Override public boolean isSrgb() { return false; }
+        @Override public boolean isWideGamut() { return true; }
+        @Override public int getId() { return Named.DCI_P3.ordinal(); }
+    };
+    public static ColorSpace get(Named n) {
+        if (n == Named.DISPLAY_P3) return DISPLAY_P3;
+        if (n == Named.DCI_P3) return DCI_P3;
+        return SRGB;
+    }
     public String getName() { return "sRGB IEC61966-2.1"; }
     public boolean isSrgb() { return true; }
     public boolean isWideGamut() { return false; }

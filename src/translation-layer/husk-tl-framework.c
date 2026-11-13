@@ -17,6 +17,26 @@ void tl_log_line(const char *fmt, ...);
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <ImageIO/ImageIO.h>
+#include <pthread.h>
+
+__attribute__((weak)) bool tl_host_display_wide_color(void);
+
+static CGColorSpaceRef tl_fw_srgb_cs, tl_fw_p3_cs, tl_fw_fallback_cs;
+static pthread_once_t tl_fw_cs_once = PTHREAD_ONCE_INIT;
+
+static void tl_fw_cs_init(void)
+{
+    tl_fw_srgb_cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    tl_fw_p3_cs = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+    if (!tl_fw_srgb_cs) tl_fw_fallback_cs = CGColorSpaceCreateDeviceRGB();
+}
+
+static CGColorSpaceRef tl_fw_rgb_color_space(void)
+{
+    pthread_once(&tl_fw_cs_once, tl_fw_cs_init);
+    if (tl_host_display_wide_color && tl_host_display_wide_color() && tl_fw_p3_cs) return tl_fw_p3_cs;
+    return tl_fw_srgb_cs ? tl_fw_srgb_cs : tl_fw_fallback_cs;
+}
 #endif
 
 /* ----------------------------------------------------- Data Structures */
@@ -181,13 +201,12 @@ static tl_framework_bitmap *load_png_from_apk(const char *apk_path, const char *
         bmp->cg_image = img;
 
         /* Rasterize pixels in ARGB format */
-        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGColorSpaceRef cs = tl_fw_rgb_color_space();
         CGContextRef c = CGBitmapContextCreate(bmp->pixels, bmp->width, bmp->height, 8,
                                                bmp->width * 4, cs,
                                                kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
         CGContextDrawImage(c, CGRectMake(0, 0, bmp->width, bmp->height), img);
         CGContextRelease(c);
-        CGColorSpaceRelease(cs);
     }
     if (isrc) CFRelease(isrc);
     if (cf_data) CFRelease(cf_data);
@@ -1252,12 +1271,11 @@ static bool bitmap_createBitmap(tl_dex_context *ctx, tl_dex_object *this_obj, tl
             }
         }
 #if defined(__APPLE__)
-        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGColorSpaceRef cs = tl_fw_rgb_color_space();
         CGContextRef c = CGBitmapContextCreate(dst->pixels, sw, sh, 8, sw * 4, cs,
                                                kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
         dst->cg_image = CGBitmapContextCreateImage(c);
         CGContextRelease(c);
-        CGColorSpaceRelease(cs);
 #endif
         tl_dex_set_native(new_obj, dst);
     } else if (nargs >= 2) {
@@ -1298,12 +1316,11 @@ static bool bitmap_createScaledBitmap(tl_dex_context *ctx, tl_dex_object *this_o
             }
         }
 #if defined(__APPLE__)
-        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGColorSpaceRef cs = tl_fw_rgb_color_space();
         CGContextRef c = CGBitmapContextCreate(dst->pixels, dstW, dstH, 8, dstW * 4, cs,
                                                kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
         dst->cg_image = CGBitmapContextCreateImage(c);
         CGContextRelease(c);
-        CGColorSpaceRelease(cs);
 #endif
         tl_dex_set_native(new_obj, dst);
     }
@@ -2576,11 +2593,10 @@ bool tl_framework_init(tl_dex_context *ctx)
 
     if (ctx->framebuffer && ctx->fb_width > 0 && ctx->fb_height > 0) {
 #if defined(__APPLE__)
-        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGColorSpaceRef cs = tl_fw_rgb_color_space();
         st->cg_ctx = CGBitmapContextCreate(ctx->framebuffer, ctx->fb_width, ctx->fb_height, 8,
                                            ctx->fb_width * 4, cs,
                                            kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-        CGColorSpaceRelease(cs);
         if (st->cg_ctx) {
             /* Pixel art is drawn without filtering unless a paint asks for it; the
              * draw calls set this per draw, and this is what anything that does

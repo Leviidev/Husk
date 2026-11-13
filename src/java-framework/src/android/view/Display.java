@@ -31,13 +31,28 @@ public class Display {
         float current = hostRefreshRate(), maximum = hostMaximumRefreshRate();
         return maximum > current ? new float[] { current, maximum } : new float[] { current };
     }
+    private static boolean hostWideColorGamut() {
+        try {
+            return husk.Native.wideColorGamut();
+        } catch (UnsatisfiedLinkError e) { return false; } // standalone JVM contract tests
+    }
     public int getDisplayId() { return 0; }
     public String getName() { return "Built-in Screen"; }
     public int getState() { return STATE_ON; }
     public int getFlags() { return 0; }
     public boolean isValid() { return true; }
     public boolean isHdr() { return false; }
-    public boolean isWideColorGamut() { return false; }
+    public boolean isWideColorGamut() { return hostWideColorGamut(); }
+    public int getColorMode() { return hostWideColorGamut() ? COLOR_MODE_DISPLAY_P3 : COLOR_MODE_SRGB; }
+    public int[] getSupportedColorModes() {
+        return hostWideColorGamut() ? new int[] { COLOR_MODE_DEFAULT, COLOR_MODE_SRGB, COLOR_MODE_DISPLAY_P3 } : new int[] { COLOR_MODE_DEFAULT, COLOR_MODE_SRGB };
+    }
+    public android.graphics.ColorSpace getPreferredWideGamutColorSpace() {
+        return hostWideColorGamut() ? android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.DISPLAY_P3) : null;
+    }
+    public android.graphics.ColorSpace[] getSupportedWideColorGamut() {
+        return hostWideColorGamut() ? new android.graphics.ColorSpace[] { android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.DISPLAY_P3) } : new android.graphics.ColorSpace[0];
+    }
     public int getPixelFormat() { return android.graphics.PixelFormat.RGBA_8888; }
     public long getAppVsyncOffsetNanos() { return 0; }
     public long getPresentationDeadlineNanos() { return Math.round(1_000_000_000d / hostRefreshRate()); }
@@ -178,7 +193,6 @@ public class Display {
     public boolean canStealTopFocus() { return false; }
     public void clearUserPreferredDisplayMode() {}
     public float getBrightnessDefault() { return 0f; }
-    public int getColorMode() { return 0; }
     public int getCommittedState() { return 0; }
     public android.view.Display.Mode getDefaultMode() { return null; }
     public android.hardware.display.DeviceProductInfo getDeviceProductInfo() { return null; }
@@ -191,15 +205,12 @@ public class Display {
     public android.hardware.OverlayProperties getOverlaySupport() { return null; }
     public java.lang.String getOwnerPackageName() { return null; }
     public int getOwnerUid() { return 0; }
-    public android.graphics.ColorSpace getPreferredWideGamutColorSpace() { return null; }
     public int getRemoveMode() { return 0; }
     public int[] getReportedHdrTypes() { return null; }
     public android.view.RoundedCorner getRoundedCorner(int p0) { return null; }
     public android.view.DisplayShape getShape() { return null; }
     public float getSuggestedFrameRate(int p0) { return 0f; }
-    public int[] getSupportedColorModes() { return null; }
     public float[] getSupportedRefreshRatesLegacy() { return null; }
-    public android.graphics.ColorSpace[] getSupportedWideColorGamut() { return null; }
     public android.view.Display.Mode getSystemPreferredDisplayMode() { return null; }
     public android.view.Display.Mode[] getSystemSupportedModes() { return null; }
     public int getType() { return 0; }

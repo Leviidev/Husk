@@ -15,6 +15,7 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-dexindex.h"
 #include "husk-tl-egl.h"
+#include "husk-tl-host-device.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-internal.h"
@@ -258,7 +259,7 @@ bool tl_gm_start(const tl_gm_config *cfg)
     /* What RunnerJNILib.Init and the activity leave in static fields the runner reads. */
     tl_jni_set_static(LIB, "ms_context", "Landroid/content/Context;", vl(tl_hle_activity()));
     tl_jni_set_static(LIB, "mCurrentRefreshRate", "F", (jvalue){ .f = 60.0f });
-    tl_jni_set_static(LIB, "mMaxRefreshRateSupported", "I", vi(60));
+    tl_jni_set_static(LIB, "mMaxRefreshRateSupported", "I", vi((int)(tl_host_display_max_refresh() + 0.5f)));
     tl_jni_set_static(LIB, "mGameSpeedControl", "I", vi(0));
 
     jvalue a = vl(STR("yoyo"));

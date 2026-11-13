@@ -50,6 +50,7 @@ final class HuskGLView: UIView {
         backgroundColor = .black
         metalLayer.device = MTLCreateSystemDefaultDevice()
         metalLayer.pixelFormat = .bgra8Unorm
+        HuskDisplayColor.apply(to: metalLayer, traits: traitCollection)
         // ANGLE presents through this layer, so it must not be framebufferOnly:
         // the surface is rendered into rather than merely displayed.
         metalLayer.framebufferOnly = false
@@ -79,10 +80,11 @@ final class HuskGLView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let scale = window?.screen.scale ?? UIScreen.main.scale
+        let scale = window?.screen.nativeScale ?? UIScreen.main.nativeScale
         metalLayer.contentsScale = scale
         metalLayer.drawableSize = CGSize(width: bounds.width * scale,
                                          height: bounds.height * scale)
+        HuskDisplayColor.apply(to: metalLayer, traits: traitCollection)
         HuskMetalPresenter.shared.attach(layer: metalLayer)
 
         // Nothing here reacts to the device orientation any more.
@@ -113,6 +115,7 @@ final class HuskGLView: UIView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
+        HuskDisplayColor.apply(to: metalLayer, traits: traitCollection)
         HuskLog.log("gl", window == nil
             ? "the GL view left the window (its layer keeps the EGL surface)"
             : "the GL view is in a window")

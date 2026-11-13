@@ -294,6 +294,7 @@ NAT(N_screenHeight) { (void)self; (void)a; *ret = I(A.cfg.height); return true; 
 NAT(N_density) { (void)self; (void)a; *ret = F(A.cfg.density > 0 ? A.cfg.density : 3.0f); return true; }
 NAT(N_refreshRate) { (void)self; (void)a; *ret = F(TL_JAVA_DISPLAY_HZ); return true; }
 NAT(N_maxRefreshRate) { (void)self; (void)a; float hz = A.cfg.max_refresh_rate; *ret = F(hz >= 1.0f && hz <= 1000.0f ? hz : TL_JAVA_DISPLAY_HZ); return true; }
+NAT(N_wideColorGamut) { (void)self; (void)a; *ret = I(tl_host_display_wide_color() ? 1 : 0); return true; }
 NAT(N_deviceProperty)
 {
     (void)self;
@@ -617,6 +618,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "density", "()F", N_density },
     { "refreshRate", "()F", N_refreshRate },
     { "maxRefreshRate", "()F", N_maxRefreshRate },
+    { "wideColorGamut", "()Z", N_wideColorGamut },
     { "deviceProperty", "(Ljava/lang/String;)Ljava/lang/String;", N_deviceProperty },
     { "memoryInfo", "()[J", N_memoryInfo },
     { "startGL", "(Ljava/lang/Object;Ljava/lang/Object;I)V", N_startGL },

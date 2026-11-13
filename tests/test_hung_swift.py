@@ -159,12 +159,15 @@ enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryD
 @MainActor final class UIScreen { static let main = UIScreen(); var scale: CGFloat { 2 }; var nativeScale: CGFloat { 3 } }
 '''
         self.compile_run(source, '''
+let fresh = TLAppSettings()
+precondition(fresh.resolution == .native && fresh.nativeDisplayProfileVersion == 2)
 let old = try JSONDecoder().decode(TLAppSettings.self, from: Data("{}".utf8))
-precondition(old.startupDiagnostics == false && old.resolution == .high && old.avoidUnsafeArea)
+precondition(old.startupDiagnostics == false && old.resolution == .native && old.avoidUnsafeArea)
 precondition(old.questOnlyCutout)
 let low = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"low"}"#.utf8))
 precondition(low.resolution == .low && low.avoidUnsafeArea)
-var settings = old
+let legacyHigh = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"high","nativeDisplayProfileVersion":0}"#.utf8))
+var settings = legacyHigh
 settings.startupDiagnostics = true
 settings.orientation = .portrait
 settings.avoidUnsafeArea = false
@@ -175,14 +178,20 @@ precondition(decoded == settings)
 precondition(decoded.startupDiagnostics && decoded.orientation == .portrait)
 precondition(!decoded.avoidUnsafeArea)
 precondition(!decoded.questOnlyCutout)
-var trutien = old
-precondition(!trutien.applyNativeDisplayProfile(packageName: "unrelated.game") && trutien.resolution == .high)
+var unrelated = legacyHigh
+precondition(unrelated.applyNativeDisplayProfile(packageName: "unrelated.game") && unrelated.resolution == .native)
+precondition(unrelated.nativeDisplayProfileVersion == 2)
+var trutien = legacyHigh
 precondition(trutien.applyNativeDisplayProfile(packageName: "vn.trutien.client") && trutien.resolution == .native)
-precondition(trutien.nativeDisplayProfileVersion == 1)
+precondition(trutien.nativeDisplayProfileVersion == 2)
 trutien.resolution = .medium
 let migrated = try JSONDecoder().decode(TLAppSettings.self, from: JSONEncoder().encode(trutien))
 trutien = migrated
 precondition(!trutien.applyNativeDisplayProfile(packageName: "vn.trutien.client") && trutien.resolution == .medium)
+var manualHighAfterV1 = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"high","nativeDisplayProfileVersion":1}"#.utf8))
+precondition(manualHighAfterV1.applyNativeDisplayProfile(packageName: "vn.trutien.client") && manualHighAfterV1.resolution == .high)
+var lowLegacy = low
+precondition(lowLegacy.applyNativeDisplayProfile(packageName: "unrelated.game") && lowLegacy.resolution == .low)
 print("PASS: per-app diagnostic profile survives Codable roundtrip and legacy settings")
 ''')
 

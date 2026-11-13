@@ -315,7 +315,7 @@ struct TLWindowScreen: UIViewRepresentable {
     let engine: TLNativeEngine
     let portrait: Bool
     let scale: CGFloat
-    var nativeResolution = false
+    var nativeResolution = true
 
     func makeUIView(context: Context) -> TLWindowHost {
         TLWindowHost(game: TLUnityScreen.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine,
