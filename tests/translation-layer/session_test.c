@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+#ifndef _WIN32
+#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
+#endif
 #define TL_SESSION_IMPLEMENTATION
 #include "husk-tl-session.h"
 #include <assert.h>
 #include <stdio.h>
 #ifndef _WIN32
-#include <pthread.h>
-#include <unistd.h>
 static void *race_creation(void *unused)
 {
     (void)unused;

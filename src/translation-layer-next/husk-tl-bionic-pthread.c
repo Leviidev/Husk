@@ -16,6 +16,8 @@
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
 #include "husk-tl-ld.h"
+#include <pthread.h>
+#include <time.h>
 #define TL_SESSION_IMPLEMENTATION
 #include "husk-tl-session.h"
 #define TL_GUEST_POOL_IMPLEMENTATION

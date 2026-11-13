@@ -22,16 +22,16 @@ void tl_guest_thread_register(uintptr_t thread, bool tracked);
 bool tl_guest_session_reap(unsigned timeout_ms);
 
 #ifdef TL_SESSION_IMPLEMENTATION
-#include <stdint.h>
 #include <stdatomic.h>
-#include <pthread.h>
-#include <time.h>
 /* Low bits: 0 boot/no app, 1 accepting threads, 2 draining. Other bits count
    reservations. One CAS orders creation against closing, without a race in
    which the drain sees zero just before a new pthread becomes visible. */
 static atomic_uint tl_session_word;
+#if defined(PTHREAD_MUTEX_INITIALIZER) && defined(PTHREAD_COND_INITIALIZER)
+#include <time.h>
 static pthread_mutex_t tl_session_sleep_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t tl_session_sleep_cv = PTHREAD_COND_INITIALIZER;
+#endif
 
 bool tl_guest_session_begin(void)
 {
@@ -68,14 +68,17 @@ bool tl_guest_session_closing(void)
 }
 void tl_guest_session_wake_sleepers(void)
 {
+#if defined(PTHREAD_MUTEX_INITIALIZER) && defined(PTHREAD_COND_INITIALIZER)
     pthread_mutex_lock(&tl_session_sleep_mu);
     pthread_cond_broadcast(&tl_session_sleep_cv);
     pthread_mutex_unlock(&tl_session_sleep_mu);
+#endif
 }
 bool tl_guest_session_wait_close(int64_t ns)
 {
     if (tl_guest_session_closing()) return true;
     if (ns <= 0) return false;
+#if defined(PTHREAD_MUTEX_INITIALIZER) && defined(PTHREAD_COND_INITIALIZER)
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     int64_t start_ns = (int64_t)now.tv_sec * 1000000000ll + now.tv_nsec;
@@ -101,6 +104,9 @@ bool tl_guest_session_wait_close(int64_t ns)
     bool closing = tl_guest_session_closing();
     pthread_mutex_unlock(&tl_session_sleep_mu);
     return closing;
+#else
+    return tl_guest_session_closing();
+#endif
 }
 unsigned tl_guest_session_threads(void) { return atomic_load(&tl_session_word) >> 2; }
 bool tl_guest_session_finish(void)
