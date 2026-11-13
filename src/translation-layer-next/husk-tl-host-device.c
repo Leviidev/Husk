@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-host-device.h"
+#include "husk-tl-visual.h"
 #include <pthread.h>
 #include <stdatomic.h>
 #include <sys/sysctl.h>
@@ -50,6 +51,7 @@ static void read_device(void)
 }
 static atomic_int display_max_refresh_x100;
 static atomic_int display_wide_color;
+static atomic_int display_visual_quality = TL_VISUAL_PRO_MAX;
 
 void tl_host_set_display_max_refresh(float refresh_rate)
 {
@@ -68,6 +70,14 @@ void tl_host_set_display_wide_color(int wide_color)
 bool tl_host_display_wide_color(void)
 {
     return atomic_load(&display_wide_color) > 0;
+}
+void tl_host_set_visual_quality(int preset)
+{
+    atomic_store(&display_visual_quality, tl_visual_clamp_preset(preset));
+}
+int tl_host_visual_quality(void)
+{
+    return atomic_load(&display_visual_quality);
 }
 
 const char *tl_host_device_property(const char *name)

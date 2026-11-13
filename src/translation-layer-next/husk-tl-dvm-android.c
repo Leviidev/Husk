@@ -30,6 +30,7 @@
 #include "husk-tl-audio.h"
 #include "husk-tl-memory.h"
 #include "husk-tl-host-device.h"
+#include "husk-tl-visual.h"
 #include "husk-tl-display-timing.h"
 #include "husk-tl-frame-perf.h"
 #include "husk-tl-guest-thread.h"
@@ -712,7 +713,7 @@ void tl_ui_frame_reset(void);
 
 typedef struct {
     uint32_t prog, tex, vbo;
-    int tw, th, opaque_uniform;
+    int tw, th, opaque_uniform, texel_uniform, enhance_uniform;
 } overlay;
 
 static uint32_t ov_shader(uint32_t kind, const char *src)
@@ -726,34 +727,116 @@ static uint32_t ov_shader(uint32_t kind, const char *src)
     return sh;
 }
 
-static void ov_init_flip(overlay *o, bool bottom_up)
+static uint32_t ov_build_program(const char *vs, const char *fs)
 {
-    static const char *vs_top = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
-    static const char *vs_bottom = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 + p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
-    const char *vs = bottom_up ? vs_bottom : vs_top;
-    static const char *fs = "precision mediump float; uniform sampler2D s; uniform bool forceOpaque; varying vec2 t; void main() { vec4 c = texture2D(s, t); gl_FragColor = vec4(c.rgb, forceOpaque ? 1.0 : c.a); }";
     uint32_t (*createProgram)(void) = gl_fn("glCreateProgram");
     void (*attach)(uint32_t, uint32_t) = gl_fn("glAttachShader");
     void (*bindAttrib)(uint32_t, uint32_t, const char *) = gl_fn("glBindAttribLocation");
     void (*link)(uint32_t) = gl_fn("glLinkProgram");
+    void (*getShaderiv)(uint32_t, uint32_t, int32_t *) = gl_fn("glGetShaderiv");
+    void (*getProgramiv)(uint32_t, uint32_t, int32_t *) = gl_fn("glGetProgramiv");
+    void (*deleteShader)(uint32_t) = gl_fn("glDeleteShader");
+    void (*deleteProgram)(uint32_t) = gl_fn("glDeleteProgram");
+    uint32_t vsh = ov_shader(0x8B31, vs);
+    uint32_t fsh = ov_shader(0x8B30, fs);
+    int32_t v_ok = 1, f_ok = 1, l_ok = 1;
+    if (getShaderiv) {
+        if (vsh) getShaderiv(vsh, 0x8B81 /* GL_COMPILE_STATUS */, &v_ok);
+        if (fsh) getShaderiv(fsh, 0x8B81 /* GL_COMPILE_STATUS */, &f_ok);
+    }
+    uint32_t prog = createProgram();
+    attach(prog, vsh);
+    attach(prog, fsh);
+    bindAttrib(prog, 0, "p");
+    link(prog);
+    if (getProgramiv && prog) getProgramiv(prog, 0x8B82 /* GL_LINK_STATUS */, &l_ok);
+    if (deleteShader) {
+        if (vsh) deleteShader(vsh);
+        if (fsh) deleteShader(fsh);
+    }
+    if (!v_ok || !f_ok || !l_ok || !prog) {
+        if (deleteProgram && prog) deleteProgram(prog);
+        return 0;
+    }
+    return prog;
+}
+
+static void ov_init_flip_mode(overlay *o, bool bottom_up, bool enhance)
+{
+    static const char *vs_top = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    static const char *vs_bottom = "attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 + p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }";
+    const char *vs = bottom_up ? vs_bottom : vs_top;
+    static const char *fs_plain =
+        "precision mediump float;"
+        "uniform sampler2D s;"
+        "uniform bool forceOpaque;"
+        "varying vec2 t;"
+        "void main() { vec4 c = texture2D(s, t); gl_FragColor = vec4(c.rgb, forceOpaque ? 1.0 : c.a); }";
+    static const char *fs_enhance =
+        "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
+        "precision highp float;\n"
+        "#else\n"
+        "precision mediump float;\n"
+        "#endif\n"
+        "uniform sampler2D s;"
+        "uniform bool forceOpaque;"
+        "uniform vec2 invTexSize;"
+        "uniform vec4 enhanceParams;"
+        "varying vec2 t;"
+        "void main() {"
+        "    vec4 center = texture2D(s, t);"
+        "    vec3 e = center.rgb;"
+        "    float alpha = forceOpaque ? 1.0 : center.a;"
+        "    if (enhanceParams.x > 0.001 || enhanceParams.y > 0.001 || enhanceParams.z > 0.001) {"
+        "        if (enhanceParams.x > 0.001 && invTexSize.x > 0.0 && invTexSize.y > 0.0) {"
+        "            vec2 lo = invTexSize * 0.5;"
+        "            vec2 hi = vec2(1.0) - lo;"
+        "            vec3 b = texture2D(s, clamp(t + vec2(0.0, -invTexSize.y), lo, hi)).rgb;"
+        "            vec3 d = texture2D(s, clamp(t + vec2(-invTexSize.x, 0.0), lo, hi)).rgb;"
+        "            vec3 f = texture2D(s, clamp(t + vec2(invTexSize.x, 0.0), lo, hi)).rgb;"
+        "            vec3 h = texture2D(s, clamp(t + vec2(0.0, invTexSize.y), lo, hi)).rgb;"
+        "            vec3 mn = min(e, min(min(b, d), min(f, h)));"
+        "            vec3 mx = max(e, max(max(b, d), max(f, h)));"
+        "            vec3 hitMin = mn / (4.0 * mx + 0.0001);"
+        "            vec3 hitMax = (1.0 - mx) / (4.0 * mn - 4.0001);"
+        "            vec3 lobe = max(-hitMin, hitMax);"
+        "            float w = clamp(max(lobe.r, max(lobe.g, lobe.b)), -0.1875, 0.0) * enhanceParams.x;"
+        "            float rcp = 1.0 / (1.0 + 4.0 * w);"
+        "            e = clamp((e + (b + d + f + h) * w) * rcp, 0.0, 1.0);"
+        "        }"
+        "        if (enhanceParams.y > 0.001) {"
+        "            vec3 sCurve = e * e * (3.0 - 2.0 * e);"
+        "            e = mix(e, sCurve, enhanceParams.y * 0.50);"
+        "        }"
+        "        if (enhanceParams.z > 0.001) {"
+        "            float luma = dot(e, vec3(0.2126, 0.7152, 0.0722));"
+        "            float sat = max(e.r, max(e.g, e.b)) - min(e.r, min(e.g, e.b));"
+        "            e = clamp(mix(vec3(luma), e, 1.0 + enhanceParams.z * (1.0 - sat)), 0.0, 1.0);"
+        "        }"
+        "    }"
+        "    gl_FragColor = vec4(e, alpha);"
+        "}";
     int (*uniformLocation)(uint32_t, const char *) = gl_fn("glGetUniformLocation");
     void (*genTex)(int32_t, uint32_t *) = gl_fn("glGenTextures");
     void (*genBuf)(int32_t, uint32_t *) = gl_fn("glGenBuffers");
     void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
     void (*bufData)(uint32_t, intptr_t, const void *, uint32_t) = gl_fn("glBufferData");
-    o->prog = createProgram();
-    attach(o->prog, ov_shader(0x8B31, vs));
-    attach(o->prog, ov_shader(0x8B30, fs));
-    bindAttrib(o->prog, 0, "p");
-    link(o->prog);
-    o->opaque_uniform = uniformLocation(o->prog, "forceOpaque");
+    o->prog = enhance ? ov_build_program(vs, fs_enhance) : 0;
+    bool using_enhance = o->prog != 0;
+    if (!o->prog) {
+        if (enhance) tl_log_line("javaapp: compositor enhanced shader unavailable; falling back to passthrough");
+        o->prog = ov_build_program(vs, fs_plain);
+    }
+    o->opaque_uniform = o->prog ? uniformLocation(o->prog, "forceOpaque") : -1;
+    o->texel_uniform = using_enhance ? uniformLocation(o->prog, "invTexSize") : -1;
+    o->enhance_uniform = using_enhance ? uniformLocation(o->prog, "enhanceParams") : -1;
     genTex(1, &o->tex);
     static const float quad[] = { -1, -1, 1, -1, -1, 1, 1, 1 };
     genBuf(1, &o->vbo);
     bindBuf(0x8892, o->vbo);
     bufData(0x8892, sizeof(quad), quad, 0x88E4);
 }
-static void ov_init(overlay *o) { ov_init_flip(o, false); }
+static void ov_init(overlay *o) { ov_init_flip_mode(o, false, false); }
 
 static void ov_upload(overlay *o, const uint8_t *px, int w, int h)
 {
@@ -1023,8 +1106,9 @@ static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t
     *handoff_ns = handoff_end >= handoff_start ? (uint64_t)(handoff_end - handoff_start) : 0;
     pthread_mutex_lock(&E2.lk);
     bool on = E2.on, opaque = E2.opaque; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
+    int pw = E2.pw, ph = E2.ph;
     uint64_t sampled_seq = E2.seq;
-    if (on && !tex && E2.px) { ov_upload(up, E2.px, E2.pw, E2.ph); }
+    if (on && !tex && E2.px) { ov_upload(up, E2.px, pw, ph); }
     pthread_mutex_unlock(&E2.lk);
     if (!on) { tl_egl_compositor_frame_end(0); return 0; }
     tl_egl_compositor_frame_wait(tex);
@@ -1042,6 +1126,16 @@ static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t
     useProgram(o->prog);
     void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
     uniform1i(o->opaque_uniform, opaque ? 1 : 0);
+    if (o->texel_uniform >= 0 && o->enhance_uniform >= 0) {
+        int src_w = pw > 0 ? pw : w;
+        int src_h = ph > 0 ? ph : h;
+        tl_visual_params vp = tl_visual_compute_params(tl_host_visual_quality(), tl_host_display_wide_color(),
+                                                       src_w, src_h, w, h);
+        void (*uniform2f)(int32_t, float, float) = gl_fn("glUniform2f");
+        void (*uniform4f)(int32_t, float, float, float, float) = gl_fn("glUniform4f");
+        if (uniform2f) uniform2f(o->texel_uniform, src_w > 0 ? 1.0f / (float)src_w : 0.0f, src_h > 0 ? 1.0f / (float)src_h : 0.0f);
+        if (uniform4f) uniform4f(o->enhance_uniform, vp.sharpness, vp.contrast, vp.vibrance, 0.0f);
+    }
     activeTex(0x84C0);
     bindTex(0x0DE1, tex ? tex : up->tex);
     bindBuf(0x8892, o->vbo);
@@ -1253,8 +1347,8 @@ static void *gl_run(void *arg)
 #endif
     overlay ov = { 0 }, appov = { 0 }, appup = { 0 };
     ov_init(&ov);
-    ov_init_flip(&appov, true);
-    ov_init_flip(&appup, true);
+    ov_init_flip_mode(&appov, true, true);
+    ov_init_flip_mode(&appup, true, true);
     tl_egl_compositor_context(ui, es3);
     tl_egl_frame_perf_set_active(true);
     pthread_mutex_lock(&E2.lk);

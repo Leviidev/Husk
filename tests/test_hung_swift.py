@@ -160,9 +160,10 @@ enum TranslationLayer { static var root: URL { URL(fileURLWithPath: NSTemporaryD
 '''
         self.compile_run(source, '''
 let fresh = TLAppSettings()
-precondition(fresh.resolution == .native && fresh.nativeDisplayProfileVersion == 2)
+precondition(fresh.resolution == .native && fresh.nativeDisplayProfileVersion == 2 && fresh.visualQuality == .proMax)
+precondition(TLAppSettings.VisualQuality.standard.presetCode == 0 && TLAppSettings.VisualQuality.crisp.presetCode == 1 && TLAppSettings.VisualQuality.proMax.presetCode == 2)
 let old = try JSONDecoder().decode(TLAppSettings.self, from: Data("{}".utf8))
-precondition(old.startupDiagnostics == false && old.resolution == .native && old.avoidUnsafeArea)
+precondition(old.startupDiagnostics == false && old.resolution == .native && old.visualQuality == .proMax && old.avoidUnsafeArea)
 precondition(old.questOnlyCutout)
 let low = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"resolution":"low"}"#.utf8))
 precondition(low.resolution == .low && low.avoidUnsafeArea)
@@ -170,12 +171,13 @@ let legacyHigh = try JSONDecoder().decode(TLAppSettings.self, from: Data(#"{"res
 var settings = legacyHigh
 settings.startupDiagnostics = true
 settings.orientation = .portrait
+settings.visualQuality = .crisp
 settings.avoidUnsafeArea = false
 settings.questOnlyCutout = false
 let encoded = try JSONEncoder().encode(settings)
 let decoded = try JSONDecoder().decode(TLAppSettings.self, from: encoded)
 precondition(decoded == settings)
-precondition(decoded.startupDiagnostics && decoded.orientation == .portrait)
+precondition(decoded.startupDiagnostics && decoded.orientation == .portrait && decoded.visualQuality == .crisp)
 precondition(!decoded.avoidUnsafeArea)
 precondition(!decoded.questOnlyCutout)
 var unrelated = legacyHigh

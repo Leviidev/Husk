@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "husk-tl-visual.h"
 
 /* Compile the real NDK classification and compositor draw functions with a
  * fake driver. Buffer format alone must never make a TextureView opaque. */
@@ -20,7 +21,9 @@ static jvalue tl_jni_get_field(void *view, const char *name, const char *sig)
 static bool tl_jni_pending(void) { return pending; }
 static void tl_jni_clear(void) { pending = false; }
 
-typedef struct { uint32_t prog, tex, vbo; int tw, th, opaque_uniform; } overlay;
+typedef struct { uint32_t prog, tex, vbo; int tw, th, opaque_uniform, texel_uniform, enhance_uniform; } overlay;
+static int tl_host_visual_quality(void) { return TL_VISUAL_PRO_MAX; }
+static bool tl_host_display_wide_color(void) { return true; }
 static struct {
     int lk;
     bool on, opaque;
@@ -29,8 +32,9 @@ static struct {
     int x, y, w, h, pw, ph;
     uint8_t *px;
 } E2;
-static unsigned draws, uploads, begins, ends, uniform_calls;
+static unsigned draws, uploads, begins, ends, uniform_calls, enhance_calls;
 static int last_opaque = -1;
+static float last_inv_x, last_inv_y, last_sharp, last_contrast, last_vibrance;
 static uint32_t program;
 static int64_t now_ns(void) { static int64_t now; return now += 1000; }
 static void pthread_mutex_lock(int *mutex) { assert(!*mutex); *mutex = 1; }
@@ -48,6 +52,13 @@ static void attrib(uint32_t a, int32_t b, uint32_t c, uint8_t d, int32_t e, cons
 { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; }
 static void uniform(int32_t location, int32_t value)
 { assert(location == (program == 1 ? 9 : 10)); last_opaque = value; uniform_calls++; }
+static void uniform2f(int32_t location, float x, float y)
+{ assert(location == 11 && program == 1); last_inv_x = x; last_inv_y = y; }
+static void uniform4f(int32_t location, float x, float y, float z, float w)
+{
+    assert(location == 12 && program == 1 && w == 0.0f);
+    last_sharp = x; last_contrast = y; last_vibrance = z; enhance_calls++;
+}
 static void draw(uint32_t mode, int32_t first, int32_t count)
 { assert(mode == 5 && !first && count == 4 && last_opaque >= 0); draws++; }
 static void *gl_fn(const char *name)
@@ -55,6 +66,8 @@ static void *gl_fn(const char *name)
     if (!strcmp(name, "glViewport")) return viewport;
     if (!strcmp(name, "glUseProgram")) return use_program;
     if (!strcmp(name, "glUniform1i")) return uniform;
+    if (!strcmp(name, "glUniform2f")) return uniform2f;
+    if (!strcmp(name, "glUniform4f")) return uniform4f;
     if (!strcmp(name, "glDisable") || !strcmp(name, "glEnable") || !strcmp(name, "glActiveTexture")
         || !strcmp(name, "glEnableVertexAttribArray")) return one_u32;
     if (!strcmp(name, "glBindTexture") || !strcmp(name, "glBindBuffer") || !strcmp(name, "glBlendFunc")) return two_u32;
@@ -81,16 +94,17 @@ int main(void)
     field_error = true; assert(!tl_nwindow_is_opaque(&w) && !pending); field_error = false;
     w.view = NULL; assert(!tl_nwindow_is_opaque(&w) && !tl_nwindow_is_opaque(NULL));
 
-    overlay native = { .prog = 1, .tex = 11, .vbo = 12, .tw = 2, .th = 2, .opaque_uniform = 9 };
-    overlay cpu = { .tex = 13 };
-    overlay ui = { .prog = 2, .tex = 21, .vbo = 22, .tw = 2, .th = 2, .opaque_uniform = 10 };
-    E2.on = true; E2.tex = 70; E2.w = 1568; E2.h = 724; E2.opaque = true;
+    overlay native = { .prog = 1, .tex = 11, .vbo = 12, .tw = 2, .th = 2, .opaque_uniform = 9, .texel_uniform = 11, .enhance_uniform = 12 };
+    overlay cpu = { .tex = 13, .opaque_uniform = -1, .texel_uniform = -1, .enhance_uniform = -1 };
+    overlay ui = { .prog = 2, .tex = 21, .vbo = 22, .tw = 2, .th = 2, .opaque_uniform = 10, .texel_uniform = -1, .enhance_uniform = -1 };
+    E2.on = true; E2.tex = 70; E2.pw = 1568; E2.ph = 724; E2.w = 2796; E2.h = 1290; E2.opaque = true;
     E2.seq = 42;
     uint64_t handoff_ns;
-    assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 42 && handoff_ns == 1000);
-    assert(last_opaque == 1 && draws == 1 && !uploads);
-    ov_draw(&ui, 1864, 860);
-    assert(last_opaque == 0 && program == 2 && draws == 2);
+    assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 42 && handoff_ns == 1000);
+    assert(last_opaque == 1 && draws == 1 && !uploads && enhance_calls == 1);
+    assert(last_inv_x > 0.0f && last_inv_y > 0.0f && last_sharp > 0.58f && last_contrast > 0.0f && last_vibrance > 0.0f);
+    ov_draw(&ui, 2796, 1290);
+    assert(last_opaque == 0 && program == 2 && draws == 2 && enhance_calls == 1);
     E2.opaque = false;
     assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 42);
     assert(last_opaque == 0 && draws == 3);

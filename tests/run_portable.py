@@ -105,6 +105,18 @@ def main():
         r"void tl_host_set_display_density\([^\n]*\)\n\{.*?\n\}",
         r"static const char \*display_density_property\([^\n]*\)\n\{.*?\n\}")]
     (out / "host_density_under_test.h").write_text("\n".join(density_functions), encoding="utf-8")
+    visual_functions = [re.search(pattern, host_device_source, re.S)[0] for pattern in (
+        r"static atomic_int display_visual_quality[^\n]*;",
+        r"void tl_host_set_visual_quality\([^\n]*\)\n\{.*?\n\}",
+        r"int tl_host_visual_quality\([^\n]*\)\n\{.*?\n\}")]
+    visual_functions += [re.search(pattern, egl_source, re.S)[0] for pattern in (
+        r"static bool is_aniso_tex_target\([^\n]*\)\n\{.*?\n\}",
+        r"static bool is_mip_linear_filter\([^\n]*\)\n\{.*?\n\}",
+        r"static int upgrade_min_filter\([^\n]*\)\n\{.*?\n\}",
+        r"static float effective_anisotropy\([^\n]*\)\n\{.*?\n\}",
+        r"static void apply_filter_param_i\b.*?\n\{.*?\n\}",
+        r"static void apply_filter_param_f\b.*?\n\{.*?\n\}")]
+    (out / "visual_quality_under_test.h").write_text("\n\n".join(visual_functions) + "\n", encoding="utf-8")
     unity_source = (ROOT / "src/translation-layer-next/husk-tl-unity-app.c").read_text(encoding="utf-8")
     display_facts = re.search(r"void husk_java_set_display_max_refresh\([^)]*\)\n\{.*?\n\}", unity_source, re.S)[0]
     display_facts += "\n" + re.search(r"NAT\(N_refreshRate\) [^\n]+", android_source)[0]
@@ -133,10 +145,10 @@ def main():
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])
-    for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "text_color_test", "graphics_text_test", "trutien_text_filter_test", "entry_filter_test"):
+    for name in ("host_device_test", "bionic_host_facts_test", "display_facts_test", "visual_quality_test", "text_color_test", "graphics_text_test", "trutien_text_filter_test", "entry_filter_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "trutien_text_filter_test" else []
-        math_flags = ["-lm"] if os.name != "nt" and name == "graphics_text_test" else []
+        math_flags = ["-lm"] if os.name != "nt" and name in ("graphics_text_test", "visual_quality_test") else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)] + math_flags)
         run(name, [str(exe)])

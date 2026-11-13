@@ -18,6 +18,8 @@
 #include "husk-tl-frame-sync.h"
 #include "husk-tl-gl-capabilities.h"
 #include "husk-tl-frame-perf.h"
+#include "husk-tl-host-device.h"
+#include "husk-tl-visual.h"
 
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
@@ -94,6 +96,7 @@ static void (*a_glCopyTexImage2D)(unsigned, int, unsigned, int, int, int, int, i
 static void (*a_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int);
 static void (*a_glFlush)(void);
 static const unsigned char *(*a_glGetString)(unsigned);
+static void (*a_glGetFloatv)(unsigned, float *);
 static void (*a_glFinish)(void);
 static void *(*a_glFenceSync)(unsigned, unsigned);
 static void (*a_glWaitSync)(void *, unsigned, uint64_t);
@@ -134,6 +137,7 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     a_glCopyTexSubImage2D = a_eglGetProcAddress("glCopyTexSubImage2D");
     a_glFlush = a_eglGetProcAddress("glFlush");
     a_glGetString = a_eglGetProcAddress("glGetString");
+    a_glGetFloatv = a_eglGetProcAddress("glGetFloatv");
     a_glFinish = a_eglGetProcAddress("glFinish");
     a_glFenceSync = a_eglGetProcAddress("glFenceSync");
     a_glWaitSync = a_eglGetProcAddress("glWaitSync");
@@ -1134,11 +1138,142 @@ static EGLint w_eglClientWaitSync(EGLDisplay d, void *s, EGLint f, uint64_t t)
 }
 static EGLBoolean w_eglDestroySync(EGLDisplay d, void *s) { return s ? r_eglDestroySync(d, s) : EGL_FALSE; }
 
+/* Upgrade mipmapped 2D texture filtering to trilinear and hardware anisotropic
+ * filtering when GL_EXT_texture_filter_anisotropic is advertised by ANGLE. */
+static void (*r_glTexParameteri)(unsigned, unsigned, int);
+static void (*r_glTexParameterf)(unsigned, unsigned, float);
+static void (*r_glSamplerParameteri)(unsigned, unsigned, int);
+static void (*r_glSamplerParameterf)(unsigned, unsigned, float);
+
+static float probe_max_anisotropy(void)
+{
+    static atomic_int state = 0; /* 0 = unprobed, 1 = probed */
+    static atomic_int max_af_x100 = 100;
+    if (atomic_load(&state) == 1) return (float)atomic_load(&max_af_x100) / 100.0f;
+    if (!a_eglGetCurrentContext || !a_eglGetCurrentContext() || !a_glGetFloatv) return 1.0f;
+
+    bool found = false;
+    EGLContext ctx = a_eglGetCurrentContext();
+    int ver = comp_ctx_ver(ctx);
+    if (ver >= 3) {
+        if (!r_glGetStringi && a_eglGetProcAddress) r_glGetStringi = a_eglGetProcAddress("glGetStringi");
+        if (r_glGetStringi && a_glGetIntegerv) {
+            int count = 0;
+            a_glGetIntegerv(0x821D /* GL_NUM_EXTENSIONS */, &count);
+            for (int i = 0; i < count; i++) {
+                const char *ext = (const char *)r_glGetStringi(0x1F03, (unsigned)i);
+                if (ext && !strcmp(ext, "GL_EXT_texture_filter_anisotropic")) { found = true; break; }
+            }
+        }
+    } else if (a_glGetString) {
+        const char *exts = (const char *)a_glGetString(0x1F03 /* GL_EXTENSIONS */);
+        if (exts && strstr(exts, "GL_EXT_texture_filter_anisotropic")) found = true;
+    }
+
+    float max_af = 1.0f;
+    if (found) {
+        a_glGetFloatv(0x84FF /* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT */, &max_af);
+        if (!(max_af >= 1.0f && max_af <= 64.0f)) max_af = 1.0f;
+    }
+    atomic_store(&max_af_x100, (int)(max_af * 100.0f + 0.5f));
+    atomic_store(&state, 1);
+    static atomic_int said;
+    if (found && !atomic_exchange(&said, 1)) tl_log_line("gl: hardware anisotropic filtering supported (max %.1fx)", (double)max_af);
+    return max_af;
+}
+
+static bool is_aniso_tex_target(unsigned target)
+{
+    return target == 0x0DE1 /* GL_TEXTURE_2D */ || target == 0x8C1A /* GL_TEXTURE_2D_ARRAY */;
+}
+
+static bool is_mip_linear_filter(int param)
+{
+    return param == 0x2701 /* GL_LINEAR_MIPMAP_NEAREST */ || param == 0x2703 /* GL_LINEAR_MIPMAP_LINEAR */;
+}
+
+static int upgrade_min_filter(int param, bool trilinear)
+{
+    return (trilinear && param == 0x2701) ? 0x2703 : param;
+}
+
+static float effective_anisotropy(float requested)
+{
+    return requested > 1.0f ? tl_visual_clamp_anisotropy(requested, probe_max_anisotropy()) : 1.0f;
+}
+
+static void apply_filter_param_i(unsigned obj, bool eligible, unsigned pname, int param,
+                                 void (*set_i)(unsigned, unsigned, int),
+                                 void (*set_f)(unsigned, unsigned, float))
+{
+    tl_visual_params vp = tl_visual_compute_params(tl_host_visual_quality(), false, 0, 0, 0, 0);
+    bool apply_af = eligible && pname == 0x2801 /* GL_TEXTURE_MIN_FILTER */ && is_mip_linear_filter(param);
+    int out_param = (eligible && pname == 0x2801) ? upgrade_min_filter(param, vp.trilinear) : param;
+    set_i(obj, pname, out_param);
+    if (apply_af && set_f) {
+        float af = effective_anisotropy(vp.anisotropy);
+        if (af > 1.0f) set_f(obj, 0x84FE /* GL_TEXTURE_MAX_ANISOTROPY_EXT */, af);
+    }
+}
+
+static void apply_filter_param_f(unsigned obj, bool eligible, unsigned pname, float param,
+                                 void (*set_f)(unsigned, unsigned, float))
+{
+    tl_visual_params vp = tl_visual_compute_params(tl_host_visual_quality(), false, 0, 0, 0, 0);
+    if (eligible && pname == 0x84FE /* GL_TEXTURE_MAX_ANISOTROPY_EXT */) {
+        float af = effective_anisotropy(vp.anisotropy);
+        if (af > param) param = af;
+    } else if (eligible && pname == 0x2801 /* GL_TEXTURE_MIN_FILTER */) {
+        int ip = (int)param;
+        bool apply_af = is_mip_linear_filter(ip);
+        int up = upgrade_min_filter(ip, vp.trilinear);
+        if (up != ip) param = (float)up;
+        set_f(obj, pname, param);
+        if (apply_af) {
+            float af = effective_anisotropy(vp.anisotropy);
+            if (af > 1.0f) set_f(obj, 0x84FE, af);
+        }
+        return;
+    }
+    set_f(obj, pname, param);
+}
+
+static void w_glTexParameteri(unsigned target, unsigned pname, int param)
+{
+    if (!r_glTexParameteri && a_eglGetProcAddress) r_glTexParameteri = a_eglGetProcAddress("glTexParameteri");
+    if (!r_glTexParameterf && a_eglGetProcAddress) r_glTexParameterf = a_eglGetProcAddress("glTexParameterf");
+    if (!r_glTexParameteri) return;
+    apply_filter_param_i(target, is_aniso_tex_target(target), pname, param, r_glTexParameteri, r_glTexParameterf);
+}
+
+static void w_glTexParameterf(unsigned target, unsigned pname, float param)
+{
+    if (!r_glTexParameterf && a_eglGetProcAddress) r_glTexParameterf = a_eglGetProcAddress("glTexParameterf");
+    if (!r_glTexParameterf) return;
+    apply_filter_param_f(target, is_aniso_tex_target(target), pname, param, r_glTexParameterf);
+}
+
+static void w_glSamplerParameteri(unsigned sampler, unsigned pname, int param)
+{
+    if (!r_glSamplerParameteri && a_eglGetProcAddress) r_glSamplerParameteri = a_eglGetProcAddress("glSamplerParameteri");
+    if (!r_glSamplerParameterf && a_eglGetProcAddress) r_glSamplerParameterf = a_eglGetProcAddress("glSamplerParameterf");
+    if (!r_glSamplerParameteri) return;
+    apply_filter_param_i(sampler, true, pname, param, r_glSamplerParameteri, r_glSamplerParameterf);
+}
+
+static void w_glSamplerParameterf(unsigned sampler, unsigned pname, float param)
+{
+    if (!r_glSamplerParameterf && a_eglGetProcAddress) r_glSamplerParameterf = a_eglGetProcAddress("glSamplerParameterf");
+    if (!r_glSamplerParameterf) return;
+    apply_filter_param_f(sampler, true, pname, param, r_glSamplerParameterf);
+}
+
 #define ADAPT(name) { #name, (void *)w_##name, (void **)&r_##name }
 static const struct { const char *name; void *wrap; void **real; } k_adapt[] = {
     ADAPT(glBlitFramebuffer), ADAPT(glTexSubImage3D), ADAPT(glCompressedTexSubImage3D), ADAPT(glCopyImageSubData),
     ADAPT(glColorMask), ADAPT(glDepthMask), ADAPT(glVertexAttribPointer), ADAPT(glUniformMatrix2fv),
     ADAPT(glUniformMatrix3fv), ADAPT(glUniformMatrix4fv), ADAPT(glSampleCoverage), ADAPT(glGetString), ADAPT(glGetStringi), ADAPT(glCompileShader), ADAPT(glShaderSource), ADAPT(glAttachShader), ADAPT(glLinkProgram), ADAPT(glGetIntegerv), ADAPT(glBindBufferBase), ADAPT(glBindBuffer), ADAPT(glBufferData), ADAPT(glBufferSubData), ADAPT(glBindBufferRange),
+    ADAPT(glTexParameteri), ADAPT(glTexParameterf), ADAPT(glSamplerParameteri), ADAPT(glSamplerParameterf),
     ADAPT(glGetProgramInterfaceiv), ADAPT(glGetProgramResourceIndex), ADAPT(glGetProgramResourceName), ADAPT(glGetProgramResourceiv), ADAPT(glGetIntegeri_v),
     ADAPT(eglClientWaitSyncKHR), ADAPT(eglDestroySyncKHR), ADAPT(eglGetSyncAttribKHR), ADAPT(eglClientWaitSync), ADAPT(eglDestroySync),
 };

@@ -54,4 +54,6 @@ void tl_host_set_display_max_refresh(float refresh_rate);
 float tl_host_display_max_refresh(void);
 void tl_host_set_display_wide_color(int wide_color);
 bool tl_host_display_wide_color(void);
+void tl_host_set_visual_quality(int preset);
+int  tl_host_visual_quality(void);
 #endif

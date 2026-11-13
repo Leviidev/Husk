@@ -346,6 +346,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         try? FileManager.default.createDirectory(atPath: dataDir, withIntermediateDirectories: true)
         let layerPtr = Unmanaged.passUnretained(layer).toOpaque()
         let loaded = husk_native_loaded_apk().map { String(cString: $0) }
+        let appID = ((dataDir as NSString).deletingLastPathComponent as NSString).lastPathComponent
+        let appSettings = TLAppSettings.load(appID)
+        husk_host_set_visual_quality(appSettings.visualQuality.presetCode)
         let st = husk_unity_state()
         if st != Int32(HUSK_UNITY_IDLE) {
             if loaded == apk, st == Int32(HUSK_UNITY_RUNNING) {
@@ -356,8 +359,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             HuskLog.log("tl", "native: \(loaded ?? "another app") is still loaded; close Husk to start \(apk)")
             return
         }
-        let appID = ((dataDir as NSString).deletingLastPathComponent as NSString).lastPathComponent
-        if TLAppSettings.load(appID).startupDiagnostics {
+        if appSettings.startupDiagnostics {
             for name in ["TL_STARTUP_TRACE", "TL_ICONV_TRACE", "TL_FILE_TRACE", "TL_NET_TRACE"] {
                 setenv(name, "1", 1)
             }
@@ -389,6 +391,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_host_set_display_metrics(Float(contentScaleFactor), Float(hostScreen.maximumFramesPerSecond), wideColor ? 1 : 0)
         husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
         HuskLog.log("tl", "host display: nativePixels=\(hostScreen.nativeBounds.size) nativeScale=\(hostScreen.nativeScale) renderScale=\(contentScaleFactor) gamut=\(wideColor ? "DisplayP3" : "sRGB") refreshCapability=\(hostScreen.maximumFramesPerSecond) Hz")
+        HuskLog.log("tl", "visual profile: \(appSettings.visualQuality.title)")
         let started: Bool
         switch engine {
         case .sdl:

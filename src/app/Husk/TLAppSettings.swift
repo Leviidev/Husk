@@ -49,6 +49,33 @@ struct TLAppSettings: Codable, Equatable {
         }
     }
 
+    /// Compositor sharpening, OLED micro-contrast, Display P3 vibrance, and anisotropic texture filtering for sharper 3D visuals.
+    enum VisualQuality: String, Codable, CaseIterable, Identifiable {
+        case standard, crisp, proMax
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .standard: return "Standard"
+            case .crisp: return "Crisp"
+            case .proMax: return "Pro Max"
+            }
+        }
+        var detail: String {
+            switch self {
+            case .standard: return "Original game output without compositor sharpening or anisotropic filtering."
+            case .crisp: return "Retina contrast-adaptive sharpening, balanced OLED depth, and 4x anisotropic textures."
+            case .proMax: return "Maximum sharpness, Pro Max OLED micro-contrast, P3 vibrance, and 8x anisotropic filtering."
+            }
+        }
+        var presetCode: Int32 {
+            switch self {
+            case .standard: return 0
+            case .crisp: return 1
+            case .proMax: return 2
+            }
+        }
+    }
+
     /// When the on-screen controller is offered.
     enum PadMode: String, Codable, CaseIterable, Identifiable {
         /// For the games that cannot be played without a controller (Unreal, PC games through DXVK), when none is connected.
@@ -80,6 +107,7 @@ struct TLAppSettings: Codable, Equatable {
     var orientation: Orientation = .auto
     var window: WindowMode = .auto
     var resolution: Resolution = .native
+    var visualQuality: VisualQuality = .proMax
     /// One-time upgrade to iPhone native Retina pixels for profiles created on older 2x defaults.
     var nativeDisplayProfileVersion = 2
     /// Report the physical cutout for the game to position its own HUD. The render surface stays full screen.
@@ -109,6 +137,7 @@ struct TLAppSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orientation = try c.decodeIfPresent(Orientation.self, forKey: .orientation) ?? .auto
         resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .native
+        visualQuality = try c.decodeIfPresent(VisualQuality.self, forKey: .visualQuality) ?? .proMax
         nativeDisplayProfileVersion = try c.decodeIfPresent(Int.self, forKey: .nativeDisplayProfileVersion) ?? 0
         avoidUnsafeArea = try c.decodeIfPresent(Bool.self, forKey: .avoidUnsafeArea) ?? true
         questOnlyCutout = try c.decodeIfPresent(Bool.self, forKey: .questOnlyCutout) ?? true
@@ -209,6 +238,9 @@ struct TLAppSettingsView: View {
                 Picker("Resolution", selection: $settings.resolution) {
                     ForEach(TLAppSettings.Resolution.allCases) { Text($0.title).tag($0) }
                 }
+                Picker("Visual quality", selection: $settings.visualQuality) {
+                    ForEach(TLAppSettings.VisualQuality.allCases) { Text($0.title).tag($0) }
+                }
                 Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
                 if app.packageName == "review.com.game3c.vhtgmobile", settings.avoidUnsafeArea {
                     Toggle("Adjust quest and walk/sit controls", isOn: $settings.questOnlyCutout)
@@ -218,8 +250,8 @@ struct TLAppSettingsView: View {
             } header: {
                 Text("Display")
             } footer: {
-                Text("\(settings.resolution.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's separate adjustment keeps quests clear of the camera and lowers only the walk/sit buttons slightly, leaving the avatar and 18+ logo in place.")
+                Text("\(settings.resolution.detail) \(settings.visualQuality.detail) Orientation and resolution apply the next time the game starts, and a game already "
+                   + "running in this session needs Husk closed and opened again. Visual quality sharpens immediately, while texture filtering applies on new scenes or next start. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's separate adjustment keeps quests clear of the camera and lowers only the walk/sit buttons slightly, leaving the avatar and 18+ logo in place.")
             }
 
             Section {
@@ -310,7 +342,10 @@ struct TLAppSettingsView: View {
         .huskForm()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: settings) { $0.save(app.id) }
+        .onChange(of: settings) { next in
+            next.save(app.id)
+            if inUse { husk_host_set_visual_quality(next.visualQuality.presetCode) }
+        }
         .onChange(of: settings.geode) { on in
             if on { Task { await geode.prepare(app) } } else { geode.remove(app) }
         }
