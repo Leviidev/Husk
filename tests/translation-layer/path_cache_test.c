@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #ifndef _WIN32
+#include <strings.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -22,10 +23,12 @@ int main(int argc, char **argv)
     assert(getcwd(prev_cwd, sizeof(prev_cwd)) != NULL);
     assert(chdir(root) == 0);
 
-    /* Relative 1- and 2-component paths (start == 0) resolve against '.' instead of '/'. */
+    /* Relative 1- and 2-component paths (start == 0) resolve against '.' instead of '/'.
+     * On case-sensitive FS (Linux/iOS) it canonicalizes casing; on case-insensitive macOS APFS access() succeeds directly. */
     char rel[512] = "userdata/systemsettings.ini";
     assert(tl_path_case_resolve(rel));
-    assert(strcmp(rel, "UserData/SystemSettings.ini") == 0);
+    assert(access(rel, F_OK) == 0);
+    assert(strcasecmp(rel, "UserData/SystemSettings.ini") == 0);
 
     /* Cached negative miss, then immediate discovery after tl_path_cache_invalidate(). */
     char late[512];
@@ -41,7 +44,8 @@ int main(int argc, char **argv)
 
     snprintf(late, sizeof(late), "%s/userdata/newfile.txt", root);
     assert(tl_path_case_resolve(late));
-    assert(strcmp(late, actual_new) == 0);
+    assert(access(late, F_OK) == 0);
+    assert(strcasecmp(late, actual_new) == 0);
 
     assert(unlink(actual_new) == 0);
     tl_path_cache_invalidate();
