@@ -237,21 +237,39 @@ static gface *default_face(void)
 }
 
 /* sized fonts, cached by face and size; the caller releases what it is given */
+static struct { gface *g; int q; CTFontRef f; } g_sized_font_cache[512];
+static pthread_mutex_t g_sized_font_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void tl_dvm_graphics_trim(void)
+{
+    pthread_mutex_lock(&g_sized_font_lock);
+    for (int i = 0; i < 512; i++) {
+        if (g_sized_font_cache[i].f) CFRelease(g_sized_font_cache[i].f);
+        g_sized_font_cache[i].g = NULL;
+        g_sized_font_cache[i].q = 0;
+        g_sized_font_cache[i].f = NULL;
+    }
+    pthread_mutex_unlock(&g_sized_font_lock);
+}
+
 static CTFontRef sized(gface *g, float size)
 {
-    static struct { gface *g; int q; CTFontRef f; } cache[512];
-    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     if (!g) g = default_face();
     if (!(size > 0)) size = 12;
     int q = (int)lrintf(size * 8);
     unsigned h = ((unsigned)(uintptr_t)g * 2654435761u ^ (unsigned)q * 40503u) % 512;
-    pthread_mutex_lock(&lock);
-    if (cache[h].g == g && cache[h].q == q) { CTFontRef f = cache[h].f; CFRetain(f); pthread_mutex_unlock(&lock); return f; }
+    pthread_mutex_lock(&g_sized_font_lock);
+    if (g_sized_font_cache[h].g == g && g_sized_font_cache[h].q == q) {
+        CTFontRef f = g_sized_font_cache[h].f;
+        CFRetain(f);
+        pthread_mutex_unlock(&g_sized_font_lock);
+        return f;
+    }
     CTFontRef f = CTFontCreateCopyWithAttributes(g->base, q / 8.0, NULL, NULL);
-    if (cache[h].f) CFRelease(cache[h].f);
-    cache[h].g = g; cache[h].q = q; cache[h].f = f;
+    if (g_sized_font_cache[h].f) CFRelease(g_sized_font_cache[h].f);
+    g_sized_font_cache[h].g = g; g_sized_font_cache[h].q = q; g_sized_font_cache[h].f = f;
     CFRetain(f);
-    pthread_mutex_unlock(&lock);
+    pthread_mutex_unlock(&g_sized_font_lock);
     return f;
 }
 

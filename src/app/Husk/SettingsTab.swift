@@ -30,6 +30,7 @@ struct SettingsTab: View {
                     row(DiscoverView(), "sparkle.magnifyingglass", .mint, "Discover", "Find apps in F-Droid and other repositories")
                     row(LibrarySettings(), "square.grid.2x2.fill", .blue, "Library", "Your apps and their icons")
                     row(PerformanceSettings(), "speedometer", .orange, "Performance", "Renderer, sound")
+                    row(StorageSettings(), "internaldrive.fill", .indigo, "Storage & Cache", "Free space and clean unused caches")
                     row(AppearanceSettings(), "paintbrush.fill", .pink, "Appearance", "Light or dark, accent colour, app icon")
                     row(FontSettings(), "textformat", .indigo, "Fonts", "Chinese, Japanese and Korean text")
                     row(FAQTab(), "questionmark.circle.fill", .teal, "Help", "Answers to common problems")
@@ -1086,5 +1087,300 @@ extension Bundle {
     }
     var commit: String {
         (infoDictionary?["HuskBuildCommit"] as? String) ?? "?"
+    }
+}
+
+// MARK: - Storage & Cache
+
+/// Safe disk hygiene for iPhone: clears stale temporary installers/backups, orphaned `.husk-new`
+/// staging files, and regenerable game caches (`.jar-cache`, `code_cache`, `cache`, shader caches)
+/// while keeping saves, preferences, OBB data, installed APKs, and active session data intact.
+enum StorageCleaner {
+    struct Summary: Sendable {
+        var temporaryBytes: Int64 = 0
+        var gameCacheBytes: Int64 = 0
+        var jitLessBytes: Int64 = 0
+        var totalGamesBytes: Int64 = 0
+        var deviceFreeBytes: Int64 = 0
+
+        var protectedGamesAndSavesBytes: Int64 { max(0, totalGamesBytes - gameCacheBytes) }
+        var fastReclaimableBytes: Int64 { temporaryBytes + gameCacheBytes }
+    }
+
+    private static let cacheDirNames: Set<String> = [".jar-cache", "cache", "code_cache", "UnityShaderCache", "shader_cache"]
+    private static let disposableExts: Set<String> = ["apk", "xapk", "apkm", "apks", "zip"]
+    private static let routineJarCacheBudgetPerGame: Int64 = 64 * 1024 * 1024
+
+    nonisolated static func measure(activeAppIDs: Set<String> = []) -> Summary {
+        var s = Summary()
+        s.jitLessBytes = JITLess.cacheBytes
+        s.temporaryBytes = measureTemporaryAndIncoming()
+        let tlRoot = TranslationLayer.root
+        if let appDirs = try? FileManager.default.contentsOfDirectory(at: tlRoot, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for appDir in appDirs {
+                let id = appDir.lastPathComponent
+                s.totalGamesBytes += folderSize(appDir)
+                if activeAppIDs.contains(id) { continue }
+                s.gameCacheBytes += measureGameCaches(in: appDir)
+            }
+        }
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        if let vals = try? home.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+           let free = vals.volumeAvailableCapacityForImportantUsage {
+            s.deviceFreeBytes = free
+        }
+        return s
+    }
+
+    /// Background-safe routine cleanup run at app startup: purges stale installers/exports,
+    /// incomplete `.husk-new` writes, and trims oversized `.jar-cache` folders without hurting
+    /// warm startup speed for smaller active caches.
+    nonisolated static func cleanRoutineCaches(activeAppIDs: Set<String> = []) {
+        purgeTemporaryItems(minAgeSeconds: 3600)
+        let tlRoot = TranslationLayer.root
+        guard let appDirs = try? FileManager.default.contentsOfDirectory(at: tlRoot, includingPropertiesForKeys: [.isDirectoryKey]) else { return }
+        for appDir in appDirs where !activeAppIDs.contains(appDir.lastPathComponent) {
+            removeOrphanedPartialSaves(under: appDir, minAgeSeconds: 300)
+            removeStaleUpdateApk(in: appDir)
+            trimJarCaches(in: appDir, maxBytes: routineJarCacheBudgetPerGame)
+        }
+    }
+
+    /// Reclaims all disposable temporary artifacts and regenerable game caches (preserving saves & APKs).
+    @discardableResult
+    nonisolated static func cleanRegenerableCaches(includeJITLess: Bool, activeAppIDs: Set<String> = []) -> Int64 {
+        let before = measure(activeAppIDs: activeAppIDs)
+        purgeTemporaryItems(minAgeSeconds: 0)
+        IncomingFiles.clearLeftovers()
+        URLCache.shared.removeAllCachedResponses()
+
+        let fm = FileManager.default
+        if let appDirs = try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for appDir in appDirs where !activeAppIDs.contains(appDir.lastPathComponent) {
+                removeOrphanedPartialSaves(under: appDir, minAgeSeconds: 0)
+                removeGameCaches(in: appDir)
+            }
+        }
+        if includeJITLess {
+            JITLess.clearCache()
+        }
+        let after = measure(activeAppIDs: activeAppIDs)
+        let reclaimed = max(0, (before.fastReclaimableBytes + (includeJITLess ? before.jitLessBytes : 0))
+            - (after.fastReclaimableBytes + (includeJITLess ? after.jitLessBytes : 0)))
+        HuskLog.log("storage", "cleaned caches (includeJITLess=\(includeJITLess)): freed ~\(reclaimed) bytes")
+        return reclaimed
+    }
+
+    private nonisolated static func measureTemporaryAndIncoming() -> Int64 {
+        var total: Int64 = Int64(URLCache.shared.currentDiskUsage)
+        total += folderSize(IncomingFiles.folder)
+        let tmp = FileManager.default.temporaryDirectory
+        guard let items = try? FileManager.default.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey]) else { return total }
+        for url in items where isDisposableTempItem(url) {
+            total += folderSize(url)
+        }
+        return total
+    }
+
+    private nonisolated static func purgeTemporaryItems(minAgeSeconds: TimeInterval) {
+        let fm = FileManager.default
+        let tmp = fm.temporaryDirectory
+        guard let items = try? fm.contentsOfDirectory(at: tmp, includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey]) else { return }
+        let now = Date()
+        for url in items where isDisposableTempItem(url) {
+            if minAgeSeconds > 0,
+               let mod = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+               now.timeIntervalSince(mod) < minAgeSeconds {
+                continue
+            }
+            try? fm.removeItem(at: url)
+        }
+    }
+
+    private nonisolated static func isDisposableTempItem(_ url: URL) -> Bool {
+        let name = url.lastPathComponent
+        if name.hasPrefix("apk-update-") { return true }
+        if name.hasPrefix("Husk report - ") || name.hasPrefix("Husk crash report - ") { return true }
+        if name.hasSuffix(".zip") && name.contains(" Saves ") { return true }
+        let ext = url.pathExtension.lowercased()
+        let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+        return !isDir && disposableExts.contains(ext)
+    }
+
+    private nonisolated static func dataDirectories(in appDir: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(at: appDir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []).filter {
+            $0.lastPathComponent.hasSuffix("-data") && ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false)
+        }
+    }
+
+    private nonisolated static func measureGameCaches(in appDir: URL) -> Int64 {
+        var total: Int64 = 0
+        for dataDir in dataDirectories(in: appDir) {
+            for cacheName in cacheDirNames {
+                total += folderSize(dataDir.appendingPathComponent(cacheName, isDirectory: true))
+            }
+        }
+        return total
+    }
+
+    nonisolated static func removeGameCaches(in appDir: URL) {
+        let fm = FileManager.default
+        for dataDir in dataDirectories(in: appDir) {
+            for cacheName in cacheDirNames {
+                let target = dataDir.appendingPathComponent(cacheName, isDirectory: true)
+                if fm.fileExists(atPath: target.path) {
+                    try? fm.removeItem(at: target)
+                }
+            }
+        }
+    }
+
+    private nonisolated static func removeStaleUpdateApk(in appDir: URL) {
+        let fm = FileManager.default
+        for dataDir in dataDirectories(in: appDir) {
+            let apk = dataDir.appendingPathComponent("cache/husk-update.apk")
+            if fm.fileExists(atPath: apk.path) { try? fm.removeItem(at: apk) }
+        }
+    }
+
+    private nonisolated static func trimJarCaches(in appDir: URL, maxBytes: Int64) {
+        let fm = FileManager.default
+        for dataDir in dataDirectories(in: appDir) {
+            let jc = dataDir.appendingPathComponent(".jar-cache", isDirectory: true)
+            guard let items = try? fm.contentsOfDirectory(at: jc, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey]) else { continue }
+            var entries: [(url: URL, size: Int64, mtime: Date)] = []
+            var total: Int64 = 0
+            for u in items {
+                let rv = try? u.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey])
+                guard rv?.isRegularFile == true else { continue }
+                let sz = Int64(rv?.fileSize ?? 0)
+                total += sz
+                entries.append((u, sz, rv?.contentModificationDate ?? .distantPast))
+            }
+            guard total > maxBytes else { continue }
+            entries.sort { $0.mtime < $1.mtime }
+            for e in entries where total > maxBytes {
+                if (try? fm.removeItem(at: e.url)) != nil { total -= e.size }
+            }
+        }
+    }
+
+    private nonisolated static func removeOrphanedPartialSaves(under appDir: URL, minAgeSeconds: TimeInterval) {
+        let fm = FileManager.default
+        guard let en = fm.enumerator(at: appDir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey]) else { return }
+        let now = Date()
+        for case let url as URL in en where url.lastPathComponent.hasSuffix(".husk-new") {
+            if minAgeSeconds > 0,
+               let mod = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+               now.timeIntervalSince(mod) < minAgeSeconds {
+                continue
+            }
+            try? fm.removeItem(at: url)
+        }
+    }
+
+    private nonisolated static func folderSize(_ url: URL) -> Int64 {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
+        if !isDir.boolValue {
+            return Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+        guard let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else { return 0 }
+        var total: Int64 = 0
+        for case let item as URL in en {
+            let rv = try? item.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            if rv?.isRegularFile == true { total += Int64(rv?.fileSize ?? 0) }
+        }
+        return total
+    }
+}
+
+struct StorageSettings: View {
+    @State private var summary = StorageCleaner.Summary()
+    @State private var cleaning = false
+    @State private var lastResult: String?
+
+    private static let formatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f
+    }()
+
+    private func fmt(_ bytes: Int64) -> String { Self.formatter.string(fromByteCount: bytes) }
+
+    private var activeIDs: Set<String> {
+        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }),
+              let app = TranslationLayerStore.shared.apps.first(where: { $0.apks.first == loaded }) else {
+            return []
+        }
+        return [app.id]
+    }
+
+    var body: some View {
+        HuskForm {
+            Section("iPhone & Game Data") {
+                DetailRow(label: "iPhone Free Space", value: fmt(summary.deviceFreeBytes), mono: false)
+                DetailRow(label: "Games & Saves (Kept)", value: fmt(summary.protectedGamesAndSavesBytes), mono: false)
+            }
+
+            Section {
+                DetailRow(label: "Temporary Installers & Backups", value: fmt(summary.temporaryBytes), mono: false)
+                DetailRow(label: "Regenerable Game Caches", value: fmt(summary.gameCacheBytes), mono: false)
+                DetailRow(label: "JIT-less Signed Libraries", value: fmt(summary.jitLessBytes), mono: false)
+            } header: {
+                Text("Caches & Cleanable Space")
+            } footer: {
+                if let lastResult { Text(lastResult) }
+                else {
+                    Text("Game caches (.jar-cache, shader cache, temporary APKs) can be safely cleaned without touching saves or settings. Keep JIT-less libraries for fastest game launch.")
+                }
+            }
+
+            Section {
+                Button {
+                    runClean(includeJITLess: false)
+                } label: {
+                    Label(cleaning ? "Cleaning…" : "Clean Unused & Caches (\(fmt(summary.fastReclaimableBytes)))",
+                          systemImage: "sparkles")
+                }
+                .disabled(cleaning || summary.fastReclaimableBytes == 0)
+
+                if summary.jitLessBytes > 0 {
+                    Button(role: .destructive) {
+                        runClean(includeJITLess: true)
+                    } label: {
+                        Label("Also Clear JIT-less Cache (\(fmt(summary.jitLessBytes)))",
+                              systemImage: "trash")
+                    }
+                    .disabled(cleaning)
+                }
+            }
+        }
+        .huskForm()
+        .navigationTitle("Storage & Cache")
+        .onAppear { refresh() }
+    }
+
+    private func refresh() {
+        let active = activeIDs
+        Task.detached(priority: .userInitiated) {
+            let measured = StorageCleaner.measure(activeAppIDs: active)
+            await MainActor.run { summary = measured }
+        }
+    }
+
+    private func runClean(includeJITLess: Bool) {
+        cleaning = true
+        let active = activeIDs
+        Task.detached(priority: .userInitiated) {
+            let freed = StorageCleaner.cleanRegenerableCaches(includeJITLess: includeJITLess, activeAppIDs: active)
+            let updated = StorageCleaner.measure(activeAppIDs: active)
+            await MainActor.run {
+                summary = updated
+                cleaning = false
+                lastResult = freed > 0 ? "Freed \(fmt(freed)) while keeping all saves intact." : "Nothing left to clean."
+            }
+        }
     }
 }

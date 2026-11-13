@@ -657,12 +657,25 @@ void husk_java_set_host(void (*keyboard)(int show, int input_type, int ime_optio
     g_java_host.share = share; g_java_host.orientation = orientation;
 }
 static bool java_running(void) { return atomic_load(&A.state) == HUSK_UNITY_RUNNING && A.engine == ENGINE_JAVA; }
+__attribute__((weak)) void tl_dvm_graphics_trim(void);
+__attribute__((weak)) void tl_jar_cache_trim(size_t max_bytes);
+static atomic_int g_thermal_state;
+int tl_host_thermal_state(void) { return atomic_load(&g_thermal_state); }
+void husk_native_thermal_state(int state) { atomic_store(&g_thermal_state, state); }
+void husk_native_memory_pressure(int level)
+{
+    if (tl_dvm_running()) tl_host_log_memory_breakdown("game-memory-warning");
+    if (tl_dvm_graphics_trim) tl_dvm_graphics_trim();
+    if (tl_dvm_running() && tl_jar_cache_trim) tl_jar_cache_trim(level >= 2 ? 0 : (16u << 20));
+    if (java_running()) tl_javaapp_touch(10, 0, 0, 0);
+#ifdef __APPLE__
+    void malloc_zone_pressure_relief(void *zone, size_t goal);
+    malloc_zone_pressure_relief(NULL, 0);
+#endif
+}
 void husk_java_memory_warning(void)
 {
-    if (java_running()) {
-        tl_host_log_memory_breakdown("game-memory-warning");
-        tl_javaapp_touch(10, 0, 0, 0);
-    }
+    husk_native_memory_pressure(2);
 }
 void husk_java_set_insets(int left, int top, int right, int bottom, int keyboard)
 {

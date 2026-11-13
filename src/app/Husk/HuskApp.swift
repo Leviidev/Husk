@@ -78,8 +78,9 @@ struct HuskApp: App {
             d.set(false, forKey: "husk.autoStart")
             d.set(true, forKey: "husk.autoStart.offByDefault")
         }
-        // Copies of shared APKs that were never placed.
+        // Copies of shared APKs and expired temporary/cache bloat that were never needed again.
         IncomingFiles.clearLeftovers()
+        Task.detached(priority: .utility) { StorageCleaner.cleanRoutineCaches() }
 
         // Game controllers, for the games the native runtime runs.
         Task { @MainActor in HuskGamepads.shared.start() }

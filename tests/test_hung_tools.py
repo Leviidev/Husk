@@ -311,5 +311,32 @@ class BootstrapTests(unittest.TestCase):
                 native_stage.stage(p, "0" * 64, root)
 
 
+class SourceRegressionTests(unittest.TestCase):
+    def test_hung_goals_and_regression_guards(self):
+        bionic_c = (ROOT / "src/translation-layer-next/husk-tl-bionic.c").read_text(encoding="utf-8")
+        self.assertIn('TL_WRAP("sched_yield", tl_bionic_sched_yield)', bionic_c)
+        self.assertNotIn("replaced below", bionic_c)
+
+        settings_swift = (ROOT / "src/app/Husk/SettingsTab.swift").read_text(encoding="utf-8")
+        self.assertIn("IncomingFiles.folder", settings_swift)
+        self.assertNotIn("IncomingFiles.directory", settings_swift)
+
+        item_pages = (ROOT / "src/app/Husk/ItemPages.swift").read_text(encoding="utf-8")
+        launcher = (ROOT / "src/app/Husk/Launcher.swift").read_text(encoding="utf-8")
+        self.assertNotIn(".id(jit.attachGeneration)", item_pages)
+        self.assertNotIn(".id(jit.attachGeneration)", launcher)
+        self.assertNotIn(".fileImporter", item_pages)
+        self.assertIn("HuskFilePicker.present", item_pages)
+        self.assertIn("pickUpdateAPK", item_pages)
+
+        unity_view = (ROOT / "src/app/Husk/TLUnityView.swift").read_text(encoding="utf-8")
+        tl_swift = (ROOT / "src/app/Husk/TranslationLayer.swift").read_text(encoding="utf-8")
+        self.assertIn("TLFloatingReopenHandle", unity_view)
+        self.assertIn("TLGameSwitcherSheet", unity_view)
+        self.assertIn("TLFloatingReopenHandle", tl_swift)
+        self.assertIn("TLGameSwitcherSheet", tl_swift)
+        self.assertIn("StorageCleaner.removeGameCaches(in: existing)", tl_swift)
+
+
 if __name__ == "__main__":
     unittest.main()

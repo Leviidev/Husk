@@ -10,6 +10,10 @@ bool tl_guest_session_begin(void);
 bool tl_guest_thread_reserve(bool *tracked);
 void tl_guest_thread_release(void *tracked);
 void tl_guest_session_close(void);
+bool tl_guest_session_closing(void);
+void tl_guest_session_wake_sleepers(void);
+bool tl_guest_session_wait_close(int64_t ns);
+void tl_guest_session_log_live(void);
 unsigned tl_guest_session_threads(void);
 bool tl_guest_session_finish(void);
 void tl_guest_thread_register(uintptr_t thread, bool tracked);
@@ -20,10 +24,14 @@ bool tl_guest_session_reap(unsigned timeout_ms);
 #ifdef TL_SESSION_IMPLEMENTATION
 #include <stdint.h>
 #include <stdatomic.h>
+#include <pthread.h>
+#include <time.h>
 /* Low bits: 0 boot/no app, 1 accepting threads, 2 draining. Other bits count
    reservations. One CAS orders creation against closing, without a race in
    which the drain sees zero just before a new pthread becomes visible. */
 static atomic_uint tl_session_word;
+static pthread_mutex_t tl_session_sleep_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t tl_session_sleep_cv = PTHREAD_COND_INITIALIZER;
 
 bool tl_guest_session_begin(void)
 {
@@ -52,6 +60,47 @@ void tl_guest_session_close(void)
     unsigned word = atomic_load(&tl_session_word);
     while ((word & 3) == 1 &&
            !atomic_compare_exchange_weak(&tl_session_word, &word, (word & ~3u) | 2)) {}
+    tl_guest_session_wake_sleepers();
+}
+bool tl_guest_session_closing(void)
+{
+    return (atomic_load(&tl_session_word) & 3) == 2;
+}
+void tl_guest_session_wake_sleepers(void)
+{
+    pthread_mutex_lock(&tl_session_sleep_mu);
+    pthread_cond_broadcast(&tl_session_sleep_cv);
+    pthread_mutex_unlock(&tl_session_sleep_mu);
+}
+bool tl_guest_session_wait_close(int64_t ns)
+{
+    if (tl_guest_session_closing()) return true;
+    if (ns <= 0) return false;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    int64_t start_ns = (int64_t)now.tv_sec * 1000000000ll + now.tv_nsec;
+    int64_t end_ns = start_ns + ns;
+    if (end_ns < start_ns) end_ns = INT64_MAX;
+    pthread_mutex_lock(&tl_session_sleep_mu);
+    while (!tl_guest_session_closing()) {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        int64_t cur_ns = (int64_t)now.tv_sec * 1000000000ll + now.tv_nsec;
+        int64_t left = end_ns - cur_ns;
+        if (left <= 0) break;
+        struct timespec rel = { (time_t)(left / 1000000000ll), (long)(left % 1000000000ll) };
+#ifdef __APPLE__
+        pthread_cond_timedwait_relative_np(&tl_session_sleep_cv, &tl_session_sleep_mu, &rel);
+#else
+        struct timespec rt;
+        clock_gettime(CLOCK_REALTIME, &rt);
+        int64_t rt_ns = (int64_t)rt.tv_sec * 1000000000ll + rt.tv_nsec + left;
+        struct timespec abs_ts = { (time_t)(rt_ns / 1000000000ll), (long)(rt_ns % 1000000000ll) };
+        pthread_cond_timedwait(&tl_session_sleep_cv, &tl_session_sleep_mu, &abs_ts);
+#endif
+    }
+    bool closing = tl_guest_session_closing();
+    pthread_mutex_unlock(&tl_session_sleep_mu);
+    return closing;
 }
 unsigned tl_guest_session_threads(void) { return atomic_load(&tl_session_word) >> 2; }
 bool tl_guest_session_finish(void)

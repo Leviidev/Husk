@@ -263,7 +263,6 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
                 .padding(.bottom, 24)
-                .id(jit.attachGeneration)
             }
             .huskHideScrollIndicators()
             .background(Console.page.ignoresSafeArea())

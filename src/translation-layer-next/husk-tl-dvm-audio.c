@@ -276,7 +276,7 @@ static SInt64 mem_size(void *u) { return (SInt64)((decoder *)u)->len; }
 
 static decoder *dec_open(uint8_t *data, size_t len)
 {
-    if (!data || !len) return NULL;
+    if (!data || !len) { tl_log_line("audio: dec_open called with empty buffer (data=%p, len=%zu)", (void *)data, len); return NULL; }
     decoder *d = calloc(1, sizeof(*d));
     if (!d) return NULL;
     d->data = data; d->len = len;
@@ -293,7 +293,10 @@ static decoder *dec_open(uint8_t *data, size_t len)
         tl_log_line("audio: an Ogg file stb_vorbis cannot read (error %d)", err);
         free(d); return NULL;
     }
-    static const AudioFileTypeID hints[] = { 0, kAudioFileMP3Type, kAudioFileMPEG4Type, kAudioFileAAC_ADTSType, kAudioFileWAVEType };
+    static const AudioFileTypeID hints[] = {
+        0, kAudioFileMP3Type, kAudioFileMPEG4Type, kAudioFileM4AType,
+        kAudioFileAAC_ADTSType, kAudioFileWAVEType, kAudioFileCAFType
+    };
     OSStatus st = -1;
     for (size_t i = 0; i < sizeof(hints) / sizeof(hints[0]); i++) {
         d->af = NULL;
@@ -418,18 +421,32 @@ static uint8_t *copy_bytes(jobj *arr, size_t *len)
 }
 static uint8_t *read_fd(int fd, int64_t off, int64_t len, size_t *out)
 {
-    if (fd < 0 || off < 0 || !out) return NULL;
+    if (fd < 0 || off < 0 || !out) {
+        tl_log_line("audio: read_fd bad args (fd=%d, off=%lld, out=%p)", fd, (long long)off, (void *)out);
+        return NULL;
+    }
     struct stat st;
     bool have_stat = fstat(fd, &st) == 0;
     if (len <= 0 || (have_stat && S_ISREG(st.st_mode) && off <= st.st_size && len > st.st_size - off)) {
         if (!have_stat) { tl_log_line("audio: read_fd fstat(%d) failed (%d)", fd, errno); return NULL; }
-        len = st.st_size - off;
+        if (S_ISREG(st.st_mode)) len = st.st_size - off;
     }
-    if (len <= 0 || len > (256 << 20)) return NULL;
+    if (len <= 0 || len > (256 << 20)) {
+        tl_log_line("audio: read_fd invalid length %lld (fd=%d, off=%lld, stat=%d, size=%lld)",
+            (long long)len, fd, (long long)off, have_stat ? 1 : 0, have_stat ? (long long)st.st_size : -1ll);
+        return NULL;
+    }
     uint8_t *d = malloc((size_t)len);
     if (!d || off > INT64_MAX - len) { free(d); return NULL; }
     size_t got = 0;
-    while (got < (size_t)len) { ssize_t r = pread(fd, d + got, (size_t)len - got, off + (off_t)got); if (r <= 0) break; got += (size_t)r; }
+    while (got < (size_t)len) {
+        ssize_t r = pread(fd, d + got, (size_t)len - got, off + (off_t)got);
+        if (r < 0 && errno == ESPIPE && off == 0) {
+            r = read(fd, d + got, (size_t)len - got);
+        }
+        if (r <= 0) break;
+        got += (size_t)r;
+    }
     if (got != (size_t)len) { tl_log_line("audio: read_fd short read (%zu/%lld, errno=%d)", got, (long long)len, errno); free(d); return NULL; }
     *out = got;
     return d;

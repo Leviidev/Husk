@@ -29,6 +29,8 @@
 #include "husk-tl-memory.h"
 #include "husk-tl-thread-clock.h"
 
+int tl_bionic_sched_yield(void);
+
 /* ------------------------------------------------------------------ errno */
 
 static const struct { int darwin, guest; } k_errno[] = {
@@ -871,7 +873,7 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("sched_setaffinity", bionic_sched_setaffinity),
     TL_WRAP("sched_getparam", bionic_sched_getparam),
     TL_WRAP("sched_getscheduler", bionic_sched_getscheduler),
-    TL_DIRECT(sched_yield),
+    TL_WRAP("sched_yield", tl_bionic_sched_yield),
     TL_WRAP("prctl", bionic_prctl),
     TL_WRAP("syscall", bionic_syscall),
     TL_WRAP("fork", bionic_fork),

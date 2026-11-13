@@ -172,6 +172,10 @@ bool husk_native_can_stop(void);
 bool husk_native_stop(unsigned timeout_ms);
 /* Queue Android's low-memory callbacks on the game's main looper. */
 void husk_java_memory_warning(void);
+/* Trim native/JVM caches, notify active runtime, and return freed heap pages to iOS. */
+void husk_native_memory_pressure(int level);
+/* Report ProcessInfo.thermalState (0=nominal, 1=fair, 2=serious, 3=critical). */
+void husk_native_thermal_state(int state);
 /* Compatibility entry point for developer tools; observes the same checks. */
 void husk_native_unload(void);
 

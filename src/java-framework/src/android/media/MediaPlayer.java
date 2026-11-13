@@ -34,8 +34,11 @@ public class MediaPlayer implements AudioRouting {
         public int dup(int fd) { return husk.Audio.dupFd(fd); }
         public void close(int fd) { husk.Audio.closeFd(fd); }
     };
+    interface AssetOps { byte[] read(String name); }
+    static AssetOps sAssetOps = husk.Native::readAsset;
     private int mState = IDLE;
     private byte[] mBytes; private int mFd = -1; private boolean mOwnsFd; private long mFdOff, mFdLen;
+    private String mAssetName, mSourceDesc;
     private long mDec; private int mRate, mChannels, mDuration;
     private int mTrack = -1;
     private Thread mThread;
@@ -61,14 +64,27 @@ public class MediaPlayer implements AudioRouting {
     private void checkIdle() { if (mState != IDLE) throw new IllegalStateException("setDataSource called in state " + mState); }
     public void setDataSource(String path) throws java.io.IOException {
         checkIdle();
-        if (path.startsWith("http://") || path.startsWith("https://")) { try (java.io.InputStream in = new java.net.URL(path).openStream()) { mBytes = husk.Audio.readAll(in); } }
-        else if (path.startsWith("file://")) setDataSource(path.substring(7));
-        else { try (java.io.FileInputStream in = new java.io.FileInputStream(path)) { mBytes = husk.Audio.readAll(in); } }
+        mAssetName = null; mSourceDesc = path;
+        if (path != null && (path.startsWith("http://") || path.startsWith("https://"))) {
+            try (java.io.InputStream in = new java.net.URL(path).openStream()) { mBytes = husk.Audio.readAll(in); }
+        } else if (path != null && path.startsWith("file:///android_asset/")) {
+            mAssetName = path.substring("file:///android_asset/".length());
+            mBytes = sAssetOps.read(mAssetName);
+        } else if (path != null && path.startsWith("/android_asset/")) {
+            mAssetName = path.substring("/android_asset/".length());
+            mBytes = sAssetOps.read(mAssetName);
+        } else if (path != null && path.startsWith("file://")) {
+            setDataSource(path.startsWith("file://localhost/") ? path.substring(16) : path.substring(7));
+            return;
+        } else {
+            try (java.io.FileInputStream in = new java.io.FileInputStream(path)) { mBytes = husk.Audio.readAll(in); }
+        }
         mState = INITIALIZED;
     }
     public void setDataSource(String path, Map<String, String> headers) throws java.io.IOException { setDataSource(path); }
     public void setDataSource(Context c, Uri u) throws java.io.IOException {
         checkIdle();
+        mAssetName = null; mSourceDesc = u != null ? u.toString() : null;
         String s = u.getScheme();
         if (s == null || "file".equals(s)) { setDataSource(u.getPath()); return; }
         if ("http".equals(s) || "https".equals(s)) { setDataSource(u.toString()); return; }
@@ -79,7 +95,12 @@ public class MediaPlayer implements AudioRouting {
     public void setDataSource(Context c, Uri u, Map<String, String> headers, java.util.List<?> cookies) throws java.io.IOException { setDataSource(c, u); }
     public void setDataSource(FileDescriptor fd) throws java.io.IOException { setDataSource(fd, 0, -1); }
     public void setDataSource(FileDescriptor fd, long offset, long length) throws java.io.IOException {
+        setDataSourceFd(fd, offset, length, null);
+    }
+    private void setDataSourceFd(FileDescriptor fd, long offset, long length, String assetFallback) throws java.io.IOException {
         checkIdle();
+        mAssetName = assetFallback;
+        mSourceDesc = assetFallback != null ? ("afd:" + assetFallback) : ("fd:" + offset + ":" + length);
         int n = sFdOps.fdOf(fd);
         if (n < 0) throw new java.io.IOException("not a file descriptor Husk can read");
         int dup = sFdOps.dup(n);
@@ -88,9 +109,19 @@ public class MediaPlayer implements AudioRouting {
         mFd = dup; mOwnsFd = true; mFdOff = offset; mFdLen = length; mState = INITIALIZED;
     }
     public void setDataSource(AssetFileDescriptor afd) throws java.io.IOException {
-        if (afd.getFileDescriptor() != null && sFdOps.fdOf(afd.getFileDescriptor()) >= 0) setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-        else if (afd.huskAssetName() != null) { checkIdle(); mBytes = husk.Native.readAsset(afd.huskAssetName()); if (mBytes == null) throw new java.io.IOException("no asset " + afd.huskAssetName()); mState = INITIALIZED; }
-        else throw new java.io.IOException("unreadable AssetFileDescriptor");
+        String assetName = afd.huskAssetName();
+        if (afd.getFileDescriptor() != null && sFdOps.fdOf(afd.getFileDescriptor()) >= 0) {
+            setDataSourceFd(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength(), assetName);
+        } else if (assetName != null) {
+            checkIdle();
+            mAssetName = assetName;
+            mSourceDesc = "asset:" + assetName;
+            mBytes = sAssetOps.read(assetName);
+            if (mBytes == null) throw new java.io.IOException("no asset " + assetName);
+            mState = INITIALIZED;
+        } else {
+            throw new java.io.IOException("unreadable AssetFileDescriptor");
+        }
     }
     public void setDataSource(MediaDataSource ds) throws java.io.IOException {
         checkIdle();
@@ -107,7 +138,19 @@ public class MediaPlayer implements AudioRouting {
     }
     private void open() throws java.io.IOException {
         long d = mBytes != null ? husk.Audio.decOpen(mBytes) : mFd >= 0 ? husk.Audio.decOpenFd(mFd, mFdOff, mFdLen) : 0;
-        if (d == 0) { mState = ERROR; throw new java.io.IOException("Prepare failed.: status=0x1"); }
+        if (d == 0 && mBytes == null && mAssetName != null) {
+            byte[] assetBytes = sAssetOps.read(mAssetName);
+            if (assetBytes != null && assetBytes.length > 0) {
+                mBytes = assetBytes;
+                d = husk.Audio.decOpen(mBytes);
+            }
+        }
+        if (d == 0) {
+            android.util.Log.w("MediaPlayer", "open failed src=" + mSourceDesc + " bytes=" + (mBytes != null ? mBytes.length : -1)
+                + " fd=" + mFd + " off=" + mFdOff + " len=" + mFdLen + " asset=" + mAssetName);
+            mState = ERROR;
+            throw new java.io.IOException("Prepare failed.: status=0x1");
+        }
         int[] info = new int[3];
         husk.Audio.decInfo(d, info);
         synchronized (mLock) { mDec = d; mRate = info[0]; mChannels = info[1]; mDuration = info[2]; mState = PREPARED; mPosBase = 0; mPosBaseMs = 0; }
@@ -189,7 +232,7 @@ public class MediaPlayer implements AudioRouting {
         synchronized (mLock) {
             if (mTrack >= 0) { husk.Audio.trackClose(mTrack); mTrack = -1; }
             if (mOwnsFd && mFd >= 0) sFdOps.close(mFd);
-            mBytes = null; mFd = -1; mOwnsFd = false; mState = IDLE; mSeekTo = -1;
+            mBytes = null; mFd = -1; mOwnsFd = false; mAssetName = null; mSourceDesc = null; mState = IDLE; mSeekTo = -1;
         }
     }
     public void release() { reset(); mState = END; mOnCompletion = null; mOnPrepared = null; mOnError = null; mOnSeek = null; }

@@ -12,6 +12,8 @@ public final class MediaPlayerTest {
         FileDescriptor fd = new FileDescriptor();
         int[] nextDup = { 100 };
         MediaPlayer.FdOps orig = MediaPlayer.sFdOps;
+        MediaPlayer.AssetOps origAssets = MediaPlayer.sAssetOps;
+        MediaPlayer.sAssetOps = name -> ("fake-audio:" + name).getBytes();
         MediaPlayer.sFdOps = new MediaPlayer.FdOps() {
             @Override public int fdOf(FileDescriptor f) {
                 return f == fd ? 42 : -1;
@@ -58,8 +60,28 @@ public final class MediaPlayerTest {
                 throw new AssertionError("reset() must close duplicated AssetFileDescriptor fd");
             }
             afdMp.release();
-            System.out.println("PASS: MediaPlayer duplicates and releases caller-supplied file descriptors");
+
+            /* Asset URLs and /android_asset/ paths must retain mAssetName fallback cleanly and clear on reset(). */
+            MediaPlayer assetMp = new MediaPlayer();
+            assetMp.setDataSource("/android_asset/bgm/login.mp3");
+            Field mAsset = MediaPlayer.class.getDeclaredField("mAssetName");
+            mAsset.setAccessible(true);
+            if (!"bgm/login.mp3".equals(mAsset.get(assetMp))) {
+                throw new AssertionError("expected mAssetName=bgm/login.mp3, got " + mAsset.get(assetMp));
+            }
+            assetMp.reset();
+            if (mAsset.get(assetMp) != null) {
+                throw new AssertionError("reset() must clear mAssetName");
+            }
+            assetMp.setDataSource("file:///android_asset/sfx/click.ogg");
+            if (!"sfx/click.ogg".equals(mAsset.get(assetMp))) {
+                throw new AssertionError("expected mAssetName=sfx/click.ogg, got " + mAsset.get(assetMp));
+            }
+            assetMp.release();
+
+            System.out.println("PASS: MediaPlayer duplicates FDs, handles /android_asset/ URLs, and resets cleanly");
         } finally {
+            MediaPlayer.sAssetOps = origAssets;
             MediaPlayer.sFdOps = orig;
         }
     }

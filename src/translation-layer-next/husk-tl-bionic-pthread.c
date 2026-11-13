@@ -178,17 +178,29 @@ static int b_cond_wait(void *g, void *m)
     return rc(pthread_cond_wait(obj_host(g, make_cond), obj_host(m, make_mutex)));
 }
 
+static int cond_rel_timeout(clockid_t clk, const struct timespec *abs, struct timespec *rel)
+{
+    if (!abs) return EINVAL;
+    struct timespec now;
+    clock_gettime(clk, &now);
+    int64_t sec = (int64_t)abs->tv_sec - (int64_t)now.tv_sec;
+    int64_t nsec = (int64_t)abs->tv_nsec - (int64_t)now.tv_nsec;
+    while (nsec < 0) { sec--; nsec += 1000000000L; }
+    while (nsec >= 1000000000L) { sec++; nsec -= 1000000000L; }
+    if (sec < 0) { sec = 0; nsec = 0; }
+    else if (sec > 86400 * 365) { sec = 86400 * 365; nsec = 0; }
+    rel->tv_sec = (time_t)sec;
+    rel->tv_nsec = (long)nsec;
+    return 0;
+}
+
 static int b_cond_timedwait(void *g, void *m, const struct timespec *abs)
 {
     guest_obj *o = g;
     obj_host(g, make_cond);
     clockid_t clk = (o->value & 2) ? CLOCK_MONOTONIC : CLOCK_REALTIME;
-    struct timespec now, rel;
-    clock_gettime(clk, &now);
-    rel.tv_sec = abs->tv_sec - now.tv_sec;
-    rel.tv_nsec = abs->tv_nsec - now.tv_nsec;
-    if (rel.tv_nsec < 0) { rel.tv_sec--; rel.tv_nsec += 1000000000L; }
-    if (rel.tv_sec < 0) { rel.tv_sec = 0; rel.tv_nsec = 0; }
+    struct timespec rel;
+    if (cond_rel_timeout(clk, abs, &rel)) return EINVAL;
     return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
 }
 
@@ -197,12 +209,8 @@ static int cond_wait_until(void *g, void *m, clockid_t clk, const struct timespe
 {
     guest_obj *o = g;
     obj_host(g, make_cond);
-    struct timespec now, rel;
-    clock_gettime(clk, &now);
-    rel.tv_sec = abs->tv_sec - now.tv_sec;
-    rel.tv_nsec = abs->tv_nsec - now.tv_nsec;
-    if (rel.tv_nsec < 0) { rel.tv_sec--; rel.tv_nsec += 1000000000L; }
-    if (rel.tv_sec < 0) { rel.tv_sec = 0; rel.tv_nsec = 0; }
+    struct timespec rel;
+    if (cond_rel_timeout(clk, abs, &rel)) return EINVAL;
     return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
 }
 
@@ -315,15 +323,15 @@ static int b_sem_trywait(void *g)
 static int b_sem_timedwait(void *g, const struct timespec *abs)
 {
     host_sem *s = hs(g);
-    struct timespec now, rel;
-    clock_gettime(CLOCK_REALTIME, &now);
-    rel.tv_sec = abs->tv_sec - now.tv_sec;
-    rel.tv_nsec = abs->tv_nsec - now.tv_nsec;
-    if (rel.tv_nsec < 0) { rel.tv_sec--; rel.tv_nsec += 1000000000L; }
-    if (rel.tv_sec < 0) { rel.tv_sec = 0; rel.tv_nsec = 0; }
+    struct timespec rel;
+    if (cond_rel_timeout(CLOCK_REALTIME, abs, &rel)) { tl_set_guest_errno(22); return -1; }
     pthread_mutex_lock(&s->m);
     int r = 0;
-    while (s->count <= 0 && r == 0) r = pthread_cond_timedwait_relative_np(&s->c, &s->m, &rel);
+    while (s->count <= 0 && r == 0) {
+        if (cond_rel_timeout(CLOCK_REALTIME, abs, &rel)) { r = EINVAL; break; }
+        if (rel.tv_sec == 0 && rel.tv_nsec == 0) { r = ETIMEDOUT; break; }
+        r = pthread_cond_timedwait_relative_np(&s->c, &s->m, &rel);
+    }
     if (r == 0) s->count--;
     pthread_mutex_unlock(&s->m);
     if (r) { tl_set_guest_errno(tl_errno_to_guest(r)); return -1; }
@@ -502,6 +510,20 @@ static void *session_reap_worker(void *unused)
     pthread_mutex_unlock(&session_threads_lock);
     return NULL;
 }
+void tl_guest_session_log_live(void)
+{
+    pthread_mutex_lock(&session_threads_lock);
+    int shown = 0;
+    for (session_thread *p = session_threads; p && shown < 12; p = p->next) {
+        if (p->join_state == 3) continue;
+        char nm[64] = "";
+        pthread_getname_np(p->thread, nm, sizeof(nm));
+        tl_log_line("javaapp: lingering guest thread '%s' (detached=%d, join_state=%d)", nm[0] ? nm : "(unnamed)", p->detached ? 1 : 0, p->join_state);
+        shown++;
+    }
+    pthread_mutex_unlock(&session_threads_lock);
+}
+
 bool tl_guest_session_reap(unsigned timeout_ms)
 {
     if (tl_guest_session_threads()) return false;
@@ -684,6 +706,27 @@ static int b_sigmask(int how, const uint64_t *set, uint64_t *old)
     int r = pthread_sigmask(dh, set ? &ds : NULL, old ? &od : NULL);
     if (old) { uint32_t m; memcpy(&m, &od, sizeof(m)); *old = sigset_from_darwin(m); }
     return rc(r);
+}
+
+int tl_bionic_sched_yield(void)
+{
+    static __thread struct { uint64_t last_ns; int streak; } st;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint64_t t = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
+    if (st.last_ns && t >= st.last_ns && (t - st.last_ns) < 500000ull) {
+        if (++st.streak >= 8) {
+            struct timespec ts = { 0, 200000L };
+            nanosleep(&ts, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            t = (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
+            st.streak = 0;
+        }
+    } else {
+        st.streak = 0;
+    }
+    st.last_ns = t;
+    return sched_yield();
 }
 
 const tl_bionic_entry tl_tab_pthread[] = {

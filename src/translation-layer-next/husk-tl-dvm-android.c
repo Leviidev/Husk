@@ -1396,19 +1396,26 @@ static void *gl_run(void *arg)
                 pthread_mutex_unlock(&A.q_lock);
             }
         }
+        int thermal = 0;
+        { extern int tl_host_thermal_state(void) __attribute__((weak)); if (tl_host_thermal_state) thermal = tl_host_thermal_state(); }
+        int target_hz = thermal >= 3 ? 30 : thermal == 2 ? 45 : TL_JAVA_DISPLAY_HZ;
         if (app) {
-            next += 1000000000ll / TL_JAVA_DISPLAY_HZ;
+            next += 1000000000ll / target_hz;
             int64_t late = now_ns() - next;
             if (late > 100000000ll) next = now_ns();
             else if (late < 0) { struct timespec ts = { 0, (long)(-late) }; nanosleep(&ts, NULL); }
         } else {
+            static int idle_ticks = 0;
+            if (drew || fresh || app_fresh) idle_ticks = 0;
+            else if (idle_ticks < 20) idle_ticks++;
+            long wait_ns = idle_ticks >= 10 ? 50000000L : (1000000000L / target_hz);
             pthread_mutex_lock(&E2.lk);
             if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.seq == app_seq
                 && !__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !tl_ui_frame_pending()
                 && !atomic_load(&A.render_requested)) {
                 struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-                ts.tv_nsec += 16000000L;
-                if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+                ts.tv_nsec += wait_ns;
+                if (ts.tv_nsec >= 1000000000L) { ts.tv_sec += ts.tv_nsec / 1000000000L; ts.tv_nsec %= 1000000000L; }
                 pthread_cond_timedwait(&E2.cv, &E2.lk, &ts);
             }
             pthread_mutex_unlock(&E2.lk);
@@ -1704,11 +1711,23 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
         }
         usleep(10000);
     }
+    void dvm_monitor_wake_all(void);
+    void tl_net_shutdown_all(void);
+    void tl_futex_wake_all(void);
     tl_guest_session_close();
+    dvm_monitor_wake_all();
+    tl_net_shutdown_all();
+    tl_futex_wake_all();
+    int wake_tick = 0;
     while (tl_guest_session_threads()) {
         if (now_ns() >= deadline) {
             tl_log_line("javaapp: close waiting for %u guest threads; session retained", tl_guest_session_threads());
+            tl_guest_session_log_live();
             return false;
+        }
+        if ((++wake_tick % 15) == 0) {
+            dvm_monitor_wake_all();
+            tl_net_shutdown_all();
         }
         usleep(10000);
     }

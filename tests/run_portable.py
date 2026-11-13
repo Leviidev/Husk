@@ -239,6 +239,24 @@ def main():
             str(ROOT / "tests/translation-layer/fallback_alloc_test.c"),
             str(ROOT / "src/translation-layer-next/husk-tl-fallback-alloc.c"), "-pthread", "-o", str(exe)])
         run("fallback allocator never probes foreign pointers", [str(exe)])
+        bionic_wait_snippets = [
+            re.search(r"static int cond_rel_timeout\([^\n]*\)\n\{.*?\n\}", pthread_source, re.S)[0],
+            re.search(r"int tl_bionic_sched_yield\([^)]*\)\n\{.*?\n\}", pthread_source, re.S)[0],
+        ]
+        (out / "bionic_wait_yield_under_test.h").write_text("\n\n".join(bionic_wait_snippets) + "\n", encoding="utf-8")
+        exe = out / "bionic_wait_yield_test"
+        run("bionic wait/yield compile", compiler + flags + [f"-I{out}",
+            str(ROOT / "tests/translation-layer/bionic_wait_yield_test.c"), "-o", str(exe)])
+        run("bionic timeout normalization and sched_yield spin backoff", [str(exe)])
+        jar_trim_snippet = re.search(
+            r"typedef struct \{[^\n]*\} jar_cache_file;.*?void tl_jar_cache_trim\([^)]*\)\n\{.*?\n\}",
+            io_source, re.S)
+        assert jar_trim_snippet
+        (out / "jar_cache_trim_under_test.h").write_text(jar_trim_snippet[0] + "\n", encoding="utf-8")
+        exe = out / "jar_cache_trim_test"
+        run("jar cache trim compile", compiler + flags + [f"-I{out}",
+            str(ROOT / "tests/translation-layer/jar_cache_trim_test.c"), "-o", str(exe)])
+        run("jar cache LRU trim contracts", [str(exe)])
     android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
     frame_copy = re.search(r"void tl_javaapp_app_pixels\([^)]*\)\n\{.*?\n\}", android_source, re.S)
     assert frame_copy

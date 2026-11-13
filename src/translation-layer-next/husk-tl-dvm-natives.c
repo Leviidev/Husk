@@ -18,6 +18,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-session.h"
 #include <strings.h>
 
 static jvalue J(int64_t v) { jvalue r; r.j = v; return r; }
@@ -608,8 +609,9 @@ NAT(Thread_sleep)
 {
     (void)self; (void)ret;
     int64_t ms = a[1].j; int32_t ns = a[2].i;
-    struct timespec ts = { (time_t)(ms / 1000), (long)((ms % 1000) * 1000000 + ns) };
-    nanosleep(&ts, NULL);
+    if (ms < 0 || ns < 0 || ns > 999999) return dvm_throw("java/lang/IllegalArgumentException", "bad sleep time");
+    int64_t total_ns = ms > (INT64_MAX - ns) / 1000000ll ? INT64_MAX : ms * 1000000ll + ns;
+    if (tl_guest_session_wait_close(total_ns)) return dvm_throw("java/lang/InterruptedException", "session closing");
     return true;
 }
 NAT(Thread_false) { UNUSED; *ret = Z(false); return true; }

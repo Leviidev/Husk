@@ -25,9 +25,12 @@ public final class AppRunner {
     private static int down;
     private static long downTime;
     private static boolean sPausedByHost;
+    private static final long EMPTY_EXIT_DELAY_MS = 450L;
+    private static Runnable sPendingEmptyExit;
 
     /** Another APK is about to start: forget this app's activities, loader and factory. */
     public static void resetSession() {
+        cancelPendingEmptyExit();
         sStack.clear();
         sApp = null;
         sHandler = null;
@@ -226,7 +229,24 @@ public final class AppRunner {
         try { if (Manifest.appLabel != 0) return c.getResources().getText(Manifest.appLabel); } catch (Exception e) {}
         return Native.packageName();
     }
+    private static void cancelPendingEmptyExit() {
+        Runnable pending = sPendingEmptyExit;
+        if (pending != null && sHandler != null) sHandler.removeCallbacks(pending);
+        sPendingEmptyExit = null;
+    }
+    private static void scheduleEmptyExitCheck() {
+        cancelPendingEmptyExit();
+        if (sHandler == null) { if (sStack.isEmpty()) Native.exit(); return; }
+        Runnable check = () -> {
+            sPendingEmptyExit = null;
+            if (sStack.isEmpty()) Native.exit();
+        };
+        sPendingEmptyExit = check;
+        sHandler.postDelayed(check, EMPTY_EXIT_DELAY_MS);
+    }
+
     static Activity launch(String cls, Intent intent, Activity caller, int request, Manifest.Component info) throws Exception {
+        cancelPendingEmptyExit();
         android.util.Log.d("Husk", "launch " + cls);
         Activity prev = top();
         Activity a = usesFactory() ? sFactory.instantiateActivity(classLoader(), cls, intent) : (Activity) Class.forName(cls, true, classLoader()).newInstance();
@@ -290,6 +310,7 @@ public final class AppRunner {
         Manifest.Component c = Manifest.resolve(i);
         android.util.Log.d("Husk", "startActivity " + i + (c != null ? " -> " + c.name : " (not an activity of this app)"));
         if (c != null) {
+            cancelPendingEmptyExit();
             final Activity caller = from instanceof Activity ? (Activity) from : top();
             final Intent intent = new Intent(i);
             if (intent.getComponent() == null) intent.setComponent(new ComponentName(Native.packageName(), c.name));
@@ -372,8 +393,8 @@ public final class AppRunner {
         }
         a.huskStop();
         a.huskDestroy();
-        // the app ends with its last activity, unless one it started just before (finish(); startActivity(...)) is still to come
-        if (sStack.isEmpty()) sHandler.post(() -> { if (sStack.isEmpty()) Native.exit(); });
+        // the app ends with its last activity, debounced so async splash -> main activity transitions are not cut off
+        if (sStack.isEmpty()) scheduleEmptyExitCheck();
     }
     public static void finishAll() { sHandler.post(() -> { while (!sStack.isEmpty()) finishNow(top(), false); }); }
     /** Activity.finishAffinity(): the activity and those under it in the task go; activities it started, above it, stay. */

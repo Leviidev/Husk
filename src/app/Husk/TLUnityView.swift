@@ -1317,8 +1317,11 @@ final class TLUnityModel: ObservableObject {
 /// status, the frames per second and the time a frame takes -- and, with developer info on, the log beside the game.
 struct TLCocosAttemptView: View {
     let app: TLApp
+    var onSwitch: ((TLApp) -> Void)? = nil
+    var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = TLUnityModel()
+    @ObservedObject private var store = TranslationLayerStore.shared
     /// Why the app stopped, when its log says: shown over the screen
     @State private var stoppedWhy: AppDiagnosis?
     @AppStorage("husk.tl.unity.showLog") private var showLogSetting = false
@@ -1336,13 +1339,24 @@ struct TLCocosAttemptView: View {
     @State private var uiHidden: Bool
     /// The line saying how to get the interface back, shown for a few seconds after it goes.
     @State private var hint = false
+    @State private var showSwitcher = false
     private var showLog: Bool { get { showLogSetting && devInfo } nonmutating set { showLogSetting = newValue } }
 
-    init(app: TLApp) {
+    init(app: TLApp, onSwitch: ((TLApp) -> Void)? = nil, onClose: (() -> Void)? = nil) {
         self.app = app
+        self.onSwitch = onSwitch
+        self.onClose = onClose
         let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
         _settings = State(initialValue: loaded)
         _uiHidden = State(initialValue: loaded.cleanView)
+    }
+
+    private var switchCandidates: [TLApp] {
+        store.apps.filter { $0.id != app.id && $0.packageName != GeodeSupport.launcherPackage }
+    }
+
+    private func closeScreen() {
+        if let onClose { onClose() } else { dismiss() }
     }
 
     private var engine: TLNativeEngine { app.screenEngine }
@@ -1402,11 +1416,13 @@ struct TLCocosAttemptView: View {
                         Spacer(minLength: 0)
                     }
                 }
+            } else {
+                TLFloatingReopenHandle(action: toggleInterface)
             }
             if hint {
                 VStack {
                     Spacer()
-                    Text("Tap with three fingers to show the interface")
+                    Text("Tap eye at top right or 3-finger tap to show controls")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -1447,8 +1463,14 @@ struct TLCocosAttemptView: View {
             HuskOrientation.set(HuskOrientation.standard)
             if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in dismiss() }
-        .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { dismiss() } } }
+        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in closeScreen() }
+        .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { closeScreen() } } }
+        .sheet(isPresented: $showSwitcher) {
+            TLGameSwitcherSheet(current: app, apps: switchCandidates) { next in
+                showSwitcher = false
+                onSwitch?(next)
+            }
+        }
     }
 
     /// While the pad is being edited: what to do with the control picked, in a small panel in the middle of the screen.
@@ -1487,10 +1509,16 @@ struct TLCocosAttemptView: View {
 
     private var bar: some View {
         HStack(spacing: 12) {
-            Button { dismiss() } label: {
+            Button { closeScreen() } label: {
                 Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
             }
             .tint(.white)
+            if onSwitch != nil, !switchCandidates.isEmpty {
+                Button { showSwitcher = true } label: {
+                    Label("Switch", systemImage: "arrow.left.arrow.right").font(.system(size: 12, weight: .semibold))
+                }
+                .tint(.white)
+            }
             if engine == .flutter {
                 Button { husk_flutter_back() } label: {
                     Label("Back", systemImage: "chevron.backward").font(.system(size: 13, weight: .semibold))
@@ -1568,6 +1596,101 @@ struct TLCocosAttemptView: View {
             }
         }
         .background(Theme.bg.opacity(0.85))
+    }
+}
+
+/// Persistent unobtrusive pill shown when the in-game control bar is hidden, so players always have a one-tap
+/// way to bring back Close, Switch, Pad, and Log controls (and can drag the pill if it overlaps HUD icons).
+struct TLFloatingReopenHandle: View {
+    let action: () -> Void
+    @State private var offset: CGSize = .zero
+    @GestureState private var dragDelta: CGSize = .zero
+
+    var body: some View {
+        VStack {
+            HStack {
+                Spacer(minLength: 0)
+                Image(systemName: "eye")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .frame(width: 36, height: 28)
+                    .background(.black.opacity(0.45), in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 0.75))
+                    .contentShape(Capsule())
+                    .onTapGesture { action() }
+                    .gesture(
+                        DragGesture(minimumDistance: 10)
+                            .updating($dragDelta) { v, state, _ in state = v.translation }
+                            .onEnded { v in
+                                offset.width = min(max(offset.width + v.translation.width, -260), 12)
+                                offset.height = min(max(offset.height + v.translation.height, -12), 260)
+                            }
+                    )
+                    .offset(x: offset.width + dragDelta.width, y: offset.height + dragDelta.height)
+                    .accessibilityLabel("Show controls")
+                    .padding(.top, 8)
+                    .padding(.trailing, 10)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// Quick game switcher opened directly from inside a running game.
+struct TLGameSwitcherSheet: View {
+    let current: TLApp
+    let apps: [TLApp]
+    let onPick: (TLApp) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Playing Now") {
+                    row(for: current, active: true)
+                }
+                Section("Switch to Game") {
+                    ForEach(apps) { item in
+                        Button { onPick(item) } label: { row(for: item, active: false) }
+                    }
+                }
+            }
+            .navigationTitle("Switch Game")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func row(for item: TLApp, active: Bool) -> some View {
+        HStack(spacing: 12) {
+            if let path = item.iconPath, let img = UIImage(contentsOfFile: path) {
+                Image(uiImage: img)
+                    .resizable().aspectRatio(contentMode: .fill)
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                Image(systemName: "gamecontroller.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.label).font(.body.weight(.medium)).foregroundStyle(.primary).lineLimit(1)
+                Text(item.report?.runnerName ?? "Translation Layer").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            if active {
+                Text("Running").font(.caption.weight(.semibold)).foregroundStyle(Theme.good)
+            } else {
+                Image(systemName: "play.fill").font(.caption.weight(.semibold)).foregroundStyle(Theme.accent)
+            }
+        }
     }
 }
 

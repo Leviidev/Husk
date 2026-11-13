@@ -286,15 +286,68 @@ final class TranslationLayerStore: ObservableObject {
         guard !urls.isEmpty, busy == nil else { return }
         busy = urls.count == 1 ? "Adding \(urls[0].lastPathComponent)…"
                                : "Adding \(urls.count) APKs…"
-        Task.detached(priority: .userInitiated) {
-            let failure = Self.ingest(urls, move: move)
-            await MainActor.run {
-                self.busy = nil
-                self.lastError = failure
-                self.reload()
-                if failure == nil, move { self.adoptDroppedAPKs() }      // the next one waiting, if several were put there
+        Task { @MainActor in
+            let outcome = await Self.runIngestFlow(urls, move: move)
+            self.busy = nil
+            self.lastError = outcome.error
+            self.reload()
+            if outcome.error == nil, outcome.updated {
+                let name = outcome.label ?? "game"
+                AndroidHost.shared.say("Updated \(name)", "All saves and game data were kept.")
             }
+            if outcome.error == nil, move { self.adoptDroppedAPKs() }      // the next one waiting, if several were put there
         }
+    }
+
+    /// Update a specific installed app in place from a newly picked APK/bundle while keeping saves, OBB, and settings.
+    func update(_ app: TLApp, with urls: [URL], completion: @escaping @MainActor (String?, Bool) -> Void) {
+        guard !urls.isEmpty, busy == nil else { return }
+        busy = "Updating \(app.label)…"
+        Task { @MainActor in
+            let outcome = await Self.runIngestFlow(urls, move: false, targetAppID: app.id, expectedPackage: app.packageName)
+            self.busy = nil
+            if let err = outcome.error { self.lastError = err }
+            self.reload()
+            if outcome.error == nil {
+                let name = outcome.label ?? app.label
+                AndroidHost.shared.say("Updated \(name)", "All saves and game data were kept.")
+            }
+            completion(outcome.error, outcome.error == nil)
+        }
+    }
+
+    @MainActor
+    private static func runIngestFlow(_ urls: [URL], move: Bool, targetAppID: String? = nil, expectedPackage: String? = nil) async -> (error: String?, updated: Bool, label: String?) {
+        let staged = await Task.detached(priority: .userInitiated) {
+            Self.stageInputs(urls, move: move, targetAppID: targetAppID, expectedPackage: expectedPackage)
+        }.value
+        if let err = staged.error { return (err, false, nil) }
+        guard let stagingDir = staged.stagingDir else { return ("Missing staging folder.", false, nil) }
+
+        if let existing = staged.existingDir,
+           let stopErr = await ensureNotLoadedBeforeReplace(existingDir: existing, labelHint: staged.labelHint) {
+            try? FileManager.default.removeItem(at: stagingDir)
+            return (stopErr, false, nil)
+        }
+
+        let committed = await Task.detached(priority: .userInitiated) {
+            Self.commitIngest(stagingDir: stagingDir, existingDir: staged.existingDir, newPkg: staged.newPkg)
+        }.value
+        let label = committed.dir.flatMap { load($0)?.label } ?? staged.labelHint
+        return (committed.error, committed.updated, label)
+    }
+
+    @MainActor
+    private static func ensureNotLoadedBeforeReplace(existingDir: URL, labelHint: String?) async -> String? {
+        guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }) else { return nil }
+        let loadedPath = URL(fileURLWithPath: loaded).standardizedFileURL.path
+        let existingPath = existingDir.standardizedFileURL.path
+        guard loadedPath.hasPrefix(existingPath + "/") || loadedPath == existingPath else { return nil }
+        if husk_native_can_stop() {
+            let stopped = await TLNativeSession.shared.stop(only: loaded)
+            return stopped ? nil : "Could not close \(labelHint ?? "this game") cleanly before updating. Close Husk and try again."
+        }
+        return "\(labelHint ?? "This game") is still loaded in this session. Close Husk and reopen it to update without losing saves."
     }
 
     /// APKs put straight into Husk's folder (Files > On My iPhone > Husk, which the app shares) are taken in as apps, one each, and
@@ -397,7 +450,15 @@ final class TranslationLayerStore: ObservableObject {
         ingestWithTarget(urls, move: move).error
     }
 
-    nonisolated private static func ingestWithTarget(_ urls: [URL], move: Bool = false) -> (error: String?, dir: URL?) {
+    nonisolated private static func ingestWithTarget(_ urls: [URL], move: Bool = false, targetAppID: String? = nil, expectedPackage: String? = nil) -> (error: String?, dir: URL?) {
+        let staged = stageInputs(urls, move: move, targetAppID: targetAppID, expectedPackage: expectedPackage)
+        if let err = staged.error { return (err, nil) }
+        guard let stagingDir = staged.stagingDir else { return ("Missing staging folder.", nil) }
+        let committed = commitIngest(stagingDir: stagingDir, existingDir: staged.existingDir, newPkg: staged.newPkg)
+        return (committed.error, committed.dir)
+    }
+
+    nonisolated private static func stageInputs(_ urls: [URL], move: Bool, targetAppID: String?, expectedPackage: String?) -> (error: String?, stagingDir: URL?, existingDir: URL?, newPkg: String?, labelHint: String?) {
         let fm = FileManager.default
         let dir = TranslationLayer.root.appendingPathComponent(UUID().uuidString,
                                                                isDirectory: true)
@@ -437,32 +498,57 @@ final class TranslationLayerStore: ObservableObject {
         } catch {
             try? fm.removeItem(at: dir)
             HuskLog.log("tl", "FAILED to add: \(error.localizedDescription)")
-            return ("Husk could not copy it: \(error.localizedDescription)", nil)
+            return ("Husk could not copy it: \(error.localizedDescription)", nil, nil, nil, nil)
         }
 
-        var targetDir = dir
-        var isUpdate = false
         let stagingApks = orderedAPKs(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
             .filter { $0.lowercased().hasSuffix(".apk") }
             .map { dir.appendingPathComponent($0).path })
         guard !stagingApks.isEmpty else {
             try? fm.removeItem(at: dir)
             HuskLog.log("tl", "FAILED to add: no APK found in staging folder")
-            return ("Không tìm thấy gói APK hợp lệ.", nil)
+            return ("Không tìm thấy gói APK hợp lệ.", nil, nil, nil, nil)
         }
         describe(stagingApks, into: dir)
 
         let newPkg = packageName(in: dir, apks: stagingApks)
-        if let newPkg, !newPkg.isEmpty {
+        if let expectedPackage, !expectedPackage.isEmpty, newPkg != expectedPackage {
+            let found = newPkg ?? "an unknown package"
+            try? fm.removeItem(at: dir)
+            HuskLog.log("tl", "update aborted: picked \(found) instead of \(expectedPackage)")
+            return ("That APK belongs to \(found), not \(expectedPackage). Add it from + to install separately.", nil, nil, nil, nil)
+        }
+
+        var existingDir: URL?
+        if let targetAppID {
+            let candidate = TranslationLayer.root.appendingPathComponent(targetAppID, isDirectory: true)
+            if fm.fileExists(atPath: candidate.path) { existingDir = candidate }
+        } else if let newPkg, !newPkg.isEmpty {
             let existingDirs = (try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
             for existing in existingDirs where existing.lastPathComponent != dir.lastPathComponent {
-                guard let existingPkg = packageName(in: existing), existingPkg == newPkg else { continue }
-                let oldApks = ((try? fm.contentsOfDirectory(at: existing, includingPropertiesForKeys: nil)) ?? [])
-                    .filter { $0.pathExtension.lowercased() == "apk" }
-                let stagedFiles = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
-                    .filter { $0.pathExtension.lowercased() == "apk" }
-                guard !stagedFiles.isEmpty else { break }
+                if packageName(in: existing) == newPkg {
+                    existingDir = existing
+                    break
+                }
+            }
+        }
+        let hintTarget = existingDir ?? dir
+        let hint = (try? String(contentsOf: hintTarget.appendingPathComponent("label.txt"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (nil, dir, existingDir, newPkg, hint?.isEmpty == false ? hint : nil)
+    }
 
+    nonisolated private static func commitIngest(stagingDir dir: URL, existingDir: URL?, newPkg: String?) -> (error: String?, dir: URL?, updated: Bool) {
+        let fm = FileManager.default
+        var targetDir = dir
+        var isUpdate = false
+
+        if let existing = existingDir {
+            let oldApks = ((try? fm.contentsOfDirectory(at: existing, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.pathExtension.lowercased() == "apk" }
+            let stagedFiles = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.pathExtension.lowercased() == "apk" }
+            if !stagedFiles.isEmpty {
                 var placedNames = Set<String>()
                 for f in stagedFiles {
                     let destName = (stagedFiles.count == 1 && oldApks.count == 1 && f.lastPathComponent == "husk-update.apk")
@@ -485,7 +571,7 @@ final class TranslationLayerStore: ObservableObject {
                 }
                 guard !placedNames.isEmpty else {
                     try? fm.removeItem(at: dir)
-                    return ("Không thể ghi đè gói APK cũ khi cập nhật.", nil)
+                    return ("Không thể ghi đè gói APK cũ khi cập nhật.", nil, false)
                 }
                 for old in oldApks where !placedNames.contains(old.lastPathComponent.lowercased()) {
                     try? fm.removeItem(at: old)
@@ -508,13 +594,14 @@ final class TranslationLayerStore: ObservableObject {
                         }
                     }
                 }
-                try? fm.removeItem(at: existing.appendingPathComponent("java-data").appendingPathComponent("code_cache"))
-                try? pkgWrite(newPkg, into: existing)
+                // Clear regenerable code/jar/shader caches so updated DEX/native libs don't hit stale cache,
+                // while preserving saves (files/, shared_prefs/, databases/, obb/, settings).
+                StorageCleaner.removeGameCaches(in: existing)
+                if let pkg = newPkg, !pkg.isEmpty { try? pkgWrite(pkg, into: existing) }
                 try? fm.removeItem(at: dir)
                 targetDir = existing
                 isUpdate = true
-                HuskLog.log("tl", "updated existing app for \(newPkg) in \(existing.lastPathComponent)")
-                break
+                HuskLog.log("tl", "updated existing app for \(newPkg ?? existing.lastPathComponent) in \(existing.lastPathComponent)")
             }
         }
 
@@ -527,7 +614,7 @@ final class TranslationLayerStore: ObservableObject {
         try? Data(json.utf8).write(to: targetDir.appendingPathComponent("report.json"))
         try? "\(scanVersion)".write(to: targetDir.appendingPathComponent("scan-version.txt"), atomically: true, encoding: .utf8)
         HuskLog.log("tl", "report for \(targetDir.lastPathComponent): \(json)")
-        return (nil, targetDir)
+        return (nil, targetDir, isUpdate)
     }
 
     nonisolated private static func pkgWrite(_ pkg: String, into dir: URL) throws {
@@ -854,22 +941,104 @@ final class TLAttemptRunner: ObservableObject {
 /// the older prototype loader.
 struct TLAttemptView: View {
     let app: TLApp
+    @Environment(\.dismiss) private var dismiss
+    @State private var activeApp: TLApp
+    @State private var switchingTo: TLApp?
+    @State private var switchStatus = ""
+    @State private var switchError: String?
+
+    init(app: TLApp) {
+        self.app = app
+        _activeApp = State(initialValue: app)
+    }
 
     var body: some View {
-        content
-            .onAppear { TranslationLayerStore.shared.markPlayed(app); Playtime.begin("tl:" + app.id) }
-            .onDisappear { Playtime.end("tl:" + app.id) }
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let next = switchingTo {
+                VStack(spacing: 12) {
+                    ProgressView().tint(.white)
+                    Text(switchStatus.isEmpty ? "Switching to \(next.label)…" : switchStatus)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(24)
+            } else {
+                content(for: activeApp)
+                    .id(activeApp.id)
+                    .onAppear {
+                        TranslationLayerStore.shared.markPlayed(activeApp)
+                        Playtime.begin("tl:" + activeApp.id)
+                    }
+                    .onDisappear { Playtime.end("tl:" + activeApp.id) }
+            }
+        }
+        .alert("Could Not Switch Game", isPresented: Binding(get: { switchError != nil }, set: { if !$0 { switchError = nil } })) {
+            Button("OK", role: .cancel) { switchError = nil }
+        } message: {
+            Text(switchError ?? "")
+        }
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(for game: TLApp) -> some View {
         // Every game the native runtime drives -- Unity included -- gets the same full-screen game screen.
-        if app.report?.webKind != nil {
-            WebAppScreenView(app: app)
-        } else if app.report?.runsOnNativeRuntime == true {
-            TLCocosAttemptView(app: app)
+        if game.report?.webKind != nil {
+            WebAppScreenView(app: game)
+        } else if game.report?.runsOnNativeRuntime == true {
+            TLCocosAttemptView(app: game, onSwitch: { switchTo($0) }, onClose: { dismiss() })
         } else {
-            TLClassicAttemptView(app: app)
+            TLClassicAttemptView(app: game, onSwitch: { switchTo($0) }, onClose: { dismiss() })
+        }
+    }
+
+    @MainActor
+    private func switchTo(_ next: TLApp) {
+        guard switchingTo == nil, next.id != activeApp.id else { return }
+        if activeApp.report?.runsOnNativeRuntime != true && activeApp.report?.webKind == nil {
+            husk_tl_attempt_stop()
+        }
+        let closingLabel = activeApp.label
+        switchingTo = next
+        switchStatus = "Closing \(closingLabel)…"
+        Task { @MainActor in
+            // Allow onDisappear cleanup and background stop task to start first.
+            await Task.yield()
+            let stopped: Bool
+            if let nextApk = next.apks.first, next.report?.runsOnNativeRuntime == true {
+                stopped = await TLNativeSession.shared.prepare(for: nextApk)
+            } else {
+                stopped = await TLNativeSession.shared.stop()
+            }
+            guard stopped else {
+                switchingTo = nil
+                switchStatus = ""
+                switchError = TLNativeSession.shared.lastError ?? "The previous game has not finished closing."
+                return
+            }
+            if JITLess.enabled, SigningCertificate.credentials() != nil {
+                switchStatus = "Preparing libraries for \(next.label)…"
+                do {
+                    try await JITLess.prepare(apks: next.apks) { text in
+                        Task { @MainActor in switchStatus = text }
+                    }
+                } catch {
+                    switchingTo = nil
+                    switchStatus = ""
+                    switchError = error.localizedDescription
+                    return
+                }
+            }
+            if TLAppSettings.load(next.id).geode, case .ready = GeodeSupport.shared.current(next) {
+                // Already ready.
+            } else if TLAppSettings.load(next.id).geode {
+                switchStatus = "Preparing Geode…"
+                await GeodeSupport.shared.prepare(next)
+            }
+            activeApp = next
+            switchingTo = nil
+            switchStatus = ""
         }
     }
 }
@@ -878,22 +1047,37 @@ struct TLAttemptView: View {
 /// same three-finger way to hide it, and the game's own settings.
 struct TLClassicAttemptView: View {
     let app: TLApp
+    var onSwitch: ((TLApp) -> Void)? = nil
+    var onClose: (() -> Void)? = nil
     @StateObject private var runner = TLAttemptRunner()
+    @ObservedObject private var store = TranslationLayerStore.shared
     @Environment(\.dismiss) private var dismiss
     @AppStorage("husk.tl.showLog") private var showLogSetting = false
     @AppStorage(TranslationLayer.devInfoKey) private var devInfo = false
     @State private var settings: TLAppSettings
     @State private var uiHidden: Bool
     @State private var hint = false
+    @State private var showSwitcher = false
     private let cleanLayout: Bool
     private var showLog: Bool { get { showLogSetting && devInfo } nonmutating set { showLogSetting = newValue } }
 
-    init(app: TLApp) {
+    init(app: TLApp, onSwitch: ((TLApp) -> Void)? = nil, onClose: (() -> Void)? = nil) {
         self.app = app
+        self.onSwitch = onSwitch
+        self.onClose = onClose
         let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
         _settings = State(initialValue: loaded)
         _uiHidden = State(initialValue: loaded.cleanView)
         cleanLayout = loaded.cleanView
+    }
+
+    private var switchCandidates: [TLApp] {
+        store.apps.filter { $0.id != app.id && $0.packageName != GeodeSupport.launcherPackage }
+    }
+
+    private func closeScreen() {
+        runner.stop()
+        if let onClose { onClose() } else { dismiss() }
     }
 
     /// These games draw a portrait picture (Flappy Bird's is 540 x 960), unless the game's settings say otherwise.
@@ -936,10 +1120,13 @@ struct TLClassicAttemptView: View {
             if cleanLayout, !uiHidden {
                 VStack(spacing: 0) { bar; Spacer() }
             }
+            if uiHidden {
+                TLFloatingReopenHandle(action: toggleInterface)
+            }
             if hint {
                 VStack {
                     Spacer()
-                    Text("Tap with three fingers to show the interface")
+                    Text("Tap eye at top right or 3-finger tap to show controls")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -966,14 +1153,26 @@ struct TLClassicAttemptView: View {
             UIApplication.shared.isIdleTimerDisabled = false
             HuskOrientation.set(HuskOrientation.standard)
         }
+        .sheet(isPresented: $showSwitcher) {
+            TLGameSwitcherSheet(current: app, apps: switchCandidates) { next in
+                showSwitcher = false
+                onSwitch?(next)
+            }
+        }
     }
 
     private var bar: some View {
         HStack(spacing: 12) {
-            Button { runner.stop(); dismiss() } label: {
+            Button { closeScreen() } label: {
                 Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
             }
             .tint(.white)
+            if onSwitch != nil, !switchCandidates.isEmpty {
+                Button { showSwitcher = true } label: {
+                    Label("Switch", systemImage: "arrow.left.arrow.right").font(.system(size: 12, weight: .semibold))
+                }
+                .tint(.white)
+            }
             Circle().fill(runner.statusColor).frame(width: 7, height: 7)
             Text(runner.isRunning ? app.label : runner.statusText)
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85)).lineLimit(1)

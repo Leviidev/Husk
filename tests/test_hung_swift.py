@@ -334,6 +334,78 @@ precondition(zero.top == 0 && zero.left == 0 && zero.bottom == 0 && zero.right =
 print("PASS: full-screen geometry stays unchanged; only the physical camera edge gets HUD insets; cached aspect/touches stay consistent")
 ''')
 
+    def test_production_storage_cleaner_preserves_saves_and_active_games(self):
+        settings_src = (ROOT / "src/app/Husk/SettingsTab.swift").read_text(encoding="utf-8")
+        cleaner_src = "enum StorageCleaner {" + settings_src.split("enum StorageCleaner {", 1)[1].split("struct StorageSettings:", 1)[0]
+        stubs = '''
+import Foundation
+enum HuskLog { static func log(_ scope: String, _ text: String) {} }
+enum TranslationLayer {
+    static var root: URL = FileManager.default.temporaryDirectory.appendingPathComponent("husk-storage-test-tl", isDirectory: true)
+}
+enum JITLess {
+    static var cacheDir = FileManager.default.temporaryDirectory.appendingPathComponent("husk-storage-test-jitless", isDirectory: true)
+    static var cacheBytes: Int64 { 0 }
+    static func clearCache() { try? FileManager.default.removeItem(at: cacheDir) }
+}
+enum IncomingFiles {
+    static var folder = FileManager.default.temporaryDirectory.appendingPathComponent("husk-storage-test-incoming", isDirectory: true)
+    static func clearLeftovers() { try? FileManager.default.removeItem(at: folder) }
+}
+'''
+        self.compile_run(stubs + "\n" + cleaner_src, '''
+let fm = FileManager.default
+let unique = fm.temporaryDirectory.appendingPathComponent("husk-sc-\\(UUID().uuidString)", isDirectory: true)
+TranslationLayer.root = unique.appendingPathComponent("tl", isDirectory: true)
+IncomingFiles.folder = unique.appendingPathComponent("incoming", isDirectory: true)
+defer { try? fm.removeItem(at: unique) }
+
+func touch(_ url: URL, _ content: String = "x") {
+    try! fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try! Data(content.utf8).write(to: url)
+}
+
+let inactive = TranslationLayer.root.appendingPathComponent("game-inactive", isDirectory: true)
+touch(inactive.appendingPathComponent("base.apk"), "apk")
+touch(inactive.appendingPathComponent("obb/main.1.obb"), "obb")
+touch(inactive.appendingPathComponent("java-data/files/save.dat"), "save")
+touch(inactive.appendingPathComponent("java-data/shared_prefs/prefs.xml"), "pref")
+touch(inactive.appendingPathComponent("java-data/databases/db.sqlite"), "db")
+touch(inactive.appendingPathComponent("java-data/cache/junk.bin"), "junkjunk")
+touch(inactive.appendingPathComponent("java-data/cache/husk-update.apk"), "updateapk")
+touch(inactive.appendingPathComponent("java-data/code_cache/old.odex"), "codecache")
+touch(inactive.appendingPathComponent("java-data/.jar-cache/dex.cache"), "jarcache")
+touch(inactive.appendingPathComponent("java-data/files/save.dat.husk-new"), "partial")
+
+let active = TranslationLayer.root.appendingPathComponent("game-active", isDirectory: true)
+touch(active.appendingPathComponent("base.apk"), "apk")
+touch(active.appendingPathComponent("java-data/cache/live.bin"), "livecache")
+touch(IncomingFiles.folder.appendingPathComponent("staged.apk"), "stagedapk")
+
+let before = StorageCleaner.measure(activeAppIDs: ["game-active"])
+precondition(before.gameCacheBytes > 0 && before.temporaryBytes > 0)
+
+let freed = StorageCleaner.cleanRegenerableCaches(includeJITLess: false, activeAppIDs: ["game-active"])
+precondition(freed > 0)
+
+// Saves, preferences, databases, OBBs, APKs, and active game caches stay intact.
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("base.apk").path))
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("obb/main.1.obb").path))
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/files/save.dat").path))
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/shared_prefs/prefs.xml").path))
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/databases/db.sqlite").path))
+precondition(fm.fileExists(atPath: active.appendingPathComponent("java-data/cache/live.bin").path))
+
+// Regenerable caches and leftover temp files are reclaimed.
+precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/cache").path))
+precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/code_cache").path))
+precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/.jar-cache").path))
+precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/files/save.dat.husk-new").path))
+precondition(!fm.fileExists(atPath: IncomingFiles.folder.path))
+
+print("PASS: StorageCleaner reclaims regenerable caches & temp files while protecting saves, APKs, OBBs, and active games")
+''')
+
 
 if __name__ == "__main__":
     unittest.main()

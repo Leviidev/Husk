@@ -782,6 +782,10 @@ const char *tl_dvm_describe_pending(char *buf, size_t n)
 /* A Java monitor: a plain mutex with its owner and how many times the owner holds it. wait() lets go of every level (as Java's
  * does: a thread that waits inside two synchronized blocks on the same object must not keep it locked) and takes them back. */
 typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv; _Atomic(pthread_t) owner; int count; } mon;
+typedef struct dvm_mon_waiter { mon *m; struct dvm_mon_waiter *prev, *next; } dvm_mon_waiter;
+static pthread_mutex_t g_mon_waiters_mu = PTHREAD_MUTEX_INITIALIZER;
+static dvm_mon_waiter *g_mon_waiters;
+bool tl_guest_session_closing(void);
 
 static mon *monitor_of(jobj *o)
 {
@@ -813,14 +817,30 @@ bool dvm_monitor_exit(jobj *o)
     if (--m->count == 0) { atomic_store(&m->owner, (pthread_t)0); pthread_mutex_unlock(&m->mu); }
     return true;
 }
+void dvm_monitor_wake_all(void)
+{
+    pthread_mutex_lock(&g_mon_waiters_mu);
+    for (dvm_mon_waiter *w = g_mon_waiters; w; w = w->next) pthread_cond_broadcast(&w->m->cv);
+    pthread_mutex_unlock(&g_mon_waiters_mu);
+}
 void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns);
 void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
 {
     mon *m = monitor_of(o);
     if (!mon_mine(m)) { dvm_throw("java/lang/IllegalMonitorStateException", "object not locked by thread before wait()"); return; }
+    if (tl_guest_session_closing()) {
+        dvm_throw("java/lang/InterruptedException", "session closing");
+        return;
+    }
     int held = m->count;
     m->count = 0;
     atomic_store(&m->owner, (pthread_t)0);
+    dvm_mon_waiter w = { .m = m, .prev = NULL, .next = NULL };
+    pthread_mutex_lock(&g_mon_waiters_mu);
+    w.next = g_mon_waiters;
+    if (g_mon_waiters) g_mon_waiters->prev = &w;
+    g_mon_waiters = &w;
+    pthread_mutex_unlock(&g_mon_waiters_mu);
     if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
     else {
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
@@ -828,8 +848,13 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
         if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
         pthread_cond_timedwait(&m->cv, &m->mu, &ts);
     }
+    pthread_mutex_lock(&g_mon_waiters_mu);
+    if (w.prev) w.prev->next = w.next; else if (g_mon_waiters == &w) g_mon_waiters = w.next;
+    if (w.next) w.next->prev = w.prev;
+    pthread_mutex_unlock(&g_mon_waiters_mu);
     atomic_store(&m->owner, pthread_self());
     m->count = held;
+    if (tl_guest_session_closing()) dvm_throw("java/lang/InterruptedException", "session closing");
 }
 void dvm_monitor_notify(jobj *o, bool all);
 void dvm_monitor_notify(jobj *o, bool all) { mon *m = monitor_of(o); if (all) pthread_cond_broadcast(&m->cv); else pthread_cond_signal(&m->cv); }

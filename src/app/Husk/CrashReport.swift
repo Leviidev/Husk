@@ -88,15 +88,20 @@ final class CrashReport: ObservableObject {
                 writeMarker()
             })
             observers.append(nc.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { _ in
+                URLCache.shared.removeAllCachedResponses()
+                Task.detached(priority: .utility) { StorageCleaner.cleanRoutineCaches() }
                 guard running != nil else { return }
                 HuskLog.log("runtime", "memory warning while game active; \(runningDisplay); thermal=\(ProcessInfo.processInfo.thermalState.rawValue)")
                 HuskLog.logFootprint("game-memory-warning")
-                husk_java_memory_warning()
+                husk_native_memory_pressure(2)
             })
             observers.append(nc.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { _ in
+                let st = Int32(ProcessInfo.processInfo.thermalState.rawValue)
+                husk_native_thermal_state(st)
                 guard running != nil else { return }
-                HuskLog.log("runtime", "thermal state changed: \(ProcessInfo.processInfo.thermalState.rawValue)")
+                HuskLog.log("runtime", "thermal state changed: \(st)")
             })
+            husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
         }
     }
 

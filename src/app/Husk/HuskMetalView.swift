@@ -15,6 +15,7 @@ final class HuskMetalView: MTKView {
     private var texture: MTLTexture?
     private var textureGeneration: UInt64 = .max
     private var lastSequence: UInt64 = .max
+    private var lastDrawableSize = CGSize.zero
 
     /// Guest surface size, for mapping touches back into guest coordinates.
     private var guestWidth: Int32 = 0
@@ -104,6 +105,7 @@ extension HuskMetalView: MTKViewDelegate {
               let pass = currentRenderPassDescriptor else { return }
 
         let seq = husk_display_sequence()
+        let currentDrawableSize = view.drawableSize
 
         // No need to poke QEMU for a redraw here: register_displaychangelistener()
         // calls gui_setup_refresh(), which drives dpy_refresh on QEMU's own timer
@@ -128,6 +130,11 @@ extension HuskMetalView: MTKViewDelegate {
             log.info("guest surface \(info.width)x\(info.height) stride=\(info.stride) bpp=\(info.bpp)")
         }
 
+        if texture != nil, seq == lastSequence, currentDrawableSize == lastDrawableSize {
+            husk_display_unlock_frame()
+            return
+        }
+
         if seq != lastSequence, let texture, let pixels = info.pixels {
             texture.replace(
                 region: MTLRegionMake2D(0, 0, Int(info.width), Int(info.height)),
@@ -136,6 +143,7 @@ extension HuskMetalView: MTKViewDelegate {
                 bytesPerRow: Int(info.stride))
             lastSequence = seq
         }
+        lastDrawableSize = currentDrawableSize
         husk_display_unlock_frame()
 
         guard let texture,

@@ -21,6 +21,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -157,6 +159,17 @@ static int msg_flags_to_darwin(int f)
 static int g_net_trace = -1;
 #define NTRACE(...) do { if (g_net_trace < 0) g_net_trace = getenv("TL_NET_TRACE") ? 1 : 0; if (g_net_trace) tl_log_line("net: " __VA_ARGS__); } while (0)
 
+#define TL_MAX_TRACKED_SOCKS 4096
+static atomic_bool g_guest_socks[TL_MAX_TRACKED_SOCKS];
+static void net_track_fd(int fd) { if (fd >= 0 && fd < TL_MAX_TRACKED_SOCKS) atomic_store(&g_guest_socks[fd], true); }
+void tl_net_untrack_fd(int fd) { if (fd >= 0 && fd < TL_MAX_TRACKED_SOCKS) atomic_store(&g_guest_socks[fd], false); }
+void tl_net_shutdown_all(void)
+{
+    for (int fd = 0; fd < TL_MAX_TRACKED_SOCKS; fd++) {
+        if (atomic_load(&g_guest_socks[fd])) shutdown(fd, SHUT_RDWR);
+    }
+}
+
 static void quiet_sigpipe(int fd)
 {
     int one = 1;
@@ -175,6 +188,7 @@ static int b_socket(int domain, int type, int protocol)
         if (type & G_SOCK_CLOEXEC) fcntl(fd, F_SETFD, FD_CLOEXEC);
         if (type & G_SOCK_NONBLOCK) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(fd);
+        net_track_fd(fd);
     }
     TL_ERRNO_END();
     return fd;
@@ -190,6 +204,7 @@ static int b_socketpair(int domain, int type, int protocol, int *sv)
         if (type & G_SOCK_CLOEXEC) fcntl(sv[i], F_SETFD, FD_CLOEXEC);
         if (type & G_SOCK_NONBLOCK) fcntl(sv[i], F_SETFL, fcntl(sv[i], F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(sv[i]);
+        net_track_fd(sv[i]);
     }
     TL_ERRNO_END();
     return r;
@@ -233,6 +248,7 @@ static int accept_common(int fd, void *g, socklen_t *glen, int flags)
         if (flags & G_SOCK_CLOEXEC) fcntl(c, F_SETFD, FD_CLOEXEC);
         if (flags & G_SOCK_NONBLOCK) fcntl(c, F_SETFL, fcntl(c, F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(c);
+        net_track_fd(c);
         if (g && glen) *glen = sa_from_darwin((struct sockaddr *)&s, g, *glen);
     }
     TL_ERRNO_END();

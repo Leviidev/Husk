@@ -20,6 +20,8 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-memory.h"
 #include "husk-tl-thread-clock.h"
 #include "husk-tl-jni.h"
+#include "husk-tl-session.h"
+void tl_net_untrack_fd(int fd);
 
 #include <ctype.h>
 #include <dirent.h>
@@ -31,6 +33,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include <os/proc.h>
 #endif
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <arpa/inet.h>
@@ -646,9 +649,56 @@ static bool jar_lookup(const char *p, jar_entry *out)
     return true;
 }
 
+typedef struct { char *path; size_t size; time_t mtime; } jar_cache_file;
+static int cmp_jar_oldest(const void *a, const void *b)
+{
+    const jar_cache_file *x = a, *y = b;
+    return (x->mtime > y->mtime) - (x->mtime < y->mtime);
+}
+void tl_jar_cache_trim(size_t max_bytes)
+{
+    const char *dd = tl_data_dir();
+    if (!dd || !*dd) return;
+    char dir[1100];
+    if (snprintf(dir, sizeof(dir), "%s/.jar-cache", dd) >= (int)sizeof(dir)) return;
+    DIR *d = opendir(dir);
+    if (!d) return;
+    size_t cap = 64, n = 0, total = 0;
+    jar_cache_file *list = malloc(cap * sizeof(*list));
+    if (!list) { closedir(d); return; }
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] == '.') continue;
+        char p[1400];
+        if (snprintf(p, sizeof(p), "%s/%s", dir, e->d_name) >= (int)sizeof(p)) continue;
+        struct stat st;
+        if (stat(p, &st) != 0 || !S_ISREG(st.st_mode)) continue;
+        if (n == cap) {
+            cap *= 2;
+            jar_cache_file *tmp = realloc(list, cap * sizeof(*tmp));
+            if (!tmp) break;
+            list = tmp;
+        }
+        list[n].path = strdup(p);
+        list[n].size = (size_t)st.st_size;
+        list[n].mtime = st.st_mtime;
+        if (list[n].path) { total += list[n].size; n++; }
+    }
+    closedir(d);
+    if (total > max_bytes && n > 0) {
+        qsort(list, n, sizeof(*list), cmp_jar_oldest);
+        for (size_t i = 0; i < n && total > max_bytes; i++) {
+            if (unlink(list[i].path) == 0) total -= list[i].size;
+        }
+    }
+    for (size_t i = 0; i < n; i++) free(list[i].path);
+    free(list);
+}
+
 /* A compressed entry, inflated once into <data>/.jar-cache: the path to open instead, or NULL. */
 static const char *jar_inflated(const jar_entry *j, char *buf, size_t n)
 {
+    static atomic_size_t jar_inflated_bytes;
     char name[512]; size_t k = 0;
     for (const char *c = j->entry; *c && k + 1 < sizeof(name); c++) name[k++] = (*c == '/') ? '_' : *c;
     name[k] = 0;
@@ -671,6 +721,11 @@ static const char *jar_inflated(const jar_entry *j, char *buf, size_t n)
     if (f) fclose(f);
     if (owned) free((void *)data);
     if (!wrote || rename(tmp, buf) != 0) { unlink(tmp); return NULL; }
+    size_t added = atomic_fetch_add(&jar_inflated_bytes, len) + len;
+    if (added > (128u << 20)) {
+        atomic_store(&jar_inflated_bytes, 64u << 20);
+        tl_jar_cache_trim(64u << 20);
+    }
     return buf;
 }
 
@@ -865,6 +920,7 @@ static int b_close(int fd) {
     if (evfd_peer(fd) >= 0) { close(evfd_peer(fd)); g_evfd_peer[fd] = 0; }
     if (vfd_is(fd)) g_vfd[fd].on = false;
     bool sock = net_trace_fd(fd);
+    tl_net_untrack_fd(fd);
     TL_ERRNO_BEGIN(); int r = close(fd); tl_atomic_closed(fd); TL_ERRNO_END();
     if (sock) tl_log_line("net: close(fd %d)", fd);
     return r;
@@ -1907,21 +1963,48 @@ static int b_gettimeofday(int64_t *tv, void *tz)
     if (tv) { tv[0] = t.tv_sec; tv[1] = t.tv_usec; }
     return 0;
 }
-static int b_nanosleep(const struct timespec *req, struct timespec *rem) { TL_ERRNO_BEGIN(); int r = nanosleep(req, rem); TL_ERRNO_END(); return r; }
-static int b_usleep(unsigned us) { return usleep(us); }
+static int sleep_interruptible_ns(int64_t ns, struct timespec *rem)
+{
+    if (rem) { rem->tv_sec = 0; rem->tv_nsec = 0; }
+    if (ns <= 0 || tl_guest_session_closing()) return 0;
+    if (ns >= 2000000ll) {
+        (void)tl_guest_session_wait_close(ns);
+        return 0;
+    }
+    struct timespec ts = { (time_t)(ns / 1000000000ll), (long)(ns % 1000000000ll) };
+    TL_ERRNO_BEGIN(); int r = nanosleep(&ts, rem); TL_ERRNO_END();
+    return r;
+}
+static int b_nanosleep(const struct timespec *req, struct timespec *rem)
+{
+    if (!req || req->tv_sec < 0 || req->tv_nsec < 0 || req->tv_nsec >= 1000000000L) {
+        tl_set_guest_errno(22);
+        return -1;
+    }
+    int64_t ns = req->tv_sec > (INT64_MAX - req->tv_nsec) / 1000000000ll
+        ? INT64_MAX
+        : (int64_t)req->tv_sec * 1000000000ll + req->tv_nsec;
+    return sleep_interruptible_ns(ns, rem);
+}
+static int b_usleep(unsigned us) { return sleep_interruptible_ns((int64_t)us * 1000ll, NULL); }
 /* clock_nanosleep: relative, or until a time on the clock (TIMER_ABSTIME); returns the error, as POSIX says. Linux's REALTIME 0,
  * MONOTONIC 1, BOOTTIME 7 (the others are taken as monotonic). */
 static int b_clock_nanosleep(int clock, int flags, const struct timespec *req, struct timespec *rem)
 {
-    struct timespec d = *req;
+    if (!req || req->tv_nsec < 0 || req->tv_nsec >= 1000000000L) return 22;
+    int64_t ns;
     if (flags & 1) {
         struct timespec now; clock_gettime(clock == 0 ? CLOCK_REALTIME : CLOCK_MONOTONIC, &now);
-        int64_t ns = ((int64_t)req->tv_sec - now.tv_sec) * 1000000000ll + (req->tv_nsec - now.tv_nsec);
+        ns = ((int64_t)req->tv_sec - now.tv_sec) * 1000000000ll + (req->tv_nsec - now.tv_nsec);
         if (ns <= 0) return 0;
-        d.tv_sec = ns / 1000000000ll; d.tv_nsec = ns % 1000000000ll;
         rem = NULL;
+    } else {
+        if (req->tv_sec < 0) return 22;
+        ns = req->tv_sec > (INT64_MAX - req->tv_nsec) / 1000000000ll
+            ? INT64_MAX
+            : (int64_t)req->tv_sec * 1000000000ll + req->tv_nsec;
     }
-    if (nanosleep(&d, rem)) return tl_errno_to_guest(errno);
+    if (sleep_interruptible_ns(ns, rem)) return tl_errno_to_guest(errno);
     return 0;
 }
 
@@ -2120,6 +2203,19 @@ static long futex_wake(uint32_t *addr, long n)
     pthread_mutex_unlock(&g_fut[h].m);
     return woken;
 }
+void tl_futex_wake_all(void)
+{
+    for (size_t h = 0; h < FUT_BUCKETS; h++) {
+        pthread_mutex_lock(&g_fut[h].m);
+        for (fut_waiter *w = g_fut[h].head, *next; w; w = next) {
+            next = w->next;
+            fut_unlink(h, w);
+            w->woken = true;
+            pthread_cond_signal(&w->cv);
+        }
+        pthread_mutex_unlock(&g_fut[h].m);
+    }
+}
 static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timespec *to, uint32_t *addr2, uint32_t val3)
 {
     int cmd = op & 127;
@@ -2175,7 +2271,15 @@ static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timesp
             }
         }
         while (!me.woken) {
-            if (!to) { pthread_cond_wait(&me.cv, &g_fut[h].m); continue; }
+            if (!to) {
+                if (tl_guest_session_closing()) {
+                    struct timespec cap = { 0, 20000000L };
+                    if (pthread_cond_timedwait_relative_np(&me.cv, &g_fut[h].m, &cap) == ETIMEDOUT && !me.woken) { fut_unlink(h, &me); r = -110; break; }
+                    continue;
+                }
+                pthread_cond_wait(&me.cv, &g_fut[h].m);
+                continue;
+            }
             if (pthread_cond_timedwait_relative_np(&me.cv, &g_fut[h].m, &rel) == ETIMEDOUT && !me.woken) { fut_unlink(h, &me); r = -110; break; }
             if (!me.woken) { rel.tv_sec = 0; rel.tv_nsec = 0; }   /* a spurious wake with a deadline: do not wait again past it */
         }
@@ -2245,7 +2349,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     }
     case 62: { off_t r = lseek((int)a0, (off_t)a1, (int)a2); return r < 0 ? -tl_errno_to_guest(errno) : (long)r; }
     case 101: { int r = nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
-    case 124: sched_yield(); return 0;
+    case 124: { int tl_bionic_sched_yield(void); tl_bionic_sched_yield(); return 0; }
     case 132: return 0;                                                                 /* sigaltstack: accepted (guest handlers are not installed) */
     /* memory and file status by raw system call (packers and protectors avoid libc): through the same shims as the calls */
     case 222: { void *r = b_mmap((void *)a0, (size_t)a1, (int)a2, (int)a3, (int)a4, a5); return r == (void *)-1 ? -*tl_guest_errno_ptr() : (long)r; }
@@ -2317,15 +2421,46 @@ static int poll_devices_via_select(struct pollfd *fds, unsigned long n, int r)
 }
 static int b_poll(struct pollfd *fds, unsigned long n, int timeout)
 {
-    TL_ERRNO_BEGIN(); int r = poll(fds, (nfds_t)n, timeout); TL_ERRNO_END();
-    if (r > 0) r = poll_devices_via_select(fds, n, r);
+    int r = 0;
+    int remaining = timeout;
+    for (;;) {
+        if (timeout != 0 && tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        int chunk = (remaining < 0 || remaining > 100) ? 100 : remaining;
+        TL_ERRNO_BEGIN(); r = poll(fds, (nfds_t)n, chunk); TL_ERRNO_END();
+        if (r > 0) r = poll_devices_via_select(fds, n, r);
+        if (r != 0 || timeout == 0) break;
+        if (remaining > 0) {
+            remaining -= chunk;
+            if (remaining <= 0) break;
+        }
+    }
     for (unsigned long i = 0; i < n && i < 4; i++)
         if (net_trace_fd(fds[i].fd)) { tl_log_line("net: poll(%lu fds, fd[%lu] %d ev %#x, timeout %d) -> %d rev %#x", n, i, fds[i].fd, fds[i].events, timeout, r, r > 0 ? fds[i].revents : 0); break; }
     return r;
 }
 static int b_select(int n, fd_set *r, fd_set *w, fd_set *e, struct timeval *tv)
 {
-    TL_ERRNO_BEGIN(); int x = select(n, r, w, e, tv); int er = errno; TL_ERRNO_END();
+    fd_set r0, w0, e0;
+    if (r) r0 = *r;
+    if (w) w0 = *w;
+    if (e) e0 = *e;
+    int64_t rem_us = -1;
+    if (tv) rem_us = (int64_t)tv->tv_sec * 1000000ll + tv->tv_usec;
+    int x = 0, er = 0;
+    for (;;) {
+        if (rem_us != 0 && tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        if (r) *r = r0;
+        if (w) *w = w0;
+        if (e) *e = e0;
+        int64_t chunk_us = (rem_us < 0 || rem_us > 100000ll) ? 100000ll : rem_us;
+        struct timeval chunk_tv = { (long)(chunk_us / 1000000ll), (int)(chunk_us % 1000000ll) };
+        TL_ERRNO_BEGIN(); x = select(n, r, w, e, &chunk_tv); er = errno; TL_ERRNO_END();
+        if (x != 0 || rem_us == 0) break;
+        if (rem_us > 0) {
+            rem_us -= chunk_us;
+            if (rem_us <= 0) break;
+        }
+    }
     if (net_trace_fd(n - 1)) tl_log_line("net: select(%d, %s%s) -> %d", n, r ? "r" : "", w ? "w" : "", x);
     { static int tr = -1, said; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr && said++ < 40) tl_log_line("file: select(%d, %s%s%s, timeout %ldus) -> %d errno %d", n, r ? "r" : "", w ? "w" : "", e ? "e" : "", tv ? (long)tv->tv_sec * 1000000 + tv->tv_usec : -1L, x, x < 0 ? er : 0); }
     return x;

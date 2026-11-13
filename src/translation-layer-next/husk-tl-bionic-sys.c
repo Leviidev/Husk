@@ -562,19 +562,33 @@ static int b_epoll_ctl(int epfd, int op, int fd, const guest_epoll_event *ev)
     return r < 0 ? -1 : 0;
 }
 
+bool tl_guest_session_closing(void);
+
 static int b_epoll_wait(int epfd, guest_epoll_event *out, int max, int timeout_ms)
 {
     if (max <= 0) { tl_set_guest_errno(22); return -1; }
     struct kevent k[64];
     if (max > 64) max = 64;
-    struct timespec ts = { timeout_ms / 1000, (long)(timeout_ms % 1000) * 1000000L };
-    int r;
+    int r = 0;
+    int remaining = timeout_ms;
     for (;;) {
+        if (tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        int chunk = (remaining < 0 || remaining > 100) ? 100 : remaining;
+        struct timespec ts = { chunk / 1000, (long)(chunk % 1000) * 1000000L };
         errno = 0;
-        r = kevent(epfd, NULL, 0, k, max, timeout_ms < 0 ? NULL : &ts);
-        if (r >= 0 || errno != EINTR) break;
+        r = kevent(epfd, NULL, 0, k, max, &ts);
+        if (r > 0) break;
+        if (r < 0) {
+            if (errno == EINTR) continue;
+            tl_set_guest_errno(tl_errno_to_guest(errno));
+            return -1;
+        }
+        if (timeout_ms == 0) break;
+        if (remaining >= 0) {
+            remaining -= chunk;
+            if (remaining <= 0) break;
+        }
     }
-    if (r < 0) { tl_set_guest_errno(tl_errno_to_guest(errno)); return -1; }
     for (int i = 0; i < r; i++) {
         uint32_t e = 0;
         if (k[i].filter == EVFILT_READ) e |= EPOLLIN;

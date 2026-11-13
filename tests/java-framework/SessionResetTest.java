@@ -28,6 +28,31 @@ public final class SessionResetTest {
         if (!((Map) prefs.get(null)).isEmpty() || !((List) receivers.get(null)).isEmpty() || scheduled.getBoolean(null))
             throw new AssertionError("previous app callbacks/preferences/frame handler survived reset");
         AppRunner.resetSession();
-        System.out.println("PASS: framework reset drops previous APK identity, preferences, receivers and frame scheduling");
+
+        /* Empty-stack exit debounce: scheduleEmptyExitCheck must not exit synchronously and resetSession/cancel removes it. */
+        android.os.Handler.drain();
+        Field handlerField = field(AppRunner.class, "sHandler");
+        Field pendingExitField = field(AppRunner.class, "sPendingEmptyExit");
+        Field stackField = field(AppRunner.class, "sStack");
+        java.lang.reflect.Method scheduleEmptyExit = AppRunner.class.getDeclaredMethod("scheduleEmptyExitCheck");
+        scheduleEmptyExit.setAccessible(true);
+        java.lang.reflect.Method cancelPendingEmpty = AppRunner.class.getDeclaredMethod("cancelPendingEmptyExit");
+        cancelPendingEmpty.setAccessible(true);
+
+        handlerField.set(null, new android.os.Handler(android.os.Looper.getMainLooper()));
+        ((List<?>) stackField.get(null)).clear();
+        int basePending = android.os.Handler.pendingCount();
+        scheduleEmptyExit.invoke(null);
+        if (pendingExitField.get(null) == null || android.os.Handler.pendingCount() != basePending + 1)
+            throw new AssertionError("expected empty stack exit to be scheduled asynchronously");
+        cancelPendingEmpty.invoke(null);
+        if (pendingExitField.get(null) != null || android.os.Handler.pendingCount() != basePending)
+            throw new AssertionError("cancelPendingEmptyExit must cancel queued exit");
+        scheduleEmptyExit.invoke(null);
+        AppRunner.resetSession();
+        if (pendingExitField.get(null) != null || android.os.Handler.pendingCount() != basePending)
+            throw new AssertionError("resetSession must cancel pending empty-stack exit");
+        android.os.Handler.drain();
+        System.out.println("PASS: framework reset drops previous APK identity, preferences, receivers, pending exits and frame scheduling");
     }
 }

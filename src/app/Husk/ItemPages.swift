@@ -144,30 +144,34 @@ struct GamePage: View {
     @State private var preparing: String?
     @State private var prepareFailed: String?
     @State private var confirmQuit = false
+    @State private var updateMessage: String?
+    @State private var updateFailed = false
 
-    private var runs: Bool { app.report?.canRun == true }
+    private var currentApp: TLApp { store.apps.first { $0.id == app.id } ?? app }
+
+    private var runs: Bool { currentApp.report?.canRun == true }
 
     /// QEMU and engines without complete teardown still own this process.
     private var blockedBy: String? {
         if Router.shared.androidStarted { return "Android" }
-        let apk = app.apks.first
+        let apk = currentApp.apks.first
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }), loaded != apk else { return nil }
         if !loaded.hasPrefix("ps4:"), husk_native_can_stop() { return nil }
         return Self.name(ofLoaded: loaded)
     }
 
     private var compatSubject: CompatSubject? {
-        app.packageName.map { CompatSubject(package: $0, name: app.label, isGame: LibraryItem.game(app).isGame, iconPath: app.iconPath) }
+        currentApp.packageName.map { CompatSubject(package: $0, name: currentApp.label, isGame: LibraryItem.game(currentApp).isGame, iconPath: currentApp.iconPath) }
     }
 
-    private var preflight: AppDiagnosis? { AppDiagnosis.preflight(app) }
+    private var preflight: AppDiagnosis? { AppDiagnosis.preflight(currentApp) }
 
     /// Under Play: what runs it, how long it has been played, and when last.
     private var gameFacts: [(symbol: String, text: String)] {
-        var f: [(symbol: String, text: String)] = [("cpu", app.report?.runnerName ?? "Translation Layer")]
-        let t = Playtime.seconds(LibraryItem.game(app).id)
+        var f: [(symbol: String, text: String)] = [("cpu", currentApp.report?.runnerName ?? "Translation Layer")]
+        let t = Playtime.seconds(LibraryItem.game(currentApp).id)
         f.append(("gamecontroller", t > 0 ? Playtime.text(t) + " played" : "Not played yet"))
-        if let d = app.lastPlayed {
+        if let d = currentApp.lastPlayed {
             let r = RelativeDateTimeFormatter(); r.unitsStyle = .short
             f.append(("clock", "Last played\n" + r.localizedString(for: d, relativeTo: Date())))
         }
@@ -180,7 +184,7 @@ struct GamePage: View {
     var body: some View {
         HuskPageList {
             Section {
-                PageHero(item: .game(app), subtitle: subtitle, facts: gameFacts) { primary }
+                PageHero(item: .game(currentApp), subtitle: subtitle, facts: gameFacts) { primary }
                     .heroRow()
             } footer: {
                 if isGeodeLauncher {
@@ -229,28 +233,45 @@ struct GamePage: View {
 
             if !isGeodeLauncher {
                 Section {
+                    Button { pickUpdateAPK() } label: {
+                        Label(store.busy != nil ? "Updating…" : "Update APK (Keep Saves)",
+                              systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(store.busy != nil || nativeSession.stopping || blockedBy == "Android")
+                } header: {
+                    Text("Update")
+                } footer: {
+                    if let updateMessage {
+                        Text(updateMessage)
+                            .foregroundStyle(updateFailed ? Color.red : .secondary)
+                    } else {
+                        Text("Pick a newer .apk, .xapk, .apkm, or .apks to update \(currentApp.label) in place without reinstalling. Saves, settings, and OBB data stay untouched.")
+                    }
+                }
+
+                Section {
                     Button { backUp() } label: { Label("Back Up Saves", systemImage: "square.and.arrow.up") }
-                        .disabled(savesBusy || !SaveBackup.hasData(app))
+                        .disabled(savesBusy || !SaveBackup.hasData(currentApp))
                     Button { pickRestore() } label: { Label("Restore Saves", systemImage: "clock.arrow.circlepath") }
                         .disabled(savesBusy || loadedNow)
                 } header: {
                     Text("Saves")
                 } footer: {
                     if let savesMessage { Text(savesMessage) }
-                    else if loadedNow { Text("\(app.label) has been started in this run of Husk. Close Husk and open it again to restore saves.") }
-                    else { Text("A backup is a .zip of everything \(app.label) has saved in Husk, to keep in Files or move to another device.") }
+                    else if loadedNow { Text("\(currentApp.label) has been started in this run of Husk. Close Husk and open it again to restore saves.") }
+                    else { Text("A backup is a .zip of everything \(currentApp.label) has saved in Husk, to keep in Files or move to another device.") }
                 }
             }
 
             Section("About") {
-                LabeledContent("Runs With", value: app.report?.runnerName ?? "Unknown")
-                if let st = GameStatusStore.shared.status(app.id) {
+                LabeledContent("Runs With", value: currentApp.report?.runnerName ?? "Unknown")
+                if let st = GameStatusStore.shared.status(currentApp.id) {
                     LabeledContent("Last Result") {
                         Label(st.result.label, systemImage: st.result.symbol).foregroundStyle(st.result.color)
                     }
                 }
-                LabeledContent("Last Played", value: app.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
-                LabeledContent("Size", value: fileBytes(app.apks))
+                LabeledContent("Last Played", value: currentApp.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
+                LabeledContent("Size", value: fileBytes(currentApp.apks))
             }
 
             Section {
@@ -260,9 +281,9 @@ struct GamePage: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle(app.label)
+        .navigationTitle(currentApp.label)
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $playing, onDismiss: askHowItRan) { TLAttemptView(app: app) }
+        .fullScreenCover(isPresented: $playing, onDismiss: askHowItRan) { TLAttemptView(app: currentApp) }
         .sheet(item: $reporting) { CompatReportSheet(subject: $0) }
         .sheet(item: Binding(get: { backupFile.map(IdentifiedURL.init) }, set: { backupFile = $0?.url })) { f in
             ShareSheet(items: [f.url])
@@ -302,10 +323,13 @@ struct GamePage: View {
         } message: {
             Text("The game and everything it saved here are deleted from Husk.")
         }
-        .id(jit.attachGeneration)
         .onAppear {
-            // Kept until JIT is on: this page is rebuilt when it attaches (.id above), and plays then.
             guard Router.shared.autoPlay == app.id, blockedBy == nil, Launcher.jitOn || JITLess.enabled else { return }
+            Router.shared.autoPlay = nil
+            play()
+        }
+        .onChange(of: jit.attachGeneration) { _ in
+            guard !playing, Router.shared.autoPlay == app.id, blockedBy == nil, Launcher.jitOn || JITLess.enabled else { return }
             Router.shared.autoPlay = nil
             play()
         }
@@ -315,11 +339,11 @@ struct GamePage: View {
     /// (a newer release, its resources) is fetched first.
     private func play() {
         guard preparing == nil, !nativeSession.stopping else { return }
-        guard let apk = app.apks.first else { return }
+        guard let apk = currentApp.apks.first else { return }
         preparing = "Preparing game…"
         Task { @MainActor in
             let ready: Bool
-            if app.report?.webKind != nil { ready = true }
+            if currentApp.report?.webKind != nil { ready = true }
             else { ready = await nativeSession.prepare(for: apk) }
             preparing = nil
             if ready { prepareLibraries() }
@@ -331,7 +355,7 @@ struct GamePage: View {
             preparing = "Preparing for JIT-less mode…"
             Task {
                 do {
-                    try await JITLess.prepare(apks: app.apks) { text in Task { @MainActor in preparing = text } }
+                    try await JITLess.prepare(apks: currentApp.apks) { text in Task { @MainActor in preparing = text } }
                     preparing = nil
                     playPrepared()
                 } catch {
@@ -345,9 +369,10 @@ struct GamePage: View {
     }
 
     private func playPrepared() {
-        guard TLAppSettings.load(app.id).geode, case .ready = GeodeSupport.shared.current(app) else {
-            if TLAppSettings.load(app.id).geode {
-                Task { await GeodeSupport.shared.prepare(app); start() }
+        let target = currentApp
+        guard TLAppSettings.load(target.id).geode, case .ready = GeodeSupport.shared.current(target) else {
+            if TLAppSettings.load(target.id).geode {
+                Task { await GeodeSupport.shared.prepare(target); start() }
             } else {
                 start()
             }
@@ -359,15 +384,16 @@ struct GamePage: View {
     /// After a session that got going: how did it run? Once per game per build, and only when it played (a crash has its own sheet).
     private func askHowItRan() {
         guard var subject = compatSubject, CompatibilityStore.shared.shouldAsk(subject.package),
-              GameStatusStore.shared.status(app.id)?.result == .plays else { return }
+              GameStatusStore.shared.status(currentApp.id)?.result == .plays else { return }
         subject.afterPlaying = true
         Task { try? await Task.sleep(nanoseconds: 500_000_000); reporting = subject }
     }
 
     /// Full screen, or in a window over Husk when Multitasking says so for this app.
     private func start() {
-        if app.report?.runsOnNativeRuntime == true || app.report?.webKind != nil, AppWindows.opensInWindow(app) {
-            AppWindows.shared.open(app)
+        let target = currentApp
+        if target.report?.runsOnNativeRuntime == true || target.report?.webKind != nil, AppWindows.opensInWindow(target) {
+            AppWindows.shared.open(target)
         } else {
             AppWindows.shared.close()
             playing = true
@@ -377,7 +403,27 @@ struct GamePage: View {
     /// This game's engine is loaded in this run of Husk, so its files may be open: no restoring under it.
     private var loadedNow: Bool {
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }) else { return false }
-        return loaded == app.apks.first
+        return loaded == currentApp.apks.first
+    }
+
+    private func pickUpdateAPK() {
+        updateMessage = nil
+        updateFailed = false
+        HuskFilePicker.present(types: [.item], multiple: true) { urls in
+            let target = currentApp
+            store.update(target, with: urls) { err, ok in
+                if let err {
+                    updateFailed = true
+                    updateMessage = err
+                } else if ok {
+                    updateFailed = false
+                    updateMessage = "Updated \(target.label) in place. All saves and settings were kept."
+                }
+            }
+        } onFail: { msg in
+            updateFailed = true
+            updateMessage = msg
+        }
     }
 
     fileprivate static func name(ofLoaded loaded: String) -> String {
@@ -392,7 +438,7 @@ struct GamePage: View {
 
     private func backUp() {
         savesBusy = true; savesMessage = nil
-        let app = self.app
+        let app = self.currentApp
         Task.detached {
             let result = Result { try SaveBackup.export(app) }
             await MainActor.run {
@@ -534,9 +580,13 @@ struct PS4GamePage: View {
         } message: {
             Text("\(blockedBy ?? "The other game") is still loaded and only one game can run per session. Husk closes; open it again and \(game.title) starts by itself.")
         }
-        .id(jit.attachGeneration)
         .onAppear {
             guard Router.shared.autoPlay == game.libraryID, Launcher.jitOn, blockedBy == nil, PS4Store.available else { return }
+            Router.shared.autoPlay = nil
+            playPS4()
+        }
+        .onChange(of: jit.attachGeneration) { _ in
+            guard !playing, Router.shared.autoPlay == game.libraryID, Launcher.jitOn, blockedBy == nil, PS4Store.available else { return }
             Router.shared.autoPlay = nil
             playPS4()
         }
