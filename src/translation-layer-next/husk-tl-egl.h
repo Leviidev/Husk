@@ -44,6 +44,8 @@ void tl_egl_compositor_frame_begin(void);
 void tl_egl_compositor_frame_wait(unsigned tex);
 void tl_egl_compositor_frame_end(unsigned tex);
 void tl_egl_compositor_frame_reset(void *context, bool current);
+/* Diagnostic sampling only: discard idle/old-session samples on pause/stop. */
+void tl_egl_frame_perf_set_active(bool active);
 
 #ifdef __cplusplus
 }

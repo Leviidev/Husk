@@ -40,8 +40,10 @@ struct jobj {
     tl_jclass *cls;
     union {
         struct { char *utf8; uint16_t *u16; int32_t len16; } str;   /* u16: the UTF-16 form, made when the interpreter first needs it */
-        struct { void *data; uint32_t len; uint8_t esz; char etype; } arr;
-        struct { jobj **v; uint32_t len; } oarr;
+        /* Requested payload capacity is independent of logical length (some
+         * annotation arrays shrink). Both still fit the string union's size. */
+        struct { void *data; uint32_t len; uint8_t esz; char etype; size_t allocated_bytes; } arr;
+        struct { jobj **v; uint32_t len; size_t allocated_bytes; } oarr;
         struct { tl_jclass *jc; } klass;
     };
     jvalue *fields;                     /* instance fields, indexed by tl_jfield::index */
@@ -90,6 +92,9 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len);
 jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len);
 jobj *tl_jni_ref(jobj *o);                                    /* a new reference to the same object */
 void  tl_jni_unref(jobj *o);
+/* Diagnostic requested storage for unfreed object headers/array payloads only.
+ * Not a heap census or a count of unreachable objects; no collection occurs. */
+void tl_jni_log_allocation_stats(const char *tag);
 
 /* Fields by name; created on first use. */
 void tl_jni_set_field(jobj *o, const char *name, const char *sig, jvalue v);

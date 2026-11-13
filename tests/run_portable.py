@@ -52,7 +52,8 @@ def main():
         r"void tl_javaapp_app_frame_pace\([^)]*\)\n\{.*?\n\}",
         r"bool tl_javaapp_app_pixels_rect_publish_with_opacity\([^)]*\)\n\{.*?\n\}",
         r"bool tl_javaapp_app_pixels_rect_publish\([^)]*\)\n\{.*?\n\}",
-        r"void tl_javaapp_app_pixels_rect\([^)]*\)\n\{.*?\n\}")]
+        r"void tl_javaapp_app_pixels_rect\([^)]*\)\n\{.*?\n\}",
+        r"static void app_frame_presented\([^\n]*\)\n\{.*?\n\}")]
     (out / "frame_publication_under_test.h").write_text("\n\n".join(publication), encoding="utf-8")
     graphics_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-graphics.c").read_text(encoding="utf-8")
     graphics_text = [re.search(pattern, graphics_source, re.S)[0] for pattern in (
@@ -82,7 +83,7 @@ def main():
     (out / "pthread_once_under_test.h").write_text(once, encoding="utf-8")
     ndk_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-ndk.c").read_text(encoding="utf-8")
     opacity = [re.search(r"bool tl_nwindow_is_opaque\([^\n]*\)\n\{.*?\n\}", ndk_source, re.S)[0]]
-    opacity += [re.search(r"static void " + name + r"\([^\n]*\)\n\{.*?\n\}", android_source, re.S)[0]
+    opacity += [re.search(r"static (?:void|uint64_t) " + name + r"\([^\n]*\)\n\{.*?\n\}", android_source, re.S)[0]
                 for name in ("app_frame_draw", "ov_draw")]
     (out / "window_opacity_under_test.h").write_text("\n".join(opacity), encoding="utf-8")
     bionic_source = (ROOT / "src/translation-layer-next/husk-tl-bionic.c").read_text(encoding="utf-8")
@@ -117,7 +118,16 @@ def main():
     entry_bridges = [re.search(r"__attribute__\(\(naked, used\)\) void " + name + r"\([^\n]*\)\n\{.*?\n\}", loader_source, re.S)[0]
                      for name in ("tl_entry_filter_common", "tl_entry_filter_return")]
     (out / "entry_filter_bridges_under_test.h").write_text("\n".join(entry_bridges), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test"):
+    jni_source = (ROOT / "src/translation-layer-next/husk-tl-jni.c").read_text(encoding="utf-8")
+    jni_allocations = [re.search(pattern, jni_source, re.S)[0] for pattern in (
+        r"static jobj \*obj_alloc\([^\n]*\)\n\{.*?\n\}",
+        r"jobj \*tl_jni_ref\([^\n]*\) \{[^\n]+\}",
+        r"void tl_jni_unref\([^\n]*\)\n\{.*?\n\}",
+        r"static uint8_t esz_of\([^\n]*\)\n\{.*?\n\}",
+        r"jobj \*tl_jni_new_prim_array\([^\n]*\)\n\{.*?\n\}",
+        r"jobj \*tl_jni_new_obj_array\([^\n]*\)\n\{.*?\n\}")]
+    (out / "jni_allocation_under_test.h").write_text("\n".join(jni_allocations), encoding="utf-8")
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
@@ -130,6 +140,11 @@ def main():
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)] + math_flags)
         run(name, [str(exe)])
+    jni_exe = out / ("jni_allocation_test.exe" if os.name == "nt" else "jni_allocation_test")
+    jni_threads = ["-pthread"] if os.name != "nt" else []
+    run("JNI allocation accounting compile", compiler + flags + jni_threads + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/jni_allocation_test.c"), "-o", str(jni_exe)])
+    run("JNI allocation accounting", [str(jni_exe)])
     probe_exe = out / ("trutien_text_probe_test" + (".exe" if os.name == "nt" else ""))
     run("trutien text probe compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
         str(ROOT / "tests/translation-layer/trutien_text_probe_test.c"),
@@ -154,6 +169,16 @@ def main():
     run("getchar compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}", str(ROOT / "tests/translation-layer/getchar_test.c"), "-o", str(exe)])
     run("getchar", [str(exe), str(out / "stdin.bin")])
     io_source = (ROOT / "src/translation-layer-next/husk-tl-bionic-io.c").read_text(encoding="utf-8")
+    log_paths = [re.search(pattern, io_source, re.S)[0] for pattern in (
+        r"static bool trutien_log_leaf\([^)]*\)\n\{.*?\n\}",
+        r"const char \*tl_path_resolve\([^)]*\)\n\{.*?\n\}")]
+    (out / "trutien_log_resolver_under_test.h").write_text("\n".join(log_paths), encoding="utf-8")
+    log_fixture = out / "trutien-log-fixture"
+    (log_fixture / "sdcard/Android/data/vn.trutien.client/files/element_astc_v2").mkdir(parents=True, exist_ok=True)
+    exe = out / ("trutien_log_path_test.exe" if os.name == "nt" else "trutien_log_path_test")
+    run("Tru Tien log path compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/trutien_log_path_test.c"), str(ROOT / "src/translation-layer-next/husk-tl-path.c"), "-o", str(exe)])
+    run("Tru Tien deleted log recreation and lookup isolation", [str(exe), log_fixture.resolve().as_posix()])
     snippets = [re.search(pattern, io_source, re.S)[0] for pattern in (
         r"void tl_set_guest_package\([^)]*\)\n\{.*?\n\}",
         r"static char \*b_getcwd\([^)]*\)\n\{.*?\n\}")]

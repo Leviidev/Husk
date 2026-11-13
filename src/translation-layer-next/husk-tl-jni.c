@@ -12,6 +12,7 @@
 #include "husk-tl-bionic.h"
 #include "husk-tl-dexindex.h"
 #include "husk-tl-va.h"
+#include "husk-tl-jni-allocation.h"
 
 /* ---------------------------------------------------------------- types */
 
@@ -35,9 +36,19 @@ static uint32_t hash_str(const char *s) { uint32_t h = 2166136261u; while (*s) {
 
 /* --------------------------------------------------------------- objects */
 
+static tl_jni_allocation_ledger g_allocations;
+void tl_jni_log_allocation_stats(const char *tag)
+{
+    tl_jni_allocation_sample s = tl_jni_allocation_snapshot(&g_allocations, sizeof(jobj));
+    tl_log_line("jvm-retained-partial[%s]: objects=%llu headers=%.1f MiB array-payload=%.1f MiB total-created=%llu deferred-unref-calls=%llu (requested bytes; excludes strings/fields/native resources/allocator overhead)",
+        tag ? tag : "", (unsigned long long)s.unfreed, s.headers / (1024.0 * 1024.0),
+        s.array_payload / (1024.0 * 1024.0), (unsigned long long)s.created, (unsigned long long)s.deferred);
+}
+
 static jobj *obj_alloc(uint8_t kind, tl_jclass *cls)
 {
     jobj *o = calloc(1, sizeof(*o));
+    if (o) tl_jni_allocation_object(&g_allocations);
     o->refs = 1;
     o->kind = kind;
     o->cls = cls;
@@ -51,15 +62,21 @@ void tl_jni_unref(jobj *o)
     if (!o || o->kind == TL_K_CLASS) return;
     /* With the Java runtime up, objects live as long as Java can reach them, which reference counts from native code do not
      * know about: nothing is freed here (a tracing collector's job). */
-    if (tl_dvm) return;
+    if (tl_dvm) { tl_jni_allocation_defer(&g_allocations); return; }
     if (__atomic_sub_fetch(&o->refs, 1, __ATOMIC_ACQ_REL) != 0) return;
+    size_t array_bytes = 0;
     switch (o->kind) {
     case TL_K_STRING: free(o->str.utf8); free(o->str.u16); break;
-    case TL_K_PRIM_ARRAY: free(o->arr.data); break;
-    case TL_K_OBJ_ARRAY: free(o->oarr.v); break;
+    case TL_K_PRIM_ARRAY:
+        if (o->arr.data) array_bytes = o->arr.allocated_bytes;
+        free(o->arr.data); break;
+    case TL_K_OBJ_ARRAY:
+        if (o->oarr.v) array_bytes = o->oarr.allocated_bytes;
+        free(o->oarr.v); break;
     default: break;
     }
     free(o->fields);
+    tl_jni_allocation_release(&g_allocations, array_bytes);
     free(o);
 }
 
@@ -179,6 +196,10 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len)
     jobj *o = obj_alloc(TL_K_PRIM_ARRAY, tl_jni_class(cn));
     o->arr.esz = esz_of(etype); o->arr.etype = etype; o->arr.len = len;
     o->arr.data = calloc(len ? len : 1, o->arr.esz);
+    if (o->arr.data) {
+        o->arr.allocated_bytes = (size_t)(len ? len : 1) * o->arr.esz;
+        tl_jni_allocation_array(&g_allocations, o->arr.allocated_bytes);
+    }
     return o;
 }
 
@@ -189,6 +210,10 @@ jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len)
     jobj *o = obj_alloc(TL_K_OBJ_ARRAY, tl_jni_class(cn));
     o->oarr.len = len;
     o->oarr.v = calloc(len ? len : 1, sizeof(jobj *));
+    if (o->oarr.v) {
+        o->oarr.allocated_bytes = (size_t)(len ? len : 1) * sizeof(jobj *);
+        tl_jni_allocation_array(&g_allocations, o->oarr.allocated_bytes);
+    }
     return o;
 }
 

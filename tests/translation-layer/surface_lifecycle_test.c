@@ -34,6 +34,7 @@ static unsigned publications, clears, releases, cleanups, paced, driver_destroys
 static unsigned displayed;
 static int context_version;
 static bool fail_cpu_publication;
+static bool fail_texture_generation;
 static bool displayed_opaque;
 
 static void pthread_mutex_lock(int *m) { assert(!*m); *m = 1; }
@@ -133,7 +134,7 @@ static void (*a_glBindFramebuffer)(unsigned, unsigned) = bind;
 static void (*a_glBindTexture)(unsigned, unsigned) = bind;
 static void active(unsigned unit) { (void)unit; }
 static void (*a_glActiveTexture)(unsigned) = active;
-static void gen(int count, unsigned *tex) { static unsigned next; assert(count == 1); *tex = ++next; }
+static void gen(int count, unsigned *tex) { static unsigned next; assert(count == 1); *tex = fail_texture_generation ? 0 : ++next; }
 static void (*a_glGenTextures)(int, unsigned *) = gen;
 static void parameter(unsigned t, unsigned p, int value) { (void)t; (void)p; (void)value; }
 static void (*a_glTexParameteri)(unsigned, unsigned, int) = parameter;
@@ -143,6 +144,15 @@ static void (*a_glCopyTexImage2D)(unsigned, int, unsigned, int, int, int, int, i
 static void subimage(unsigned t, int l, int xo, int yo, int x, int y, int w, int h)
 { (void)t; (void)l; (void)xo; (void)yo; (void)x; (void)y; (void)w; (void)h; }
 static void (*a_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int) = subimage;
+static unsigned perf_samples;
+static uint64_t frame_perf_now(void) { static uint64_t now = 1000; return ++now; }
+static uint64_t frame_perf_token(void) { return 1; }
+static void frame_perf_producer(uint64_t token, uint64_t started, uint64_t locked, uint64_t published, uint64_t finished)
+{
+    assert(!g_frame_handoff && !g_tex_lock && token == 1);
+    assert(started <= locked && locked <= published && published <= finished);
+    perf_samples++;
+}
 
 #include "surface_lifecycle_under_test.h"
 
@@ -151,6 +161,7 @@ static void scenario(bool gpu, int cpu_mode)
     memset(g_comp_surf, 0, sizeof(g_comp_surf));
     g_published_comp_surface = NULL;
     publications = clears = releases = cleanups = paced = driver_destroys = displayed = 0;
+    perf_samples = 0;
     context_version = gpu ? 3 : 0;
     tl_javaapp_app_pixels_rect_publish_with_opacity = cpu_mode == 3 ? pixels_opacity : NULL;
     tl_javaapp_app_pixels_rect_publish = cpu_mode == 2 ? pixels_rect_publish : NULL;
@@ -178,12 +189,14 @@ static void scenario(bool gpu, int cpu_mode)
     g_comp_surf[2].s = first; g_comp_surf[2].win = (void *)(uintptr_t)11;
     displayed = 99;
     assert(w_eglDestroySurface(NULL, first) && displayed == 99 && clears == 1);
+    assert(perf_samples == publications);
 }
 static void failed_cpu_replacement(void)
 {
     memset(g_comp_surf, 0, sizeof(g_comp_surf));
     g_published_comp_surface = NULL;
     publications = clears = releases = cleanups = paced = driver_destroys = displayed = 0;
+    perf_samples = 0;
     EGLSurface first = (void *)(uintptr_t)1, replacement = (void *)(uintptr_t)2;
     g_comp_surf[0].s = first; g_comp_surf[0].win = (void *)(uintptr_t)11;
     g_comp_surf[1].s = replacement; g_comp_surf[1].win = (void *)(uintptr_t)12;
@@ -201,6 +214,17 @@ static void failed_cpu_replacement(void)
     assert(displayed_opaque);
     assert(w_eglDestroySurface(NULL, replacement) && displayed == retained && !clears);
     assert(w_eglDestroySurface(NULL, first) && !displayed && clears == 1 && !g_published_comp_surface);
+    assert(perf_samples == publications); /* failed CPU publication is not a new frame */
+}
+static void no_generated_texture(void)
+{
+    memset(g_comp_surf, 0, sizeof(g_comp_surf));
+    g_comp_surf[0].s = (void *)(uintptr_t)1; g_comp_surf[0].win = (void *)(uintptr_t)11;
+    publications = clears = perf_samples = 0;
+    context_version = 3; fail_texture_generation = true;
+    assert(comp_swap(NULL, g_comp_surf[0].s, 10));
+    assert(!publications && !perf_samples && clears == 1); /* clearing is not a producer frame */
+    fail_texture_generation = false;
 }
 int main(void)
 {
@@ -210,6 +234,7 @@ int main(void)
     scenario(false, 1);
     scenario(false, 0);
     failed_cpu_replacement();
+    no_generated_texture();
     puts("PASS: GPU/CPU frames survive old-surface teardown; failed CPU allocation retains the old owner; current-surface destruction clears once without pacing under handoff");
     return 0;
 }

@@ -34,7 +34,7 @@ static struct {
 } E2;
 static struct { atomic_bool ended, paused; struct { int width, height; } cfg; } A;
 static bool handoff_held;
-static unsigned broadcasts, waits;
+static unsigned broadcasts, waits, retry_sleeps;
 
 static void tl_log_line(const char *format, ...) { (void)format; }
 static void pthread_mutex_lock(int *mutex) { assert(!*mutex); *mutex = 1; }
@@ -53,12 +53,96 @@ static int test_clock_gettime(int clock, struct timespec *value)
     value->tv_sec = 1; value->tv_nsec = 999000000;
     return 0;
 }
+static int test_nanosleep(const struct timespec *delay, struct timespec *remaining)
+{
+    assert(!E2.lk && !handoff_held && delay->tv_sec == 0 && delay->tv_nsec == 16000000L && !remaining);
+    retry_sleeps++;
+    return 0;
+}
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
 #endif
 #define clock_gettime test_clock_gettime
+#define nanosleep test_nanosleep
 #include "frame_publication_under_test.h"
 #undef clock_gettime
+#undef nanosleep
+
+static void actual_consumption_protocol(void)
+{
+    atomic_store(&A.ended, false); atomic_store(&A.paused, false);
+    E2.seq = 10; E2.drawn_seq = 9;
+    uint64_t seen = 9;
+    unsigned before_waits = waits;
+    /* Snapshot 10, then a producer publishes 11 before drawing acquires
+     * handoff. The real draw samples 11. An acknowledgement of only 10 made
+     * the next publication 12 unnecessarily wait for an already drawn 11. */
+    assert(tl_javaapp_app_tex_publish(11, 2, 2, 0, 0, 2, 2) == 10);
+    app_frame_presented(10, true, 11, true, true, &seen);
+    assert(seen == 11 && E2.drawn_seq == 11);
+    uint64_t previous = tl_javaapp_app_tex_publish(12, 2, 2, 0, 0, 2, 2);
+    assert(previous == 11);
+    tl_javaapp_app_frame_pace(previous);
+    assert(waits == before_waits); /* old snapshot-only ACK would wait here */
+
+    /* A UI-only trigger can also consume a newly published game frame. */
+    E2.seq = E2.drawn_seq = seen = 10;
+    tl_javaapp_app_tex_publish(11, 2, 2, 0, 0, 2, 2);
+    app_frame_presented(10, false, 11, true, true, &seen);
+    assert(seen == 11 && E2.drawn_seq == 11);
+    unsigned before_broadcasts = broadcasts;
+    app_frame_presented(11, false, 11, true, true, &seen);
+    assert(broadcasts == before_broadcasts); /* repeated texture is not newer consumption */
+
+    /* Publication 12 arrives AFTER sampling 11, before screen presentation.
+     * Never consume that unseen 12 or swallow its next render-loop wake. */
+    E2.seq = 11; E2.drawn_seq = seen = 10;
+    assert(tl_javaapp_app_tex_publish(12, 2, 2, 0, 0, 2, 2) == 11);
+    app_frame_presented(10, true, 11, true, true, &seen);
+    assert(E2.drawn_seq == 11 && seen == 11 && E2.seq == 12 && E2.seq != seen);
+    app_frame_presented(12, true, 12, true, true, &seen);
+    assert(E2.drawn_seq == 12 && seen == 12);
+
+    /* A fresh clear has no sampled texture, and legacy GLSurfaceView still
+     * consumes the snapshot. UI-only work without either advances nothing. */
+    tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
+    app_frame_presented(13, true, 0, true, true, &seen);
+    assert(E2.drawn_seq == 13 && seen == 13);
+    app_frame_presented(99, false, 0, true, true, &seen);
+    assert(E2.drawn_seq == 13 && seen == 13);
+    E2.seq = 14;
+    app_frame_presented(14, true, 0, true, false, &seen);
+    assert(E2.drawn_seq == 14 && seen == 14);
+
+    /* Failed screen swaps neither acknowledge nor consume the pending frame.
+     * The external failure path delays exactly once outside every lock. */
+    E2.seq = 15; before_broadcasts = broadcasts;
+    unsigned before_retry = retry_sleeps;
+    app_frame_presented(15, true, 15, false, true, &seen);
+    assert(E2.drawn_seq == 14 && seen == 14 && broadcasts == before_broadcasts);
+    assert(retry_sleeps == before_retry + 1 && E2.seq != seen);
+    app_frame_presented(15, true, 0, false, false, &seen);
+    assert(retry_sleeps == before_retry + 1); /* existing GLSurfaceView pacing owns retries */
+    app_frame_presented(15, true, 15, true, true, &seen);
+    assert(E2.drawn_seq == 15 && seen == 15);
+    app_frame_presented(13, true, 13, true, true, &seen);
+    assert(E2.drawn_seq == 15 && seen == 15); /* monotonic */
+
+    atomic_store(&A.paused, true); E2.seq = 16;
+    app_frame_presented(16, true, 16, true, true, &seen);
+    assert(E2.drawn_seq == 15 && seen == 15);
+    tl_javaapp_app_frame_pace(16); assert(waits == before_waits);
+    atomic_store(&A.paused, false); atomic_store(&A.ended, true);
+    app_frame_presented(16, true, 16, true, true, &seen);
+    assert(E2.drawn_seq == 15 && seen == 15);
+    atomic_store(&A.ended, false);
+    /* Session reset occurs after worker drain: a new render-loop local starts
+     * at zero and may acknowledge the new low sequence without old carry. */
+    E2.seq = E2.drawn_seq = seen = 0;
+    tl_javaapp_app_tex_publish(1, 2, 2, 0, 0, 2, 2);
+    app_frame_presented(1, true, 1, true, true, &seen);
+    assert(E2.drawn_seq == 1 && seen == 1);
+}
 
 int main(void)
 {
@@ -144,6 +228,7 @@ int main(void)
     assert(!E2.on && E2.seq == sequence + 1 && broadcasts == notifications + 1 && !E2.lk && waits == 1);
     handoff_held = false;
     free(E2.px);
-    puts("PASS: production GPU/CPU publication is nonblocking under handoff, preserves geometry and prior frames on CPU allocation failure, reports success/clear, and paces only after ownership unlock");
+    actual_consumption_protocol();
+    puts("PASS: production GPU/CPU publication preserves ownership; actual sampled-frame ACK removes snapshot/UI-only over-wait, retains post-draw publications and bounds failed-present retries without locks or false consumption");
     return 0;
 }

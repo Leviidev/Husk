@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -134,9 +135,10 @@ char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char 
     return failure ? NULL : out;
 }
 
-bool tl_path_case_resolve(char *path)
+static bool path_case_resolve_bounded(char *path, size_t cap)
 {
     if (!path || !path[0]) return false;
+    if (cap && strnlen(path, cap) == cap) return false;
     if (access(path, 0) == 0) return true;
 #ifndef _WIN32
     size_t len = strlen(path);
@@ -160,6 +162,7 @@ bool tl_path_case_resolve(char *path)
             } else {
                 size_t p_len = start - 1;
                 while (p_len > 1 && path[p_len - 1] == '/') p_len--;
+                if (p_len >= sizeof(parent)) { path[i] = saved; return false; }
                 snprintf(parent, sizeof(parent), "%.*s", (int)p_len, path);
             }
             DIR *d = opendir(parent);
@@ -172,6 +175,11 @@ bool tl_path_case_resolve(char *path)
                         if (de_len == comp_len) {
                             memcpy(path + start, de->d_name, comp_len);
                         } else {
+                            if (cap && (de_len > cap - 1 || len - comp_len > cap - 1 - de_len)) {
+                                path[i] = saved;
+                                closedir(d);
+                                return false;
+                            }
                             path[i] = saved;
                             memmove(path + start + de_len, path + i, strlen(path + i) + 1);
                             memcpy(path + start, de->d_name, de_len);
@@ -197,4 +205,45 @@ bool tl_path_case_resolve(char *path)
 #else
     return false;
 #endif
+}
+
+bool tl_path_case_resolve(char *path) { return path_case_resolve_bounded(path, 0); }
+
+bool tl_path_case_resolve_parent(char *path, size_t cap)
+{
+    if (!path || !cap) return false;
+    size_t len = strnlen(path, cap);
+    if (!len || len == cap || len >= 1024 || path[len - 1] == '/' || strchr(path, '\\')) return false;
+    /* This helper is for one missing leaf, not a path that traverses out of
+     * the caller's selected root. Keep the legacy resolver's rules separate. */
+    for (size_t i = 0; i < len;) {
+        while (path[i] == '/') i++;
+        size_t start = i;
+        while (path[i] && path[i] != '/') i++;
+        size_t n = i - start;
+        if ((n == 1 && path[start] == '.') ||
+            (n == 2 && path[start] == '.' && path[start + 1] == '.')) return false;
+    }
+    const char *slash = strrchr(path, '/');
+    if (!slash || !slash[1] || access(path, 0) == 0) return false;
+    char parent[1024], leaf[1024];
+    size_t parent_len = (size_t)(slash - path);
+    if (!parent_len) parent_len = 1; /* /new.log has the root as its parent. */
+    memcpy(parent, path, parent_len); parent[parent_len] = 0;
+    snprintf(leaf, sizeof(leaf), "%s", slash + 1);
+    if (!path_case_resolve_bounded(parent, sizeof(parent))) return false;
+    struct stat st;
+    if (stat(parent, &st) != 0 || !S_ISDIR(st.st_mode)) return false;
+    size_t a = strlen(parent), b = strlen(leaf);
+    bool root = a == 1 && parent[0] == '/';
+    if (a >= cap || b > cap - a - 1 || (!root && b == cap - a - 1)) return false;
+    char candidate[1024];
+    int n = snprintf(candidate, sizeof(candidate), "%s%s%s", parent, root ? "" : "/", leaf);
+    if (n < 0 || (size_t)n >= sizeof(candidate) || (size_t)n >= cap) return false;
+    /* A differently-cased existing file is handled by the caller's normal
+     * existing-file lookup; do not manufacture an alternate spelling. */
+    char existing[1024]; memcpy(existing, candidate, (size_t)n + 1);
+    if (path_case_resolve_bounded(existing, sizeof(existing))) return false;
+    memcpy(path, candidate, (size_t)n + 1);
+    return true;
 }

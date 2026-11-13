@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-ld.h"
@@ -16,6 +17,7 @@
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-frame-sync.h"
 #include "husk-tl-gl-capabilities.h"
+#include "husk-tl-frame-perf.h"
 
 void *tl_nwindow_native(void *window);
 int tl_nwindow_width(void *window);
@@ -432,6 +434,46 @@ static pthread_mutex_t g_frame_handoff = PTHREAD_MUTEX_INITIALIZER;
 static EGLSurface g_published_comp_surface;
 static atomic_bool g_compositor_es3;
 
+/* Counts native game publications, not screen swaps or duplicate UI redraws.
+ * The short sampler lock is never retained across GPU calls, pacing or logs. */
+static pthread_mutex_t g_frame_perf_lock = PTHREAD_MUTEX_INITIALIZER;
+static tl_frame_perf_epoch g_producer_perf;
+static uint64_t frame_perf_now(void)
+{
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now)) return 0;
+    return (uint64_t)now.tv_sec * UINT64_C(1000000000) + (uint64_t)now.tv_nsec;
+}
+void tl_egl_frame_perf_set_active(bool active)
+{
+    pthread_mutex_lock(&g_frame_perf_lock);
+    tl_frame_perf_epoch_activate(&g_producer_perf, active);
+    pthread_mutex_unlock(&g_frame_perf_lock);
+}
+static uint64_t frame_perf_token(void)
+{
+    pthread_mutex_lock(&g_frame_perf_lock);
+    uint64_t token = tl_frame_perf_epoch_token(&g_producer_perf);
+    pthread_mutex_unlock(&g_frame_perf_lock);
+    return token;
+}
+static void frame_perf_producer(uint64_t token, uint64_t started, uint64_t locked,
+    uint64_t published, uint64_t finished)
+{
+    if (!token || !started || locked < started || published < locked || finished < published) return;
+    char line[1024] = "";
+    pthread_mutex_lock(&g_frame_perf_lock);
+    if (tl_frame_perf_epoch_note(&g_producer_perf, token, published,
+            published - locked, finished - published, locked - started)
+        && tl_frame_perf_due(&g_producer_perf.window)) {
+        tl_frame_perf_format(line, sizeof(line), "game-producer", "copy-publish", "pace-wait", "handoff",
+            &g_producer_perf.window);
+        tl_frame_perf_roll(&g_producer_perf.window);
+    }
+    pthread_mutex_unlock(&g_frame_perf_lock);
+    if (line[0]) tl_log_line("%s", line);
+}
+
 static void *frame_fence(void) { return a_glFenceSync(0x9117 /* GL_SYNC_GPU_COMMANDS_COMPLETE */, 0); }
 static void frame_wait(void *sync) { a_glWaitSync(sync, 0, UINT64_MAX /* GL_TIMEOUT_IGNORED */); }
 static void frame_drop(void *sync) { a_glDeleteSync(sync); }
@@ -498,6 +540,7 @@ void tl_egl_compositor_frame_end(unsigned tex)
 }
 void tl_egl_compositor_frame_reset(void *context, bool current)
 {
+    tl_egl_frame_perf_set_active(false);
     pthread_mutex_lock(&g_frame_handoff);
     /* Stop publishing before clearing the registry. Late guest swaps then
      * remain on their old off-screen surface instead of republishing a frame. */
@@ -747,7 +790,10 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     void *win = NULL;
     int k = 0, tw = 0, th = 0;
     unsigned tex_id = 0;
+    uint64_t perf_token = frame_perf_token();
+    uint64_t perf_started = frame_perf_now();
     pthread_mutex_lock(&g_frame_handoff);
+    uint64_t perf_locked = frame_perf_now();
     pthread_mutex_lock(&g_tex_lock);
     for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
         if (g_comp_surf[i].s == s) {
@@ -830,9 +876,11 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
             : tl_javaapp_app_tex_publish(tex_id, cw, ch, vx, vy, vw, vh);
         g_published_comp_surface = s;
         pthread_mutex_unlock(&g_frame_handoff);
+        uint64_t perf_published = frame_perf_now();
         /* Waiting for UI pacing while owning the texture handoff would stop
          * that same UI from acquiring the next frame. */
         tl_javaapp_app_frame_pace(prev_seq);
+        if (tex_id) frame_perf_producer(perf_token, perf_started, perf_locked, perf_published, frame_perf_now());
         if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
         if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited GPU %dx%d -> %dx%d, opaque=%d)", n, cw, ch, vw, vh, opaque);
         return true;
@@ -840,22 +888,33 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
 
     EGLint rw = 0, rh = 0;
     const uint8_t *px = read_back_rect(d, s, cw, ch, &rw, &rh);
+    bool perf_accepted = false;
     if (px) {
         if (tl_javaapp_app_pixels_rect_publish_with_opacity) {
-            if (tl_javaapp_app_pixels_rect_publish_with_opacity(px, rw, rh, vx, vy, vw, vh, opaque))
+            if (tl_javaapp_app_pixels_rect_publish_with_opacity(px, rw, rh, vx, vy, vw, vh, opaque)) {
                 g_published_comp_surface = s;
+                perf_accepted = true;
+            }
         } else if (tl_javaapp_app_pixels_rect_publish) {
-            if (tl_javaapp_app_pixels_rect_publish(px, rw, rh, vx, vy, vw, vh))
+            if (tl_javaapp_app_pixels_rect_publish(px, rw, rh, vx, vy, vw, vh)) {
                 g_published_comp_surface = s;
+                perf_accepted = true;
+            }
         } else if (tl_javaapp_app_pixels_rect) {
             tl_javaapp_app_pixels_rect(px, rw, rh, vx, vy, vw, vh);
             g_published_comp_surface = s;
+            perf_accepted = true;
         } else if (tl_javaapp_app_pixels) {
             tl_javaapp_app_pixels(px, rw, rh);
             g_published_comp_surface = s;
+            perf_accepted = true;
         }
     }
     pthread_mutex_unlock(&g_frame_handoff);
+    if (perf_accepted) {
+        uint64_t perf_published = frame_perf_now();
+        frame_perf_producer(perf_token, perf_started, perf_locked, perf_published, perf_published);
+    }
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
     if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited CPU %dx%d -> %dx%d)", n, rw, rh, vw, vh);
     return true;

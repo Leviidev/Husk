@@ -25,12 +25,14 @@ static struct {
     int lk;
     bool on, opaque;
     uint32_t tex;
+    uint64_t seq;
     int x, y, w, h, pw, ph;
     uint8_t *px;
 } E2;
 static unsigned draws, uploads, begins, ends, uniform_calls;
 static int last_opaque = -1;
 static uint32_t program;
+static int64_t now_ns(void) { static int64_t now; return now += 1000; }
 static void pthread_mutex_lock(int *mutex) { assert(!*mutex); *mutex = 1; }
 static void pthread_mutex_unlock(int *mutex) { assert(*mutex); *mutex = 0; }
 static void tl_egl_compositor_frame_begin(void) { begins++; }
@@ -83,19 +85,22 @@ int main(void)
     overlay cpu = { .tex = 13 };
     overlay ui = { .prog = 2, .tex = 21, .vbo = 22, .tw = 2, .th = 2, .opaque_uniform = 10 };
     E2.on = true; E2.tex = 70; E2.w = 1568; E2.h = 724; E2.opaque = true;
-    app_frame_draw(&native, &cpu, 1864, 860);
+    E2.seq = 42;
+    uint64_t handoff_ns;
+    assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 42 && handoff_ns == 1000);
     assert(last_opaque == 1 && draws == 1 && !uploads);
     ov_draw(&ui, 1864, 860);
     assert(last_opaque == 0 && program == 2 && draws == 2);
     E2.opaque = false;
-    app_frame_draw(&native, &cpu, 1864, 860);
+    assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 42);
     assert(last_opaque == 0 && draws == 3);
     uint8_t pixels[16] = { 0 };
     E2.tex = 0; E2.px = pixels; E2.pw = E2.ph = 2; E2.opaque = true;
-    app_frame_draw(&native, &cpu, 1864, 860);
+    E2.seq = 43;
+    assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 43);
     assert(last_opaque == 1 && uploads == 1 && draws == 4);
     E2.on = false;
-    app_frame_draw(&native, &cpu, 1864, 860);
+    assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 0);
     assert(draws == 4 && uniform_calls == 4 && begins == ends && !E2.lk);
     puts("PASS: SurfaceView opacity follows its composition format, is preserved for GPU/CPU frames, and never forces Java UI or TextureView alpha");
     return 0;

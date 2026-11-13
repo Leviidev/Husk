@@ -31,6 +31,7 @@
 #include "husk-tl-memory.h"
 #include "husk-tl-host-device.h"
 #include "husk-tl-display-timing.h"
+#include "husk-tl-frame-perf.h"
 #include "husk-tl-guest-thread.h"
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-egl.h"
@@ -1011,14 +1012,18 @@ static dvm_native_fn egl_native_lookup(const char *name, const char *sig)
 }
 
 /* drawing the app's frame on the render thread: a quad at the view's place, the frame's bottom row first */
-static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
+static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t *handoff_ns)
 {
+    int64_t handoff_start = now_ns();
     tl_egl_compositor_frame_begin();
+    int64_t handoff_end = now_ns();
+    *handoff_ns = handoff_end >= handoff_start ? (uint64_t)(handoff_end - handoff_start) : 0;
     pthread_mutex_lock(&E2.lk);
     bool on = E2.on, opaque = E2.opaque; uint32_t tex = E2.tex; int x = E2.x, y = E2.y, w = E2.w, h = E2.h;
+    uint64_t sampled_seq = E2.seq;
     if (on && !tex && E2.px) { ov_upload(up, E2.px, E2.pw, E2.ph); }
     pthread_mutex_unlock(&E2.lk);
-    if (!on) { tl_egl_compositor_frame_end(0); return; }
+    if (!on) { tl_egl_compositor_frame_end(0); return 0; }
     tl_egl_compositor_frame_wait(tex);
     void (*viewport)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glViewport");
     void (*useProgram)(uint32_t) = gl_fn("glUseProgram");
@@ -1042,6 +1047,7 @@ static void app_frame_draw(overlay *o, overlay *up, int vw, int vh)
     draw(0x0005, 0, 4);
     tl_egl_compositor_frame_end(tex);
     viewport(0, 0, vw, vh);
+    return sampled_seq;
 }
 /* For EGL: whether this runtime's compositor holds the screen, and an app's own EGL window's frame for it (NULL: no longer shown) */
 bool tl_javaapp_compositing(void)
@@ -1159,6 +1165,31 @@ void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, in
 static uint64_t app_frame_seq(void) { pthread_mutex_lock(&E2.lk); uint64_t q = E2.seq; pthread_mutex_unlock(&E2.lk); return q; }
 static bool app_frame_on(void) { pthread_mutex_lock(&E2.lk); bool q = E2.on; pthread_mutex_unlock(&E2.lk); return q; }
 
+/* The producer waits for consumption of its PREVIOUS publication. Metadata
+ * may advance after the render loop's first snapshot, before drawing obtains
+ * handoff ownership. Acknowledge the actual sampled frame, including a draw
+ * triggered only by Java UI, and keep newer post-draw publications pending. */
+static void app_frame_presented(uint64_t observed_seq, bool observed_fresh, uint64_t sampled_seq, bool success, bool external, uint64_t *seen_seq)
+{
+    if (atomic_load(&A.ended) || atomic_load(&A.paused)) return;
+    if (!success) {
+        /* No acknowledgement or seen-sequence advance on a failed present.
+         * External renderers otherwise retry immediately because seq differs;
+         * bound that failure-only retry outside all frame/queue locks. */
+        if (external) { struct timespec retry = { 0, 16000000L }; nanosleep(&retry, NULL); }
+        return;
+    }
+    uint64_t consumed = sampled_seq ? sampled_seq : observed_fresh ? observed_seq : 0;
+    if (!consumed) return;
+    if (*seen_seq < consumed) *seen_seq = consumed;
+    pthread_mutex_lock(&E2.lk);
+    if (E2.drawn_seq < consumed) {
+        E2.drawn_seq = consumed;
+        pthread_cond_broadcast(&E2.cv);
+    }
+    pthread_mutex_unlock(&E2.lk);
+}
+
 /*
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
@@ -1217,6 +1248,7 @@ static void *gl_run(void *arg)
     ov_init_flip(&appov, true);
     ov_init_flip(&appup, true);
     tl_egl_compositor_context(ui, es3);
+    tl_egl_frame_perf_set_active(true);
     pthread_mutex_lock(&E2.lk);
     E2.dpy = dpy; E2.cfg = cfg; E2.ui = ui; E2.es3 = es3; E2.ready = true;
     pthread_cond_broadcast(&E2.cv);
@@ -1233,8 +1265,17 @@ static void *gl_run(void *arg)
     jobj *gl10 = NULL;
     jvalue p1[1];
     int64_t next = now_ns();
+    tl_frame_perf_window host_perf = {0};
+    uint64_t last_sampled_seq = 0;
+    bool perf_paused = false;
     while (!atomic_load(&A.ended)) {
         if (atomic_load(&A.paused)) {
+            if (!perf_paused) {
+                tl_egl_frame_perf_set_active(false);
+                tl_frame_perf_reset(&host_perf);
+                last_sampled_seq = 0;
+                perf_paused = true;
+            }
             pthread_mutex_lock(&E2.lk);
             E2.drawn_seq = E2.seq;
             pthread_cond_broadcast(&E2.cv);
@@ -1242,6 +1283,10 @@ static void *gl_run(void *arg)
             usleep(20000);
             next = now_ns();
             continue;
+        }
+        if (perf_paused) {
+            tl_egl_frame_perf_set_active(true);
+            perf_paused = false;
         }
         TL_AUTORELEASE_SCOPE(frame_pool);
         bool drew = false;
@@ -1310,25 +1355,40 @@ static void *gl_run(void *arg)
         }
         uint64_t q = app_frame_seq();
         bool app_fresh = q != app_seq;
-        app_seq = q;
         if (drew || fresh || app_fresh) {
+            int64_t compose_begin = now_ns();
+            uint64_t sampled_seq = 0, handoff_ns = 0;
             bool ui_vis = tl_ui_has_frame();
             if (!app || ui_vis) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 if (!app) {
                     clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
                     clear(0x4000);     /* web views show through from under the screen */
-                    app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height);
+                    sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
                 }
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
             }
-            swapBuffers(dpy, surf);
-            atomic_fetch_add(&A.frames, 1);
-            if (app_fresh) {
-                pthread_mutex_lock(&E2.lk);
-                if (E2.drawn_seq < q) E2.drawn_seq = q;
-                pthread_cond_broadcast(&E2.cv);
-                pthread_mutex_unlock(&E2.lk);
+            int64_t swap_begin = now_ns();
+            unsigned swap_ok = swapBuffers(dpy, surf);
+            int64_t swap_end = now_ns();
+            if (swap_ok) atomic_fetch_add(&A.frames, 1);
+            app_frame_presented(q, app_fresh, sampled_seq, swap_ok != 0, app == NULL, &app_seq);
+            /* Only a distinct external-game frame counts here. Java UI-only
+             * updates or a second presentation of the same texture must not
+             * inflate game FPS. Composition wall time includes handoff time;
+             * both are CPU observations, not a GPU execution timer. */
+            if (swap_ok && sampled_seq && sampled_seq != last_sampled_seq
+                && swap_begin >= compose_begin && swap_end >= swap_begin) {
+                last_sampled_seq = sampled_seq;
+                if (tl_frame_perf_note(&host_perf, (uint64_t)swap_end,
+                        (uint64_t)(swap_begin - compose_begin), (uint64_t)(swap_end - swap_begin), handoff_ns)
+                    && tl_frame_perf_due(&host_perf)) {
+                    char line[1024];
+                    tl_frame_perf_format(line, sizeof(line), "host-fresh-game", "compose-wall", "screen-swap", "handoff",
+                        &host_perf);
+                    tl_frame_perf_roll(&host_perf);
+                    tl_log_line("%s", line);
+                }
             }
             if (atomic_load(&A.defer_until_ns) != 0) {
                 pthread_mutex_lock(&A.q_lock);

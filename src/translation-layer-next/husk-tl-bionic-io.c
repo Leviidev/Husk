@@ -18,6 +18,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-binder.h"
 #include "husk-tl-path.h"
 #include "husk-tl-memory.h"
+#include "husk-tl-jni.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -121,6 +122,7 @@ void tl_host_log_memory_breakdown(const char *tag)
                     tag ? tag : "", vm.ledger_tag_graphics_footprint / mib,
                     vm.ledger_tag_graphics_footprint_compressed / mib);
     }
+    tl_jni_log_allocation_stats(tag);
 }
 
 /* ------------------------------------------------------------ path mapping */
@@ -255,6 +257,24 @@ void tl_set_system_fonts_dir(const char *dir) { snprintf(g_sysfonts, sizeof(g_sy
  * does not have is looked for here too, and fonts.xml already names them. */
 static char g_extrafonts[1024];
 void tl_set_extra_fonts_dir(const char *dir) { snprintf(g_extrafonts, sizeof(g_extrafonts), "%s", dir ? dir : ""); }
+
+/* The PC client's log cleanup removes EC.log before opening it again. Its
+ * one-level log path needs its existing parent, even while the leaf is absent.
+ * Keep this fallback narrower than normal resource lookup or general writes. */
+static bool trutien_log_leaf(const char *path)
+{
+    if (strcmp(g_guest_data_dir, "/data/data/vn.trutien.client") || !path ||
+        strncasecmp(path, "logs/", 5)) return false;
+    const char *leaf = path + 5;
+    size_t len = strlen(leaf);
+    if (len < 5 || strcasecmp(leaf + len - 4, ".log")) return false;
+    for (size_t i = 0; i < len; i++) {
+        unsigned char c = (unsigned char)leaf[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.')) return false;
+    }
+    return !strstr(leaf, "..");
+}
 
 const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
@@ -451,6 +471,20 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
                     snprintf(buf, n, "%s", probe);
                     return buf;
                 }
+            }
+        }
+        /* Existing files at every search root have already won. Only the
+         * current Tru Tien client's relative Logs/<leaf>.log may fall back
+         * to an existing parent under its own external game directory. */
+        if (path[0] != '/' && trutien_log_leaf(rel)) {
+            int length = snprintf(probe, sizeof(probe),
+                "%s/sdcard/Android/data/vn.trutien.client/files/element_astc_v2/%s",
+                tl_data_dir(), rel);
+            if (length >= 0 && (size_t)length < sizeof(probe) &&
+                tl_path_case_resolve_parent(probe, sizeof(probe)) &&
+                strlen(probe) < n) {
+                memcpy(buf, probe, strlen(probe) + 1);
+                return buf;
             }
         }
     }

@@ -29,4 +29,9 @@ char *tl_guest_getcwd(char *out, size_t size, const char *host_root, const char 
  * If path exists, returns true. Otherwise traverses existing components and matches
  * missing components case-insensitively using readdir/strcasecmp, updating path in-place. */
 bool tl_path_case_resolve(char *path);
+/* Resolve an already-existing parent directory in a slash-normalized path and
+ * retain a missing final leaf. Does not create anything. Rejects dot traversal, an existing leaf,
+ * missing/non-directory parents and insufficient capacity; failure leaves
+ * the input unchanged. */
+bool tl_path_case_resolve_parent(char *path, size_t cap);
 #endif
