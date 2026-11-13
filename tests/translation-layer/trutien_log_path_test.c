@@ -26,13 +26,12 @@ static const char *tl_ld_main_apk(void) { return ""; }
 bool tl_bionic_is_system_lib(const char *name) { (void)name; return false; }
 #include "trutien_log_resolver_under_test.h"
 
+static bool case_insensitive_fs;
 static bool same_path(const char *a, const char *b)
 {
-#ifdef _WIN32
-    return !strcasecmp(a, b); /* The host filesystem is case-insensitive. */
-#else
-    return !strcmp(a, b);
-#endif
+    /* Existing parents retain their spelling on case-insensitive filesystems
+     * (Windows and the default macOS APFS), while Linux must resolve it. */
+    return case_insensitive_fs ? !strcasecmp(a, b) : !strcmp(a, b);
 }
 
 static void make_dir(const char *path) { if (access(path, 0) != 0) assert(mkdir(path, 0700) == 0); }
@@ -63,6 +62,12 @@ int main(int argc, char **argv)
     strcpy(g_guest_data_dir, "/data/data/vn.trutien.client");
     char base[700], lower[800], probe[1024], out[1024], existing[900];
     snprintf(base, sizeof(base), "%s/sdcard/Android/data/vn.trutien.client/files/element_astc_v2", data_root);
+    char case_probe[800], case_alias_probe[800];
+    snprintf(case_probe, sizeof(case_probe), "%s/case_probe", base);
+    snprintf(case_alias_probe, sizeof(case_alias_probe), "%s/CASE_PROBE", base);
+    write_marker(case_probe);
+    case_insensitive_fs = access(case_alias_probe, 0) == 0;
+    assert(remove(case_probe) == 0);
     snprintf(lower, sizeof(lower), "%s/logs", base); make_dir(lower);
     snprintf(probe, sizeof(probe), "%s/Logs/EC.log", base);
     snprintf(existing, sizeof(existing), "%s/EC.log", lower);
@@ -105,6 +110,8 @@ int main(int argc, char **argv)
     snprintf(missing, sizeof(missing), "%s/logs/", base); helper_refuses(missing, sizeof(missing));
     snprintf(missing, sizeof(missing), "%s/logs/new.log", base); helper_refuses(missing, strlen(missing));
     assert(!tl_path_case_resolve_parent(NULL, 1024));
+    assert(tl_path_resolve("Logs/new.log", NULL, 1024) != NULL);
+    assert(!strcmp(tl_path_resolve("Logs/new.log", out, 0), "Logs/new.log"));
     helper_refuses(missing, 0);
     char long_path[1100]; memset(long_path, 'x', sizeof(long_path));
     long_path[0] = '/'; long_path[sizeof(long_path) - 1] = 0;

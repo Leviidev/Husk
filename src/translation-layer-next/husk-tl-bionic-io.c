@@ -279,6 +279,7 @@ static bool trutien_log_leaf(const char *path)
 const char *tl_path_resolve(const char *path, char *buf, size_t n)
 {
     if (!path) return path;
+    if (!buf || !n) return path;
     char norm[1024];
     if (strstr(path, "//") || strchr(path, '\\')) {
         tl_path_normalize_slashes(path, norm, sizeof(norm));
@@ -438,20 +439,23 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
         const char *rel = (path[0] == '/') ? path + 1 : path;
         char probe[1024];
         /* 1. <data_dir>/<rel> */
-        snprintf(probe, sizeof(probe), "%s/%s", tl_data_dir(), rel);
-        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+        int written = snprintf(probe, sizeof(probe), "%s/%s", tl_data_dir(), rel);
+        if (written >= 0 && (size_t)written < sizeof(probe) &&
+            (access(probe, F_OK) == 0 || tl_path_case_resolve(probe))) {
             snprintf(buf, n, "%s", probe);
             return buf;
         }
         /* 2. <data_dir>/files/<rel> */
-        snprintf(probe, sizeof(probe), "%s/files/%s", tl_data_dir(), rel);
-        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+        written = snprintf(probe, sizeof(probe), "%s/files/%s", tl_data_dir(), rel);
+        if (written >= 0 && (size_t)written < sizeof(probe) &&
+            (access(probe, F_OK) == 0 || tl_path_case_resolve(probe))) {
             snprintf(buf, n, "%s", probe);
             return buf;
         }
         /* 3. <data_dir>/sdcard/<rel> */
-        snprintf(probe, sizeof(probe), "%s/sdcard/%s", tl_data_dir(), rel);
-        if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+        written = snprintf(probe, sizeof(probe), "%s/sdcard/%s", tl_data_dir(), rel);
+        if (written >= 0 && (size_t)written < sizeof(probe) &&
+            (access(probe, F_OK) == 0 || tl_path_case_resolve(probe))) {
             snprintf(buf, n, "%s", probe);
             return buf;
         }
@@ -460,14 +464,16 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
             const char *pkg_name = strrchr(g_guest_data_dir, '/');
             if (pkg_name) {
                 pkg_name++;
-                snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/%s", tl_data_dir(), pkg_name, rel);
-                if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+                written = snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/%s", tl_data_dir(), pkg_name, rel);
+                if (written >= 0 && (size_t)written < sizeof(probe) &&
+                    (access(probe, F_OK) == 0 || tl_path_case_resolve(probe))) {
                     snprintf(buf, n, "%s", probe);
                     return buf;
                 }
                 /* 5. TruTien element_astc_v2: <data_dir>/sdcard/Android/data/<pkg>/files/element_astc_v2/<rel> */
-                snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/element_astc_v2/%s", tl_data_dir(), pkg_name, rel);
-                if (access(probe, F_OK) == 0 || tl_path_case_resolve(probe)) {
+                written = snprintf(probe, sizeof(probe), "%s/sdcard/Android/data/%s/files/element_astc_v2/%s", tl_data_dir(), pkg_name, rel);
+                if (written >= 0 && (size_t)written < sizeof(probe) &&
+                    (access(probe, F_OK) == 0 || tl_path_case_resolve(probe))) {
                     snprintf(buf, n, "%s", probe);
                     return buf;
                 }
