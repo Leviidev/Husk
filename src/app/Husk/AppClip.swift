@@ -49,7 +49,7 @@ enum AppClip {
             "Label": app.label,
             "URL": link(for: app.id).absoluteString,
             "IsRemovable": true,
-            "FullScreen": false,
+            "FullScreen": true,
             "Precomposed": true,
             "IgnoreManifestScope": true,
         ]
