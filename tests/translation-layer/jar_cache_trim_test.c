@@ -31,7 +31,7 @@ static void write_cache_file(const char *name, size_t size, time_t mtime)
 static bool exists_cache_file(const char *name)
 {
     char path[1400];
-    snprintf(path, sizeof(path), "%s/.jar-cache/%s", g_data_dir, name);
+    assert(snprintf(path, sizeof(path), "%s/.jar-cache/%s", g_data_dir, name) < (int)sizeof(path));
     return access(path, F_OK) == 0;
 }
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#define _DEFAULT_SOURCE
+#define _GNU_SOURCE
 #define TL_SESSION_IMPLEMENTATION
 #include "husk-tl-session.h"
 #include <assert.h>
@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
+static void tl_log_line(const char *fmt, ...) { (void)fmt; }
 #include "thread_registry_under_test.h"
 
 static pthread_key_t key;
