@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # macOS host test. No speaker, game, or third-party build is needed.
 set -eu
+unset TL_AUDIO_MUTE TL_AUDIO_STATS
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
@@ -25,3 +26,4 @@ fi
 "$OUT/aaudio_rate" 44100 split float 2
 "$OUT/aaudio_rate" rate-selection
 "$OUT/aaudio_rate" pacing
+"$OUT/aaudio_rate" pacing-muted

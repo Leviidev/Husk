@@ -127,21 +127,22 @@ static int check_rate_selection(void)
     return ok ? 0 : 1;
 }
 
-static int check_pacing(void)
+static int check_pacing(int muted)
 {
     void *builder = NULL, *stream = NULL;
     if (API(AAudio_createStreamBuilder, int (*)(void **))(&builder)) return 1;
     API(AAudioStreamBuilder_setSampleRate, void (*)(void *, int))(builder, 8000);
     if (API(AAudioStreamBuilder_openStream, int (*)(void *, void **))(builder, &stream)) return 1;
     API(AAudioStreamBuilder_delete, int (*)(void *))(builder);
+    if (muted) { setenv("TL_AUDIO_MUTE", "1", 1); tl_audio_install(); }
     API(AAudioStream_requestStart, int (*)(void *))(stream);
     int16_t pcm[8192 * 2] = { 0 };
     check_sleep = 1; /* Capture the OS sleep request without waiting. */
     API(AAudioStream_write, int (*)(void *, const void *, int, int64_t))(stream, pcm, 8192, 0);
     API(AAudioStream_close, int (*)(void *))(stream);
     int ok = requested_sleep.tv_sec == 1 && requested_sleep.tv_nsec == 24000000;
-    printf("no host hook: sleep=%lld s + %ld ns (expected 1 s + 24000000 ns)\n",
-           (long long)requested_sleep.tv_sec, requested_sleep.tv_nsec);
+    printf("%s: sleep=%lld s + %ld ns (expected 1 s + 24000000 ns)\n",
+           muted ? "muted host hook" : "no host hook", (long long)requested_sleep.tv_sec, requested_sleep.tv_nsec);
     puts(ok ? "PASS: pacing uses stream rate and a valid timespec" : "FAIL: stream pacing");
     return ok ? 0 : 1;
 }
@@ -225,7 +226,8 @@ static int play_tone(int request, int mode, int format, int channels)
 int main(int argc, char **argv)
 {
     if (argc == 2 && !strcmp(argv[1], "rate-selection")) return check_rate_selection();
-    if (argc == 2 && !strcmp(argv[1], "pacing")) return check_pacing();
+    if (argc == 2 && !strcmp(argv[1], "pacing")) return check_pacing(0);
+    if (argc == 2 && !strcmp(argv[1], "pacing-muted")) return check_pacing(1);
     if (argc == 2 && !strcmp(argv[1], "mixed"))
         return play_tone(44100, 0, 1, 2) || play_tone(48000, 1, 2, 2) || play_tone(24000, 1, 2, 2);
     int request = 24000, mode = 0, format = 1, channels = 2;

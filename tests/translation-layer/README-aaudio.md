@@ -17,7 +17,8 @@ produces 0.050 seconds at 2000 Hz. No game, APK, JIT, speaker, or network is nee
 
 The cases cover written and callback streams, float and 16-bit PCM, mono and
 stereo, 24000/48000 Hz, an unspecified rate, an isolated 44100 Hz stream, builder
-reuse, invalid rates, frame counters, and pacing without a host hook. A mixed
+reuse, invalid rates, frame counters, and pacing with no host hook or a muted
+host hook. A mixed
 case plays 44100, 48000, and 24000 Hz streams in one process. A split-write case
 checks fractional conversion across 257-frame buffers. Pass case
 arguments to run one case, for example `24000 callback float 2`.

@@ -72,7 +72,9 @@ static bool open_queue(int rate, int channels)
 
 static void sleep_for(int frames, int rate)
 {
-    struct timespec ts = { 0, (long)((double)frames * 1e9 / rate) };
+    if (frames <= 0 || rate <= 0) return;
+    int64_t ns = (int64_t)frames * 1000000000 / rate;
+    struct timespec ts = { ns / 1000000000, ns % 1000000000 };
     nanosleep(&ts, NULL);
 }
 
