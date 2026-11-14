@@ -21,5 +21,7 @@ fi
 "$OUT/aaudio_rate" 48000 write i16 1
 "$OUT/aaudio_rate" 0 callback float 2
 "$OUT/aaudio_rate" 44100 write i16 2
+"$OUT/aaudio_rate" mixed
+"$OUT/aaudio_rate" 44100 split float 2
 "$OUT/aaudio_rate" rate-selection
 "$OUT/aaudio_rate" pacing

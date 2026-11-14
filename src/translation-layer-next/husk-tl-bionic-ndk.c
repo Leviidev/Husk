@@ -370,8 +370,8 @@ static void *b_AAssetManager_open(void *mgr, const char *name, int mode)
 }
 /*
  * AAudio, the way FMOD (Minecraft's audio) prefers to play: a stream whose data callback the system calls for the next burst of
- * samples. The output is stereo 16-bit at the app's requested rate (48 kHz when unspecified); a thread calls the game's callback
- * for a burst and hands it to the host audio (tl_cocos_audio_hook, which resamples low rates and blocks until the speakers have room).
+ * samples. The stream keeps the app's rate (48 kHz when unspecified). Its PCM is converted to 48 kHz stereo 16-bit before the
+ * host hook, so AAudio streams share one host queue format. The host blocks until the speakers have room, pacing the mixer.
  * Recording is not offered.
  */
 extern void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
@@ -388,6 +388,9 @@ typedef struct aa_stream {
     aa_data_cb cb; void *user;
     int burst;                                  /* frames per data callback */
     int format, channels, rate;                 /* the app's PCM format, channel count, and sample rate */
+    int phase;                                 /* fractional output frame, retained across input buffers */
+    int16_t previous[AA_CHANNELS];
+    bool have_previous;
     _Atomic int64_t frames;                     /* written to the speakers so far */
     atomic_int state, buffer_size;
     atomic_bool run;
@@ -437,17 +440,48 @@ static const int16_t *aa_convert(aa_stream *s, const void *in, int frames, int16
         }
     return out;
 }
+/* ponytail: linear interpolation matches the host's low-rate converter. High-rate downsampling needs a band-limited filter. */
+static int aa_resample(aa_stream *s, const int16_t *pcm, int frames, int16_t *out)
+{
+    int count = 0;
+    for (int f = 0; f < frames; f++) {
+        s->phase += AA_RATE;
+        while (s->phase >= s->rate) {
+            s->phase -= s->rate;
+            for (int c = 0; c < AA_CHANNELS; c++) {
+                int cur = pcm[f * AA_CHANNELS + c];
+                int before = s->have_previous ? s->previous[c] : cur;
+                out[count * AA_CHANNELS + c] = (int16_t)(before + (int64_t)(cur - before) * (AA_RATE - s->phase) / AA_RATE);
+            }
+            count++;
+        }
+        for (int c = 0; c < AA_CHANNELS; c++) s->previous[c] = pcm[f * AA_CHANNELS + c];
+        s->have_previous = true;
+    }
+    return count;
+}
 static void aa_play(aa_stream *s, const void *buf, int frames)
 {
+    if (frames <= 0 || frames > INT32_MAX / AA_CHANNELS) return;
+    if (!tl_cocos_audio_hook) {
+        int64_t ns = (int64_t)frames * 1000000000 / s->rate;
+        struct timespec ts = { ns / 1000000000, ns % 1000000000 };
+        nanosleep(&ts, NULL);
+        return;
+    }
     static __thread int16_t *conv; static __thread int conv_frames;
     if (frames > conv_frames) { free(conv); conv = malloc((size_t)frames * AA_CHANNELS * sizeof(int16_t)); conv_frames = conv ? frames : 0; }
     if (!conv) return;
     const int16_t *pcm = aa_convert(s, buf, frames, conv);
-    if (tl_cocos_audio_hook) tl_cocos_audio_hook(pcm, frames, AA_CHANNELS, s->rate);
+    if (s->rate == AA_RATE) tl_cocos_audio_hook(pcm, frames, AA_CHANNELS, AA_RATE);
     else {
-        int64_t ns = (int64_t)frames * 1000000000 / s->rate;
-        struct timespec ts = { ns / 1000000000, ns % 1000000000 };
-        nanosleep(&ts, NULL);
+        int64_t capacity = (s->phase + (int64_t)frames * AA_RATE) / s->rate;
+        if (capacity > INT32_MAX / AA_CHANNELS) return;
+        int16_t *up = malloc((size_t)(capacity ? capacity : 1) * AA_CHANNELS * sizeof(int16_t));
+        if (!up) return;
+        int count = aa_resample(s, pcm, frames, up);
+        if (count) tl_cocos_audio_hook(up, count, AA_CHANNELS, AA_RATE);
+        free(up);
     }
 }
 static void *aa_pump(void *arg)

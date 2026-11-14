@@ -17,10 +17,13 @@ produces 0.050 seconds at 2000 Hz. No game, APK, JIT, speaker, or network is nee
 
 The cases cover written and callback streams, float and 16-bit PCM, mono and
 stereo, 24000/48000 Hz, an unspecified rate, an isolated 44100 Hz stream, builder
-reuse, invalid rates, frame counters, and pacing without a host hook. Pass case
+reuse, invalid rates, frame counters, and pacing without a host hook. A mixed
+case plays 44100, 48000, and 24000 Hz streams in one process. A split-write case
+checks fractional conversion across 257-frame buffers. Pass case
 arguments to run one case, for example `24000 callback float 2`.
 
 This is an offline PCM check. It does not measure physical speaker timing,
-latency, concurrent streams, or changes to the shared host queue's format within
-one process. Each tone case starts in a new process. A rebuilt Husk app still
-needs a device playback check.
+latency, concurrent streams, or interactions with AudioTrack/OpenSL ES. AAudio
+keeps a 48000 Hz host format; those other APIs can still select another queue
+format. Conversion uses linear interpolation, not a band-limited downsampling
+filter. A rebuilt Husk app still needs a device playback check.

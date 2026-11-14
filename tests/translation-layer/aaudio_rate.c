@@ -156,15 +156,11 @@ static int fill_tone(void *stream, void *user, void *data, int frames)
     return 1; /* AAUDIO_CALLBACK_RESULT_STOP */
 }
 
-int main(int argc, char **argv)
+static int play_tone(int request, int mode, int format, int channels)
 {
-    if (argc > 1 && !strcmp(argv[1], "rate-selection")) return check_rate_selection();
-    if (argc > 1 && !strcmp(argv[1], "pacing")) return check_pacing();
-    int request = argc > 1 ? atoi(argv[1]) : 24000;
+    sink.frames = sink.crossings = sink.first_crossing = sink.last_crossing = 0;
+    sink.previous = 0;
     int rate = request ? request : 48000, frames = rate / 10;
-    int callback = argc > 2 && !strcmp(argv[2], "callback");
-    int format = argc > 3 && !strcmp(argv[3], "float") ? 2 : 1;
-    int channels = argc > 4 ? atoi(argv[4]) : 2;
     tone t = { .frames = frames, .bytes = channels * (format == 2 ? 4 : 2) };
     t.pcm = malloc((size_t)frames * t.bytes);
     if (!t.pcm) abort();
@@ -180,7 +176,7 @@ int main(int argc, char **argv)
     if (request) API(AAudioStreamBuilder_setSampleRate, void (*)(void *, int))(builder, request);
     API(AAudioStreamBuilder_setChannelCount, void (*)(void *, int))(builder, channels);
     API(AAudioStreamBuilder_setFormat, void (*)(void *, int))(builder, format);
-    if (callback) {
+    if (mode == 1) {
         API(AAudioStreamBuilder_setFramesPerDataCallback, void (*)(void *, int))(builder, frames);
         API(AAudioStreamBuilder_setDataCallback, void (*)(void *, int (*)(void *, void *, void *, int), void *))(builder, fill_tone, &t);
     }
@@ -191,12 +187,20 @@ int main(int argc, char **argv)
     tl_audio_install();
     API(AAudioStream_requestStart, int (*)(void *))(stream);
     int written = frames;
-    if (callback) {
+    if (mode == 1) {
         for (int i = 0; i < 2000; i++) {
             if (API(AAudioStream_getFramesWritten, int64_t (*)(void *))(stream) == frames) break;
             struct timespec ts = { 0, 1000000 }; nanosleep(&ts, NULL);
         }
-    } else written = API(AAudioStream_write, int (*)(void *, const void *, int, int64_t))(stream, t.pcm, frames, 0);
+    } else {
+        written = 0;
+        for (int offset = 0; offset < frames;) {
+            int count = mode == 2 && frames - offset > 257 ? 257 : frames - offset;
+            written += API(AAudioStream_write, int (*)(void *, const void *, int, int64_t))(stream,
+                (uint8_t *)t.pcm + (size_t)offset * t.bytes, count, 0);
+            offset += count;
+        }
+    }
     int64_t counted = API(AAudioStream_getFramesWritten, int64_t (*)(void *))(stream);
     API(AAudioStream_requestStop, int (*)(void *))(stream);
     API(AAudioStream_close, int (*)(void *))(stream);
@@ -207,7 +211,7 @@ int main(int argc, char **argv)
     double frequency = sink.last_crossing > sink.first_crossing
         ? (sink.crossings - 1) * sink.rate / (sink.last_crossing - sink.first_crossing) : 0;
     printf("request=%d, %s, %s/%d: reported=%d, queue=%.0f Hz, duration=%.3f s, tone=%.1f Hz\n",
-           request, callback ? "callback" : "write", format == 2 ? "float" : "i16", channels,
+           request, mode == 1 ? "callback" : mode == 2 ? "split" : "write", format == 2 ? "float" : "i16", channels,
            reported, sink.rate, seconds, frequency);
     if (reported != rate || hardware != 48000 || written != frames || counted != frames
         || sink.channels != 2 || fabs(seconds - 0.1) > 0.00001 || fabs(frequency - 1000) > 5) {
@@ -216,4 +220,37 @@ int main(int argc, char **argv)
     }
     puts("PASS: stream rate, duration, pitch, channel conversion, and frame count");
     return 0;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc == 2 && !strcmp(argv[1], "rate-selection")) return check_rate_selection();
+    if (argc == 2 && !strcmp(argv[1], "pacing")) return check_pacing();
+    if (argc == 2 && !strcmp(argv[1], "mixed"))
+        return play_tone(44100, 0, 1, 2) || play_tone(48000, 1, 2, 2) || play_tone(24000, 1, 2, 2);
+    int request = 24000, mode = 0, format = 1, channels = 2;
+    if (argc > 5) goto usage;
+    if (argc > 1) {
+        if (!strcmp(argv[1], "0")) request = 0;
+        else if (!strcmp(argv[1], "44100")) request = 44100;
+        else if (!strcmp(argv[1], "48000")) request = 48000;
+        else if (strcmp(argv[1], "24000")) goto usage;
+    }
+    if (argc > 2) {
+        if (!strcmp(argv[2], "callback")) mode = 1;
+        else if (!strcmp(argv[2], "split")) mode = 2;
+        else if (strcmp(argv[2], "write")) goto usage;
+    }
+    if (argc > 3) {
+        if (!strcmp(argv[3], "float")) format = 2;
+        else if (strcmp(argv[3], "i16")) goto usage;
+    }
+    if (argc > 4) {
+        if (!strcmp(argv[4], "1")) channels = 1;
+        else if (strcmp(argv[4], "2")) goto usage;
+    }
+    return play_tone(request, mode, format, channels);
+usage:
+    fputs("usage: aaudio_rate [0|24000|44100|48000 [write|callback|split [i16|float [1|2]]]]\n", stderr);
+    return 2;
 }
