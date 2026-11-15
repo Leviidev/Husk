@@ -289,6 +289,8 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
                 if (pb < 0 && pv < 0) mPaddingBottom = p.bottom;
             }
             mBackground.setCallback(this);
+            if (mBackground.isStateful()) mBackground.setState(getDrawableState());
+            mBackground.setVisible(mVisibility == VISIBLE, false);
             applyBackgroundTint();
         }
         if (mForeground != null) mForeground.setCallback(this);
@@ -662,6 +664,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
             d.setCallback(this);
             if (d.isStateful()) d.setState(getDrawableState());
             d.setVisible(mVisibility == VISIBLE, false);
+            if (getWidth() > 0 || getHeight() > 0) d.setBounds(0, 0, getWidth(), getHeight());
             applyBackgroundTint();
         }
         requestLayout();

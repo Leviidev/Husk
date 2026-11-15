@@ -46,6 +46,10 @@ def main():
                      for name in ("ai_flags_to_darwin", "ni_flags_to_darwin")]
     (out / "net_flags_under_test.h").write_text("\n".join(net_functions), encoding="utf-8")
     android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
+    renderer_admission = [re.search(pattern, android_source, re.S)[0] for pattern in (
+        r"static bool java_renderer_surface_available\([^)]*\)\n\{.*?\n\}",
+        r"static bool java_renderer_frame\([^)]*\)\n\{.*?\n\}")]
+    (out / "java_renderer_frame_under_test.h").write_text("\n\n".join(renderer_admission), encoding="utf-8")
     publication = [re.search(pattern, android_source, re.S)[0] for pattern in (
         r"uint64_t tl_javaapp_app_tex_publish_with_opacity\([^)]*\)\n\{.*?\n\}",
         r"uint64_t tl_javaapp_app_tex_publish\([^)]*\)\n\{.*?\n\}",
@@ -139,7 +143,7 @@ def main():
         r"jobj \*tl_jni_new_prim_array\([^\n]*\)\n\{.*?\n\}",
         r"jobj \*tl_jni_new_obj_array\([^\n]*\)\n\{.*?\n\}")]
     (out / "jni_allocation_under_test.h").write_text("\n".join(jni_allocations), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test"):
+    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test", "gl_surface_admission_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",

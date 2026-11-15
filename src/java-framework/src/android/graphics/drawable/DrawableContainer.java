@@ -13,10 +13,14 @@ public class DrawableContainer extends Drawable implements Drawable.Callback {
     public void setEnterFadeDuration(int ms) { mEnterFade = ms; }
     public void setExitFadeDuration(int ms) { mExitFade = ms; }
     public boolean selectDrawable(int i) {
-        if (i == mCurIndex) return false;
+        if (i == mCurIndex) {
+            Drawable cur = getCurrent();
+            if (cur != null) cur.setBounds(getBounds());
+            return false;
+        }
         mCurIndex = i < mChildren.size() ? i : -1;
         Drawable d = getCurrent();
-        if (d != null) { d.setBounds(getBounds()); d.setState(getState()); d.setLevel(getLevel()); d.setAlpha(mAlpha); if (mFilter != null) d.setColorFilter(mFilter); }
+        if (d != null) { d.setBounds(getBounds()); d.setState(getState()); d.setLevel(getLevel()); d.setVisible(isVisible(), false); d.setAlpha(mAlpha); if (mFilter != null) d.setColorFilter(mFilter); }
         invalidateSelf();
         return true;
     }
@@ -33,6 +37,41 @@ public class DrawableContainer extends Drawable implements Drawable.Callback {
     @Override protected boolean onLevelChange(int l) { Drawable d = getCurrent(); return d != null && d.setLevel(l); }
     @Override protected boolean onStateChange(int[] s) { Drawable d = getCurrent(); return d != null && d.setState(s); }
     @Override public boolean isStateful() { return true; }
+    @Override public boolean setVisible(boolean v, boolean restart) {
+        boolean ch = super.setVisible(v, restart);
+        Drawable d = getCurrent();
+        if (d != null) d.setVisible(v, restart);
+        return ch;
+    }
+    @Override public Drawable mutate() {
+        for (int i = 0; i < mChildren.size(); i++) { Drawable d = mChildren.get(i); if (d != null) d.mutate(); }
+        return this;
+    }
+    protected final void huskCopyContainer(DrawableContainer src, android.content.res.Resources res, android.content.res.Resources.Theme t) {
+        mAlpha = src.mAlpha;
+        mFilter = src.mFilter;
+        huskCopyFrom(src);
+        for (Drawable d : src.mChildren) addChild(huskCloneChild(d, res, t));
+    }
+    protected final boolean huskCanCloneChildren() {
+        for (Drawable d : mChildren) if (!huskCanCloneChild(d)) return false;
+        return true;
+    }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneChildren()) return null;
+        final DrawableContainer src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                DrawableContainer c = new DrawableContainer();
+                c.huskCopyContainer(src, r, t);
+                c.selectDrawable(src.mCurIndex);
+                return c;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
     public void invalidateDrawable(Drawable who) { if (who == getCurrent()) invalidateSelf(); }
     public void scheduleDrawable(Drawable who, Runnable what, long when) { scheduleSelf(what, when); }
     public void unscheduleDrawable(Drawable who, Runnable what) { unscheduleSelf(what); }

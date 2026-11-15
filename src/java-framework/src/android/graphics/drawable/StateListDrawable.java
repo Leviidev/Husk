@@ -13,4 +13,23 @@ public class StateListDrawable extends DrawableContainer {
         boolean ch = selectDrawable(i);
         return super.onStateChange(s) || ch;
     }
+    protected final void huskCopyStateList(StateListDrawable src, android.content.res.Resources r, android.content.res.Resources.Theme t) {
+        for (int[] set : src.mSets) mSets.add(set);
+        huskCopyContainer(src, r, t);
+        onStateChange(getState());
+    }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneChildren()) return null;
+        final StateListDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                StateListDrawable s = new StateListDrawable();
+                s.huskCopyStateList(src, r, t);
+                return s;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
 }

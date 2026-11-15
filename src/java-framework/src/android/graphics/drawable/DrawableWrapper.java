@@ -19,6 +19,26 @@ public class DrawableWrapper extends Drawable implements Drawable.Callback {
     @Override public boolean isStateful() { return mDrawable != null && mDrawable.isStateful(); }
     @Override protected boolean onStateChange(int[] s) { return mDrawable != null && mDrawable.setState(s); }
     @Override protected boolean onLevelChange(int l) { return mDrawable != null && mDrawable.setLevel(l); }
+    @Override public Drawable mutate() { if (mDrawable != null) mDrawable.mutate(); return this; }
+    protected final void huskCopyWrapper(DrawableWrapper src, android.content.res.Resources r, android.content.res.Resources.Theme t) {
+        huskCopyFrom(src);
+        setDrawable(huskCloneChild(src.mDrawable, r, t));
+    }
+    protected final boolean huskCanCloneWrappedDrawable() { return huskCanCloneChild(mDrawable); }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneWrappedDrawable()) return null;
+        final DrawableWrapper src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                DrawableWrapper w = new DrawableWrapper(null);
+                w.huskCopyWrapper(src, r, t);
+                return w;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
     public void invalidateDrawable(Drawable who) { invalidateSelf(); }
     public void scheduleDrawable(Drawable who, Runnable what, long when) { scheduleSelf(what, when); }
     public void unscheduleDrawable(Drawable who, Runnable what) { unscheduleSelf(what); }

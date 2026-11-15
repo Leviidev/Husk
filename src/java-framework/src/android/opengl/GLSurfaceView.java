@@ -21,21 +21,27 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     private int version = 1, renderMode = RENDERMODE_CONTINUOUSLY;
     private boolean versionSet;
     private EGLContextFactory contextFactory;
-    private volatile boolean dirty = true, started, paused;
+    private volatile boolean dirty = true, started, paused, hasSurface;
     private final ArrayList<Runnable> queue = new ArrayList<>();
 
     public GLSurfaceView(android.content.Context c) { this(c, null); }
     public GLSurfaceView(android.content.Context c, android.util.AttributeSet a) { super(c, a); getHolder().addCallback(this); }
-    public void surfaceCreated(android.view.SurfaceHolder h) { start(); }
+    public void surfaceCreated(android.view.SurfaceHolder h) { hasSurface = true; start(); }
     /** A new size for the surface (the view was laid out again: bars hidden, rotated): the GL thread tells the renderer. */
-    public void surfaceChanged(android.view.SurfaceHolder h, int format, int w, int ht) { if (w > 0 && ht > 0) { resized = ((long) w << 32) | ht; requestRender(); } }
+    public void surfaceChanged(android.view.SurfaceHolder h, int format, int w, int ht) {
+        hasSurface = true;
+        if (w > 0 && ht > 0) { resized = ((long) w << 32) | ht; requestRender(); }
+        start();
+    }
     private volatile long resized;
     /** @hide Husk's GL thread: the size to give onSurfaceChanged, once (0: none new). */
     public final long huskTakeResize() { long r = resized; resized = 0; return r; }
-    public void surfaceDestroyed(android.view.SurfaceHolder h) {}
+    public void surfaceDestroyed(android.view.SurfaceHolder h) { hasSurface = false; }
+    /** @hide The retained native renderer may draw only while this view has a live surface. */
+    public final boolean huskHasSurface() { return hasSurface; }
     public void surfaceRedrawNeeded(android.view.SurfaceHolder h) { requestRender(); }
     public void surfaceRedrawNeededAsync(android.view.SurfaceHolder h, Runnable done) { requestRender(); done.run(); }
-    public void setRenderer(Renderer r) { renderer = r; if (isAttachedToWindow()) start(); }
+    public void setRenderer(Renderer r) { renderer = r; if (hasSurface && isAttachedToWindow()) start(); }
     public void setEGLContextClientVersion(int v) { version = v; versionSet = true; }
     public void setEGLConfigChooser(EGLConfigChooser c) {}
     public void setEGLConfigChooser(boolean depth) {}
@@ -53,9 +59,9 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public void onPause() { paused = true; }
     public void onResume() { paused = false; dirty = true; }
     public void queueEvent(Runnable r) { synchronized (queue) { queue.add(r); } husk.Native.requestRender(); }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); start(); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (hasSurface) start(); }
     private void start() {
-        if (renderer == null || started) return;
+        if (renderer == null || !hasSurface || started) return;
         started = true;
         // an app with its own context factory asks for its GL ES version there (EGL_CONTEXT_CLIENT_VERSION), not here
         if (!versionSet && contextFactory != null) {
@@ -73,8 +79,11 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
                 version = 2;
             }
         }
-        husk.Native.startGL(this, renderer, version);
+        huskStartGL(renderer, version);
     }
+
+    /** @hide Submit the ready surface to the host; separated from callback ordering for JVM contract tests. */
+    protected void huskStartGL(Renderer r, int esVersion) { husk.Native.startGL(this, r, esVersion); }
 
     private static HuskGL10 sGL;
     /** @hide The GL10 object EGLContext.getGL() hands out. */
@@ -85,7 +94,7 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
         ArrayList<Runnable> run;
         synchronized (queue) { run = new ArrayList<>(queue); queue.clear(); }
         for (Runnable r : run) r.run();
-        if (paused) return false;
+        if (paused || !hasSurface) return false;
         if (renderMode == RENDERMODE_CONTINUOUSLY) return true;
         boolean d = dirty; dirty = false; return d;
     }

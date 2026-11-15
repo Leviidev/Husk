@@ -17,4 +17,18 @@ public class ClipDrawable extends DrawableWrapper {
         android.view.Gravity.apply(mGravity, w, h, b, r);
         c.save(); c.clipRect(r); d.draw(c); c.restore();
     }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneWrappedDrawable()) return null;
+        final ClipDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                ClipDrawable d = new ClipDrawable(null, src.mGravity, src.mOrientation);
+                d.huskCopyWrapper(src, r, t);
+                return d;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
 }

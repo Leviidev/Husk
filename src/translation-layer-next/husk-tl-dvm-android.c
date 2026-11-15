@@ -1460,6 +1460,36 @@ static void app_frame_presented(uint64_t observed_seq, bool observed_fresh, uint
  * The render thread: one EGL surface on the app's screen, and on it, each frame, what the app's GLSurfaceView renderer draws (in
  * the app's own context) with the window's views over it (in Husk's). An app without GL still gets this thread for its views.
  */
+/* Java render callbacks are admitted separately from UI/external-frame
+ * composition: a UI wake must not draw into a destroyed GLSurfaceView. */
+static bool java_renderer_surface_available(jobj *view)
+{
+    jvalue surface = tl_jni_call(view, "huskHasSurface", "()Z", NULL);
+    if (tl_jni_pending()) { log_pending("huskHasSurface"); return false; }
+    return surface.z;
+}
+
+static bool java_renderer_frame(jobj *view, jobj *renderer, const jvalue *gl_arg, bool fresh)
+{
+    jvalue draw = tl_jni_call(view, "huskBeginFrame", "()Z", NULL);
+    if (tl_jni_pending()) log_pending("a queued GL event");
+    if (!java_renderer_surface_available(view)) return false;
+    jvalue rs = tl_jni_call(view, "huskTakeResize", "()J", NULL);
+    if (tl_jni_pending()) log_pending("huskTakeResize");
+    if (rs.j) {
+        jvalue p3[3] = { L(gl_arg[0].l), I((int)(rs.j >> 32)), I((int)(rs.j & 0xffffffff)) };
+        tl_log_line("javaapp: the GL view is now %dx%d", (int)(rs.j >> 32), (int)(rs.j & 0xffffffff));
+        tl_jni_call(renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
+        if (tl_jni_pending()) log_pending("onSurfaceChanged");
+        draw.z = true;
+    }
+    bool requested = atomic_exchange(&A.render_requested, false);
+    if (!(draw.z || fresh || requested)) return false;
+    tl_jni_call(renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", gl_arg);
+    if (tl_jni_pending()) log_pending("onDrawFrame");
+    return true;
+}
+
 static void *gl_run(void *arg)
 {
     TL_AUTORELEASE_SCOPE(thread_pool);
@@ -1562,7 +1592,7 @@ static void *gl_run(void *arg)
         TL_AUTORELEASE_SCOPE(frame_pool);
         bool drew = false;
         /* the app's renderer, once its GLSurfaceView is on screen */
-        if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !app) {
+        if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !app && java_renderer_surface_available(A.gl_view)) {
             /* GLSurfaceView's default is OpenGL ES 1 (fixed function, through ANGLE's ES1 front end); 2 and 3 as asked */
             int es = A.gl_version >= 3 && es3 ? 3 : A.gl_version <= 1 ? 1 : 2;
             const EGLint attr[] = { 0x3098, es, EGL_NONE };
@@ -1605,24 +1635,7 @@ static void *gl_run(void *arg)
         }
         if (app) {
             if (cur_ctx != app) { makeCurrent(dpy, surf, surf, app); cur_ctx = app; }
-            jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
-            if (tl_jni_pending()) log_pending("a queued GL event");
-            /* the view's surface changed size (laid out again: the app hid the bars, or turned): onSurfaceChanged again, as GLThread does */
-            jvalue rs = tl_jni_call(A.gl_view, "huskTakeResize", "()J", NULL);
-            if (tl_jni_pending()) log_pending("huskTakeResize");
-            if (rs.j) {
-                jvalue p3[3] = { L(gl10), I((int)(rs.j >> 32)), I((int)(rs.j & 0xffffffff)) };
-                tl_log_line("javaapp: the GL view is now %dx%d", (int)(rs.j >> 32), (int)(rs.j & 0xffffffff));
-                tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
-                if (tl_jni_pending()) log_pending("onSurfaceChanged");
-                draw.z = true;
-            }
-            /* a new frame of views needs the scene under it again: what was swapped is gone */
-            if (draw.z || fresh || atomic_exchange(&A.render_requested, false)) {
-                tl_jni_call(A.gl_renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
-                if (tl_jni_pending()) log_pending("onDrawFrame");
-                drew = true;
-            }
+            drew = java_renderer_frame(A.gl_view, A.gl_renderer, p1, fresh);
         }
         uint64_t q = app_frame_seq();
         bool app_fresh = q != app_seq;

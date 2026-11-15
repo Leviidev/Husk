@@ -11,4 +11,18 @@ public class InsetDrawable extends DrawableWrapper {
     @Override public int getIntrinsicWidth() { int w = super.getIntrinsicWidth(); return w < 0 ? -1 : w + l + r; }
     @Override public int getIntrinsicHeight() { int h = super.getIntrinsicHeight(); return h < 0 ? -1 : h + t + b; }
     @Override public boolean getPadding(Rect p) { boolean has = super.getPadding(p); p.left += l; p.top += t; p.right += r; p.bottom += b; return has || (l | t | r | b) != 0; }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneWrappedDrawable()) return null;
+        final InsetDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources res, android.content.res.Resources.Theme tm) {
+                InsetDrawable d = new InsetDrawable(null, src.l, src.t, src.r, src.b);
+                d.huskCopyWrapper(src, res, tm);
+                return d;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
 }

@@ -103,13 +103,23 @@ public abstract class Drawable {
     public Insets getOpticalInsets() { return Insets.NONE; }
     public void getOutline(Outline o) { o.setRect(getBounds()); o.setAlpha(0); }
     public Drawable mutate() { return this; }
-    // Every framework drawable has a constant state on Android (Material copies a menu item's background through it); Husk's
-    // simpler ones share themselves. An app's own Drawable subclass still gets null, as there.
-    public ConstantState getConstantState() {
-        if (!getClass().getName().startsWith("android.graphics.drawable.")) return null;
-        final Drawable self = this;
-        return new ConstantState() { @Override public Drawable newDrawable() { return self; } };
+    /** Copy configuration state common to cloned framework drawables without aliasing mutable bounds or callbacks. */
+    protected final void huskCopyFrom(Drawable src) {
+        mChangingConfigurations = src.mChangingConfigurations;
+        mTintList = src.mTintList;
+        mTintMode = src.mTintMode;
+        mColorFilter = src.mColorFilter;
     }
+    /** Clone a child drawable for a new owning container or wrapper so mutable state is never shared across views. */
+    protected static boolean huskCanCloneChild(Drawable d) {
+        return d == null || d.getConstantState() != null;
+    }
+    protected static Drawable huskCloneChild(Drawable d, Resources res, Resources.Theme t) {
+        if (d == null) return null;
+        ConstantState cs = d.getConstantState();
+        return cs != null ? cs.newDrawable(res, t) : null;
+    }
+    public ConstantState getConstantState() { return null; }
     public boolean canApplyTheme() { return false; }
     public void applyTheme(Resources.Theme t) {}
     public Region getTransparentRegion() { return null; }

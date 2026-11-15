@@ -8,4 +8,11 @@ public class PictureDrawable extends Drawable {
     @Override public void draw(Canvas c) { if (mPicture != null) { Rect b = getBounds(); c.save(); c.clipRect(b); c.translate(b.left, b.top); c.drawPicture(mPicture); c.restore(); } }
     @Override public int getIntrinsicWidth() { return mPicture == null ? -1 : mPicture.getWidth(); }
     @Override public int getIntrinsicHeight() { return mPicture == null ? -1 : mPicture.getHeight(); }
+    @Override public ConstantState getConstantState() {
+        final PictureDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { PictureDrawable d = new PictureDrawable(src.mPicture); d.huskCopyFrom(src); return d; }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
 }

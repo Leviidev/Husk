@@ -10,9 +10,28 @@ public class RippleDrawable extends LayerDrawable {
     private boolean mPressed;
     private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Drawable mMask;
+    private RippleDrawable(ColorStateList color, Drawable mask) {
+        super();
+        mColor = color;
+        mMask = mask;
+    }
     public RippleDrawable(ColorStateList color, Drawable content, Drawable mask) {
         super(content != null ? new Drawable[] { content } : new Drawable[0]);
         mColor = color; mMask = mask;
+    }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneLayers() || !huskCanCloneChild(mMask)) return null;
+        final RippleDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                RippleDrawable rd = new RippleDrawable(src.mColor, huskCloneChild(src.mMask, r, t));
+                rd.huskCopyLayers(src, r, t);
+                return rd;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
     }
     public void setColor(ColorStateList c) { mColor = c; invalidateSelf(); }
     public void setRadius(int r) {}

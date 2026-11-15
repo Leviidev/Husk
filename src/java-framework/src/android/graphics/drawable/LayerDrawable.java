@@ -74,6 +74,38 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
     @Override public void setHotspot(float x, float y) { for (Layer l : mLayers) if (l.d != null) l.d.setHotspot(x, y); }
     @Override public void jumpToCurrentState() { for (Layer y : mLayers) if (y.d != null) y.d.jumpToCurrentState(); }
     @Override public Drawable mutate() { for (Layer y : mLayers) if (y.d != null) y.d.mutate(); return this; }
+    protected final void huskCopyLayers(LayerDrawable src, android.content.res.Resources r, android.content.res.Resources.Theme t) {
+        mPaddingMode = src.mPaddingMode;
+        mAlpha = src.mAlpha;
+        huskCopyFrom(src);
+        for (Layer sl : src.mLayers) {
+            Layer y = new Layer();
+            y.d = huskCloneChild(sl.d, r, t);
+            y.id = sl.id; y.l = sl.l; y.t = sl.t; y.r = sl.r; y.b = sl.b;
+            y.w = sl.w; y.h = sl.h; y.gravity = sl.gravity;
+            if (y.d != null) y.d.setCallback(this);
+            mLayers.add(y);
+        }
+        layout(getBounds());
+    }
+    protected final boolean huskCanCloneLayers() {
+        for (Layer layer : mLayers) if (!huskCanCloneChild(layer.d)) return false;
+        return true;
+    }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneLayers()) return null;
+        final LayerDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                LayerDrawable ld = new LayerDrawable();
+                ld.huskCopyLayers(src, r, t);
+                return ld;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
     public void invalidateDrawable(Drawable who) { invalidateSelf(); }
     public void scheduleDrawable(Drawable who, Runnable what, long when) { scheduleSelf(what, when); }
     public void unscheduleDrawable(Drawable who, Runnable what) { unscheduleSelf(what); }

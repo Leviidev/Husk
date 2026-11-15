@@ -17,4 +17,11 @@ public class PaintDrawable extends ShapeDrawable {
         invalidateSelf();
     }
     protected boolean inflateTag(String name, android.content.res.Resources r, org.xmlpull.v1.XmlPullParser p, android.util.AttributeSet a) { return false; }
+    @Override public ConstantState getConstantState() {
+        final PaintDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { PaintDrawable p = new PaintDrawable(); p.huskCopyShape(src); return p; }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
 }

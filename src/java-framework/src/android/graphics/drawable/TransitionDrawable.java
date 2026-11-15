@@ -4,7 +4,23 @@ import android.graphics.Canvas;
 
 public class TransitionDrawable extends LayerDrawable {
     private long mStart; private int mDuration; private boolean mReverse, mCross;
+    private TransitionDrawable() {}
     public TransitionDrawable(Drawable[] layers) { super(layers); }
+    @Override public ConstantState getConstantState() {
+        if (!huskCanCloneLayers()) return null;
+        final TransitionDrawable src = this;
+        return new ConstantState() {
+            @Override public Drawable newDrawable() { return newDrawable(null, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r) { return newDrawable(r, null); }
+            @Override public Drawable newDrawable(android.content.res.Resources r, android.content.res.Resources.Theme t) {
+                TransitionDrawable td = new TransitionDrawable();
+                td.mCross = src.mCross;
+                td.huskCopyLayers(src, r, t);
+                return td;
+            }
+            @Override public int getChangingConfigurations() { return src.getChangingConfigurations(); }
+        };
+    }
     public void startTransition(int ms) { mStart = android.os.SystemClock.uptimeMillis(); mDuration = ms; mReverse = false; invalidateSelf(); }
     public void reverseTransition(int ms) { mStart = android.os.SystemClock.uptimeMillis(); mDuration = ms; mReverse = !mReverse; invalidateSelf(); }
     public void resetTransition() { mStart = 0; mReverse = false; invalidateSelf(); }
