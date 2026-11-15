@@ -55,12 +55,13 @@ int main(void)
     assert(stdp.sharpness == 0.0f && stdp.contrast == 0.0f && stdp.vibrance == 0.0f && stdp.anisotropy == 1.0f && !stdp.trilinear);
 
     tl_visual_params crisp = tl_visual_compute_params(TL_VISUAL_CRISP, true, 2796, 1290, 2796, 1290);
-    assert(fabsf(crisp.sharpness - 0.38f) < 1e-5f && crisp.anisotropy == 4.0f && crisp.trilinear);
+    assert(fabsf(crisp.sharpness - 0.22f) < 1e-5f && crisp.vibrance == 0.0f && crisp.anisotropy == 4.0f && crisp.trilinear);
 
     tl_visual_params pro_native = tl_visual_compute_params(TL_VISUAL_PRO_MAX, true, 2796, 1290, 2796, 1290);
     tl_visual_params pro_upscaled = tl_visual_compute_params(TL_VISUAL_PRO_MAX, true, 1568, 724, 2796, 1290);
     tl_visual_params pro_srgb = tl_visual_compute_params(TL_VISUAL_PRO_MAX, false, 2796, 1290, 2796, 1290);
-    assert(pro_upscaled.sharpness > pro_native.sharpness && pro_upscaled.sharpness <= 0.88f);
+    assert(fabsf(pro_native.sharpness - 0.30f) < 1e-5f && pro_native.vibrance == 0.0f);
+    assert(pro_upscaled.sharpness > pro_native.sharpness && pro_upscaled.sharpness <= 0.48f);
     assert(pro_native.contrast > crisp.contrast && pro_native.anisotropy == 8.0f);
     assert(pro_srgb.vibrance > pro_native.vibrance);
 
@@ -107,6 +108,6 @@ int main(void)
     apply_filter_param_i(0x0DE1, is_aniso_tex_target(0x0DE1), 0x2801, 0x2701, fake_set_i, fake_set_f);
     assert(last_val_i == 0x2701 && param_f_calls == 0);
 
-    puts("PASS: Pro Max visual preset defaults, RCAS upscale response, trilinear promotion, and capped hardware AF contracts hold");
+    puts("PASS: Pro Max visual preset defaults, edge-safe upscale response, trilinear promotion, and capped hardware AF contracts hold");
     return 0;
 }

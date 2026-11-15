@@ -26,8 +26,8 @@ static inline int tl_visual_clamp_preset(int preset)
     return preset;
 }
 
-/* Compute compositor sharpening, OLED micro-contrast, Display P3 adaptive
- * vibrance, and hardware anisotropic filtering parameters for a frame. */
+/* Compute calibrated compositor edge-safe texture detail, gentle linear filmic
+ * depth, gamut-safe vibrance, and anisotropic filtering parameters for a frame. */
 static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_color,
                                                         int src_w, int src_h, int dst_w, int dst_h)
 {
@@ -45,19 +45,19 @@ static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_co
     float extra_upscale = upscale > 1.02f ? (upscale - 1.0f) : 0.0f;
 
     if (mode == TL_VISUAL_CRISP) {
-        float sharp = 0.38f + extra_upscale * 0.40f;
-        out.sharpness = sharp > 0.68f ? 0.68f : sharp;
-        out.contrast = 0.14f;
-        out.vibrance = wide_color ? 0.08f : 0.14f;
+        float sharp = 0.22f + extra_upscale * 0.16f;
+        out.sharpness = sharp > 0.36f ? 0.36f : sharp;
+        out.contrast = 0.08f;
+        out.vibrance = wide_color ? 0.0f : 0.04f;
         out.anisotropy = 4.0f;
         out.trilinear = true;
         return out;
     }
 
-    float sharp = 0.58f + extra_upscale * 0.45f;
-    out.sharpness = sharp > 0.88f ? 0.88f : sharp;
-    out.contrast = 0.24f;
-    out.vibrance = wide_color ? 0.14f : 0.22f;
+    float sharp = 0.30f + extra_upscale * 0.20f;
+    out.sharpness = sharp > 0.48f ? 0.48f : sharp;
+    out.contrast = 0.14f;
+    out.vibrance = wide_color ? 0.0f : 0.05f;
     out.anisotropy = 8.0f;
     out.trilinear = true;
     return out;

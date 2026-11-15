@@ -23,7 +23,8 @@ static void tl_jni_clear(void) { pending = false; }
 
 typedef struct { uint32_t prog, tex, vbo; int tw, th, opaque_uniform, texel_uniform, enhance_uniform; } overlay;
 static int tl_host_visual_quality(void) { return TL_VISUAL_PRO_MAX; }
-static bool tl_host_display_wide_color(void) { return true; }
+static bool wide_color_enabled = true;
+static bool tl_host_display_wide_color(void) { return wide_color_enabled; }
 static struct {
     int lk;
     bool on, opaque;
@@ -34,7 +35,7 @@ static struct {
 } E2;
 static unsigned draws, uploads, begins, ends, uniform_calls, enhance_calls;
 static int last_opaque = -1;
-static float last_inv_x, last_inv_y, last_sharp, last_contrast, last_vibrance;
+static float last_inv_x, last_inv_y, last_sharp, last_contrast, last_vibrance, last_wide = -1.0f;
 static uint32_t program;
 static int64_t now_ns(void) { static int64_t now; return now += 1000; }
 static void pthread_mutex_lock(int *mutex) { assert(!*mutex); *mutex = 1; }
@@ -56,8 +57,8 @@ static void uniform2f(int32_t location, float x, float y)
 { assert(location == 11 && program == 1); last_inv_x = x; last_inv_y = y; }
 static void uniform4f(int32_t location, float x, float y, float z, float w)
 {
-    assert(location == 12 && program == 1 && w == 0.0f);
-    last_sharp = x; last_contrast = y; last_vibrance = z; enhance_calls++;
+    assert(location == 12 && program == 1 && (w == 0.0f || w == 1.0f));
+    last_sharp = x; last_contrast = y; last_vibrance = z; last_wide = w; enhance_calls++;
 }
 static void draw(uint32_t mode, int32_t first, int32_t count)
 { assert(mode == 5 && !first && count == 4 && last_opaque >= 0); draws++; }
@@ -102,12 +103,15 @@ int main(void)
     uint64_t handoff_ns;
     assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 42 && handoff_ns == 1000);
     assert(last_opaque == 1 && draws == 1 && !uploads && enhance_calls == 1);
-    assert(last_inv_x > 0.0f && last_inv_y > 0.0f && last_sharp > 0.58f && last_contrast > 0.0f && last_vibrance > 0.0f);
+    assert(last_inv_x > 0.0f && last_inv_y > 0.0f && last_sharp > 0.30f && last_sharp <= 0.48f
+           && last_contrast > 0.0f && last_vibrance == 0.0f && last_wide == 1.0f);
     ov_draw(&ui, 2796, 1290);
     assert(last_opaque == 0 && program == 2 && draws == 2 && enhance_calls == 1);
     E2.opaque = false;
+    wide_color_enabled = false;
     assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 42);
-    assert(last_opaque == 0 && draws == 3);
+    assert(last_opaque == 0 && draws == 3 && last_wide == 0.0f && last_vibrance > 0.0f);
+    wide_color_enabled = true;
     uint8_t pixels[16] = { 0 };
     E2.tex = 0; E2.px = pixels; E2.pw = E2.ph = 2; E2.opaque = true;
     E2.seq = 43;

@@ -49,7 +49,7 @@ struct TLAppSettings: Codable, Equatable {
         }
     }
 
-    /// Compositor sharpening, OLED micro-contrast, Display P3 vibrance, and anisotropic texture filtering for sharper 3D visuals.
+    /// Compositor edge anti-aliasing, realistic Display P3 color calibration, linear filmic depth, and anisotropic texture filtering.
     enum VisualQuality: String, Codable, CaseIterable, Identifiable {
         case standard, crisp, proMax
         var id: String { rawValue }
@@ -62,9 +62,9 @@ struct TLAppSettings: Codable, Equatable {
         }
         var detail: String {
             switch self {
-            case .standard: return "Original game output without compositor sharpening or anisotropic filtering."
-            case .crisp: return "Retina contrast-adaptive sharpening, balanced OLED depth, and 4x anisotropic textures."
-            case .proMax: return "Maximum sharpness, Pro Max OLED micro-contrast, P3 vibrance, and 8x anisotropic filtering."
+            case .standard: return "Display P3-calibrated game colors without extra sharpening or anisotropic filtering."
+            case .crisp: return "Directional edge anti-aliasing, natural texture relief, balanced linear depth, Display P3 calibration, and 4x anisotropic textures."
+            case .proMax: return "Maximum foliage/edge anti-aliasing, realistic Display P3 color calibration, filmic linear depth, and 8x anisotropic filtering."
             }
         }
         var presetCode: Int32 {
