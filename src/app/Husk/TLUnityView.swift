@@ -93,6 +93,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// Active touches by UITouch identity, each given a small stable id like Android's pointer ids.
     private var pointers: [ObjectIdentifier: Int32] = [:]
     private var lastTouchPixels: [ObjectIdentifier: (Float, Float)] = [:]
+    private var notificationObservers: [NSObjectProtocol] = []
 
     /// "58 fps · 11.2 ms" in the corner, as the other screen has: frames the game finished per second, and the
     /// mean time one frame takes it. Refreshed once a second from the runtime's own counters.
@@ -167,9 +168,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: its views are told (an adjustResize window shrinks above it).
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
-                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                notificationObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                     self?.keyboardMoved(note)
-                }
+                })
             }
         } else if engine == .flutter {
             TLUnityUIView.cocosView = self
@@ -183,17 +184,29 @@ final class TLUnityUIView: UIView, UIKeyInput {
             addGestureRecognizer(back)
             // The keyboard covers the bottom of the app: Flutter is told, and moves the focused field above it.
             for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
-                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                notificationObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                     self?.keyboardMoved(note)
-                }
+                })
             }
         }
-        // The GPU is not the app's while it is in the background: stop drawing, and carry on when it returns.
-        NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
+        let nc = NotificationCenter.default
+        // Pause native runtime, GL compositor and audio only when entering background so
+        // notification banners, Control Center peeks and screen recording keep gameplay fluid.
+        notificationObservers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.cancelAllTouches()
             husk_unity_set_paused(true)
+        })
+        for name in [UIApplication.willEnterForegroundNotification, UIApplication.didBecomeActiveNotification] {
+            notificationObservers.append(nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                guard let self, self.window != nil, UIApplication.shared.applicationState != .background else { return }
+                husk_unity_set_paused(false)
+                self.reportHostRuntimeConditions()
+            })
         }
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            if self?.window != nil { husk_unity_set_paused(false) }
+        for name in [UIScreen.capturedDidChangeNotification, ProcessInfo.thermalStateDidChangeNotification] {
+            notificationObservers.append(nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.reportHostRuntimeConditions()
+            })
         }
     }
 
@@ -262,7 +275,22 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_flutter_set_keyboard_inset(keyboardInset)
     }
 
-    deinit { statsTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
+    deinit {
+        statsTimer?.invalidate()
+        for token in notificationObservers {
+            NotificationCenter.default.removeObserver(token)
+        }
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func reportHostRuntimeConditions() {
+        let captured = (window?.screen?.isCaptured == true)
+            || UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.screen }
+                .contains(where: \.isCaptured)
+        husk_native_screen_captured(captured ? 1 : 0)
+        husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
+    }
 
     private func updateStats() {
         var p = husk_unity_perf()
@@ -390,7 +418,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let wideColor = HuskDisplayColor.wideColor(for: traitCollection)
         HuskDisplayColor.apply(to: layer, traits: traitCollection)
         husk_host_set_display_metrics(Float(contentScaleFactor), Float(hostScreen.maximumFramesPerSecond), wideColor ? 1 : 0)
-        husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
+        reportHostRuntimeConditions()
         HuskLog.log("tl", "host display: nativePixels=\(hostScreen.nativeBounds.size) nativeScale=\(hostScreen.nativeScale) renderScale=\(contentScaleFactor) gamut=\(wideColor ? "DisplayP3" : "sRGB") refreshCapability=\(hostScreen.maximumFramesPerSecond) Hz")
         HuskLog.log("tl", "visual profile: \(appSettings.visualQuality.title)")
         let started: Bool
@@ -1043,11 +1071,20 @@ final class TLUnityUIView: UIView, UIKeyInput {
         }
     }
 
+    private func cancelAllTouches() {
+        for (key, pid) in pointers {
+            let pos = lastTouchPixels[key] ?? (0, 0)
+            husk_unity_touch(3, pid, pos.0, pos.1)
+        }
+        pointers.removeAll(keepingCapacity: true)
+        lastTouchPixels.removeAll(keepingCapacity: true)
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?)     { send(touches, phase: 0) }
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?)     { send(touches, phase: 1) }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?)     { send(touches, phase: 2) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        send(touches, phase: 2)
+        send(touches, phase: 3)
     }
 }
 
@@ -1340,6 +1377,7 @@ final class TLUnityModel: ObservableObject {
 /// status, the frames per second and the time a frame takes -- and, with developer info on, the log beside the game.
 struct TLCocosAttemptView: View {
     let app: TLApp
+    var shouldResetOrientationOnExit: (() -> Bool)? = nil
     var onSwitch: ((TLApp) -> Void)? = nil
     var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
@@ -1365,8 +1403,14 @@ struct TLCocosAttemptView: View {
     @State private var showSwitcher = false
     private var showLog: Bool { get { showLogSetting && devInfo } nonmutating set { showLogSetting = newValue } }
 
-    init(app: TLApp, onSwitch: ((TLApp) -> Void)? = nil, onClose: (() -> Void)? = nil) {
+    init(
+        app: TLApp,
+        shouldResetOrientationOnExit: (() -> Bool)? = nil,
+        onSwitch: ((TLApp) -> Void)? = nil,
+        onClose: (() -> Void)? = nil
+    ) {
         self.app = app
+        self.shouldResetOrientationOnExit = shouldResetOrientationOnExit
         self.onSwitch = onSwitch
         self.onClose = onClose
         let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
@@ -1379,6 +1423,8 @@ struct TLCocosAttemptView: View {
     }
 
     private func closeScreen() {
+        husk_unity_set_paused(true)
+        if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
         if let onClose { onClose() } else { dismiss() }
     }
 
@@ -1483,7 +1529,9 @@ struct TLCocosAttemptView: View {
             CrashReport.gameEnded()
             model.stop()
             UIApplication.shared.isIdleTimerDisabled = false
-            HuskOrientation.set(HuskOrientation.standard)
+            if shouldResetOrientationOnExit?() ?? true {
+                HuskOrientation.set(HuskOrientation.standard)
+            }
             if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
         }
         .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in closeScreen() }
@@ -1796,11 +1844,8 @@ struct TLGameSwitcherSheet: View {
 
     private func row(for item: TLApp, active: Bool) -> some View {
         HStack(spacing: 12) {
-            if let path = item.iconPath, let img = UIImage(contentsOfFile: path) {
-                Image(uiImage: img)
-                    .resizable().aspectRatio(contentMode: .fill)
-                    .frame(width: 36, height: 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            if item.iconPath != nil {
+                AppIcon(path: item.iconPath, size: 36)
             } else {
                 Image(systemName: "gamecontroller.fill")
                     .font(.system(size: 16))

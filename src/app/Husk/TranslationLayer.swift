@@ -257,9 +257,14 @@ final class TranslationLayerStore: ObservableObject {
 
     /// Remember that a game was just started, for Home.
     func markPlayed(_ app: TLApp) {
+        let now = Date()
+        if let i = apps.firstIndex(where: { $0.id == app.id }) {
+            apps[i].lastPlayed = now
+        }
         let dir = TranslationLayer.root.appendingPathComponent(app.id, isDirectory: true)
-        try? "\(Date().timeIntervalSince1970)".write(to: dir.appendingPathComponent("last-played.txt"), atomically: true, encoding: .utf8)
-        reloadQuietly()
+        Task.detached(priority: .utility) {
+            try? "\(now.timeIntervalSince1970)".write(to: dir.appendingPathComponent("last-played.txt"), atomically: true, encoding: .utf8)
+        }
     }
 
     /// Call the app something else. The name Android gave it is only where it started.
@@ -946,6 +951,7 @@ struct TLAttemptView: View {
     @State private var switchingTo: TLApp?
     @State private var switchStatus = ""
     @State private var switchError: String?
+    @State private var switchTask: Task<Void, Never>?
 
     init(app: TLApp) {
         self.app = app
@@ -956,7 +962,8 @@ struct TLAttemptView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let next = switchingTo {
-                VStack(spacing: 12) {
+                VStack(spacing: 14) {
+                    AppIcon(path: next.iconPath, size: 56)
                     ProgressView().tint(.white)
                     Text(switchStatus.isEmpty ? "Switching to \(next.label)…" : switchStatus)
                         .font(.subheadline.weight(.medium))
@@ -974,6 +981,11 @@ struct TLAttemptView: View {
                     .onDisappear { Playtime.end("tl:" + activeApp.id) }
             }
         }
+        .onDisappear {
+            switchTask?.cancel()
+            switchTask = nil
+            HuskOrientation.set(HuskOrientation.standard)
+        }
         .alert("Could Not Switch Game", isPresented: Binding(get: { switchError != nil }, set: { if !$0 { switchError = nil } })) {
             Button("OK", role: .cancel) { switchError = nil }
         } message: {
@@ -987,33 +999,59 @@ struct TLAttemptView: View {
         if game.report?.webKind != nil {
             WebAppScreenView(app: game)
         } else if game.report?.runsOnNativeRuntime == true {
-            TLCocosAttemptView(app: game, onSwitch: { switchTo($0) }, onClose: { dismiss() })
+            TLCocosAttemptView(
+                app: game,
+                shouldResetOrientationOnExit: { switchingTo == nil },
+                onSwitch: { switchTo($0) },
+                onClose: { dismiss() }
+            )
         } else {
-            TLClassicAttemptView(app: game, onSwitch: { switchTo($0) }, onClose: { dismiss() })
+            TLClassicAttemptView(
+                app: game,
+                shouldResetOrientationOnExit: { switchingTo == nil },
+                onSwitch: { switchTo($0) },
+                onClose: { dismiss() }
+            )
         }
     }
 
     @MainActor
     private func switchTo(_ next: TLApp) {
         guard switchingTo == nil, next.id != activeApp.id else { return }
-        if activeApp.report?.runsOnNativeRuntime != true && activeApp.report?.webKind == nil {
+        if activeApp.report?.runsOnNativeRuntime == true {
+            husk_unity_set_paused(true)
+        } else if activeApp.report?.webKind == nil {
             husk_tl_attempt_stop()
         }
+        let nextSettings = TLAppSettings.load(next.id, packageName: next.packageName)
+        let nextPortrait: Bool = {
+            if next.report?.webKind != nil || next.report?.runsOnNativeRuntime == true {
+                return next.drawsPortrait(nextSettings)
+            }
+            return nextSettings.orientation != .landscape
+        }()
+        // Transition straight to the destination orientation instead of bouncing through .standard.
+        HuskOrientation.set(nextPortrait ? .portrait : .landscape)
+
         let closingLabel = activeApp.label
         switchingTo = next
         switchStatus = "Closing \(closingLabel)…"
-        Task { @MainActor in
+        switchTask?.cancel()
+        switchTask = Task { @MainActor in
             // Allow onDisappear cleanup and background stop task to start first.
             await Task.yield()
+            guard !Task.isCancelled else { return }
             let stopped: Bool
             if let nextApk = next.apks.first, next.report?.runsOnNativeRuntime == true {
                 stopped = await TLNativeSession.shared.prepare(for: nextApk)
             } else {
                 stopped = await TLNativeSession.shared.stop()
             }
+            guard !Task.isCancelled else { return }
             guard stopped else {
                 switchingTo = nil
                 switchStatus = ""
+                switchTask = nil
                 switchError = TLNativeSession.shared.lastError ?? "The previous game has not finished closing."
                 return
             }
@@ -1026,19 +1064,25 @@ struct TLAttemptView: View {
                 } catch {
                     switchingTo = nil
                     switchStatus = ""
+                    switchTask = nil
                     switchError = error.localizedDescription
                     return
                 }
             }
-            if TLAppSettings.load(next.id).geode, case .ready = GeodeSupport.shared.current(next) {
-                // Already ready.
-            } else if TLAppSettings.load(next.id).geode {
-                switchStatus = "Preparing Geode…"
-                await GeodeSupport.shared.prepare(next)
+            guard !Task.isCancelled else { return }
+            if nextSettings.geode {
+                if case .ready = GeodeSupport.shared.current(next) {
+                    // Already ready.
+                } else {
+                    switchStatus = "Preparing Geode…"
+                    await GeodeSupport.shared.prepare(next)
+                }
             }
+            guard !Task.isCancelled else { return }
             activeApp = next
             switchingTo = nil
             switchStatus = ""
+            switchTask = nil
         }
     }
 }
@@ -1047,6 +1091,7 @@ struct TLAttemptView: View {
 /// same three-finger way to hide it, and the game's own settings.
 struct TLClassicAttemptView: View {
     let app: TLApp
+    var shouldResetOrientationOnExit: (() -> Bool)? = nil
     var onSwitch: ((TLApp) -> Void)? = nil
     var onClose: (() -> Void)? = nil
     @StateObject private var runner = TLAttemptRunner()
@@ -1061,8 +1106,14 @@ struct TLClassicAttemptView: View {
     private let cleanLayout: Bool
     private var showLog: Bool { get { showLogSetting && devInfo } nonmutating set { showLogSetting = newValue } }
 
-    init(app: TLApp, onSwitch: ((TLApp) -> Void)? = nil, onClose: (() -> Void)? = nil) {
+    init(
+        app: TLApp,
+        shouldResetOrientationOnExit: (() -> Bool)? = nil,
+        onSwitch: ((TLApp) -> Void)? = nil,
+        onClose: (() -> Void)? = nil
+    ) {
         self.app = app
+        self.shouldResetOrientationOnExit = shouldResetOrientationOnExit
         self.onSwitch = onSwitch
         self.onClose = onClose
         let loaded = TLAppSettings.load(app.id, packageName: app.packageName)
@@ -1151,7 +1202,9 @@ struct TLClassicAttemptView: View {
             CrashReport.gameEnded()
             runner.stop()
             UIApplication.shared.isIdleTimerDisabled = false
-            HuskOrientation.set(HuskOrientation.standard)
+            if shouldResetOrientationOnExit?() ?? true {
+                HuskOrientation.set(HuskOrientation.standard)
+            }
         }
         .sheet(isPresented: $showSwitcher) {
             TLGameSwitcherSheet(current: app, apps: switchCandidates) { next in

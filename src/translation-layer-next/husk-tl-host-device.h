@@ -56,4 +56,19 @@ void tl_host_set_display_wide_color(int wide_color);
 bool tl_host_display_wide_color(void);
 void tl_host_set_visual_quality(int preset);
 int  tl_host_visual_quality(void);
+
+/* Pure compositor pacing target: respects thermal pressure and caps active screen
+ * recording/mirroring to <=60 Hz (stepping down under serious/critical heat) so
+ * ReplayKit and CAMetalLayer retain drawable and input headroom. */
+static inline int tl_host_compositor_target_hz(int host_hz, int thermal_state, int screen_captured)
+{
+    if (host_hz < 60) host_hz = 60;
+    if (host_hz > 240) host_hz = 240;
+    int target = thermal_state >= 3 ? 60 : thermal_state == 2 ? (host_hz >= 120 ? 90 : host_hz) : host_hz;
+    if (screen_captured > 0) {
+        int cap = thermal_state >= 3 ? 30 : thermal_state >= 2 ? 45 : 60;
+        if (target > cap) target = cap;
+    }
+    return target;
+}
 #endif

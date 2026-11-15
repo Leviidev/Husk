@@ -37,6 +37,8 @@ struct ContentView: View {
     @ObservedObject private var massTest = MassTest.shared
     @ObservedObject private var updates = AppUpdates.shared
     @State private var showWhatsNew = false
+    @State private var hasEvaluatedOnce = false
+    @State private var returnedFromBackground = false
     @AppStorage(Holiday.key) private var holiday = true
 
     var body: some View {
@@ -222,15 +224,21 @@ struct ContentView: View {
             if crash.pending == nil, WhatsNew.due { showWhatsNew = true }
             router.openGuest = { showGuestScreen = true }
             router.startAndroid = { confirmAndroid = true }
-            evaluate()
+            evaluate(initial: true)
         }
         // The two-parameter onChange is iOS 17; this single-parameter form is
         // deprecated there but still works, and is the only one that compiles
         // against the 16.0 deployment target.
         .onChange(of: scenePhase) { phase in
-            // StikDebug relaunches Husk after attaching, so returning to the
-            // foreground is the moment worth re-checking, not first launch.
-            if phase == .active { evaluate() }
+            // Ignore brief .inactive -> .active cycles from notification banners,
+            // Control Center or screen-recording UI; only re-evaluate when genuinely
+            // returning from background (e.g. after StikDebug attaches).
+            if phase == .background {
+                returnedFromBackground = true
+            } else if phase == .active, !hasEvaluatedOnce || returnedFromBackground {
+                returnedFromBackground = false
+                evaluate(initial: !hasEvaluatedOnce)
+            }
         }
     }
 
@@ -253,13 +261,16 @@ struct ContentView: View {
         Set(tlStore.apps.compactMap(\.packageName) + host.packages.map(\.name))
     }
 
-    private func evaluate() {
+    private func evaluate(initial: Bool = false) {
+        hasEvaluatedOnce = true
         // Before anything else wants JIT: the setting that turns it on as Husk opens.
         jit.enableAtLaunchIfAsked()
-        try? guest.prepareFirmware()
-        guest.refresh()
+        if initial || guest.state != .ready {
+            try? guest.prepareFirmware()
+            guest.refresh()
+        }
         if AutoStart.readyAtLaunch == nil { AutoStart.readyAtLaunch = guest.state == .ready }
-        HuskBridgeFS.shared.prepare()
+        if initial { HuskBridgeFS.shared.prepare() }
 
         // What is installed is compared against the release by digest, not by
         // version name -- see GuestManifest. Deliberately not awaited: it is a

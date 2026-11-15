@@ -180,6 +180,8 @@ void husk_java_memory_warning(void);
 void husk_native_memory_pressure(int level);
 /* Report ProcessInfo.thermalState (0=nominal, 1=fair, 2=serious, 3=critical). */
 void husk_native_thermal_state(int state);
+/* Report UIScreen.isCaptured (1 while screen recording or mirroring is active, else 0). */
+void husk_native_screen_captured(int captured);
 /* Compatibility entry point for developer tools; observes the same checks. */
 void husk_native_unload(void);
 

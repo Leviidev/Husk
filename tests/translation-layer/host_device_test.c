@@ -43,6 +43,17 @@ int main(void)
     tl_host_device_describe(&info, long_name, long_name, long_name, 0);
     assert(strlen(info.model) == sizeof(info.model) - 1 && strlen(info.board) == sizeof(info.board) - 1);
     assert(strlen(info.soc) == sizeof(info.soc) - 1 && strlen(info.fingerprint) < 92 && strlen(info.display) < 92);
+
+    /* Compositor pacing keeps native refresh when idle, throttles under thermal
+     * load, and caps to <=60 Hz (stepping down under heat) while screen recording. */
+    assert(tl_host_compositor_target_hz(120, 0, 0) == 120);
+    assert(tl_host_compositor_target_hz(120, 2, 0) == 90);
+    assert(tl_host_compositor_target_hz(120, 3, 0) == 60);
+    assert(tl_host_compositor_target_hz(120, 0, 1) == 60);
+    assert(tl_host_compositor_target_hz(60, 0, 1) == 60);
+    assert(tl_host_compositor_target_hz(120, 2, 1) == 45);
+    assert(tl_host_compositor_target_hz(120, 3, 1) == 30);
+
     puts("PASS: real host model/board/CPU identity stays coherent, bounded and neutral on unknown devices without changing Android API or collecting unique identifiers");
     return 0;
 }

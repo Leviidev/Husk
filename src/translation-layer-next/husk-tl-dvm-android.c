@@ -1679,11 +1679,12 @@ static void *gl_run(void *arg)
                 pthread_mutex_unlock(&A.q_lock);
             }
         }
-        int thermal = 0;
+        int thermal = 0, captured = 0;
         { extern int tl_host_thermal_state(void) __attribute__((weak)); if (tl_host_thermal_state) thermal = tl_host_thermal_state(); }
+        { extern int tl_host_screen_captured(void) __attribute__((weak)); if (tl_host_screen_captured) captured = tl_host_screen_captured(); }
         int host_hz = (A.cfg.max_refresh_rate >= (float)TL_JAVA_DISPLAY_HZ && A.cfg.max_refresh_rate <= 240.0f)
             ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
-        int target_hz = thermal >= 3 ? 60 : thermal == 2 ? (host_hz >= 120 ? 90 : host_hz) : host_hz;
+        int target_hz = tl_host_compositor_target_hz(host_hz, thermal, captured);
         if (app) {
             next += 1000000000ll / target_hz;
             int64_t late = now_ns() - next;

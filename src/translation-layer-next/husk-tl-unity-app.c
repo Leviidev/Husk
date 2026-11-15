@@ -675,8 +675,11 @@ static bool java_running(void) { return atomic_load(&A.state) == HUSK_UNITY_RUNN
 __attribute__((weak)) void tl_dvm_graphics_trim(void);
 __attribute__((weak)) void tl_jar_cache_trim(size_t max_bytes);
 static atomic_int g_thermal_state;
+static atomic_int g_screen_captured;
 int tl_host_thermal_state(void) { return atomic_load(&g_thermal_state); }
 void husk_native_thermal_state(int state) { atomic_store(&g_thermal_state, state); }
+int tl_host_screen_captured(void) { return atomic_load(&g_screen_captured); }
+void husk_native_screen_captured(int captured) { atomic_store(&g_screen_captured, captured > 0 ? 1 : 0); }
 void husk_native_memory_pressure(int level)
 {
     if (tl_dvm_running()) tl_host_log_memory_breakdown("game-memory-warning");

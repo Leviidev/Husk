@@ -937,6 +937,32 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     if (n <= 3 || n % 600 == 0) tl_log_line("egl: swap #%lu (composited CPU %dx%d -> %dx%d)", n, rw, rh, vw, vh);
     return true;
 }
+static void pace_captured_direct_swap(void)
+{
+    extern int tl_host_screen_captured(void) __attribute__((weak));
+    if (!tl_host_screen_captured || tl_host_screen_captured() <= 0) return;
+    int thermal = 0;
+    {
+        extern int tl_host_thermal_state(void) __attribute__((weak));
+        if (tl_host_thermal_state) thermal = tl_host_thermal_state();
+    }
+    int cap_hz = tl_host_compositor_target_hz(60, thermal, 1);
+    int64_t interval_ns = 1000000000ll / cap_hz;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t now = (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
+    static _Atomic int64_t last_ns;
+    int64_t prev = atomic_load(&last_ns);
+    if (prev > 0 && now > prev && (now - prev) < interval_ns) {
+        int64_t wait_ns = interval_ns - (now - prev);
+        struct timespec req = { (time_t)(wait_ns / 1000000000ll), (long)(wait_ns % 1000000000ll) };
+        nanosleep(&req, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        now = (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
+    }
+    atomic_store(&last_ns, now);
+}
+
 static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
 {
     void *texwin = tex_window_of(s);
@@ -956,6 +982,7 @@ static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
         fprintf(stderr, "egl: calls so far, by function: %s\n", hist);
     }
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
+    if (!E.frame_dir[0]) pace_captured_direct_swap();
     return E.frame_dir[0] ? EGL_TRUE : a_eglSwapBuffers(d, s);
 }
 
