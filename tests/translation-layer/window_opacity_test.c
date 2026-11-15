@@ -103,8 +103,8 @@ int main(void)
     uint64_t handoff_ns;
     assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 42 && handoff_ns == 1000);
     assert(last_opaque == 1 && draws == 1 && !uploads && enhance_calls == 1);
-    assert(last_inv_x > 0.0f && last_inv_y > 0.0f && last_sharp > 0.30f && last_sharp <= 0.48f
-           && last_contrast > 0.0f && last_vibrance == 0.0f && last_wide == 1.0f);
+    assert(last_inv_x > 0.0f && last_inv_y > 0.0f && last_sharp > 0.56f && last_sharp <= 0.78f
+           && last_contrast > 0.20f && last_vibrance > 0.0f && last_wide == 1.0f);
     ov_draw(&ui, 2796, 1290);
     assert(last_opaque == 0 && program == 2 && draws == 2 && enhance_calls == 1);
     E2.opaque = false;

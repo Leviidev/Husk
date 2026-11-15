@@ -55,14 +55,19 @@ int main(void)
     assert(stdp.sharpness == 0.0f && stdp.contrast == 0.0f && stdp.vibrance == 0.0f && stdp.anisotropy == 1.0f && !stdp.trilinear);
 
     tl_visual_params crisp = tl_visual_compute_params(TL_VISUAL_CRISP, true, 2796, 1290, 2796, 1290);
-    assert(fabsf(crisp.sharpness - 0.22f) < 1e-5f && crisp.vibrance == 0.0f && crisp.anisotropy == 4.0f && crisp.trilinear);
+    assert(fabsf(crisp.sharpness - 0.34f) < 1e-5f && fabsf(crisp.contrast - 0.16f) < 1e-5f
+           && fabsf(crisp.vibrance - 0.12f) < 1e-5f && crisp.anisotropy == 4.0f && crisp.trilinear);
 
     tl_visual_params pro_native = tl_visual_compute_params(TL_VISUAL_PRO_MAX, true, 2796, 1290, 2796, 1290);
     tl_visual_params pro_upscaled = tl_visual_compute_params(TL_VISUAL_PRO_MAX, true, 1568, 724, 2796, 1290);
     tl_visual_params pro_srgb = tl_visual_compute_params(TL_VISUAL_PRO_MAX, false, 2796, 1290, 2796, 1290);
-    assert(fabsf(pro_native.sharpness - 0.30f) < 1e-5f && pro_native.vibrance == 0.0f);
-    assert(pro_upscaled.sharpness > pro_native.sharpness && pro_upscaled.sharpness <= 0.48f);
-    assert(pro_native.contrast > crisp.contrast && pro_native.anisotropy == 8.0f);
+    assert(fabsf(pro_native.sharpness - 0.56f) < 1e-5f && fabsf(pro_native.contrast - 0.30f) < 1e-5f
+           && fabsf(pro_native.vibrance - 0.26f) < 1e-5f);
+    assert(pro_upscaled.sharpness > pro_native.sharpness && pro_upscaled.sharpness <= 0.78f);
+    assert(pro_native.sharpness > crisp.sharpness && crisp.sharpness > stdp.sharpness);
+    assert(pro_native.contrast > crisp.contrast && crisp.contrast > stdp.contrast);
+    assert(pro_native.vibrance > crisp.vibrance && crisp.vibrance > stdp.vibrance);
+    assert(pro_native.anisotropy == 8.0f);
     assert(pro_srgb.vibrance > pro_native.vibrance);
 
     /* Pro Max upgrades bilinear mipmap filter to trilinear and applies capped 8x AF on mipmapped textures. */

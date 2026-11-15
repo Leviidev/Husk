@@ -45,19 +45,19 @@ static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_co
     float extra_upscale = upscale > 1.02f ? (upscale - 1.0f) : 0.0f;
 
     if (mode == TL_VISUAL_CRISP) {
-        float sharp = 0.22f + extra_upscale * 0.16f;
-        out.sharpness = sharp > 0.36f ? 0.36f : sharp;
-        out.contrast = 0.08f;
-        out.vibrance = wide_color ? 0.0f : 0.04f;
+        float sharp = 0.34f + extra_upscale * 0.16f;
+        out.sharpness = sharp > 0.50f ? 0.50f : sharp;
+        out.contrast = 0.16f;
+        out.vibrance = wide_color ? 0.12f : 0.14f;
         out.anisotropy = 4.0f;
         out.trilinear = true;
         return out;
     }
 
-    float sharp = 0.30f + extra_upscale * 0.20f;
-    out.sharpness = sharp > 0.48f ? 0.48f : sharp;
-    out.contrast = 0.14f;
-    out.vibrance = wide_color ? 0.0f : 0.05f;
+    float sharp = 0.56f + extra_upscale * 0.22f;
+    out.sharpness = sharp > 0.78f ? 0.78f : sharp;
+    out.contrast = 0.30f;
+    out.vibrance = wide_color ? 0.26f : 0.30f;
     out.anisotropy = 8.0f;
     out.trilinear = true;
     return out;

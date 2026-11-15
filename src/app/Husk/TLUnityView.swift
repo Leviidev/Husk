@@ -1592,23 +1592,31 @@ struct TLCocosAttemptView: View {
                 }
                 .tint(.white)
             }
-            Menu {
+            HStack(spacing: 2) {
                 ForEach(TLAppSettings.VisualQuality.allCases) { quality in
+                    let isSelected = settings.visualQuality == quality
                     Button {
+                        guard settings.visualQuality != quality else { return }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         applyVisualQuality(quality)
                     } label: {
-                        if settings.visualQuality == quality {
-                            Label(quality.title, systemImage: "checkmark")
-                        } else {
-                            Text(quality.title)
-                        }
+                        Text(quality.title)
+                            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .foregroundStyle(isSelected ? .black : .white.opacity(0.85))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected ? Color.white.opacity(0.95) : Color.clear)
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
-            } label: {
-                Label(settings.visualQuality.title, systemImage: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
             }
-            .tint(.white)
+            .padding(2)
+            .background(Capsule().fill(.white.opacity(0.14)))
             Button { toggleInterface() } label: {
                 Label("Hide", systemImage: "eye.slash").font(.system(size: 12, weight: .semibold))
             }
@@ -1647,39 +1655,98 @@ struct TLCocosAttemptView: View {
 }
 
 /// Persistent unobtrusive pill shown when the in-game control bar is hidden, so players always have a one-tap
-/// way to bring back Close, Switch, Pad, and Log controls (and can drag the pill if it overlaps HUD icons).
+/// way to bring back Close, Switch, Pad, and Log controls (and can drag the pill freely across the screen).
 struct TLFloatingReopenHandle: View {
     let action: () -> Void
-    @State private var offset: CGSize = .zero
-    @GestureState private var dragDelta: CGSize = .zero
+    @AppStorage("husk.tl.eye.nx") private var normX: Double = 0.96
+    @AppStorage("husk.tl.eye.ny") private var normY: Double = 0.04
+    @GestureState private var gestureDelta: CGSize? = nil
+
+    private static let edgeMarginX: CGFloat = 26
+    private static let edgeMarginY: CGFloat = 22
+
+    private func bounds(for size: CGSize) -> (minX: CGFloat, maxX: CGFloat, minY: CGFloat, maxY: CGFloat) {
+        let minX = min(Self.edgeMarginX, size.width * 0.5)
+        let maxX = max(minX, size.width - Self.edgeMarginX)
+        let minY = min(Self.edgeMarginY, size.height * 0.5)
+        let maxY = max(minY, size.height - Self.edgeMarginY)
+        return (minX, maxX, minY, maxY)
+    }
+
+    private func clamped(_ point: CGPoint, in size: CGSize) -> CGPoint {
+        let b = bounds(for: size)
+        return CGPoint(
+            x: min(max(point.x, b.minX), b.maxX),
+            y: min(max(point.y, b.minY), b.maxY)
+        )
+    }
+
+    private func restCenter(in size: CGSize) -> CGPoint {
+        let b = bounds(for: size)
+        return CGPoint(
+            x: b.minX + (b.maxX - b.minX) * CGFloat(min(max(normX, 0), 1)),
+            y: b.minY + (b.maxY - b.minY) * CGFloat(min(max(normY, 0), 1))
+        )
+    }
 
     var body: some View {
-        VStack {
-            HStack {
-                Spacer(minLength: 0)
-                Image(systemName: "eye")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .frame(width: 36, height: 28)
-                    .background(.black.opacity(0.45), in: Capsule())
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 0.75))
-                    .contentShape(Capsule())
-                    .onTapGesture { action() }
-                    .gesture(
-                        DragGesture(minimumDistance: 10)
-                            .updating($dragDelta) { v, state, _ in state = v.translation }
-                            .onEnded { v in
-                                offset.width = min(max(offset.width + v.translation.width, -260), 12)
-                                offset.height = min(max(offset.height + v.translation.height, -12), 260)
+        GeometryReader { geo in
+            let rest = restCenter(in: geo.size)
+            let delta = gestureDelta ?? .zero
+            let movedDist = hypot(delta.width, delta.height)
+            let isGrabbed = gestureDelta != nil
+            let isDragging = isGrabbed && movedDist > 4
+            let center = isDragging
+                ? clamped(CGPoint(x: rest.x + delta.width, y: rest.y + delta.height), in: geo.size)
+                : rest
+
+            Image(systemName: "eye")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(isGrabbed ? 1.0 : 0.90))
+                .frame(width: 38, height: 30)
+                .background(.black.opacity(isGrabbed ? 0.68 : 0.44), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(isGrabbed ? 0.48 : 0.22), lineWidth: isGrabbed ? 1.2 : 0.75))
+                .scaleEffect(isGrabbed ? 1.12 : 1.0)
+                .shadow(color: .black.opacity(isGrabbed ? 0.45 : 0.2), radius: isGrabbed ? 8 : 3, y: 2)
+                .opacity(isGrabbed ? 1.0 : 0.82)
+                .animation(.interactiveSpring(response: 0.20, dampingFraction: 0.88), value: isGrabbed)
+                .frame(width: 50, height: 44)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("TLFloatingHandleSpace"))
+                        .updating($gestureDelta) { value, state, _ in
+                            state = value.translation
+                        }
+                        .onEnded { value in
+                            let dist = hypot(value.translation.width, value.translation.height)
+                            if dist < 8 {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                action()
+                                return
                             }
-                    )
-                    .offset(x: offset.width + dragDelta.width, y: offset.height + dragDelta.height)
-                    .accessibilityLabel("Show controls")
-                    .padding(.top, 8)
-                    .padding(.trailing, 10)
-            }
-            Spacer(minLength: 0)
+                            let b = bounds(for: geo.size)
+                            let spanX = max(1, b.maxX - b.minX)
+                            let spanY = max(1, b.maxY - b.minY)
+                            let inertiaX = (value.predictedEndTranslation.width - value.translation.width) * 0.16
+                            let inertiaY = (value.predictedEndTranslation.height - value.translation.height) * 0.16
+                            let projected = clamped(
+                                CGPoint(
+                                    x: rest.x + value.translation.width + inertiaX,
+                                    y: rest.y + value.translation.height + inertiaY
+                                ),
+                                in: geo.size
+                            )
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            withAnimation(.interactiveSpring(response: 0.24, dampingFraction: 0.86)) {
+                                normX = min(max(Double((projected.x - b.minX) / spanX), 0), 1)
+                                normY = min(max(Double((projected.y - b.minY) / spanY), 0), 1)
+                            }
+                        }
+                )
+                .position(x: center.x, y: center.y)
+                .accessibilityLabel("Show controls")
         }
+        .coordinateSpace(name: "TLFloatingHandleSpace")
     }
 }
 
