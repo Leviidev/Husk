@@ -421,7 +421,7 @@ public final class AppRunner {
 
     // ---- input from Husk
     /** events: [n, then n x (phase, id, xbits, ybits)] -- phase 0 down, 1 move, 2 up, 3 cancel; 4 key (id = code, x = down); 5 back; 6 host pause (id 1) / resume (0); 7 text waiting; 8 insets changed; 9 web view events waiting */
-    private static void deliver(int[] ev) {
+    static void deliver(int[] ev) {
         int n = ev[0];
         for (int k = 0; k < n; k++) {
             int phase = ev[1 + 4 * k], id = ev[2 + 4 * k];
@@ -446,6 +446,19 @@ public final class AppRunner {
                     long t = SystemClock.uptimeMillis();
                     KeyEvent ke = new KeyEvent(t, t, ev[3 + 4 * k] != 0 ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP, id, 0);
                     if (!InputMethods.key(ke)) ViewRootDispatch.key(ke);
+                    continue;
+                }
+                // Coalesce consecutive MOVE samples in the same batch across all active pointers
+                // so ViewRoot/game surfaces receive one smooth multi-touch frame instead of N dt=0 bursts.
+                if (phase == 1) {
+                    boolean moved = updateMove(id, x, y);
+                    while (k + 1 < n && ev[1 + 4 * (k + 1)] == 1) {
+                        k++;
+                        int nextId = ev[2 + 4 * k];
+                        float nx = Float.intBitsToFloat(ev[3 + 4 * k]), ny = Float.intBitsToFloat(ev[4 + 4 * k]);
+                        moved |= updateMove(nextId, nx, ny);
+                    }
+                    if (moved) dispatchMove();
                     continue;
                 }
                 touch(phase, id, x, y);
@@ -479,7 +492,23 @@ public final class AppRunner {
         if (pause) { if (a.isResumedHusk()) a.huskPause(); }
         else if (!a.isResumedHusk()) a.huskResume();
     }
+    private static boolean updateMove(int id, float x, float y) {
+        int idx = -1;
+        for (int i = 0; i < down; i++) if (ids[i] == id) idx = i;
+        if (idx < 0) return false;
+        xs[idx] = x; ys[idx] = y;
+        return true;
+    }
+    private static void dispatchMove() {
+        long now = SystemClock.uptimeMillis();
+        MotionEvent e = MotionEvent.huskObtain(downTime, now, MotionEvent.ACTION_MOVE, down, java.util.Arrays.copyOf(ids, down), java.util.Arrays.copyOf(xs, down), java.util.Arrays.copyOf(ys, down));
+        ViewRoot.dispatchTouch(e);
+    }
     private static void touch(int phase, int id, float x, float y) {
+        if (phase == 1) {
+            if (updateMove(id, x, y)) dispatchMove();
+            return;
+        }
         long now = SystemClock.uptimeMillis();
         int idx = -1;
         for (int i = 0; i < down; i++) if (ids[i] == id) idx = i;
@@ -494,10 +523,6 @@ public final class AppRunner {
             idx = down++; ids[idx] = id; xs[idx] = x; ys[idx] = y;
             if (down == 1) downTime = now;
             action = down == 1 ? MotionEvent.ACTION_DOWN : MotionEvent.ACTION_POINTER_DOWN | (idx << 8);
-        } else if (phase == 1) {
-            if (idx < 0) return;
-            xs[idx] = x; ys[idx] = y;
-            action = MotionEvent.ACTION_MOVE;
         } else {
             if (idx < 0) {
                 if (phase == 3) down = 0;

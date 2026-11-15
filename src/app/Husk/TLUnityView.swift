@@ -92,6 +92,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     var onStats: ((String) -> Void)?
     /// Active touches by UITouch identity, each given a small stable id like Android's pointer ids.
     private var pointers: [ObjectIdentifier: Int32] = [:]
+    private var lastTouchPixels: [ObjectIdentifier: (Float, Float)] = [:]
 
     /// "58 fps · 11.2 ms" in the corner, as the other screen has: frames the game finished per second, and the
     /// mean time one frame takes it. Refreshed once a second from the runtime's own counters.
@@ -1024,10 +1025,21 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     private func send(_ touches: Set<UITouch>, phase: Int32) {
         for t in touches {
-            let p = t.location(in: self)
+            let key = ObjectIdentifier(t)
+            let p = t.preciseLocation(in: self)
+            let fx = Float(p.x * contentScaleFactor)
+            let fy = Float(p.y * contentScaleFactor)
+            if phase == 1, let prev = lastTouchPixels[key], prev.0 == fx && prev.1 == fy {
+                continue
+            }
             let pid = id(for: t)
-            husk_unity_touch(phase, pid, Float(p.x * contentScaleFactor), Float(p.y * contentScaleFactor))
-            if phase == 2 || phase == 3 { pointers[ObjectIdentifier(t)] = nil }
+            husk_unity_touch(phase, pid, fx, fy)
+            if phase == 2 || phase == 3 {
+                pointers[key] = nil
+                lastTouchPixels[key] = nil
+            } else {
+                lastTouchPixels[key] = (fx, fy)
+            }
         }
     }
 
@@ -1518,6 +1530,13 @@ struct TLCocosAttemptView: View {
         .font(.system(size: 13, weight: .semibold))
     }
 
+    private func applyVisualQuality(_ quality: TLAppSettings.VisualQuality) {
+        settings.visualQuality = quality
+        settings.save(app.id)
+        husk_host_set_visual_quality(quality.presetCode)
+        HuskLog.log("tl", "visual profile (live): \(quality.title)")
+    }
+
     private var bar: some View {
         HStack(spacing: 12) {
             Button { closeScreen() } label: {
@@ -1573,6 +1592,23 @@ struct TLCocosAttemptView: View {
                 }
                 .tint(.white)
             }
+            Menu {
+                ForEach(TLAppSettings.VisualQuality.allCases) { quality in
+                    Button {
+                        applyVisualQuality(quality)
+                    } label: {
+                        if settings.visualQuality == quality {
+                            Label(quality.title, systemImage: "checkmark")
+                        } else {
+                            Text(quality.title)
+                        }
+                    }
+                }
+            } label: {
+                Label(settings.visualQuality.title, systemImage: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .tint(.white)
             Button { toggleInterface() } label: {
                 Label("Hide", systemImage: "eye.slash").font(.system(size: 12, weight: .semibold))
             }

@@ -25,4 +25,5 @@ subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, 
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.app.MemoryInfoTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.os.HostDeviceProfileTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.SessionResetTest"], check=True)
+subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.InputDeliveryTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.media.MediaPlayerTest"], check=True)

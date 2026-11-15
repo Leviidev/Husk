@@ -277,6 +277,17 @@ def main():
     run("frame buffer compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/frame_buffer_test.c"), "-o", str(exe)])
     run("frame buffer allocation failure and reuse", [str(exe)])
+    input_functions = [re.search(r"static (?:void|bool|int) " + name + r"\(.*?\n\{.*?\n\}", android_source, re.S)[0] for name in (
+        "tl_input_queue_push",
+        "tl_input_up_deferred",
+        "tl_input_queue_plan",
+        "tl_input_queue_commit",
+        "tl_input_queue_has_ready",
+    )]
+    (out / "input_queue_under_test.h").write_text("\n\n".join(input_functions) + "\n", encoding="utf-8")
+    exe = out / ("input_queue_test.exe" if os.name == "nt" else "input_queue_test")
+    run("input queue compile", compiler + flags + [f"-I{out}", str(ROOT / "tests/translation-layer/input_queue_test.c"), "-o", str(exe)])
+    run("input queue MOVE coalescing and per-pointer defer", [str(exe)])
     inset_fn = re.search(r"void tl_javaapp_set_insets\([^)]*\)\n\{.*?\n\}", android_source, re.S)
     assert inset_fn
     (out / "quest_insets_under_test.h").write_text(inset_fn[0] + "\n", encoding="utf-8")

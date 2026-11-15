@@ -330,44 +330,140 @@ NAT(N_exit)
     return true;
 }
 NAT(N_uptimeNanos) { (void)self; (void)a; *ret = J(now_ns()); return true; }
+static void tl_input_queue_push(int32_t *q, int *qn, int cap_words,
+                                int32_t phase, int32_t id, int32_t xbits, int32_t ybits)
+{
+    /* Coalesce contiguous trailing MOVE samples for the same pointer so high-rate
+     * touch drags never queue stale coordinates or dt=0 bursts behind a slow frame. */
+    if (phase == 1) {
+        for (int i = *qn - 4; i >= 0 && q[i] == 1; i -= 4) {
+            if (q[i + 1] == id) {
+                q[i + 2] = xbits;
+                q[i + 3] = ybits;
+                return;
+            }
+        }
+    }
+    if (*qn + 4 <= cap_words) {
+        q[(*qn)++] = phase;
+        q[(*qn)++] = id;
+        q[(*qn)++] = xbits;
+        q[(*qn)++] = ybits;
+    }
+}
+
+static bool tl_input_up_deferred(int32_t id, int64_t t_now, uint64_t f_now,
+                                 uint32_t batch_down, const int64_t *down_ns,
+                                 const uint64_t *down_frame, int64_t *ev_defer_out)
+{
+    int64_t hold_until = down_ns[id] + 16000000ll;
+    bool same_batch = (batch_down & (1u << id)) != 0;
+    bool no_frame_yet = (f_now <= down_frame[id]) && (t_now < hold_until);
+    if (!same_batch && !no_frame_yet) return false;
+    *ev_defer_out = t_now < hold_until ? hold_until : (t_now + 8000000ll);
+    return true;
+}
+
+static int tl_input_queue_plan(const int32_t *q, int total, int64_t t_now, uint64_t f_now,
+                               int64_t *down_ns, uint64_t *down_frame,
+                               uint8_t *keep_mask, int64_t *defer_until_out)
+{
+    uint32_t batch_down = 0, blocked = 0;
+    int take = 0;
+    int64_t defer_until = 0;
+    for (int k = 0; k < total; k++) {
+        int32_t phase = q[4 * k], id = q[4 * k + 1];
+        bool touch_id = (phase >= 0 && phase <= 3 && id >= 0 && id < 16);
+        if (touch_id && (blocked & (1u << id))) {
+            keep_mask[k] = 1;
+            continue;
+        }
+        if (phase == 0 && touch_id) {
+            batch_down |= (1u << id);
+            down_ns[id] = t_now;
+            down_frame[id] = f_now;
+        } else if ((phase == 2 || phase == 3) && touch_id) {
+            int64_t ev_defer = 0;
+            if (tl_input_up_deferred(id, t_now, f_now, batch_down, down_ns, down_frame, &ev_defer)) {
+                if (!defer_until || ev_defer < defer_until) defer_until = ev_defer;
+                /* Block only this pointer's subsequent stream; other fingers' camera drags continue uninterrupted. */
+                blocked |= (1u << id);
+                keep_mask[k] = 1;
+                continue;
+            }
+        }
+        keep_mask[k] = 0;
+        take++;
+    }
+    *defer_until_out = defer_until;
+    return take;
+}
+
+static void tl_input_queue_commit(int32_t *q, int *qn, const uint8_t *keep_mask,
+                                  int total, int32_t *taken_out)
+{
+    int out_w = 0, keep_w = 0;
+    for (int k = 0; k < total; k++) {
+        const int32_t *src = q + 4 * k;
+        if (keep_mask[k]) {
+            int32_t *dst = q + 4 * keep_w;
+            if (dst != src) { dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; }
+            keep_w++;
+        } else {
+            taken_out[4 * out_w + 0] = src[0];
+            taken_out[4 * out_w + 1] = src[1];
+            taken_out[4 * out_w + 2] = src[2];
+            taken_out[4 * out_w + 3] = src[3];
+            out_w++;
+        }
+    }
+    *qn = keep_w * 4;
+}
+
+static bool tl_input_queue_has_ready(const int32_t *q, int total, int64_t t_now, uint64_t f_now,
+                                     const int64_t *down_ns, const uint64_t *down_frame,
+                                     int64_t *min_rem_out)
+{
+    uint32_t blocked = 0;
+    int64_t min_rem = 0;
+    for (int k = 0; k < total; k++) {
+        int32_t phase = q[4 * k], id = q[4 * k + 1];
+        bool touch_id = (phase >= 0 && phase <= 3 && id >= 0 && id < 16);
+        if (touch_id && (blocked & (1u << id))) continue;
+        if ((phase == 2 || phase == 3) && touch_id) {
+            int64_t ev_defer = 0;
+            if (tl_input_up_deferred(id, t_now, f_now, 0, down_ns, down_frame, &ev_defer)) {
+                int64_t rem = ev_defer - t_now;
+                if (rem > 0 && (!min_rem || rem < min_rem)) min_rem = rem;
+                blocked |= (1u << id);
+                continue;
+            }
+        }
+        *min_rem_out = 0;
+        return true;
+    }
+    *min_rem_out = min_rem;
+    return false;
+}
+
 NAT(N_pollInput)
 {
     (void)self; (void)a;
     pthread_mutex_lock(&A.q_lock);
     int total = A.qn / 4;
     if (!total) { atomic_store(&A.defer_until_ns, 0); pthread_mutex_unlock(&A.q_lock); *ret = L(NULL); return true; }
-    int64_t t_now = now_ns();
-    uint64_t f_now = rendered_frame_count();
-    uint32_t batch_down = 0;
-    int take = 0;
+    if (total > 1024) total = 1024;
+    uint8_t keep_mask[1024];
     int64_t defer_until = 0;
-    for (int k = 0; k < total; k++) {
-        int32_t phase = A.q[4 * k], id = A.q[4 * k + 1];
-        if (phase == 0 && id >= 0 && id < 16) {
-            batch_down |= (1u << id);
-            A.down_ns[id] = t_now;
-            A.down_frame[id] = f_now;
-        } else if ((phase == 2 || phase == 3) && id >= 0 && id < 16) {
-            int64_t hold_until = A.down_ns[id] + 16000000ll;
-            bool same_batch = (batch_down & (1u << id)) != 0;
-            bool no_frame_yet = (f_now <= A.down_frame[id]) && (t_now < hold_until);
-            if (same_batch || no_frame_yet) {
-                defer_until = t_now < hold_until ? hold_until : (t_now + 8000000ll);
-                break;
-            }
-        }
-        take++;
-    }
+    int take = tl_input_queue_plan(A.q, total, now_ns(), rendered_frame_count(),
+                                   A.down_ns, A.down_frame, keep_mask, &defer_until);
     atomic_store(&A.defer_until_ns, defer_until);
     if (!take) { pthread_mutex_unlock(&A.q_lock); *ret = L(NULL); return true; }
-    int words = take * 4;
-    jobj *arr = tl_jni_new_prim_array('I', (uint32_t)(1 + words));
+    jobj *arr = tl_jni_new_prim_array('I', (uint32_t)(1 + take * 4));
     arr->refs = 1u << 30;
     int32_t *v = arr->arr.data;
     v[0] = take;
-    memcpy(v + 1, A.q, (size_t)words * 4);
-    if (words < A.qn) memmove(A.q, A.q + words, (size_t)(A.qn - words) * 4);
-    A.qn -= words;
+    tl_input_queue_commit(A.q, &A.qn, keep_mask, total, v + 1);
     pthread_mutex_unlock(&A.q_lock);
     *ret = L(arr);
     return true;
@@ -400,9 +496,15 @@ NAT(N_waitMainLooper)
     if (A.qn > 0) {
         int64_t def = atomic_load(&A.defer_until_ns);
         if (def <= 0) { pthread_mutex_unlock(&A.q_lock); return true; }
-        int32_t front_id = A.q[1];
-        int64_t rem = def - now_ns();
-        if (rem <= 0 || (front_id >= 0 && front_id < 16 && rendered_frame_count() > A.down_frame[front_id])) {
+        int total = A.qn / 4;
+        if (total > 1024) total = 1024;
+        int64_t rem = 0;
+        if (tl_input_queue_has_ready(A.q, total, now_ns(), rendered_frame_count(),
+                                     A.down_ns, A.down_frame, &rem)) {
+            pthread_mutex_unlock(&A.q_lock);
+            return true;
+        }
+        if (rem <= 0) {
             atomic_store(&A.defer_until_ns, 0);
             pthread_mutex_unlock(&A.q_lock);
             return true;
@@ -1952,10 +2054,9 @@ void tl_javaapp_touch(int phase, int id, float x, float y)
 {
     union { float f; int32_t i; } fx, fy; fx.f = x; fy.f = y;
     pthread_mutex_lock(&A.q_lock);
-    if (A.qn + 4 <= 4096) {
-        A.q[A.qn++] = phase; A.q[A.qn++] = id; A.q[A.qn++] = fx.i; A.q[A.qn++] = fy.i;
-        pthread_cond_broadcast(&A.q_cv);
-    }
+    int before = A.qn;
+    tl_input_queue_push(A.q, &A.qn, 4096, phase, id, fx.i, fy.i);
+    if (A.qn != before || phase == 1) pthread_cond_broadcast(&A.q_cv);
     pthread_mutex_unlock(&A.q_lock);
 }
 void tl_javaapp_key(int code, bool down) { tl_javaapp_touch(4, code, down ? 1e-45f : 0.0f, 0); }
