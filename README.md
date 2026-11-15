@@ -43,6 +43,21 @@ Or download `Husk.ipa` from [Releases](https://github.com/Leviidev/Husk/releases
 
 Games need [JIT](https://itslevii.dev/docs/jit), or they can run from [Play without JIT](https://itslevii.dev/docs/play-without-jit) after you import the certificate that installed Husk.
 
+## Requirements
+
+Any iPhone or iPad running **iOS 15.5 or later** can install Husk (that is the deployment target in `src/app/project.yml`). What decides whether an app actually runs is the list below, not the chip.
+
+| | |
+|---|---|
+| **iOS** | 15.5 or later. PS4 games need 17.4 or later. |
+| **JIT** | Every Android app and game needs it, however it is turned on: [JIT](https://itslevii.dev/docs/jit). Neither the translation layer nor the emulator starts without it. |
+| **CPU code** | `arm64-v8a` APKs run on the translation layer. An APK with only `armeabi-v7a` libraries needs the emulator, because Apple's CPUs have not executed AArch32 since the A11 (see [docs/04-translation-layer.md](docs/04-translation-layer.md)). |
+| **RAM** | The deciding factor. Android runs 64-bit in Husk's own process, and jetsam closes the app when its footprint gets too large. Close other apps before starting a big game. |
+| **Storage** | Apps and their data live inside Husk. The full Android system is about 2 GB to download and about 4 GB once expanded, on top of your apps and their saves. |
+| **Google** | There are no Play services. Apps that require a Google account or Play services cannot work. |
+
+Most of the issues in this tracker come from the JIT row: JIT lasts only as long as Husk is running, so it has to be turned on again after iOS closes the app or after it is swiped away. Settings › Help lists what to do when it fails.
+
 ## Screenshots
 
 <table>
