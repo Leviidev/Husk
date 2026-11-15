@@ -63,8 +63,8 @@ struct TLAppSettings: Codable, Equatable {
         var detail: String {
             switch self {
             case .standard: return "Display P3-calibrated game colors without extra sharpening or anisotropic filtering."
-            case .crisp: return "Directional edge anti-aliasing, natural texture relief, balanced linear depth, Display P3 calibration, and 4x anisotropic textures."
-            case .proMax: return "Maximum foliage/edge anti-aliasing, realistic Display P3 color calibration, filmic linear depth, and 8x anisotropic filtering."
+            case .crisp: return "Balanced CAS neighborhood sharpening, diagonal edge smoothing, natural foliage & P3 vibrance, and 4x anisotropic textures."
+            case .proMax: return "Maximum CAS clarity, full edge & diagonal foliage anti-aliasing, rich filmic contrast, natural P3 color & foliage balance, and 8x anisotropic filtering."
             }
         }
         var presetCode: Int32 {

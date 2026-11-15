@@ -130,25 +130,26 @@ jobs:
         run: python3 tests/test_codesign_apple.py -v
       - name: Build the modified app with the upstream packager
         run: |
+          mkdir -p "$GITHUB_WORKSPACE/IPA"
           if [ "$HUNG_DEPENDENCY_MODE" = source ]; then
-            bash scripts/ci_build.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+            bash scripts/ci_build.sh "$GITHUB_WORKSPACE/IPA/HUNG-APK-PLAYER.ipa"
           else
             python3 scripts/stage_hung_dependencies.py "$RUNNER_TEMP/husk-support.ipa" "$SUPPORT_IPA_SHA256"
             bash scripts/build_rppairing_ios.sh
-            bash scripts/package_ipa.sh "$GITHUB_WORKSPACE/build/HUNG-APK-PLAYER.ipa"
+            bash scripts/package_ipa.sh "$GITHUB_WORKSPACE/IPA/HUNG-APK-PLAYER.ipa"
           fi
       - name: Package this revision's source and provenance
         run: |
           git archive --format=zip --output=build/HUNG-APK-PLAYER-source.zip HEAD
-          shasum -a 256 build/HUNG-APK-PLAYER.ipa > build/HUNG-APK-PLAYER.ipa.sha256
+          (cd IPA && shasum -a 256 HUNG-APK-PLAYER.ipa > HUNG-APK-PLAYER.ipa.sha256)
       - name: Upload IPA and corresponding project source
         uses: actions/upload-artifact@v4
         with:
           name: HUNG-APK-PLAYER-${{ github.sha }}
           if-no-files-found: error
           path: |
-            build/HUNG-APK-PLAYER.ipa
-            build/HUNG-APK-PLAYER.ipa.sha256
+            IPA/HUNG-APK-PLAYER.ipa
+            IPA/HUNG-APK-PLAYER.ipa.sha256
             build/HUNG-APK-PLAYER-source.zip
             build/support-provenance.json
             build/java-framework-built/java-framework-build.json
@@ -161,8 +162,8 @@ jobs:
           name: "HUNG APK PLAYER - Runtime build ${{ github.run_number }}"
           body: "Runtime memory, network ABI and cooperative game lifecycle changes. See the source and validation notes for device test status."
           files: |
-            build/HUNG-APK-PLAYER.ipa
-            build/HUNG-APK-PLAYER.ipa.sha256
+            IPA/HUNG-APK-PLAYER.ipa
+            IPA/HUNG-APK-PLAYER.ipa.sha256
             build/HUNG-APK-PLAYER-source.zip
       - name: Upload build diagnostics
         if: always()

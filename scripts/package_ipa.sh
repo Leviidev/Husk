@@ -235,6 +235,7 @@ TMP_OUT="$STAGE/package.tmp"
 ( cd "$STAGE" && zip -qry "$TMP_OUT" Payload )
 
 # Atomic replace so a half-written IPA never sits where the good one was.
+mkdir -p "$(dirname "$OUT")"
 mv -f "$TMP_OUT" "$OUT"
 rm -rf "$STAGE"
 echo "==> $OUT  ($(du -h "$OUT" | cut -f1))"

@@ -1538,11 +1538,12 @@ struct TLCocosAttemptView: View {
     }
 
     private var bar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Button { closeScreen() } label: {
-                Label("Close", systemImage: "xmark").font(.system(size: 13, weight: .semibold))
+                Label("Close", systemImage: "xmark").font(.system(size: 12, weight: .semibold))
             }
             .tint(.white)
+            .layoutPriority(1)
             if onSwitch != nil, !switchCandidates.isEmpty {
                 Button { showSwitcher = true } label: {
                     Label("Switch", systemImage: "arrow.left.arrow.right").font(.system(size: 12, weight: .semibold))
@@ -1551,14 +1552,17 @@ struct TLCocosAttemptView: View {
             }
             if engine == .flutter {
                 Button { husk_flutter_back() } label: {
-                    Label("Back", systemImage: "chevron.backward").font(.system(size: 13, weight: .semibold))
+                    Label("Back", systemImage: "chevron.backward").font(.system(size: 12, weight: .semibold))
                 }
                 .tint(.white)
             }
             Circle().fill(model.statusColor).frame(width: 7, height: 7)
             Text(model.state == Int32(HUSK_UNITY_RUNNING) ? app.label : model.statusText)
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-            Spacer()
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.88))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 6)
             if !pads.names.isEmpty {
                 Label(pads.names.count == 1 ? pads.names[0] : "\(pads.names.count) controllers", systemImage: "gamecontroller.fill")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
@@ -1592,39 +1596,48 @@ struct TLCocosAttemptView: View {
                 }
                 .tint(.white)
             }
+            Rectangle().fill(.white.opacity(0.18)).frame(width: 1, height: 14)
             HStack(spacing: 2) {
                 ForEach(TLAppSettings.VisualQuality.allCases) { quality in
                     let isSelected = settings.visualQuality == quality
                     Button {
                         guard settings.visualQuality != quality else { return }
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        applyVisualQuality(quality)
+                        withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.86)) {
+                            applyVisualQuality(quality)
+                        }
                     } label: {
                         Text(quality.title)
                             .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                             .lineLimit(1)
                             .fixedSize()
-                            .foregroundStyle(isSelected ? .black : .white.opacity(0.85))
-                            .padding(.horizontal, 7)
+                            .foregroundStyle(isSelected ? .black : .white.opacity(0.86))
+                            .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(isSelected ? Color.white.opacity(0.95) : Color.clear)
+                                    .fill(isSelected ? Color.white.opacity(0.96) : Color.clear)
                             )
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(2)
-            .background(Capsule().fill(.white.opacity(0.14)))
+            .background(Capsule().fill(.white.opacity(0.12)))
+            .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 0.5))
+            .layoutPriority(1)
             Button { toggleInterface() } label: {
                 Label("Hide", systemImage: "eye.slash").font(.system(size: 12, weight: .semibold))
             }
             .tint(.white)
+            .layoutPriority(1)
         }
         .padding(.horizontal, 14)
-        .frame(height: 30)
-        .background(Color(white: 0.08))
+        .frame(height: 34)
+        .background(Color(white: 0.07).opacity(0.92))
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5)
+        }
     }
 
     private var logPanel: some View {
@@ -1700,15 +1713,16 @@ struct TLFloatingReopenHandle: View {
                 ? clamped(CGPoint(x: rest.x + delta.width, y: rest.y + delta.height), in: geo.size)
                 : rest
 
-            Image(systemName: "eye")
+            Image(systemName: isGrabbed ? "eye.fill" : "eye")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(isGrabbed ? 1.0 : 0.90))
-                .frame(width: 38, height: 30)
-                .background(.black.opacity(isGrabbed ? 0.68 : 0.44), in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(isGrabbed ? 0.48 : 0.22), lineWidth: isGrabbed ? 1.2 : 0.75))
+                .foregroundStyle(.white.opacity(isGrabbed ? 1.0 : 0.92))
+                .frame(width: 40, height: 30)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().fill(.black.opacity(isGrabbed ? 0.30 : 0.42)))
+                .overlay(Capsule().strokeBorder(.white.opacity(isGrabbed ? 0.56 : 0.26), lineWidth: isGrabbed ? 1.2 : 0.75))
                 .scaleEffect(isGrabbed ? 1.12 : 1.0)
-                .shadow(color: .black.opacity(isGrabbed ? 0.45 : 0.2), radius: isGrabbed ? 8 : 3, y: 2)
-                .opacity(isGrabbed ? 1.0 : 0.82)
+                .shadow(color: .black.opacity(isGrabbed ? 0.45 : 0.22), radius: isGrabbed ? 8 : 4, y: 2)
+                .opacity(isGrabbed ? 1.0 : 0.84)
                 .animation(.interactiveSpring(response: 0.20, dampingFraction: 0.88), value: isGrabbed)
                 .frame(width: 50, height: 44)
                 .contentShape(Rectangle())

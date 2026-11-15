@@ -5,7 +5,7 @@
 set -euo pipefail
 
 HUSK_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${1:-$HUSK_ROOT/build/Husk.ipa}"
+OUT="${1:-$HUSK_ROOT/IPA/Husk.ipa}"
 cd "$HUSK_ROOT"
 
 step() { printf '\n\033[1;34m##### %s\033[0m\n' "$*"; }
