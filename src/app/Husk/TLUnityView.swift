@@ -284,7 +284,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     }
 
     private func reportHostRuntimeConditions() {
-        let captured = (window?.screen?.isCaptured == true)
+        let captured = (window?.screen.isCaptured == true)
             || UIApplication.shared.connectedScenes
                 .compactMap { ($0 as? UIWindowScene)?.screen }
                 .contains(where: \.isCaptured)
