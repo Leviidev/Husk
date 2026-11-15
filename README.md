@@ -67,6 +67,8 @@ On a Mac with Xcode, plus `meson`, `ninja`, `pkg-config`, `python3`, `xcodegen`,
 
 That produces `build/Husk.ipa`. Later app-only rebuilds: `./scripts/package_ipa.sh` → `~/Desktop/Husk.ipa`.
 
+The PS4 layer is the one piece `ci_build.sh` does not build: `libhuskps4.dylib` is husk-fex's FEXCore plus Bachata-S4's core (branch `husk`), two trees this repository does not vendor. `./scripts/build_ps4_ios.sh` builds it into `build/ios-arm64/lib` from `BACHATA_DIR` and `HUSK_FEX_DIR`, and `package_ipa.sh` refuses to package a bundle without it, so build it first if you want a complete IPA.
+
 ## Licence
 
 GPL-2.0-or-later. Husk links QEMU (GPLv2), so the shipped binary is a combined GPLv2 work. It cannot go on the App Store. See [docs/01-licensing.md](docs/01-licensing.md).
