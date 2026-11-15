@@ -98,8 +98,14 @@ EOF
 
 CROSS_IOS="$HUSK_ROOT/build/ios-arm64/cross-ios.meson"
 CROSS_DARWIN="$HUSK_ROOT/build/ios-arm64/cross-darwin.meson"
+# build_gpu_ios.sh reads this name, because virglrenderer gates its Metal backend
+# on host_machine.system() == 'darwin'. It is the same file as cross-darwin.meson
+# -- which the meson stages above use -- under the name the GPU script asks for,
+# and ci_build.sh used to copy it into place by hand.
+CROSS_IOS_DARWIN="$HUSK_ROOT/build/ios-arm64/cross-ios-darwin.meson"
 gen_cross "$CROSS_IOS" ios
 gen_cross "$CROSS_DARWIN" darwin
+gen_cross "$CROSS_IOS_DARWIN" darwin
 
 # ---------------------------------------------------------------- autotools
 build_autotools() {
