@@ -1328,13 +1328,45 @@ void tl_jni_each_declared(void (*fn)(tl_jclass *jc))
 
 void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user)
 {
+    int cap = 8192, n = 0;
+    tl_jclass **list = malloc((size_t)cap * sizeof(*list));
+    pthread_mutex_lock(&g_lock);
+    for (int b = 0; b < NBUCKETS; b++) {
+        for (tl_jclass *c = g_classes[b]; c; c = c->next) {
+            if (!list) continue;
+            if (n == cap) {
+                int ncap = cap * 2;
+                tl_jclass **next = realloc(list, (size_t)ncap * sizeof(*list));
+                if (!next) continue;
+                list = next;
+                cap = ncap;
+            }
+            list[n++] = c;
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+
+    /* Evaluate drop() outside g_lock and before unlinking any class so predicates
+       like is_app_array_class() can call tl_jni_find_declared() without deadlocking
+       on g_lock or missing element classes that hashed to an earlier bucket. */
+    int ndrop = 0;
+    for (int i = 0; i < n; i++) {
+        if (drop && drop(list[i], user)) list[ndrop++] = list[i];
+    }
+
     pthread_mutex_lock(&g_lock);
     tl_jni_class_allocation_reset(&g_class_allocation_window);
     for (int b = 0; b < NBUCKETS; b++) {
         tl_jclass **pp = &g_classes[b];
         while (*pp) {
-            if (drop(*pp, user)) {
-                tl_jclass *c = *pp;
+            tl_jclass *c = *pp;
+            bool should_drop = false;
+            if (list) {
+                for (int i = 0; i < ndrop; i++) {
+                    if (list[i] == c) { should_drop = true; break; }
+                }
+            }
+            if (should_drop) {
                 *pp = c->next;
                 c->dvm = NULL;
                 if (c->meths) {
@@ -1373,6 +1405,7 @@ void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user)
         }
     }
     pthread_mutex_unlock(&g_lock);
+    free(list);
 }
 
 static bool gc_obj_dropped(const jobj *o, bool (*drop_cls)(tl_jclass *jc, void *user), void *user)
@@ -1434,26 +1467,42 @@ void tl_jni_sweep_app_objects(const tl_jni_gc_ops *ops)
 
     if (ops->visit_extra_roots) ops->visit_extra_roots(gc_mark_obj, &ctx);
 
+    int cls_cap = 8192, cls_n = 0;
+    tl_jclass **cls_list = malloc((size_t)cls_cap * sizeof(*cls_list));
     pthread_mutex_lock(&g_lock);
     tl_jclass *class_cls = find_class_locked("java/lang/Class");
     for (int b = 0; b < NBUCKETS; b++) {
         for (tl_jclass *jc = g_classes[b]; jc; jc = jc->next) {
-            if (ops->drop_class && ops->drop_class(jc, ops->user)) continue;
-            if (!gc_mark_obj(jc->mirror, &ctx)) jc->mirror = NULL;
-            if (ops->trace_dvm_class_statics && jc->dvm)
-                ops->trace_dvm_class_statics(jc, gc_mark_obj, &ctx);
-            for (int i = 0; i < jc->nfields; i++) {
-                tl_jfield *f = jc->fields[i];
-                if (!f || (f->sig[0] != 'L' && f->sig[0] != '[')) continue;
-                if (f->detached) {
-                    if (!gc_mark_obj((jobj *)f->dval.l, &ctx)) f->dval.l = NULL;
-                } else if (f->is_static && !jc->dvm && jc->statics && jc->nstatics > 0 && f->index < (uint32_t)jc->nstatics) {
-                    if (!gc_mark_obj((jobj *)jc->statics[f->index].l, &ctx)) jc->statics[f->index].l = NULL;
-                }
+            if (!cls_list) continue;
+            if (cls_n == cls_cap) {
+                int ncap = cls_cap * 2;
+                tl_jclass **next = realloc(cls_list, (size_t)ncap * sizeof(*cls_list));
+                if (!next) continue;
+                cls_list = next;
+                cls_cap = ncap;
             }
+            cls_list[cls_n++] = jc;
         }
     }
     pthread_mutex_unlock(&g_lock);
+
+    for (int ci = 0; ci < cls_n; ci++) {
+        tl_jclass *jc = cls_list[ci];
+        if (ops->drop_class && ops->drop_class(jc, ops->user)) continue;
+        if (!gc_mark_obj(jc->mirror, &ctx)) jc->mirror = NULL;
+        if (ops->trace_dvm_class_statics && jc->dvm)
+            ops->trace_dvm_class_statics(jc, gc_mark_obj, &ctx);
+        for (int i = 0; i < jc->nfields; i++) {
+            tl_jfield *f = jc->fields[i];
+            if (!f || (f->sig[0] != 'L' && f->sig[0] != '[')) continue;
+            if (f->detached) {
+                if (!gc_mark_obj((jobj *)f->dval.l, &ctx)) f->dval.l = NULL;
+            } else if (f->is_static && !jc->dvm && jc->statics && jc->nstatics > 0 && f->index < (uint32_t)jc->nstatics) {
+                if (!gc_mark_obj((jobj *)jc->statics[f->index].l, &ctx)) jc->statics[f->index].l = NULL;
+            }
+        }
+    }
+    free(cls_list);
 
     while (ctx.n > 0) {
         jobj *o = ctx.stack[--ctx.n];

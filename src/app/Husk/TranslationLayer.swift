@@ -1201,10 +1201,7 @@ struct TLClassicAttemptView: View {
                 VStack(spacing: 0) { bar; Spacer() }
             }
             if uiHidden {
-                TLFloatingReopenHandle(
-                    action: toggleInterface,
-                    onSwitch: (onSwitch != nil && !switchCandidates.isEmpty) ? { showSwitcher = true } : nil
-                )
+                TLFloatingReopenHandle(action: toggleInterface)
             }
             if hint {
                 VStack {

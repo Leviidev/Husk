@@ -169,7 +169,25 @@ static void mock_prune_interned(bool (*is_alive)(const jobj *o))
 static bool drop_app_cls(tl_jclass *jc, void *user)
 {
     (void)user;
-    return jc && jc->dvm == (void *)(uintptr_t)2;
+    if (!jc) return false;
+    if (jc->dvm == (void *)(uintptr_t)2) return true;
+    const char *n = jc->name;
+    if (!n || n[0] != '[') return false;
+    while (*n == '[') n++;
+    if (*n != 'L') return false;
+    size_t len = strlen(n);
+    if (len < 3 || n[len - 1] != ';') return false;
+    char base[512];
+    if (len - 2 >= sizeof(base)) return false;
+    memcpy(base, n + 1, len - 2);
+    base[len - 2] = 0;
+    /* Production is_app_array_class calls tl_jni_find_declared(base), which
+     * acquires g_lock. Sweeping/forgetting classes must never hold g_lock
+     * across drop_class or unlink base classes before array classes are checked. */
+    pthread_mutex_lock(&g_lock);
+    tl_jclass *elem = find_class_locked(base);
+    pthread_mutex_unlock(&g_lock);
+    return elem && elem != jc && elem->dvm == (void *)(uintptr_t)2;
 }
 
 static tl_jclass *register_class(int bucket, const char *name, tl_jclass *super, void *dvm_tag)
@@ -214,9 +232,11 @@ int main(void)
     tl_jclass *obj_class = register_class(1, "java/lang/Object", NULL, NULL);
     tl_jclass *str_class = register_class(2, "java/lang/String", obj_class, NULL);
     tl_jclass *boot_holder = register_class(3, "husk/BootHolder", obj_class, NULL);
+    tl_jclass *boot_arr_class = register_class(12, "[Ljava/lang/Object;", obj_class, NULL);
     test_classes[0] = obj_class;
     test_classes[1] = str_class;
     test_classes[2] = cls_class;
+    test_classes[3] = boot_arr_class;
 
     add_hle_field(boot_holder, "ref", "Ljava/lang/Object;", false, 0);
     boot_holder->statics = calloc(1, sizeof(jvalue));
@@ -232,10 +252,11 @@ int main(void)
     tl_jni_mark_boot_objects();
 
     tl_jni_allocation_sample boot_sample = tl_jni_allocation_snapshot(&g_allocations, sizeof(jobj));
-    assert(boot_sample.unfreed == 6);
+    assert(boot_sample.unfreed == 7);
 
     for (int sess = 0; sess < 3; sess++) {
         tl_jclass *app_cls = register_class(4 + sess, sess == 1 ? "com/game/B" : "com/game/A", obj_class, (void *)(uintptr_t)2);
+        tl_jclass *app_arr_cls = register_class(20 + sess, sess == 1 ? "[Lcom/game/B;" : "[Lcom/game/A;", obj_class, NULL);
         app_cls->statics = calloc(1, sizeof(jvalue));
         app_cls->nstatics = 1;
         add_hle_field(app_cls, "appStatic", "Ljava/lang/Object;", true, 0);
@@ -265,6 +286,8 @@ int main(void)
         assert(atomic_load(&g_monitors_destroyed) == sess + 1);
         assert(app_cls->dvm == NULL && app_cls->next == NULL && app_cls->mirror == NULL);
         assert(app_cls->fields == NULL && app_cls->statics == NULL);
+        assert(app_arr_cls->next == NULL && app_arr_cls->mirror == NULL);
+        assert(boot_arr_class->mirror != NULL);
         tl_jni_allocation_sample after = tl_jni_allocation_snapshot(&g_allocations, sizeof(jobj));
         assert(after.unfreed == boot_sample.unfreed);
         assert(after.array_payload == 0);

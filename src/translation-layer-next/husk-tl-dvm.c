@@ -879,7 +879,7 @@ static void dvm_monitor_destroy(void *pm)
     mon *m = pm;
     if (!m) return;
     pthread_cond_destroy(&m->cv);
-    pthread_mutex_destroy(&m->mu);
+    if (!atomic_load(&m->owner)) pthread_mutex_destroy(&m->mu);
     free(m);
 }
 

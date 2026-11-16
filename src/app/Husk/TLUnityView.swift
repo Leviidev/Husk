@@ -1486,10 +1486,7 @@ struct TLCocosAttemptView: View {
                     }
                 }
             } else {
-                TLFloatingReopenHandle(
-                    action: toggleInterface,
-                    onSwitch: (onSwitch != nil && !switchCandidates.isEmpty) ? { showSwitcher = true } : nil
-                )
+                TLFloatingReopenHandle(action: toggleInterface)
             }
             if hint {
                 VStack {
@@ -1729,13 +1726,12 @@ struct TLCocosAttemptView: View {
 /// way to bring back Close, Switch, Pad, and Log controls (and can drag the pill freely across the screen).
 struct TLFloatingReopenHandle: View {
     let action: () -> Void
-    var onSwitch: (() -> Void)? = nil
     @AppStorage("husk.tl.eye.nx") private var normX: Double = 0.96
     @AppStorage("husk.tl.eye.ny") private var normY: Double = 0.08
     @GestureState private var gestureDelta: CGSize? = nil
     @State private var suppressTapUntil: TimeInterval = 0
 
-    private static let edgeMarginX: CGFloat = 34
+    private static let edgeMarginX: CGFloat = 24
     private static let edgeMarginY: CGFloat = 28
 
     private func bounds(for size: CGSize) -> (minX: CGFloat, maxX: CGFloat, minY: CGFloat, maxY: CGFloat) {
@@ -1772,43 +1768,22 @@ struct TLFloatingReopenHandle: View {
                 ? clamped(CGPoint(x: rest.x + delta.width, y: rest.y + delta.height), in: geo.size)
                 : rest
 
-            HStack(spacing: 0) {
-                Button {
-                    guard !isDragging, CACurrentMediaTime() >= suppressTapUntil else { return }
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    action()
-                } label: {
-                    Image(systemName: isDragging ? "eye.fill" : "eye")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.95))
-                        .frame(width: 38, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Show controls")
-
-                if let onSwitch {
-                    Rectangle()
-                        .fill(.white.opacity(0.22))
-                        .frame(width: 1, height: 16)
-                    Button {
-                        guard !isDragging, CACurrentMediaTime() >= suppressTapUntil else { return }
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onSwitch()
-                    } label: {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.95))
-                            .frame(width: 36, height: 32)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Switch game")
-                }
+            Button {
+                guard !isDragging, CACurrentMediaTime() >= suppressTapUntil else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                action()
+            } label: {
+                Image(systemName: isDragging ? "eye.fill" : "eye")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .frame(width: 34, height: 34)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().fill(.black.opacity(isDragging ? 0.30 : 0.42)))
+                    .overlay(Circle().strokeBorder(.white.opacity(isDragging ? 0.56 : 0.26), lineWidth: isDragging ? 1.2 : 0.75))
+                    .contentShape(Circle())
             }
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().fill(.black.opacity(isDragging ? 0.30 : 0.42)))
-            .overlay(Capsule().strokeBorder(.white.opacity(isDragging ? 0.56 : 0.26), lineWidth: isDragging ? 1.2 : 0.75))
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show controls")
             .scaleEffect(isDragging ? 1.08 : 1.0)
             .shadow(color: .black.opacity(isDragging ? 0.45 : 0.22), radius: isDragging ? 8 : 4, y: 2)
             .opacity(isDragging ? 1.0 : 0.88)
