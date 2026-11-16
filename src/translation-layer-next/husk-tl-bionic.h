@@ -106,12 +106,18 @@ void *tl_guest_memalign(size_t align, size_t size, const void *caller);
 int   tl_guest_posix_memalign(void **out, size_t align, size_t size, const void *caller);
 void  tl_guest_free(void *p);
 
+struct iovec;
+
 void  tl_timerfd_close(int fd);
 void  tl_timerfd_reset_session(unsigned ended_epoch);
 void  tl_io_note_guest_fd(int fd);
 void  tl_io_untrack_guest_fd(int fd);
 void  tl_io_reset_session(unsigned ended_epoch);
 void  tl_pthread_reset_session(unsigned ended_epoch);
+unsigned tl_bionic_sleep(unsigned seconds);
+int   tl_bionic_pause(void);
+long  tl_bionic_readv(int fd, const struct iovec *iov, int iovcnt);
+bool  tl_bionic_wait_fd_ready(int fd, short events, bool nonblock_hint);
 
 #ifdef __cplusplus
 }

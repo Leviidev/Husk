@@ -1486,7 +1486,10 @@ struct TLCocosAttemptView: View {
                     }
                 }
             } else {
-                TLFloatingReopenHandle(action: toggleInterface)
+                TLFloatingReopenHandle(
+                    action: toggleInterface,
+                    onSwitch: (onSwitch != nil && !switchCandidates.isEmpty) ? { showSwitcher = true } : nil
+                )
             }
             if hint {
                 VStack {
@@ -1529,17 +1532,23 @@ struct TLCocosAttemptView: View {
             CrashReport.gameEnded()
             model.stop()
             UIApplication.shared.isIdleTimerDisabled = false
-            if shouldResetOrientationOnExit?() ?? true {
+            let exiting = shouldResetOrientationOnExit?() ?? true
+            if exiting {
                 HuskOrientation.set(HuskOrientation.standard)
+                if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
             }
-            if let apk = app.apks.first { TLNativeSession.shared.close(apk) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in closeScreen() }
+        .onReceive(NotificationCenter.default.publisher(for: TLUnityUIView.appClosedItself)) { _ in
+            if shouldResetOrientationOnExit?() ?? true { closeScreen() }
+        }
         .overlay { if let d = stoppedWhy { AppStoppedOverlay(app: app, diagnosis: d) { closeScreen() } } }
         .sheet(isPresented: $showSwitcher) {
             TLGameSwitcherSheet(current: app, apps: switchCandidates) { next in
                 showSwitcher = false
-                onSwitch?(next)
+                Task { @MainActor in
+                    await Task.yield()
+                    onSwitch?(next)
+                }
             }
         }
     }
@@ -1597,6 +1606,7 @@ struct TLCocosAttemptView: View {
                     Label("Switch", systemImage: "arrow.left.arrow.right").font(.system(size: 12, weight: .semibold))
                 }
                 .tint(.white)
+                .layoutPriority(1)
             }
             if engine == .flutter {
                 Button { husk_flutter_back() } label: {
@@ -1719,12 +1729,14 @@ struct TLCocosAttemptView: View {
 /// way to bring back Close, Switch, Pad, and Log controls (and can drag the pill freely across the screen).
 struct TLFloatingReopenHandle: View {
     let action: () -> Void
+    var onSwitch: (() -> Void)? = nil
     @AppStorage("husk.tl.eye.nx") private var normX: Double = 0.96
-    @AppStorage("husk.tl.eye.ny") private var normY: Double = 0.04
+    @AppStorage("husk.tl.eye.ny") private var normY: Double = 0.08
     @GestureState private var gestureDelta: CGSize? = nil
+    @State private var suppressTapUntil: TimeInterval = 0
 
-    private static let edgeMarginX: CGFloat = 26
-    private static let edgeMarginY: CGFloat = 22
+    private static let edgeMarginX: CGFloat = 34
+    private static let edgeMarginY: CGFloat = 28
 
     private func bounds(for size: CGSize) -> (minX: CGFloat, maxX: CGFloat, minY: CGFloat, maxY: CGFloat) {
         let minX = min(Self.edgeMarginX, size.width * 0.5)
@@ -1755,58 +1767,81 @@ struct TLFloatingReopenHandle: View {
             let rest = restCenter(in: geo.size)
             let delta = gestureDelta ?? .zero
             let movedDist = hypot(delta.width, delta.height)
-            let isGrabbed = gestureDelta != nil
-            let isDragging = isGrabbed && movedDist > 4
+            let isDragging = gestureDelta != nil && movedDist > 6
             let center = isDragging
                 ? clamped(CGPoint(x: rest.x + delta.width, y: rest.y + delta.height), in: geo.size)
                 : rest
 
-            Image(systemName: isGrabbed ? "eye.fill" : "eye")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(isGrabbed ? 1.0 : 0.92))
-                .frame(width: 40, height: 30)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().fill(.black.opacity(isGrabbed ? 0.30 : 0.42)))
-                .overlay(Capsule().strokeBorder(.white.opacity(isGrabbed ? 0.56 : 0.26), lineWidth: isGrabbed ? 1.2 : 0.75))
-                .scaleEffect(isGrabbed ? 1.12 : 1.0)
-                .shadow(color: .black.opacity(isGrabbed ? 0.45 : 0.22), radius: isGrabbed ? 8 : 4, y: 2)
-                .opacity(isGrabbed ? 1.0 : 0.84)
-                .animation(.interactiveSpring(response: 0.20, dampingFraction: 0.88), value: isGrabbed)
-                .frame(width: 50, height: 44)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .named("TLFloatingHandleSpace"))
-                        .updating($gestureDelta) { value, state, _ in
-                            state = value.translation
-                        }
-                        .onEnded { value in
-                            let dist = hypot(value.translation.width, value.translation.height)
-                            if dist < 8 {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                action()
-                                return
-                            }
-                            let b = bounds(for: geo.size)
-                            let spanX = max(1, b.maxX - b.minX)
-                            let spanY = max(1, b.maxY - b.minY)
-                            let inertiaX = (value.predictedEndTranslation.width - value.translation.width) * 0.16
-                            let inertiaY = (value.predictedEndTranslation.height - value.translation.height) * 0.16
-                            let projected = clamped(
-                                CGPoint(
-                                    x: rest.x + value.translation.width + inertiaX,
-                                    y: rest.y + value.translation.height + inertiaY
-                                ),
-                                in: geo.size
-                            )
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.interactiveSpring(response: 0.24, dampingFraction: 0.86)) {
-                                normX = min(max(Double((projected.x - b.minX) / spanX), 0), 1)
-                                normY = min(max(Double((projected.y - b.minY) / spanY), 0), 1)
-                            }
-                        }
-                )
-                .position(x: center.x, y: center.y)
+            HStack(spacing: 0) {
+                Button {
+                    guard !isDragging, CACurrentMediaTime() >= suppressTapUntil else { return }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    action()
+                } label: {
+                    Image(systemName: isDragging ? "eye.fill" : "eye")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .frame(width: 38, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Show controls")
+
+                if let onSwitch {
+                    Rectangle()
+                        .fill(.white.opacity(0.22))
+                        .frame(width: 1, height: 16)
+                    Button {
+                        guard !isDragging, CACurrentMediaTime() >= suppressTapUntil else { return }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onSwitch()
+                    } label: {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .frame(width: 36, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Switch game")
+                }
+            }
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().fill(.black.opacity(isDragging ? 0.30 : 0.42)))
+            .overlay(Capsule().strokeBorder(.white.opacity(isDragging ? 0.56 : 0.26), lineWidth: isDragging ? 1.2 : 0.75))
+            .scaleEffect(isDragging ? 1.08 : 1.0)
+            .shadow(color: .black.opacity(isDragging ? 0.45 : 0.22), radius: isDragging ? 8 : 4, y: 2)
+            .opacity(isDragging ? 1.0 : 0.88)
+            .animation(.interactiveSpring(response: 0.20, dampingFraction: 0.88), value: isDragging)
+            .padding(4)
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 6, coordinateSpace: .named("TLFloatingHandleSpace"))
+                    .updating($gestureDelta) { value, state, _ in
+                        state = value.translation
+                    }
+                    .onEnded { value in
+                        suppressTapUntil = CACurrentMediaTime() + 0.25
+                        let b = bounds(for: geo.size)
+                        let spanX = max(1, b.maxX - b.minX)
+                        let spanY = max(1, b.maxY - b.minY)
+                        let inertiaX = (value.predictedEndTranslation.width - value.translation.width) * 0.16
+                        let inertiaY = (value.predictedEndTranslation.height - value.translation.height) * 0.16
+                        let projected = clamped(
+                            CGPoint(
+                                x: rest.x + value.translation.width + inertiaX,
+                                y: rest.y + value.translation.height + inertiaY
+                            ),
+                            in: geo.size
+                        )
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.interactiveSpring(response: 0.24, dampingFraction: 0.86)) {
+                            normX = min(max(Double((projected.x - b.minX) / spanX), 0), 1)
+                            normY = min(max(Double((projected.y - b.minY) / spanY), 0), 1)
+                        }
+                    }
+            )
+            .position(x: center.x, y: center.y)
         }
         .coordinateSpace(name: "TLFloatingHandleSpace")
     }

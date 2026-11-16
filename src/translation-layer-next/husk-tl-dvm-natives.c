@@ -647,6 +647,12 @@ NAT(Thread_sleep)
     int64_t ms = a[1].j; int32_t ns = a[2].i;
     if (ms < 0 || ns < 0 || ns > 999999) return dvm_throw("java/lang/IllegalArgumentException", "bad sleep time");
     int64_t total_ns = ms > (INT64_MAX - ns) / 1000000ll ? INT64_MAX : ms * 1000000ll + ns;
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (total_ns <= 0 && tl_guest_session_closing()) {
+        if (!tl_guest_session_wake_once()) (void)tl_guest_session_wait_close(25000000ll);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        return dvm_throw("java/lang/InterruptedException", "session closing");
+    }
     if (tl_guest_session_wait_close(total_ns)) {
         if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         return dvm_throw("java/lang/InterruptedException", "session closing");

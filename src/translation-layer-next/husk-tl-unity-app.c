@@ -608,6 +608,7 @@ static bool launch(int engine, const char *apk, const char *data_dir, void *meta
         return false; /* the UI closes the previous session asynchronously */
     }
     if (!atomic_compare_exchange_strong(&A.state, &expected, HUSK_UNITY_STARTING)) return false;
+    tl_audio_set_paused(false);
     atomic_fetch_add(&session_serial, 1);
     atomic_store(&A.loader_done, false);
     A.loader_started = false;

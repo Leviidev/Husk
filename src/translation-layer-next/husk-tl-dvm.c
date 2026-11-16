@@ -828,7 +828,13 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
 {
     mon *m = monitor_of(o);
     if (!mon_mine(m)) { dvm_throw("java/lang/IllegalMonitorStateException", "object not locked by thread before wait()"); return; }
-    if (tl_guest_session_closing()) {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        m->count = 0;
+        atomic_store(&m->owner, (pthread_t)0);
+        pthread_mutex_unlock(&m->mu);
+        tl_guest_thread_retire();
+    }
+    if (tl_guest_session_closing() && tl_guest_session_wake_once()) {
         dvm_throw("java/lang/InterruptedException", "session closing");
         return;
     }
@@ -841,7 +847,13 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
     if (g_mon_waiters) g_mon_waiters->prev = &w;
     g_mon_waiters = &w;
     pthread_mutex_unlock(&g_mon_waiters_mu);
-    if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
+    if (tl_guest_session_closing()) {
+        int64_t cap_ns = (ms <= 0 && ns <= 0) ? 25000000ll : (ms >= 25 ? 25000000ll : (ms * 1000000ll + ns));
+        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += cap_ns / 1000000000ll; ts.tv_nsec += cap_ns % 1000000000ll;
+        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+        pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+    } else if (ms <= 0 && ns <= 0) pthread_cond_wait(&m->cv, &m->mu);
     else {
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_sec += ms / 1000; ts.tv_nsec += (ms % 1000) * 1000000 + ns;
@@ -852,6 +864,10 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
     if (w.prev) w.prev->next = w.next; else if (g_mon_waiters == &w) g_mon_waiters = w.next;
     if (w.next) w.next->prev = w.prev;
     pthread_mutex_unlock(&g_mon_waiters_mu);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        pthread_mutex_unlock(&m->mu);
+        tl_guest_thread_retire();
+    }
     atomic_store(&m->owner, pthread_self());
     m->count = held;
     if (tl_guest_session_closing()) dvm_throw("java/lang/InterruptedException", "session closing");
@@ -880,7 +896,10 @@ bool dvm_ensure_init(dvm_class *c)
         bool mine = pthread_equal(c->init_thread, pthread_self());
         pthread_mutex_unlock(&c->init_lock);
         if (mine) return true;
-        while (c->state == CS_INITIALIZING) usleep(200);
+        while (c->state == CS_INITIALIZING) {
+            if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+            usleep(200);
+        }
         return c->state == CS_INITIALIZED;
     }
     c->state = CS_INITIALIZING;

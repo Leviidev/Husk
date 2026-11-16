@@ -325,8 +325,19 @@ static int b_rwlock_destroy(void *g)
     memset(g, 0, 56);
     return 0;
 }
-static int b_rwlock_rdlock(void *g)    { return rc(pthread_rwlock_rdlock(obj_host(g, make_rwlock))); }
-static int b_rwlock_wrlock(void *g)    { return rc(pthread_rwlock_wrlock(obj_host(g, make_rwlock))); }
+static int b_rwlock_lock_wait(void *g, bool wr)
+{
+    pthread_rwlock_t *rw = obj_host(g, make_rwlock);
+    for (int spin = 0; ; spin++) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        int r = wr ? pthread_rwlock_trywrlock(rw) : pthread_rwlock_tryrdlock(rw);
+        if (r != EBUSY) return rc(r);
+        if (spin < 8) sched_yield();
+        else usleep(tl_guest_session_closing() ? 1000 : 500);
+    }
+}
+static int b_rwlock_rdlock(void *g)    { return b_rwlock_lock_wait(g, false); }
+static int b_rwlock_wrlock(void *g)    { return b_rwlock_lock_wait(g, true); }
 static int b_rwlock_tryrdlock(void *g) { return rc(pthread_rwlock_tryrdlock(obj_host(g, make_rwlock))); }
 static int b_rwlock_trywrlock(void *g) { return rc(pthread_rwlock_trywrlock(obj_host(g, make_rwlock))); }
 static int b_rwlock_unlock(void *g)    { return rc(pthread_rwlock_unlock(obj_host(g, make_rwlock))); }
@@ -452,7 +463,10 @@ static int b_once(_Atomic int *once, void (*fn)(void))
         fn();
         atomic_store(once, 2);
     } else {
-        while (atomic_load(once) == 1) sched_yield();
+        while (atomic_load(once) == 1) {
+            if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+            sched_yield();
+        }
     }
     return 0;
 }

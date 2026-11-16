@@ -1188,7 +1188,7 @@ const tl_bionic_entry tl_tab_str2[] = {
     TL_WRAP("perror", b_perror), TL_WRAP("rewind", b_rewind), TL_WRAP("fputwc", b_fputwc), TL_WRAP("putwc", b_fputwc), TL_WRAP("fgetwc", b_fgetwc), TL_WRAP("getwc", b_fgetwc), TL_WRAP("ungetwc", b_ungetwc),
     TL_WRAP("fgetws", b_fgetws), TL_WRAP("fputws", b_fputws), TL_WRAP("fwide", b_fwide), TL_WRAP("fwprintf", tl_va_fwprintf), TL_WRAP("vfwprintf", b_vfwprintf), TL_WRAP("popen", b_popen), TL_WRAP("pclose", b_pclose),
     TL_WRAP("tmpfile", b_tmpfile), TL_WRAP("tmpnam", b_tmpnam), TL_WRAP("wcsrtombs", b_wcsrtombs), TL_WRAP("getchar", b_getchar),
-    TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_DIRECT(sleep), TL_DIRECT(pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
+    TL_DIRECT(strncat), TL_DIRECT(strptime), TL_DIRECT(ldiv), TL_WRAP("sleep", tl_bionic_sleep), TL_WRAP("pause", tl_bionic_pause), TL_DIRECT(arc4random_buf), TL_DIRECT(nan), TL_DIRECT(nanf),
     /* the rest of libm a guest may import (most are inlined as instructions, some libraries call them) */
     TL_DIRECT(ceilf), TL_DIRECT(copysignf), TL_DIRECT(erfcf), TL_DIRECT(fdim), TL_DIRECT(fdimf), TL_DIRECT(floorf), TL_DIRECT(fma), TL_DIRECT(fmaf),
     TL_DIRECT(fmaxf), TL_DIRECT(fminf), TL_DIRECT(ilogb), TL_DIRECT(lgamma), TL_DIRECT(lgammaf), TL_WRAP("lgamma_r", b_lgamma_r), TL_WRAP("lgammaf_r", b_lgammaf_r),

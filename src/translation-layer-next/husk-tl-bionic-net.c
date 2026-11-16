@@ -20,6 +20,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -243,6 +244,7 @@ static int b_listen(int fd, int backlog) { TL_ERRNO_BEGIN(); int r = listen(fd, 
 
 static int accept_common(int fd, void *g, socklen_t *glen, int flags)
 {
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, (flags & G_SOCK_NONBLOCK) != 0)) return -1;
     struct sockaddr_storage s; socklen_t sl = sizeof(s);
     TL_ERRNO_BEGIN();
     int c = accept(fd, (struct sockaddr *)&s, &sl);
@@ -266,6 +268,7 @@ static long b_send(int fd, const void *p, size_t n, int flags)
 }
 static long b_recv(int fd, void *p, size_t n, int flags)
 {
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, (flags & 0x40) != 0)) return -1;
     TL_ERRNO_BEGIN(); long r = recv(fd, p, n, msg_flags_to_darwin(flags)); int e = errno; TL_ERRNO_END(); NTRACE("recv(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0); return r;
 }
 static long b_sendto(int fd, const void *p, size_t n, int flags, const void *g, socklen_t glen);
@@ -281,6 +284,7 @@ static long b_recvfrom(int fd, void *p, size_t n, int flags, void *g, socklen_t 
 static long b___recvfrom_chk(int fd, void *p, size_t n, size_t buf_size, int flags, void *g, socklen_t *glen) { (void)buf_size; return b_recvfrom(fd, p, n, flags, g, glen); }
 static long b_recvfrom(int fd, void *p, size_t n, int flags, void *g, socklen_t *glen)
 {
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, (flags & 0x40) != 0)) return -1;
     struct sockaddr_storage s; socklen_t sl = sizeof(s);
     TL_ERRNO_BEGIN();
     long r = recvfrom(fd, p, n, msg_flags_to_darwin(flags), g ? (struct sockaddr *)&s : NULL, g ? &sl : NULL);
@@ -308,6 +312,7 @@ static long b_sendmsg(int fd, const guest_msghdr *g, int flags)
 }
 static long b_recvmsg(int fd, guest_msghdr *g, int flags)
 {
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, (flags & 0x40) != 0)) return -1;
     struct msghdr m; memset(&m, 0, sizeof(m));
     struct sockaddr_storage s;
     if (g->name) { m.msg_name = &s; m.msg_namelen = sizeof(s); }

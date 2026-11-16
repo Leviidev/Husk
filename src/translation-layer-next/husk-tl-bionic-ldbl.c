@@ -210,7 +210,7 @@ const tl_bionic_entry tl_tab_ldbl[] = {
     TL_WRAP("__isinfl", b___isinfl), TL_WRAP("__isnanl", b___isnanl), TL_WRAP("nextafterl", b_nextafterl),
     TL_WRAP("__signbit", b___signbit), TL_WRAP("__signbitf", b___signbitf),
     TL_WRAP("nexttowardl", b_nextafterl),
-    TL_DIRECT(copysign), TL_DIRECT(erf), TL_DIRECT(erfc), TL_DIRECT(readv), TL_DIRECT(sync), TL_DIRECT(getsid),
+    TL_DIRECT(copysign), TL_DIRECT(erf), TL_DIRECT(erfc), TL_WRAP("readv", tl_bionic_readv), TL_DIRECT(sync), TL_DIRECT(getsid),
     TL_DIRECT(tcgetpgrp), TL_DIRECT(tcsetpgrp), TL_DIRECT(getitimer), TL_DIRECT(setitimer), TL_DIRECT(wait4),
     TL_DIRECT(deflateCopy), TL_DIRECT(inflateCopy),
     TL_WRAP("fpathconf", b_fpathconf), TL_WRAP("fstatvfs", b_enosys), TL_WRAP("dup3", b_dup3),

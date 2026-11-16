@@ -959,6 +959,47 @@ static bool net_trace_fd(int fd)
     struct stat st;
     return fstat(fd, &st) == 0 && S_ISSOCK(st.st_mode);
 }
+bool tl_bionic_wait_fd_ready(int fd, short events, bool nonblock_hint)
+{
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (fd < 0 || nonblock_hint) return true;
+    int saved_errno = errno;
+    struct stat st;
+    if (fstat(fd, &st) != 0 || !(S_ISFIFO(st.st_mode) || S_ISSOCK(st.st_mode))) {
+        errno = saved_errno;
+        return true;
+    }
+    int fl = fcntl(fd, F_GETFL);
+    if (fl < 0 || (fl & O_NONBLOCK)) {
+        errno = saved_errno;
+        return true;
+    }
+    for (;;) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (tl_guest_session_closing() && tl_guest_session_wake_once()) {
+            tl_set_guest_errno(4 /* EINTR */);
+            return false;
+        }
+        int cap = tl_guest_session_closing() ? 25 : 100;
+        struct pollfd pfd = { fd, events, 0 };
+        int pr = poll(&pfd, 1, cap);
+        int pe = errno;
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (pr > 0) { errno = saved_errno; return true; }
+        if (pr < 0) {
+            if (pe == EINTR) {
+                tl_set_guest_errno(4 /* EINTR */);
+                return false;
+            }
+            errno = saved_errno;
+            return true;
+        }
+        if (tl_guest_session_closing() && tl_guest_session_wake_once()) {
+            tl_set_guest_errno(4 /* EINTR */);
+            return false;
+        }
+    }
+}
 static long b_read(int fd, void *p, size_t n)
 {
     if (vfd_is(fd)) {
@@ -970,12 +1011,31 @@ static long b_read(int fd, void *p, size_t n)
         if (r > 0) v->pos += (uint64_t)r;
         return r;
     }
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, false)) return -1;
     TL_ERRNO_BEGIN(); long r = read(fd, p, n); int e = errno; TL_ERRNO_END();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_TIMERFD_TRACE") ? 1 : 0;
       bool tl_timerfd_is(int fd);
       if (tr && tl_timerfd_is(fd)) { char nm[32] = ""; pthread_getname_np(pthread_self(), nm, sizeof(nm)); tl_log_line("timerfd[%s]: read fd %d -> %ld errno %d", nm, fd, r, r < 0 ? e : 0); } }
     if (net_trace_fd(fd)) tl_log_line("net: read(fd %d, %zu) -> %ld errno %d", fd, n, r, r < 0 ? e : 0);
     { static int tr = -1, said; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr && n == 32 && said++ < 20) tl_log_line("file: read(fd %d, 32) -> %ld errno %d", fd, r, r < 0 ? e : 0); }
+    return r;
+}
+long tl_bionic_readv(int fd, const struct iovec *iov, int iovcnt)
+{
+    if (vfd_is(fd)) {
+        if (iovcnt < 0 || !iov) { tl_set_guest_errno(22); return -1; }
+        long total = 0;
+        for (int i = 0; i < iovcnt; i++) {
+            if (!iov[i].iov_len) continue;
+            long r = b_read(fd, iov[i].iov_base, iov[i].iov_len);
+            if (r < 0) return total > 0 ? total : -1;
+            total += r;
+            if ((size_t)r < iov[i].iov_len) break;
+        }
+        return total;
+    }
+    if (!tl_bionic_wait_fd_ready(fd, POLLIN, false)) return -1;
+    TL_ERRNO_BEGIN(); long r = readv(fd, iov, iovcnt); TL_ERRNO_END();
     return r;
 }
 static long b___read_chk(int fd, void *p, size_t n, size_t bufsz)
@@ -2074,6 +2134,27 @@ static int b_nanosleep(const struct timespec *req, struct timespec *rem)
     return sleep_interruptible_ns(ns, rem);
 }
 static int b_usleep(unsigned us) { return sleep_interruptible_ns((int64_t)us * 1000ll, NULL); }
+unsigned tl_bionic_sleep(unsigned seconds)
+{
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (seconds == 0) return 0;
+    struct timespec rem = { 0, 0 };
+    int r = sleep_interruptible_ns((int64_t)seconds * 1000000000ll, &rem);
+    if (r == 0) return 0;
+    unsigned left = (unsigned)rem.tv_sec + (rem.tv_nsec >= 500000000L ? 1u : 0u);
+    return left ? left : 1u;
+}
+int tl_bionic_pause(void)
+{
+    for (;;) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (tl_guest_session_closing() && tl_guest_session_wake_once()) {
+            tl_set_guest_errno(4 /* EINTR */);
+            return -1;
+        }
+        (void)tl_guest_session_wait_close(100000000ll);
+    }
+}
 /* clock_nanosleep: relative, or until a time on the clock (TIMER_ABSTIME); returns the error, as POSIX says. Linux's REALTIME 0,
  * MONOTONIC 1, BOOTTIME 7 (the others are taken as monotonic). */
 static int b_clock_nanosleep(int clock, int flags, const struct timespec *req, struct timespec *rem)
@@ -2204,11 +2285,19 @@ static int b_sigismember(const uint64_t *s, int sig) { if (sig < 1 || sig > 64) 
 static int b_sigdelset(uint64_t *s, int sig) { if (sig < 1 || sig > 64) { tl_set_guest_errno(22); return -1; } *s &= ~(1ull << (sig - 1)); return 0; }
 static int b_sigsuspend(const uint64_t *mask)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (tl_guest_session_closing()) {
+        if (!tl_guest_session_wake_once()) (void)tl_guest_session_wait_close(25000000ll);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        tl_set_guest_errno(4 /* EINTR */);
+        return -1;
+    }
     uint32_t m = 0;
     for (int s = 1; s < 32; s++) if (*mask & (1ull << (s - 1))) { int d = tl_signal_to_darwin(s); if (d > 0) m |= 1u << (d - 1); }
     sigset_t ds; memcpy(&ds, &m, sizeof(m));
     sig_trace("sigsuspend begins, mask", (int)*mask);
     TL_ERRNO_BEGIN(); int r = sigsuspend(&ds); TL_ERRNO_END();
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     sig_trace("sigsuspend returned", 0);
     return r;
 }
@@ -2424,7 +2513,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
         return fd < 0 ? -*tl_guest_errno_ptr() : fd;
     }
     case 57: { int r = close((int)a0); if (r == 0) tl_atomic_closed((int)a0); return r < 0 ? -tl_errno_to_guest(errno) : r; }
-    case 63: { long r = read((int)a0, (void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
+    case 63: { *tl_guest_errno_ptr() = 0; long r = b_read((int)a0, (void *)a1, (size_t)a2); return r < 0 ? -(*tl_guest_errno_ptr() ? *tl_guest_errno_ptr() : 4) : r; }
     case 64: { long r = write((int)a0, (const void *)a1, (size_t)a2); return r < 0 ? -tl_errno_to_guest(errno) : r; }
     case 113: { int r = b_clock_gettime((int)a0, (struct timespec *)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     case 169: return b_gettimeofday((int64_t *)a0, (void *)a1);
@@ -2449,7 +2538,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
         return access(p, (int)a2) ? -tl_errno_to_guest(errno) : 0;
     }
     case 62: { off_t r = lseek((int)a0, (off_t)a1, (int)a2); return r < 0 ? -tl_errno_to_guest(errno) : (long)r; }
-    case 101: { int r = nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
+    case 101: { *tl_guest_errno_ptr() = 0; int r = b_nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -(*tl_guest_errno_ptr() ? *tl_guest_errno_ptr() : 4) : 0; }
     case 124: { int tl_guest_sched_yield(void); tl_guest_sched_yield(); return 0; }
     case 132: return 0;                                                                 /* sigaltstack: accepted (guest handlers are not installed) */
     /* memory and file status by raw system call (packers and protectors avoid libc): through the same shims as the calls */

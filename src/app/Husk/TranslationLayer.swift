@@ -964,11 +964,43 @@ struct TLAttemptView: View {
             if let next = switchingTo {
                 VStack(spacing: 14) {
                     AppIcon(path: next.iconPath, size: 56)
-                    ProgressView().tint(.white)
-                    Text(switchStatus.isEmpty ? "Switching to \(next.label)…" : switchStatus)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
+                    if let switchError {
+                        Text("Could not switch to \(next.label)")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text(switchError)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.78))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 340)
+                        HStack(spacing: 12) {
+                            Button("Retry") {
+                                self.switchError = nil
+                                switchTo(next, allowRetry: true)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Button("Close Husk to Open") {
+                                Router.shared.switchTo(next.id)
+                                CrashReport.gameEnded()
+                                HuskLog.flushNow()
+                                exit(0)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.white)
+                            Button("Close", role: .cancel) {
+                                dismiss()
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.white.opacity(0.8))
+                        }
+                        .padding(.top, 4)
+                    } else {
+                        ProgressView().tint(.white)
+                        Text(switchStatus.isEmpty ? "Switching to \(next.label)…" : switchStatus)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(24)
             } else {
@@ -985,11 +1017,6 @@ struct TLAttemptView: View {
             switchTask?.cancel()
             switchTask = nil
             HuskOrientation.set(HuskOrientation.standard)
-        }
-        .alert("Could Not Switch Game", isPresented: Binding(get: { switchError != nil }, set: { if !$0 { switchError = nil } })) {
-            Button("OK", role: .cancel) { switchError = nil }
-        } message: {
-            Text(switchError ?? "")
         }
     }
 
@@ -1016,12 +1043,14 @@ struct TLAttemptView: View {
     }
 
     @MainActor
-    private func switchTo(_ next: TLApp) {
-        guard switchingTo == nil, next.id != activeApp.id else { return }
-        if activeApp.report?.runsOnNativeRuntime == true {
-            husk_unity_set_paused(true)
-        } else if activeApp.report?.webKind == nil {
-            husk_tl_attempt_stop()
+    private func switchTo(_ next: TLApp, allowRetry: Bool = false) {
+        guard allowRetry || switchingTo == nil, next.id != activeApp.id else { return }
+        if !allowRetry {
+            if activeApp.report?.runsOnNativeRuntime == true {
+                husk_unity_set_paused(true)
+            } else if activeApp.report?.webKind == nil {
+                husk_tl_attempt_stop()
+            }
         }
         let nextSettings = TLAppSettings.load(next.id, packageName: next.packageName)
         let nextPortrait: Bool = {
@@ -1035,10 +1064,11 @@ struct TLAttemptView: View {
 
         let closingLabel = activeApp.label
         switchingTo = next
+        switchError = nil
         switchStatus = "Closing \(closingLabel)…"
         switchTask?.cancel()
         switchTask = Task { @MainActor in
-            // Allow onDisappear cleanup and background stop task to start first.
+            // Allow onDisappear cleanup of the outgoing view before stopping/launching the next runtime.
             await Task.yield()
             guard !Task.isCancelled else { return }
             let stopped: Bool
@@ -1049,7 +1079,6 @@ struct TLAttemptView: View {
             }
             guard !Task.isCancelled else { return }
             guard stopped else {
-                switchingTo = nil
                 switchStatus = ""
                 switchTask = nil
                 switchError = TLNativeSession.shared.lastError ?? "The previous game has not finished closing."
@@ -1062,7 +1091,6 @@ struct TLAttemptView: View {
                         Task { @MainActor in switchStatus = text }
                     }
                 } catch {
-                    switchingTo = nil
                     switchStatus = ""
                     switchTask = nil
                     switchError = error.localizedDescription
@@ -1082,6 +1110,7 @@ struct TLAttemptView: View {
             activeApp = next
             switchingTo = nil
             switchStatus = ""
+            switchError = nil
             switchTask = nil
         }
     }
@@ -1172,7 +1201,10 @@ struct TLClassicAttemptView: View {
                 VStack(spacing: 0) { bar; Spacer() }
             }
             if uiHidden {
-                TLFloatingReopenHandle(action: toggleInterface)
+                TLFloatingReopenHandle(
+                    action: toggleInterface,
+                    onSwitch: (onSwitch != nil && !switchCandidates.isEmpty) ? { showSwitcher = true } : nil
+                )
             }
             if hint {
                 VStack {
@@ -1209,7 +1241,10 @@ struct TLClassicAttemptView: View {
         .sheet(isPresented: $showSwitcher) {
             TLGameSwitcherSheet(current: app, apps: switchCandidates) { next in
                 showSwitcher = false
-                onSwitch?(next)
+                Task { @MainActor in
+                    await Task.yield()
+                    onSwitch?(next)
+                }
             }
         }
     }
