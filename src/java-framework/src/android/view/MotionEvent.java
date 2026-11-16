@@ -135,7 +135,11 @@ public final class MotionEvent extends InputEvent {
     public final MotionEvent split(int idBits) {
         int n = 0;
         for (int i = 0; i < count; i++) if ((idBits & (1 << ids[i])) != 0) n++;
-        MotionEvent e = obtain(this);
+        // Copy the event metadata directly. obtain(this) first clones all five
+        // pointer arrays, which split would immediately discard and replace.
+        MotionEvent e = new MotionEvent();
+        e.downTime = downTime; e.eventTime = eventTime; e.action = action;
+        e.source = source; e.buttonState = buttonState; e.flags = flags; e.metaState = metaState;
         e.count = n; e.ids = new int[n]; e.xs = new float[n]; e.ys = new float[n]; e.rxs = new float[n]; e.rys = new float[n];
         int k = 0, newIndex = -1, am = getActionMasked(), ai = getActionIndex();
         for (int i = 0; i < count; i++) if ((idBits & (1 << ids[i])) != 0) {

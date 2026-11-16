@@ -9,6 +9,7 @@
 
 #include <stdatomic.h>
 #include "husk-tl-jni.h"
+#include "husk-tl-jni-class-allocation.h"
 
 typedef struct tl_jmeth {
     tl_jclass *cls;                    /* the class the method was looked up on */
@@ -46,6 +47,11 @@ struct tl_jclass {
     tl_jclass *next;
     void *dvm;                         /* the interpreter's class (husk-tl-dvm.c), or NULL */
     _Atomic bool linking;              /* declared, its bytecode still being linked (by the thread holding the link lock) */
+    tl_jni_class_allocation allocations;
+    /* Diagnostic enumeration only: retired classes already survive unlinking.
+     * This chain must not be used as a reason to extend their lifetime. */
+    tl_jclass *allocation_next;
+    uint64_t allocation_declaration;
 };
 
 /* A class another thread is still linking: wait for it (returns at once on the linking thread itself). */

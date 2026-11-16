@@ -30,6 +30,7 @@ subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, 
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.os.HostDeviceProfileTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.SessionResetTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "husk.InputDeliveryTest"], check=True)
+subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.view.MotionEventSplitTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.media.MediaPlayerTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.graphics.drawable.DrawableCloneBoundsTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.opengl.GLSurfaceLifecycleTest"], check=True)

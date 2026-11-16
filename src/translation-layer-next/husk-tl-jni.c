@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-dexindex.h"
@@ -37,18 +38,68 @@ static uint32_t hash_str(const char *s) { uint32_t h = 2166136261u; while (*s) {
 /* --------------------------------------------------------------- objects */
 
 static tl_jni_allocation_ledger g_allocations;
+static tl_jclass *g_allocation_classes;
+static uint64_t g_allocation_declaration = 2;
+static tl_jni_class_allocation g_class_mirrors, g_class_unknown;
+static tl_jni_class_allocation_window g_class_allocation_window = { .epoch = 1 };
+
+static void log_class_allocation_stats(const char *tag)
+{
+    struct timespec now;
+    uint64_t now_ns = clock_gettime(CLOCK_MONOTONIC, &now) == 0
+        ? (uint64_t)now.tv_sec * UINT64_C(1000000000) + (uint64_t)now.tv_nsec : 0;
+    pthread_mutex_lock(&g_lock);
+    tl_jni_class_allocation_report r = tl_jni_class_allocation_begin(&g_class_allocation_window, now_ns);
+    for (tl_jclass *c = g_allocation_classes; c; c = c->allocation_next)
+        tl_jni_class_allocation_add(&r, c->allocation_declaration, c->name,
+            tl_jni_class_allocation_snapshot(&c->allocations, r.baseline));
+    tl_jni_class_allocation_add(&r, 1, "java/lang/Class (mirrors)",
+        tl_jni_class_allocation_snapshot(&g_class_mirrors, r.baseline));
+    tl_jni_class_allocation_add(&r, 2, "<class-unavailable>",
+        tl_jni_class_allocation_snapshot(&g_class_unknown, r.baseline));
+    pthread_mutex_unlock(&g_lock);
+
+    /* Names and counters are copied into fixed storage before logging. Class
+     * retirement cannot invalidate this report, and logging never owns g_lock. */
+    tl_jni_class_allocation_sample other = tl_jni_class_allocation_other(&r);
+    tl_log_line("jvm-class-allocations-partial[%s]: epoch=%llu sample=%llu baseline=%d interval=%.3f s groups=%llu top=%zu rank=%s created-total=%llu created-delta=%llu array-created-bytes-total=%llu array-created-bytes-delta=%llu other-created-total=%llu other-created-delta=%llu other-array-bytes-total=%llu other-array-bytes-delta=%llu (process cumulative creation, not live bytes; independent atomic observations; requested headers/array backing only, excludes strings/fields/native resources/allocator overhead)",
+        tag, (unsigned long long)r.epoch, (unsigned long long)r.sequence, r.baseline,
+        r.interval_ns / 1000000000.0, (unsigned long long)r.groups, r.count,
+        r.baseline ? "created-total" : "created-delta",
+        (unsigned long long)r.totals.created, (unsigned long long)r.totals.created_delta,
+        (unsigned long long)r.totals.array_bytes, (unsigned long long)r.totals.array_bytes_delta,
+        (unsigned long long)other.created, (unsigned long long)other.created_delta,
+        (unsigned long long)other.array_bytes, (unsigned long long)other.array_bytes_delta);
+    for (size_t i = 0; i < r.count; i++) {
+        const tl_jni_class_allocation_row *row = &r.top[i];
+        tl_log_line("jvm-class-allocation[%s]: epoch=%llu sample=%llu declaration=%llu class=%s created-total=%llu created-delta=%llu header-created-bytes-total=%llu header-created-bytes-delta=%llu array-created-bytes-total=%llu array-created-bytes-delta=%llu",
+            tag, (unsigned long long)r.epoch, (unsigned long long)r.sequence,
+            (unsigned long long)row->declaration, row->name,
+            (unsigned long long)row->counts.created, (unsigned long long)row->counts.created_delta,
+            (unsigned long long)(row->counts.created * sizeof(jobj)),
+            (unsigned long long)(row->counts.created_delta * sizeof(jobj)),
+            (unsigned long long)row->counts.array_bytes, (unsigned long long)row->counts.array_bytes_delta);
+    }
+}
+
 void tl_jni_log_allocation_stats(const char *tag)
 {
     tl_jni_allocation_sample s = tl_jni_allocation_snapshot(&g_allocations, sizeof(jobj));
     tl_log_line("jvm-retained-partial[%s]: objects=%llu headers=%.1f MiB array-payload=%.1f MiB total-created=%llu deferred-unref-calls=%llu (requested bytes; excludes strings/fields/native resources/allocator overhead)",
         tag ? tag : "", (unsigned long long)s.unfreed, s.headers / (1024.0 * 1024.0),
         s.array_payload / (1024.0 * 1024.0), (unsigned long long)s.created, (unsigned long long)s.deferred);
+    /* Memory warnings can be frequent: class scans/top rows belong only to the
+     * existing 30-second heartbeat, not the warning/allocation path. */
+    if (tag && !strcmp(tag, "game-periodic")) log_class_allocation_stats(tag);
 }
 
 static jobj *obj_alloc(uint8_t kind, tl_jclass *cls)
 {
     jobj *o = calloc(1, sizeof(*o));
-    if (o) tl_jni_allocation_object(&g_allocations);
+    if (!o) return NULL;
+    tl_jni_allocation_object(&g_allocations);
+    tl_jni_class_allocation_object(cls ? &cls->allocations
+        : kind == TL_K_CLASS ? &g_class_mirrors : &g_class_unknown);
     o->refs = 1;
     o->kind = kind;
     o->cls = cls;
@@ -120,6 +171,10 @@ static tl_jclass *tl_jni_declare_linked(const char *name, const char *super)
     tl_jclass *c = find_class_locked(name);
     if (!c) {
         c = calloc(1, sizeof(*c));
+        tl_jni_class_allocation_init(&c->allocations);
+        c->allocation_declaration = ++g_allocation_declaration;
+        c->allocation_next = g_allocation_classes;
+        g_allocation_classes = c;
         c->name = strdup(name);
         uint32_t h = hash_str(name) % NBUCKETS;
         c->next = g_classes[h];
@@ -199,6 +254,7 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len)
     if (o->arr.data) {
         o->arr.allocated_bytes = (size_t)(len ? len : 1) * o->arr.esz;
         tl_jni_allocation_array(&g_allocations, o->arr.allocated_bytes);
+        tl_jni_class_allocation_array(o->cls ? &o->cls->allocations : &g_class_unknown, o->arr.allocated_bytes);
     }
     return o;
 }
@@ -213,6 +269,7 @@ jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len)
     if (o->oarr.v) {
         o->oarr.allocated_bytes = (size_t)(len ? len : 1) * sizeof(jobj *);
         tl_jni_allocation_array(&g_allocations, o->oarr.allocated_bytes);
+        tl_jni_class_allocation_array(o->cls ? &o->cls->allocations : &g_class_unknown, o->oarr.allocated_bytes);
     }
     return o;
 }
@@ -1270,6 +1327,7 @@ void tl_jni_each_declared(void (*fn)(tl_jclass *jc))
 void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user)
 {
     pthread_mutex_lock(&g_lock);
+    tl_jni_class_allocation_reset(&g_class_allocation_window);
     for (int b = 0; b < NBUCKETS; b++) {
         tl_jclass **pp = &g_classes[b];
         while (*pp) {

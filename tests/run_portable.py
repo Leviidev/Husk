@@ -140,9 +140,14 @@ def main():
         r"jobj \*tl_jni_new_prim_array\([^\n]*\)\n\{.*?\n\}",
         r"jobj \*tl_jni_new_obj_array\([^\n]*\)\n\{.*?\n\}")]
     (out / "jni_allocation_under_test.h").write_text("\n".join(jni_allocations), encoding="utf-8")
-    for name in ("session_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test", "gl_surface_admission_test"):
+    jni_class_log = [re.search(pattern, jni_source, re.S)[0] for pattern in (
+        r"static void log_class_allocation_stats\([^\n]*\)\n\{.*?\n\}",
+        r"void tl_jni_log_allocation_stats\([^\n]*\)\n\{.*?\n\}",
+        r"void tl_jni_forget_if\([^\n]*\)\n\{.*?\n\}")]
+    (out / "jni_class_log_under_test.h").write_text("\n".join(jni_class_log) + "\n", encoding="utf-8")
+    for name in ("session_test", "jni_class_allocation_test", "jni_class_log_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test", "gl_surface_admission_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
-        thread_flags = ["-pthread"] if os.name != "nt" and name == "session_test" else []
+        thread_flags = ["-pthread"] if os.name != "nt" and name in ("session_test", "jni_class_allocation_test") else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])
@@ -363,6 +368,7 @@ def main():
     run("iconv", iconv)
     run("Python analyzer/diagnostics/profile/bootstrap", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_hung_tools.py", "-v"])
     run("USB log mirror contracts", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_ios_logs.py", "-v"])
+    run("Confirmed city performance windows", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_city_performance*.py", "-v"])
     run("Swift diagnosis and settings", [sys.executable, "tests/test_hung_swift.py", "-v"])
     run("Swift APK ordering baseline", [sys.executable, "tests/translation-layer/test_apk_order.py"])
     print("Portable checks completed; iOS/JIT/graphics/boot/gameplay still require their own runs.")

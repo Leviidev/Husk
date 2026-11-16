@@ -2,14 +2,17 @@
 /* The production constructors/unref path, with only class lookup stubbed. */
 #include "husk-tl-jni.h"
 #include "husk-tl-jni-allocation.h"
+#include "husk-tl-jni-class-allocation.h"
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct tl_jclass { const char *name; };
+struct tl_jclass { const char *name; tl_jni_class_allocation allocations; };
 static tl_jni_allocation_ledger g_allocations;
+static tl_jni_class_allocation g_class_mirrors, g_class_unknown;
+static tl_jclass array_class = { .name = "[test" };
 static const void *tl_dvm;
 static unsigned calloc_call, fail_calloc_call;
 static void *test_calloc(size_t n, size_t size)
@@ -17,7 +20,7 @@ static void *test_calloc(size_t n, size_t size)
     if (fail_calloc_call && ++calloc_call == fail_calloc_call) return NULL;
     return calloc(n, size);
 }
-tl_jclass *tl_jni_class(const char *name) { (void)name; return (tl_jclass *)(uintptr_t)1; }
+tl_jclass *tl_jni_class(const char *name) { (void)name; return &array_class; }
 #define calloc test_calloc
 #include "jni_allocation_under_test.h"
 #undef calloc
