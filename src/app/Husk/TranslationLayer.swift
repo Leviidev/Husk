@@ -1045,6 +1045,12 @@ struct TLAttemptView: View {
     @MainActor
     private func switchTo(_ next: TLApp, allowRetry: Bool = false) {
         guard allowRetry || switchingTo == nil, next.id != activeApp.id else { return }
+        let isoFmt = ISO8601DateFormatter()
+        let switchStartISO = isoFmt.string(from: Date())
+        let preState = husk_unity_state()
+        let fromName = activeApp.packageName ?? activeApp.label
+        let toName = next.packageName ?? next.label
+        HuskLog.log("switch", "[\(switchStartISO)] switch requested: from=\(fromName) (preState=\(preState)) -> to=\(toName) (retry=\(allowRetry))")
         if !allowRetry {
             if activeApp.report?.runsOnNativeRuntime == true {
                 husk_unity_set_paused(true)
@@ -1078,10 +1084,12 @@ struct TLAttemptView: View {
                 stopped = await TLNativeSession.shared.stop()
             }
             guard !Task.isCancelled else { return }
+            HuskLog.log("switch", "[\(isoFmt.string(from: Date()))] previous session close finished: from=\(fromName) stopped=\(stopped) state=\(husk_unity_state())")
             guard stopped else {
                 switchStatus = ""
                 switchTask = nil
                 switchError = TLNativeSession.shared.lastError ?? "The previous game has not finished closing."
+                HuskLog.log("switch", "[\(isoFmt.string(from: Date()))] switch blocked while closing \(fromName): \(switchError ?? "?")")
                 return
             }
             if JITLess.enabled, SigningCertificate.credentials() != nil {
@@ -1094,6 +1102,7 @@ struct TLAttemptView: View {
                     switchStatus = ""
                     switchTask = nil
                     switchError = error.localizedDescription
+                    HuskLog.log("switch", "[\(isoFmt.string(from: Date()))] switch JITLess prepare failed for \(toName): \(error.localizedDescription)")
                     return
                 }
             }
@@ -1112,6 +1121,7 @@ struct TLAttemptView: View {
             switchStatus = ""
             switchError = nil
             switchTask = nil
+            HuskLog.log("switch", "[\(isoFmt.string(from: Date()))] switch committed: active=\(toName) postState=\(husk_unity_state())")
         }
     }
 }

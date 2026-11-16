@@ -36,6 +36,10 @@ public class PackageManager {
     public static class NameNotFoundException extends android.util.AndroidException { public NameNotFoundException() {} public NameNotFoundException(String s) { super(s); } }
     private static PackageManager sSelf;
     public static synchronized PackageManager self() { if (sSelf == null) sSelf = new PackageManager(); return sSelf; }
+    public static synchronized void resetSession() {
+        sStates = null;
+        sSavePending = false;
+    }
     private static boolean mine(String pkg) { return pkg != null && pkg.equals(husk.Native.packageName()); }
     /* the process a component names (android:process: ":x" is the app's own "<package>:x"), the app's process when it names none */
     private static String process(husk.Manifest.Component c) {

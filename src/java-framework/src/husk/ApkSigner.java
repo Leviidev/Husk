@@ -14,11 +14,19 @@ import java.util.zip.ZipFile;
  *  else from the v1 PKCS#7 file under META-INF. */
 public final class ApkSigner {
     private static byte[][] sCerts;
+    private static String sApk;
+
+    public static synchronized void resetSession() {
+        sCerts = null;
+        sApk = null;
+    }
 
     public static synchronized byte[][] certificates() {
-        if (sCerts != null) return sCerts;
-        byte[][] c = null;
         String apk = Native.apkPath();
+        if (sCerts != null && apk != null && apk.equals(sApk)) return sCerts;
+        sCerts = null;
+        sApk = apk;
+        byte[][] c = null;
         try { c = fromSigningBlock(apk); } catch (Throwable t) { android.util.Log.w("Husk", "apk signing block: " + t); }
         if (c == null || c.length == 0) try { c = fromJar(apk); } catch (Throwable t) { android.util.Log.w("Husk", "apk v1 signature: " + t); }
         if (c == null) c = new byte[0][];

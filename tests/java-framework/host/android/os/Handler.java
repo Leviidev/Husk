@@ -8,5 +8,6 @@ public class Handler {
     public boolean postDelayed(Runnable r, long delayMillis) { queue.add(r); return true; }
     public void removeCallbacks(Runnable r) { queue.remove(r); }
     public static int pendingCount() { return queue.size(); }
+    public static void resetSession() { queue.clear(); }
     public static void drain() { while (!queue.isEmpty()) queue.remove(0).run(); }
 }

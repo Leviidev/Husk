@@ -4,12 +4,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-vhtg-quest.h"
 #include "husk-tl-quest-layout.h"
+#include "husk-tl-vhpt-layout.h"
 #include <CommonCrypto/CommonDigest.h>
+
+static unsigned vhpt_clears;
+static void fake_gl_clear(unsigned int mask) { (void)mask; vhpt_clears++; }
+static void fake_setpos(void *node, const float *xy)
+{
+    *(float *)((uint8_t *)node + VHPT_NODE_POSX_OFF) = xy[0];
+    *(float *)((uint8_t *)node + VHPT_NODE_POSY_OFF) = xy[1];
+}
 
 static unsigned char quest[0x4b8], avatar[0x4b8], age_logo[0x4b8], movement[0x4b8];
 static unsigned char sit[0x4b8], run_button[0x4b8], quest_tmp[0x4b8];
@@ -72,6 +82,8 @@ void *tl_ld_sym(tl_lib *lib,const char *symbol)
     assert(false);return NULL;
 }
 const char *tl_ld_lib_name(const tl_lib *lib) { (void)lib;return library; }
+static tl_lib *found_lib = (tl_lib *)1;
+tl_lib *tl_ld_find_lib(const char *name) { return name && !strcmp(name, "libMyGame.so") ? found_lib : NULL; }
 void *tl_ld_lib_base(const tl_lib *lib) { (void)lib;return (void *)fixture_base; }
 void tl_ld_set_plt_filter(void *(*fn)(tl_lib *,const char *,void *)) { filter=fn; }
 void tl_log_line(const char *format,...) { (void)format; }
@@ -300,6 +312,84 @@ int main(void)
     assert(get_double(quest, 0x490) == 75);
     double dx,dy;
     assert(!tl_quest_delta((tl_quest_rect){0,0,932,430},(tl_quest_rect){0,100,900,200},(tl_quest_cutout){59,0,0,0},932,430,&dx,&dy));
-    puts("PASS: selected HUD uses the registry/object ABI, moves separate Mission/Team tabs and text together at the observed negative scene origin, preserves spacing/other HUD/IME, handles missing/late groups and exports, and avoids drift over 10000 updates");
+
+    // Profile 3: VHPT (com.tech3cgame.vhpt1) HUD alignment matching VHTG outer edge, Quest unchanged
+    // 3a) Pure layout math across supported iPhone screen sizes (iPhone 8 -> iPhone 18)
+    assert(tl_vhpt_outer_left_px(0.0f, 750.0f) == 0.0f);                 /* iPhone 8 / SE: flat bezel */
+    assert(tl_vhpt_outer_left_px(94.0f, 780.0f) == 16.0f);               /* iPhone 12/13/14 (notch @2x): 8pt */
+    assert(tl_vhpt_outer_left_px(118.0f, 860.0f) == 17.0f);              /* iPhone 15/16 Pro Max (Standard @2x): 8.5pt */
+    assert(tl_vhpt_outer_left_px(177.0f, 1290.0f) == 26.0f);             /* iPhone 15/16 Pro Max (Native @3x): 8.7pt */
+    assert(tl_vhpt_outer_left_px(186.0f, 1320.0f) == 26.0f);             /* iPhone 16 Pro Max / 17 Pro Max (@3x) */
+    assert(tl_vhpt_is_left_anchor("TopLeft") && tl_vhpt_is_left_anchor("BottomLeft") && tl_vhpt_is_left_anchor(""));
+    assert(!tl_vhpt_is_left_anchor("TopRight") && !tl_vhpt_is_left_anchor("TopCenter") && !tl_vhpt_is_left_anchor("BottomCenter"));
+
+    /* Top-left Character box & below-left Pet box move outward (~101px closer at Standard) while clearing corner curve;
+     * Quest list (Nhiệm vụ) ALWAYS stays unchanged at original position, even if anchored TopLeft! */
+    assert(tl_vhpt_panel_target_x(false, "TopLeft", 118.0f, 118.0f, 860.0f, true, 720.0f, 845.0f) == 17.0f);
+    assert(tl_vhpt_panel_target_x(false, "TopLeft", 118.0f, 118.0f, 860.0f, true, 610.0f, 710.0f) == 17.0f);
+    assert(tl_vhpt_panel_target_x(false, "BottomLeft", 118.0f, 118.0f, 860.0f, true, 16.0f, 160.0f) == 17.0f);
+    /* Quest panel (Nhiệm vụ) NEVER moves */
+    assert(tl_vhpt_panel_target_x(true, "TopLeft", 118.0f, 118.0f, 860.0f, true, 300.0f, 520.0f) == 118.0f);
+    assert(tl_vhpt_panel_target_x(true, "TopRight", 118.0f, 118.0f, 860.0f, true, 300.0f, 520.0f) == 118.0f);
+    /* Middle-left panel overlapping hardware Dynamic Island / Notch band stays clear at safe_l */
+    assert(tl_vhpt_panel_target_x(false, "MiddleLeft", 118.0f, 118.0f, 860.0f, true, 330.0f, 530.0f) == 118.0f);
+    /* Right/Center panels stay untouched */
+    assert(tl_vhpt_panel_target_x(false, "TopRight", 118.0f, 118.0f, 860.0f, false, 0.0f, 0.0f) == 118.0f);
+    /* Notch on right (180-deg flip, safe_l == 0) keeps left-edge origin at 0 */
+    assert(tl_vhpt_panel_target_x(false, "TopLeft", 0.0f, 0.0f, 860.0f, true, 720.0f, 845.0f) == 0.0f);
+
+    // 3b) Start/reset and glClear runtime alignment against fake VHPT ELF+scene fixture
+    entry.usize = VHPT_LIB_SIZE;
+    mock_sha = "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44";
+    int vhpt_insets[4] = {118, 0, 0, 0};
+    assert(tl_vhpt_hud_start("x", "com.tech3cgame.vhpt1", true, vhpt_insets, 1864, 860));
+    assert(!tl_vhtg_quest_active()); /* native insets preserved for Quest & non-left panels */
+    void (*wrapped_clear)(unsigned int) = (void (*)(unsigned int))filter((tl_lib *)1, "glClear", (void *)fake_gl_clear);
+    assert(wrapped_clear != fake_gl_clear);
+    uint8_t *vhpt_img = calloc(1, 0x1000000);
+    assert(vhpt_img != NULL);
+    memcpy(vhpt_img + VHPT_STR_ANCHOR_OFF, "Anchor", 7);
+    memcpy(vhpt_img + VHPT_STR_TOPLEFT_OFF, "TopLeft", 8);
+    memcpy(vhpt_img + VHPT_STR_CHARINFO_OFF, "ui_mobile/charinfo.ini", 23);
+    *(int32_t *)(vhpt_img + VHPT_BSS_SAFE_L_OFF) = 118;
+    *(uint32_t *)(vhpt_img + VHPT_BSS_SAFE_GEN_OFF) = 1;
+    _Alignas(16) uint8_t scene_mem[0x700] = {0};
+    *(uintptr_t *)(vhpt_img + VHPT_BSS_GAMESCENE_OFF) = (uintptr_t)scene_mem;
+    void *fake_vtable[0x30] = {0};
+    fake_vtable[VHPT_NODE_VTBL_SETPOS / sizeof(void *)] = (void *)fake_setpos;
+    _Alignas(16) uint8_t char_panel[0x400] = {0}, pet_panel[0x400] = {0}, quest_panel[0x400] = {0};
+    _Alignas(16) uint8_t ini_tl[0x80] = {0};
+    ini_tl[VHPT_INI_ANCHOR_STR_OFF] = (uint8_t)(7 << 1);
+    memcpy(ini_tl + VHPT_INI_ANCHOR_STR_OFF + 1, "TopLeft", 8);
+    _Alignas(16) uint8_t char_root[0x200] = {0}, pet_root[0x200] = {0}, quest_root[0x200] = {0};
+    *(void **)char_root = fake_vtable;
+    *(void **)pet_root = fake_vtable;
+    *(void **)quest_root = fake_vtable;
+    *(float *)(char_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
+    *(float *)(pet_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
+    *(float *)(quest_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
+    *(float *)(char_root + VHPT_NODE_POSX_OFF) = 118.0f;
+    *(float *)(pet_root + VHPT_NODE_POSX_OFF) = 118.0f;
+    *(float *)(quest_root + VHPT_NODE_POSX_OFF) = 118.0f;
+    *(uintptr_t *)(char_panel + 0x300) = (uintptr_t)ini_tl;
+    *(uintptr_t *)(char_panel + 0x328) = (uintptr_t)char_root;
+    *(uintptr_t *)(pet_panel + 0x300) = (uintptr_t)ini_tl;
+    *(uintptr_t *)(pet_panel + 0x328) = (uintptr_t)pet_root;
+    *(uintptr_t *)(quest_panel + 0x308) = (uintptr_t)ini_tl;
+    *(uintptr_t *)(quest_panel + 0x368) = (uintptr_t)quest_root;
+    *(uintptr_t *)(scene_mem + 0x3b0) = (uintptr_t)char_panel;
+    *(uintptr_t *)(scene_mem + 0x3b8) = (uintptr_t)pet_panel;
+    *(uintptr_t *)(scene_mem + 0x5f0) = (uintptr_t)quest_panel;
+    fixture_base = (uintptr_t)vhpt_img;
+    library = "libMyGame.so";
+    wrapped_clear(0x4000u);
+    assert(vhpt_clears == 1);
+    assert(*(float *)(char_root + VHPT_NODE_POSX_OFF) == 17.0f);
+    assert(*(float *)(pet_root + VHPT_NODE_POSX_OFF) == 17.0f);
+    assert(*(float *)(quest_root + VHPT_NODE_POSX_OFF) == 118.0f); /* Quest unchanged */
+    assert(*(float *)(quest_root + VHPT_NODE_SCALEX_OFF) == 860.0f / 720.0f);
+    tl_vhtg_quest_reset();
+    free(vhpt_img);
+    puts("PASS: selected HUD uses the registry/object ABI, moves separate Mission/Team tabs and text together at the observed negative scene origin, preserves spacing/other HUD/IME, handles missing/late groups and exports, aligns VHPT Character/below-left HUD like VHTG while keeping Quest unchanged, and avoids drift over 10000 updates");
     return 0;
 }

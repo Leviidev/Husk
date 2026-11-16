@@ -3,6 +3,7 @@
  * The object layout below is used ONLY for the SHA-256-matched arm64 library. */
 #include "husk-tl-vhtg-quest.h"
 #include "husk-tl-quest-layout.h"
+#include "husk-tl-vhpt-layout.h"
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-bionic.h"
@@ -214,8 +215,239 @@ static void quest_render(void)
     Q.render();
 }
 
+typedef struct {
+    tl_lib *lib;
+    bool enabled;
+    bool rodata_ok;
+    bool rodata_checked;
+    int pixel_w, pixel_h;
+    void (*orig_gl_clear)(unsigned int mask);
+    void *last_scene;
+    uint32_t last_gen;
+    int last_safe_l;
+    struct {
+        void *root;
+        float applied_x;
+        bool logged;
+    } slots[12];
+} vhpt_hud_state;
+
+static atomic_bool v_enabled;
+static vhpt_hud_state V;
+
+static uintptr_t vhpt_read_uptr(const void *p)
+{
+    uintptr_t v = 0;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static int32_t vhpt_read_i32(const void *p)
+{
+    int32_t v = 0;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static uint32_t vhpt_read_u32(const void *p)
+{
+    uint32_t v = 0;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static float vhpt_read_f32(const void *p)
+{
+    float v = 0.0f;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static const char *vhpt_read_std_string(const uint8_t *str_obj, char *scratch, size_t cap)
+{
+    if (!str_obj || (uintptr_t)str_obj < 0x10000ULL) return "";
+    uint8_t tag = str_obj[0];
+    if ((tag & 1u) == 0u) {
+        size_t len = (size_t)(tag >> 1);
+        if (len >= cap) len = cap - 1;
+        memcpy(scratch, str_obj + 1, len);
+        scratch[len] = '\0';
+        return scratch;
+    }
+    const char *ptr = (const char *)vhpt_read_uptr(str_obj + 16);
+    if (!ptr || (uintptr_t)ptr < 0x10000ULL) return "";
+    return ptr;
+}
+
+static bool vhpt_verify_rodata(const uint8_t *base)
+{
+    if (!base) return false;
+    if (V.rodata_checked) return V.rodata_ok;
+    V.rodata_checked = true;
+    V.rodata_ok =
+        !memcmp(base + VHPT_STR_ANCHOR_OFF, "Anchor", 7) &&
+        !memcmp(base + VHPT_STR_TOPLEFT_OFF, "TopLeft", 8) &&
+        !memcmp(base + VHPT_STR_CHARINFO_OFF, "ui_mobile/charinfo.ini", 23);
+    if (!V.rodata_ok) {
+        tl_log_line("vhpt-hud: runtime rodata signature mismatch; disabling HUD realignment");
+    }
+    return V.rodata_ok;
+}
+
+static bool vhpt_node_y_span(const uint8_t *root, float root_y, float root_scale, float *min_y, float *max_y)
+{
+    if (!root || root_scale <= 0.0f) return false;
+    uintptr_t begin = vhpt_read_uptr(root + VHPT_NODE_CHILDREN_VEC);
+    uintptr_t end = vhpt_read_uptr(root + VHPT_NODE_CHILDREN_VEC + sizeof(uintptr_t));
+    if (!begin || end <= begin || begin < 0x10000ULL) return false;
+    size_t count = (end - begin) / sizeof(uintptr_t);
+    if (count == 0 || count > 256) return false;
+    const uint8_t *children_raw = (const uint8_t *)begin;
+    float lo = 1e9f, hi = -1e9f;
+    bool any = false;
+    for (size_t i = 0; i < count; i++) {
+        const uint8_t *ch = (const uint8_t *)vhpt_read_uptr(children_raw + i * sizeof(uintptr_t));
+        if (!ch || (uintptr_t)ch < 0x10000ULL) continue;
+        float cy = vhpt_read_f32(ch + VHPT_NODE_POSY_OFF);
+        if (isnan(cy) || cy == 0.0f) continue;
+        float sy = root_y + cy * root_scale;
+        if (sy < lo) lo = sy;
+        if (sy > hi) hi = sy;
+        any = true;
+    }
+    if (!any || hi <= lo) return false;
+    *min_y = lo;
+    *max_y = hi;
+    return true;
+}
+
+static void vhpt_align_hud(void)
+{
+    if (!atomic_load(&v_enabled)) return;
+    pthread_mutex_lock(&q_lock);
+    tl_lib *lib = V.lib ? V.lib : tl_ld_find_lib("libMyGame.so");
+    if (!lib) { pthread_mutex_unlock(&q_lock); return; }
+    V.lib = lib;
+    const uint8_t *base = (const uint8_t *)tl_ld_lib_base(lib);
+    if (!vhpt_verify_rodata(base)) {
+        atomic_store(&v_enabled, false);
+        pthread_mutex_unlock(&q_lock);
+        return;
+    }
+    uintptr_t scene = vhpt_read_uptr(base + VHPT_BSS_GAMESCENE_OFF);
+    if (!scene || scene < 0x10000ULL) {
+        pthread_mutex_unlock(&q_lock);
+        return;
+    }
+    int safe_l = vhpt_read_i32(base + VHPT_BSS_SAFE_L_OFF);
+    uint32_t safe_gen = vhpt_read_u32(base + VHPT_BSS_SAFE_GEN_OFF);
+    if (safe_l <= 0) safe_l = q_cut.left;
+    float vis_h = (float)(V.pixel_h > 0 ? V.pixel_h : q_cut.top + q_cut.bottom);
+    if (vis_h <= 0.0f) { pthread_mutex_unlock(&q_lock); return; }
+
+    if ((void *)scene != V.last_scene || safe_gen != V.last_gen || safe_l != V.last_safe_l) {
+        V.last_scene = (void *)scene;
+        V.last_gen = safe_gen;
+        V.last_safe_l = safe_l;
+        memset(V.slots, 0, sizeof(V.slots));
+    }
+
+    size_t nslots = 0;
+    const tl_vhpt_panel_slot *slots = tl_vhpt_panel_slots(&nslots);
+    for (size_t i = 0; i < nslots && i < sizeof(V.slots) / sizeof(V.slots[0]); i++) {
+        uintptr_t panel = vhpt_read_uptr((const uint8_t *)scene + slots[i].scene_off);
+        if (!panel || panel < 0x10000ULL) continue;
+        uintptr_t ini = vhpt_read_uptr((const uint8_t *)panel + slots[i].ini_off);
+        void *m_root = (void *)vhpt_read_uptr((const uint8_t *)panel + slots[i].root_off);
+        if (!ini || ini < 0x10000ULL || !m_root || (uintptr_t)m_root < 0x10000ULL) continue;
+
+        char anchor_buf[64];
+        const char *anchor = vhpt_read_std_string((const uint8_t *)(ini + VHPT_INI_ANCHOR_STR_OFF), anchor_buf, sizeof(anchor_buf));
+        float cur_x = vhpt_read_f32((const uint8_t *)m_root + VHPT_NODE_POSX_OFF);
+        float cur_y = vhpt_read_f32((const uint8_t *)m_root + VHPT_NODE_POSY_OFF);
+        float scale = vhpt_read_f32((const uint8_t *)m_root + VHPT_NODE_SCALEX_OFF);
+        float min_y = 0.0f, max_y = 0.0f;
+        bool has_y = vhpt_node_y_span((const uint8_t *)m_root, cur_y, scale, &min_y, &max_y);
+
+        if (slots[i].keep_unchanged) {
+            if (!V.slots[i].logged || V.slots[i].root != m_root) {
+                V.slots[i].root = m_root;
+                V.slots[i].logged = true;
+                tl_log_line("vhpt-hud: %s anchor=%s pos=(%.1f,%.1f) scale=%.3f unchanged (Nhiệm vụ)",
+                            slots[i].name, anchor[0] ? anchor : "TopLeft", cur_x, cur_y, scale);
+            }
+            continue;
+        }
+
+        if (V.slots[i].root == m_root && fabsf(cur_x - V.slots[i].applied_x) < 0.5f) continue;
+
+        float target_x = tl_vhpt_panel_target_x(false, anchor, cur_x, (float)safe_l, vis_h, has_y, min_y, max_y);
+        if (fabsf(target_x - cur_x) >= 0.5f) {
+            void *const *vtable = (void *const *)vhpt_read_uptr(m_root);
+            if (vtable && (uintptr_t)vtable >= 0x10000ULL) {
+                typedef void (*set_pos_fn)(void *, const float *);
+                set_pos_fn set_pos = (set_pos_fn)vhpt_read_uptr((const uint8_t *)vtable + VHPT_NODE_VTBL_SETPOS);
+                if (set_pos) {
+                    float pos[2] = { target_x, cur_y };
+                    set_pos(m_root, pos);
+                }
+            }
+        }
+        V.slots[i].root = m_root;
+        V.slots[i].applied_x = target_x;
+        if (!V.slots[i].logged) {
+            V.slots[i].logged = true;
+            tl_log_line("vhpt-hud: %s anchor=%s pos=(%.1f,%.1f)->(%.1f,%.1f) safeL=%d scale=%.3f",
+                        slots[i].name, anchor[0] ? anchor : "TopLeft",
+                        cur_x, cur_y, target_x, cur_y, safe_l, scale);
+        }
+    }
+    pthread_mutex_unlock(&q_lock);
+}
+
+static void vhpt_gl_clear(unsigned int mask)
+{
+    vhpt_align_hud();
+    if (V.orig_gl_clear) V.orig_gl_clear(mask);
+}
+
+static bool verify_mygame_profile(const char *apk, size_t expected_size, const char *expected_hash)
+{
+    tl_zip zip;
+    char error[160];
+    if (!tl_zip_open(&zip, apk, error, sizeof(error))) return false;
+    const tl_zip_entry *entry = tl_zip_find(&zip, "lib/arm64-v8a/libMyGame.so");
+    bool ok = entry && entry->usize == expected_size;
+    const uint8_t *data = NULL;
+    size_t size = 0;
+    bool owned = false;
+    if (ok) ok = tl_zip_data(&zip, entry, 24u << 20, &data, &size, &owned, error, sizeof(error));
+    if (ok && size > 0) {
+        uint8_t hash[32];
+        char hex[65];
+        CC_SHA256(data, (CC_LONG)size, hash);
+        for (unsigned i = 0; i < 32; i++) snprintf(hex + i * 2, 3, "%02x", hash[i]);
+        ok = !strcmp(hex, expected_hash);
+    } else {
+        ok = false;
+    }
+    if (owned) free((void *)data);
+    tl_zip_close(&zip);
+    return ok;
+}
+
 static void *quest_plt(tl_lib *lib, const char *symbol, void *original)
 {
+    if (atomic_load(&v_enabled) && !strcmp(symbol, "glClear")) {
+        const char *name = tl_ld_lib_name(lib);
+        const char *leaf = name ? strrchr(name, '/') : NULL;
+        if (name && !strcmp(leaf ? leaf + 1 : name, "libMyGame.so")) {
+            V.lib = lib;
+            V.orig_gl_clear = (void (*)(unsigned int))original;
+            tl_log_line("vhpt-hud: bound glClear");
+            return (void *)vhpt_gl_clear;
+        }
+    }
     if (!atomic_load(&q_enabled)) return original;
     bool anchor=!strcmp(symbol,"KT_SetUiAnchorSafeArea"), render=!strcmp(symbol,"_Z17Wnd_RenderWindowsv");
     if (!anchor && !render) return original;
@@ -236,7 +468,32 @@ void tl_vhtg_quest_insets(int l,int t,int r,int b)
 void tl_vhtg_quest_reset(void)
 {
     atomic_store(&q_enabled,false);
-    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&q_cut,0,sizeof(q_cut)); pthread_mutex_unlock(&q_lock);
+    atomic_store(&v_enabled,false);
+    pthread_mutex_lock(&q_lock);
+    memset(&Q,0,sizeof(Q));
+    memset(&V,0,sizeof(V));
+    memset(&q_cut,0,sizeof(q_cut));
+    pthread_mutex_unlock(&q_lock);
+}
+bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
+{
+    atomic_store(&v_enabled,false);
+    pthread_mutex_lock(&q_lock); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
+    if (!requested || !package || strcmp(package,"com.tech3cgame.vhpt1") ||
+        !insets || pixel_width<=0 || pixel_height<=0) return false;
+    if (!verify_mygame_profile(apk, VHPT_LIB_SIZE,
+            "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44")) {
+        tl_log_line("vhpt-hud: unsupported library; Vo Hiep HUD alignment disabled");
+        return false;
+    }
+    V.pixel_w = pixel_width;
+    V.pixel_h = pixel_height;
+    V.enabled = true;
+    tl_vhtg_quest_insets(insets[0],insets[1],insets[2],insets[3]);
+    atomic_store(&v_enabled,true);
+    tl_ld_set_plt_filter(quest_plt);
+    tl_log_line("vhpt-hud: verified library (%u bytes); aligning Character & below-left HUD like Vo Hiep (Quest unchanged)", VHPT_LIB_SIZE);
+    return true;
 }
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
@@ -244,29 +501,14 @@ bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,cons
     if (!requested || !package ||
         (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")) ||
         !insets || pixel_width<=0 || pixel_height<=0) return false;
-    tl_zip zip; char error[160];
-    if (!tl_zip_open(&zip,apk,error,sizeof(error))) return false;
-    const tl_zip_entry *entry=tl_zip_find(&zip,"lib/arm64-v8a/libMyGame.so");
-    const uint8_t *data=NULL; size_t size=0; bool owned=false;
     const vhtg_profile *matched = NULL;
-    if (entry) {
-        for (size_t i = 0; i < sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]); i++) {
-            if (entry->usize == vhtg_profiles[i].size) {
-                matched = &vhtg_profiles[i];
-                break;
-            }
+    for (size_t i = 0; i < sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]); i++) {
+        if (verify_mygame_profile(apk, vhtg_profiles[i].size, vhtg_profiles[i].hash)) {
+            matched = &vhtg_profiles[i];
+            break;
         }
     }
-    bool ok = matched && tl_zip_data(&zip,entry,16u<<20,&data,&size,&owned,error,sizeof(error));
-    uint8_t hash[32]; char hex[65];
-    if (ok) {
-        CC_SHA256(data,(CC_LONG)size,hash);
-        for (unsigned i=0;i<32;i++) snprintf(hex+i*2,3,"%02x",hash[i]);
-        ok = !strcmp(hex, matched->hash);
-    }
-    if (owned) free((void *)data);
-    tl_zip_close(&zip);
-    if (!ok) { tl_log_line("vhtg-quest: unsupported library; quest-only adjustment disabled"); return false; }
+    if (!matched) { tl_log_line("vhtg-quest: unsupported library; quest-only adjustment disabled"); return false; }
     Q.anchor_offset = matched->anchor_offset;
     Q.render_offset = matched->render_offset;
     Q.pixel_w=pixel_width; Q.pixel_h=pixel_height; Q.reports=48;

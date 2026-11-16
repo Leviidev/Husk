@@ -43,6 +43,7 @@ public class Handler {
     public Handler(boolean async) { this(); }
     public static Handler createAsync(Looper l, Callback cb) { return new Handler(l, cb); }
     private static Handler sMain;
+    public static synchronized void resetSession() { sMain = null; }
     public static synchronized Handler getMain() { if (sMain == null) sMain = new Handler(Looper.getMainLooper()); return sMain; }
     public static Handler mainIfNull(Handler h) { return h != null ? h : getMain(); }
     public final boolean postAtTime(Runnable r, Object token, long uptime) { Message m = Message.obtain(this, r); m.obj = token; return mLooper.mQueue.enqueue(m, uptime); }

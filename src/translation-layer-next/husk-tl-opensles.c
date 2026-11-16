@@ -190,20 +190,21 @@ static uint32_t o_SetLoss(const void *self, uint32_t n, const void *ids, uint32_
 
 static const void *const k_vt_object[] = { o_Realize, o_Resume, o_GetState, o_GetInterface, o_RegisterCallback, o_AbortAsyncOperation, o_Destroy, o_SetPriority, o_GetPriority, o_SetLoss };
 
+#define SL_REG_CAP 512
 static pthread_mutex_t g_sl_reg_mu = PTHREAD_MUTEX_INITIALIZER;
-static sl_object *g_sl_objs[64];
+static sl_object *g_sl_objs[SL_REG_CAP];
 static atomic_bool g_sl_closing;
 
 static void sl_reg_add(sl_object *o)
 {
     pthread_mutex_lock(&g_sl_reg_mu);
-    for (int i = 0; i < 64; i++) if (!g_sl_objs[i]) { g_sl_objs[i] = o; break; }
+    for (int i = 0; i < SL_REG_CAP; i++) if (!g_sl_objs[i]) { g_sl_objs[i] = o; break; }
     pthread_mutex_unlock(&g_sl_reg_mu);
 }
 static void sl_reg_remove(sl_object *o)
 {
     pthread_mutex_lock(&g_sl_reg_mu);
-    for (int i = 0; i < 64; i++) if (g_sl_objs[i] == o) g_sl_objs[i] = NULL;
+    for (int i = 0; i < SL_REG_CAP; i++) if (g_sl_objs[i] == o) g_sl_objs[i] = NULL;
     pthread_mutex_unlock(&g_sl_reg_mu);
 }
 
@@ -223,7 +224,7 @@ static sl_object *new_object(int kind)
 static bool player_write(sl_object *o, const int16_t *data, int frames, uint64_t generation)
 {
     int done = 0;
-    while (done < frames && atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing)) {
+    while (done < frames && atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing) && !tl_guest_session_closing()) {
         pthread_mutex_lock(&o->mu);
         if (generation != o->generation || atomic_load(&o->play_state) == SL_STOPPED) {
             pthread_mutex_unlock(&o->mu); return false;
@@ -240,7 +241,7 @@ static void *player_pump(void *arg)
 {
     sl_object *o = arg;
     pthread_setname_np("opensl-pump");
-    while (atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing)) {
+    while (atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing) && !tl_guest_session_closing()) {
         if (atomic_load(&o->play_state) != SL_PLAYING) { usleep(2000); continue; }
         pthread_mutex_lock(&o->mu);
         uint64_t generation = o->generation;
@@ -512,7 +513,7 @@ void tl_opensles_reset_session(void)
     for (;;) {
         sl_object *o = NULL;
         pthread_mutex_lock(&g_sl_reg_mu);
-        for (int i = 0; i < 64; i++) if (g_sl_objs[i]) { o = g_sl_objs[i]; g_sl_objs[i] = NULL; break; }
+        for (int i = 0; i < SL_REG_CAP; i++) if (g_sl_objs[i]) { o = g_sl_objs[i]; g_sl_objs[i] = NULL; break; }
         pthread_mutex_unlock(&g_sl_reg_mu);
         if (!o) break;
         if (o->kind == K_PLAYER && o->thread_started) {

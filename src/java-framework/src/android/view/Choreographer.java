@@ -9,8 +9,12 @@ public final class Choreographer {
     public interface FrameCallback { void doFrame(long frameTimeNanos); }
     public static final int CALLBACK_INPUT = 0, CALLBACK_ANIMATION = 1, CALLBACK_INSETS_ANIMATION = 2, CALLBACK_TRAVERSAL = 3, CALLBACK_COMMIT = 4;
     private static final long FRAME_NS = 16_666_667L;
-    private static final ThreadLocal<Choreographer> sThread = new ThreadLocal<>();
+    private static ThreadLocal<Choreographer> sThread = new ThreadLocal<>();
     private static Choreographer sMain;
+    public static synchronized void resetSession() {
+        sMain = null;
+        sThread = new ThreadLocal<>();
+    }
     private final Handler mHandler;
     private static final int MAX_CALLBACK_POOL = 64;
     private static final class CallbackRecord {

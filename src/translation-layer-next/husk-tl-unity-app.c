@@ -206,6 +206,15 @@ static void *heartbeat_thread(void *arg)
                     next_memory_report_ns = ns + UINT64_C(30000000000);
                 }
             }
+            if (tick >= 20 && (tick % 3) == 0) {
+                double jfps = 0, jmean = 0, jmax = 0;
+                unsigned long h50 = 0, h100 = 0;
+                tl_javaapp_perf_snapshot(&jfps, &jmean, &jmax, &h50, &h100);
+                if (jfps > 0.0 || jmean > 0.0) {
+                    tl_log_line("java-perf: pkg=%s fps=%.1f mean_ms=%.2f max_ms=%.2f hitch50=%lu hitch100=%lu",
+                                A.package[0] ? A.package : "?", jfps, jmean, jmax, h50, h100);
+                }
+            }
         }
 #else
         tl_log_line("unity: alive: %lu frames (+%lu)", f, f - last);
@@ -292,7 +301,12 @@ static bool manifest_launcher_activity(const char *apk, const char *package, cha
 static void *java_boot(void *arg)
 {
     bool *ok = arg;
-    if (tl_dvm_running()) { *ok = true; return NULL; }
+    if (tl_dvm_running()) {
+        setenv("ANDROID_ROOT", A.data, 1);
+        setenv("ANDROID_DATA", A.data, 1);
+        *ok = true;
+        return NULL;
+    }
     const char *r = g_java_root;
     static char paths[20][1200];
     const char *boot[20];
@@ -865,7 +879,13 @@ static unsigned long engine_frames(void)
 unsigned long husk_unity_frames(void) { return engine_frames(); }
 void husk_unity_perf_snapshot(husk_unity_perf *out)
 {
-    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA || A.engine == ENGINE_FLUTTER || A.engine == ENGINE_JAVA) {
+    if (A.engine == ENGINE_JAVA) {
+        double jfps = 0, jmean = 0, jmax = 0;
+        tl_javaapp_perf_snapshot(&jfps, &jmean, &jmax, NULL, NULL);
+        out->fps = jfps; out->mean_ms = jmean; out->max_ms = jmax;
+        return;
+    }
+    if (A.engine == ENGINE_GAMEACTIVITY || A.engine == ENGINE_SDL || A.engine == ENGINE_UE4 || A.engine == ENGINE_GTA || A.engine == ENGINE_FLUTTER) {
         /* The game paces its own frames; the rate is how many it presented since the last look. */
         static unsigned long last; static struct timespec since;
         struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);

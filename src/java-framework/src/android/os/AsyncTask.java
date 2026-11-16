@@ -18,6 +18,7 @@ public abstract class AsyncTask<Params, Progress, Result> {
     @Deprecated public static final Executor THREAD_POOL_EXECUTOR;
     static {
         ThreadPoolExecutor e = new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), sThreadFactory);
+        e.allowCoreThreadTimeOut(true);
         e.setRejectedExecutionHandler((r, ex) -> {
             synchronized (AsyncTask.class) {
                 if (sBackup == null) { sBackup = new ThreadPoolExecutor(5, 5, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), sThreadFactory); sBackup.allowCoreThreadTimeOut(true); }
@@ -52,6 +53,14 @@ public abstract class AsyncTask<Params, Progress, Result> {
 
     private static Handler getMainHandler() {
         synchronized (AsyncTask.class) { if (sHandler == null) sHandler = new InternalHandler(Looper.getMainLooper()); return sHandler; }
+    }
+    public static synchronized void resetSession() {
+        sHandler = null;
+        sDefaultExecutor = SERIAL_EXECUTOR;
+        if (SERIAL_EXECUTOR instanceof SerialExecutor) {
+            SerialExecutor se = (SerialExecutor) SERIAL_EXECUTOR;
+            synchronized (se) { se.mTasks.clear(); se.mActive = null; }
+        }
     }
     public static void setDefaultExecutor(Executor exec) { sDefaultExecutor = exec; }
 

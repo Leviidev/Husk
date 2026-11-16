@@ -14,6 +14,11 @@ public class Toast {
     private static final ArrayDeque<Toast> sQueue = new ArrayDeque<>();
     private static Toast sShowing;
     private static Handler sHandler;
+    public static void resetSession() {
+        sQueue.clear();
+        sShowing = null;
+        sHandler = null;
+    }
     private final Context mContext;
     private View mNextView;
     private CharSequence mText;

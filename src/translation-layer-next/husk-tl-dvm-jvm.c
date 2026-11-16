@@ -29,7 +29,10 @@ static int64_t J_GetNanoTimeAdjustment(void *env, void *cls, int64_t offset_secs
     if (secs > 0xFFFFFFFFll || secs < -0xFFFFFFFFll) return -1;
     return secs * 1000000000ll + ts.tv_nsec;
 }
-static void J_Exit(int code) { tl_log_line("dvm: JVM_Exit(%d)", code); _exit(code); }
+static void J_Exit(int code)
+{
+    tl_bionic_exit_guest(code, "JVM_Exit", __builtin_return_address(0), __builtin_frame_address(1), true);
+}
 static void *J_FindLibraryEntry(void *handle, const char *name) { (void)handle; (void)name; return NULL; }
 static int64_t J_FreeMemory(void) { return 256ll << 20; }
 static int64_t J_MaxMemory(void) { return 512ll << 20; }

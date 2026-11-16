@@ -57,6 +57,8 @@ void tl_javaapp_documents_picked(const char *const *paths, int n);
 /* The screen's insets changed (rotation), or the keyboard now covers ime_bottom pixels of it. */
 void tl_javaapp_set_insets(int left, int top, int right, int bottom, int ime_bottom);
 unsigned long tl_javaapp_frames(void);
+void tl_javaapp_perf_snapshot(double *fps, double *mean_ms, double *max_ms,
+                              unsigned long *over50, unsigned long *over100);
 bool tl_javaapp_ended(void);
 /* End the current Java app: the looper returns, the GL thread joins. Call before loading another. */
 void tl_javaapp_stop(void);

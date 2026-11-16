@@ -29,13 +29,30 @@ public class SensorManager {
         add(Sensor.TYPE_LINEAR_ACCELERATION, "Linear Acceleration", Sensor.STRING_TYPE_LINEAR_ACCELERATION, 156.9f, 0.0024f);
         add(Sensor.TYPE_ROTATION_VECTOR, "Rotation Vector", Sensor.STRING_TYPE_ROTATION_VECTOR, 1f, 5.96e-8f);
         add(Sensor.TYPE_GAME_ROTATION_VECTOR, "Game Rotation Vector", Sensor.STRING_TYPE_GAME_ROTATION_VECTOR, 1f, 5.96e-8f);
-        if (husk.Sensors.available(Sensor.TYPE_GRAVITY) && husk.Sensors.available(Sensor.TYPE_MAGNETIC_FIELD)) sSensors.add(new Sensor(Sensor.TYPE_ORIENTATION, "Orientation", Sensor.STRING_TYPE_ORIENTATION, 360f, 0.01f));
+        try {
+            if (husk.Sensors.available(Sensor.TYPE_GRAVITY) && husk.Sensors.available(Sensor.TYPE_MAGNETIC_FIELD))
+                sSensors.add(new Sensor(Sensor.TYPE_ORIENTATION, "Orientation", Sensor.STRING_TYPE_ORIENTATION, 360f, 0.01f));
+        } catch (UnsatisfiedLinkError ignored) {}
     }
-    private static void add(int type, String name, String st, float range, float res) { if (husk.Sensors.available(type)) sSensors.add(new Sensor(type, name, st, range, res)); }
+    private static void add(int type, String name, String st, float range, float res) {
+        try { if (husk.Sensors.available(type)) sSensors.add(new Sensor(type, name, st, range, res)); }
+        catch (UnsatisfiedLinkError ignored) {}
+    }
 
     private static final class Reg { SensorEventListener l; Sensor s; int periodUs; Handler h; long last; long lastPost; }
     private static final ArrayList<Reg> sRegs = new ArrayList<>();
     private static Thread sThread;
+    public static void resetSession() {
+        synchronized (sRegs) {
+            for (Reg r : sRegs) {
+                for (int t : sources(r.s.getType())) {
+                    try { husk.Sensors.stop(t); } catch (UnsatisfiedLinkError ignored) {}
+                }
+            }
+            sRegs.clear();
+            if (sThread != null) { sThread.interrupt(); sThread = null; }
+        }
+    }
 
     public SensorManager() {}
     public List<Sensor> getSensorList(int type) { ArrayList<Sensor> r = new ArrayList<>(); for (Sensor s : sSensors) if (type == Sensor.TYPE_ALL || s.getType() == type) r.add(s); return r; }

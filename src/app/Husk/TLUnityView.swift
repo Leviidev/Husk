@@ -1300,11 +1300,13 @@ final class TLNativeSession: ObservableObject {
             let layerOwner = TLUnityScreen.cached(loaded)
             let ok = await Task.detached(priority: .userInitiated) { husk_native_stop(8000) }.value
             withExtendedLifetime(layerOwner) {}
+            let stamp = ISO8601DateFormatter().string(from: Date())
             if ok {
                 husk_java_web_attach(nil, nil, 1, 1)
                 TLUnityScreen.release(loaded)
-                HuskLog.log("tl", "closed previous APK; ready for another game without restarting Husk")
+                HuskLog.log("tl", "[\(stamp)] closed previous APK; ready for another game without restarting Husk")
             } else {
+                HuskLog.log("tl", "[\(stamp)] failed to finish closing previous APK (state=\(husk_unity_state()))")
                 self.lastError = "The previous game has not finished closing. Wait a moment and try Play again. Its session has been kept to avoid a crash."
             }
             return ok

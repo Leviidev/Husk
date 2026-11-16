@@ -58,6 +58,8 @@ void *tl_vk_resolve(const char *name);    /* husk-tl-vulkan.m: Vulkan by name, t
 bool tl_vk_available(void);                /* a MoltenVK was configured, so libvulkan.so can be opened */
 
 extern void (*tl_guest_exit_hook)(int status);   /* set by an app host: exit() from guest code calls it instead of exiting */
+/* Log caller, guest frames, and invoke tl_guest_exit_hook (when set) before terminating. */
+void tl_bionic_exit_guest(int status, const char *api, void *caller, void *fp, bool immediate);
 
 void *tl_bionic_find(const char *name);
 bool  tl_bionic_is_system_lib(const char *soname);

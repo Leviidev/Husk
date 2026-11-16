@@ -242,8 +242,10 @@ struct TLAppSettingsView: View {
                     ForEach(TLAppSettings.VisualQuality.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
-                if app.packageName == "review.com.game3c.vhtgmobile", settings.avoidUnsafeArea {
+                if app.packageName == "review.com.game3c.vhtgmobile" || app.packageName == "com.game3c.vhtgmobile", settings.avoidUnsafeArea {
                     Toggle("Adjust quest and walk/sit controls", isOn: $settings.questOnlyCutout)
+                } else if app.packageName == "com.tech3cgame.vhpt1" {
+                    Toggle("Align Character HUD to outer edge (Vo Hiep style)", isOn: $settings.questOnlyCutout)
                 }
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)

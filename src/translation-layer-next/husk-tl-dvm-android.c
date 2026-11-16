@@ -60,6 +60,8 @@ static struct {
     uint64_t down_frame[16];
     atomic_llong defer_until_ns;
     atomic_ulong frames;
+    atomic_ullong perf_last_ns, perf_since_ns, perf_total_ns, perf_max_ns;
+    atomic_ulong perf_frames, perf_over50, perf_over100;
     atomic_bool ended, paused, render_requested;
     atomic_bool app_done, gl_done;
     jobj *gl_view, *gl_renderer;
@@ -1672,7 +1674,24 @@ static void *gl_run(void *arg)
             int64_t swap_begin = now_ns();
             unsigned swap_ok = swapBuffers(dpy, surf);
             int64_t swap_end = now_ns();
-            if (swap_ok) atomic_fetch_add(&A.frames, 1);
+            if (swap_ok) {
+                atomic_fetch_add(&A.frames, 1);
+                uint64_t now_u = (uint64_t)swap_end;
+                uint64_t prev = atomic_exchange(&A.perf_last_ns, now_u);
+                if (prev == 0) {
+                    atomic_store(&A.perf_since_ns, now_u);
+                } else if (now_u > prev) {
+                    uint64_t dt = now_u - prev;
+                    if (dt < UINT64_C(5000000000)) {
+                        atomic_fetch_add(&A.perf_total_ns, dt);
+                        atomic_fetch_add(&A.perf_frames, 1);
+                        uint64_t cur_max = atomic_load(&A.perf_max_ns);
+                        while (dt > cur_max && !atomic_compare_exchange_weak(&A.perf_max_ns, &cur_max, dt)) {}
+                        if (dt >= UINT64_C(50000000)) atomic_fetch_add(&A.perf_over50, 1);
+                        if (dt >= UINT64_C(100000000)) atomic_fetch_add(&A.perf_over100, 1);
+                    }
+                }
+            }
             app_frame_presented(q, app_fresh, sampled_seq, swap_ok != 0, app == NULL, &app_seq);
             /* Only a distinct external-game frame counts here. Java UI-only
              * updates or a second presentation of the same texture must not
@@ -1937,6 +1956,13 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     atomic_store(&A.ended, false);
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
+    atomic_store(&A.perf_last_ns, 0);
+    atomic_store(&A.perf_since_ns, 0);
+    atomic_store(&A.perf_total_ns, 0);
+    atomic_store(&A.perf_max_ns, 0);
+    atomic_store(&A.perf_frames, 0);
+    atomic_store(&A.perf_over50, 0);
+    atomic_store(&A.perf_over100, 0);
     atomic_store(&A.render_requested, false);
     atomic_store(&A.defer_until_ns, 0);
     atomic_store(&g_compositor_active, false);
@@ -1994,6 +2020,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     tl_set_guest_package(A.pkg);
     if (tl_vhtg_quest_start(cfg->apk_path,A.pkg,cfg->quest_only_cutout,cfg->insets,cfg->width,cfg->height))
         for (int i=0;i<4;i++) A.insets[i]=0;
+    (void)tl_vhpt_hud_start(cfg->apk_path, A.pkg, cfg->quest_only_cutout, cfg->insets, cfg->width, cfg->height);
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
@@ -2194,9 +2221,34 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
     javaapp_reset_subsystems();
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
+    atomic_store(&A.perf_last_ns, 0);
+    atomic_store(&A.perf_since_ns, 0);
+    atomic_store(&A.perf_total_ns, 0);
+    atomic_store(&A.perf_max_ns, 0);
+    atomic_store(&A.perf_frames, 0);
+    atomic_store(&A.perf_over50, 0);
+    atomic_store(&A.perf_over100, 0);
     return tl_guest_session_finish();
 }
 void tl_javaapp_stop(void) { (void)tl_javaapp_try_stop(8000); }
+
+void tl_javaapp_perf_snapshot(double *fps, double *mean_ms, double *max_ms,
+                              unsigned long *over50, unsigned long *over100)
+{
+    uint64_t now_u = (uint64_t)now_ns();
+    uint64_t since = atomic_exchange(&A.perf_since_ns, now_u);
+    uint64_t total_ns = atomic_exchange(&A.perf_total_ns, 0);
+    uint64_t max_ns = atomic_exchange(&A.perf_max_ns, 0);
+    unsigned long n = atomic_exchange(&A.perf_frames, 0);
+    unsigned long h50 = atomic_exchange(&A.perf_over50, 0);
+    unsigned long h100 = atomic_exchange(&A.perf_over100, 0);
+    double elapsed = (since > 0 && now_u > since) ? (double)(now_u - since) / 1e9 : 0.0;
+    if (fps) *fps = elapsed > 0.05 ? (double)n / elapsed : 0.0;
+    if (mean_ms) *mean_ms = n ? (double)total_ns / (double)n / 1e6 : 0.0;
+    if (max_ms) *max_ms = (double)max_ns / 1e6;
+    if (over50) *over50 = h50;
+    if (over100) *over100 = h100;
+}
 
 void tl_javaapp_touch(int phase, int id, float x, float y)
 {

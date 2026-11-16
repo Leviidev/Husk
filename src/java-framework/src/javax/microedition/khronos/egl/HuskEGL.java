@@ -47,6 +47,11 @@ final class HuskEGL implements EGL11 {
     public EGLDisplay eglGetCurrentDisplay() { return DISPLAY; }
     public EGLSurface eglGetCurrentSurface(int which) { if (render()) return SURFACE; Object[] c = sCurrent.get(); return c != null && c[1] != null ? (EGLSurface) c[1] : EGL_NO_SURFACE; }
     static volatile int sRequestedVersion = 1;
+    static void resetSession() {
+        sRequestedVersion = 1;
+        sCurrent.remove();
+        sError.remove();
+    }
     public EGLContext eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share, int[] attribs) {
         int version = 1;
         if (attribs != null) for (int i = 0; i + 1 < attribs.length && attribs[i] != EGL_NONE; i += 2) if (attribs[i] == 0x3098) version = attribs[i + 1];

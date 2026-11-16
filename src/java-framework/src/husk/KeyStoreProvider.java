@@ -48,10 +48,17 @@ public final class KeyStoreProvider extends Provider {
         long created = System.currentTimeMillis();
     }
     private static LinkedHashMap<String, Entry> sKeys;
+    private static String sDataDir;
+    public static synchronized void resetSession() {
+        sKeys = null;
+        sDataDir = null;
+    }
     private static File file() { return new File(Native.dataDir(), ".husk_keystore"); }
     @SuppressWarnings("unchecked")
     static synchronized LinkedHashMap<String, Entry> huskKeys() {
-        if (sKeys != null) return sKeys;
+        String dir = Native.dataDir();
+        if (sKeys != null && dir != null && dir.equals(sDataDir)) return sKeys;
+        sDataDir = dir;
         sKeys = new LinkedHashMap<>();
         File f = file();
         if (f.isFile()) {

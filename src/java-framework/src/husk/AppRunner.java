@@ -42,6 +42,13 @@ public final class AppRunner {
         sFactory = android.app.AppComponentFactory.DEFAULT;
         Looper.setInputSink(null);
         Looper.resetSession();
+        android.os.Handler.resetSession();
+        android.os.AsyncTask.resetSession();
+        android.view.Choreographer.resetSession();
+        android.widget.Toast.resetSession();
+        android.hardware.SensorManager.resetSession();
+        ApkSigner.resetSession();
+        KeyStoreProvider.resetSession();
         Services.resetSession();
         Manifest.reset();
         ViewRoot.resetSession();
@@ -51,11 +58,13 @@ public final class AppRunner {
         android.content.ContentResolver.resetSession();
         android.content.res.Resources.resetSession();
         android.content.pm.ApplicationInfo.resetSession();
+        android.content.pm.PackageManager.resetSession();
         android.app.LoadedApk.resetSession();
         android.app.ActivityThread.resetSession();
         android.app.Application.huskSet(null);
         android.net.ConnectivityManager.resetSession();
         android.webkit.WebView.huskResetSession();
+        javax.microedition.khronos.egl.EGLContext.huskResetSession();
         Web.resetSession();
         Thread.setDefaultUncaughtExceptionHandler(null);
     }

@@ -449,14 +449,25 @@ static void bionic_abort(void)
 /* When set, a guest exit() ends the guest, not the app that is hosting it. The hook does not return. */
 void (*tl_guest_exit_hook)(int status);
 
-static void bionic_exit(int status)
+void tl_bionic_exit_guest(int status, const char *api, void *caller, void *fp, bool immediate)
 {
     char where[200];
-    describe_caller(__builtin_return_address(0), where, sizeof(where));
-    tl_log_line("bionic: exit(%d) called from %s", status, where);
-    log_guest_frames(__builtin_frame_address(1));
+    describe_caller(caller, where, sizeof(where));
+    tl_log_line("bionic: %s(%d) called from %s", api ? api : "exit", status, where);
+    if (fp) log_guest_frames(fp);
     if (tl_guest_exit_hook) tl_guest_exit_hook(status);
+    if (immediate) _exit(status);
     exit(status);
+}
+
+static void bionic_exit(int status)
+{
+    tl_bionic_exit_guest(status, "exit", __builtin_return_address(0), __builtin_frame_address(1), false);
+}
+
+static void bionic__exit(int status)
+{
+    tl_bionic_exit_guest(status, "_exit", __builtin_return_address(0), __builtin_frame_address(1), true);
 }
 
 static void bionic___stack_chk_fail(void) { guest_abort("stack smashing detected"); }
@@ -864,7 +875,7 @@ const tl_bionic_entry tl_tab_core[] = {
     TL_WRAP("closelog", bionic_closelog),
     TL_WRAP("abort", bionic_abort),
     TL_WRAP("exit", bionic_exit),
-    TL_DIRECT(_exit), TL_DIRECT(_Exit),
+    TL_WRAP("_exit", bionic__exit), TL_WRAP("_Exit", bionic__exit),
     TL_WRAP("__stack_chk_fail", bionic___stack_chk_fail),
     TL_WRAP("__assert2", bionic___assert2),
     TL_WRAP("android_set_abort_message", bionic_android_set_abort_message),
