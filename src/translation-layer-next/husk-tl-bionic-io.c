@@ -2518,8 +2518,8 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 113: { int r = b_clock_gettime((int)a0, (struct timespec *)a1); return r < 0 ? -*tl_guest_errno_ptr() : 0; }
     case 169: return b_gettimeofday((int64_t *)a0, (void *)a1);
     case 93: case 94:
-        tl_bionic_exit_guest((int)a0, n == 93 ? "syscall SYS_exit" : "syscall SYS_exit_group",
-                             __builtin_return_address(0), __builtin_frame_address(1), n == 93);
+        tl_bionic_exit_guest((int)a0, nr == 93 ? "syscall SYS_exit" : "syscall SYS_exit_group",
+                             __builtin_return_address(0), __builtin_frame_address(1), nr == 93);
         return 0;
     case 278: arc4random_buf((void *)a0, (size_t)a1); return a1;                        /* getrandom */
     case 283: return 0;                                                                 /* membarrier */
