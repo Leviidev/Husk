@@ -3,7 +3,6 @@ package android.view;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import java.util.ArrayList;
 
 /** Frames at 60 Hz on the main looper: input is already in, then animations, then the window's traversal (ViewRoot). */
 public final class Choreographer {
@@ -13,13 +12,20 @@ public final class Choreographer {
     private static final ThreadLocal<Choreographer> sThread = new ThreadLocal<>();
     private static Choreographer sMain;
     private final Handler mHandler;
-    @SuppressWarnings("unchecked")
-    private final ArrayList<Object[]>[] mQueues = new ArrayList[5];   /* {callback (Runnable or FrameCallback), token, dueNanos} */
+    private static final int MAX_CALLBACK_POOL = 64;
+    private static final class CallbackRecord {
+        Object callback, token;
+        long dueNanos;
+        CallbackRecord next;
+    }
+    private final CallbackRecord[] mHeads = new CallbackRecord[5], mTails = new CallbackRecord[5];
+    private CallbackRecord mCallbackPool;
+    private int mCallbackPoolSize;
     private boolean mScheduled;
     private long mLastFrameTimeNanos;
     private final Runnable mDoFrame = this::doFrame;
 
-    private Choreographer(Looper l) { mHandler = new Handler(l); for (int i = 0; i < 5; i++) mQueues[i] = new ArrayList<>(); }
+    private Choreographer(Looper l) { mHandler = new Handler(l); }
     public static Choreographer getInstance() {
         Choreographer c = sThread.get();
         if (c == null) {
@@ -38,7 +44,17 @@ public final class Choreographer {
     public long getFrameIntervalNanos() { return FRAME_NS; }
 
     private synchronized void add(int type, Object cb, Object token, long delayMs) {
-        mQueues[type].add(new Object[] { cb, token, System.nanoTime() + delayMs * 1_000_000L });
+        if (type < 0 || type >= mHeads.length || cb == null) throw new IllegalArgumentException("Invalid frame callback");
+        CallbackRecord record;
+        if (mCallbackPool != null) {
+            record = mCallbackPool; mCallbackPool = record.next; mCallbackPoolSize--;
+        } else record = new CallbackRecord();
+        record.callback = cb; record.token = token;
+        record.dueNanos = System.nanoTime() + delayMs * 1_000_000L;
+        record.next = null;
+        if (mTails[type] == null) mHeads[type] = record;
+        else mTails[type].next = record;
+        mTails[type] = record;
         schedule();
     }
     private void schedule() {
@@ -54,29 +70,69 @@ public final class Choreographer {
     public void postFrameCallbackDelayed(FrameCallback cb, long delayMs) { add(CALLBACK_ANIMATION, cb, null, delayMs); }
     public void removeFrameCallback(FrameCallback cb) { remove(CALLBACK_ANIMATION, cb, null); }
     private synchronized void remove(int type, Object cb, Object token) {
-        ArrayList<Object[]> q = mQueues[type];
-        for (int i = q.size() - 1; i >= 0; i--) { Object[] e = q.get(i); if ((cb == null || e[0] == cb) && (token == null || e[1] == token)) q.remove(i); }
+        CallbackRecord previous = null, record = mHeads[type];
+        while (record != null) {
+            CallbackRecord next = record.next;
+            if ((cb == null || record.callback == cb) && (token == null || record.token == token)) {
+                if (previous == null) mHeads[type] = next;
+                else previous.next = next;
+                if (mTails[type] == record) mTails[type] = previous;
+                recycle(record);
+            } else previous = record;
+            record = next;
+        }
+    }
+
+    private synchronized void recycle(CallbackRecord record) {
+        record.callback = record.token = null;
+        record.dueNanos = 0;
+        record.next = null;
+        if (mCallbackPoolSize < MAX_CALLBACK_POOL) {
+            record.next = mCallbackPool; mCallbackPool = record; mCallbackPoolSize++;
+        }
+    }
+
+    /** Detach only this phase's due work; callbacks posted while it runs stay queued. */
+    private synchronized CallbackRecord takeDue(int type, long now) {
+        CallbackRecord run = null, tail = null, previous = null, record = mHeads[type];
+        while (record != null) {
+            CallbackRecord next = record.next;
+            if (record.dueNanos <= now) {
+                if (previous == null) mHeads[type] = next;
+                else previous.next = next;
+                if (mTails[type] == record) mTails[type] = previous;
+                record.next = null;
+                if (tail == null) run = record;
+                else tail.next = record;
+                tail = record;
+            } else previous = record;
+            record = next;
+        }
+        return run;
     }
 
     private void doFrame() {
         long now = System.nanoTime();
-        synchronized (this) { mScheduled = false; }
-        mLastFrameTimeNanos = now;
-        boolean later = false;
+        synchronized (this) { mScheduled = false; mLastFrameTimeNanos = now; }
         for (int type = 0; type < 5; type++) {
-            ArrayList<Object[]> run = new ArrayList<>();
-            synchronized (this) {
-                ArrayList<Object[]> q = mQueues[type];
-                for (int i = 0; i < q.size(); ) { Object[] e = q.get(i); if ((Long) e[2] <= now) { run.add(e); q.remove(i); } else { i++; later = true; } }
-            }
-            for (Object[] e : run) {
-                if (e[0] instanceof FrameCallback) ((FrameCallback) e[0]).doFrame(now);
-                else ((Runnable) e[0]).run();
+            CallbackRecord run = takeDue(type, now);
+            try {
+                while (run != null) {
+                    CallbackRecord record = run;
+                    run = run.next;
+                    try {
+                        if (record.callback instanceof FrameCallback) ((FrameCallback) record.callback).doFrame(now);
+                        else ((Runnable) record.callback).run();
+                    } finally { recycle(record); }
+                }
+            } finally {
+                // A failed callback must not retain the rest of its detached batch.
+                while (run != null) { CallbackRecord next = run.next; recycle(run); run = next; }
             }
         }
         synchronized (this) {
-            boolean any = later;
-            for (ArrayList<Object[]> q : mQueues) any |= !q.isEmpty();
+            boolean any = false;
+            for (CallbackRecord head : mHeads) any |= head != null;
             if (any) schedule();
         }
     }

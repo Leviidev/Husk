@@ -15,7 +15,9 @@ public final class MessageQueue {
     public void removeIdleHandler(IdleHandler h) {}
 
     synchronized boolean enqueue(Message m, long when) {
-        if (quitting) return false;
+        if (m.target == null) throw new IllegalArgumentException("Message must have a target");
+        m.markInUse();
+        if (quitting) { m.recycleUnchecked(); return false; }
         m.when = when;
         if (head == null || when < head.when) { m.next = head; head = m; }
         else { Message p = head; while (p.next != null && p.next.when <= when) p = p.next; m.next = p.next; p.next = m; }
@@ -28,7 +30,13 @@ public final class MessageQueue {
         while (p != null) {
             boolean hit = p.target == h && (byWhat ? p.what == what && (token == null || p.obj == token) : (r == null || p.callback == r) && (token == null || p.obj == token));
             if (byWhat == false && r == null && token == null) hit = p.target == h;
-            if (hit) { if (prev == null) head = p.next; else prev.next = p.next; p = p.next; }
+            if (hit) {
+                Message successor = p.next;
+                if (prev == null) head = successor; else prev.next = successor;
+                p.next = null;
+                p.recycleUnchecked();
+                p = successor;
+            }
             else { prev = p; p = p.next; }
         }
     }
@@ -40,19 +48,38 @@ public final class MessageQueue {
     }
     synchronized boolean hasCallback(Handler h, Runnable r) { for (Message p = head; p != null; p = p.next) if (p.target == h && p.callback == r && r != null) return true; return false; }
     synchronized boolean hasAny(Handler h) { for (Message p = head; p != null; p = p.next) if (p.target == h) return true; return false; }
-    synchronized void quit() { quitting = true; notifyAll(); if (mMain) wakeNative(); }
+    private void recycleAllLocked() {
+        Message p = head;
+        head = null;
+        while (p != null) {
+            Message successor = p.next;
+            p.next = null;
+            p.recycleUnchecked();
+            p = successor;
+        }
+    }
+    synchronized void quit() { quitting = true; recycleAllLocked(); notifyAll(); if (mMain) wakeNative(); }
+    /** Called while the queue monitor is held; also serves the JVM queue contract fixture. */
+    Message pollDueLocked(long now) {
+        if (head == null || head.when > now) return null;
+        Message message = head;
+        head = message.next;
+        message.next = null;
+        return message;
+    }
 
     private boolean mNativeLooper;
     Message next(boolean main) {
         for (;;) {
-            if (husk.Native.sessionEnded()) { synchronized (this) { quitting = true; } return null; }
+            if (husk.Native.sessionEnded()) { quit(); return null; }
             if (main) Looper.deliverInput();
             mNativeLooper = husk.Native.nativeLooperPoll();
             long mainWait = -1;
             synchronized (this) {
                 if (quitting) return null;
                 long now = SystemClock.uptimeMillis();
-                if (head != null && head.when <= now) { Message m = head; head = m.next; m.next = null; return m; }
+                Message due = pollDueLocked(now);
+                if (due != null) return due;
                 if (main && sNativeWakeOk) {
                     long w = head == null ? (mNativeLooper ? 8 : 60) : Math.max(1, mNativeLooper ? Math.min(8, head.when - now) : head.when - now);
                     try {
@@ -69,7 +96,8 @@ public final class MessageQueue {
                     // loopers have individual monitors. Bound their sleep so
                     // HandlerThread can observe sessionEnded and exit too.
                     if (!main) wait = wait <= 0 ? 50 : Math.min(wait, 50);
-                    try { if (wait <= 0) wait(); else wait(wait); } catch (InterruptedException e) { return null; }
+                    try { if (wait <= 0) wait(); else wait(wait); }
+                    catch (InterruptedException e) { quitting = true; recycleAllLocked(); return null; }
                 }
             }
             if (mainWait >= 0) {

@@ -27,6 +27,11 @@ public final class Looper {
     public boolean isCurrentThread() { return Thread.currentThread() == mThread; }
     public void quit() { mQueue.quit(); }
     public void quitSafely() { mQueue.quit(); }
+    /** The queue owns this message; callback failure must not retain its APK. */
+    static void dispatchAndRecycle(Message message) {
+        try { message.target.dispatchMessage(message); }
+        finally { message.recycleUnchecked(); }
+    }
     public static void loop() {
         Looper me = myLooper();
         boolean main = me == sMain;
@@ -34,7 +39,7 @@ public final class Looper {
             Message m = me.mQueue.next(main);
             if (m == null) return;
             try {
-                m.target.dispatchMessage(m);
+                dispatchAndRecycle(m);
             } catch (Throwable t) {
                 android.util.Log.e("Looper", "uncaught exception on " + Thread.currentThread().getName(), t);
                 if (main) throw t;

@@ -115,9 +115,6 @@ def main():
         r"int tl_host_visual_quality\([^\n]*\)\n\{.*?\n\}")]
     visual_functions += [re.search(pattern, egl_source, re.S)[0] for pattern in (
         r"static bool is_aniso_tex_target\([^\n]*\)\n\{.*?\n\}",
-        r"static bool is_mip_linear_filter\([^\n]*\)\n\{.*?\n\}",
-        r"static int upgrade_min_filter\([^\n]*\)\n\{.*?\n\}",
-        r"static float effective_anisotropy\([^\n]*\)\n\{.*?\n\}",
         r"static void apply_filter_param_i\b.*?\n\{.*?\n\}",
         r"static void apply_filter_param_f\b.*?\n\{.*?\n\}")]
     (out / "visual_quality_under_test.h").write_text("\n\n".join(visual_functions) + "\n", encoding="utf-8")

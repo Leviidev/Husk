@@ -15,8 +15,6 @@ typedef struct {
     float sharpness;
     float contrast;
     float vibrance;
-    float anisotropy;
-    bool  trilinear;
 } tl_visual_params;
 
 static inline int tl_visual_clamp_preset(int preset)
@@ -26,12 +24,12 @@ static inline int tl_visual_clamp_preset(int preset)
     return preset;
 }
 
-/* Compute calibrated compositor edge-safe texture detail, gentle linear filmic
- * depth, gamut-safe vibrance, and anisotropic filtering parameters for a frame. */
+/* Compute display-only enhancement. Texture filtering remains the game's
+ * decision, independent of these compositor sharpening and color presets. */
 static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_color,
                                                         int src_w, int src_h, int dst_w, int dst_h)
 {
-    tl_visual_params out = { 0.0f, 0.0f, 0.0f, 1.0f, false };
+    tl_visual_params out = { 0.0f, 0.0f, 0.0f };
     int mode = tl_visual_clamp_preset(preset);
     if (mode == TL_VISUAL_STANDARD) return out;
 
@@ -49,8 +47,6 @@ static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_co
         out.sharpness = sharp > 0.50f ? 0.50f : sharp;
         out.contrast = 0.16f;
         out.vibrance = wide_color ? 0.12f : 0.14f;
-        out.anisotropy = 4.0f;
-        out.trilinear = true;
         return out;
     }
 
@@ -58,15 +54,7 @@ static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_co
     out.sharpness = sharp > 0.78f ? 0.78f : sharp;
     out.contrast = 0.30f;
     out.vibrance = wide_color ? 0.26f : 0.30f;
-    out.anisotropy = 8.0f;
-    out.trilinear = true;
     return out;
-}
-
-static inline float tl_visual_clamp_anisotropy(float requested, float max_supported)
-{
-    if (requested <= 1.0f || max_supported <= 1.0f) return 1.0f;
-    return requested < max_supported ? requested : max_supported;
 }
 
 #endif

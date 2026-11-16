@@ -13,7 +13,11 @@ suffix = ".exe" if os.name == "nt" else ""
 jar = ROOT / "build/hung-java/framework.jar"
 out = ROOT / "build/java-contract-tests"
 out.mkdir(exist_ok=True)
-sources = list((ROOT / "tests/java-framework").rglob("*.java"))
+scheduling_sources = [ROOT / "tests/java-framework" / name for name in (
+    "ChoreographerCallbackPoolTest.java", "MessagePoolTest.java")]
+# General UI fixtures replace Handler/Looper with host scheduling doubles.
+# Pool/lifecycle tests must instead load the real framework scheduling classes.
+sources = [p for p in (ROOT / "tests/java-framework").rglob("*.java") if p not in scheduling_sources]
 subprocess.run([str(args.jdk / ("bin/javac" + suffix)), "-cp", str(jar), "-d", str(out)] + [str(p) for p in sources], check=True)
 classpath = os.pathsep.join(map(str, (out, jar, ROOT / "build/hung-java/host-stubs.jar")))
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.app.DialogFragmentTest"], check=True)
@@ -29,3 +33,10 @@ subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, 
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.media.MediaPlayerTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.graphics.drawable.DrawableCloneBoundsTest"], check=True)
 subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", classpath, "android.opengl.GLSurfaceLifecycleTest"], check=True)
+scheduling_out = ROOT / "build/java-scheduling-contract-tests"
+scheduling_out.mkdir(exist_ok=True)
+subprocess.run([str(args.jdk / ("bin/javac" + suffix)), "-cp", str(jar), "-d", str(scheduling_out)] +
+               [str(p) for p in scheduling_sources], check=True)
+scheduling_classpath = os.pathsep.join(map(str, (scheduling_out, jar, ROOT / "build/hung-java/host-stubs.jar")))
+for test in ("android.view.ChoreographerCallbackPoolTest", "android.os.MessagePoolTest"):
+    subprocess.run([str(args.jdk / ("bin/java" + suffix)), "-ea", "-cp", scheduling_classpath, test], check=True)
