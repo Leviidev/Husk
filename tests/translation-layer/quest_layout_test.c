@@ -339,6 +339,7 @@ int main(void)
     assert(tl_vhpt_panel_target_x(false, "TopLeft", 0.0f, 0.0f, 860.0f, true, 720.0f, 845.0f) == 0.0f);
 
     // 3b) Start/reset and glClear runtime alignment against fake VHPT ELF+scene fixture
+    assert(tl_vhtg_quest_active()); /* switching from VHTG -> VHPT must disarm VHTG quest hook */
     entry.usize = VHPT_LIB_SIZE;
     mock_sha = "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44";
     int vhpt_insets[4] = {118, 0, 0, 0};

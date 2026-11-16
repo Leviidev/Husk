@@ -477,8 +477,9 @@ void tl_vhtg_quest_reset(void)
 }
 bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
+    atomic_store(&q_enabled,false);
     atomic_store(&v_enabled,false);
-    pthread_mutex_lock(&q_lock); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
+    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
     if (!requested || !package || strcmp(package,"com.tech3cgame.vhpt1") ||
         !insets || pixel_width<=0 || pixel_height<=0) return false;
     if (!verify_mygame_profile(apk, VHPT_LIB_SIZE,
@@ -497,7 +498,9 @@ bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const 
 }
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
-    atomic_store(&q_enabled,false); memset(&Q,0,sizeof(Q));
+    atomic_store(&q_enabled,false);
+    atomic_store(&v_enabled,false);
+    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
     if (!requested || !package ||
         (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")) ||
         !insets || pixel_width<=0 || pixel_height<=0) return false;
