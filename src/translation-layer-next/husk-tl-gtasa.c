@@ -412,3 +412,4 @@ void tl_gta_set_paused(bool paused)
 }
 
 unsigned long tl_gta_frames(void) { return tl_egl_frames_presented(); }
+void tl_gtasa_reset_session(void) { G.activity = G.view = G.services = G.surface = G.device = NULL; g_nvutil = NULL; g_thread = NULL; }

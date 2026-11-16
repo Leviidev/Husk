@@ -16,6 +16,7 @@
 #include "husk-tl-internal.h"
 #include "husk-tl-arm32.h"
 #include "husk-tl-ld.h"
+#include "husk-tl-session.h"
 
 int g_dvm_trace;
 void tl_dvm_set_trace(int level) { g_dvm_trace = level; }
@@ -785,7 +786,6 @@ typedef struct mon { pthread_mutex_t mu; pthread_cond_t cv; _Atomic(pthread_t) o
 typedef struct dvm_mon_waiter { mon *m; struct dvm_mon_waiter *prev, *next; } dvm_mon_waiter;
 static pthread_mutex_t g_mon_waiters_mu = PTHREAD_MUTEX_INITIALIZER;
 static dvm_mon_waiter *g_mon_waiters;
-bool tl_guest_session_closing(void);
 
 static mon *monitor_of(jobj *o)
 {
@@ -858,6 +858,14 @@ void dvm_monitor_wait(jobj *o, int64_t ms, int32_t ns)
 }
 void dvm_monitor_notify(jobj *o, bool all);
 void dvm_monitor_notify(jobj *o, bool all) { mon *m = monitor_of(o); if (all) pthread_cond_broadcast(&m->cv); else pthread_cond_signal(&m->cv); }
+static void dvm_monitor_destroy(void *pm)
+{
+    mon *m = pm;
+    if (!m) return;
+    pthread_cond_destroy(&m->cv);
+    pthread_mutex_destroy(&m->mu);
+    free(m);
+}
 
 /* ================================================================== class initialisation */
 
@@ -1321,6 +1329,7 @@ static fref *resolve_fref(dvm_dex *d, uint32_t idx, bool is_static)
 
 static bool find_handler(dvm_method *m, uint32_t pc, jobj *exc, uint32_t *target)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) return false;
     if (!m->ntries) return false;
     const uint8_t *tries = (const uint8_t *)(m->insns + m->ninsns);
     if (m->ninsns & 1) tries += 2;                                 /* padding to 4 bytes */
@@ -1768,9 +1777,9 @@ dispatch:;
         if (!e) dvm_throw("java/lang/NullPointerException", "throw with null exception"); else tl_jni_set_pending(e);
         goto exception;
     }
-    case 0x28: pc += (int8_t)AA; goto dispatch;
-    case 0x29: pc += (int16_t)FETCH(1); goto dispatch;
-    case 0x2a: pc += (int32_t)(FETCH(1) | (uint32_t)FETCH(2) << 16); goto dispatch;
+    case 0x28: { int32_t d = (int8_t)AA; if (d <= 0 && tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) goto abort_session; pc += d; goto dispatch; }
+    case 0x29: { int32_t d = (int16_t)FETCH(1); if (d <= 0 && tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) goto abort_session; pc += d; goto dispatch; }
+    case 0x2a: { int32_t d = (int32_t)(FETCH(1) | (uint32_t)FETCH(2) << 16); if (d <= 0 && tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) goto abort_session; pc += d; goto dispatch; }
     case 0x2b: {                                                   /* packed-switch */
         const uint16_t *p = insns + pc + (int32_t)(FETCH(1) | (uint32_t)FETCH(2) << 16);
         uint16_t size = p[1]; int32_t first = (int32_t)(p[2] | (uint32_t)p[3] << 16);
@@ -1800,7 +1809,7 @@ dispatch:;
         WI(regs, AA, a < b ? -1 : a > b ? 1 : a == b ? 0 : ((w & 0xFF) == 0x2f ? -1 : 1)); NEXT(2);
     }
     case 0x31: { int64_t a = RJ(regs, FETCH(1) & 0xFF), b = RJ(regs, FETCH(1) >> 8); WI(regs, AA, a < b ? -1 : a > b); NEXT(2); }
-#define IFCMP(op, cond) case op: if (cond) { pc += (int16_t)FETCH(1); goto dispatch; } NEXT(2);
+#define IFCMP(op, cond) case op: if (cond) { int16_t d = (int16_t)FETCH(1); if (d <= 0 && tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) goto abort_session; pc += d; goto dispatch; } NEXT(2);
     /* ints are kept zero-extended and references whole, so equality is the whole register either way */
     IFCMP(0x32, regs[A4] == regs[B4])
     IFCMP(0x33, regs[A4] != regs[B4])
@@ -2047,6 +2056,7 @@ dispatch:;
     }
 
 exception: {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) goto abort_session;
         jobj *e = tl_jni_pending_object();
         if (!e) { dvm_throw("java/lang/InternalError", "exception with nothing pending"); e = tl_jni_pending_object(); }
         uint32_t target;
@@ -2059,6 +2069,9 @@ exception: {
         if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
         return false;
     }
+abort_session:
+    if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
+    return false;
 done:
     if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
     return true;
@@ -2141,6 +2154,7 @@ bool tl_dvm_start(const char *const *boot, int nboot)
     g_nboot_dex = g_ndex;
     g_nboot_cp = g_ncp;
     g_string_class = tl_jni_class("java/lang/String");
+    tl_jni_mark_boot_objects();
     return true;
 }
 
@@ -2198,16 +2212,165 @@ static bool boot_dex(dvm_dex *d)
     for (int i = 0; i < g_nboot_dex; i++) if (g_dex[i] == d) return true;
     return false;
 }
+static bool is_app_array_class(tl_jclass *jc)
+{
+    const char *n = jc ? jc->name : NULL;
+    if (!n || n[0] != '[') return false;
+    while (*n == '[') n++;
+    if (*n != 'L') return false;
+    size_t len = strlen(n);
+    if (len < 3 || n[len - 1] != ';') return false;
+    char base[512];
+    if (len - 2 >= sizeof(base)) return false;
+    memcpy(base, n + 1, len - 2);
+    base[len - 2] = 0;
+    tl_jclass *elem = tl_jni_find_declared(base);
+    if (!elem || elem == jc) return false;
+    dvm_class *ec = (dvm_class *)elem->dvm;
+    if (!ec) return false;
+    return (ec->dex && !boot_dex(ec->dex)) || (!ec->dex && elem->super && !strcmp(elem->super->name, "java/lang/reflect/Proxy"));
+}
 static bool forget_app_class(tl_jclass *jc, void *user)
 {
     (void)user;
-    dvm_class *c = dvm_class_of(jc);
-    return c && c->dex && !boot_dex(c->dex);
+    if (!jc) return false;
+    dvm_class *c = (dvm_class *)jc->dvm;
+    if (c && c->dex && !boot_dex(c->dex)) return true;
+    if (c && !c->dex && jc->super && !strcmp(jc->super->name, "java/lang/reflect/Proxy")) return true;
+    return is_app_array_class(jc);
+}
+static void dvm_visit_extra_roots(bool (*mark_obj)(jobj *o, void *ctx), void *ctx)
+{
+    for (int i = 0; i < g_nboot_dex; i++) {
+        dvm_dex *d = g_dex[i];
+        if (!d) continue;
+        for (uint32_t s = 0; s < d->nstr; s++) if (d->scache && d->scache[s] && !mark_obj(d->scache[s], ctx)) d->scache[s] = NULL;
+        if (d->loader && !mark_obj(d->loader, ctx)) d->loader = NULL;
+        for (uint32_t t = 0; d->tcache && t < d->ntype; t++) {
+            if (d->tcache[t] && forget_app_class(d->tcache[t], NULL)) d->tcache[t] = NULL;
+        }
+        for (uint32_t m = 0; d->mcache && m < d->nmeth; m++) {
+            if (d->mcache[m] && d->mcache[m]->cls && d->mcache[m]->cls->dex && !boot_dex(d->mcache[m]->cls->dex))
+                d->mcache[m] = NULL;
+        }
+        for (uint32_t f = 0; d->fcache && f < d->nfield; f++) {
+            if (d->fcache[f] && d->fcache[f]->cls && d->fcache[f]->cls->dex && !boot_dex(d->fcache[f]->cls->dex))
+                d->fcache[f] = NULL;
+        }
+    }
+}
+static void dvm_trace_class_statics(tl_jclass *jc, bool (*mark_obj)(jobj *o, void *ctx), void *ctx)
+{
+    dvm_class *dc = (dvm_class *)jc->dvm;
+    if (!dc || !jc->statics) return;
+    for (int i = 0; i < dc->nsf; i++) {
+        const char *tp = dc->sf[i].type;
+        if (tp && (tp[0] == 'L' || tp[0] == '[')) {
+            uint32_t slot = dc->sf[i].slot;
+            if (jc->statics[slot].l && !mark_obj((jobj *)jc->statics[slot].l, ctx)) jc->statics[slot].l = NULL;
+        }
+    }
+}
+static void dvm_trace_obj_fields(tl_jclass *jc, jobj *o, bool (*mark_obj)(jobj *o, void *ctx), void *ctx)
+{
+    for (dvm_class *dc = (dvm_class *)jc->dvm; dc; dc = dc->super) {
+        for (int i = 0; i < dc->ninf; i++) {
+            const char *tp = dc->inf[i].type;
+            uint32_t slot = dc->inf[i].slot;
+            if (tp && (tp[0] == 'L' || tp[0] == '[') && slot < o->nfields && o->fields[slot].l
+                && !mark_obj((jobj *)o->fields[slot].l, ctx))
+                o->fields[slot].l = NULL;
+        }
+    }
+}
+static dvm_class **g_drop_dc;
+static int g_ndrop_dc, g_cdrop_dc;
+static void collect_app_dvm(tl_jclass *jc)
+{
+    if (!forget_app_class(jc, NULL) || !jc->dvm) return;
+    if (g_ndrop_dc == g_cdrop_dc) {
+        int nc = g_cdrop_dc ? g_cdrop_dc * 2 : 512;
+        dvm_class **p = realloc(g_drop_dc, (size_t)nc * sizeof(*p));
+        if (!p) return;
+        g_drop_dc = p; g_cdrop_dc = nc;
+    }
+    g_drop_dc[g_ndrop_dc++] = (dvm_class *)jc->dvm;
+}
+static void free_dvm_class(dvm_class *c)
+{
+    if (!c) return;
+    if (c->dex) {
+        for (int i = 0; i < c->ndm; i++) { free((void *)c->dm[i].sig); free((void *)c->dm[i].shorty); }
+        for (int i = 0; i < c->nvm; i++) { free((void *)c->vm[i].sig); free((void *)c->vm[i].shorty); }
+    }
+    if (c->art_tables) {
+        if (c->inf) free((uint8_t *)c->inf - DVM_MEMBERS_HDR);
+        if (c->dm) free((uint8_t *)c->dm - DVM_MEMBERS_HDR);
+    } else {
+        free(c->dm);
+        free(c->vm);
+    }
+    free(c->ifaces);
+    free(c->vtab);
+    pthread_mutex_destroy(&c->init_lock);
+    free(c);
 }
 void tl_dvm_drop_app(void)
 {
     if (!g_running || g_nboot_dex < 0) return;
+    void tl_dvm_prune_interned(bool (*is_alive)(const jobj *o));
+    void tl_dvm_natives_reset_session(void);
+    void tl_gamepad_reset_session(void);
+    void tl_jni_input_reset_session(void);
+    void tl_gtasa_reset_session(void);
+    void tl_godot_reset_session(void);
+    void tl_ue4_reset_session(void);
+    void tl_jni_gms_reset_session(void);
+    void tl_jni_minecraft_reset_session(void);
+    void tl_jni_hle_reset_session(void);
+    void tl_nativeactivity_reset_session(void);
+    void tl_gameactivity_reset_session(void);
+    void tl_flutter_reset_session(void);
+    void tl_sdl_reset_session(void);
+    void tl_unity_reset_session(void);
+
+    g_app_loader = NULL;
+    tl_loop_reset_session();
+    tl_a32_reset();
+    tl_dvm_natives_reset_session();
+    tl_gamepad_reset_session();
+    tl_jni_input_reset_session();
+    tl_gtasa_reset_session();
+    tl_godot_reset_session();
+    tl_ue4_reset_session();
+    tl_jni_gms_reset_session();
+    tl_jni_minecraft_reset_session();
+    tl_jni_hle_reset_session();
+    tl_nativeactivity_reset_session();
+    tl_gameactivity_reset_session();
+    tl_flutter_reset_session();
+    tl_sdl_reset_session();
+    tl_unity_reset_session();
+
+    tl_jni_gc_ops ops = {
+        .drop_class = forget_app_class,
+        .user = NULL,
+        .visit_extra_roots = dvm_visit_extra_roots,
+        .trace_dvm_class_statics = dvm_trace_class_statics,
+        .trace_dvm_obj_fields = dvm_trace_obj_fields,
+        .prune_interned = tl_dvm_prune_interned,
+        .destroy_monitor = dvm_monitor_destroy,
+    };
+    tl_jni_sweep_app_objects(&ops);
+
+    g_ndrop_dc = g_cdrop_dc = 0;
+    g_drop_dc = NULL;
+    tl_jni_each_declared(collect_app_dvm);
     tl_jni_forget_if(forget_app_class, NULL);
+    for (int i = 0; i < g_ndrop_dc; i++) free_dvm_class(g_drop_dc[i]);
+    free(g_drop_dc);
+    g_drop_dc = NULL; g_ndrop_dc = g_cdrop_dc = 0;
+
     for (int b = 0; b < CBUCKETS; b++) {
         cdef **pp = &g_cdefs[b];
         while (*pp) {
@@ -2223,7 +2386,6 @@ void tl_dvm_drop_app(void)
         free((void *)d->b); free(d); g_dex[i] = NULL;
     }
     g_ndex = g_nboot_dex;
-    g_app_loader = NULL;
     for (int i = g_nboot_cp; i < g_ncp; i++) free(g_cp[i]);
     g_ncp = g_nboot_cp;
     pthread_mutex_lock(&g_open_lock);

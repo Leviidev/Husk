@@ -590,3 +590,4 @@ void tl_unity_stop(void)
     if (U.thread_started) { pthread_join(U.thread, NULL); U.thread_started = false; }
     atomic_store(&U.stop, false);
 }
+void tl_unity_reset_session(void) { U.activity = U.player = NULL; }

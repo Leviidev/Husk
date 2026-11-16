@@ -95,6 +95,24 @@ void tl_log_line(const char *fmt, ...);
 /* A one-line note, once per distinct text, for things that are stubbed. */
 void tl_note_once(const char *what);
 
+/* Per-session lifecycle and isolated app heap allocation helpers. */
+void  tl_bionic_reset_session(void);
+void  tl_heap_begin_session(void);
+void  tl_heap_reset_session(void);
+void *tl_guest_malloc(size_t n, const void *caller);
+void *tl_guest_calloc(size_t count, size_t size, const void *caller);
+void *tl_guest_realloc(void *p, size_t n, const void *caller);
+void *tl_guest_memalign(size_t align, size_t size, const void *caller);
+int   tl_guest_posix_memalign(void **out, size_t align, size_t size, const void *caller);
+void  tl_guest_free(void *p);
+
+void  tl_timerfd_close(int fd);
+void  tl_timerfd_reset_session(unsigned ended_epoch);
+void  tl_io_note_guest_fd(int fd);
+void  tl_io_untrack_guest_fd(int fd);
+void  tl_io_reset_session(unsigned ended_epoch);
+void  tl_pthread_reset_session(unsigned ended_epoch);
+
 #ifdef __cplusplus
 }
 #endif

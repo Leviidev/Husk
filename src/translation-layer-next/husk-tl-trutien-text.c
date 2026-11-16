@@ -280,3 +280,8 @@ void tl_trutien_hud_context_filter(uint64_t *regs, void *guest_sp)
     s->context[slot] = text; s->context_len[slot] = len;
     s->changed[slot] = true; /* Own the view until the layout/draw returns. */
 }
+void tl_trutien_text_reset(void)
+{
+    atomic_store(&text_enabled, false);
+    atomic_store(&text_reports, 0);
+}

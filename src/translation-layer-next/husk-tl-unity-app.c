@@ -32,6 +32,11 @@
 #include "husk-tl-unity.h"
 #include "husk-tl-audio.h"
 #include "husk-tl-geode.h"
+#include "husk-tl-egl.h"
+#include "husk-tl-vulkan.h"
+#include "husk-tl-vhtg-quest.h"
+#include "husk-tl-trutien-text.h"
+#include "husk-tl-session.h"
 
 /* Geode for the next cocos2d-x launch: its release zip and its launcher's APK (husk-tl-geode.c). Empty: off. */
 static char g_geode_zip[1024], g_geode_launcher[1024];
@@ -309,6 +314,7 @@ static void *java_boot(void *arg)
         snprintf(v, sizeof(v), "%s/aosp/lib64", r); tl_ld_add_search_dir(v);
         snprintf(v, sizeof(v), "%s/lib64", r); tl_ld_add_search_dir(v);
     }
+    { void tl_jni_mark_boot_objects(void); tl_jni_mark_boot_objects(); }
     *ok = true;
     return NULL;
 }
@@ -353,6 +359,9 @@ static void *launch_run(void *arg)
     pthread_setname_np("husk-native-start");
     tl_guest_exit_hook = guest_exit;
     {
+        int old_fd = tl_log_sink_fd;
+        tl_log_sink_fd = -1;
+        if (old_fd >= 0) close(old_fd);
         char path[1100];
         snprintf(path, sizeof(path), "%s/%s", A.data, A.engine == ENGINE_UNITY ? "unity-run.log" : "native-run.log");
         tl_log_sink_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0644);
@@ -362,6 +371,7 @@ static void *launch_run(void *arg)
     /* Sideloaded iOS apps lack extended-virtual-addressing (~5.5 GiB user VA space). Give back the 4 GiB V8/Dart cage
      * reservation before starting games that ship neither Flutter nor V8, so Metal, Dalvik and large native heaps fit. */
     if (!app_needs_compressed_heap()) husk_release_unused_compressed_heap();
+    tl_heap_begin_session();
 
     /* Controllers go to the engine that is running. (GameActivity registers its own as it starts.) */
     if (A.engine == ENGINE_UNITY) tl_unity_register_pad_sink();
@@ -521,19 +531,56 @@ bool husk_native_stop(unsigned timeout_ms)
         tl_log_line("native: this engine has not reached a state that supports close");
         goto done;
     }
+    int restore_state = st == HUSK_UNITY_STOPPING ? HUSK_UNITY_RUNNING : st;
     husk_unity_set_paused(true);
     atomic_store(&A.state, HUSK_UNITY_STOPPING);
-    if (tl_dvm_running() && !tl_javaapp_try_stop(timeout_ms)) goto done;
+    if (tl_dvm_running() && !tl_javaapp_try_stop(timeout_ms)) {
+        atomic_store(&A.state, restore_state);
+        goto done;
+    }
     if (A.loader_started) {
         for (unsigned waited = 0; !atomic_load(&A.loader_done) && waited < timeout_ms; waited += 10) usleep(10000);
-        if (!atomic_load(&A.loader_done)) goto done;
+        if (!atomic_load(&A.loader_done)) {
+            atomic_store(&A.state, restore_state);
+            goto done;
+        }
         pthread_join(A.loader, NULL);
         A.loader_started = false;
     }
-    if (tl_dvm_running()) tl_dvm_drop_app();
-    tl_ld_reset_session();
+    {
+        void tl_dvm_audio_reset(void);
+        void tl_opensles_reset_session(void);
+        void tl_ndk_reset_session(void);
+        void tl_egl_es3_claim(int version);
+
+        unsigned ended_epoch = tl_guest_session_epoch();
+        if (tl_dvm_running()) tl_dvm_drop_app();
+        tl_egl_reset_session();
+        tl_vk_reset_session();
+        tl_audio_reset();
+        tl_dvm_audio_reset();
+        tl_opensles_reset_session();
+        tl_ndk_reset_session();
+        tl_bionic_reset_session();
+        tl_ld_reset_session();
+        tl_io_reset_session(ended_epoch);
+        tl_pthread_reset_session(ended_epoch);
+        tl_heap_reset_session();
+        tl_vhtg_quest_reset();
+        tl_trutien_text_reset();
+        tl_trutien_text_set_package(NULL);
+        tl_egl_es3_claim(0);
+    }
+    {
+        int old_fd = tl_log_sink_fd;
+        tl_log_sink_fd = -1;
+        if (old_fd >= 0) close(old_fd);
+    }
     A.nextra = 0;
     A.apk[0] = 0;
+    A.package[0] = 0;
+    A.ca[0] = 0;
+    A.vulkan[0] = 0;
     A.layer = NULL;
     atomic_fetch_add(&session_serial, 1);
     atomic_store(&A.state, HUSK_UNITY_IDLE);

@@ -452,3 +452,4 @@ void tl_godot_hle_install(const char *pkg, const char *apk, const char *data, in
     tl_jni_register_hle(bridge);
     tl_godot_kotlin_install();
 }
+void tl_godot_reset_session(void) { g_render_view = NULL; g_input_handler = NULL; }

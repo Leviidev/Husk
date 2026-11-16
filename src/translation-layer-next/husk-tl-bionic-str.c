@@ -531,11 +531,177 @@ static float b_strtof(const char *s, char **e) { TL_ERRNO_BEGIN(); float r = str
 
 /* ------------------------------------------------------------------ misc */
 
+static void *malloc_fallback(const char *what, size_t n);
+static bool heap_is_image(const void *p);
+bool tl_release_unused_compressed_heap(void);
+
+#ifdef __APPLE__
+static _Atomic(malloc_zone_t *) g_guest_zone;
+
+void tl_heap_begin_session(void)
+{
+    malloc_zone_t *cur = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+    if (cur) return;
+    malloc_zone_t *z = malloc_create_zone(0, 0);
+    if (!z) return;
+    malloc_set_zone_name(z, "HuskGuestApp");
+    malloc_zone_t *expected = NULL;
+    if (!atomic_compare_exchange_strong(&g_guest_zone, &expected, z)) malloc_destroy_zone(z);
+}
+
+void tl_heap_reset_session(void)
+{
+    malloc_zone_t *z = atomic_exchange_explicit(&g_guest_zone, NULL, memory_order_acq_rel);
+    if (z) malloc_destroy_zone(z);
+}
+
+static inline malloc_zone_t *app_zone_for(const void *caller)
+{
+    if (!caller || !tl_ld_is_app_code(caller)) return NULL;
+    return atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+}
+#else
+void tl_heap_begin_session(void) {}
+void tl_heap_reset_session(void) {}
+#endif
+
+void *tl_guest_malloc(size_t n, const void *caller)
+{
+#ifdef __APPLE__
+    malloc_zone_t *z = app_zone_for(caller);
+    if (z) {
+        void *p = malloc_zone_malloc(z, n ? n : 1);
+        if (!p && tl_release_unused_compressed_heap()) p = malloc_zone_malloc(z, n ? n : 1);
+        return p ? p : malloc_fallback("malloc", n ? n : 1);
+    }
+#else
+    (void)caller;
+#endif
+    void *p = malloc(n);
+    return p || n == 0 ? p : malloc_fallback("malloc", n);
+}
+
+void *tl_guest_calloc(size_t count, size_t size, const void *caller)
+{
+#ifdef __APPLE__
+    malloc_zone_t *z = app_zone_for(caller);
+    if (z) {
+        if (count && size > SIZE_MAX / count) return NULL;
+        void *p = malloc_zone_calloc(z, count ? count : 1, size ? size : 1);
+        if (!p && count > 0 && size > 0 && tl_release_unused_compressed_heap())
+            p = malloc_zone_calloc(z, count, size);
+        if (p || count == 0 || size == 0) return p;
+        return malloc_fallback("calloc", count * size);
+    }
+#else
+    (void)caller;
+#endif
+    void *p = calloc(count, size);
+    if (p || count == 0 || size == 0) return p;
+    if (size > SIZE_MAX / count) return NULL;
+    return malloc_fallback("calloc", count * size);
+}
+
+void *tl_guest_memalign(size_t align, size_t size, const void *caller)
+{
+    if (align < sizeof(void *)) align = sizeof(void *);
+#ifdef __APPLE__
+    malloc_zone_t *z = app_zone_for(caller);
+    if (z && (align & (align - 1)) == 0) {
+        void *p = malloc_zone_memalign(z, align, size ? size : 1);
+        return p ? p : malloc_fallback("memalign", size ? size : 1);
+    }
+#else
+    (void)caller;
+#endif
+    void *p = NULL;
+    if (posix_memalign(&p, align, size) == 0) return p;
+    return size ? malloc_fallback("memalign", size) : NULL;
+}
+
+int tl_guest_posix_memalign(void **out, size_t align, size_t size, const void *caller)
+{
+    if (!out || align < sizeof(void *) || (align & (align - 1)) != 0) return EINVAL;
+#ifdef __APPLE__
+    malloc_zone_t *z = app_zone_for(caller);
+    if (z) {
+        void *p = malloc_zone_memalign(z, align, size ? size : 1);
+        if (!p && size > 0 && tl_release_unused_compressed_heap())
+            p = malloc_zone_memalign(z, align, size);
+        if (!p) return ENOMEM;
+        *out = p;
+        return 0;
+    }
+#else
+    (void)caller;
+#endif
+    return posix_memalign(out, align, size);
+}
+
+void tl_guest_free(void *p)
+{
+    if (!p) return;
+    if (tl_fb_release(p)) return;
+    if (heap_is_image(p)) {
+        static int n; if (n++ < 12) tl_log_line("bionic: free(%p) of a loaded library: ignored", p);
+        return;
+    }
+#ifdef __APPLE__
+    malloc_zone_t *z = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+    if (z && malloc_zone_from_ptr(p) == z) { malloc_zone_free(z, p); return; }
+#endif
+    free(p);
+}
+
+void *tl_guest_realloc(void *p, size_t n, const void *caller)
+{
+    if (!p) return tl_guest_malloc(n, caller);
+    if (tl_fb_owns(p)) {
+        void *fresh = tl_guest_malloc(n, caller);
+        if (!fresh) return NULL;
+        size_t old = tl_fb_size(p);
+        memcpy(fresh, p, old < n ? old : n);
+        tl_fb_release(p);
+        return fresh;
+    }
+    if (heap_is_image(p)) {
+        static int k; if (k++ < 8) tl_log_line("bionic: realloc(%p, %zu) of a loaded library: a fresh block", p, n);
+        return tl_guest_malloc(n, caller);
+    }
+#ifdef __APPLE__
+    malloc_zone_t *gz = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+    malloc_zone_t *cur = malloc_zone_from_ptr(p);
+    malloc_zone_t *want = app_zone_for(caller);
+    if (gz && ((want && cur != want) || (!want && cur == gz))) {
+        void *fresh = want ? malloc_zone_malloc(want, n ? n : 1) : malloc(n ? n : 1);
+        if (!fresh && tl_release_unused_compressed_heap())
+            fresh = want ? malloc_zone_malloc(want, n ? n : 1) : malloc(n ? n : 1);
+        if (!fresh) return NULL;
+        size_t old = malloc_size(p);
+        memcpy(fresh, p, old < n ? old : n);
+        if (cur == gz) malloc_zone_free(gz, p); else free(p);
+        return fresh;
+    }
+    if (gz && cur == gz) {
+        void *r = malloc_zone_realloc(gz, p, n);
+        if (!r && n > 0 && tl_release_unused_compressed_heap()) r = malloc_zone_realloc(gz, p, n);
+        return r;
+    }
+#else
+    (void)caller;
+#endif
+    void *r = realloc(p, n);
+    if (!r && n > 0 && tl_release_unused_compressed_heap()) r = realloc(p, n);
+    return r;
+}
+
 static void *b_memalign(size_t align, size_t size)
 {
-    void *p = NULL;
-    if (align < sizeof(void *)) align = sizeof(void *);
-    return posix_memalign(&p, align, size) ? NULL : p;
+    return tl_guest_memalign(align, size, __builtin_return_address(0));
+}
+static int b_posix_memalign(void **out, size_t align, size_t size)
+{
+    return tl_guest_posix_memalign(out, align, size, __builtin_return_address(0));
 }
 
 /* Darwin's malloc aborts on free of a pointer that is not from malloc. AOT mixed pages
@@ -545,7 +711,6 @@ static bool heap_is_image(const void *p)
 {
     return p && (tl_ld_covers(p, 1) || tl_xmem_contains(p));
 }
-bool tl_release_unused_compressed_heap(void);
 
 /* When the host malloc refuses, release any unused 4 GiB compressed-heap reservation first, then try a whole mapping before
  * telling the guest "out of memory" (most games abort on NULL). The mapping is tracked in a registry (husk-tl-fallback-alloc.c):
@@ -568,23 +733,22 @@ static void *malloc_fallback(const char *what, size_t n)
 }
 static void *b_malloc(size_t n)
 {
-    void *p = malloc(n);
-    return p || n == 0 ? p : malloc_fallback("malloc", n);
+    return tl_guest_malloc(n, __builtin_return_address(0));
 }
 static void *b_calloc(size_t count, size_t size)
 {
-    void *p = calloc(count, size);
-    if (p || count == 0 || size == 0) return p;
-    if (size > SIZE_MAX / count) return NULL;                 /* overflow: refused, as calloc does */
-    return malloc_fallback("calloc", count * size);           /* mappings come zero-filled */
+    return tl_guest_calloc(count, size, __builtin_return_address(0));
 }
 static int b_mallopt(int param, int value)
 {
     (void)value;
 #ifdef __APPLE__
     /* Bionic M_PURGE (-101) / M_PURGE_ALL (-104): relieve purgeable malloc pressure on Jetsam warnings. */
-    if (param == -104 || param == -101)
+    if (param == -104 || param == -101) {
         (void)malloc_zone_pressure_relief(NULL, 0);
+        malloc_zone_t *z = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+        if (z) (void)malloc_zone_pressure_relief(z, 0);
+    }
 #else
     (void)param;
 #endif
@@ -592,31 +756,11 @@ static int b_mallopt(int param, int value)
 }
 static void b_free(void *p)
 {
-    if (!p) return;
-    if (tl_fb_release(p)) return;
-    if (heap_is_image(p)) {
-        static int n; if (n++ < 12) tl_log_line("bionic: free(%p) of a loaded library: ignored", p);
-        return;
-    }
-    free(p);
+    tl_guest_free(p);
 }
 static void *b_realloc(void *p, size_t n)
 {
-    if (p && tl_fb_owns(p)) {
-        void *fresh = b_malloc(n);
-        if (!fresh) return NULL;                              /* the old block stays valid, as realloc requires */
-        size_t old = tl_fb_size(p);
-        memcpy(fresh, p, old < n ? old : n);
-        tl_fb_release(p);
-        return fresh;
-    }
-    if (heap_is_image(p)) {
-        static int k; if (k++ < 8) tl_log_line("bionic: realloc(%p, %zu) of a loaded library: a fresh block", p, n);
-        return b_malloc(n);
-    }
-    void *r = realloc(p, n);
-    if (!r && n > 0 && tl_release_unused_compressed_heap()) r = realloc(p, n);
-    return r;
+    return tl_guest_realloc(p, n, __builtin_return_address(0));
 }
 
 /* The floating-point environment: bionic's fenv_t is two words of its own layout, and nothing here turns on exceptions or rounding, so these report success. */
@@ -840,7 +984,7 @@ const tl_bionic_entry tl_tab_str[] = {
     TL_WRAP("wcstold", b_wcstold),
     TL_WRAP("swprintf", tl_va_swprintf),
     /* stdlib.h */
-    TL_WRAP("malloc", b_malloc), TL_WRAP("calloc", b_calloc), TL_WRAP("realloc", b_realloc), TL_WRAP("free", b_free), TL_DIRECT(posix_memalign),
+    TL_WRAP("malloc", b_malloc), TL_WRAP("calloc", b_calloc), TL_WRAP("realloc", b_realloc), TL_WRAP("free", b_free), TL_WRAP("posix_memalign", b_posix_memalign),
     TL_WRAP("mallopt", b_mallopt), TL_WRAP("memalign", b_memalign),
     TL_DIRECT(atoi), TL_DIRECT(atol), TL_DIRECT(atoll), TL_DIRECT(bsearch), TL_DIRECT(qsort), TL_DIRECT(div), TL_DIRECT(lldiv),
     TL_DIRECT(rand), TL_DIRECT(srand), TL_DIRECT(srand48), TL_DIRECT(lrand48),

@@ -591,3 +591,4 @@ void tl_ga_set_paused(bool paused)
     tl_ga_post(pause_run, paused ? (void *)1 : NULL);
 }
 unsigned long tl_ga_frames(void) { return tl_egl_frames_presented(); }
+void tl_gameactivity_reset_session(void) { G.activity = G.surface = NULL; }

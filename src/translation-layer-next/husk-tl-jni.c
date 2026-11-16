@@ -103,6 +103,7 @@ static jobj *obj_alloc(uint8_t kind, tl_jclass *cls)
     o->refs = 1;
     o->kind = kind;
     o->cls = cls;
+    tl_jni_allocation_track(&g_allocations, o);
     return o;
 }
 
@@ -127,6 +128,7 @@ void tl_jni_unref(jobj *o)
     default: break;
     }
     free(o->fields);
+    tl_jni_allocation_untrack(&g_allocations, o);
     tl_jni_allocation_release(&g_allocations, array_bytes);
     free(o);
 }
@@ -1335,13 +1337,197 @@ void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user)
                 tl_jclass *c = *pp;
                 *pp = c->next;
                 c->dvm = NULL;
+                if (c->meths) {
+                    for (int i = 0; i < c->nmeths; i++) {
+                        if (c->meths[i]) {
+                            free((void *)c->meths[i]->name);
+                            free((void *)c->meths[i]->sig);
+                            free(c->meths[i]);
+                        }
+                    }
+                    free(c->meths);
+                    c->meths = NULL;
+                }
                 c->nmeths = 0;
+                c->capm = 0;
+                if (c->fields) {
+                    for (int i = 0; i < c->nfields; i++) {
+                        if (c->fields[i]) {
+                            free((void *)c->fields[i]->name);
+                            free((void *)c->fields[i]->sig);
+                            free(c->fields[i]);
+                        }
+                    }
+                    free(c->fields);
+                    c->fields = NULL;
+                }
                 c->nfields = 0;
+                c->capf = 0;
+                free(c->statics);
+                c->statics = NULL;
+                c->nstatics = 0;
+                c->mirror = NULL;
+                c->super = NULL;
                 c->next = NULL;
             } else pp = &(*pp)->next;
         }
     }
     pthread_mutex_unlock(&g_lock);
+}
+
+static bool gc_obj_dropped(const jobj *o, bool (*drop_cls)(tl_jclass *jc, void *user), void *user)
+{
+    if (!o || !drop_cls) return false;
+    if (o->kind == TL_K_CLASS) return o->klass.jc && drop_cls(o->klass.jc, user);
+    return o->cls && drop_cls(o->cls, user);
+}
+
+typedef struct {
+    jobj **stack;
+    size_t n, cap;
+    bool (*drop_cls)(tl_jclass *jc, void *user);
+    void *user;
+} tl_gc_ctx;
+
+static bool gc_mark_obj(jobj *o, void *vctx)
+{
+    if (!o) return false;
+    tl_gc_ctx *ctx = (tl_gc_ctx *)vctx;
+    if (gc_obj_dropped(o, ctx->drop_cls, ctx->user)) return false;
+    if (o->gc_flags & TL_GC_MARK) return true;
+    o->gc_flags |= TL_GC_MARK;
+    if (ctx->n == ctx->cap) {
+        size_t nc = ctx->cap ? ctx->cap * 2 : 1024;
+        jobj **ns = realloc(ctx->stack, nc * sizeof(*ns));
+        if (!ns) return true;
+        ctx->stack = ns;
+        ctx->cap = nc;
+    }
+    ctx->stack[ctx->n++] = o;
+    return true;
+}
+
+static bool gc_is_alive(const jobj *o)
+{
+    return o && (o->gc_flags & (TL_GC_BOOT | TL_GC_MARK)) != 0;
+}
+
+void tl_jni_mark_boot_objects(void)
+{
+    tl_jni_gc_lock(&g_allocations);
+    for (jobj *o = g_allocations.gc_head; o; o = o->gc_next)
+        o->gc_flags |= TL_GC_BOOT;
+    tl_jni_gc_unlock(&g_allocations);
+}
+
+void tl_jni_sweep_app_objects(const tl_jni_gc_ops *ops)
+{
+    if (!ops) return;
+    t_pending = NULL;
+    tl_gc_ctx ctx = { .drop_cls = ops->drop_class, .user = ops->user };
+
+    tl_jni_gc_lock(&g_allocations);
+    for (jobj *o = g_allocations.gc_head; o; o = o->gc_next) {
+        if (o->gc_flags & TL_GC_BOOT) (void)gc_mark_obj(o, &ctx);
+    }
+    tl_jni_gc_unlock(&g_allocations);
+
+    if (ops->visit_extra_roots) ops->visit_extra_roots(gc_mark_obj, &ctx);
+
+    pthread_mutex_lock(&g_lock);
+    tl_jclass *class_cls = find_class_locked("java/lang/Class");
+    for (int b = 0; b < NBUCKETS; b++) {
+        for (tl_jclass *jc = g_classes[b]; jc; jc = jc->next) {
+            if (ops->drop_class && ops->drop_class(jc, ops->user)) continue;
+            if (!gc_mark_obj(jc->mirror, &ctx)) jc->mirror = NULL;
+            if (ops->trace_dvm_class_statics && jc->dvm)
+                ops->trace_dvm_class_statics(jc, gc_mark_obj, &ctx);
+            for (int i = 0; i < jc->nfields; i++) {
+                tl_jfield *f = jc->fields[i];
+                if (!f || (f->sig[0] != 'L' && f->sig[0] != '[')) continue;
+                if (f->detached) {
+                    if (!gc_mark_obj((jobj *)f->dval.l, &ctx)) f->dval.l = NULL;
+                } else if (f->is_static && !jc->dvm && jc->statics && jc->nstatics > 0 && f->index < (uint32_t)jc->nstatics) {
+                    if (!gc_mark_obj((jobj *)jc->statics[f->index].l, &ctx)) jc->statics[f->index].l = NULL;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+
+    while (ctx.n > 0) {
+        jobj *o = ctx.stack[--ctx.n];
+        if (o->kind == TL_K_OBJ_ARRAY) {
+            for (uint32_t i = 0; i < o->oarr.len; i++) {
+                if (o->oarr.v[i] && !gc_mark_obj(o->oarr.v[i], &ctx)) o->oarr.v[i] = NULL;
+            }
+        } else if ((o->kind == TL_K_OBJECT || o->kind == TL_K_CLASS) && o->fields && o->nfields) {
+            tl_jclass *oc = (o->kind == TL_K_CLASS) ? class_cls : o->cls;
+            if (oc && (!ops->drop_class || !ops->drop_class(oc, ops->user))) {
+                for (tl_jclass *kc = oc; kc; kc = kc->super) {
+                    if (!kc->dvm) {
+                        for (int i = 0; i < kc->nfields; i++) {
+                            tl_jfield *f = kc->fields[i];
+                            if (f && !f->is_static && !f->detached && f->index < o->nfields
+                                && (f->sig[0] == 'L' || f->sig[0] == '[')
+                                && !gc_mark_obj((jobj *)o->fields[f->index].l, &ctx))
+                                o->fields[f->index].l = NULL;
+                        }
+                    }
+                }
+                if (ops->trace_dvm_obj_fields && oc->dvm)
+                    ops->trace_dvm_obj_fields(oc, o, gc_mark_obj, &ctx);
+            }
+        }
+    }
+    free(ctx.stack);
+
+    if (ops->prune_interned) ops->prune_interned(gc_is_alive);
+
+    jobj *dead = NULL;
+    tl_jni_gc_lock(&g_allocations);
+    jobj *o = g_allocations.gc_head;
+    while (o) {
+        jobj *nx = o->gc_next;
+        bool keep = ((o->gc_flags & (TL_GC_BOOT | TL_GC_MARK)) != 0)
+            && !gc_obj_dropped(o, ops->drop_class, ops->user);
+        if (keep) {
+            o->gc_flags &= (uint8_t)~TL_GC_MARK;
+        } else {
+            if (o->gc_prev) o->gc_prev->gc_next = o->gc_next;
+            else g_allocations.gc_head = o->gc_next;
+            if (o->gc_next) o->gc_next->gc_prev = o->gc_prev;
+            else g_allocations.gc_tail = o->gc_prev;
+            o->gc_prev = NULL;
+            o->gc_next = dead;
+            dead = o;
+        }
+        o = nx;
+    }
+    tl_jni_gc_unlock(&g_allocations);
+
+    while (dead) {
+        jobj *d = dead;
+        dead = d->gc_next;
+        size_t array_bytes = 0;
+        switch (d->kind) {
+        case TL_K_STRING: free(d->str.utf8); free(d->str.u16); break;
+        case TL_K_PRIM_ARRAY:
+            if (d->arr.data) array_bytes = d->arr.allocated_bytes;
+            free(d->arr.data); break;
+        case TL_K_OBJ_ARRAY:
+            if (d->oarr.v) array_bytes = d->oarr.allocated_bytes;
+            free(d->oarr.v); break;
+        default: break;
+        }
+        free(d->fields);
+        if (d->monitor && ops->destroy_monitor) {
+            ops->destroy_monitor(d->monitor);
+            d->monitor = NULL;
+        }
+        tl_jni_allocation_release(&g_allocations, array_bytes);
+        free(d);
+    }
 }
 
 tl_jclass *tl_jni_find_declared(const char *name)

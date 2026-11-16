@@ -38,12 +38,12 @@ static void RetZero(tl_jcall *c) { c->ret = vi(0); }
 /* The Play services version a current phone has (25.13). */
 #define GMS_VERSION 251333035
 
+static struct { const char *cls; jobj *obj; } g_gms_cache[32];
 static jobj *singleton(const char *cls)
 {
-    static struct { const char *cls; jobj *obj; } cache[32];
     for (int i = 0; i < 32; i++) {
-        if (cache[i].cls && !strcmp(cache[i].cls, cls)) return cache[i].obj;
-        if (!cache[i].cls) { cache[i].cls = cls; cache[i].obj = tl_jni_new_object(tl_jni_class(cls)); return cache[i].obj; }
+        if (g_gms_cache[i].cls && !strcmp(g_gms_cache[i].cls, cls)) return g_gms_cache[i].obj;
+        if (!g_gms_cache[i].cls) { g_gms_cache[i].cls = cls; g_gms_cache[i].obj = tl_jni_new_object(tl_jni_class(cls)); return g_gms_cache[i].obj; }
     }
     return tl_jni_new_object(tl_jni_class(cls));
 }
@@ -424,3 +424,4 @@ void tl_gms_install(void)
     for (size_t i = 0; i < sizeof(k_classes) / sizeof(k_classes[0]); i++) tl_jni_declare(k_classes[i].name, k_classes[i].super);
     tl_jni_register_hle(k_gms);
 }
+void tl_jni_gms_reset_session(void) { memset(g_gms_cache, 0, sizeof(g_gms_cache)); }

@@ -398,3 +398,4 @@ void tl_na_set_paused(bool paused)
         if (N.callbacks.onWindowFocusChanged) N.callbacks.onWindowFocusChanged(&N.na, 1);
     }
 }
+void tl_nativeactivity_reset_session(void) { N.activity = NULL; }

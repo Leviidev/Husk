@@ -145,9 +145,13 @@ def main():
         r"void tl_jni_log_allocation_stats\([^\n]*\)\n\{.*?\n\}",
         r"void tl_jni_forget_if\([^\n]*\)\n\{.*?\n\}")]
     (out / "jni_class_log_under_test.h").write_text("\n".join(jni_class_log) + "\n", encoding="utf-8")
-    for name in ("session_test", "jni_class_allocation_test", "jni_class_log_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test", "gl_surface_admission_test"):
+    session_teardown = [re.search(pattern, jni_source, re.S)[0] for pattern in (
+        r"void tl_jni_forget_if\([^\n]*\)\n\{.*?\n\}",
+        r"static bool gc_obj_dropped\([^\n]*\)\n\{.*?\nvoid tl_jni_sweep_app_objects\([^\n]*\)\n\{.*?\n\}")]
+    (out / "session_teardown_under_test.h").write_text("\n".join(session_teardown) + "\n", encoding="utf-8")
+    for name in ("session_test", "session_teardown_test", "jni_class_allocation_test", "jni_class_log_test", "guest_pool_test", "net_flags_test", "memory_info_test", "aot_data_test", "frame_sync_test", "frame_perf_test", "frame_publication_test", "ui_frame_publication_test", "surface_lifecycle_test", "egl_context_caps_test", "pthread_once_test", "window_opacity_test", "gl_surface_admission_test"):
         exe = out / (name + (".exe" if os.name == "nt" else ""))
-        thread_flags = ["-pthread"] if os.name != "nt" and name in ("session_test", "jni_class_allocation_test") else []
+        thread_flags = ["-pthread"] if os.name != "nt" and name in ("session_test", "session_teardown_test", "jni_class_allocation_test") else []
         run(name + " compile", compiler + flags + thread_flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
             str(ROOT / f"tests/translation-layer/{name}.c"), "-o", str(exe)])
         run(name, [str(exe)])

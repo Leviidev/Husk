@@ -188,6 +188,9 @@ void tl_ld_aot_free(tl_ld_aot_image *img);
 /* Before the guest's own memory becomes executable: its raw `svc #0` are marked and answered as Linux system calls. */
 void tl_ld_mark_svcs(void *addr, size_t len);
 
+/* True when addr lies inside an app-owned (non-system) loaded library image. */
+bool tl_ld_is_app_code(const void *addr);
+
 #ifdef __cplusplus
 }
 #endif

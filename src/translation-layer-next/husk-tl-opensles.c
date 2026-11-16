@@ -190,6 +190,23 @@ static uint32_t o_SetLoss(const void *self, uint32_t n, const void *ids, uint32_
 
 static const void *const k_vt_object[] = { o_Realize, o_Resume, o_GetState, o_GetInterface, o_RegisterCallback, o_AbortAsyncOperation, o_Destroy, o_SetPriority, o_GetPriority, o_SetLoss };
 
+static pthread_mutex_t g_sl_reg_mu = PTHREAD_MUTEX_INITIALIZER;
+static sl_object *g_sl_objs[64];
+static atomic_bool g_sl_closing;
+
+static void sl_reg_add(sl_object *o)
+{
+    pthread_mutex_lock(&g_sl_reg_mu);
+    for (int i = 0; i < 64; i++) if (!g_sl_objs[i]) { g_sl_objs[i] = o; break; }
+    pthread_mutex_unlock(&g_sl_reg_mu);
+}
+static void sl_reg_remove(sl_object *o)
+{
+    pthread_mutex_lock(&g_sl_reg_mu);
+    for (int i = 0; i < 64; i++) if (g_sl_objs[i] == o) g_sl_objs[i] = NULL;
+    pthread_mutex_unlock(&g_sl_reg_mu);
+}
+
 static sl_object *new_object(int kind)
 {
     sl_object *o = calloc(1, sizeof(*o));
@@ -198,6 +215,7 @@ static sl_object *new_object(int kind)
     o->kind = kind; o->state = SL_OBJECT_UNREALIZED;
     o->stream_id = -1; o->loop_end = UINT32_MAX;
     pthread_mutex_init(&o->mu, NULL);
+    sl_reg_add(o);
     return o;
 }
 
@@ -205,7 +223,7 @@ static sl_object *new_object(int kind)
 static bool player_write(sl_object *o, const int16_t *data, int frames, uint64_t generation)
 {
     int done = 0;
-    while (done < frames && atomic_load(&o->thread_run)) {
+    while (done < frames && atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing)) {
         pthread_mutex_lock(&o->mu);
         if (generation != o->generation || atomic_load(&o->play_state) == SL_STOPPED) {
             pthread_mutex_unlock(&o->mu); return false;
@@ -222,7 +240,7 @@ static void *player_pump(void *arg)
 {
     sl_object *o = arg;
     pthread_setname_np("opensl-pump");
-    while (atomic_load(&o->thread_run)) {
+    while (atomic_load(&o->thread_run) && !atomic_load(&g_sl_closing)) {
         if (atomic_load(&o->play_state) != SL_PLAYING) { usleep(2000); continue; }
         pthread_mutex_lock(&o->mu);
         uint64_t generation = o->generation;
@@ -471,10 +489,39 @@ typedef struct { uint32_t type; const char *uri; } sl_uri;
 typedef struct { uint32_t type; int32_t fd; int64_t offset, length; } sl_fd;
 static void player_release(sl_object *o)
 {
+    sl_reg_remove(o);
     if (o->stream_id >= 0) tl_audio_stream_close(o->stream_id);
     if (o->decoder) tl_audio_decoder_close(o->decoder);
     pthread_mutex_destroy(&o->mu);
     free(o);
+}
+
+void tl_opensles_begin_close(void)
+{
+    atomic_store(&g_sl_closing, true);
+    pthread_mutex_lock(&g_sl_reg_mu);
+    for (int i = 0; i < 64; i++) {
+        if (g_sl_objs[i]) atomic_store(&g_sl_objs[i]->thread_run, false);
+    }
+    pthread_mutex_unlock(&g_sl_reg_mu);
+}
+
+void tl_opensles_reset_session(void)
+{
+    tl_opensles_begin_close();
+    for (;;) {
+        sl_object *o = NULL;
+        pthread_mutex_lock(&g_sl_reg_mu);
+        for (int i = 0; i < 64; i++) if (g_sl_objs[i]) { o = g_sl_objs[i]; g_sl_objs[i] = NULL; break; }
+        pthread_mutex_unlock(&g_sl_reg_mu);
+        if (!o) break;
+        if (o->kind == K_PLAYER && o->thread_started) {
+            atomic_store(&o->destroy_on_exit, false);
+            player_stop_thread(o);
+        }
+        player_release(o);
+    }
+    atomic_store(&g_sl_closing, false);
 }
 static uint32_t e_CreateAudioPlayer(const void *self, const void **out, const sl_data *src, const sl_data *snk, uint32_t n, const void *ids, const void *req)
 {

@@ -233,6 +233,11 @@ void tl_vhtg_quest_insets(int l,int t,int r,int b)
 {
     pthread_mutex_lock(&q_lock); q_cut=(tl_quest_cutout){l,t,r,b}; pthread_mutex_unlock(&q_lock);
 }
+void tl_vhtg_quest_reset(void)
+{
+    atomic_store(&q_enabled,false);
+    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&q_cut,0,sizeof(q_cut)); pthread_mutex_unlock(&q_lock);
+}
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
     atomic_store(&q_enabled,false); memset(&Q,0,sizeof(Q));

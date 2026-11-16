@@ -632,3 +632,25 @@ dvm_native_fn tl_audio_native(const char *name, const char *sig)
     for (int i = 0; k_audio[i].name; i++) if (!strcmp(k_audio[i].name, name) && !strcmp(k_audio[i].sig, sig)) return k_audio[i].fn;
     return NULL;
 }
+
+void tl_dvm_audio_reset(void)
+{
+    pthread_mutex_lock(&M.mu);
+    for (int i = 0; i < MAX_STREAMS; i++) {
+        if (M.s[i].used) {
+            free(M.s[i].ring);
+            memset(&M.s[i], 0, sizeof(M.s[i]));
+        }
+    }
+    for (int i = 0; i < MAX_SAMPLES; i++) {
+        if (M.smp[i].used) {
+            free(M.smp[i].pcm);
+            memset(&M.smp[i], 0, sizeof(M.smp[i]));
+        }
+    }
+    memset(M.v, 0, sizeof(M.v));
+    M.next_voice = 1;
+    pthread_cond_broadcast(&M.room);
+    pthread_cond_broadcast(&M.work);
+    pthread_mutex_unlock(&M.mu);
+}

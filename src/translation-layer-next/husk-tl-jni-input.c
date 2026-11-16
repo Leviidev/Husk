@@ -127,6 +127,8 @@ jobj *tl_input_motion_event(int action, int count, const int *ids, const float *
  */
 #define POOL 256
 static pthread_mutex_t g_pool_lock = PTHREAD_MUTEX_INITIALIZER;
+static jobj *g_key_ring[POOL], *g_joy_ring[POOL];
+static unsigned g_key_next, g_joy_next;
 
 static jobj *pooled(const char *cls, jobj **ring, unsigned *next, motion **rec)
 {
@@ -145,9 +147,8 @@ static jobj *pooled(const char *cls, jobj **ring, unsigned *next, motion **rec)
 
 jobj *tl_input_key_event(int action, int keycode, int device, int source, int repeat, int64_t down_ms, int64_t event_ms)
 {
-    static jobj *ring[POOL]; static unsigned next;
     motion *m;
-    jobj *o = pooled("android/view/KeyEvent", ring, &next, &m);
+    jobj *o = pooled("android/view/KeyEvent", g_key_ring, &g_key_next, &m);
     m->action = action; m->keycode = keycode; m->device = device; m->source = source; m->repeat = repeat;
     m->down_ms = down_ms; m->event_ms = event_ms; m->scan = 0;
     return o;
@@ -156,9 +157,8 @@ jobj *tl_input_key_event(int action, int keycode, int device, int source, int re
 /* A controller's sticks, triggers and hat, as one MOVE event of a joystick source; axes is by Android axis number (MAX_AXES of them). */
 jobj *tl_input_joystick_event(int device, int source, int64_t down_ms, int64_t event_ms, const float *axes)
 {
-    static jobj *ring[POOL]; static unsigned next;
     motion *m;
-    jobj *o = pooled("android/view/MotionEvent", ring, &next, &m);
+    jobj *o = pooled("android/view/MotionEvent", g_joy_ring, &g_joy_next, &m);
     m->action = ACTION_MOVE; m->count = 1; m->ids[0] = 0; m->device = device; m->source = source; m->joystick = true;
     memcpy(m->axes, axes, sizeof(m->axes));
     m->x[0] = axes[0]; m->y[0] = axes[1];
@@ -249,4 +249,14 @@ void tl_input_install(void)
     };
     for (size_t i = 0; i < sizeof(motion_consts) / sizeof(motion_consts[0]); i++) set_int_const("android/view/MotionEvent", motion_consts[i].n, motion_consts[i].v);
     tl_pad_install();
+}
+void tl_jni_input_reset_session(void)
+{
+    pthread_mutex_lock(&g_pool_lock);
+    for (int i = 0; i < POOL; i++) {
+        if (g_key_ring[i]) { free(g_key_ring[i]->native); g_key_ring[i]->native = NULL; g_key_ring[i] = NULL; }
+        if (g_joy_ring[i]) { free(g_joy_ring[i]->native); g_joy_ring[i]->native = NULL; g_joy_ring[i] = NULL; }
+    }
+    g_key_next = g_joy_next = 0;
+    pthread_mutex_unlock(&g_pool_lock);
 }

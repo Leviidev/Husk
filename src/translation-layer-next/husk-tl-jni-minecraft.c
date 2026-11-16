@@ -210,11 +210,12 @@ static void MA_profileId(tl_jcall *c) { MA_kvString(c, "profileId"); }
 static void MA_profileName(tl_jcall *c) { MA_kvString(c, "profileName"); }
 static void MA_clientId(tl_jcall *c) { MA_kvString(c, "clientId"); }
 static void MA_accessToken(tl_jcall *c) { MA_kvString(c, "accessToken"); }
-static void MA_hardwareInfo(tl_jcall *c) { static jobj *o; if (!o) o = make("com/mojang/minecraftpe/HardwareInformation"); c->ret = vl(tl_jni_ref(o)); }
-static void MA_batteryMonitor(tl_jcall *c) { static jobj *o; if (!o) o = make("com/mojang/minecraftpe/BatteryMonitor"); c->ret = vl(tl_jni_ref(o)); }
-static void MA_thermalMonitor(tl_jcall *c) { static jobj *o; if (!o) o = make("com/mojang/minecraftpe/ThermalMonitor"); c->ret = vl(tl_jni_ref(o)); }
-static void MA_crashManager(tl_jcall *c) { static jobj *o; if (!o) o = make("com/mojang/minecraftpe/CrashManager"); c->ret = vl(tl_jni_ref(o)); }
-static void MA_appExitInfoHelper(tl_jcall *c) { static jobj *o; if (!o) o = make("com/mojang/minecraftpe/AppExitInfoHelper"); c->ret = vl(tl_jni_ref(o)); }
+static jobj *g_mc_singletons[6];
+static void MA_hardwareInfo(tl_jcall *c) { if (!g_mc_singletons[0]) g_mc_singletons[0] = make("com/mojang/minecraftpe/HardwareInformation"); c->ret = vl(tl_jni_ref(g_mc_singletons[0])); }
+static void MA_batteryMonitor(tl_jcall *c) { if (!g_mc_singletons[1]) g_mc_singletons[1] = make("com/mojang/minecraftpe/BatteryMonitor"); c->ret = vl(tl_jni_ref(g_mc_singletons[1])); }
+static void MA_thermalMonitor(tl_jcall *c) { if (!g_mc_singletons[2]) g_mc_singletons[2] = make("com/mojang/minecraftpe/ThermalMonitor"); c->ret = vl(tl_jni_ref(g_mc_singletons[2])); }
+static void MA_crashManager(tl_jcall *c) { if (!g_mc_singletons[3]) g_mc_singletons[3] = make("com/mojang/minecraftpe/CrashManager"); c->ret = vl(tl_jni_ref(g_mc_singletons[3])); }
+static void MA_appExitInfoHelper(tl_jcall *c) { if (!g_mc_singletons[4]) g_mc_singletons[4] = make("com/mojang/minecraftpe/AppExitInfoHelper"); c->ret = vl(tl_jni_ref(g_mc_singletons[4])); }
 static void MA_ipAddresses(tl_jcall *c) { const char *a[] = { "192.168.1.2" }; c->ret = vl(string_array(a, 1)); }
 static void MA_broadcastAddresses(tl_jcall *c) { const char *a[] = { "192.168.1.255" }; c->ret = vl(string_array(a, 1)); }
 static void MA_userInputStatus(tl_jcall *c) { c->ret = vi(-1); }                 /* no dialog is open */
@@ -395,7 +396,7 @@ static void CL_findClass(tl_jcall *c)
 
 /* ------------------------------------------------------------ locale (config) */
 
-static void Config_getLocales(tl_jcall *c) { static jobj *l; if (!l) l = make("android/os/LocaleList"); c->ret = vl(tl_jni_ref(l)); }
+static void Config_getLocales(tl_jcall *c) { if (!g_mc_singletons[5]) g_mc_singletons[5] = make("android/os/LocaleList"); c->ret = vl(tl_jni_ref(g_mc_singletons[5])); }
 static void LocaleList_size(tl_jcall *c) { c->ret = vi(1); }
 static void LocaleList_get(tl_jcall *c) { c->ret = vl(make("java/util/Locale")); }
 static void Locale_script(tl_jcall *c) { c->ret = vl(STR("")); }
@@ -561,3 +562,4 @@ void tl_mc_set_activity(jobj *activity)
     tl_jni_set_static("com/mojang/minecraftpe/MainActivity", "mInstance", "Lcom/mojang/minecraftpe/MainActivity;", v);
     tl_jni_set_static("com/mojang/minecraftpe/MainActivity", "mHasStoragePermission", "Z", vz(1));
 }
+void tl_jni_minecraft_reset_session(void) { M.activity = NULL; memset(g_mc_singletons, 0, sizeof(g_mc_singletons)); }

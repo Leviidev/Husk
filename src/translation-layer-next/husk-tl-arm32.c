@@ -112,6 +112,10 @@ uint32_t tl_a32_env_va(void) { return JNI_ENV; }
 uint32_t tl_a32_vm_va(void) { return JNI_VM; }
 uint32_t tl_a32_ref(jobj *o) { return to_h(o); }
 
+static tl_jmeth *Gmids[1024];
+static tl_jfield *Gfids[1024];
+static int nGmids = 1, nGfids = 1;
+
 void tl_a32_reset(void)
 {
     Gheap = GHEAP;
@@ -119,8 +123,12 @@ void tl_a32_reset(void)
     Gnhand = 1;
     nM = 0;
     nHptr = 1;
+    nGmids = 1;
+    nGfids = 1;
     memset(Ghand, 0, sizeof(Ghand));
     memset(Hptr, 0, sizeof(Hptr));
+    memset(Gmids, 0, sizeof(Gmids));
+    memset(Gfids, 0, sizeof(Gfids));
     memset(&CPU, 0, sizeof(CPU));
     Gunk = 0; ITn = 0;
 }
@@ -605,9 +613,6 @@ enum {
     J_GetJavaVM = 219, J_NewStringUTF = 167
 };
 
-static tl_jmeth *Gmids[1024];
-static tl_jfield *Gfids[1024];
-static int nGmids = 1, nGfids = 1;
 static uint32_t to_mid(tl_jmeth *m)
 {
     if (!m) return 0;

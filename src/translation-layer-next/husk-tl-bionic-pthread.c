@@ -116,14 +116,15 @@ static void describe_site(char *out, size_t n, uint64_t addr)
 static int b_mutex_lock(void *g)
 {
     pthread_mutex_t *m = obj_host(g, make_mutex);
-    if (!mutex_trace()) return rc(pthread_mutex_lock(m));
+    if (!mutex_trace() && !tl_guest_session_closing()) return rc(pthread_mutex_lock(m));
     void *lr = __builtin_return_address(0);
     for (long i = 0;; i++) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         int r = pthread_mutex_trylock(m);
-        if (r == 0) { note_owner(g, lr); return 0; }
+        if (r == 0) { if (mutex_trace()) note_owner(g, lr); return 0; }
         if (r != EBUSY) return rc(r);
         usleep(200);
-        if (i == 25000) {
+        if (mutex_trace() && i == 25000) {
             uint64_t *w = g; char owner[40] = "?", site[200], waiter[200];
             pthread_t t = (pthread_t)(uintptr_t)w[2];
             if (t) pthread_getname_np(t, owner, sizeof(owner));
@@ -152,12 +153,38 @@ static int b_mutexattr_getpshared(const long *a, int *ps) { *ps = (*a & 0x10L) ?
 
 /* ------------------------------------------------------ condition variables */
 
+typedef struct host_cond { pthread_cond_t c; struct host_cond *prev, *next; } host_cond;
+typedef struct host_sem { pthread_mutex_t m; pthread_cond_t c; int count; struct host_sem *prev, *next; } host_sem;
+static pthread_mutex_t g_sync_reg_mu = PTHREAD_MUTEX_INITIALIZER;
+static host_cond *g_cond_head;
+static host_sem *g_sem_head;
+static pthread_once_t g_sync_wake_once = PTHREAD_ONCE_INIT;
+
+static void tl_pthread_wake_all(void)
+{
+    pthread_mutex_lock(&g_sync_reg_mu);
+    for (host_cond *hc = g_cond_head; hc; hc = hc->next) pthread_cond_broadcast(&hc->c);
+    for (host_sem *hs_it = g_sem_head; hs_it; hs_it = hs_it->next) pthread_cond_broadcast(&hs_it->c);
+    pthread_mutex_unlock(&g_sync_reg_mu);
+}
+
+static void sync_wake_hook_init(void)
+{
+    tl_guest_register_wake_hook(tl_pthread_wake_all);
+}
+
 static void *make_cond(uint32_t value)
 {
     (void)value;
-    pthread_cond_t *c = malloc(sizeof(*c));
-    pthread_cond_init(c, NULL);
-    return c;
+    pthread_once(&g_sync_wake_once, sync_wake_hook_init);
+    host_cond *hc = calloc(1, sizeof(*hc));
+    pthread_cond_init(&hc->c, NULL);
+    pthread_mutex_lock(&g_sync_reg_mu);
+    hc->next = g_cond_head;
+    if (g_cond_head) g_cond_head->prev = hc;
+    g_cond_head = hc;
+    pthread_mutex_unlock(&g_sync_reg_mu);
+    return hc;
 }
 
 static int b_cond_init(void *g, const long *attr)
@@ -170,15 +197,36 @@ static int b_cond_init(void *g, const long *attr)
 static int b_cond_destroy(void *g)
 {
     guest_obj *o = g;
-    if (atomic_load(&o->magic) == MAGIC_READY) { pthread_cond_destroy(o->host); free(o->host); }
+    if (atomic_load(&o->magic) == MAGIC_READY) {
+        host_cond *hc = o->host;
+        pthread_mutex_lock(&g_sync_reg_mu);
+        if (hc->prev) hc->prev->next = hc->next; else if (g_cond_head == hc) g_cond_head = hc->next;
+        if (hc->next) hc->next->prev = hc->prev;
+        pthread_mutex_unlock(&g_sync_reg_mu);
+        pthread_cond_destroy(&hc->c);
+        free(hc);
+    }
     memset(g, 0, 48);
     return 0;
 }
-static int b_cond_signal(void *g)    { return rc(pthread_cond_signal(obj_host(g, make_cond))); }
-static int b_cond_broadcast(void *g) { return rc(pthread_cond_broadcast(obj_host(g, make_cond))); }
+static int b_cond_signal(void *g)    { host_cond *hc = obj_host(g, make_cond); return rc(pthread_cond_signal(&hc->c)); }
+static int b_cond_broadcast(void *g) { host_cond *hc = obj_host(g, make_cond); return rc(pthread_cond_broadcast(&hc->c)); }
 static int b_cond_wait(void *g, void *m)
 {
-    return rc(pthread_cond_wait(obj_host(g, make_cond), obj_host(m, make_mutex)));
+    host_cond *hc = obj_host(g, make_cond);
+    pthread_mutex_t *mu = obj_host(m, make_mutex);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
+    int r = rc(pthread_cond_wait(&hc->c, mu));
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
+    return r;
 }
 
 static int cond_rel_timeout(clockid_t clk, const struct timespec *abs, struct timespec *rel)
@@ -200,21 +248,44 @@ static int cond_rel_timeout(clockid_t clk, const struct timespec *abs, struct ti
 static int b_cond_timedwait(void *g, void *m, const struct timespec *abs)
 {
     guest_obj *o = g;
-    obj_host(g, make_cond);
+    host_cond *hc = obj_host(g, make_cond);
+    pthread_mutex_t *mu = obj_host(m, make_mutex);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
     clockid_t clk = (o->value & 2) ? CLOCK_MONOTONIC : CLOCK_REALTIME;
     struct timespec rel;
     if (cond_rel_timeout(clk, abs, &rel)) return EINVAL;
-    return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
+    int r = rc(pthread_cond_timedwait_relative_np(&hc->c, mu, &rel));
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
+    return r;
 }
 
 /* Bionic's clock ids: 0 is CLOCK_REALTIME, 1 CLOCK_MONOTONIC. */
 static int cond_wait_until(void *g, void *m, clockid_t clk, const struct timespec *abs)
 {
-    guest_obj *o = g;
-    obj_host(g, make_cond);
+    host_cond *hc = obj_host(g, make_cond);
+    pthread_mutex_t *mu = obj_host(m, make_mutex);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
     struct timespec rel;
     if (cond_rel_timeout(clk, abs, &rel)) return EINVAL;
-    return rc(pthread_cond_timedwait_relative_np(o->host, obj_host(m, make_mutex), &rel));
+    int r = rc(pthread_cond_timedwait_relative_np(&hc->c, mu, &rel));
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+        if (mutex_trace()) ((uint64_t *)m)[2] = 0;
+        pthread_mutex_unlock(mu);
+        tl_guest_thread_retire();
+    }
+    return r;
 }
 
 static int b_cond_clockwait(void *g, void *m, int clock, const struct timespec *abs)
@@ -264,14 +335,18 @@ static int b_rwlock_unlock(void *g)    { return rc(pthread_rwlock_unlock(obj_hos
 
 /* bionic's sem_t is 16 bytes on LP64 (a count and three reserved words): clearing more tramples the next field of whatever embeds it. */
 
-typedef struct { pthread_mutex_t m; pthread_cond_t c; int count; } host_sem;
-
 static void *make_sem(uint32_t value)
 {
+    pthread_once(&g_sync_wake_once, sync_wake_hook_init);
     host_sem *s = calloc(1, sizeof(*s));
     pthread_mutex_init(&s->m, NULL);
     pthread_cond_init(&s->c, NULL);
     s->count = (int)value;
+    pthread_mutex_lock(&g_sync_reg_mu);
+    s->next = g_sem_head;
+    if (g_sem_head) g_sem_head->prev = s;
+    g_sem_head = s;
+    pthread_mutex_unlock(&g_sync_reg_mu);
     return s;
 }
 
@@ -289,6 +364,10 @@ static int b_sem_destroy(void *g)
     guest_obj *o = g;
     if (atomic_load(&o->magic) == MAGIC_READY) {
         host_sem *s = o->host;
+        pthread_mutex_lock(&g_sync_reg_mu);
+        if (s->prev) s->prev->next = s->next; else if (g_sem_head == s) g_sem_head = s->next;
+        if (s->next) s->next->prev = s->prev;
+        pthread_mutex_unlock(&g_sync_reg_mu);
         pthread_cond_destroy(&s->c); pthread_mutex_destroy(&s->m); free(s);
     }
     memset(g, 0, 16);
@@ -306,9 +385,16 @@ static int b_sem_post(void *g)
 }
 static int b_sem_wait(void *g)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     host_sem *s = hs(g);
     pthread_mutex_lock(&s->m);
-    while (s->count <= 0) pthread_cond_wait(&s->c, &s->m);
+    while (s->count <= 0) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+            pthread_mutex_unlock(&s->m);
+            tl_guest_thread_retire();
+        }
+        pthread_cond_wait(&s->c, &s->m);
+    }
     s->count--;
     pthread_mutex_unlock(&s->m);
     return 0;
@@ -325,18 +411,24 @@ static int b_sem_trywait(void *g)
 }
 static int b_sem_timedwait(void *g, const struct timespec *abs)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     host_sem *s = hs(g);
     struct timespec rel;
     if (cond_rel_timeout(CLOCK_REALTIME, abs, &rel)) { tl_set_guest_errno(22); return -1; }
     pthread_mutex_lock(&s->m);
     int r = 0;
     while (s->count <= 0 && r == 0) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+            pthread_mutex_unlock(&s->m);
+            tl_guest_thread_retire();
+        }
         if (cond_rel_timeout(CLOCK_REALTIME, abs, &rel)) { r = EINVAL; break; }
         if (rel.tv_sec == 0 && rel.tv_nsec == 0) { r = ETIMEDOUT; break; }
         r = pthread_cond_timedwait_relative_np(&s->c, &s->m, &rel);
     }
     if (r == 0) s->count--;
     pthread_mutex_unlock(&s->m);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     if (r) { tl_set_guest_errno(tl_errno_to_guest(r)); return -1; }
     return 0;
 }
@@ -365,18 +457,140 @@ static int b_once(_Atomic int *once, void (*fn)(void))
     return 0;
 }
 
-/* bionic's pthread_key_t is an int; Darwin's is an unsigned long. */
+/* Track guest pthread keys in Husk so (a) forced thread retirement does not run
+ * unsafe guest C++ destructors into unloaded/shutting-down libraries, and
+ * (b) keys leaked by an app are reclaimed between game sessions. */
+#define MAX_GUEST_KEYS 512
+typedef struct {
+    void *val[MAX_GUEST_KEYS];
+    uint32_t gen[MAX_GUEST_KEYS];
+} guest_tls_vals;
+
+static struct {
+    bool used;
+    unsigned epoch;
+    uint32_t gen;
+    void (*dtor)(void *);
+} g_guest_keys[MAX_GUEST_KEYS];
+static pthread_mutex_t g_guest_keys_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_key_t g_guest_tls_key;
+static pthread_once_t g_guest_tls_once = PTHREAD_ONCE_INIT;
+
+static void guest_keys_thread_cleanup(void *p)
+{
+    guest_tls_vals *tv = p;
+    if (!tv) return;
+    if (!tl_guest_thread_is_retiring()) {
+        for (int pass = 0; pass < 4; pass++) {
+            bool any = false;
+            for (int i = 0; i < MAX_GUEST_KEYS; i++) {
+                void *v = tv->val[i];
+                if (!v) continue;
+                void (*dtor)(void *) = NULL;
+                pthread_mutex_lock(&g_guest_keys_mu);
+                if (g_guest_keys[i].used && g_guest_keys[i].gen == tv->gen[i]) dtor = g_guest_keys[i].dtor;
+                pthread_mutex_unlock(&g_guest_keys_mu);
+                tv->val[i] = NULL;
+                if (dtor) { dtor(v); any = true; }
+            }
+            if (!any) break;
+        }
+    }
+    free(tv);
+}
+
+static void guest_tls_key_init(void)
+{
+    pthread_key_create(&g_guest_tls_key, guest_keys_thread_cleanup);
+}
+
+void tl_pthread_reset_session(unsigned ended_epoch)
+{
+    if (!ended_epoch) return;
+    pthread_mutex_lock(&g_guest_keys_mu);
+    for (int i = 0; i < MAX_GUEST_KEYS; i++) {
+        if (g_guest_keys[i].used && g_guest_keys[i].epoch == ended_epoch) {
+            g_guest_keys[i].used = false;
+            g_guest_keys[i].dtor = NULL;
+            g_guest_keys[i].gen++;
+        }
+    }
+    pthread_mutex_unlock(&g_guest_keys_mu);
+}
+
 static int b_key_create(int *key, void (*dtor)(void *))
 {
-    pthread_key_t k;
-    int r = pthread_key_create(&k, dtor);
-    if (r) return rc(r);
-    *key = (int)k;
+    if (!key) return 22;
+    pthread_once(&g_guest_tls_once, guest_tls_key_init);
+    pthread_mutex_lock(&g_guest_keys_mu);
+    int slot = -1;
+    for (int i = 0; i < MAX_GUEST_KEYS; i++) {
+        if (!g_guest_keys[i].used) { slot = i; break; }
+    }
+    if (slot < 0) {
+        pthread_mutex_unlock(&g_guest_keys_mu);
+        return 11; /* EAGAIN */
+    }
+    g_guest_keys[slot].used = true;
+    g_guest_keys[slot].epoch = tl_guest_session_epoch();
+    g_guest_keys[slot].gen++;
+    g_guest_keys[slot].dtor = dtor;
+    pthread_mutex_unlock(&g_guest_keys_mu);
+    *key = slot + 1;
     return 0;
 }
-static int b_key_delete(int key) { return rc(pthread_key_delete((pthread_key_t)key)); }
-static void *b_getspecific(int key) { return pthread_getspecific((pthread_key_t)key); }
-static int b_setspecific(int key, const void *v) { return rc(pthread_setspecific((pthread_key_t)key, v)); }
+static int b_key_delete(int key)
+{
+    int idx = key - 1;
+    if (idx < 0 || idx >= MAX_GUEST_KEYS) return 22;
+    pthread_mutex_lock(&g_guest_keys_mu);
+    int r = g_guest_keys[idx].used ? 0 : 22;
+    if (r == 0) {
+        g_guest_keys[idx].used = false;
+        g_guest_keys[idx].dtor = NULL;
+        g_guest_keys[idx].gen++;
+    }
+    pthread_mutex_unlock(&g_guest_keys_mu);
+    return r;
+}
+static void *b_getspecific(int key)
+{
+    int idx = key - 1;
+    if (idx < 0 || idx >= MAX_GUEST_KEYS) return NULL;
+    pthread_once(&g_guest_tls_once, guest_tls_key_init);
+    guest_tls_vals *tv = pthread_getspecific(g_guest_tls_key);
+    if (!tv) return NULL;
+    uint32_t gen;
+    bool used;
+    pthread_mutex_lock(&g_guest_keys_mu);
+    used = g_guest_keys[idx].used;
+    gen = g_guest_keys[idx].gen;
+    pthread_mutex_unlock(&g_guest_keys_mu);
+    if (!used || tv->gen[idx] != gen) return NULL;
+    return tv->val[idx];
+}
+static int b_setspecific(int key, const void *v)
+{
+    int idx = key - 1;
+    if (idx < 0 || idx >= MAX_GUEST_KEYS) return 22;
+    pthread_once(&g_guest_tls_once, guest_tls_key_init);
+    uint32_t gen;
+    bool used;
+    pthread_mutex_lock(&g_guest_keys_mu);
+    used = g_guest_keys[idx].used;
+    gen = g_guest_keys[idx].gen;
+    pthread_mutex_unlock(&g_guest_keys_mu);
+    if (!used) return 22;
+    guest_tls_vals *tv = pthread_getspecific(g_guest_tls_key);
+    if (!tv) {
+        tv = calloc(1, sizeof(*tv));
+        if (!tv) return 12;
+        pthread_setspecific(g_guest_tls_key, tv);
+    }
+    tv->val[idx] = (void *)(uintptr_t)v;
+    tv->gen[idx] = gen;
+    return 0;
+}
 
 /* ---------------------------------------------------------------- threads */
 
@@ -576,6 +790,7 @@ static void *start_thunk(void *p)
     pthread_cleanup_push(tl_guest_thread_release, (void *)(uintptr_t)c.tracked);
     tl_guest_pool_begin();
     pthread_cleanup_push(tl_guest_pool_end, NULL);
+    tl_guest_thread_set_retirable(true);
     tl_qos_set_initiated();
     /* a stack of its own for fault handlers: a crash that leaves the thread's stack unusable is then still reported (macOS kills a
        thread it can not deliver a signal to with SIGILL, and nothing is said) */
@@ -717,6 +932,9 @@ static int b_sigmask(int how, const uint64_t *set, uint64_t *old)
 
 int tl_bionic_sched_yield(void)
 {
+#ifndef sched_yield
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+#endif
     static __thread struct { uint64_t last_ns; int streak; } st;
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -734,6 +952,12 @@ int tl_bionic_sched_yield(void)
     }
     st.last_ns = t;
     return sched_yield();
+}
+
+int tl_guest_sched_yield(void)
+{
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    return tl_bionic_sched_yield();
 }
 
 const tl_bionic_entry tl_tab_pthread[] = {

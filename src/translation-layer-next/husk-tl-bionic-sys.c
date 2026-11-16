@@ -6,6 +6,7 @@
  */
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-session.h"
 #include "husk-tl-thread-clock.h"
 
 #include <errno.h>
@@ -385,7 +386,14 @@ static int b___libc_current_sigrtmax(void) { return 64; }
 static int b_sigwaitinfo(const uint64_t *set, void *info)
 {
     (void)set; (void)info;
-    for (;;) sleep(3600);
+    for (;;) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (tl_guest_session_wait_close(3600ll * 1000000000ll)) {
+            if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+            tl_set_guest_errno(4 /* EINTR */);
+            return -1;
+        }
+    }
     return -1;
 }
 
@@ -395,7 +403,13 @@ static pthread_key_t g_dtor_key;
 static pthread_once_t g_dtor_once = PTHREAD_ONCE_INIT;
 static void run_dtors(void *head)
 {
-    for (dtor *d = head; d;) { dtor *n = d->next; d->fn(d->obj); free(d); d = n; }
+    bool skip = tl_guest_thread_is_retiring();
+    for (dtor *d = head; d;) {
+        dtor *n = d->next;
+        if (!skip && d->fn) d->fn(d->obj);
+        free(d);
+        d = n;
+    }
 }
 static void dtor_key(void) { pthread_key_create(&g_dtor_key, run_dtors); }
 static int b___cxa_thread_atexit_impl(void (*fn)(void *), void *obj, void *dso)
@@ -416,7 +430,7 @@ static int b___cxa_thread_atexit_impl(void (*fn)(void *), void *obj, void *dso)
  * 8-byte count of 1) when each timer is due. The clock is the host's monotonic or real-time clock, which is what the guest's
  * clock_gettime reads for the same id.
  */
-typedef struct { int rd, wr, clock; bool armed; uint64_t due, interval; } tfd;     /* due/interval in ns; due on its clock */
+typedef struct { int rd, wr, clock; unsigned epoch; bool armed; uint64_t due, interval; } tfd;     /* due/interval in ns; due on its clock */
 static tfd *g_tfd[1024];
 static pthread_mutex_t g_tfd_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_tfd_cv = PTHREAD_COND_INITIALIZER;
@@ -464,6 +478,35 @@ static void *tfd_thread(void *arg)
 /* For tracing: whether fd is a timerfd's read end. */
 bool tl_timerfd_is(int fd) { return fd >= 0 && fd < 1024 && g_tfd[fd] != NULL; }
 
+void tl_timerfd_close(int fd)
+{
+    if (fd < 0 || fd >= 1024) return;
+    pthread_mutex_lock(&g_tfd_mu);
+    tfd *t = g_tfd[fd];
+    g_tfd[fd] = NULL;
+    pthread_mutex_unlock(&g_tfd_mu);
+    if (t) {
+        if (t->wr >= 0) close(t->wr);
+        free(t);
+    }
+}
+
+void tl_timerfd_reset_session(unsigned ended_epoch)
+{
+    if (!ended_epoch) return;
+    pthread_mutex_lock(&g_tfd_mu);
+    for (int i = 0; i < 1024; i++) {
+        tfd *t = g_tfd[i];
+        if (!t || t->epoch != ended_epoch) continue;
+        g_tfd[i] = NULL;
+        if (t->rd >= 0) close(t->rd);
+        if (t->wr >= 0) close(t->wr);
+        free(t);
+    }
+    pthread_cond_signal(&g_tfd_cv);
+    pthread_mutex_unlock(&g_tfd_mu);
+}
+
 static int b_timerfd_create(int clock, int flags)
 {
     int p[2];
@@ -473,12 +516,16 @@ static int b_timerfd_create(int clock, int flags)
     if (flags & 0x800) fcntl(p[0], F_SETFL, O_NONBLOCK);       /* TFD_NONBLOCK */
     if (flags & 0x80000) { fcntl(p[0], F_SETFD, FD_CLOEXEC); fcntl(p[1], F_SETFD, FD_CLOEXEC); }
     tfd *t = calloc(1, sizeof(*t));
-    t->rd = p[0]; t->wr = p[1]; t->clock = clock;
+    t->rd = p[0]; t->wr = p[1]; t->clock = clock; t->epoch = tl_guest_session_epoch();
     pthread_mutex_lock(&g_tfd_mu);
-    free(g_tfd[p[0]]);
+    if (g_tfd[p[0]]) {
+        if (g_tfd[p[0]]->wr >= 0) close(g_tfd[p[0]]->wr);
+        free(g_tfd[p[0]]);
+    }
     g_tfd[p[0]] = t;
     if (!g_tfd_started) { g_tfd_started = true; pthread_create(&g_tfd_thread, NULL, tfd_thread, NULL); }
     pthread_mutex_unlock(&g_tfd_mu);
+    tl_io_note_guest_fd(p[0]);
     return p[0];
 }
 
@@ -538,6 +585,7 @@ static int b_epoll_create1(int flags)
 {
     TL_ERRNO_BEGIN(); int kq = kqueue(); TL_ERRNO_END();
     if (kq >= 0 && (flags & 0x80000)) fcntl(kq, F_SETFD, FD_CLOEXEC);
+    tl_io_note_guest_fd(kq);
     return kq;
 }
 static int b_epoll_create(int size) { if (size <= 0) { tl_set_guest_errno(22); return -1; } return b_epoll_create1(0); }
@@ -562,8 +610,6 @@ static int b_epoll_ctl(int epfd, int op, int fd, const guest_epoll_event *ev)
     return r < 0 ? -1 : 0;
 }
 
-bool tl_guest_session_closing(void);
-
 static int b_epoll_wait(int epfd, guest_epoll_event *out, int max, int timeout_ms)
 {
     if (max <= 0) { tl_set_guest_errno(22); return -1; }
@@ -572,11 +618,14 @@ static int b_epoll_wait(int epfd, guest_epoll_event *out, int max, int timeout_m
     int r = 0;
     int remaining = timeout_ms;
     for (;;) {
-        if (tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
-        int chunk = (remaining < 0 || remaining > 100) ? 100 : remaining;
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (tl_guest_session_closing() && tl_guest_session_wake_once()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        int cap = tl_guest_session_closing() ? 25 : 100;
+        int chunk = (remaining < 0 || remaining > cap) ? cap : remaining;
         struct timespec ts = { chunk / 1000, (long)(chunk % 1000) * 1000000L };
         errno = 0;
         r = kevent(epfd, NULL, 0, k, max, &ts);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         if (r > 0) break;
         if (r < 0) {
             if (errno == EINTR) continue;
@@ -640,6 +689,11 @@ static int *b___get_h_errno(void) { static __thread int e; return &e; }
 static void *b_getservbyname(const char *n, const char *p) { (void)n; (void)p; return NULL; }
 static long b_times(void *buf) { struct tms t; clock_t r = times(&t); if (buf) { long *o = buf; o[0] = (long)t.tms_utime; o[1] = (long)t.tms_stime; o[2] = (long)t.tms_cutime; o[3] = (long)t.tms_cstime; } return (long)r; }
 
+static void *b_aligned_alloc(size_t align, size_t size)
+{
+    return tl_guest_memalign(align, size, __builtin_return_address(0));
+}
+
 const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("getprogname", b_getprogname),
     TL_WRAP("android_get_device_api_level", b_android_get_device_api_level),
@@ -653,7 +707,7 @@ const tl_bionic_entry tl_tab_sys[] = {
     TL_WRAP("nftw", b_nftw), TL_WRAP("nftw64", b_nftw), TL_WRAP("getpwnam", b_getpwnam),
     TL_WRAP("strtod_l", b_strtod_l), TL_WRAP("strtof_l", b_strtof_l),
     TL_WRAP("__gnu_strerror_r", b___gnu_strerror_r), TL_WRAP("__assert", b___assert), TL_WRAP("__fread_chk", b___fread_chk),
-    TL_DIRECT(aligned_alloc), TL_DIRECT(arc4random), TL_DIRECT(rand_r),
+    TL_WRAP("aligned_alloc", b_aligned_alloc), TL_DIRECT(arc4random), TL_DIRECT(rand_r),
     TL_WRAP("pthread_getname_np", b_pthread_getname_np), TL_WRAP("pthread_getcpuclockid", b_pthread_getcpuclockid),
     TL_WRAP("tgkill", b_tgkill), TL_WRAP("waitid", b_waitid), TL_WRAP("setpgid", b_setpgid), TL_WRAP("unshare", b_unshare),
     TL_WRAP("pidfd_open", b_pidfd_open), TL_WRAP("process_vm_readv", b_process_vm_readv),

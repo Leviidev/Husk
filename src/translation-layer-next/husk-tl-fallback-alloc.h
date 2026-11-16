@@ -32,4 +32,9 @@ bool tl_fb_release(void *p);
 /* Blocks currently live (diagnostics and tests). */
 size_t tl_fb_live(void);
 
+/* Session scoping: fallback blocks allocated under a non-zero session epoch
+ * are released together when that session ends without freeing them. */
+void tl_fb_set_epoch(unsigned epoch);
+size_t tl_fb_reset_session(unsigned epoch);
+
 #endif

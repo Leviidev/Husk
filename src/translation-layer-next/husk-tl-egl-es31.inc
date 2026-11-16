@@ -10,7 +10,12 @@
 static bool g_es31_shim;
 static int g_es3_minor = 1;                                 /* the minor version told: 1, or 2 for an app whose manifest needs 3.2 */
 void tl_egl_es31_shim(bool on) { g_es31_shim = on; }
-void tl_egl_es3_claim(int minor) { if (minor >= 1) { g_es31_shim = true; g_es3_minor = minor > 2 ? 2 : minor; } }
+void tl_egl_es3_claim(int minor)
+{
+    if (minor <= 0) { g_es31_shim = false; g_es3_minor = 1; return; }
+    g_es31_shim = true;
+    g_es3_minor = minor > 2 ? 2 : minor;
+}
 
 typedef struct { char name[72]; int binding; bool block; } es31_bind;
 #define ES31_SHADERS 1024

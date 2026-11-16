@@ -41,6 +41,8 @@ public final class AppRunner {
         sAdopted = null;
         sFactory = android.app.AppComponentFactory.DEFAULT;
         Looper.setInputSink(null);
+        Looper.resetSession();
+        Services.resetSession();
         Manifest.reset();
         ViewRoot.resetSession();
         InputMethods.resetSession();

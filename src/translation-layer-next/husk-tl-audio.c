@@ -26,6 +26,8 @@ static struct {
     int16_t *ring;
     size_t head, count;           /* frames */
     bool paused, failed, closing;
+    int16_t up_prev[2];
+    bool up_have_prev;
 } A = { .mu = PTHREAD_MUTEX_INITIALIZER, .cv = PTHREAD_COND_INITIALIZER };
 
 /* The audio thread asks for samples; an empty ring is silence, never a wait. */
@@ -87,19 +89,17 @@ static void ring_write(const int16_t *samples, int frames, int channels, int rat
 static void host_write(const int16_t *samples, int frames, int channels, int rate)
 {
     if (rate > 0 && rate * 2 <= 48000 && channels > 0 && channels <= 2 && frames > 0) {
-        static int16_t prev[2];
-        static bool have_prev;
         int16_t *up = malloc((size_t)frames * 2 * (size_t)channels * sizeof(int16_t));
         if (up) {
             for (int f = 0; f < frames; f++)
                 for (int c = 0; c < channels; c++) {
                     int16_t cur = samples[(size_t)f * channels + c];
-                    int16_t before = f > 0 ? samples[(size_t)(f - 1) * channels + c] : (have_prev ? prev[c] : cur);
+                    int16_t before = f > 0 ? samples[(size_t)(f - 1) * channels + c] : (A.up_have_prev ? A.up_prev[c] : cur);
                     up[(size_t)(2 * f) * channels + c] = (int16_t)(((int)before + cur) / 2);
                     up[(size_t)(2 * f + 1) * channels + c] = cur;
                 }
-            for (int c = 0; c < channels; c++) prev[c] = samples[(size_t)(frames - 1) * channels + c];
-            have_prev = true;
+            for (int c = 0; c < channels; c++) A.up_prev[c] = samples[(size_t)(frames - 1) * channels + c];
+            A.up_have_prev = true;
             ring_write(up, frames * 2, channels, rate * 2);
             free(up);
             return;
@@ -173,6 +173,7 @@ void tl_audio_reset(void)
     memset(A.bufs, 0, sizeof(A.bufs));
     A.head = 0; A.count = 0; A.rate = 0; A.channels = 0;
     A.paused = false; A.failed = false; A.closing = false;
+    A.up_prev[0] = 0; A.up_prev[1] = 0; A.up_have_prev = false;
     pthread_cond_broadcast(&A.cv);
     pthread_mutex_unlock(&A.mu);
 }

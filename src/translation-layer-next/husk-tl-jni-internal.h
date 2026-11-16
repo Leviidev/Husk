@@ -87,4 +87,18 @@ void tl_jni_each_declared(void (*fn)(tl_jclass *jc));
 void tl_jni_forget_if(bool (*drop)(tl_jclass *jc, void *user), void *user);
 int32_t tl_jni_register_one(jobj *cls, const char *name, const char *sig, void *fn);
 
+typedef struct tl_jni_gc_ops {
+    bool (*drop_class)(tl_jclass *jc, void *user);
+    void *user;
+    void (*visit_extra_roots)(bool (*mark_obj)(jobj *o, void *ctx), void *ctx);
+    void (*trace_dvm_class_statics)(tl_jclass *jc, bool (*mark_obj)(jobj *o, void *ctx), void *ctx);
+    void (*trace_dvm_obj_fields)(tl_jclass *jc, jobj *o, bool (*mark_obj)(jobj *o, void *ctx), void *ctx);
+    void (*prune_interned)(bool (*is_alive)(const jobj *o));
+    void (*destroy_monitor)(void *monitor);
+} tl_jni_gc_ops;
+
+void tl_jni_sweep_app_objects(const tl_jni_gc_ops *ops);
+void tl_loop_begin_close(void);
+void tl_loop_reset_session(void);
+
 #endif

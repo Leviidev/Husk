@@ -52,6 +52,11 @@ public final class SessionResetTest {
         AppRunner.resetSession();
         if (pendingExitField.get(null) != null || android.os.Handler.pendingCount() != basePending)
             throw new AssertionError("resetSession must cancel pending empty-stack exit");
+        Field runningServices = field(Services.class, "sRunning");
+        ((Map) runningServices.get(null)).put("com.game.A/.BgService", null);
+        AppRunner.resetSession();
+        if (!((Map) runningServices.get(null)).isEmpty())
+            throw new AssertionError("resetSession must clear previous APK services");
         android.os.Handler.drain();
         System.out.println("PASS: framework reset drops previous APK identity, preferences, receivers, pending exits and frame scheduling");
     }

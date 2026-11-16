@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef HUSK_TL_JNI_ALLOCATION_H
 #define HUSK_TL_JNI_ALLOCATION_H
+#include "husk-tl-jni.h"
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -10,7 +12,42 @@
  * overhead are absent. A deferred unref is a call, not a dead-object count. */
 typedef struct {
     atomic_uint_fast64_t created, freed, array_allocated, array_freed, deferred;
+    atomic_bool gc_lock;
+    jobj *gc_head, *gc_tail;
 } tl_jni_allocation_ledger;
+
+static inline void tl_jni_gc_lock(tl_jni_allocation_ledger *s)
+{
+    while (atomic_exchange_explicit(&s->gc_lock, true, memory_order_acquire)) {}
+}
+static inline void tl_jni_gc_unlock(tl_jni_allocation_ledger *s)
+{
+    atomic_store_explicit(&s->gc_lock, false, memory_order_release);
+}
+static inline void tl_jni_allocation_track(tl_jni_allocation_ledger *s, jobj *o)
+{
+    if (!o) return;
+    tl_jni_gc_lock(s);
+    o->gc_prev = s->gc_tail;
+    o->gc_next = NULL;
+    if (s->gc_tail) s->gc_tail->gc_next = o;
+    else s->gc_head = o;
+    s->gc_tail = o;
+    tl_jni_gc_unlock(s);
+}
+static inline void tl_jni_allocation_untrack(tl_jni_allocation_ledger *s, jobj *o)
+{
+    if (!o) return;
+    tl_jni_gc_lock(s);
+    if (o->gc_prev || o->gc_next || s->gc_head == o) {
+        if (o->gc_prev) o->gc_prev->gc_next = o->gc_next;
+        else s->gc_head = o->gc_next;
+        if (o->gc_next) o->gc_next->gc_prev = o->gc_prev;
+        else s->gc_tail = o->gc_prev;
+        o->gc_prev = o->gc_next = NULL;
+    }
+    tl_jni_gc_unlock(s);
+}
 typedef struct {
     uint64_t created, unfreed, headers, array_payload, deferred;
 } tl_jni_allocation_sample;

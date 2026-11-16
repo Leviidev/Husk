@@ -18,6 +18,7 @@ public final class Services {
         }
         sRunning.clear(); sBound.clear();
     }
+    public static void resetSession() { sRunning.clear(); sBound.clear(); }
     private Services() {}
     private static Manifest.Component find(Intent i) {
         if (i.getComponent() != null) { for (Manifest.Component c : Manifest.services) if (c.name.equals(i.getComponent().getClassName())) return c; }

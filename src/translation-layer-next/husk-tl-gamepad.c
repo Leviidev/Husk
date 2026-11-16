@@ -278,3 +278,4 @@ void tl_pad_install(void)
     for (size_t i = 0; i < sizeof(src) / sizeof(src[0]); i++) { jvalue v; v.j = 0; v.i = src[i].v; tl_jni_set_static("android/view/InputDevice", src[i].n, "I", v); }
     tl_jni_register_hle(k_pad_hle);
 }
+void tl_gamepad_reset_session(void) { memset(g_dev, 0, sizeof(g_dev)); }

@@ -19,6 +19,7 @@
 #include "husk-tl-gl-capabilities.h"
 #include "husk-tl-frame-perf.h"
 #include "husk-tl-host-device.h"
+#include "husk-tl-session.h"
 #include "husk-tl-visual.h"
 
 void *tl_nwindow_native(void *window);
@@ -143,6 +144,7 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
     if (frame_dir) { snprintf(E.frame_dir, sizeof(E.frame_dir), "%s", frame_dir); E.latest_only = frame_every < 0; E.frame_every = frame_every != 0 ? (frame_every < 0 ? -frame_every : frame_every) : 60; }
     E.ready = true;
     pthread_mutex_unlock(&E.lock);
+    tl_guest_register_retire_hook(tl_egl_thread_detach);
     tl_log_line("egl: ANGLE loaded%s%s", frame_dir ? ", off-screen, frames to " : "", frame_dir ? frame_dir : "");
     return true;
 }
@@ -263,6 +265,42 @@ __attribute__((weak)) bool tl_javaapp_app_pixels_rect_publish_with_opacity(const
 __attribute__((weak)) void tl_javaapp_app_pixels_rect(const void *px, int pw, int ph, int x, int y, int w, int h);
 __attribute__((weak)) void tl_javaapp_app_pixels(const void *px, int w, int h);
 
+#define MAX_GUEST_GL_CTX  64
+#define MAX_GUEST_GL_SURF 128
+static struct { EGLDisplay d; EGLContext c; } g_guest_gl_ctx[MAX_GUEST_GL_CTX];
+static struct { EGLDisplay d; EGLSurface s; } g_guest_gl_surf[MAX_GUEST_GL_SURF];
+
+static void guest_gl_ctx_add(EGLDisplay d, EGLContext c)
+{
+    if (!d || !c) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_GUEST_GL_CTX; i++) if (g_guest_gl_ctx[i].c == c) { g_guest_gl_ctx[i].d = d; pthread_mutex_unlock(&g_tex_lock); return; }
+    for (int i = 0; i < MAX_GUEST_GL_CTX; i++) if (!g_guest_gl_ctx[i].c) { g_guest_gl_ctx[i].d = d; g_guest_gl_ctx[i].c = c; break; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+static void guest_gl_ctx_remove(EGLContext c)
+{
+    if (!c) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_GUEST_GL_CTX; i++) if (g_guest_gl_ctx[i].c == c) { g_guest_gl_ctx[i].d = NULL; g_guest_gl_ctx[i].c = NULL; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+static void guest_gl_surf_add(EGLDisplay d, EGLSurface s)
+{
+    if (!d || !s) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_GUEST_GL_SURF; i++) if (g_guest_gl_surf[i].s == s) { g_guest_gl_surf[i].d = d; pthread_mutex_unlock(&g_tex_lock); return; }
+    for (int i = 0; i < MAX_GUEST_GL_SURF; i++) if (!g_guest_gl_surf[i].s) { g_guest_gl_surf[i].d = d; g_guest_gl_surf[i].s = s; break; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+static void guest_gl_surf_remove(EGLSurface s)
+{
+    if (!s) return;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_GUEST_GL_SURF; i++) if (g_guest_gl_surf[i].s == s) { g_guest_gl_surf[i].d = NULL; g_guest_gl_surf[i].s = NULL; }
+    pthread_mutex_unlock(&g_tex_lock);
+}
+
 #define MAX_COMP_CONTEXTS 32
 static struct { EGLContext c; int ver, actual; bool observed; } g_comp_ctx[MAX_COMP_CONTEXTS];
 static int comp_ctx_ver(EGLContext c)
@@ -334,6 +372,7 @@ static void comp_ctx_observe_current(EGLContext c)
 static EGLBoolean w_eglDestroyContext(EGLDisplay d, EGLContext c)
 {
     comp_ctx_remove(c);
+    guest_gl_ctx_remove(c);
     return a_eglDestroyContext(d, c);
 }
 PASS_BOOL(eglQuerySurface, (EGLDisplay d, EGLSurface s, EGLint at, EGLint *v), (d, s, at, v))
@@ -406,6 +445,7 @@ static EGLContext w_eglCreateContext(EGLDisplay d, EGLConfig c, EGLContext share
         for (int i = 0; at && at[i] != EGL_NONE && i < 20 && k + 24 < sizeof(buf); i += 2) k += (size_t)snprintf(buf + k, sizeof(buf) - k, " %#x=%d", at[i], at[i + 1]);
         tl_log_line("egl: eglCreateContext(share %p,%s ) -> %p%s", share, buf, ctx, !ctx ? " (failed)" : (shared_comp ? " (shared with compositor)" : ""));
     }
+    if (ctx) guest_gl_ctx_add(d, ctx);
     return ctx;
 }
 static EGLContext w_eglGetCurrentContext(void) { return a_eglGetCurrentContext(); }
@@ -632,6 +672,7 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
             pthread_mutex_unlock(&g_tex_lock);
         }
         tl_log_line("egl: TextureView window %dx%d -> off-screen surface %p", pb[1], pb[3], s);
+        if (s) guest_gl_surf_add(d, s);
         return s;
     }
     if (tl_javaapp_compositing && tl_javaapp_compositing()) {
@@ -669,6 +710,7 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
         }
         pthread_mutex_unlock(&g_frame_handoff);
         tl_log_line("egl: window %dx%d -> surface %p, composited under the app's views", pb[1], pb[3], s);
+        if (s) guest_gl_surf_add(d, s);
         return s;
     }
     if (E.frame_dir[0] || g_offscreen_windows) {
@@ -686,10 +728,12 @@ static EGLSurface w_eglCreateWindowSurface(EGLDisplay d, EGLConfig cfg, void *wi
             tl_log_line("egl: off-screen surface for config %p failed (%#x); rgba %d%d%d%d depth %d stencil %d", cfg, a_eglGetError(), r, g, b, a, dp, st);
         }
         tl_log_line("egl: window %dx%d -> off-screen surface %p", pb[1], pb[3], s);
+        if (s) guest_gl_surf_add(d, s);
         return s;
     }
     void *layer = tl_nwindow_native(win);
     EGLSurface s = a_eglCreateWindowSurface(d, cfg, layer, at);
+    if (s) guest_gl_surf_add(d, s);
     tl_log_line("egl: window surface %p on layer %p (%dx%d), eglGetError %#x", s, layer, tl_nwindow_width(win), tl_nwindow_height(win), a_eglGetError());
     return s;
 }
@@ -732,7 +776,60 @@ static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
     pthread_mutex_unlock(&g_frame_handoff);
     return a_eglDestroySurface(d, s);
 }
-static EGLSurface w_eglCreatePbufferSurface(EGLDisplay d, EGLConfig c, const EGLint *at) { return a_eglCreatePbufferSurface(d, cfg_real(c), at); }
+static EGLSurface w_eglCreatePbufferSurface(EGLDisplay d, EGLConfig c, const EGLint *at)
+{
+    EGLSurface s = a_eglCreatePbufferSurface(d, cfg_real(c), at);
+    if (s) guest_gl_surf_add(d, s);
+    return s;
+}
+static EGLBoolean w_eglDestroySurface_session(EGLDisplay d, EGLSurface s)
+{
+    guest_gl_surf_remove(s);
+    return w_eglDestroySurface(d, s);
+}
+
+void tl_egl_thread_detach(void)
+{
+    if (!E.ready || !E.display) return;
+    if (a_eglMakeCurrent) (void)a_eglMakeCurrent(E.display, NULL, NULL, NULL);
+    if (a_eglReleaseThread) (void)a_eglReleaseThread();
+}
+
+void tl_egl_reset_session(void)
+{
+    if (!E.ready) return;
+    tl_egl_thread_detach();
+    tl_egl_compositor_frame_reset(NULL, false);
+    void *wins[MAX_TEX_SURFACES] = { 0 };
+    EGLDisplay s_dpy[MAX_GUEST_GL_SURF] = { 0 };
+    EGLSurface s_lst[MAX_GUEST_GL_SURF] = { 0 };
+    EGLDisplay c_dpy[MAX_GUEST_GL_CTX] = { 0 };
+    EGLContext c_lst[MAX_GUEST_GL_CTX] = { 0 };
+    int ns = 0, nc = 0;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_TEX_SURFACES; i++) {
+        wins[i] = g_tex_surf[i].win;
+        g_tex_surf[i].s = NULL; g_tex_surf[i].win = NULL;
+    }
+    for (int i = 0; i < MAX_GUEST_GL_SURF; i++) if (g_guest_gl_surf[i].s) {
+        s_dpy[ns] = g_guest_gl_surf[i].d; s_lst[ns] = g_guest_gl_surf[i].s; ns++;
+        g_guest_gl_surf[i].d = NULL; g_guest_gl_surf[i].s = NULL;
+    }
+    for (int i = 0; i < MAX_GUEST_GL_CTX; i++) if (g_guest_gl_ctx[i].c) {
+        c_dpy[nc] = g_guest_gl_ctx[i].d; c_lst[nc] = g_guest_gl_ctx[i].c; nc++;
+        g_guest_gl_ctx[i].d = NULL; g_guest_gl_ctx[i].c = NULL;
+    }
+    memset(g_comp_ctx, 0, sizeof(g_comp_ctx));
+    pthread_mutex_unlock(&g_tex_lock);
+    for (int i = 0; i < MAX_TEX_SURFACES; i++) if (wins[i]) tl_nwindow_release(wins[i]);
+    if (a_eglDestroySurface) for (int i = 0; i < ns; i++) (void)a_eglDestroySurface(s_dpy[i], s_lst[i]);
+    if (a_eglDestroyContext) for (int i = 0; i < nc; i++) (void)a_eglDestroyContext(c_dpy[i], c_lst[i]);
+    g_offscreen_windows = false;
+    tl_egl_es3_claim(0);
+    atomic_store(&E.presented, 0);
+    if (a_eglReleaseThread) (void)a_eglReleaseThread();
+    if (ns || nc) tl_log_line("egl: reclaimed %d leaked guest context(s) and %d surface(s)", nc, ns);
+}
 
 /* A frame as a BMP: bottom-up BGR from GL's bottom-up RGBA, so no flip is needed. */
 static void save_frame(EGLDisplay d, EGLSurface s, unsigned long n)
@@ -986,6 +1083,12 @@ static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
 
 static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (tl_guest_session_closing()) {
+        (void)tl_guest_session_wait_close(16000000ll);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        return EGL_TRUE;
+    }
     EGLBoolean ok = swap_buffers(d, s);
     tl_guest_pool_frame();
     return ok;
@@ -1079,9 +1182,9 @@ static const unsigned char *w_glGetString(unsigned name)
     }
     if (name != 0x1F03 /* GL_EXTENSIONS */ || !s) return s;
     static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
-    static const unsigned char *source; static char *filtered;
+    static const unsigned char *source; static char *filtered; static bool cached_es31;
     pthread_mutex_lock(&mu);
-    if (source != s) {
+    if (source != s || cached_es31 != g_es31_shim) {
         free(filtered);
         size_t len = strlen((const char *)s);
         filtered = malloc(len + 64);
@@ -1096,6 +1199,7 @@ static const unsigned char *w_glGetString(unsigned name)
         if (g_es31_shim) { k += (size_t)snprintf(filtered + k, 62, "%sGL_EXT_texture_buffer", k ? " " : ""); }
         filtered[k] = 0;
         source = s;
+        cached_es31 = g_es31_shim;
     }
     pthread_mutex_unlock(&mu);
     return (const unsigned char *)filtered;
@@ -1248,7 +1352,7 @@ static const struct { const char *name; void *fn; } k_egl[] = {
     { "eglQueryString", w_eglQueryString }, { "eglGetConfigs", w_eglGetConfigs }, { "eglChooseConfig", w_eglChooseConfig },
     { "eglGetConfigAttrib", w_eglGetConfigAttrib }, { "eglCreateContext", w_eglCreateContext },
     { "eglDestroyContext", w_eglDestroyContext }, { "eglCreateWindowSurface", w_eglCreateWindowSurface },
-    { "eglCreatePbufferSurface", w_eglCreatePbufferSurface }, { "eglDestroySurface", w_eglDestroySurface },
+    { "eglCreatePbufferSurface", w_eglCreatePbufferSurface }, { "eglDestroySurface", w_eglDestroySurface_session },
     { "eglQuerySurface", w_eglQuerySurface }, { "eglSurfaceAttrib", w_eglSurfaceAttrib }, { "eglMakeCurrent", w_eglMakeCurrent },
     { "eglSwapBuffers", w_eglSwapBuffers }, { "eglSwapInterval", w_eglSwapInterval },
     { "eglSwapBuffersWithDamageKHR", w_eglSwapBuffersWithDamage }, { "eglSwapBuffersWithDamageEXT", w_eglSwapBuffersWithDamage },
@@ -1473,7 +1577,7 @@ const tl_bionic_entry tl_tab_egl[] = {
     { "eglQueryString", w_eglQueryString }, { "eglGetConfigs", w_eglGetConfigs }, { "eglChooseConfig", w_eglChooseConfig },
     { "eglGetConfigAttrib", w_eglGetConfigAttrib }, { "eglCreateContext", w_eglCreateContext },
     { "eglDestroyContext", w_eglDestroyContext }, { "eglCreateWindowSurface", w_eglCreateWindowSurface },
-    { "eglCreatePbufferSurface", w_eglCreatePbufferSurface }, { "eglDestroySurface", w_eglDestroySurface },
+    { "eglCreatePbufferSurface", w_eglCreatePbufferSurface }, { "eglDestroySurface", w_eglDestroySurface_session },
     { "eglQuerySurface", w_eglQuerySurface }, { "eglSurfaceAttrib", w_eglSurfaceAttrib }, { "eglMakeCurrent", w_eglMakeCurrent },
     { "eglSwapBuffers", w_eglSwapBuffers }, { "eglSwapInterval", w_eglSwapInterval },
     { "eglSwapBuffersWithDamageKHR", w_eglSwapBuffersWithDamage }, { "eglSwapBuffersWithDamageEXT", w_eglSwapBuffersWithDamage },

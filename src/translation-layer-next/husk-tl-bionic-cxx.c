@@ -29,13 +29,13 @@
 
 static void *b_new(size_t n)
 {
-    void *p = malloc(n ? n : 1);
+    void *p = tl_guest_malloc(n ? n : 1, __builtin_return_address(0));
     if (!p) { tl_log_line("cxx: operator new(%zu) failed", n); abort(); }
     return p;
 }
-static void *b_new_nothrow(size_t n, const void *nt) { (void)nt; return malloc(n ? n : 1); }
-static void b_delete(void *p) { free(p); }
-static void b_delete_sized(void *p, size_t n) { (void)n; free(p); }
+static void *b_new_nothrow(size_t n, const void *nt) { (void)nt; return tl_guest_malloc(n ? n : 1, __builtin_return_address(0)); }
+static void b_delete(void *p) { tl_guest_free(p); }
+static void b_delete_sized(void *p, size_t n) { (void)n; tl_guest_free(p); }
 
 static void b_cxa_pure_virtual(void)
 {

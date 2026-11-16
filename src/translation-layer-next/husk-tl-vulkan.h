@@ -29,6 +29,7 @@ void *tl_vk_resolve(const char *name);
 bool tl_vk_available(void);
 
 unsigned long tl_vk_frames_presented(void);
+void tl_vk_reset_session(void);
 
 #ifdef __cplusplus
 }

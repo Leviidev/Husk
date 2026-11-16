@@ -216,16 +216,19 @@ typedef struct looper {
     pthread_mutex_t mu;
     pthread_cond_t cv;
     ev *head;
-    bool started, quit;
+    bool started, quit, thread_valid;
+    pthread_t thread;
     char name[48];
     jobj *mirror;                       /* the android.os.Looper object */
     jobj *choreographer;
+    struct looper *next;
 } looper;
 
 typedef struct handler { looper *lp; jobj *callback; } handler;
 
 static __thread looper *t_looper;
 static looper *g_main;
+static looper *g_loopers;
 static pthread_mutex_t g_main_mu = PTHREAD_MUTEX_INITIALIZER;
 static void *looper_thread(void *arg);
 
@@ -238,23 +241,25 @@ static looper *looper_new(const char *name)
     l->mirror = tl_jni_new_object(C("android/os/Looper"));
     l->mirror->native = l;
     tl_jni_ref(l->mirror);
+    pthread_mutex_lock(&g_main_mu);
+    l->next = g_loopers;
+    g_loopers = l;
+    pthread_mutex_unlock(&g_main_mu);
     return l;
 }
 
 static void looper_start(looper *l)
 {
     pthread_mutex_lock(&l->mu);
-    bool go = !l->started;
+    if (l->started || l->quit) { pthread_mutex_unlock(&l->mu); return; }
     l->started = true;
-    pthread_mutex_unlock(&l->mu);
-    if (!go) return;
     pthread_attr_t a;
     pthread_attr_init(&a);
     pthread_attr_setstacksize(&a, 4u << 20);
-    pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
-    pthread_t t;
-    if (pthread_create(&t, &a, looper_thread, l)) tl_log_line("looper: could not start '%s'", l->name);
+    if (pthread_create(&l->thread, &a, looper_thread, l) == 0) l->thread_valid = true;
+    else tl_log_line("looper: could not start '%s'", l->name);
     pthread_attr_destroy(&a);
+    pthread_mutex_unlock(&l->mu);
 }
 
 static looper *main_looper(void)
@@ -719,6 +724,48 @@ static const tl_jhle k_loop_hle[] = {
 };
 
 jobj *tl_loop_main_looper(void) { return main_looper()->mirror; }
+
+void tl_loop_begin_close(void)
+{
+    pthread_mutex_lock(&g_main_mu);
+    for (looper *l = g_loopers; l; l = l->next) {
+        pthread_mutex_lock(&l->mu);
+        l->quit = true;
+        pthread_cond_broadcast(&l->cv);
+        pthread_mutex_unlock(&l->mu);
+    }
+    pthread_mutex_unlock(&g_main_mu);
+}
+
+void tl_loop_reset_session(void)
+{
+    pthread_mutex_lock(&g_main_mu);
+    looper *list = g_loopers;
+    g_loopers = NULL;
+    g_main = NULL;
+    pthread_mutex_unlock(&g_main_mu);
+    t_looper = NULL;
+
+    for (looper *l = list; l; l = l->next) {
+        pthread_mutex_lock(&l->mu);
+        l->quit = true;
+        pthread_cond_broadcast(&l->cv);
+        pthread_mutex_unlock(&l->mu);
+    }
+    while (list) {
+        looper *l = list;
+        list = l->next;
+        if (l->thread_valid) pthread_join(l->thread, NULL);
+        ev *e = l->head;
+        l->head = NULL;
+        while (e) { ev *nx = e->next; ev_free(e); e = nx; }
+        if (l->mirror) { l->mirror->native = NULL; tl_jni_unref(l->mirror); l->mirror = NULL; }
+        if (l->choreographer) { l->choreographer->native = NULL; tl_jni_unref(l->choreographer); l->choreographer = NULL; }
+        pthread_cond_destroy(&l->cv);
+        pthread_mutex_destroy(&l->mu);
+        free(l);
+    }
+}
 
 void tl_loop_install(void)
 {

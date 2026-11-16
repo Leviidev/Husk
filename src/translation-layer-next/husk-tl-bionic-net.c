@@ -189,6 +189,7 @@ static int b_socket(int domain, int type, int protocol)
         if (type & G_SOCK_NONBLOCK) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(fd);
         net_track_fd(fd);
+        tl_io_note_guest_fd(fd);
     }
     TL_ERRNO_END();
     return fd;
@@ -205,6 +206,7 @@ static int b_socketpair(int domain, int type, int protocol, int *sv)
         if (type & G_SOCK_NONBLOCK) fcntl(sv[i], F_SETFL, fcntl(sv[i], F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(sv[i]);
         net_track_fd(sv[i]);
+        tl_io_note_guest_fd(sv[i]);
     }
     TL_ERRNO_END();
     return r;
@@ -249,6 +251,7 @@ static int accept_common(int fd, void *g, socklen_t *glen, int flags)
         if (flags & G_SOCK_NONBLOCK) fcntl(c, F_SETFL, fcntl(c, F_GETFL) | O_NONBLOCK);
         quiet_sigpipe(c);
         net_track_fd(c);
+        tl_io_note_guest_fd(c);
         if (g && glen) *glen = sa_from_darwin((struct sockaddr *)&s, g, *glen);
     }
     TL_ERRNO_END();

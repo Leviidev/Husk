@@ -28,6 +28,7 @@ extern "C" {
  */
 /* Describe the driver as OpenGL ES 3.1 and write the game's "#version 310 es" shaders down to 300 es (see husk-tl-egl-es31.inc) */
 void tl_egl_es31_shim(bool on);
+void tl_egl_es3_claim(int minor);
 void tl_egl_offscreen_windows(bool on);     /* window surfaces are off-screen buffers: the layer belongs to another API (Vulkan) */
 bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_dir, int frame_every);
 
@@ -46,6 +47,10 @@ void tl_egl_compositor_frame_end(unsigned tex);
 void tl_egl_compositor_frame_reset(void *context, bool current);
 /* Diagnostic sampling only: discard idle/old-session samples on pause/stop. */
 void tl_egl_frame_perf_set_active(bool active);
+/* Release thread-local EGL context/bindings on forced worker retirement and
+ * destroy leftover guest contexts/surfaces when resetting between sessions. */
+void tl_egl_thread_detach(void);
+void tl_egl_reset_session(void);
 
 #ifdef __cplusplus
 }

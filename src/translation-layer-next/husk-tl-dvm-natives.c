@@ -188,6 +188,41 @@ NAT(String_intern)
 /* The canonical copy of a string (String.intern): every string literal goes through here, so equal literals are one object across
  * classes and dex files, as Java promises -- code compares them with == (p4a's AssetExtract: method == "private"). */
 jobj *dvm_intern(jobj *s) { jvalue r; if (!s || !String_intern(s, NULL, &r) || !r.l) return s; return r.l; }
+
+void tl_dvm_prune_interned(bool (*is_alive)(const jobj *o))
+{
+    if (!is_alive) return;
+    pthread_mutex_lock(&g_intern_lock);
+    if (g_interned && g_icap) {
+        uint32_t kept = 0;
+        for (uint32_t i = 0; i < g_icap; i++) if (g_interned[i] && is_alive(g_interned[i])) kept++;
+        uint32_t cap = 65536;
+        while (cap < (kept + 1) * 2) cap *= 2;
+        if (!kept) {
+            free(g_interned);
+            g_interned = NULL;
+            g_icap = 0;
+            g_icount = 0;
+        } else {
+            jobj **t = calloc(cap, sizeof(*t));
+            if (t) {
+                for (uint32_t i = 0; i < g_icap; i++) {
+                    jobj *o = g_interned[i];
+                    if (!o || !is_alive(o)) continue;
+                    int32_t m; const uint16_t *u = chars(o, &m);
+                    uint32_t k = str_hash(u, m) & (cap - 1);
+                    while (t[k]) k = (k + 1) & (cap - 1);
+                    t[k] = o;
+                }
+                free(g_interned);
+                g_interned = t;
+                g_icap = cap;
+                g_icount = kept;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_intern_lock);
+}
 NAT(String_toCharArray)
 {
     (void)a;
@@ -522,17 +557,17 @@ NAT(VMR_properties)
     *ret = L(string_array(v, (int)(sizeof(v) / sizeof(v[0]))));
     return true;
 }
+static jobj *g_vm_runtime;
 NAT(VMR_getRuntime)
 {
     UNUSED;
-    static jobj *rt;
-    if (!rt) {
+    if (!g_vm_runtime) {
         tl_jclass *jc = dvm_class_named("dalvik/system/VMRuntime");
         if (!jc) { *ret = L(NULL); return true; }
-        rt = dvm_new_object(jc);
-        rt->refs = 1u << 30;
+        g_vm_runtime = dvm_new_object(jc);
+        g_vm_runtime->refs = 1u << 30;
     }
-    *ret = L(rt);
+    *ret = L(g_vm_runtime);
     return true;
 }
 NAT(VMR_zero) { UNUSED; ret->j = 0; return true; }
@@ -612,7 +647,10 @@ NAT(Thread_sleep)
     int64_t ms = a[1].j; int32_t ns = a[2].i;
     if (ms < 0 || ns < 0 || ns > 999999) return dvm_throw("java/lang/IllegalArgumentException", "bad sleep time");
     int64_t total_ns = ms > (INT64_MAX - ns) / 1000000ll ? INT64_MAX : ms * 1000000ll + ns;
-    if (tl_guest_session_wait_close(total_ns)) return dvm_throw("java/lang/InterruptedException", "session closing");
+    if (tl_guest_session_wait_close(total_ns)) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        return dvm_throw("java/lang/InterruptedException", "session closing");
+    }
     return true;
 }
 NAT(Thread_false) { UNUSED; *ret = Z(false); return true; }
@@ -752,6 +790,7 @@ static void *thread_main(void *p)
     pthread_cleanup_push(tl_guest_thread_release, (void *)(uintptr_t)tracked);
     tl_guest_pool_begin();
     pthread_cleanup_push(tl_guest_pool_end, NULL);
+    tl_guest_thread_set_retirable(true);
     jobj *t = t_thread;
     tl_qos_apply_java_priority(thread_java_priority(t));
     jvalue nm; dvm_class *c = dvm_class_of(dvm_object_class(t));
@@ -760,28 +799,33 @@ static void *thread_main(void *p)
     dvm_method *run = dvm_find_virtual(dvm_object_class(t), "run", "()V");
     jvalue r;
     if (run && !dvm_call(run, t, NULL, &r)) {
-        char buf[400];
-        tl_log_line("dvm: uncaught exception in a thread: %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
-        /* the thread's (or the default) uncaught exception handler gets it, as on Android */
-        jobj *e = tl_jni_pending_object();
-        if (e) {   /* where it came from, briefly */
-            tl_jni_clear();
-            jvalue a1[1], st; a1[0].j = 0; a1[0].l = e;
-            if (tl_dvm_call_static("android/util/Log", "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;", a1, &st)) {
-                const char *tx = tl_jni_string(st.l);
-                for (int ln = 0; tx && *tx && ln < 10; ln++) {
-                    const char *nl = strchr(tx, '\n');
-                    if (ln) tl_log_line("dvm:   %.*s", nl ? (int)(nl - tx) : (int)strlen(tx), tx);
-                    tx = nl ? nl + 1 : NULL;
+        if (tl_guest_session_force_stopping()) {
+            tl_jni_set_pending(NULL);
+        } else {
+            char buf[400];
+            tl_log_line("dvm: uncaught exception in a thread: %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
+            /* the thread's (or the default) uncaught exception handler gets it, as on Android */
+            jobj *e = tl_jni_pending_object();
+            if (e) {   /* where it came from, briefly */
+                tl_jni_clear();
+                jvalue a1[1], st; a1[0].j = 0; a1[0].l = e;
+                if (tl_dvm_call_static("android/util/Log", "getStackTraceString", "(Ljava/lang/Throwable;)Ljava/lang/String;", a1, &st)) {
+                    const char *tx = tl_jni_string(st.l);
+                    for (int ln = 0; tx && *tx && ln < 10; ln++) {
+                        const char *nl = strchr(tx, '\n');
+                        if (ln) tl_log_line("dvm:   %.*s", nl ? (int)(nl - tx) : (int)strlen(tx), tx);
+                        tx = nl ? nl + 1 : NULL;
+                    }
                 }
+                tl_jni_clear();
+                tl_jni_set_pending(e);
             }
-            tl_jni_clear();
-            tl_jni_set_pending(e);
+            tl_jni_set_pending(NULL);
+            dvm_method *d = e ? dvm_find_virtual(dvm_object_class(t), "dispatchUncaughtException", "(Ljava/lang/Throwable;)V") : NULL;
+            if (d) { jvalue arg; arg.j = 0; arg.l = e; jvalue r2; if (!dvm_call(d, t, &arg, &r2)) tl_jni_set_pending(NULL); }
         }
-        tl_jni_set_pending(NULL);
-        dvm_method *d = e ? dvm_find_virtual(dvm_object_class(t), "dispatchUncaughtException", "(Ljava/lang/Throwable;)V") : NULL;
-        if (d) { jvalue arg; arg.j = 0; arg.l = e; jvalue r2; if (!dvm_call(d, t, &arg, &r2)) tl_jni_set_pending(NULL); }
     }
+    tl_guest_thread_set_retirable(false);
     /* the thread is over: no longer alive, and whoever joins it wakes */
     dvm_field *pf = thread_peer(t);
     if (pf) dvm_slots(t)[pf->slot].j = 0;
@@ -793,6 +837,7 @@ static void *thread_main(void *p)
     if (!lf) { dvm_class *tc = dvm_class_of(dvm_class_named("java/lang/Thread")); lf = tc ? dvm_find_field(tc, "lock", false) : NULL; }
     jobj *lk = lf ? dvm_slots(t)[lf->slot].l : NULL;
     if (lk) { dvm_monitor_enter(lk); dvm_monitor_notify(lk, true); dvm_monitor_exit(lk); }
+    t_thread = NULL;
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
     return NULL;
@@ -2248,3 +2293,4 @@ dvm_native_fn dvm_fast_path(const char *cls, const char *name, const char *sig)
 }
 
 void dvm_natives_init(void) {}
+void tl_dvm_natives_reset_session(void) { g_vm_runtime = NULL; t_thread = NULL; }

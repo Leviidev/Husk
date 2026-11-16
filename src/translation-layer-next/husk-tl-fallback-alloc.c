@@ -16,12 +16,13 @@
 
 #define FB_SLOTS 512
 
-typedef struct { uintptr_t base; size_t mapped, requested; } fb_slot;
+typedef struct { uintptr_t base; size_t mapped, requested; unsigned epoch; } fb_slot;
 
 static fb_slot g_slots[FB_SLOTS];
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Lets free() of an ordinary pointer skip the lock while no block is live. */
 static atomic_size_t g_live;
+static atomic_uint g_epoch;
 
 static size_t page_size(void)
 {
@@ -55,6 +56,7 @@ void *tl_fb_alloc(size_t n)
     g_slots[free_slot].base = (uintptr_t)m;
     g_slots[free_slot].mapped = mapped;
     g_slots[free_slot].requested = n;
+    g_slots[free_slot].epoch = atomic_load_explicit(&g_epoch, memory_order_acquire);
     atomic_fetch_add_explicit(&g_live, 1, memory_order_release);
     pthread_mutex_unlock(&g_lock);
     return m;
@@ -105,4 +107,34 @@ bool tl_fb_release(void *p)
 size_t tl_fb_live(void)
 {
     return atomic_load_explicit(&g_live, memory_order_acquire);
+}
+
+void tl_fb_set_epoch(unsigned epoch)
+{
+    atomic_store_explicit(&g_epoch, epoch, memory_order_release);
+}
+
+size_t tl_fb_reset_session(unsigned epoch)
+{
+    if (!epoch) return 0;
+    size_t freed = 0;
+    for (;;) {
+        void *base = NULL;
+        size_t mapped = 0;
+        pthread_mutex_lock(&g_lock);
+        for (int i = 0; i < FB_SLOTS; i++) {
+            if (g_slots[i].base && g_slots[i].epoch == epoch) {
+                base = (void *)g_slots[i].base;
+                mapped = g_slots[i].mapped;
+                g_slots[i].base = 0; g_slots[i].mapped = 0; g_slots[i].requested = 0; g_slots[i].epoch = 0;
+                atomic_fetch_sub_explicit(&g_live, 1, memory_order_release);
+                break;
+            }
+        }
+        pthread_mutex_unlock(&g_lock);
+        if (!base) break;
+        munmap(base, mapped);
+        freed++;
+    }
+    return freed;
 }

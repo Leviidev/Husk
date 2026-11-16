@@ -154,11 +154,11 @@ static void EOS_orientation(tl_jcall *c) { c->ret = vi(1); }
 static void EOS_zeroLong(tl_jcall *c) { c->ret = vj(0); }
 
 /* android.app.ActivityThread, which native code reaches through the hidden API to find the application's Context */
+static jobj *g_ue4_thread;
 static void AT_current(tl_jcall *c)
 {
-    static jobj *thread;
-    if (!thread) thread = tl_jni_new_object(tl_jni_class("android/app/ActivityThread"));
-    c->ret = vl(tl_jni_ref(thread));
+    if (!g_ue4_thread) g_ue4_thread = tl_jni_new_object(tl_jni_class("android/app/ActivityThread"));
+    c->ret = vl(tl_jni_ref(g_ue4_thread));
 }
 
 static void GA_get(tl_jcall *c) { c->ret = vl(U.activity ? tl_jni_ref(U.activity) : NULL); }
@@ -267,3 +267,4 @@ void tl_ue4_hle_install(const char *pkg, const char *apk, const char *data, cons
 }
 
 void tl_ue4_set_activity(jobj *activity) { U.activity = activity; }
+void tl_ue4_reset_session(void) { U.activity = NULL; g_ue4_thread = NULL; }

@@ -149,14 +149,15 @@ done:
 }
 
 /* The game's own Java helpers (com.vectorunit.Vu*Helper): one instance each, and calls that have no answer here (ads, billing, analytics, notifications) do nothing. */
+static jobj *g_sdl_helpers[7];
 static jobj *singleton(const char *cls, jobj **slot) { if (!*slot) *slot = tl_jni_new_object(tl_jni_class(cls)); return tl_jni_ref(*slot); }
-#define HELPER(fn, cls) static void fn(tl_jcall *c) { static jobj *o; c->ret = vl(singleton(cls, &o)); }
-HELPER(H_sys, "com/vectorunit/VuSysHelper")
-HELPER(H_billing, "com/vectorunit/VuBillingHelper")
-HELPER(H_age, "com/vectorunit/VuAgeHelper")
-HELPER(H_ad, "com/vectorunit/VuAdHelper")
-HELPER(H_analytics, "com/vectorunit/VuAnalyticsHelper")
-HELPER(H_notification, "com/vectorunit/VuNotificationHelper")
+#define HELPER(idx, fn, cls) static void fn(tl_jcall *c) { c->ret = vl(singleton(cls, &g_sdl_helpers[idx])); }
+HELPER(0, H_sys, "com/vectorunit/VuSysHelper")
+HELPER(1, H_billing, "com/vectorunit/VuBillingHelper")
+HELPER(2, H_age, "com/vectorunit/VuAgeHelper")
+HELPER(3, H_ad, "com/vectorunit/VuAdHelper")
+HELPER(4, H_analytics, "com/vectorunit/VuAnalyticsHelper")
+HELPER(5, H_notification, "com/vectorunit/VuNotificationHelper")
 static void H_signature(tl_jcall *c) { c->ret = vl(tl_jni_new_string(S.signature)); }
 static void H_alert(tl_jcall *c) { tl_log_line("sdl: the game shows an alert: \"%s\" / \"%s\"", Str(c->args[0].l), Str(c->args[1].l)); }
 static void H_toast(tl_jcall *c) { tl_log_line("sdl: the game shows a toast: \"%s\"", Str(c->args[0].l)); }
@@ -181,7 +182,7 @@ static void H_refreshInsets(tl_jcall *c)
 void tl_sdl_set_safe_insets(int left, int top, int right, int bottom) { g_inset_l = left; g_inset_t = top; g_inset_r = right; g_inset_b = bottom; }
 
 /* Game services: nobody is signed in to Google Play Games; the game is told so when it asks, and carries on. */
-HELPER(H_services, "com/vectorunit/VuGameServicesHelper")
+HELPER(6, H_services, "com/vectorunit/VuGameServicesHelper")
 static void H_startSignIn(tl_jcall *c)
 {
     (void)c;
@@ -1105,3 +1106,4 @@ void tl_sdl_set_paused(bool paused)
     void (*vv)(void *, void *) = find_native(SDLA, paused ? "nativePause" : "nativeResume", "()V");
     if (vv) vv(tl_jni_env(), tl_jni_class_object(SDLA));
 }
+void tl_sdl_reset_session(void) { S.activity = S.surface = NULL; memset(g_sdl_helpers, 0, sizeof(g_sdl_helpers)); }

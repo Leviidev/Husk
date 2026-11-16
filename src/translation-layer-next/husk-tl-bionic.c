@@ -31,6 +31,7 @@
 #include "husk-tl-qos.h"
 
 int tl_bionic_sched_yield(void);
+int tl_guest_sched_yield(void);
 
 /* ------------------------------------------------------------------ errno */
 
@@ -537,6 +538,22 @@ static void bionic___cxa_finalize(void *dso)
         if (!e.fn) return;
         e.fn(e.arg);
     }
+}
+
+/* Drop destructors registered by app-owned shared libraries without calling
+ * them after unmapping/retiring their owning session. System libs stay alive. */
+void tl_bionic_reset_session(void)
+{
+    pthread_mutex_lock(&g_atexit_lock);
+    int keep = 0;
+    for (int i = 0; i < g_natexit; i++) {
+        atexit_ent e = g_atexit[i];
+        if (!e.fn) continue;
+        if (tl_ld_is_app_code((const void *)e.fn) || (e.dso && tl_ld_is_app_code(e.dso))) continue;
+        g_atexit[keep++] = e;
+    }
+    g_natexit = keep;
+    pthread_mutex_unlock(&g_atexit_lock);
 }
 
 /* -------------------------------------------------------- system queries */

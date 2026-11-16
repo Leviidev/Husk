@@ -179,6 +179,35 @@ static pthread_mutex_t g_big = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 /* The table is added to under g_big and read without it (tl_ld_covers, from any thread): a library is published after its
  * slot is written (release), and readers take the count with acquire, so a reader never sees a count whose slot is not yet
  * written (Picsart: a thread in tl_ld_covers read a NULL library while another loaded libpilibs.so). */
+static struct { uintptr_t start, end; } g_app_ranges[MAX_LIBS];
+static _Atomic int g_napp_ranges;
+
+bool tl_ld_is_app_code(const void *addr)
+{
+    uintptr_t p = (uintptr_t)addr;
+    if (!p) return false;
+    int n = atomic_load_explicit(&g_napp_ranges, memory_order_acquire);
+    for (int i = 0; i < n; i++) {
+        if (p >= g_app_ranges[i].start && p < g_app_ranges[i].end) return true;
+    }
+    return false;
+}
+
+static void record_app_range(tl_lib *L)
+{
+    if (!L || L->system || !L->rx || !L->size) return;
+    uintptr_t s = (uintptr_t)L->rx, e = s + L->size;
+    int n = atomic_load_explicit(&g_napp_ranges, memory_order_relaxed);
+    for (int i = 0; i < n; i++) {
+        if (g_app_ranges[i].start == s && g_app_ranges[i].end == e) return;
+    }
+    if (n < MAX_LIBS) {
+        g_app_ranges[n].start = s;
+        g_app_ranges[n].end = e;
+        atomic_store_explicit(&g_napp_ranges, n + 1, memory_order_release);
+    }
+}
+
 static inline int nlibs_acq(void) { return __atomic_load_n(&G.nlibs, __ATOMIC_ACQUIRE); }
 static inline void publish_lib(tl_lib *L) { int n = G.nlibs; G.libs[n] = L; __atomic_store_n(&G.nlibs, n + 1, __ATOMIC_RELEASE); }
 
@@ -239,6 +268,11 @@ static void *(*g_plt_filter)(tl_lib *, const char *, void *);
 static void reset_app_bindings(void);
 void tl_ld_set_plt_filter(void *(*filter)(tl_lib *, const char *, void *)) { g_plt_filter = filter; }
 
+#define MAX_TLS_MODULES 16
+static struct { tl_lib *lib; uint64_t init_vaddr, filesz, memsz, align; uint32_t gen; bool system; } g_tlsmod[MAX_TLS_MODULES + 1];
+static int g_ntls;
+static uint32_t g_tls_gen;
+
 void tl_ld_reset_session(void)
 {
     pthread_mutex_lock(&g_big);
@@ -249,6 +283,18 @@ void tl_ld_reset_session(void)
     g_nsplits = 0;
     memset(g_apk_paths, 0, sizeof(g_apk_paths));
     memset(g_splits, 0, sizeof(g_splits));
+    int keep_tls = 0;
+    for (int i = 1; i <= g_ntls && i <= MAX_TLS_MODULES; i++) {
+        if (g_tlsmod[i].lib && g_tlsmod[i].system) {
+            keep_tls = i;
+        } else {
+            g_tlsmod[i].lib = NULL;
+            g_tlsmod[i].system = false;
+            g_tlsmod[i].gen++;
+        }
+    }
+    g_ntls = keep_tls;
+    atomic_store_explicit(&g_napp_ranges, 0, memory_order_release);
     int keep = 0;
     for (int i = 0; i < nlibs_acq(); i++) {
         tl_lib *L = G.libs[i];
@@ -1774,14 +1820,11 @@ static void patch_image(tl_lib *L, size_t *a, size_t *b, size_t *c, size_t *d) {
  * fixed address (see the tpidr patch), so the function answers with the distance from that fixed address to this thread's copy of the variable. It is called
  * where the compiler expects an ordinary instruction, so it must leave every register but x0 and x1 as it found them -- hence the assembly.
  */
-#define MAX_TLS_MODULES 16
-static struct { tl_lib *lib; uint64_t init_vaddr, filesz, memsz, align; } g_tlsmod[MAX_TLS_MODULES + 1];
-static int g_ntls;
 static pthread_key_t g_tls_key;
 static pthread_once_t g_tls_once = PTHREAD_ONCE_INIT;
 static atomic_bool g_tls_key_ready;
 
-typedef struct { void *blk[MAX_TLS_MODULES + 1]; } tls_thread;
+typedef struct { void *blk[MAX_TLS_MODULES + 1]; uint32_t gen[MAX_TLS_MODULES + 1]; } tls_thread;
 static void tls_thread_free(void *p) { tls_thread *t = p; for (int i = 0; i <= MAX_TLS_MODULES; i++) free(t->blk[i]); free(t); }
 static void tls_key_init(void)
 {
@@ -1792,9 +1835,14 @@ static void tls_key_init(void)
 static void *tls_block(unsigned module)
 {
     if (__builtin_expect(!atomic_load_explicit(&g_tls_key_ready, memory_order_acquire), 0)) pthread_once(&g_tls_once, tls_key_init);
-    if (module == 0 || module > (unsigned)g_ntls) return NULL;
+    if (module == 0 || module > MAX_TLS_MODULES || !g_tlsmod[module].lib) return NULL;
     tls_thread *t = pthread_getspecific(g_tls_key);
     if (!t) { t = calloc(1, sizeof(*t)); pthread_setspecific(g_tls_key, t); }
+    uint32_t gen = g_tlsmod[module].gen;
+    if (t->blk[module] && t->gen[module] != gen) {
+        free(t->blk[module]);
+        t->blk[module] = NULL;
+    }
     if (!t->blk[module]) {
         uint64_t al = g_tlsmod[module].align < 16 ? 16 : g_tlsmod[module].align;
         void *b = NULL;
@@ -1803,6 +1851,7 @@ static void *tls_block(unsigned module)
         const tl_lib *L = g_tlsmod[module].lib;
         if (g_tlsmod[module].filesz) memcpy(b, waddr(L, g_tlsmod[module].init_vaddr - L->base_vaddr), (size_t)g_tlsmod[module].filesz);
         t->blk[module] = b;
+        t->gen[module] = gen;
     }
     return t->blk[module];
 }
@@ -2770,10 +2819,17 @@ static tl_lib *map_library(const char *name, uint8_t *file, size_t flen)
     L->phdr = phs; L->phnum = eh->e_phnum;
     load_unwind_ranges(L, file, flen, phs, eh->e_phnum);
     if (has_tls && !g_aot.on) {
-        if (g_ntls >= MAX_TLS_MODULES) { tl_log_line("ld: %s: too many libraries with thread-local storage", name); return NULL; }
-        L->tls_id = ++g_ntls;
-        g_tlsmod[L->tls_id].lib = L; g_tlsmod[L->tls_id].init_vaddr = tls_seg.p_vaddr; g_tlsmod[L->tls_id].filesz = tls_seg.p_filesz;
-        g_tlsmod[L->tls_id].memsz = tls_seg.p_memsz; g_tlsmod[L->tls_id].align = tls_seg.p_align;
+        int slot = 0;
+        for (int s = 1; s <= MAX_TLS_MODULES; s++) {
+            if (!g_tlsmod[s].lib) { slot = s; break; }
+        }
+        if (!slot) { tl_log_line("ld: %s: too many libraries with thread-local storage", name); return NULL; }
+        L->tls_id = slot;
+        if (slot > g_ntls) g_ntls = slot;
+        g_tlsmod[slot].lib = L; g_tlsmod[slot].init_vaddr = tls_seg.p_vaddr; g_tlsmod[slot].filesz = tls_seg.p_filesz;
+        g_tlsmod[slot].memsz = tls_seg.p_memsz; g_tlsmod[slot].align = tls_seg.p_align;
+        g_tlsmod[slot].gen = ++g_tls_gen;
+        g_tlsmod[slot].system = false;
     }
     for (int r = 0; r < ncode; r++) { L->code[r].start = code[r].vaddr; L->code[r].end = code[r].vaddr + code[r].size; }
     L->ncode = ncode;
@@ -3245,6 +3301,8 @@ static tl_lib *load_locked(const char *name, int depth, bool system)
     free(file);
     if (!L) return NULL;
     L->system = system;
+    if (L->tls_id > 0 && L->tls_id <= MAX_TLS_MODULES) g_tlsmod[L->tls_id].system = system;
+    record_app_range(L);
 
     /* Dependencies first, so everything this library binds against exists. */
     for (int i = 0; i < L->nneeded; i++) {

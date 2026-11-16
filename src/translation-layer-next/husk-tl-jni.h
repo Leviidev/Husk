@@ -33,10 +33,12 @@ typedef struct jobj jobj;               /* every jobject, jclass, jstring, jarra
 typedef struct tl_jclass tl_jclass;
 
 enum { TL_K_OBJECT, TL_K_CLASS, TL_K_STRING, TL_K_PRIM_ARRAY, TL_K_OBJ_ARRAY };
+enum { TL_GC_BOOT = 1, TL_GC_MARK = 2 };
 
 struct jobj {
     uint32_t refs;
     uint8_t kind;
+    uint8_t gc_flags;
     tl_jclass *cls;
     union {
         struct { char *utf8; uint16_t *u16; int32_t len16; } str;   /* u16: the UTF-16 form, made when the interpreter first needs it */
@@ -50,6 +52,7 @@ struct jobj {
     uint32_t nfields;
     void *native;                       /* an implementation's own state */
     void *monitor;
+    struct jobj *gc_prev, *gc_next;
 };
 
 /* What an implemented Java method receives. */
@@ -135,6 +138,8 @@ const char *tl_jni_reflected_sig(const jobj *member);        /* a method's or fi
 
 /* Call a Java method by name from C (HLE-implemented or not), as native code would. */
 jvalue tl_jni_call(jobj *self_or_class, const char *name, const char *sig, const jvalue *args);
+
+void tl_jni_mark_boot_objects(void);
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,7 @@ public final class Looper {
     /** Where touches and keys go: set by the driver's activity. */
     public interface InputSink { void deliver(int[] events); }
     public static void setInputSink(InputSink s) { sInput = s; }
+    public static void resetSession() { sMain = null; sInput = null; }
     static void deliverInput() {
         InputSink s = sInput;
         if (s == null) return;

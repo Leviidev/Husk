@@ -21,6 +21,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include "husk-tl-thread-clock.h"
 #include "husk-tl-jni.h"
 #include "husk-tl-session.h"
+#include "husk-tl-fallback-alloc.h"
 void tl_net_untrack_fd(int fd);
 
 #include <ctype.h>
@@ -855,9 +856,30 @@ static void fill_lib_standin_at(int dirfd, const char *name)
     snprintf(full, sizeof(full), "%s/%s", dir, name);
     fill_lib_standin(full);
 }
+static _Atomic unsigned g_guest_fd_epoch[4096];
+
+void tl_io_note_guest_fd(int fd)
+{
+    if (fd >= 3 && fd < 4096) {
+        unsigned ep = tl_guest_session_epoch();
+        if (ep) atomic_store_explicit(&g_guest_fd_epoch[fd], ep, memory_order_release);
+    }
+}
+
+void tl_io_untrack_guest_fd(int fd)
+{
+    if (fd >= 3 && fd < 4096) atomic_store_explicit(&g_guest_fd_epoch[fd], 0, memory_order_release);
+}
+
+static inline int note_fd(int fd)
+{
+    if (fd >= 0) tl_io_note_guest_fd(fd);
+    return fd;
+}
+
 static int b_open(const char *path, int flags, unsigned mode)
 {
-    if (husk_binder_is_path(path)) return husk_binder_open();
+    if (husk_binder_is_path(path)) return note_fd(husk_binder_open());
     char buf[1024]; static __thread char content[32768];
     jar_entry jar;
     if (jar_lookup(path, &jar)) {
@@ -872,7 +894,7 @@ static int b_open(const char *path, int flags, unsigned mode)
             TL_ERRNO_BEGIN(); fd = real ? open(real, O_RDONLY) : -1; TL_ERRNO_END();
         }
         ftrace_open_jar(path, fd);
-        return fd;
+        return note_fd(fd);
     }
     if (tl_android_data_ancestor_mode(path)) {
         tl_set_guest_errno(13);
@@ -881,12 +903,12 @@ static int b_open(const char *path, int flags, unsigned mode)
     }
     const char *real = tl_path_resolve(path, buf, sizeof(buf));
     if (real && (flags & 3) == 0) fill_lib_standin(real);
-    if (strstr(path, "/auxv")) { int afd = tl_synth_open(path); if (afd >= 0) return afd; }   /* binary, not text */
+    if (strstr(path, "/auxv")) { int afd = tl_synth_open(path); if (afd >= 0) return note_fd(afd); }   /* binary, not text */
     const char *s = synth_content(path, content, sizeof(content));
     if (s) {
         int fd = synth_file(s);
         if (fd < 0) tl_set_guest_errno(2);
-        return fd;
+        return note_fd(fd);
     }
     const vfile *vf = (flags & 3) == 0 ? vfile_find(path) : NULL;
     if (vf) {
@@ -896,7 +918,7 @@ static int b_open(const char *path, int flags, unsigned mode)
         TL_ERRNO_END();
         if (fd >= 0 && fd < 4096) g_vfd[fd] = (vfd){ true, vf->off, vf->size, 0 };
         { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s) -> %d (virtual: %llu bytes at %llu of %s)%s", path, fd, (unsigned long long)vf->size, (unsigned long long)vf->off, vf->host, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
-        return fd;
+        return note_fd(fd);
     }
     int dflags = oflags_to_darwin(flags);
     TL_ERRNO_BEGIN();
@@ -907,20 +929,22 @@ static int b_open(const char *path, int flags, unsigned mode)
     TL_ERRNO_END();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s, %#x) -> %d%s", path, flags, fd, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
     if (fd < 0 && e == ENOENT) tl_note_missing_file(path);
-    return fd;
+    return note_fd(fd);
 }
 static int b___open_2(const char *path, int flags) { return b_open(path, flags, 0); }
 static bool net_trace_fd(int fd);
 /* eventfds are pipes whose read end is the descriptor the guest holds: writes to it go to the other end, and closing it closes both */
 static int g_evfd_peer[1024];
-void tl_eventfd_register(int rd, int wr) { if (rd >= 0 && rd < 1024) g_evfd_peer[rd] = wr + 1; }
+void tl_eventfd_register(int rd, int wr) { if (rd >= 0 && rd < 1024) g_evfd_peer[rd] = wr + 1; tl_io_note_guest_fd(rd); }
 static int evfd_peer(int fd) { return fd >= 0 && fd < 1024 ? g_evfd_peer[fd] - 1 : -1; }
 static int b_close(int fd) {
     if (husk_binder_is_fd(fd)) husk_binder_close(fd);
     if (evfd_peer(fd) >= 0) { close(evfd_peer(fd)); g_evfd_peer[fd] = 0; }
+    tl_timerfd_close(fd);
     if (vfd_is(fd)) g_vfd[fd].on = false;
     bool sock = net_trace_fd(fd);
     tl_net_untrack_fd(fd);
+    tl_io_untrack_guest_fd(fd);
     TL_ERRNO_BEGIN(); int r = close(fd); tl_atomic_closed(fd); TL_ERRNO_END();
     if (sock) tl_log_line("net: close(fd %d)", fd);
     return r;
@@ -1020,11 +1044,11 @@ static long b_lseek(int fd, long off, int whence)
     }
     TL_ERRNO_BEGIN(); long r = lseek(fd, off, whence); TL_ERRNO_END(); return r;
 }
-static int b_dup(int fd) { TL_ERRNO_BEGIN(); int r = dup(fd); TL_ERRNO_END(); return r; }
+static int b_dup(int fd) { TL_ERRNO_BEGIN(); int r = dup(fd); TL_ERRNO_END(); return note_fd(r); }
 /* The host's stdin/stdout/stderr stay the host's: apps that send stdout/stderr to logcat dup2 a pipe over them (Waze), which
  * would swallow Husk's own log. The redirect is reported done; their pipe simply stays empty. */
-static int b_dup2(int a, int b) { if (b >= 0 && b <= 2 && a != b) return b; TL_ERRNO_BEGIN(); int r = dup2(a, b); if (r >= 0 && a != b) tl_atomic_closed(b); TL_ERRNO_END(); return r; }
-static int b_pipe(int fds[2]) { TL_ERRNO_BEGIN(); int r = pipe(fds); TL_ERRNO_END(); return r; }
+static int b_dup2(int a, int b) { if (b >= 0 && b <= 2 && a != b) return b; TL_ERRNO_BEGIN(); int r = dup2(a, b); if (r >= 0 && a != b) tl_atomic_closed(b); TL_ERRNO_END(); return note_fd(r); }
+static int b_pipe(int fds[2]) { TL_ERRNO_BEGIN(); int r = pipe(fds); TL_ERRNO_END(); if (r == 0) { tl_io_note_guest_fd(fds[0]); tl_io_note_guest_fd(fds[1]); } return r; }
 static int b_fsync(int fd) { TL_ERRNO_BEGIN(); int r = fsync(fd); TL_ERRNO_END(); return r; }
 static int b_ftruncate(int fd, long n) { TL_ERRNO_BEGIN(); int r = ftruncate(fd, n); TL_ERRNO_END(); return r; }
 static int b_truncate(const char *p, long n) { char b[1024]; TL_ERRNO_BEGIN(); int r = truncate(tl_path_resolve(p, b, sizeof(b)), n); TL_ERRNO_END(); return r; }
@@ -1479,19 +1503,59 @@ static int prot_filter(int prot, const char *what)
  * and expect it to come back clean. Darwin's MADV_DONTNEED keeps the contents, so the pages are
  * replaced with fresh ones at the same protection instead.
  */
-#define MAX_ANON 4096
+#define MAX_ANON 16384
 static struct { uintptr_t addr; size_t len; } g_anon[MAX_ANON];
+static unsigned g_anon_epoch[MAX_ANON];
 static int g_nanon;
 static pthread_mutex_t g_anon_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct { uintptr_t addr; size_t len; unsigned epoch; } g_file_mmap[4096];
+static int g_nfile_mmap;
+
+static void file_mmap_add(void *addr, size_t len)
+{
+    unsigned ep = tl_guest_session_epoch();
+    if (!ep) return;
+    pthread_mutex_lock(&g_anon_lock);
+    for (int i = 0; i < g_nfile_mmap; i++) {
+        uintptr_t a = g_file_mmap[i].addr, e = a + g_file_mmap[i].len;
+        if ((uintptr_t)addr < e && (uintptr_t)addr + len > a) { g_file_mmap[i] = g_file_mmap[--g_nfile_mmap]; i--; }
+    }
+    if (g_nfile_mmap < 4096) {
+        g_file_mmap[g_nfile_mmap].addr = (uintptr_t)addr;
+        g_file_mmap[g_nfile_mmap].len = len;
+        g_file_mmap[g_nfile_mmap].epoch = ep;
+        g_nfile_mmap++;
+    }
+    pthread_mutex_unlock(&g_anon_lock);
+}
+
+static void file_mmap_remove(uintptr_t addr, size_t len)
+{
+    uintptr_t end = addr + len;
+    pthread_mutex_lock(&g_anon_lock);
+    for (int i = 0; i < g_nfile_mmap; i++) {
+        uintptr_t a = g_file_mmap[i].addr, e = a + g_file_mmap[i].len;
+        if (end <= a || addr >= e) continue;
+        g_file_mmap[i] = g_file_mmap[--g_nfile_mmap];
+        i--;
+    }
+    pthread_mutex_unlock(&g_anon_lock);
+}
 
 static void anon_add(void *addr, size_t len)
 {
+    unsigned ep = tl_guest_session_epoch();
     pthread_mutex_lock(&g_anon_lock);
     for (int i = 0; i < g_nanon; i++) {                      /* replace anything this overlaps */
         uintptr_t a = g_anon[i].addr, e = a + g_anon[i].len;
-        if ((uintptr_t)addr < e && (uintptr_t)addr + len > a) { g_anon[i] = g_anon[--g_nanon]; i--; }
+        if ((uintptr_t)addr < e && (uintptr_t)addr + len > a) {
+            g_nanon--;
+            g_anon[i] = g_anon[g_nanon];
+            g_anon_epoch[i] = g_anon_epoch[g_nanon];
+            i--;
+        }
     }
-    if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = (uintptr_t)addr; g_anon[g_nanon].len = len; g_nanon++; }
+    if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = (uintptr_t)addr; g_anon[g_nanon].len = len; g_anon_epoch[g_nanon] = ep; g_nanon++; }
     pthread_mutex_unlock(&g_anon_lock);
 }
 
@@ -1505,13 +1569,17 @@ static void anon_remove(uintptr_t addr, size_t len)
         if (end <= a || addr >= e) continue;
         uintptr_t left = addr > a ? addr - a : 0;
         uintptr_t right_a = end < e ? end : e, right = e > right_a ? e - right_a : 0;
+        unsigned ep = g_anon_epoch[i];
         if (left) {
             g_anon[i].len = left;
-            if (right && g_nanon < MAX_ANON) { g_anon[g_nanon].addr = right_a; g_anon[g_nanon].len = right; g_nanon++; }
+            if (right && g_nanon < MAX_ANON) { g_anon[g_nanon].addr = right_a; g_anon[g_nanon].len = right; g_anon_epoch[g_nanon] = ep; g_nanon++; }
         } else if (right) {
             g_anon[i].addr = right_a; g_anon[i].len = right;
         } else {
-            g_anon[i] = g_anon[--g_nanon]; i--;
+            g_nanon--;
+            g_anon[i] = g_anon[g_nanon];
+            g_anon_epoch[i] = g_anon_epoch[g_nanon];
+            i--;
         }
     }
     pthread_mutex_unlock(&g_anon_lock);
@@ -1798,6 +1866,7 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
         tl_set_guest_errno(13); r = MAP_FAILED;
     }
     if (r != MAP_FAILED && (flags & 0x20)) anon_add(r, len);
+    else if (r != MAP_FAILED) file_mmap_add(r, len);
     mm_trace("mmap", r, len, prot, flags);
     if (r == MAP_FAILED) tl_log_line("mm: mmap FAILED len=%#zx prot=%d flags=%#x errno=%d", len, prot, flags, errno);
     return r;
@@ -1816,6 +1885,7 @@ static int b_munmap(void *a, size_t l)
     size_t real = phantom_clamp((uintptr_t)a, l);
     if (real == 0) return 0;                                 /* the half of a phantom range that was never mapped */
     anon_remove((uintptr_t)a, real);
+    file_mmap_remove((uintptr_t)a, real);
     TL_ERRNO_BEGIN(); int r = munmap(a, real); TL_ERRNO_END(); mm_trace("munmap", a, real, r, errno); return r;
 }
 /* Whether a range is inside memory the guest mapped for itself (not a library's own pages). */
@@ -1967,13 +2037,29 @@ static int b_gettimeofday(int64_t *tv, void *tz)
 static int sleep_interruptible_ns(int64_t ns, struct timespec *rem)
 {
     if (rem) { rem->tv_sec = 0; rem->tv_nsec = 0; }
-    if (ns <= 0 || tl_guest_session_closing()) return 0;
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (ns <= 0) return 0;
+    if (tl_guest_session_closing()) {
+        if (tl_guest_session_wake_once()) return 0;
+        int64_t capped = ns > 20000000ll ? 20000000ll : ns;
+        if (capped >= 2000000ll) {
+            (void)tl_guest_session_wait_close(capped);
+            if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+            return 0;
+        }
+        struct timespec ts = { 0, (long)capped };
+        TL_ERRNO_BEGIN(); int r = nanosleep(&ts, rem); TL_ERRNO_END();
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        return r;
+    }
     if (ns >= 2000000ll) {
         (void)tl_guest_session_wait_close(ns);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         return 0;
     }
     struct timespec ts = { (time_t)(ns / 1000000000ll), (long)(ns % 1000000000ll) };
     TL_ERRNO_BEGIN(); int r = nanosleep(&ts, rem); TL_ERRNO_END();
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     return r;
 }
 static int b_nanosleep(const struct timespec *req, struct timespec *rem)
@@ -2253,6 +2339,7 @@ static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timesp
         return woken;
     }
     if (cmd == 0 || cmd == 9) {                                   /* FUTEX_WAIT / WAIT_BITSET */
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         pthread_mutex_lock(&g_fut[h].m);
         if (__atomic_load_n(addr, __ATOMIC_SEQ_CST) != val) { pthread_mutex_unlock(&g_fut[h].m); return -11; }
         fut_waiter me = { .addr = addr, .woken = false, .cv = PTHREAD_COND_INITIALIZER, .next = NULL };
@@ -2260,6 +2347,7 @@ static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timesp
         g_fut[h].tail = &me;
         if (g_futex_trace) { char nm[32] = ""; pthread_getname_np(pthread_self(), nm, sizeof(nm)); tl_log_line("futex[%s]: WAIT addr=%p val=%#x", nm, (void *)addr, val); }
         long r = 0;
+        bool retire = false;
         struct timespec rel = {0};
         if (to) {
             rel = *to;
@@ -2272,10 +2360,20 @@ static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timesp
             }
         }
         while (!me.woken) {
+            if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) {
+                fut_unlink(h, &me);
+                retire = true;
+                break;
+            }
             if (!to) {
                 if (tl_guest_session_closing()) {
+                    if (tl_guest_session_wake_once()) {
+                        fut_unlink(h, &me);
+                        r = -4; /* EINTR once per close transition */
+                        break;
+                    }
                     struct timespec cap = { 0, 20000000L };
-                    if (pthread_cond_timedwait_relative_np(&me.cv, &g_fut[h].m, &cap) == ETIMEDOUT && !me.woken) { fut_unlink(h, &me); r = -110; break; }
+                    (void)pthread_cond_timedwait_relative_np(&me.cv, &g_fut[h].m, &cap);
                     continue;
                 }
                 pthread_cond_wait(&me.cv, &g_fut[h].m);
@@ -2284,8 +2382,10 @@ static long futex_call(uint32_t *addr, int op, uint32_t val, const struct timesp
             if (pthread_cond_timedwait_relative_np(&me.cv, &g_fut[h].m, &rel) == ETIMEDOUT && !me.woken) { fut_unlink(h, &me); r = -110; break; }
             if (!me.woken) { rel.tv_sec = 0; rel.tv_nsec = 0; }   /* a spurious wake with a deadline: do not wait again past it */
         }
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) retire = true;
         pthread_mutex_unlock(&g_fut[h].m);
         pthread_cond_destroy(&me.cv);
+        if (retire) tl_guest_thread_retire();
         return r;
     }
     return -38;
@@ -2350,7 +2450,7 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     }
     case 62: { off_t r = lseek((int)a0, (off_t)a1, (int)a2); return r < 0 ? -tl_errno_to_guest(errno) : (long)r; }
     case 101: { int r = nanosleep((const struct timespec *)a0, (struct timespec *)a1); return r < 0 ? -tl_errno_to_guest(errno) : 0; }
-    case 124: { int tl_bionic_sched_yield(void); tl_bionic_sched_yield(); return 0; }
+    case 124: { int tl_guest_sched_yield(void); tl_guest_sched_yield(); return 0; }
     case 132: return 0;                                                                 /* sigaltstack: accepted (guest handlers are not installed) */
     /* memory and file status by raw system call (packers and protectors avoid libc): through the same shims as the calls */
     case 222: { void *r = b_mmap((void *)a0, (size_t)a1, (int)a2, (int)a3, (int)a4, a5); return r == (void *)-1 ? -*tl_guest_errno_ptr() : (long)r; }
@@ -2425,9 +2525,12 @@ static int b_poll(struct pollfd *fds, unsigned long n, int timeout)
     int r = 0;
     int remaining = timeout;
     for (;;) {
-        if (timeout != 0 && tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
-        int chunk = (remaining < 0 || remaining > 100) ? 100 : remaining;
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (timeout != 0 && tl_guest_session_closing() && tl_guest_session_wake_once()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        int cap = tl_guest_session_closing() ? 20 : 100;
+        int chunk = (remaining < 0 || remaining > cap) ? cap : remaining;
         TL_ERRNO_BEGIN(); r = poll(fds, (nfds_t)n, chunk); TL_ERRNO_END();
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         if (r > 0) r = poll_devices_via_select(fds, n, r);
         if (r != 0 || timeout == 0) break;
         if (remaining > 0) {
@@ -2449,13 +2552,16 @@ static int b_select(int n, fd_set *r, fd_set *w, fd_set *e, struct timeval *tv)
     if (tv) rem_us = (int64_t)tv->tv_sec * 1000000ll + tv->tv_usec;
     int x = 0, er = 0;
     for (;;) {
-        if (rem_us != 0 && tl_guest_session_closing()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        if (rem_us != 0 && tl_guest_session_closing() && tl_guest_session_wake_once()) { tl_set_guest_errno(4 /* EINTR */); return -1; }
         if (r) *r = r0;
         if (w) *w = w0;
         if (e) *e = e0;
-        int64_t chunk_us = (rem_us < 0 || rem_us > 100000ll) ? 100000ll : rem_us;
+        int64_t cap_us = tl_guest_session_closing() ? 20000ll : 100000ll;
+        int64_t chunk_us = (rem_us < 0 || rem_us > cap_us) ? cap_us : rem_us;
         struct timeval chunk_tv = { (long)(chunk_us / 1000000ll), (int)(chunk_us % 1000000ll) };
         TL_ERRNO_BEGIN(); x = select(n, r, w, e, &chunk_tv); er = errno; TL_ERRNO_END();
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         if (x != 0 || rem_us == 0) break;
         if (rem_us > 0) {
             rem_us -= chunk_us;
@@ -2544,7 +2650,7 @@ static int b_openat(int dirfd, const char *path, int flags, unsigned mode)
     if ((flags & 3) == 0) fill_lib_standin_at(dirfd, path);
     int dflags = oflags_to_darwin(flags);
     TL_ERRNO_BEGIN(); int fd = openat(dirfd, path, dflags, mode); if (fd >= 0 && (dflags & (O_CREAT | O_TRUNC))) tl_path_cache_invalidate(); TL_ERRNO_END();
-    return fd;
+    return note_fd(fd);
 }
 static int b_unlinkat(int dirfd, const char *path, int flags)
 {
@@ -2644,6 +2750,54 @@ static long b_pathconf(const char *p, int name)
 {
     (void)p;
     switch (name) { case 3: return 255; case 4: return 4096; case 5: return 4096; case 6: return 0x10000; default: return -1; }
+}
+
+void tl_io_reset_session(unsigned ended_epoch)
+{
+    if (!ended_epoch) return;
+    tl_timerfd_reset_session(ended_epoch);
+    for (int fd = 3; fd < 4096; fd++) {
+        if (atomic_load_explicit(&g_guest_fd_epoch[fd], memory_order_acquire) == ended_epoch) {
+            b_close(fd);
+        }
+    }
+    for (;;) {
+        uintptr_t addr = 0;
+        size_t len = 0;
+        bool from_anon = false;
+        pthread_mutex_lock(&g_anon_lock);
+        for (int i = 0; i < g_nanon; i++) {
+            if (g_anon_epoch[i] == ended_epoch) {
+                addr = g_anon[i].addr;
+                len = g_anon[i].len;
+                g_nanon--;
+                g_anon[i] = g_anon[g_nanon];
+                g_anon_epoch[i] = g_anon_epoch[g_nanon];
+                from_anon = true;
+                break;
+            }
+        }
+        if (!addr) {
+            for (int i = 0; i < g_nfile_mmap; i++) {
+                if (g_file_mmap[i].epoch == ended_epoch) {
+                    addr = g_file_mmap[i].addr;
+                    len = g_file_mmap[i].len;
+                    g_file_mmap[i] = g_file_mmap[--g_nfile_mmap];
+                    break;
+                }
+            }
+        }
+        pthread_mutex_unlock(&g_anon_lock);
+        if (!addr) break;
+        if (tl_xmem_contains((const void *)addr) || tl_ld_covers((const void *)addr, len)) continue;
+        if (from_anon) {
+            size_t real = phantom_clamp(addr, len);
+            if (real > 0) munmap((void *)addr, real);
+        } else if (len > 0) {
+            munmap((void *)addr, len);
+        }
+    }
+    (void)tl_fb_reset_session(ended_epoch);
 }
 
 const tl_bionic_entry tl_tab_io2[] = {

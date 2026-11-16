@@ -38,6 +38,9 @@ static struct {
     int version_code;
     jobj *activity, *resources, *assets, *appinfo, *pm, *display, *metrics, *config, *window, *wm, *looper, *handler;
 } H;
+static jobj *g_hle_svc_cache[32];
+static jobj *g_hle_app;
+static jobj *g_fmod_am;
 
 static jvalue vl(void *p) { jvalue v; v.j = 0; v.l = p; return v; }
 static jvalue vi(int i) { jvalue v; v.j = 0; v.i = i; return v; }
@@ -213,10 +216,9 @@ static void Context_getSystemService(tl_jcall *c)
     };
     for (size_t i = 0; i < sizeof(svc) / sizeof(svc[0]); i++) {
         if (!strcmp(n, svc[i].name)) {
-            static jobj *cache[32];
-            if (!cache[i]) cache[i] = make(svc[i].cls);
+            if (!g_hle_svc_cache[i]) g_hle_svc_cache[i] = make(svc[i].cls);
             if (!strcmp(n, "window")) { c->ret = vl(H.wm); return; }
-            c->ret = vl(cache[i]);
+            c->ret = vl(g_hle_svc_cache[i]);
             return;
         }
     }
@@ -692,7 +694,7 @@ static void Reflection_newProxyInstance(tl_jcall *c)
     tl_jni_set_field(p, "style", "I", vi(2));
     c->ret = vl(p);
 }
-static void Activity_getApplication(tl_jcall *c) { static jobj *app; if (!app) app = make("android/app/Application"); c->ret = vl(app); }
+static void Activity_getApplication(tl_jcall *c) { if (!g_hle_app) g_hle_app = make("android/app/Application"); c->ret = vl(g_hle_app); }
 static void Zero_int(tl_jcall *c) { c->ret = vi(0); }
 static void Unity_getNetworkConnectivity(tl_jcall *c) { c->ret = vi(2); }     /* ReachableViaLocalAreaNetwork: the phone has its network */
 
@@ -1114,9 +1116,8 @@ static void FMOD_isRunning(tl_jcall *c) { c->ret = vz(g_fmodex.running != 0); }
  * instance stops the engine's loading thread. One manager: no Bluetooth, no microphone, the built-in speaker. */
 static void FmodAM_getInstance(tl_jcall *c)
 {
-    static jobj *one;
-    if (!one) one = make("org/fmod/FmodAndroidAudioManager");
-    c->ret = vl(one);
+    if (!g_fmod_am) g_fmod_am = make("org/fmod/FmodAndroidAudioManager");
+    c->ret = vl(g_fmod_am);
 }
 static void RetFalse(tl_jcall *c) { c->ret = vz(0); }
 static void RetTrue(tl_jcall *c) { c->ret = vz(1); }
@@ -1518,4 +1519,18 @@ void tl_jni_hle_install(void)
     H.window = make("android/view/Window");
     tl_jni_set_static("com/unity3d/player/UnityPlayer", "currentActivity", "Landroid/app/Activity;", vl(H.activity));
     tl_jni_set_static("com/unity3d/player/UnityPlayer", "currentContext", "Landroid/content/Context;", vl(H.activity));
+}
+
+void tl_jni_hle_reset_session(void)
+{
+    if (g_fmodex.running) {
+        g_fmodex.running = 0;
+        pthread_join(g_fmodex.thread, NULL);
+    }
+    g_fmodex.self = NULL;
+    memset(g_hle_svc_cache, 0, sizeof(g_hle_svc_cache));
+    g_hle_app = NULL;
+    g_fmod_am = NULL;
+    H.activity = H.resources = H.assets = H.appinfo = H.pm = H.display = H.metrics = NULL;
+    H.config = H.window = H.wm = H.looper = H.handler = NULL;
 }

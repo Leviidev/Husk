@@ -7,6 +7,7 @@
  * its static constructors. Does not change game strings, fonts or registry. */
 void tl_trutien_text_probe(tl_lib *lib);
 void tl_trutien_text_set_package(const char *package_name);
+void tl_trutien_text_reset(void);
 bool tl_trutien_text_active(void);
 /* Called by the precompiled native entry filters. A counted stack argument is
  * restored on return; original strings and all other arguments are preserved. */

@@ -28,6 +28,7 @@
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-jni.h"
+#include "husk-tl-session.h"
 
 /* ---------------------------------------------------------------- looper */
 
@@ -39,20 +40,45 @@
 typedef struct looper_fd { int fd, ident, events; void *callback, *data; struct looper_fd *next; } looper_fd;
 typedef struct tl_looper { int wake[2]; atomic_int refs; pthread_t thread; struct tl_looper *next; pthread_mutex_t mu; looper_fd *fds; } tl_looper;
 static __thread tl_looper *t_looper;
+static tl_looper *g_loopers;
+static pthread_mutex_t g_looper_reg_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_once_t g_ndk_wake_once = PTHREAD_ONCE_INIT;
+
+static void b_ALooper_wake(tl_looper *l);
+
+static void tl_ndk_wake_all(void)
+{
+    pthread_mutex_lock(&g_looper_reg_mu);
+    for (tl_looper *l = g_loopers; l; l = l->next) b_ALooper_wake(l);
+    pthread_mutex_unlock(&g_looper_reg_mu);
+}
+
+static void ndk_wake_hook_init(void)
+{
+    tl_guest_register_wake_hook(tl_ndk_wake_all);
+}
 
 enum { ALOOPER_POLL_WAKE = -1, ALOOPER_POLL_CALLBACK = -2, ALOOPER_POLL_TIMEOUT = -3, ALOOPER_POLL_ERROR = -4 };
 enum { ALOOPER_EVENT_INPUT = 1, ALOOPER_EVENT_OUTPUT = 2, ALOOPER_EVENT_ERROR = 4, ALOOPER_EVENT_HANGUP = 8 };
 
 static tl_looper *looper_make(void)
 {
+    pthread_once(&g_ndk_wake_once, ndk_wake_hook_init);
     tl_looper *l = calloc(1, sizeof(*l));
     if (pipe(l->wake) == 0) {
         fcntl(l->wake[0], F_SETFL, O_NONBLOCK);
         fcntl(l->wake[1], F_SETFL, O_NONBLOCK);
+    } else {
+        l->wake[0] = -1;
+        l->wake[1] = -1;
     }
     atomic_init(&l->refs, 1);
     pthread_mutex_init(&l->mu, NULL);
     l->thread = pthread_self();
+    pthread_mutex_lock(&g_looper_reg_mu);
+    l->next = g_loopers;
+    g_loopers = l;
+    pthread_mutex_unlock(&g_looper_reg_mu);
     return l;
 }
 static void *b_ALooper_prepare(int opts) { (void)opts; if (!t_looper) t_looper = looper_make(); return t_looper; }
@@ -92,11 +118,16 @@ static int b_ALooper_removeFd(tl_looper *l, int fd)
 
 static int b_ALooper_pollOnce(int timeout_ms, int *out_fd, int *out_events, void **out_data)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     tl_looper *l = t_looper;
     if (out_fd) *out_fd = -1;
     if (out_events) *out_events = 0;
     if (out_data) *out_data = NULL;
     if (!l) return ALOOPER_POLL_ERROR;
+    if (tl_guest_session_closing()) {
+        if (tl_guest_session_wake_once()) return ALOOPER_POLL_WAKE;
+        if (timeout_ms < 0 || timeout_ms > 20) timeout_ms = 20;
+    }
     struct pollfd pfds[32];
     looper_fd snap[31];
     int n = 0;
@@ -110,6 +141,7 @@ static int b_ALooper_pollOnce(int timeout_ms, int *out_fd, int *out_events, void
     pthread_mutex_unlock(&l->mu);
     { static int tr = -1; if (tr < 0) tr = getenv("TL_LOOPER_TRACE") ? 2 : 0; if (tr) { char b[200]; int k = 0; for (int i = 0; i < n && k < 180; i++) k += snprintf(b + k, sizeof(b) - (size_t)k, " %d", pfds[i].fd); tl_log_line("looper: poll(%d ms) on%s", timeout_ms, b); } }
     int r = poll(pfds, (nfds_t)n, timeout_ms);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_LOOPER_TRACE") ? 2 : 0; if (tr) { char b[200]; int k = 0; for (int i = 0; i < n && k < 180; i++) if (pfds[i].revents) k += snprintf(b + k, sizeof(b) - (size_t)k, " %d:%x", pfds[i].fd, pfds[i].revents); tl_log_line("looper: poll -> %d:%s", r, b); } }
     if (r < 0) return ALOOPER_POLL_ERROR;
     if (r == 0) return ALOOPER_POLL_TIMEOUT;
@@ -404,6 +436,9 @@ static void b_AAudioStreamBuilder_setChannelCount(aa_builder *b, int n) { b->cha
 static void b_AAudioStreamBuilder_setChannelMask(aa_builder *b, uint32_t m) { b->channels = __builtin_popcount(m) == 1 ? 1 : 2; }
 static void b_AAudioStreamBuilder_setErrorCallback(aa_builder *b, void *cb, void *user) { (void)b; (void)cb; (void)user; }
 
+static aa_stream *g_aa_streams[32];
+static pthread_mutex_t g_aa_reg_mu = PTHREAD_MUTEX_INITIALIZER;
+
 static int b_AAudioStreamBuilder_openStream(aa_builder *b, aa_stream **out)
 {
     if (b->direction != 0) return AA_UNAVAILABLE;                   /* output only */
@@ -413,6 +448,9 @@ static int b_AAudioStreamBuilder_openStream(aa_builder *b, aa_stream **out)
     s->format = b->format == AA_FORMAT_FLOAT ? AA_FORMAT_FLOAT : AA_FORMAT_I16;
     s->channels = b->channels == 1 ? 1 : AA_CHANNELS;
     atomic_store(&s->state, AA_STATE_OPEN); atomic_store(&s->buffer_size, s->burst * 2);
+    pthread_mutex_lock(&g_aa_reg_mu);
+    for (int i = 0; i < 32; i++) if (!g_aa_streams[i]) { g_aa_streams[i] = s; break; }
+    pthread_mutex_unlock(&g_aa_reg_mu);
     *out = s;
     tl_log_line("aaudio: stream opened (%d Hz, %d channels, %s, %s, burst %d)", AA_RATE, s->channels, s->format == AA_FORMAT_FLOAT ? "float" : "16-bit",
                 s->cb ? "data callback" : "written", s->burst);
@@ -448,16 +486,17 @@ static void *aa_pump(void *arg)
     /* sized for the app's format (Unity asks for float: a 16-bit buffer was half what it wrote) and the full buffer capacity, as Android's is */
     size_t frame_bytes = (size_t)s->channels * (s->format == AA_FORMAT_FLOAT ? 4 : 2), cap = (size_t)(n > AA_BURST * 8 ? n : AA_BURST * 8);
     uint8_t *buf = calloc(cap, frame_bytes);
-    while (atomic_load(&s->run)) {
+    while (atomic_load(&s->run) && !tl_guest_session_closing()) {
         memset(buf, 0, (size_t)n * frame_bytes);
         int r = s->cb(s, s->user, buf, n);
-        if (!atomic_load(&s->run)) break;
+        if (!atomic_load(&s->run) || tl_guest_session_closing()) break;
         { static bool said; if (!said) { for (size_t i = 0; i < (size_t)n * frame_bytes; i++) if (buf[i]) { said = true; tl_log_line("aaudio: the game's first non-silent burst (byte %zu)", i); break; } } }
         aa_play(s, buf, n);
         atomic_fetch_add(&s->frames, n);
         if (r != 0) break;
     }
     free(buf);
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
     return NULL;
 }
 
@@ -478,7 +517,16 @@ static int aa_stop(aa_stream *s, int state)
     return AA_OK;
 }
 static int b_AAudioStream_requestStop(aa_stream *s) { return aa_stop(s, AA_STATE_STOPPED); }
-static int b_AAudioStream_close(aa_stream *s) { aa_stop(s, AA_STATE_CLOSED); free(s); return AA_OK; }
+static int b_AAudioStream_close(aa_stream *s)
+{
+    if (!s) return AA_OK;
+    pthread_mutex_lock(&g_aa_reg_mu);
+    for (int i = 0; i < 32; i++) if (g_aa_streams[i] == s) g_aa_streams[i] = NULL;
+    pthread_mutex_unlock(&g_aa_reg_mu);
+    aa_stop(s, AA_STATE_CLOSED);
+    free(s);
+    return AA_OK;
+}
 static int b_AAudioStream_getSampleRate(aa_stream *s) { (void)s; return AA_RATE; }
 static int b_AAudioStream_getChannelCount(aa_stream *s) { return s->channels; }
 static int b_AAudioStream_getFormat(aa_stream *s) { return s->format; }
@@ -506,7 +554,9 @@ static int b_AAudioStream_write(aa_stream *s, const void *buf, int frames, int64
 static int b_AAudioStream_waitForStateChange(aa_stream *s, int input, int *next, int64_t timeout_ns)
 {
     for (int64_t waited = 0;; waited += 5000000) {
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         int st = atomic_load(&s->state);
+        if (tl_guest_session_closing()) { if (next) *next = st; return AA_TIMEOUT; }
         if (st != input || waited >= timeout_ns) { if (next) *next = st; return st != input ? AA_OK : AA_TIMEOUT; }
         struct timespec ts = { 0, 5000000 }; nanosleep(&ts, NULL);
     }
@@ -1246,3 +1296,45 @@ const tl_bionic_entry tl_tab_ndk[] = {
     MEDIA_DATA(AMEDIAFORMAT_KEY_SLICE_HEIGHT), MEDIA_DATA(AMEDIAFORMAT_KEY_STRIDE), MEDIA_DATA(AMEDIAFORMAT_KEY_WIDTH),
     TL_END
 };
+
+void tl_ndk_reset_session(void)
+{
+    for (;;) {
+        aa_stream *s = NULL;
+        pthread_mutex_lock(&g_aa_reg_mu);
+        for (int i = 0; i < 32; i++) if (g_aa_streams[i]) { s = g_aa_streams[i]; g_aa_streams[i] = NULL; break; }
+        pthread_mutex_unlock(&g_aa_reg_mu);
+        if (!s) break;
+        aa_stop(s, AA_STATE_CLOSED);
+        free(s);
+    }
+    pthread_mutex_lock(&IQ.mu);
+    IQ.attached = false;
+    IQ.ident = 0;
+    IQ.nptr = 0;
+    tl_ievent *ev = IQ.head;
+    IQ.head = NULL;
+    IQ.tail = NULL;
+    if (IQ.ready && IQ.rd >= 0) {
+        char drain[64];
+        while (read(IQ.rd, drain, sizeof(drain)) > 0) {}
+    }
+    pthread_mutex_unlock(&IQ.mu);
+    while (ev) { tl_ievent *nx = ev->next; free(ev); ev = nx; }
+
+    pthread_mutex_lock(&g_looper_reg_mu);
+    tl_looper *lp = g_loopers;
+    g_loopers = NULL;
+    pthread_mutex_unlock(&g_looper_reg_mu);
+    t_looper = NULL;
+    while (lp) {
+        tl_looper *nx = lp->next;
+        looper_fd *f = lp->fds;
+        while (f) { looper_fd *fn = f->next; free(f); f = fn; }
+        if (lp->wake[0] >= 0) close(lp->wake[0]);
+        if (lp->wake[1] >= 0) close(lp->wake[1]);
+        pthread_mutex_destroy(&lp->mu);
+        free(lp);
+        lp = nx;
+    }
+}

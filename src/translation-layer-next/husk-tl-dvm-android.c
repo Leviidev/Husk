@@ -33,6 +33,11 @@
 #include "husk-tl-visual.h"
 #include "husk-tl-display-timing.h"
 #include "husk-tl-frame-perf.h"
+#include "husk-tl-egl.h"
+#include "husk-tl-vulkan.h"
+#include "husk-tl-vhtg-quest.h"
+#include "husk-tl-trutien-text.h"
+#include "husk-tl-ld.h"
 #include "husk-tl-guest-thread.h"
 #include "husk-tl-guest-pool.h"
 #include "husk-tl-egl.h"
@@ -1902,6 +1907,27 @@ static bool javaapp_begin_session(void)
     return true;
 }
 
+static void javaapp_reset_subsystems(void)
+{
+    void tl_dvm_audio_reset(void);
+    void tl_opensles_reset_session(void);
+    void tl_ndk_reset_session(void);
+    void tl_loop_reset_session(void);
+    void tl_egl_es3_claim(int version);
+
+    tl_audio_reset();
+    tl_dvm_audio_reset();
+    tl_opensles_reset_session();
+    tl_ndk_reset_session();
+    tl_loop_reset_session();
+    tl_egl_reset_session();
+    tl_vk_reset_session();
+    tl_vhtg_quest_reset();
+    tl_trutien_text_reset();
+    tl_egl_es3_claim(0);
+    tl_set_guest_package(NULL);
+}
+
 bool tl_javaapp_start(const tl_javaapp_config *cfg)
 {
     if (!javaapp_begin_session()) {
@@ -1957,13 +1983,13 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
             got = tl_javaapp_manifest(tl_ld_queued_split(i), spkg, sizeof(spkg), A.activity, sizeof(A.activity), NULL, 0);
             if (got && !A.pkg[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", spkg);
         }
-        if (!got) { tl_log_line("javaapp: the manifest names no launcher activity"); return false; }
+        if (!got) { tl_log_line("javaapp: the manifest names no launcher activity"); goto fail; }
     }
     if (cfg->package_name && cfg->package_name[0]) snprintf(A.pkg, sizeof(A.pkg), "%s", cfg->package_name);
     husk_aosp_set_session(A.pkg, cfg->width, cfg->height);
     tl_log_line("javaapp: %s, launcher %s, application %s", A.pkg, A.activity, A.application[0] ? A.application : "(none)");
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);
-    if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) return false;
+    if (cfg->angle_egl && !tl_egl_init(cfg->angle_egl, cfg->angle_gles, cfg->frame_dir, cfg->frame_every)) goto fail;
     { void tl_set_data_dir(const char *dir); tl_set_data_dir(A.data); }
     tl_set_guest_package(A.pkg);
     if (tl_vhtg_quest_start(cfg->apk_path,A.pkg,cfg->quest_only_cutout,cfg->insets,cfg->width,cfg->height))
@@ -1971,8 +1997,8 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     /* the environment every Android process starts with (TrustedCertificateStore builds paths from ANDROID_DATA) */
     setenv("ANDROID_DATA", "/data", 0); setenv("ANDROID_ROOT", "/system", 0); setenv("ANDROID_STORAGE", "/storage", 0);
     setenv("EXTERNAL_STORAGE", "/sdcard", 0); setenv("ANDROID_ASSETS", "/system/app", 0); setenv("BOOTCLASSPATH", "", 0);
-    if (!tl_ld_add_apk(cfg->apk_path)) return false;
-    if (!tl_dvm_add_apk(cfg->apk_path)) return false;
+    if (!tl_ld_add_apk(cfg->apk_path)) goto fail;
+    if (!tl_dvm_add_apk(cfg->apk_path)) goto fail;
     { char lib[1100]; snprintf(lib, sizeof(lib), "%s/lib", A.data); mkdir(lib, 0755); tl_ld_apk_libs(stub_lib, lib); }
     atomic_store(&g_compositor_active, true);
     { pthread_attr_t rt; pthread_attr_init(&rt); pthread_attr_setstacksize(&rt, 64u << 20); A.gl_thread_started = tl_guest_pthread_create(&A.gl_thread, &rt, gl_main, NULL) == 0; pthread_attr_destroy(&rt); }
@@ -1980,21 +2006,43 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 256u << 20);
     A.app_started = tl_guest_pthread_create(&A.app_thread, &at, app_main, NULL) == 0;
     pthread_attr_destroy(&at);
-    if (!A.app_started) {
-        atomic_store(&A.ended, true);
-        atomic_store(&g_compositor_active, false);
-        tl_javaapp_wake_gl();
-        if (A.gl_thread_started) { tl_guest_pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
-    }
-    return A.app_started;
+    if (!A.app_started) goto fail;
+    return true;
+
+fail:
+    atomic_store(&A.ended, true);
+    atomic_store(&g_compositor_active, false);
+    pthread_mutex_lock(&A.q_lock);
+    A.q_woken = true;
+    pthread_cond_broadcast(&A.q_cv);
+    pthread_mutex_unlock(&A.q_lock);
+    tl_javaapp_wake_gl();
+    tl_guest_session_abort();
+    (void)tl_guest_session_reap(2000);
+    if (A.gl_thread_started) { tl_guest_pthread_join(A.gl_thread, NULL); A.gl_thread_started = false; }
+    if (tl_dvm_running()) tl_dvm_drop_app();
+    javaapp_reset_subsystems();
+    tl_bionic_reset_session();
+    tl_ld_reset_session();
+    (void)tl_guest_session_finish();
+    return false;
 }
 
 bool tl_javaapp_try_stop(unsigned timeout_ms)
 {
-    int64_t deadline = now_ns() + (int64_t)timeout_ms * 1000000;
+    void dvm_monitor_wake_all(void);
+    void tl_net_shutdown_all(void);
+    void tl_futex_wake_all(void);
+    void tl_opensles_begin_close(void);
+    void tl_loop_begin_close(void);
+
+    int64_t start = now_ns();
+    int64_t deadline = start + (int64_t)timeout_ms * 1000000ll;
+    int64_t loop_coop = start + (int64_t)(timeout_ms > 1500 ? 1500 : timeout_ms / 2) * 1000000ll;
     /* Leaving the view paused writers. They must be able to drain while the
        Activity tears down SDL/AAudio, or its onDestroy joins them forever. */
     tl_audio_begin_close();
+    tl_opensles_begin_close();
     atomic_store(&A.ended, true);
     atomic_store(&g_compositor_active, false);
     pthread_mutex_lock(&A.q_lock);
@@ -2004,31 +2052,72 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
     pthread_mutex_lock(&E2.lk);
     pthread_cond_broadcast(&E2.cv);
     pthread_mutex_unlock(&E2.lk);
+    tl_javaapp_wake_gl();
+
+    bool close_sent = false;
+    bool abort_sent = false;
     while ((A.app_started && !atomic_load(&A.app_done)) ||
            (A.gl_thread_started && !atomic_load(&A.gl_done))) {
-        if (now_ns() >= deadline) {
+        int64_t t = now_ns();
+        if (!close_sent && t >= loop_coop) {
+            close_sent = true;
+            tl_guest_session_close();
+            tl_loop_begin_close();
+            tl_opensles_begin_close();
+            dvm_monitor_wake_all();
+            tl_net_shutdown_all();
+            tl_futex_wake_all();
+        }
+        if (!abort_sent && close_sent && t >= loop_coop + 350000000ll) {
+            abort_sent = true;
+            tl_guest_session_abort();
+            tl_loop_begin_close();
+            tl_opensles_begin_close();
+            dvm_monitor_wake_all();
+            tl_net_shutdown_all();
+            tl_futex_wake_all();
+        }
+        if (t >= deadline) {
             tl_log_line("javaapp: close timed out waiting for the Activity/render loop; session retained");
             return false;
         }
         usleep(10000);
     }
-    void dvm_monitor_wake_all(void);
-    void tl_net_shutdown_all(void);
-    void tl_futex_wake_all(void);
-    tl_guest_session_close();
-    dvm_monitor_wake_all();
-    tl_net_shutdown_all();
-    tl_futex_wake_all();
+
+    if (!close_sent) {
+        tl_guest_session_close();
+        tl_loop_begin_close();
+        tl_opensles_begin_close();
+        dvm_monitor_wake_all();
+        tl_net_shutdown_all();
+        tl_futex_wake_all();
+    }
+    int64_t coop_end = now_ns() + 350000000ll;
+    if (coop_end > deadline) coop_end = deadline;
     int wake_tick = 0;
     while (tl_guest_session_threads()) {
-        if (now_ns() >= deadline) {
+        int64_t t = now_ns();
+        if (!abort_sent && t >= coop_end) {
+            abort_sent = true;
+            tl_log_line("javaapp: retiring %u lingering guest thread(s)", tl_guest_session_threads());
+            tl_guest_session_abort();
+            tl_loop_begin_close();
+            tl_opensles_begin_close();
+            dvm_monitor_wake_all();
+            tl_net_shutdown_all();
+            tl_futex_wake_all();
+        }
+        if (t >= deadline) {
             tl_log_line("javaapp: close waiting for %u guest threads; session retained", tl_guest_session_threads());
             tl_guest_session_log_live();
             return false;
         }
-        if ((++wake_tick % 15) == 0) {
+        if ((++wake_tick % 10) == 0) {
+            tl_loop_begin_close();
+            tl_opensles_begin_close();
             dvm_monitor_wake_all();
             tl_net_shutdown_all();
+            tl_futex_wake_all();
         }
         usleep(10000);
     }
@@ -2040,9 +2129,8 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
     }
     A.app_started = false;
     A.gl_thread_started = false;
-    tl_audio_reset();
     /* All contexts are now unbound on their owning threads. Destroy only the
-       compositor's own objects here; the game's lifecycle owns its contexts. */
+       compositor's own objects here; guest objects follow in reset_subsystems. */
     unsigned (*destroy_surface)(EGLDisplay, EGLSurface) = tl_egl_resolve("eglDestroySurface");
     unsigned (*destroy_context)(EGLDisplay, EGLContext) = tl_egl_resolve("eglDestroyContext");
     if (destroy_surface && E2.screen) destroy_surface(E2.dpy, E2.screen);
@@ -2067,6 +2155,7 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
         tl_log_line("javaapp: framework reset failed; session retained");
         return false;
     }
+    javaapp_reset_subsystems();
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
     return tl_guest_session_finish();

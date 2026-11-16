@@ -42,6 +42,8 @@ typedef int (*pfn_enum_ext)(const char *, uint32_t *, vk_ext_props *);
 typedef int (*pfn_create_instance)(const vk_instance_ci *, const void *, void **);
 typedef int (*pfn_create_metal_surface)(void *, const vk_metal_surface_ci *, const void *, uint64_t *);
 
+#include "husk-tl-session.h"
+
 static struct {
     pthread_once_t once;
     char path[1024];
@@ -325,6 +327,12 @@ static int w_vkAcquireNextImageKHR(void *device, uint64_t swapchain, uint64_t ti
 typedef int (*pfn_queue_present)(void *, const void *);
 static int w_vkQueuePresentKHR(void *queue, const void *info)
 {
+    if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+    if (tl_guest_session_closing()) {
+        (void)tl_guest_session_wait_close(16000000ll);
+        if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
+        return VK_SUCCESS;
+    }
     static pfn_queue_present real;
     if (!real && V.lib) real = (pfn_queue_present)dlsym(V.lib, "vkQueuePresentKHR");
     unsigned long n = atomic_fetch_add(&V.frames, 1) + 1;
@@ -758,3 +766,9 @@ void *tl_vk_resolve(const char *name)
 }
 
 unsigned long tl_vk_frames_presented(void) { return atomic_load(&V.frames); }
+
+void tl_vk_reset_session(void)
+{
+    g_swapchain_layer = NULL;
+    atomic_store(&V.frames, 0);
+}

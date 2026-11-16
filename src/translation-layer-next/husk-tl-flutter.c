@@ -675,4 +675,5 @@ bool tl_flutter_run(void)
 
 unsigned long tl_flutter_frames(void) { return tl_egl_frames_presented() + tl_vk_frames_presented(); }
 bool tl_flutter_first_frame(void) { return atomic_load(&F.first_frame); }
+void tl_flutter_reset_session(void) { F.activity = F.jni = F.surface = F.assets = NULL; }
 
