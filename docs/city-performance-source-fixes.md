@@ -100,7 +100,7 @@ Sau sửa, các kiểm thử sau đã đạt:
 Kiểm thử bộ lập lịch được tách khỏi các bản `Handler`/`Looper` giả lập của
 bộ kiểm thử giao diện, để chạy trên các lớp thực cần kiểm tra.
 
-## 5. Trạng thái áp dụng và quy trình cập nhật
+## 5. Trạng thái trước khi người dùng yêu cầu build
 
 Hiện chỉ biên dịch các chương trình kiểm thử và một số lớp Java riêng lẻ.
 **Chưa build ứng dụng, chưa đóng gói JAR/DEX, chưa ký, chưa chạy CI và chưa
@@ -115,3 +115,34 @@ trong [hướng dẫn cập nhật qua USB](usb-development-deployment.md).
 Luồng này bỏ bước tự chọn file IPA, nhưng công cụ vẫn đóng gói dữ liệu tạm
 ở bên trong và cần danh tính ký mã hợp lệ cho thiết bị. Không thể thay mã native đã
 ký chỉ bằng cách chép mã nguồn vào thư mục `Documents`.
+
+## 6. Kết quả build và cập nhật USB ngày 16/11/2026
+
+Sau khi người dùng yêu cầu build, mã nguồn tại commit `d57d5e2` đã được
+đẩy lên GitHub và hoàn thành cả ba bước kiểm thử nền tảng, kiểm thử Java
+và build iOS. Chi tiết tại [lần build đã thành công](https://github.com/hungtm200401-bot/Husk/actions/runs/43792836482).
+
+Đã kiểm tra mã bản dựng và dữ liệu Java so với kết quả CI, trích xuất
+`Husk.app`, rồi ký tại máy Windows bằng khóa và chứng thư khớp với hồ sơ
+cấp phép của iPhone. Khóa ký và hồ sơ cấp phép không được gửi lên GitHub.
+
+**Đã cài đè qua USB thành công lúc 09:41 ngày 16/11/2026, giờ Việt Nam.**
+iOS xác nhận bản đang cài là **`d57d5e2-dirty`**. Máy vẫn chỉ có một Husk,
+giữ nguyên định danh ứng dụng và nhóm truy cập Keychain. Cả **4 thư mục
+game** còn đầy đủ; **12 tệp cấu hình** không khác bản sao trước cập nhật.
+
+Gói `.app` đã ký nằm tại `build/usb-deploy/Husk.app`; thông tin xác minh
+nằm tại `build/usb-deploy/verification.json`. Không cần chọn IPA hoặc mở
+Sideloadly để thực hiện lần cập nhật này. Công cụ truyền USB vẫn tạo gói
+tạm nội bộ theo định dạng cài đặt của Apple.
+
+Hồ sơ cấp phép hiện tại hết hạn lúc **08:38 ngày 23/11/2026, giờ Việt Nam**.
+Hồ sơ này chỉ cấp phép ứng dụng chính. Gói đã ký không chứa tiện ích
+`HuskJITHelper` và `HuskDownloadsWidget`; phương thức bật JIT dựa vào tiện
+ích này và Live Activity tải xuống không khả dụng trong gói cài này.
+
+Đã mở phiên thu log USB riêng tại
+`device-logs/test-d57d5e2-20261116/`, tối đa hai giờ khi USB còn kết nối.
+Log đã xác nhận bản mới khởi chạy. **Việc cài thành công chưa chứng minh
+đạt 50–60 FPS hoặc đã hết crash; cần đo lại trong bản đồ, nhất là trong
+thành đông người.**
