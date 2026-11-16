@@ -2,12 +2,14 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #define pthread_setname_np(...) ((void)0)
 void (*tl_cocos_audio_hook)(const int16_t *, int, int, int);
 void tl_log_line(const char *fmt, ...) { (void)fmt; }
+bool tl_guest_session_closing(void) { return false; }
 int tl_guest_pthread_create(pthread_t *p, const pthread_attr_t *a, void *(*f)(void *), void *v)
 { return pthread_create(p, a, f, v); }
 int tl_guest_pthread_join(pthread_t p, void **v) { return pthread_join(p, v); }

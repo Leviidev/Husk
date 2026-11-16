@@ -20,6 +20,7 @@
 
 #include "husk-tl-bionic.h"
 #include "husk-tl-guest-thread.h"
+#include "husk-tl-session.h"
 #include "husk-tl-audio-player.h"
 
 extern void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
