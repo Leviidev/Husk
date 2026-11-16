@@ -21,13 +21,14 @@ public class ConnectivityManager {
         // ---- end of generated members (NetworkCallback)
     }
     public interface OnNetworkActiveListener { void onNetworkActive(); }
-    private static final Network sNet = new Network();
+    private static Network sNet;
+    private static synchronized Network net() { if (sNet == null) sNet = new Network(); return sNet; }
     public NetworkInfo getActiveNetworkInfo() { return new NetworkInfo(); }
     public NetworkInfo getNetworkInfo(int type) { return type == TYPE_WIFI ? new NetworkInfo() : null; }
     public NetworkInfo getNetworkInfo(Network n) { return new NetworkInfo(); }
     public NetworkInfo[] getAllNetworkInfo() { return new NetworkInfo[] { new NetworkInfo() }; }
-    public Network getActiveNetwork() { return sNet; }
-    public Network[] getAllNetworks() { return new Network[] { sNet }; }
+    public Network getActiveNetwork() { return net(); }
+    public Network[] getAllNetworks() { return new Network[] { net() }; }
     public NetworkCapabilities getNetworkCapabilities(Network n) { return new NetworkCapabilities(); }
     public LinkProperties getLinkProperties(Network n) { return new LinkProperties(); }
     public boolean isActiveNetworkMetered() { return false; }
@@ -38,14 +39,15 @@ public class ConnectivityManager {
     /* as Android: callbacks come on the connectivity thread unless the app gives a handler (the main thread may be busy for a
        long while at start-up, and WorkManager gives up on a constraint whose callback is a second late) */
     private static android.os.Handler sThread;
-    public static synchronized void resetSession() { sThread = null; }
+    public static synchronized void resetSession() { sThread = null; sNet = null; }
     private static synchronized android.os.Handler connectivityThread() {
         if (sThread == null) { android.os.HandlerThread t = new android.os.HandlerThread("ConnectivityThread"); t.start(); sThread = new android.os.Handler(t.getLooper()); }
         return sThread;
     }
     private void announce(NetworkRequest r, NetworkCallback cb, android.os.Handler h) {
         if (r != null && !r.canBeSatisfiedBy(new NetworkCapabilities())) { (h != null ? h : connectivityThread()).post(cb::onUnavailable); return; }
-        (h != null ? h : connectivityThread()).post(() -> { cb.onAvailable(sNet); cb.onCapabilitiesChanged(sNet, new NetworkCapabilities()); cb.onLinkPropertiesChanged(sNet, new LinkProperties()); cb.onBlockedStatusChanged(sNet, false); });
+        final Network active = net();
+        (h != null ? h : connectivityThread()).post(() -> { cb.onAvailable(active); cb.onCapabilitiesChanged(active, new NetworkCapabilities()); cb.onLinkPropertiesChanged(active, new LinkProperties()); cb.onBlockedStatusChanged(active, false); });
     }
     private void announce(NetworkCallback cb) { announce(null, cb, null); }
     public void registerNetworkCallback(NetworkRequest r, NetworkCallback cb) { announce(r, cb, null); }

@@ -79,6 +79,20 @@ public final class SessionResetTest {
         AppRunner.resetSession();
         if (!((Map) runningServices.get(null)).isEmpty())
             throw new AssertionError("resetSession must clear previous APK services");
+
+        /* Lazy ConnectivityManager/WebView singletons must survive repeated shutdown & reset cycles without starting pools. */
+        Field webIo = field(android.webkit.WebView.class, "sIo");
+        Field webBridge = field(android.webkit.WebView.class, "sBridge");
+        Field connNet = field(android.net.ConnectivityManager.class, "sNet");
+        android.webkit.WebView.huskShutdownSession();
+        AppRunner.resetSession();
+        if (webIo.get(null) != null || webBridge.get(null) != null || connNet.get(null) != null)
+            throw new AssertionError("lazy WebView/ConnectivityManager singletons must stay null across idle teardown");
+        if (new android.net.ConnectivityManager().getActiveNetwork() == null)
+            throw new AssertionError("ConnectivityManager must lazily provide active network");
+        AppRunner.resetSession();
+        if (connNet.get(null) != null)
+            throw new AssertionError("ConnectivityManager.resetSession must clear lazy network instance");
         android.os.Handler.drain();
         System.out.println("PASS: framework reset drops previous APK identity, preferences, receivers, pending exits and frame scheduling");
     }

@@ -885,6 +885,29 @@ static void dvm_monitor_destroy(void *pm)
 
 /* ================================================================== class initialisation */
 
+static void dvm_clinit_cleanup(void *arg)
+{
+    dvm_class *c = arg;
+    pthread_mutex_lock(&c->init_lock);
+    if (c->state == CS_INITIALIZING) c->state = CS_LINKED;
+    pthread_mutex_unlock(&c->init_lock);
+}
+
+static bool dvm_run_clinit(dvm_class *c, dvm_method *m)
+{
+    bool inited = false;
+    pthread_cleanup_push(dvm_clinit_cleanup, c);
+    jvalue r;
+    /* native code that left an exception pending from an earlier call, then touches a new class: the initialiser runs
+       regardless, and the old exception stays pending after it, as on ART */
+    jobj *stale = tl_jni_pending_object();
+    if (stale) tl_jni_clear();
+    inited = dvm_call(m, NULL, NULL, &r);
+    if (inited && stale && !tl_jni_pending_object()) tl_jni_set_pending(stale);
+    pthread_cleanup_pop(0);
+    return inited;
+}
+
 bool dvm_ensure_init(dvm_class *c)
 {
     if (!c || c->state == CS_INITIALIZED) return true;
@@ -900,24 +923,34 @@ bool dvm_ensure_init(dvm_class *c)
             if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
             usleep(200);
         }
-        return c->state == CS_INITIALIZED;
+        if (c->state == CS_INITIALIZED) return true;
+        if (tl_guest_session_force_stopping()) tl_jni_clear();
+        return false;
     }
     c->state = CS_INITIALIZING;
     c->init_thread = pthread_self();
     pthread_mutex_unlock(&c->init_lock);
-    if (c->super && !dvm_ensure_init(c->super)) { c->state = CS_FAILED; return false; }
+    if (c->super && !dvm_ensure_init(c->super)) {
+        bool aborted = tl_guest_session_force_stopping();
+        if (aborted) tl_jni_clear();
+        pthread_mutex_lock(&c->init_lock);
+        c->state = aborted ? CS_LINKED : CS_FAILED;
+        pthread_mutex_unlock(&c->init_lock);
+        return false;
+    }
     for (int i = 0; i < c->ndm; i++) {
         dvm_method *m = &c->dm[i];
         if (!strcmp(m->name, "<clinit>")) {
             if (g_dvm_trace >= 1) tl_log_line("dvm: <clinit> %s", c->name);
-            jvalue r;
-            /* native code that left an exception pending from an earlier call, then touches a new class: the initialiser runs
-               regardless, and the old exception stays pending after it, as on ART */
-            jobj *stale = tl_jni_pending_object();
-            if (stale) tl_jni_clear();
-            bool inited = dvm_call(m, NULL, NULL, &r);
-            if (inited && stale && !tl_jni_pending_object()) tl_jni_set_pending(stale);
+            bool inited = dvm_run_clinit(c, m);
             if (!inited) {
+                if (tl_guest_session_force_stopping()) {
+                    tl_jni_clear();
+                    pthread_mutex_lock(&c->init_lock);
+                    c->state = CS_LINKED;
+                    pthread_mutex_unlock(&c->init_lock);
+                    return false;
+                }
                 char buf[400];
                 tl_log_line("dvm: %s.<clinit> threw %s", c->name, tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
                 /* where (the first few): a class that fails to initialise fails every later use of it */
@@ -936,13 +969,17 @@ bool dvm_ensure_init(dvm_class *c)
                     }
                     tl_jni_set_pending(e);
                 }
+                pthread_mutex_lock(&c->init_lock);
                 c->state = CS_FAILED;
+                pthread_mutex_unlock(&c->init_lock);
                 return false;
             }
             break;
         }
     }
+    pthread_mutex_lock(&c->init_lock);
     c->state = CS_INITIALIZED;
+    pthread_mutex_unlock(&c->init_lock);
     return true;
 }
 
@@ -1046,14 +1083,17 @@ bool dvm_call(dvm_method *m, jobj *self, const jvalue *params, jvalue *ret)
     /* ...or when the thread's own stack is nearly used up (a native thread made with a small one calling into Java): each
        interpreted call takes several KB of it, where ART's take a few hundred bytes */
     static _Thread_local uintptr_t t_stack_low;
+    static _Thread_local size_t t_stack_sz;
     if (!t_stack_low) {
         pthread_t me = pthread_self();
         uintptr_t top = (uintptr_t)pthread_get_stackaddr_np(me); size_t sz = pthread_get_stacksize_np(me);
-        t_stack_low = top - sz + (sz > (2u << 20) ? (512u << 10) : sz / 4);   /* what is kept back for C below the interpreter */
+        t_stack_sz = sz;
+        t_stack_low = top - sz + (sz > (2u << 20) ? (512u << 10) : sz / 8);   /* what is kept back for C below the interpreter */
     }
     uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
-    /* the error is thrown with 128 KB still above that, which its own calls may use */
-    if (t_depth > (t_overflowing ? 8200 : 8000) || sp < t_stack_low + (t_overflowing ? 0 : (128u << 10))) {
+    /* the error is thrown with headroom still above that, which its own calls may use */
+    uintptr_t margin = t_overflowing ? 0 : (t_stack_sz > (2u << 20) ? (128u << 10) : (64u << 10));
+    if (t_depth > (t_overflowing ? 8200 : 8000) || sp < t_stack_low + margin) {
         t_depth--;
         if (t_overflowing) return false;
         t_overflowing = true;
@@ -1682,6 +1722,9 @@ static bool interpret(dvm_method *m, uint64_t *regs, jvalue *ret)
     uint32_t pc = 0;
     jvalue result; result.j = 0;
     jobj *caught = NULL;
+    jobj *mon_buf[16];
+    jobj **mon_stk = mon_buf;
+    int mon_n = 0, mon_cap = 16;
     if ((m->flags & 0x20) /* synchronized */) dvm_monitor_enter((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
 
 dispatch:;
@@ -1722,8 +1765,36 @@ dispatch:;
     case 0x1a: WL(regs, AA, const_string(dex, FETCH(1))); NEXT(2);
     case 0x1b: WL(regs, AA, const_string(dex, FETCH(1) | (uint32_t)FETCH(2) << 16)); NEXT(3);
     case 0x1c: WL(regs, AA, resolve_type(dex, FETCH(1))->mirror); NEXT(2);
-    case 0x1d: { jobj *o = RL(regs, AA); THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-enter on null")); dvm_monitor_enter(o); NEXT(1); }
-    case 0x1e: { jobj *o = RL(regs, AA); THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-exit on null")); dvm_monitor_exit(o); NEXT(1); }
+    case 0x1d: {
+        jobj *o = RL(regs, AA);
+        THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-enter on null"));
+        if (mon_n == mon_cap) {
+            int ncap = mon_cap * 2;
+            jobj **next = mon_stk == mon_buf ? malloc((size_t)ncap * sizeof(jobj *)) : realloc(mon_stk, (size_t)ncap * sizeof(jobj *));
+            if (next) {
+                if (mon_stk == mon_buf) memcpy(next, mon_buf, (size_t)mon_n * sizeof(jobj *));
+                mon_stk = next;
+                mon_cap = ncap;
+            }
+        }
+        dvm_monitor_enter(o);
+        if (mon_n < mon_cap) mon_stk[mon_n++] = o;
+        NEXT(1);
+    }
+    case 0x1e: {
+        jobj *o = RL(regs, AA);
+        THROW_IF(!o && !dvm_throw("java/lang/NullPointerException", "monitor-exit on null"));
+        if (dvm_monitor_exit(o)) {
+            for (int mi = mon_n - 1; mi >= 0; mi--) {
+                if (mon_stk[mi] == o) {
+                    if (mi + 1 < mon_n) memmove(&mon_stk[mi], &mon_stk[mi + 1], (size_t)(mon_n - mi - 1) * sizeof(jobj *));
+                    mon_n--;
+                    break;
+                }
+            }
+        }
+        NEXT(1);
+    }
     case 0x1f: {                                                   /* check-cast */
         jobj *o = RL(regs, AA);
         if (o) {
@@ -2085,13 +2156,17 @@ exception: {
             pc = target;
             goto dispatch;
         }
+        if (mon_stk != mon_buf) free(mon_stk);
         if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
         return false;
     }
 abort_session:
+    while (mon_n > 0) dvm_monitor_exit(mon_stk[--mon_n]);
+    if (mon_stk != mon_buf) free(mon_stk);
     if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
     return false;
 done:
+    if (mon_stk != mon_buf) free(mon_stk);
     if ((m->flags & 0x20)) dvm_monitor_exit((m->flags & 8) ? m->cls->jc->mirror : RL(regs, m->regs - m->ins));
     return true;
 }

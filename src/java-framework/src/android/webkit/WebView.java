@@ -60,17 +60,27 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
 
     private static final HashMap<Integer, WebView> sViews = new HashMap<>();
     private static int sNextId = 1;
-    private static ExecutorService sIo = newIoExecutor();
-    private static ExecutorService sBridge = newBridgeExecutor();
-    private static ExecutorService newIoExecutor() { return Executors.newFixedThreadPool(4, r -> { Thread t = new Thread(r, "Chrome_IOThread"); t.setDaemon(true); return t; }); }
-    private static ExecutorService newBridgeExecutor() { return Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "JavaBridge"); t.setDaemon(true); return t; }); }
+    private static ExecutorService sIo;
+    private static ExecutorService sBridge;
+    private static synchronized ExecutorService ioExecutor() {
+        if (sIo == null) sIo = Executors.newFixedThreadPool(4, r -> { Thread t = new Thread(r, "Chrome_IOThread"); t.setDaemon(true); return t; });
+        return sIo;
+    }
+    private static synchronized ExecutorService bridgeExecutor() {
+        if (sBridge == null) sBridge = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "JavaBridge"); t.setDaemon(true); return t; });
+        return sBridge;
+    }
+    private static synchronized void shutdownExecutors() {
+        if (sIo != null) { sIo.shutdownNow(); sIo = null; }
+        if (sBridge != null) { sBridge.shutdownNow(); sBridge = null; }
+    }
     public static void huskShutdownSession() {
         for (WebView view : new ArrayList<>(sViews.values())) view.destroy();
-        sIo.shutdownNow(); sBridge.shutdownNow();
+        shutdownExecutors();
     }
     public static void huskResetSession() {
         sViews.clear(); sNextId = 1;
-        sIo = newIoExecutor(); sBridge = newBridgeExecutor();
+        shutdownExecutors();
     }
 
     private final int mId;
@@ -195,7 +205,7 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
         final String target = url;
         if (isHttp(url) && !isLocal(url)) {
             // the app may serve this origin itself (shouldInterceptRequest): ask before WebKit goes to the network
-            sIo.execute(() -> {
+            ioExecutor().execute(() -> {
                 WebResourceResponse r = intercept(target, "GET", true, additionalHttpHeaders);
                 Uri u = Uri.parse(target);
                 boolean virtual = r != null && !NETWORK_ONLY && virtualHost(u.getHost());
@@ -684,7 +694,7 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
         case "x": if (mChrome != null) mChrome.onCloseWindow(this); break;
         case "o": navigation(Integer.parseInt(f[2]), fromHost(f[3]), "1".equals(f[4]), "1".equals(f[5]), f[6], "1".equals(f[7])); break;
         case "A": case "C": case "P": dialog(f[0], Integer.parseInt(f[2]), fromHost(f[3]), f[4], f.length > 5 ? f[5] : null); break;
-        case "j": { final int call = Integer.parseInt(f[2]); final String json = f[3]; sBridge.execute(() -> bridgeCall(call, json)); break; }
+        case "j": { final int call = Integer.parseInt(f[2]); final String json = f[3]; bridgeExecutor().execute(() -> bridgeCall(call, json)); break; }
         case "c": console(Integer.parseInt(f[2]), f[3], f[4], f.length > 5 ? parseInt(f[5]) : 0); break;
         case "v": {
             ValueCallback<String> cb;
@@ -698,7 +708,7 @@ public class WebView extends AbsoluteLayout implements android.view.ViewTreeObse
             final boolean main = "1".equals(f[5]);
             final Map<String, String> h = new HashMap<>();
             for (int i = 6; i + 1 < f.length; i += 2) h.put(f[i], f[i + 1]);
-            sIo.execute(() -> serve(call, url, method, main, h));
+            ioExecutor().execute(() -> serve(call, url, method, main, h));
             break;
         }
         }

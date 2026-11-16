@@ -2028,6 +2028,43 @@ fail:
     return false;
 }
 
+static void *framework_reset_worker(void *arg)
+{
+    bool *ok_out = arg;
+    jvalue r;
+    tl_jni_clear();
+    bool called = tl_dvm_call_static("husk/AppRunner", "resetSession", "()V", NULL, &r);
+    if (!called || tl_jni_pending()) {
+        char buf[800];
+        tl_log_line("javaapp: framework reset threw %s", tl_dvm_describe_pending(buf, sizeof(buf)) ? buf : "?");
+        log_pending_stack();
+        tl_jni_clear();
+        *ok_out = false;
+    } else {
+        *ok_out = true;
+    }
+    return NULL;
+}
+
+static bool call_framework_reset_session(void)
+{
+    if (!tl_dvm_defines_class("husk/AppRunner")) return true;
+    bool reset_ok = false;
+    pthread_attr_t ra;
+    pthread_t rt;
+    bool launched = false;
+    if (pthread_attr_init(&ra) == 0) {
+        (void)pthread_attr_setstacksize(&ra, 4u << 20);
+        if (pthread_create(&rt, &ra, framework_reset_worker, &reset_ok) == 0) {
+            pthread_join(rt, NULL);
+            launched = true;
+        }
+        pthread_attr_destroy(&ra);
+    }
+    if (!launched) (void)framework_reset_worker(&reset_ok);
+    return reset_ok;
+}
+
 bool tl_javaapp_try_stop(unsigned timeout_ms)
 {
     void dvm_monitor_wake_all(void);
@@ -2038,11 +2075,12 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
 
     int64_t start = now_ns();
     int64_t deadline = start + (int64_t)timeout_ms * 1000000ll;
-    int64_t loop_coop = start + (int64_t)(timeout_ms > 1500 ? 1500 : timeout_ms / 2) * 1000000ll;
+    int64_t loop_coop = start + (int64_t)(timeout_ms > 500 ? 500 : timeout_ms / 2) * 1000000ll;
     /* Leaving the view paused writers. They must be able to drain while the
        Activity tears down SDL/AAudio, or its onDestroy joins them forever. */
     tl_audio_begin_close();
     tl_opensles_begin_close();
+    tl_loop_begin_close();
     atomic_store(&A.ended, true);
     atomic_store(&g_compositor_active, false);
     pthread_mutex_lock(&A.q_lock);
@@ -2127,6 +2165,10 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
         tl_log_line("javaapp: could not join every guest thread; session retained");
         return false;
     }
+    if (!call_framework_reset_session()) {
+        tl_log_line("javaapp: framework reset failed; session retained");
+        return false;
+    }
     A.app_started = false;
     A.gl_thread_started = false;
     /* All contexts are now unbound on their owning threads. Destroy only the
@@ -2148,13 +2190,7 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
     atomic_store(&A.defer_until_ns, 0);
     pthread_mutex_lock(&A.q_lock); A.qn = 0; A.q_woken = false; pthread_mutex_unlock(&A.q_lock);
     pthread_mutex_lock(&E2.lk); E2.ready = false; E2.on = false; E2.tex = 0; pthread_mutex_unlock(&E2.lk);
-    jvalue r;
     tl_jni_clear();
-    if (tl_dvm_defines_class("husk/AppRunner")) tl_dvm_call_static("husk/AppRunner", "resetSession", "()V", NULL, &r);
-    if (tl_jni_pending()) {
-        tl_log_line("javaapp: framework reset failed; session retained");
-        return false;
-    }
     javaapp_reset_subsystems();
     atomic_store(&A.paused, false);
     atomic_store(&A.frames, 0);
