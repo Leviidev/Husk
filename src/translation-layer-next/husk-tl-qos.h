@@ -69,23 +69,26 @@ static inline void tl_qos_apply_java_priority(int prio)
 #endif
 }
 
-/* Promote game/render/audio loops by thread name while demoting known async background pools. */
+/* Promote game/render/audio loops by thread name while demoting known async background pools first. */
 static inline void tl_qos_apply_name(const char *name)
 {
 #if defined(__APPLE__)
     if (!name || !*name) return;
-    if (tl_qos_has_substr_ci(name, "render") || tl_qos_has_substr_ci(name, "sdl")
-        || tl_qos_has_substr_ci(name, "unity") || tl_qos_has_substr_ci(name, "game")
-        || tl_qos_has_substr_ci(name, "main") || tl_qos_has_substr_ci(name, "rhi")
-        || tl_qos_has_substr_ci(name, "audio") || tl_qos_has_substr_ci(name, "mixer")
-        || tl_qos_has_substr_ci(name, "glthread") || (name[0] == 'G' && name[1] == 'L')) {
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-    } else if (tl_qos_has_substr_ci(name, "async") || tl_qos_has_substr_ci(name, "worker")
-               || tl_qos_has_substr_ci(name, "pool") || tl_qos_has_substr_ci(name, "http")
-               || tl_qos_has_substr_ci(name, "download") || tl_qos_has_substr_ci(name, "log")
-               || tl_qos_has_substr_ci(name, "background") || tl_qos_has_substr_ci(name, "finalizer")
-               || tl_qos_has_substr_ci(name, "daemon") || tl_qos_has_substr_ci(name, "gc")) {
+    if (tl_qos_has_substr_ci(name, "async") || tl_qos_has_substr_ci(name, "worker")
+        || tl_qos_has_substr_ci(name, "pool") || tl_qos_has_substr_ci(name, "http")
+        || tl_qos_has_substr_ci(name, "download") || tl_qos_has_substr_ci(name, "log")
+        || tl_qos_has_substr_ci(name, "background") || tl_qos_has_substr_ci(name, "finalizer")
+        || tl_qos_has_substr_ci(name, "daemon") || tl_qos_has_substr_ci(name, "gc")
+        || tl_qos_has_substr_ci(name, "battery") || tl_qos_has_substr_ci(name, "telemetry")
+        || tl_qos_has_substr_ci(name, "metrics")) {
         pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
+    } else if (tl_qos_has_substr_ci(name, "render") || tl_qos_has_substr_ci(name, "sdl")
+               || tl_qos_has_substr_ci(name, "unity") || tl_qos_has_substr_ci(name, "game")
+               || tl_qos_has_substr_ci(name, "main") || tl_qos_has_substr_ci(name, "rhi")
+               || tl_qos_has_substr_ci(name, "bgfx") || tl_qos_has_substr_ci(name, "audio")
+               || tl_qos_has_substr_ci(name, "mixer") || tl_qos_has_substr_ci(name, "glthread")
+               || (name[0] == 'G' && name[1] == 'L')) {
+        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
     }
 #else
     (void)name;

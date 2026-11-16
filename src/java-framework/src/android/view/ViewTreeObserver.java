@@ -48,14 +48,17 @@ public final class ViewTreeObserver {
     public void removeOnWindowVisibilityChangeListener(OnWindowVisibilityChangeListener l) {}
     public void registerFrameCommitCallback(Runnable r) { mFrameCommit.add(r); }
     public boolean unregisterFrameCommitCallback(Runnable r) { return mFrameCommit.remove(r); }
-    public final void dispatchOnGlobalLayout() { for (OnGlobalLayoutListener l : mLayout) l.onGlobalLayout(); }
+    public final void dispatchOnGlobalLayout() { if (!mLayout.isEmpty()) for (OnGlobalLayoutListener l : mLayout) l.onGlobalLayout(); }
     void dispatchGlobalLayout() { dispatchOnGlobalLayout(); }
-    public final boolean dispatchOnPreDraw() { boolean cancel = false; for (OnPreDrawListener l : mPreDraw) cancel |= !l.onPreDraw(); return cancel; }
-    public final void dispatchOnDraw() { for (OnDrawListener l : mDraw) l.onDraw(); for (Runnable r : mFrameCommit) r.run(); mFrameCommit.clear(); }
-    final void dispatchOnWindowFocusChange(boolean f) { for (OnWindowFocusChangeListener l : mFocus) l.onWindowFocusChanged(f); }
-    final void dispatchOnWindowAttachedChange(boolean a) { for (OnWindowAttachListener l : mAttach) { if (a) l.onWindowAttached(); else l.onWindowDetached(); } }
-    final void dispatchOnGlobalFocusChange(View o, View n) { for (OnGlobalFocusChangeListener l : mGlobalFocus) l.onGlobalFocusChanged(o, n); }
-    final void dispatchOnScrollChanged() { for (OnScrollChangedListener l : mScroll) l.onScrollChanged(); }
+    public final boolean dispatchOnPreDraw() { if (mPreDraw.isEmpty()) return false; boolean cancel = false; for (OnPreDrawListener l : mPreDraw) cancel |= !l.onPreDraw(); return cancel; }
+    public final void dispatchOnDraw() {
+        if (!mDraw.isEmpty()) for (OnDrawListener l : mDraw) l.onDraw();
+        if (!mFrameCommit.isEmpty()) { for (Runnable r : mFrameCommit) r.run(); mFrameCommit.clear(); }
+    }
+    final void dispatchOnWindowFocusChange(boolean f) { if (!mFocus.isEmpty()) for (OnWindowFocusChangeListener l : mFocus) l.onWindowFocusChanged(f); }
+    final void dispatchOnWindowAttachedChange(boolean a) { if (!mAttach.isEmpty()) for (OnWindowAttachListener l : mAttach) { if (a) l.onWindowAttached(); else l.onWindowDetached(); } }
+    final void dispatchOnGlobalFocusChange(View o, View n) { if (!mGlobalFocus.isEmpty()) for (OnGlobalFocusChangeListener l : mGlobalFocus) l.onGlobalFocusChanged(o, n); }
+    final void dispatchOnScrollChanged() { if (!mScroll.isEmpty()) for (OnScrollChangedListener l : mScroll) l.onScrollChanged(); }
     /** For husk.ViewRoot. */
     public void huskWindowFocus(boolean f) { dispatchOnWindowFocusChange(f); }
     public void huskAttached(boolean a) { dispatchOnWindowAttachedChange(a); }

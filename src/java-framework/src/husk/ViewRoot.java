@@ -13,13 +13,21 @@ import java.util.ArrayList;
  */
 public final class ViewRoot implements ViewParent {
     private static final ArrayList<ViewRoot> sRoots = new ArrayList<>();
+    private static final ArrayList<ViewRoot> sFrameRoots = new ArrayList<>();
+    private static final Rect sLayoutOut = new Rect(), sLayoutArea = new Rect();
+    private static final Runnable sScheduleFrame = ViewRoot::scheduleFrame;
+    private static final Runnable sDoFrame = ViewRoot::doFrame;
     private static Bitmap sScreen;
     private static Canvas sCanvas;
-    private static boolean sScheduled, sPresentedAny;
+    private static boolean sScheduled, sPresentedAny, sScreenClean;
     private static Handler sMain;
     private static int sNextViewId = 0x00100000;
     private static int[] sInsets = { 0, 0, 0, 0 };     /* left, top, right, bottom: the notch / status bar and home indicator areas */
     private static int sImeBottom;
+    private static int sCutW = -1, sCutH = -1, sCutL, sCutT, sCutR, sCutB;
+    private static DisplayCutout sCachedCutout;
+    private static int sInW = -1, sInH = -1, sInL, sInT, sInR, sInB, sInIme;
+    private static WindowInsets sCachedScreenInsets;
     private static ViewRoot sTouchTarget;
     public static void shutdown() {
         for (ViewRoot root : new ArrayList<>(sRoots)) {
@@ -28,9 +36,11 @@ public final class ViewRoot implements ViewParent {
         }
     }
     public static void resetSession() {
-        sRoots.clear(); sScreen = null; sCanvas = null; sMain = null;
-        sTouchTarget = null; sScheduled = false; sPresentedAny = false;
+        sRoots.clear(); sFrameRoots.clear(); sScreen = null; sCanvas = null; sMain = null;
+        sTouchTarget = null; sScheduled = false; sPresentedAny = false; sScreenClean = false;
         sInsets = new int[] {0, 0, 0, 0}; sImeBottom = 0;
+        sCutW = -1; sCutH = -1; sCachedCutout = null;
+        sInW = -1; sInH = -1; sCachedScreenInsets = null;
     }
 
     final View mView;
@@ -162,7 +172,7 @@ public final class ViewRoot implements ViewParent {
     public KeyEvent.DispatcherState keyDispatcherState() { return mKeyState; }
     public void keepScreenOn(boolean on) {}
     public void invalidate() { scheduleFrame(); }
-    public void invalidateFromAnyThread() { if (Looper.myLooper() == Looper.getMainLooper()) scheduleFrame(); else mainHandler().post(ViewRoot::scheduleFrame); }
+    public void invalidateFromAnyThread() { if (Looper.myLooper() == Looper.getMainLooper()) scheduleFrame(); else mainHandler().post(sScheduleFrame); }
     public void requestLayout() { mLayoutRequested = true; scheduleFrame(); }
     public void requestApplyInsets() { mInsetsDirty = true; mLayoutRequested = true; scheduleFrame(); }
     public WindowInsets insets() { return mWindowInsets; }
@@ -194,10 +204,22 @@ public final class ViewRoot implements ViewParent {
     public static void setImeHeight(int h) { if (h != sImeBottom) { sImeBottom = h; for (ViewRoot v : sRoots) v.requestApplyInsets(); } }
     public static int imeHeight() { return sImeBottom; }
     public static int[] screenInsetsHusk() { return sInsets; }
-    public static WindowInsets screenInsets() { return WindowInsets.huskOf(sInsets[0], sInsets[1], sInsets[2], sInsets[3], sImeBottom, cutout()); }
+    public static WindowInsets screenInsets() {
+        int sw = screenW(), sh = screenH(), l = sInsets[0], t = sInsets[1], r = sInsets[2], b = sInsets[3], ime = sImeBottom;
+        if (sCachedScreenInsets == null || sw != sInW || sh != sInH || l != sInL || t != sInT || r != sInR || b != sInB || ime != sInIme) {
+            sInW = sw; sInH = sh; sInL = l; sInT = t; sInR = r; sInB = b; sInIme = ime;
+            sCachedScreenInsets = WindowInsets.huskOf(l, t, r, b, ime, cutout());
+        }
+        return sCachedScreenInsets;
+    }
     /** The host reports the physical camera edge, independently of the full-screen surface. */
     public static DisplayCutout cutout() {
-        return DisplayCutout.huskFromInsets(screenW(), screenH(), sInsets[0], sInsets[1], sInsets[2], sInsets[3]);
+        int sw = screenW(), sh = screenH(), l = sInsets[0], t = sInsets[1], r = sInsets[2], b = sInsets[3];
+        if (sw != sCutW || sh != sCutH || l != sCutL || t != sCutT || r != sCutR || b != sCutB) {
+            sCutW = sw; sCutH = sh; sCutL = l; sCutT = t; sCutR = r; sCutB = b;
+            sCachedCutout = DisplayCutout.huskFromInsets(sw, sh, l, t, r, b);
+        }
+        return sCachedCutout;
     }
     static int screenW() { return Native.screenWidth(); }
     static int screenH() { return Native.screenHeight(); }
@@ -206,15 +228,21 @@ public final class ViewRoot implements ViewParent {
     public static void scheduleFrame() {
         if (sScheduled) return;
         sScheduled = true;
-        Choreographer.getMainThreadInstance().postCallback(Choreographer.CALLBACK_TRAVERSAL, ViewRoot::doFrame, null);
+        Choreographer.getMainThreadInstance().postCallback(Choreographer.CALLBACK_TRAVERSAL, sDoFrame, null);
     }
     private static void doFrame() {
         sScheduled = false;
-        ArrayList<ViewRoot> roots = new ArrayList<>(sRoots);
-        for (ViewRoot r : roots) if (!r.mRemoved) r.performLayout();
-        for (ViewRoot r : roots) if (!r.mRemoved && r.mObserver.dispatchOnPreDraw()) { scheduleFrame(); }
-        drawAll(roots);
-        for (ViewRoot r : roots) if (!r.mRemoved) r.mObserver.dispatchOnDraw();
+        sFrameRoots.clear();
+        sFrameRoots.addAll(sRoots);
+        try {
+            int n = sFrameRoots.size();
+            for (int i = 0; i < n; i++) { ViewRoot r = sFrameRoots.get(i); if (!r.mRemoved) r.performLayout(); }
+            for (int i = 0; i < n; i++) { ViewRoot r = sFrameRoots.get(i); if (!r.mRemoved && r.mObserver.dispatchOnPreDraw()) { scheduleFrame(); } }
+            drawAll(sFrameRoots);
+            for (int i = 0; i < n; i++) { ViewRoot r = sFrameRoots.get(i); if (!r.mRemoved) r.mObserver.dispatchOnDraw(); }
+        } finally {
+            sFrameRoots.clear();
+        }
     }
     private static Boolean sDump;
     private long mLastDump;
@@ -288,11 +316,12 @@ public final class ViewRoot implements ViewParent {
             int w = mView.getMeasuredWidth(), h = mView.getMeasuredHeight();
             // where the window goes: gravity and offsets for windows that do not fill the screen (dialogs, popups, toasts)
             int g = mLp.gravity;
-            Rect out = new Rect();
+            Rect out = sLayoutOut;
             if (g == 0 && (lw != ViewGroup.LayoutParams.MATCH_PARENT || lh != ViewGroup.LayoutParams.MATCH_PARENT)) g = Gravity.TOP | Gravity.LEFT;
             if (g == 0) out.set(0, 0, w, h);
             else {
-                Rect area = new Rect(0, 0, sw, sh);
+                Rect area = sLayoutArea;
+                area.set(0, 0, sw, sh);
                 if (mLp.type >= 1000 || (mLp.flags & WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS) == 0 && mLp.type != WindowManager.LayoutParams.TYPE_BASE_APPLICATION)
                     area.set(sInsets[0], sInsets[1], sw - sInsets[2], sh - Math.max(sInsets[3], sImeBottom));
                 Gravity.apply(g, w, h, area, mLp.x, mLp.y, out);
@@ -333,12 +362,17 @@ public final class ViewRoot implements ViewParent {
             if (sCanvas != null) sCanvas.huskRelease();
             sScreen = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
             sCanvas = new Canvas(sScreen);
+            sScreenClean = true;
         }
-        sScreen.eraseColor(0);
+        if (!sScreenClean) {
+            sScreen.eraseColor(0);
+            sScreenClean = true;
+        }
         int gen = sScreen.getGenerationId();
         Paint dim = null;
-        boolean drew = false;
-        for (ViewRoot r : roots) {
+        sCanvas.huskBeginScreenFrame(sScreenClean);
+        for (int i = 0, n = roots.size(); i < n; i++) {
+            ViewRoot r = roots.get(i);
             if (r.mRemoved || r.mView.getVisibility() != View.VISIBLE) continue;
             if ((r.mLp.flags & WindowManager.LayoutParams.FLAG_DIM_BEHIND) != 0 && r.mLp.dimAmount > 0) {
                 if (dim == null) dim = new Paint();
@@ -349,7 +383,6 @@ public final class ViewRoot implements ViewParent {
             sCanvas.translate(r.mX, r.mY);
             sCanvas.clipRect(0, 0, r.mW, r.mH);
             if (r.mLp.alpha < 1f) sCanvas.saveLayerAlpha(0, 0, r.mW, r.mH, Math.round(r.mLp.alpha * 255));
-            drew = true;
             try {
                 r.mView.draw(sCanvas);
             } catch (RuntimeException e) {
@@ -357,8 +390,8 @@ public final class ViewRoot implements ViewParent {
             }
             sCanvas.restoreToCount(save);
         }
-        // a window drawn counts even when its drawing left the generation alone (the screen must lose a closed dialog)
-        boolean any = drew || sScreen.getGenerationId() != gen;
+        sScreenClean = sCanvas.huskIsCleanScreen() && sScreen.getGenerationId() == gen;
+        boolean any = !sScreenClean;
         if (any || sPresentedAny) Gfx.present(any ? sScreen.huskNative() : 0);
         sPresentedAny = any;
     }

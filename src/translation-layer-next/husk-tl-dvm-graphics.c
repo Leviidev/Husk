@@ -1507,7 +1507,19 @@ static bool bitmap_has_visible_pixels(const uint8_t *px, size_t bytes)
     /* bm_new uses premultiplied-last, 32-bit big-endian RGBA. Native bitmap
      * writers can leave RGB behind when alpha is zero; alpha still defines
      * whether the bitmap contains any visible UI content. */
-    for (size_t i = 3; i < bytes; i += 4) {
+    size_t i = 0;
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    while (i < bytes && (((uintptr_t)(px + i)) & 7u)) {
+        if ((i + 3u) < bytes && px[i + 3u] != 0) return true;
+        i += 4u;
+    }
+    for (; i + 8u <= bytes; i += 8u) {
+        uint64_t w;
+        memcpy(&w, px + i, sizeof(w));
+        if ((w & 0xFF000000FF000000ULL) != 0) return true;
+    }
+#endif
+    for (i += 3u; i < bytes; i += 4u) {
         if (px[i] != 0) return true;
     }
     return false;

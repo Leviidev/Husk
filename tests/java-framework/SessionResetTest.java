@@ -16,17 +16,39 @@ public final class SessionResetTest {
         Field prefs = field(ContextImpl.class, "sPrefs");
         Field receivers = field(Broadcasts.class, "sReceivers");
         Field scheduled = field(ViewRoot.class, "sScheduled");
+        Field screenClean = field(ViewRoot.class, "sScreenClean");
+        Field cachedCutout = field(ViewRoot.class, "sCachedCutout");
+        Field cachedInsets = field(ViewRoot.class, "sCachedScreenInsets");
         application.set(null, new android.app.Application());
         loader.set(null, SessionResetTest.class.getClassLoader());
         info.set(null, new android.content.pm.ApplicationInfo());
         ((Map) prefs.get(null)).put("previous-game", null);
         ((List) receivers.get(null)).add(new Object[0]);
         scheduled.setBoolean(null, true);
+        screenClean.setBoolean(null, true);
+        cachedCutout.set(null, android.view.DisplayCutout.NO_CUTOUT);
+        cachedInsets.set(null, android.view.WindowInsets.CONSUMED);
         AppRunner.resetSession();
         if (application.get(null) != null || loader.get(null) != null || info.get(null) != null)
             throw new AssertionError("previous app identity survived reset");
         if (!((Map) prefs.get(null)).isEmpty() || !((List) receivers.get(null)).isEmpty() || scheduled.getBoolean(null))
             throw new AssertionError("previous app callbacks/preferences/frame handler survived reset");
+        if (screenClean.getBoolean(null) || cachedCutout.get(null) != null || cachedInsets.get(null) != null)
+            throw new AssertionError("previous ViewRoot screen/cutout/insets cache survived reset");
+
+        /* Canvas clean-screen tracking starts clean only when explicitly armed and clears on content draw. */
+        android.graphics.Canvas c = new android.graphics.Canvas();
+        if (c.huskIsCleanScreen()) throw new AssertionError("fresh Canvas must not assume a clean screen");
+        c.huskBeginScreenFrame(true);
+        if (!c.huskIsCleanScreen()) throw new AssertionError("huskBeginScreenFrame(true) should mark screen clean");
+        c.drawColor(0);
+        if (!c.huskIsCleanScreen()) throw new AssertionError("drawColor with mNative==0 must keep clean when untouched");
+        c.huskBeginScreenFrame(true);
+        android.graphics.Canvas.class.getDeclaredMethod("touched");
+        java.lang.reflect.Method touched = android.graphics.Canvas.class.getDeclaredMethod("touched");
+        touched.setAccessible(true);
+        touched.invoke(c);
+        if (c.huskIsCleanScreen()) throw new AssertionError("touched Canvas must clear huskIsCleanScreen()");
         AppRunner.resetSession();
 
         /* Empty-stack exit debounce: scheduleEmptyExitCheck must not exit synchronously and resetSession/cancel removes it. */

@@ -11,7 +11,9 @@ public class Canvas {
     private Bitmap mBitmap;
     private int mDensity = Bitmap.DENSITY_NONE;
     private final float[] mAff = new float[6];
+    private final float[] mLinePts = new float[4];
     private final int[] mClip = new int[4];
+    private boolean mHuskScreenClean;
     private static final Paint sBitmapPaint = null;
 
     public Canvas() {}
@@ -21,6 +23,7 @@ public class Canvas {
     public void setBitmap(Bitmap b) {
         if (mNative != 0) { husk.Gfx.cvFree(mNative); mNative = 0; }
         mBitmap = b;
+        mHuskScreenClean = false;
         if (b != null) {
             if (!b.isMutable() && false) throw new IllegalStateException("Immutable bitmap passed to Canvas constructor");
             mNative = husk.Gfx.cvNew(b.huskNative());
@@ -45,7 +48,9 @@ public class Canvas {
     public DrawFilter getDrawFilter() { return null; }
     public void setDrawFilter(DrawFilter f) {}
 
-    private void touched() { if (mBitmap != null) mBitmap.huskTouched(); }
+    public void huskBeginScreenFrame(boolean clean) { mHuskScreenClean = clean; }
+    public boolean huskIsCleanScreen() { return mHuskScreenClean; }
+    private void touched() { mHuskScreenClean = false; if (mBitmap != null) mBitmap.huskTouched(); }
 
     // ---- state
     public int save() { return mNative == 0 ? 1 : husk.Gfx.cvSave(mNative); }
@@ -152,10 +157,16 @@ public class Canvas {
     }
     public void drawArc(RectF o, float start, float sweep, boolean useCenter, Paint p) { drawArc(o.left, o.top, o.right, o.bottom, start, sweep, useCenter, p); }
     public void drawPath(Path path, Paint p) { if (mNative != 0 && path.n > 0) { husk.Gfx.cvDrawPath(mNative, path.ops, path.n, path.huskFill(), p.mP, p.huskShader()); touched(); } }
-    public void drawLine(float x0, float y0, float x1, float y1, Paint p) { drawLines(new float[] { x0, y0, x1, y1 }, 0, 4, p); }
+    public void drawLine(float x0, float y0, float x1, float y1, Paint p) {
+        mLinePts[0] = x0; mLinePts[1] = y0; mLinePts[2] = x1; mLinePts[3] = y1;
+        drawLines(mLinePts, 0, 4, p);
+    }
     public void drawLines(float[] pts, int offset, int count, Paint p) { if (mNative != 0) { husk.Gfx.cvDrawLines(mNative, pts, offset, count, p.mP, p.huskShader(), false); touched(); } }
     public void drawLines(float[] pts, Paint p) { drawLines(pts, 0, pts.length, p); }
-    public void drawPoint(float x, float y, Paint p) { drawPoints(new float[] { x, y }, 0, 2, p); }
+    public void drawPoint(float x, float y, Paint p) {
+        mLinePts[0] = x; mLinePts[1] = y;
+        drawPoints(mLinePts, 0, 2, p);
+    }
     public void drawPoints(float[] pts, int offset, int count, Paint p) { if (mNative != 0) { husk.Gfx.cvDrawLines(mNative, pts, offset, count, p.mP, p.huskShader(), true); touched(); } }
     public void drawPoints(float[] pts, Paint p) { drawPoints(pts, 0, pts.length, p); }
 
@@ -175,7 +186,13 @@ public class Canvas {
         husk.Gfx.cvDrawBitmap(mNative, b.huskNative(), sl, st, sr, sb, dst.left, dst.top, dst.right, dst.bottom, paintOf(p));
         touched();
     }
-    public void drawBitmap(Bitmap b, Rect src, Rect dst, Paint p) { drawBitmap(b, src, new RectF(dst), p); }
+    public void drawBitmap(Bitmap b, Rect src, Rect dst, Paint p) {
+        if (mNative == 0 || b == null || b.isRecycled()) return;
+        float sl = 0, st = 0, sr = b.getWidth(), sb = b.getHeight();
+        if (src != null) { sl = src.left; st = src.top; sr = src.right; sb = src.bottom; }
+        husk.Gfx.cvDrawBitmap(mNative, b.huskNative(), sl, st, sr, sb, dst.left, dst.top, dst.right, dst.bottom, paintOf(p));
+        touched();
+    }
     public void drawBitmap(Bitmap b, Matrix m, Paint p) {
         if (mNative == 0 || b == null || b.isRecycled()) return;
         husk.Gfx.cvDrawBitmapM(mNative, b.huskNative(), (m == null ? new Matrix() : m).huskAffine(), paintOf(p));
@@ -191,7 +208,7 @@ public class Canvas {
     public void drawBitmapMesh(Bitmap b, int mw, int mh, float[] verts, int vo, int[] colors, int co, Paint p) { drawBitmap(b, 0, 0, p); }
     public void drawPicture(Picture pic) { if (pic != null) pic.draw(this); }
     public void drawPicture(Picture pic, RectF dst) { save(); translate(dst.left, dst.top); if (pic.getWidth() > 0 && pic.getHeight() > 0) scale(dst.width() / pic.getWidth(), dst.height() / pic.getHeight()); drawPicture(pic); restore(); }
-    public void drawPicture(Picture pic, Rect dst) { drawPicture(pic, new RectF(dst)); }
+    public void drawPicture(Picture pic, Rect dst) { save(); translate(dst.left, dst.top); if (pic.getWidth() > 0 && pic.getHeight() > 0) scale((float) dst.width() / pic.getWidth(), (float) dst.height() / pic.getHeight()); drawPicture(pic); restore(); }
     public void drawVertices(VertexMode mode, int vc, float[] verts, int vo, float[] tex, int to, int[] colors, int co, short[] idx, int io, int ic, Paint p) {}
     public void drawRenderNode(android.graphics.RenderNode n) { if (n != null) n.huskDraw(this); }
 
