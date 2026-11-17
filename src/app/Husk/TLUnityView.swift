@@ -1850,9 +1850,11 @@ struct TLGameSwitcherSheet: View {
                     DetailRow(label: "Chip / RAM", value: "\(specs.chipName) · \(specs.ramText)")
                     DetailRow(label: "Màn hình", value: "\(specs.landscapePixelsText) · \(specs.maxRefreshHz) Hz")
                     DetailRow(label: "Hệ điều hành", value: specs.osVersion)
-                    let perf = parsedLogs.summary(for: current.packageName).combinedMetrics
-                    if perf.samples > 0 {
-                        DetailRow(label: "Hiệu năng game", value: String(format: "%.1f FPS · mean %.2f ms · max %.2f ms", perf.avgFPS, perf.meanMs, perf.maxMs))
+                    if let pkg = current.packageName, !pkg.isEmpty {
+                        let perf = parsedLogs.summary(for: pkg).combinedMetrics
+                        if perf.samples > 0 {
+                            DetailRow(label: "Hiệu năng game", value: String(format: "%.1f FPS · mean %.2f ms · max %.2f ms", perf.avgFPS, perf.meanMs, perf.maxMs))
+                        }
                     }
                     NavigationLink {
                         IPhonePerfSuiteView(defaultPackage: current.packageName)
