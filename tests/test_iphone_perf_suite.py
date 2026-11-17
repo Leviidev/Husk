@@ -16,12 +16,57 @@ SPEC.loader.exec_module(suite)
 class IPhonePerfSuiteTests(unittest.TestCase):
     def test_catalog_covers_iphone_8_through_iphone_18_and_marks_unverified_variants(self):
         ids = {m.id for m in suite.IPHONE_CATALOG}
-        for req in ("iphone-8", "iphone-8-plus", "iphone-x", "iphone-15-pro-max", "iphone-17-pro-max", "iphone-18-pro-max", "iphone-18"):
+        for req in (
+            "iphone-8", "iphone-8-plus", "iphone-x",
+            "iphone-11", "iphone-11-pro", "iphone-11-pro-max",
+            "iphone-15-pro-max", "iphone-17-pro-max",
+            "iphone-18-pro", "iphone-18-pro-max", "iphone-duo", "iphone-18",
+        ):
             self.assertIn(req, ids)
+        self.assertEqual(len(suite.IPHONE_CATALOG), 42)
         i18 = suite.select_models("iphone-18")[0]
         self.assertEqual(i18.spec_status, "missing_verified_specs")
+        p18 = suite.select_models("iphone-18-pro")[0]
+        self.assertIn("iPhone19,2", p18.machine_ids)
+        self.assertEqual(p18.safe_left_pt, 62)
+        duo = suite.select_models("iphone-duo")[0]
+        self.assertIn("iPhone19,4", duo.machine_ids)
+        self.assertEqual(duo.pixel_count, 2670 * 1878)
         selected = suite.select_models("iphone-8,iPhone16,2")
         self.assertEqual([m.id for m in selected], ["iphone-8", "iphone-15-pro-max"])
+
+    def test_swift_and_python_catalogs_stay_synchronized(self):
+        import re
+        sw = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
+        pattern = re.compile(
+            r'IPhoneModelProfile\(id:\s*"([^"]+)",\s*family:\s*\.[^,]+,\s*variant:\s*"(?:[^"\\]|\\.)*",\s*'
+            r'machineIDs:\s*\[([^\]]*)\],\s*chip:\s*"([^"]+)",\s*ramGB:\s*([^,]+),\s*'
+            r'pixelWidth:\s*([^,]+),\s*pixelHeight:\s*([^,]+),.*?refreshRateHz:\s*([^,]+),\s*'
+            r'cutoutType:\s*"[^"]+",\s*safeLeftPt:\s*([^,]+),\s*compatibleIOS:\s*"(?:[^"\\]|\\.)*",\s*'
+            r'specVerified:\s*(true|false)'
+        )
+        rows = pattern.findall(sw)
+        self.assertEqual(len(rows), len(suite.IPHONE_CATALOG))
+        import unicodedata
+
+        def fold_vi(text):
+            return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii").lower()
+
+        by_id = {m.id: m for m in suite.IPHONE_CATALOG}
+        for sid, mids_raw, chip, ram, pw, ph, hz, safe, verified in rows:
+            m = by_id[sid]
+            mids = tuple(re.findall(r'"([^"]+)"', mids_raw))
+            self.assertEqual(mids, m.machine_ids, sid)
+            self.assertEqual(fold_vi(chip), fold_vi(m.chip), sid)
+            self.assertEqual(verified == "true", m.spec_status == "verified", sid)
+            self.assertEqual(hz, "nil" if m.refresh_rate_hz is None else str(m.refresh_rate_hz), sid)
+            self.assertEqual(safe, "nil" if m.safe_left_pt is None else str(m.safe_left_pt), sid)
+            if m.ram_gb is None:
+                self.assertEqual(ram, "nil", sid)
+            else:
+                self.assertEqual(float(ram), m.ram_gb, sid)
+            if m.pixel_count is not None and pw != "nil" and ph != "nil":
+                self.assertEqual(int(pw) * int(ph), m.pixel_count, sid)
 
     def test_simulation_never_masquerades_as_real_device_pass(self):
         report = suite.evaluate_models(suite.select_models("iphone-8,iphone-16-pro-max,iphone-18"), [], include_simulation=True)

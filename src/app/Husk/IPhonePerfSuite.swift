@@ -4,19 +4,24 @@ import Foundation
 // MARK: - Evaluation Model
 
 enum IPhoneFamily: String, CaseIterable, Identifiable {
-    case all = "Tất cả (8 → 18)"
-    case s8X = "iPhone 8 / X"
-    case sXSXR = "iPhone XR / XS"
-    case s11SE = "iPhone 11 / SE"
-    case s12 = "iPhone 12"
-    case s13 = "iPhone 13"
-    case s14 = "iPhone 14"
-    case s15 = "iPhone 15"
-    case s16 = "iPhone 16"
-    case s17 = "iPhone 17 / Air"
-    case s18 = "iPhone 18 / Duo"
+    case all = "Tất cả (42 mẫu: 8 → 18)"
+    case s8X = "iPhone 8 / 8 Plus / X"
+    case sXSXR = "iPhone XR / XS / XS Max"
+    case s11 = "iPhone 11 / 11 Pro / 11 Pro Max"
+    case sSE = "iPhone SE (2nd & 3rd gen)"
+    case s12 = "iPhone 12 (mini / 12 / Pro / Pro Max)"
+    case s13 = "iPhone 13 (mini / 13 / Pro / Pro Max)"
+    case s14 = "iPhone 14 (14 / Plus / Pro / Pro Max)"
+    case s15 = "iPhone 15 (15 / Plus / Pro / Pro Max)"
+    case s16 = "iPhone 16 (16 / Plus / Pro / Pro Max / 16e)"
+    case s17 = "iPhone 17 / Air / 17e"
+    case s18 = "iPhone 18 Pro / Pro Max / Duo / 18 / 18e"
 
     var id: String { rawValue }
+
+    static var specificGenerations: [IPhoneFamily] {
+        allCases.filter { $0 != .all }
+    }
 }
 
 struct IPhoneModelProfile: Identifiable, Hashable {
@@ -37,8 +42,10 @@ struct IPhoneModelProfile: Identifiable, Hashable {
     let compatibleIOS: String
     let specVerified: Bool
     let specNotes: String
+    var customResolution: String? = nil
 
     var resolutionLabel: String {
+        if let custom = customResolution, !custom.isEmpty { return custom }
         guard let pw = pixelWidth, let ph = pixelHeight else { return specNotes.isEmpty ? "Chưa xác minh" : specNotes }
         if let lw = pointWidth, let lh = pointHeight {
             return "\(pw)×\(ph) px (\(lw)×\(lh) pt)"
@@ -60,23 +67,40 @@ struct IPhoneModelProfile: Identifiable, Hashable {
         guard let s = scale, let pt = safeLeftPt else { return 0 }
         return Int((Double(pt) * s).rounded())
     }
+
+    var safeLeftSummary: String {
+        if let pt = safeLeftPt {
+            return "\(cutoutType) · \(pt) pt (\(pt == 0 ? 0 : safeLeftPx) px)"
+        }
+        return "\(cutoutType) (Chưa xác minh Safe-Area)"
+    }
+
+    var compactSpecLine: String {
+        let resShort: String
+        if let pw = pixelWidth, let ph = pixelHeight {
+            resShort = customResolution != nil ? "\(pw)×\(ph)+" : "\(pw)×\(ph)"
+        } else {
+            resShort = "Chưa rõ px"
+        }
+        return "\(chip) · \(ramLabel) · \(resShort) · \(refreshLabel) · \(compatibleIOS)"
+    }
 }
 
 enum IPhoneTestCatalog {
     static let targetPackage = "com.tech3cgame.vhpt1"
 
     static let all: [IPhoneModelProfile] = [
-        IPhoneModelProfile(id: "iphone-8", family: .s8X, variant: "iPhone 8 (4.7\")", machineIDs: ["iPhone10,1", "iPhone10,4"], chip: "Apple A11 Bionic", ramGB: 2, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 11.0 - 16.7.10", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-8-plus", family: .s8X, variant: "iPhone 8 Plus (5.5\")", machineIDs: ["iPhone10,2", "iPhone10,5"], chip: "Apple A11 Bionic", ramGB: 3, pixelWidth: 1920, pixelHeight: 1080, pointWidth: 736, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 11.0 - 16.7.10", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-x", family: .s8X, variant: "iPhone X (5.8\")", machineIDs: ["iPhone10,3", "iPhone10,6"], chip: "Apple A11 Bionic", ramGB: 3, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 11.0 - 16.7.10", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-xr", family: .sXSXR, variant: "iPhone XR (6.1\")", machineIDs: ["iPhone11,8"], chip: "Apple A12 Bionic", ramGB: 3, pixelWidth: 1792, pixelHeight: 828, pointWidth: 896, pointHeight: 414, scale: 2, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 48, compatibleIOS: "iOS 12.0 - 18.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-xs", family: .sXSXR, variant: "iPhone XS (5.8\")", machineIDs: ["iPhone11,2"], chip: "Apple A12 Bionic", ramGB: 4, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 12.0 - 18.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-xs-max", family: .sXSXR, variant: "iPhone XS Max (6.5\")", machineIDs: ["iPhone11,4", "iPhone11,6"], chip: "Apple A12 Bionic", ramGB: 4, pixelWidth: 2688, pixelHeight: 1242, pointWidth: 896, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 12.0 - 18.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-11", family: .s11SE, variant: "iPhone 11 (6.1\")", machineIDs: ["iPhone12,1"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 1792, pixelHeight: 828, pointWidth: 896, pointHeight: 414, scale: 2, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 48, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-11-pro", family: .s11SE, variant: "iPhone 11 Pro (5.8\")", machineIDs: ["iPhone12,3"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-11-pro-max", family: .s11SE, variant: "iPhone 11 Pro Max (6.5\")", machineIDs: ["iPhone12,5"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 2688, pixelHeight: 1242, pointWidth: 896, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-se-2", family: .s11SE, variant: "iPhone SE (2nd gen)", machineIDs: ["iPhone12,8"], chip: "Apple A13 Bionic", ramGB: 3, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 13.4 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-se-3", family: .s11SE, variant: "iPhone SE (3rd gen)", machineIDs: ["iPhone14,6"], chip: "Apple A15 Bionic (4-GPU)", ramGB: 4, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 15.4 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-8", family: .s8X, variant: "iPhone 8 (4.7\")", machineIDs: ["iPhone10,1", "iPhone10,4"], chip: "Apple A11 Bionic", ramGB: 2, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 11.0 - 16.7.x (Husk cần ≥ 15.5)", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-8-plus", family: .s8X, variant: "iPhone 8 Plus (5.5\")", machineIDs: ["iPhone10,2", "iPhone10,5"], chip: "Apple A11 Bionic", ramGB: 3, pixelWidth: 1920, pixelHeight: 1080, pointWidth: 736, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 11.0 - 16.7.x (Husk cần ≥ 15.5)", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-x", family: .s8X, variant: "iPhone X (5.8\")", machineIDs: ["iPhone10,3", "iPhone10,6"], chip: "Apple A11 Bionic", ramGB: 3, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 11.0 - 16.7.x (Husk cần ≥ 15.5)", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-xr", family: .sXSXR, variant: "iPhone XR (6.1\")", machineIDs: ["iPhone11,8"], chip: "Apple A12 Bionic", ramGB: 3, pixelWidth: 1792, pixelHeight: 828, pointWidth: 896, pointHeight: 414, scale: 2, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 48, compatibleIOS: "iOS 12.0 - 18.7.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-xs", family: .sXSXR, variant: "iPhone XS (5.8\")", machineIDs: ["iPhone11,2"], chip: "Apple A12 Bionic", ramGB: 4, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 12.0 - 18.7.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-xs-max", family: .sXSXR, variant: "iPhone XS Max (6.5\")", machineIDs: ["iPhone11,4", "iPhone11,6"], chip: "Apple A12 Bionic", ramGB: 4, pixelWidth: 2688, pixelHeight: 1242, pointWidth: 896, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 12.0 - 18.7.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-11", family: .s11, variant: "iPhone 11 (6.1\")", machineIDs: ["iPhone12,1"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 1792, pixelHeight: 828, pointWidth: 896, pointHeight: 414, scale: 2, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 48, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-11-pro", family: .s11, variant: "iPhone 11 Pro (5.8\")", machineIDs: ["iPhone12,3"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 2436, pixelHeight: 1125, pointWidth: 812, pointHeight: 375, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-11-pro-max", family: .s11, variant: "iPhone 11 Pro Max (6.5\")", machineIDs: ["iPhone12,5"], chip: "Apple A13 Bionic", ramGB: 4, pixelWidth: 2688, pixelHeight: 1242, pointWidth: 896, pointHeight: 414, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 44, compatibleIOS: "iOS 13.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-se-2", family: .sSE, variant: "iPhone SE (2nd gen, 4.7\")", machineIDs: ["iPhone12,8"], chip: "Apple A13 Bionic", ramGB: 3, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 13.4 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-se-3", family: .sSE, variant: "iPhone SE (3rd gen, 4.7\")", machineIDs: ["iPhone14,6"], chip: "Apple A15 Bionic (4-GPU)", ramGB: 4, pixelWidth: 1334, pixelHeight: 750, pointWidth: 667, pointHeight: 375, scale: 2, refreshRateHz: 60, cutoutType: "none", safeLeftPt: 0, compatibleIOS: "iOS 15.4 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-12-mini", family: .s12, variant: "iPhone 12 mini (5.4\")", machineIDs: ["iPhone13,1"], chip: "Apple A14 Bionic", ramGB: 4, pixelWidth: 2340, pixelHeight: 1080, pointWidth: 780, pointHeight: 360, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 50, compatibleIOS: "iOS 14.2 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-12", family: .s12, variant: "iPhone 12 (6.1\")", machineIDs: ["iPhone13,2"], chip: "Apple A14 Bionic", ramGB: 4, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 14.1 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-12-pro", family: .s12, variant: "iPhone 12 Pro (6.1\")", machineIDs: ["iPhone13,3"], chip: "Apple A14 Bionic", ramGB: 6, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 14.1 - 27.x", specVerified: true, specNotes: ""),
@@ -87,27 +111,27 @@ enum IPhoneTestCatalog {
         IPhoneModelProfile(id: "iphone-13-pro-max", family: .s13, variant: "iPhone 13 Pro Max (6.7\")", machineIDs: ["iPhone14,3"], chip: "Apple A15 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2778, pixelHeight: 1284, pointWidth: 926, pointHeight: 428, scale: 3, refreshRateHz: 120, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 15.0 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-14", family: .s14, variant: "iPhone 14 (6.1\")", machineIDs: ["iPhone14,7"], chip: "Apple A15 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-14-plus", family: .s14, variant: "iPhone 14 Plus (6.7\")", machineIDs: ["iPhone14,8"], chip: "Apple A15 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2778, pixelHeight: 1284, pointWidth: 926, pointHeight: 428, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-14-pro", family: .s14, variant: "iPhone 14 Pro (6.1\")", machineIDs: ["iPhone15,2"], chip: "Apple A16 Bionic", ramGB: 6, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-14-pro-max", family: .s14, variant: "iPhone 14 Pro Max (6.7\")", machineIDs: ["iPhone15,3"], chip: "Apple A16 Bionic", ramGB: 6, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-15", family: .s15, variant: "iPhone 15 (6.1\")", machineIDs: ["iPhone15,4"], chip: "Apple A16 Bionic", ramGB: 6, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-15-plus", family: .s15, variant: "iPhone 15 Plus (6.7\")", machineIDs: ["iPhone15,5"], chip: "Apple A16 Bionic", ramGB: 6, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-15-pro", family: .s15, variant: "iPhone 15 Pro (6.1\")", machineIDs: ["iPhone16,1"], chip: "Apple A17 Pro", ramGB: 8, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-15-pro-max", family: .s15, variant: "iPhone 15 Pro Max (6.7\")", machineIDs: ["iPhone16,2"], chip: "Apple A17 Pro", ramGB: 8, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-16", family: .s16, variant: "iPhone 16 (6.1\")", machineIDs: ["iPhone17,3"], chip: "Apple A18", ramGB: 8, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-16-plus", family: .s16, variant: "iPhone 16 Plus (6.7\")", machineIDs: ["iPhone17,4"], chip: "Apple A18", ramGB: 8, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-16-pro", family: .s16, variant: "iPhone 16 Pro (6.3\")", machineIDs: ["iPhone17,1"], chip: "Apple A18 Pro", ramGB: 8, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-16-pro-max", family: .s16, variant: "iPhone 16 Pro Max (6.9\")", machineIDs: ["iPhone17,2"], chip: "Apple A18 Pro", ramGB: 8, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-14-pro", family: .s14, variant: "iPhone 14 Pro (6.1\")", machineIDs: ["iPhone15,2"], chip: "Apple A16 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-14-pro-max", family: .s14, variant: "iPhone 14 Pro Max (6.7\")", machineIDs: ["iPhone15,3"], chip: "Apple A16 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 16.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-15", family: .s15, variant: "iPhone 15 (6.1\")", machineIDs: ["iPhone15,4"], chip: "Apple A16 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-15-plus", family: .s15, variant: "iPhone 15 Plus (6.7\")", machineIDs: ["iPhone15,5"], chip: "Apple A16 Bionic (5-GPU)", ramGB: 6, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-15-pro", family: .s15, variant: "iPhone 15 Pro (6.1\")", machineIDs: ["iPhone16,1"], chip: "Apple A17 Pro (6-GPU)", ramGB: 8, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-15-pro-max", family: .s15, variant: "iPhone 15 Pro Max (6.7\")", machineIDs: ["iPhone16,2"], chip: "Apple A17 Pro (6-GPU)", ramGB: 8, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 17.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-16", family: .s16, variant: "iPhone 16 (6.1\")", machineIDs: ["iPhone17,3"], chip: "Apple A18 (5-GPU)", ramGB: 8, pixelWidth: 2556, pixelHeight: 1179, pointWidth: 852, pointHeight: 393, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-16-plus", family: .s16, variant: "iPhone 16 Plus (6.7\")", machineIDs: ["iPhone17,4"], chip: "Apple A18 (5-GPU)", ramGB: 8, pixelWidth: 2796, pixelHeight: 1290, pointWidth: 932, pointHeight: 430, scale: 3, refreshRateHz: 60, cutoutType: "dynamic_island", safeLeftPt: 59, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-16-pro", family: .s16, variant: "iPhone 16 Pro (6.3\")", machineIDs: ["iPhone17,1"], chip: "Apple A18 Pro (6-GPU)", ramGB: 8, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-16-pro-max", family: .s16, variant: "iPhone 16 Pro Max (6.9\")", machineIDs: ["iPhone17,2"], chip: "Apple A18 Pro (6-GPU)", ramGB: 8, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 18.0 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-16e", family: .s16, variant: "iPhone 16e (6.1\")", machineIDs: ["iPhone17,5"], chip: "Apple A18 (4-GPU)", ramGB: 8, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 18.3 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-17", family: .s17, variant: "iPhone 17 (6.3\")", machineIDs: ["iPhone18,3"], chip: "Apple A19", ramGB: 8, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-17", family: .s17, variant: "iPhone 17 (6.3\")", machineIDs: ["iPhone18,3"], chip: "Apple A19 (5-GPU)", ramGB: 8, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
         IPhoneModelProfile(id: "iphone-air", family: .s17, variant: "iPhone Air (6.5\")", machineIDs: ["iPhone18,4"], chip: "Apple A19 Pro (5-GPU)", ramGB: 12, pixelWidth: 2736, pixelHeight: 1260, pointWidth: 912, pointHeight: 420, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-17-pro", family: .s17, variant: "iPhone 17 Pro (6.3\")", machineIDs: ["iPhone18,1"], chip: "Apple A19 Pro", ramGB: 12, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-17-pro-max", family: .s17, variant: "iPhone 17 Pro Max (6.9\")", machineIDs: ["iPhone18,2"], chip: "Apple A19 Pro", ramGB: 12, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-17e", family: .s17, variant: "iPhone 17e (6.1\")", machineIDs: ["iPhone18,5"], chip: "Apple A19", ramGB: 8, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 26.3 - 27.x", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-18-pro", family: .s18, variant: "iPhone 18 Pro (6.3\")", machineIDs: ["iPhone19,1"], chip: "Apple A20 Pro", ramGB: 12, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 54, compatibleIOS: "iOS 27.0+", specVerified: true, specNotes: ""),
-        IPhoneModelProfile(id: "iphone-18-pro-max", family: .s18, variant: "iPhone 18 Pro Max (6.9\")", machineIDs: ["iPhone19,2"], chip: "Apple A20 Pro", ramGB: 12, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 54, compatibleIOS: "iOS 27.0+", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-17-pro", family: .s17, variant: "iPhone 17 Pro (6.3\")", machineIDs: ["iPhone18,1"], chip: "Apple A19 Pro (6-GPU)", ramGB: 12, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-17-pro-max", family: .s17, variant: "iPhone 17 Pro Max (6.9\")", machineIDs: ["iPhone18,2"], chip: "Apple A19 Pro (6-GPU)", ramGB: 12, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 26.0 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-17e", family: .s17, variant: "iPhone 17e (6.1\")", machineIDs: ["iPhone18,5"], chip: "Apple A19 (4-GPU)", ramGB: 8, pixelWidth: 2532, pixelHeight: 1170, pointWidth: 844, pointHeight: 390, scale: 3, refreshRateHz: 60, cutoutType: "notch", safeLeftPt: 47, compatibleIOS: "iOS 26.3 - 27.x", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-18-pro", family: .s18, variant: "iPhone 18 Pro (6.3\")", machineIDs: ["iPhone19,2"], chip: "Apple A20 Pro (7-GPU)", ramGB: 12, pixelWidth: 2622, pixelHeight: 1206, pointWidth: 874, pointHeight: 402, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 27.0+", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-18-pro-max", family: .s18, variant: "iPhone 18 Pro Max (6.9\")", machineIDs: ["iPhone19,3", "iPhone19,7"], chip: "Apple A20 Pro (7-GPU)", ramGB: 12, pixelWidth: 2868, pixelHeight: 1320, pointWidth: 956, pointHeight: 440, scale: 3, refreshRateHz: 120, cutoutType: "dynamic_island", safeLeftPt: 62, compatibleIOS: "iOS 27.0+", specVerified: true, specNotes: ""),
+        IPhoneModelProfile(id: "iphone-duo", family: .s18, variant: "iPhone Duo (7.6\" gập / 5.4\" ngoài)", machineIDs: ["iPhone19,4"], chip: "Apple A20 Pro (7-GPU)", ramGB: 12, pixelWidth: 2670, pixelHeight: 1878, pointWidth: nil, pointHeight: nil, scale: nil, refreshRateHz: 120, cutoutType: "foldable (Touch ID cạnh bên)", safeLeftPt: nil, compatibleIOS: "iOS 27.0+", specVerified: true, specNotes: "Màn trong 7.6\" (430 ppi) / màn ngoài 5.4\" (460 ppi); thiếu scale & Safe-Area UIKit xác minh; chưa có máy thật để đo.", customResolution: "2670×1878 px (gập 7.6\") / 2034×1398 px (ngoài 5.4\")"),
         IPhoneModelProfile(id: "iphone-18", family: .s18, variant: "iPhone 18 (Standard)", machineIDs: [], chip: "Chưa công bố (dự kiến X/2027)", ramGB: nil, pixelWidth: nil, pixelHeight: nil, pointWidth: nil, pointHeight: nil, scale: nil, refreshRateHz: nil, cutoutType: "dynamic_island", safeLeftPt: nil, compatibleIOS: "iOS 27.x (dự kiến)", specVerified: false, specNotes: "Thiếu cấu hình phần cứng xác minh (dự kiến mùa xuân 2027)."),
         IPhoneModelProfile(id: "iphone-18e", family: .s18, variant: "iPhone 18e", machineIDs: [], chip: "Chưa công bố", ramGB: nil, pixelWidth: nil, pixelHeight: nil, pointWidth: nil, pointHeight: nil, scale: nil, refreshRateHz: nil, cutoutType: "notch", safeLeftPt: nil, compatibleIOS: "iOS 27.x (dự kiến)", specVerified: false, specNotes: "Thiếu cấu hình phần cứng xác minh chính thức."),
-        IPhoneModelProfile(id: "iphone-duo", family: .s18, variant: "iPhone Duo / Fold", machineIDs: [], chip: "Apple A20 Pro", ramGB: 12, pixelWidth: nil, pixelHeight: nil, pointWidth: nil, pointHeight: nil, scale: nil, refreshRateHz: 120, cutoutType: "foldable", safeLeftPt: nil, compatibleIOS: "iOS 27.0+", specVerified: false, specNotes: "Màn hình gập (~7.8\"/5.4\"), thiếu độ phân giải & safe-area xác minh."),
     ]
 
     static func model(forID id: String) -> IPhoneModelProfile? {
@@ -306,11 +330,137 @@ enum IPhoneTestProfile {
 import SwiftUI
 import UIKit
 
+extension IPhoneTestProfile {
+    static func select(_ model: IPhoneModelProfile, via source: String) {
+        UserDefaults.standard.set(model.id, forKey: selectedModelIDKey)
+        HuskLog.log("perf-suite", "selected model=\(model.id) variant=\(model.variant) via=\(source)")
+    }
+}
+
+struct IPhoneSelectedSpecRows: View {
+    let model: IPhoneModelProfile
+    @Binding var displayOverride: Bool
+
+    var body: some View {
+        DetailRow(label: "Mẫu máy", value: model.variant, mono: false)
+        DetailRow(label: "Machine ID", value: model.machineIDs.isEmpty ? "Chưa công bố" : model.machineIDs.joined(separator: ", "))
+        DetailRow(label: "Chip", value: model.chip, mono: false)
+        DetailRow(label: "RAM", value: model.ramLabel, mono: false)
+        DetailRow(label: "Độ phân giải", value: model.resolutionLabel, mono: false)
+        DetailRow(label: "Tần số quét", value: model.refreshLabel, mono: false)
+        DetailRow(label: "Vùng cắt / Safe Left", value: model.safeLeftSummary, mono: false)
+        DetailRow(label: "iOS tương thích", value: model.compatibleIOS, mono: false)
+        DetailRow(label: "Trạng thái cấu hình", value: model.specVerified ? "Đã xác minh" : "Thiếu cấu hình xác minh", mono: false)
+        if !model.specNotes.isEmpty {
+            Text(model.specNotes).font(.caption).foregroundStyle(.secondary)
+        }
+        if model.specVerified && model.pixelWidth != nil && model.pointWidth != nil {
+            Toggle("Áp dụng màn hình & Safe-Area của mẫu này khi mở game", isOn: $displayOverride)
+                .onChange(of: displayOverride) { v in
+                    IPhoneTestProfile.isDisplayOverrideEnabled = v
+                    HuskLog.log("perf-suite", "displayOverride=\(v) model=\(model.id)")
+                }
+        }
+    }
+}
+
+struct IPhoneFamilyCatalogRows: View {
+    @Binding var selectedModelID: String
+    @Binding var expandedFamilies: Set<IPhoneFamily>
+    let currentMachine: String
+    let onSelect: (IPhoneModelProfile) -> Void
+
+    private var allExpanded: Bool {
+        expandedFamilies.count == IPhoneFamily.specificGenerations.count
+    }
+
+    private func familyBinding(_ family: IPhoneFamily) -> Binding<Bool> {
+        Binding(
+            get: { expandedFamilies.contains(family) },
+            set: { isOpen in
+                if isOpen { expandedFamilies.insert(family) } else { expandedFamilies.remove(family) }
+            }
+        )
+    }
+
+    var body: some View {
+        if let nativeMatch = IPhoneTestCatalog.model(matchingMachine: currentMachine) {
+            Button {
+                expandedFamilies.insert(nativeMatch.family)
+                onSelect(nativeMatch)
+            } label: {
+                Label("Chọn đúng máy đang dùng (\(nativeMatch.variant))", systemImage: "iphone.gen3")
+            }
+        }
+        Button {
+            if allExpanded {
+                let currentFamily = IPhoneTestCatalog.model(forID: selectedModelID)?.family ?? .s15
+                expandedFamilies = [currentFamily]
+            } else {
+                expandedFamilies = Set(IPhoneFamily.specificGenerations)
+            }
+        } label: {
+            Label(allExpanded ? "Thu gọn danh sách iPhone" : "Mở tất cả 42 biến thể (iPhone 8 → 18)",
+                  systemImage: allExpanded ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+        }
+        ForEach(IPhoneFamily.specificGenerations) { family in
+            let models = IPhoneTestCatalog.models(in: family)
+            DisclosureGroup(isExpanded: familyBinding(family)) {
+                ForEach(models) { m in
+                    let isSelected = (m.id == selectedModelID)
+                    Button {
+                        onSelect(m)
+                    } label: {
+                        HStack(alignment: .center, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 6) {
+                                    Text(m.variant)
+                                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                                        .foregroundStyle(.primary)
+                                    if !m.specVerified {
+                                        Text("Thiếu xác minh")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.orange)
+                                    } else if !m.machineIDs.isEmpty {
+                                        Text(m.machineIDs.joined(separator: ", "))
+                                            .font(.system(.caption2, design: .monospaced))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Text(m.compactSpecLine)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 6)
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .padding(.vertical, 2)
+                    }
+                }
+            } label: {
+                let hasSelected = models.contains { $0.id == selectedModelID }
+                HStack {
+                    Text(family.rawValue)
+                        .font(.subheadline.weight(hasSelected ? .semibold : .medium))
+                    Spacer()
+                    Text("\(models.count) mẫu")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
 struct IPhonePerfSuiteView: View {
     var defaultPackage: String? = nil
 
-    @State private var selectedFamily: IPhoneFamily = .all
     @State private var selectedModelID: String = UserDefaults.standard.string(forKey: IPhoneTestProfile.selectedModelIDKey) ?? ""
+    @State private var expandedFamilies: Set<IPhoneFamily> = [.s11, .s15]
     @State private var displayOverride: Bool = IPhoneTestProfile.isDisplayOverrideEnabled
     @State private var parsed = IPhoneParsedLogs()
     @State private var copiedNotice = false
@@ -322,10 +472,6 @@ struct IPhonePerfSuiteView: View {
         return "\(Bundle.main.version) (\(b)) \(Bundle.main.commit)"
     }
 
-    private var filteredModels: [IPhoneModelProfile] {
-        IPhoneTestCatalog.models(in: selectedFamily)
-    }
-
     private var selectedModel: IPhoneModelProfile {
         if let m = IPhoneTestCatalog.model(forID: selectedModelID) { return m }
         return IPhoneTestProfile.selectedModel(defaultMachine: currentMachine)
@@ -334,53 +480,27 @@ struct IPhonePerfSuiteView: View {
     var body: some View {
         HuskForm {
             Section {
-                Picker("Dòng máy", selection: $selectedFamily) {
-                    ForEach(IPhoneFamily.allCases) { f in Text(f.rawValue).tag(f) }
-                }
-                Picker("Mẫu & biến thể iPhone", selection: $selectedModelID) {
-                    ForEach(filteredModels) { m in
-                        let tag = m.specVerified ? "" : " [Thiếu xác minh]"
-                        Text("\(m.variant)\(tag)").tag(m.id)
-                    }
-                }
-                if let nativeMatch = IPhoneTestCatalog.model(matchingMachine: currentMachine) {
-                    Button {
-                        selectedFamily = .all
-                        selectedModelID = nativeMatch.id
-                        saveSelection()
-                    } label: {
-                        Label("Chọn đúng máy đang dùng (\(nativeMatch.variant))", systemImage: "iphone.gen3")
-                    }
+                IPhoneFamilyCatalogRows(
+                    selectedModelID: $selectedModelID,
+                    expandedFamilies: $expandedFamilies,
+                    currentMachine: currentMachine
+                ) { m in
+                    selectedModelID = m.id
+                    IPhoneTestProfile.select(m, via: "settings")
                 }
             } header: {
-                Text("Chọn iPhone kiểm thử (iPhone 8 → iPhone 18)")
+                Text("Chọn từng mẫu & biến thể iPhone (8 → 18)")
             } footer: {
-                Text("Cho phép chọn từng mẫu và biến thể từ iPhone 8 đến iPhone 18 Pro Max (cả các biến thể chưa có cấu hình xác minh như iPhone 18 chuẩn, 18e, Duo).")
+                Text("Liệt kê đầy đủ từng mẫu từ iPhone 8 đến iPhone 18 Pro Max / Duo. Các biến thể chưa công bố (iPhone 18 chuẩn, 18e) được đánh dấu Thiếu xác minh.")
             }
 
             Section {
-                let m = selectedModel
-                DetailRow(label: "Mẫu máy", value: m.variant, mono: false)
-                DetailRow(label: "Machine ID", value: m.machineIDs.isEmpty ? "Chưa công bố" : m.machineIDs.joined(separator: ", "))
-                DetailRow(label: "Chip", value: m.chip, mono: false)
-                DetailRow(label: "RAM", value: m.ramLabel, mono: false)
-                DetailRow(label: "Độ phân giải", value: m.resolutionLabel, mono: false)
-                DetailRow(label: "Tần số quét", value: m.refreshLabel, mono: false)
-                DetailRow(label: "Vùng cắt / Safe Left", value: m.safeLeftPt.map { "\(m.cutoutType) · \($0) pt (\($0 == 0 ? 0 : m.safeLeftPx) px)" } ?? "\(m.cutoutType) (Chưa xác minh)", mono: false)
-                DetailRow(label: "iOS tương thích", value: m.compatibleIOS, mono: false)
-                DetailRow(label: "Trạng thái cấu hình", value: m.specVerified ? "Đã xác minh" : "Thiếu cấu hình xác minh", mono: false)
-                if m.specVerified && m.pixelWidth != nil {
-                    Toggle("Áp dụng màn hình & Safe-Area của mẫu này khi mở game", isOn: $displayOverride)
-                        .onChange(of: displayOverride) { v in
-                            IPhoneTestProfile.isDisplayOverrideEnabled = v
-                            HuskLog.log("perf-suite", "displayOverride=\(v) model=\(m.id)")
-                        }
-                }
+                IPhoneSelectedSpecRows(model: selectedModel, displayOverride: $displayOverride)
             } header: {
                 Text("Cấu hình đã chọn")
             } footer: {
-                if displayOverride && selectedModel.specVerified {
-                    Text("Chế độ test kích thước màn hình đang BẬT cho lần mở game tiếp theo: khung game & Safe-Area sẽ mô phỏng \(selectedModel.resolutionLabel), phù hợp để kiểm tra bố cục HUD trên các cỡ màn hình (kết luận FPS chỉ tính từ máy thật trùng Machine ID).")
+                if displayOverride && selectedModel.specVerified && selectedModel.pointWidth != nil {
+                    Text("Chế độ test kích thước màn hình đang BẬT cho lần mở / chuyển game tiếp theo: khung game & Safe-Area mô phỏng \(selectedModel.resolutionLabel). Kết luận FPS đạt/lag chỉ tính từ máy thật trùng Machine ID.")
                 } else {
                     Text("Các mẫu thiếu cấu hình xác minh được đánh dấu rõ và không thể dùng để kết luận Đạt.")
                 }
@@ -416,23 +536,11 @@ struct IPhonePerfSuiteView: View {
         .huskForm()
         .navigationTitle("iPhone 8–18 Test Suite")
         .onAppear {
-            if selectedModelID.isEmpty {
-                selectedModelID = IPhoneTestProfile.selectedModel(defaultMachine: currentMachine).id
-            }
+            let current = selectedModel
+            if selectedModelID.isEmpty { selectedModelID = current.id }
+            expandedFamilies.insert(current.family)
             reloadLogs()
         }
-        .onChange(of: selectedModelID) { _ in saveSelection() }
-        .onChange(of: selectedFamily) { _ in
-            if !filteredModels.contains(where: { $0.id == selectedModelID }), let first = filteredModels.first {
-                selectedModelID = first.id
-                saveSelection()
-            }
-        }
-    }
-
-    private func saveSelection() {
-        UserDefaults.standard.set(selectedModelID, forKey: IPhoneTestProfile.selectedModelIDKey)
-        HuskLog.log("perf-suite", "selected model=\(selectedModelID) variant=\(selectedModel.variant)")
     }
 
     private func formatScenario(_ s: IPhonePerfScenarioMetrics) -> String {

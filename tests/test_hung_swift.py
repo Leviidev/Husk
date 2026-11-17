@@ -418,14 +418,25 @@ print("PASS: StorageCleaner reclaims regenerable caches & temp files while prote
 ''')
 
     def test_iphone_perf_suite_model_and_evaluator(self):
-        src = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
-        src = src.split("#if canImport(SwiftUI)", 1)[0]
+        full_src = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
+        unity_src = (ROOT / "src/app/Husk/TLUnityView.swift").read_text(encoding="utf-8")
+        self.assertIn("IPhoneFamilyCatalogRows", full_src)
+        self.assertIn("IPhoneSelectedSpecRows", full_src)
+        self.assertIn("IPhoneFamilyCatalogRows", unity_src)
+        self.assertIn("IPhoneSelectedSpecRows", unity_src)
+        src = full_src.split("#if canImport(SwiftUI)", 1)[0]
         self.compile_run(src, '''
+precondition(IPhoneTestCatalog.all.count == 42)
 precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-8" }))
+precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-11-pro-max" }))
 precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-15-pro-max" }))
 precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-18-pro-max" }))
 let i18 = IPhoneTestCatalog.model(forID: "iphone-18")!
 precondition(!i18.specVerified)
+let p18 = IPhoneTestCatalog.model(forID: "iphone-18-pro")!
+precondition(p18.machineIDs.contains("iPhone19,2") && p18.safeLeftPt == 62)
+let duo = IPhoneTestCatalog.model(forID: "iphone-duo")!
+precondition(duo.machineIDs.contains("iPhone19,4") && duo.specVerified && duo.pointWidth == nil)
 let pm = IPhoneTestCatalog.model(matchingMachine: "iPhone16,2")!
 precondition(pm.id == "iphone-15-pro-max" && pm.specVerified)
 let logs = IPhoneLogEvaluator.parse(lines: [

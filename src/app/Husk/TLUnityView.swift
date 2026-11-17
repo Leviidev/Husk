@@ -1868,6 +1868,14 @@ struct TLGameSwitcherSheet: View {
     let apps: [TLApp]
     let onPick: (TLApp) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedModelID: String = UserDefaults.standard.string(forKey: IPhoneTestProfile.selectedModelIDKey) ?? ""
+    @State private var displayOverride: Bool = IPhoneTestProfile.isDisplayOverrideEnabled
+    @State private var expandedFamilies: Set<IPhoneFamily> = [.s11, .s15]
+
+    private var selectedModel: IPhoneModelProfile {
+        if let m = IPhoneTestCatalog.model(forID: selectedModelID) { return m }
+        return IPhoneTestProfile.selectedModel(defaultMachine: HuskLog.deviceModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -1880,12 +1888,33 @@ struct TLGameSwitcherSheet: View {
                         Button { onPick(item) } label: { row(for: item, active: false) }
                     }
                 }
-                Section("Kiểm thử thiết bị") {
+                Section {
+                    IPhoneSelectedSpecRows(model: selectedModel, displayOverride: $displayOverride)
                     NavigationLink {
                         IPhonePerfSuiteView(defaultPackage: current.packageName)
                     } label: {
-                        Label("Chọn mẫu iPhone kiểm thử (8 → 18)", systemImage: "iphone")
+                        Label("Xem kết quả đo thật & Xuất Markdown", systemImage: "chart.bar.doc.horizontal")
                     }
+                } header: {
+                    Text("iPhone đang chọn để test (Thông số chuẩn)")
+                } footer: {
+                    Text(displayOverride && selectedModel.pointWidth != nil
+                         ? "Đang bật mô phỏng khung hình \(selectedModel.resolutionLabel) cho lần chuyển/mở game tiếp theo."
+                         : "Các mẫu thiếu cấu hình xác minh (iPhone 18 chuẩn, 18e) được đánh dấu rõ.")
+                }
+                Section {
+                    IPhoneFamilyCatalogRows(
+                        selectedModelID: $selectedModelID,
+                        expandedFamilies: $expandedFamilies,
+                        currentMachine: HuskLog.deviceModel
+                    ) { m in
+                        selectedModelID = m.id
+                        IPhoneTestProfile.select(m, via: "switch")
+                    }
+                } header: {
+                    Text("Chọn rõ từng mẫu iPhone trong Switch (8 → 18)")
+                } footer: {
+                    Text("Mở từng dòng máy (ví dụ iPhone 11, 11 Pro, 11 Pro Max) hoặc bấm Mở tất cả 42 biến thể để chọn nhanh.")
                 }
             }
             .navigationTitle("Switch Game")
@@ -1894,6 +1923,11 @@ struct TLGameSwitcherSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+            .onAppear {
+                let m = selectedModel
+                if selectedModelID.isEmpty { selectedModelID = m.id }
+                expandedFamilies.insert(m.family)
             }
         }
         .huskDetents([.medium, .large])
