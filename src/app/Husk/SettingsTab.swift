@@ -31,7 +31,7 @@ struct SettingsTab: View {
                     row(LibrarySettings(), "square.grid.2x2.fill", .blue, "Library", "Your apps and their icons")
                     row(PerformanceSettings(), "speedometer", .orange, "Performance", "Renderer, sound")
                     row(IPhonePerfSuiteView(), "iphone", .blue, "Thiết bị & Hiệu năng", "Tự động đo chỉ số & FPS trên thiết bị này")
-                    row(StorageSettings(), "internaldrive.fill", .indigo, "Storage & Cache", "Free space and clean unused caches")
+                    row(StorageSettings(), "internaldrive.fill", .indigo, "Bộ nhớ & Dọn rác", "Tách dung lượng App/Game, dọn rác mồ côi & file tạm")
                     row(AppearanceSettings(), "paintbrush.fill", .pink, "Appearance", "Light or dark, accent colour, app icon")
                     row(FontSettings(), "textformat", .indigo, "Fonts", "Chinese, Japanese and Korean text")
                     row(FAQTab(), "questionmark.circle.fill", .teal, "Help", "Answers to common problems")
@@ -1107,34 +1107,94 @@ extension Bundle {
 /// staging files, and regenerable game caches (`.jar-cache`, `code_cache`, `cache`, shader caches)
 /// while keeping saves, preferences, OBB data, installed APKs, and active session data intact.
 enum StorageCleaner {
+    struct GameEntry: Identifiable, Sendable {
+        let id: String
+        let label: String
+        let packageName: String?
+        let apkBytes: Int64
+        let dataBytes: Int64
+        let cacheBytes: Int64
+        let isOrphaned: Bool
+        let isActive: Bool
+
+        var totalBytes: Int64 { apkBytes + dataBytes }
+    }
+
     struct Summary: Sendable {
+        var appBundleBytes: Int64 = 0
         var temporaryBytes: Int64 = 0
+        var trashBytes: Int64 = 0
+        var unusedFirmwareBytes: Int64 = 0
         var gameCacheBytes: Int64 = 0
         var jitLessBytes: Int64 = 0
         var totalGamesBytes: Int64 = 0
+        var activeGamesTotalBytes: Int64 = 0
+        var orphanedGamesBytes: Int64 = 0
         var deviceFreeBytes: Int64 = 0
+        var games: [GameEntry] = []
+        var orphanedGames: [GameEntry] = []
 
-        var protectedGamesAndSavesBytes: Int64 { max(0, totalGamesBytes - gameCacheBytes) }
-        var fastReclaimableBytes: Int64 { temporaryBytes + gameCacheBytes }
+        var protectedGamesAndSavesBytes: Int64 { max(0, activeGamesTotalBytes - gameCacheBytes) }
+        var fastReclaimableBytes: Int64 { temporaryBytes + trashBytes + unusedFirmwareBytes + gameCacheBytes }
+        var allReclaimableJunkBytes: Int64 { fastReclaimableBytes + orphanedGamesBytes }
     }
 
     private static let cacheDirNames: Set<String> = [".jar-cache", "cache", "code_cache", "UnityShaderCache", "shader_cache"]
-    private static let disposableExts: Set<String> = ["apk", "xapk", "apkm", "apks", "zip"]
+    private static let disposableExts: Set<String> = ["apk", "xapk", "apkm", "apks", "zip", "tmp"]
+    private static let guestDataSubdirs: [String] = ["sdcard", "files", "shared_prefs", "databases", "cache", "code_cache", ".jar-cache", "UnityShaderCache", "shader_cache"]
     private static let routineJarCacheBudgetPerGame: Int64 = 64 * 1024 * 1024
+    private static let stagingGraceSeconds: TimeInterval = 600
+    private static let unusedFirmwareFilename = "edk2-aarch64-code.fd"
+    private static let guestDiskFilename = "lineage-vdb.qcow2"
+    private static let minimumInstalledGuestDiskBytes: Int64 = 1024 * 1024
+
+    private nonisolated static var documentsRoot: URL {
+        TranslationLayer.root.deletingLastPathComponent()
+    }
+
+    private nonisolated static var trashFolder: URL {
+        documentsRoot.appendingPathComponent(".Trash", isDirectory: true)
+    }
+
+    nonisolated static func measureAppBundleBytes() -> Int64 {
+        folderSize(Bundle.main.bundleURL)
+    }
+
+    nonisolated static func measureGame(appID: String, activeAppIDs: Set<String> = []) -> GameEntry {
+        let appDir = TranslationLayer.root.appendingPathComponent(appID, isDirectory: true)
+        return inspectAppDirectory(appDir, activeAppIDs: activeAppIDs)
+    }
 
     nonisolated static func measure(activeAppIDs: Set<String> = []) -> Summary {
         var s = Summary()
+        s.appBundleBytes = measureAppBundleBytes()
         s.jitLessBytes = JITLess.cacheBytes
         s.temporaryBytes = measureTemporaryAndIncoming()
-        let tlRoot = TranslationLayer.root
-        if let appDirs = try? FileManager.default.contentsOfDirectory(at: tlRoot, includingPropertiesForKeys: [.isDirectoryKey]) {
+        s.trashBytes = measureTrashBytes()
+        s.unusedFirmwareBytes = measureUnusedFirmwareBytes()
+
+        let fm = FileManager.default
+        if let appDirs = try? fm.contentsOfDirectory(at: TranslationLayer.root, includingPropertiesForKeys: [.isDirectoryKey]) {
             for appDir in appDirs {
-                let id = appDir.lastPathComponent
-                s.totalGamesBytes += folderSize(appDir)
-                if activeAppIDs.contains(id) { continue }
-                s.gameCacheBytes += measureGameCaches(in: appDir)
+                let rv = try? appDir.resourceValues(forKeys: [.isDirectoryKey])
+                guard rv?.isDirectory == true else { continue }
+                let entry = inspectAppDirectory(appDir, activeAppIDs: activeAppIDs)
+                s.totalGamesBytes += entry.totalBytes
+                if entry.isOrphaned {
+                    s.orphanedGamesBytes += entry.totalBytes
+                    s.orphanedGames.append(entry)
+                } else {
+                    s.activeGamesTotalBytes += entry.totalBytes
+                    s.games.append(entry)
+                    if !entry.isActive {
+                        s.gameCacheBytes += entry.cacheBytes
+                    }
+                }
             }
         }
+        s.games.sort { $0.totalBytes > $1.totalBytes }
+        s.orphanedGames.sort { $0.totalBytes > $1.totalBytes }
+
         #if canImport(Darwin)
         let home = URL(fileURLWithPath: NSHomeDirectory())
         if let vals = try? home.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
@@ -1142,7 +1202,7 @@ enum StorageCleaner {
             s.deviceFreeBytes = free
         }
         #else
-        if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
+        if let attrs = try? fm.attributesOfFileSystem(forPath: NSHomeDirectory()),
            let free = (attrs[.systemFreeSize] as? NSNumber)?.int64Value {
             s.deviceFreeBytes = free
         }
@@ -1151,8 +1211,8 @@ enum StorageCleaner {
     }
 
     /// Background-safe routine cleanup run at app startup: purges stale installers/exports,
-    /// incomplete `.husk-new` writes, and trims oversized `.jar-cache` folders without hurting
-    /// warm startup speed for smaller active caches.
+    /// expired CFNetwork downloads in `/tmp`, incomplete `.husk-new` writes, and trims oversized
+    /// `.jar-cache` folders without touching orphaned/active game saves or warm caches.
     nonisolated static func cleanRoutineCaches(activeAppIDs: Set<String> = []) {
         purgeTemporaryItems(minAgeSeconds: 3600)
         let tlRoot = TranslationLayer.root
@@ -1164,11 +1224,14 @@ enum StorageCleaner {
         }
     }
 
-    /// Reclaims all disposable temporary artifacts and regenerable game caches (preserving saves & APKs).
+    /// Reclaims disposable temp downloads (`/tmp`), `.Trash`, unused QEMU firmware ROMs (when no
+    /// Android guest disk is installed), and regenerable game caches (preserving active games & saves).
     @discardableResult
     nonisolated static func cleanRegenerableCaches(includeJITLess: Bool, activeAppIDs: Set<String> = []) -> Int64 {
         let before = measure(activeAppIDs: activeAppIDs)
         purgeTemporaryItems(minAgeSeconds: 0)
+        clearTrash()
+        clearUnusedFirmwareIfSafe()
         IncomingFiles.clearLeftovers()
         #if canImport(Darwin)
         URLCache.shared.removeAllCachedResponses()
@@ -1189,6 +1252,126 @@ enum StorageCleaner {
             - (after.fastReclaimableBytes + (includeJITLess ? after.jitLessBytes : 0)))
         HuskLog.log("storage", "cleaned caches (includeJITLess=\(includeJITLess)): freed ~\(reclaimed) bytes")
         return reclaimed
+    }
+
+    /// Removes orphaned TranslationLayer directories whose APK was deleted/trashed, freeing gigabytes
+    /// of stranded game assets no longer attached to any installed game.
+    @discardableResult
+    nonisolated static func cleanOrphanedGames(activeAppIDs: Set<String> = []) -> Int64 {
+        let before = measure(activeAppIDs: activeAppIDs)
+        let fm = FileManager.default
+        var removedCount = 0
+        for orphan in before.orphanedGames where !activeAppIDs.contains(orphan.id) {
+            let dir = TranslationLayer.root.appendingPathComponent(orphan.id, isDirectory: true)
+            if !hasAPKFiles(in: dir), (try? fm.removeItem(at: dir)) != nil {
+                removedCount += 1
+            }
+        }
+        let after = measure(activeAppIDs: activeAppIDs)
+        let freed = max(0, before.orphanedGamesBytes - after.orphanedGamesBytes)
+        HuskLog.log("storage", "removed \(removedCount) orphaned game folder(s): freed ~\(freed) bytes")
+        return freed
+    }
+
+    /// Clears downloaded game payload/data (`java-data`/`sdl-data`) for a non-running game while keeping
+    /// its APK, icon, label, and Husk settings intact so re-downloading starts clean.
+    @discardableResult
+    nonisolated static func clearDownloadedData(for appID: String, activeAppIDs: Set<String> = []) -> Int64 {
+        guard !activeAppIDs.contains(appID) else { return 0 }
+        let appDir = TranslationLayer.root.appendingPathComponent(appID, isDirectory: true)
+        let before = inspectAppDirectory(appDir, activeAppIDs: activeAppIDs).dataBytes
+        let fm = FileManager.default
+        for dataDir in dataDirectories(in: appDir) {
+            for sub in guestDataSubdirs {
+                let target = dataDir.appendingPathComponent(sub, isDirectory: true)
+                if fm.fileExists(atPath: target.path) {
+                    try? fm.removeItem(at: target)
+                }
+            }
+        }
+        let after = inspectAppDirectory(appDir, activeAppIDs: activeAppIDs).dataBytes
+        let freed = max(0, before - after)
+        HuskLog.log("storage", "cleared downloaded data for \(appID): freed ~\(freed) bytes")
+        return freed
+    }
+
+    private nonisolated static func inspectAppDirectory(_ appDir: URL, activeAppIDs: Set<String>) -> GameEntry {
+        let fm = FileManager.default
+        let id = appDir.lastPathComponent
+        let total = folderSize(appDir)
+        let items = (try? fm.contentsOfDirectory(at: appDir, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey])) ?? []
+
+        var apkBytes: Int64 = 0
+        var hasAPK = false
+        for item in items where item.pathExtension.lowercased() == "apk" {
+            hasAPK = true
+            apkBytes += folderSize(item)
+        }
+        let obbDir = appDir.appendingPathComponent("obb", isDirectory: true)
+        if fm.fileExists(atPath: obbDir.path) {
+            apkBytes += folderSize(obbDir)
+        }
+        let dataBytes = max(0, total - apkBytes)
+        let cacheBytes = measureGameCaches(in: appDir)
+
+        let hasGuestData = !dataDirectories(in: appDir).isEmpty
+        let mod = (try? appDir.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantFuture
+        let agedBeyondStaging = Date().timeIntervalSince(mod) >= stagingGraceSeconds
+        let isOrphaned = !hasAPK && !activeAppIDs.contains(id) && (hasGuestData || agedBeyondStaging)
+
+        let labelRaw = (try? String(contentsOf: appDir.appendingPathComponent("label.txt"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let pkgRaw = (try? String(contentsOf: appDir.appendingPathComponent("package.txt"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackName = (pkgRaw?.isEmpty == false ? pkgRaw! : id)
+
+        return GameEntry(
+            id: id,
+            label: (labelRaw?.isEmpty == false ? labelRaw! : fallbackName),
+            packageName: pkgRaw?.isEmpty == false ? pkgRaw : nil,
+            apkBytes: apkBytes,
+            dataBytes: dataBytes,
+            cacheBytes: cacheBytes,
+            isOrphaned: isOrphaned,
+            isActive: activeAppIDs.contains(id)
+        )
+    }
+
+    private nonisolated static func hasAPKFiles(in appDir: URL) -> Bool {
+        let items = (try? FileManager.default.contentsOfDirectory(at: appDir, includingPropertiesForKeys: nil)) ?? []
+        return items.contains { $0.pathExtension.lowercased() == "apk" }
+    }
+
+    private nonisolated static func measureTrashBytes() -> Int64 {
+        folderSize(trashFolder)
+    }
+
+    private nonisolated static func clearTrash() {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(at: trashFolder, includingPropertiesForKeys: nil) else { return }
+        for item in items {
+            try? fm.removeItem(at: item)
+        }
+    }
+
+    private nonisolated static func unusedFirmwareURLIfSafe() -> URL? {
+        let fm = FileManager.default
+        let fw = documentsRoot.appendingPathComponent(unusedFirmwareFilename)
+        guard fm.fileExists(atPath: fw.path) else { return nil }
+        let vdb = documentsRoot.appendingPathComponent(guestDiskFilename)
+        let vdbSize = ((try? fm.attributesOfItem(atPath: vdb.path))?[.size] as? NSNumber)?.int64Value ?? 0
+        guard vdbSize <= minimumInstalledGuestDiskBytes else { return nil }
+        return fw
+    }
+
+    private nonisolated static func measureUnusedFirmwareBytes() -> Int64 {
+        guard let fw = unusedFirmwareURLIfSafe() else { return 0 }
+        return folderSize(fw)
+    }
+
+    private nonisolated static func clearUnusedFirmwareIfSafe() {
+        guard let fw = unusedFirmwareURLIfSafe() else { return }
+        try? FileManager.default.removeItem(at: fw)
     }
 
     private nonisolated static func measureTemporaryAndIncoming() -> Int64 {
@@ -1224,6 +1407,7 @@ enum StorageCleaner {
     private nonisolated static func isDisposableTempItem(_ url: URL) -> Bool {
         let name = url.lastPathComponent
         if name.hasPrefix("apk-update-") { return true }
+        if name.hasPrefix("CFNetworkDownload_") { return true }
         if name.hasPrefix("Husk report - ") || name.hasPrefix("Husk crash report - ") { return true }
         if name.hasSuffix(".zip") && name.contains(" Saves ") { return true }
         let ext = url.pathExtension.lowercased()
@@ -1321,9 +1505,12 @@ enum StorageCleaner {
 }
 
 struct StorageSettings: View {
+    @ObservedObject private var store = TranslationLayerStore.shared
     @State private var summary = StorageCleaner.Summary()
     @State private var cleaning = false
     @State private var lastResult: String?
+    @State private var confirmAllJunk = false
+    @State private var gameToManage: StorageCleaner.GameEntry?
 
     private static let formatter: ByteCountFormatter = {
         let f = ByteCountFormatter()
@@ -1335,7 +1522,7 @@ struct StorageSettings: View {
 
     private var activeIDs: Set<String> {
         guard let loaded = husk_native_loaded_apk().map({ String(cString: $0) }),
-              let app = TranslationLayerStore.shared.apps.first(where: { $0.apks.first == loaded }) else {
+              let app = store.apps.first(where: { $0.apks.first == loaded }) else {
             return []
         }
         return [app.id]
@@ -1343,47 +1530,125 @@ struct StorageSettings: View {
 
     var body: some View {
         HuskForm {
-            Section("iPhone & Game Data") {
-                DetailRow(label: "iPhone Free Space", value: fmt(summary.deviceFreeBytes), mono: false)
-                DetailRow(label: "Games & Saves (Kept)", value: fmt(summary.protectedGamesAndSavesBytes), mono: false)
+            Section {
+                DetailRow(label: "Dung lượng trống iPhone", value: fmt(summary.deviceFreeBytes), mono: false)
+                DetailRow(label: "Riêng App Husk (không tính game)", value: fmt(summary.appBundleBytes), mono: false)
+                DetailRow(label: "Tổng \(summary.games.count) game APK đang dùng", value: fmt(summary.activeGamesTotalBytes), mono: false)
+                DetailRow(label: "Tổng Rác & Cache có thể dọn", value: fmt(summary.allReclaimableJunkBytes), mono: false)
+            } header: {
+                Text("Tách biệt App Husk & Game")
+            } footer: {
+                Text("Cài đặt iOS luôn cộng gộp App (\(fmt(summary.appBundleBytes))) và toàn bộ dữ liệu game trong thư mục Tài liệu thành một con số. Bảng dưới đây tách riêng từng game và phần rác ẩn.")
             }
 
             Section {
-                DetailRow(label: "Temporary Installers & Backups", value: fmt(summary.temporaryBytes), mono: false)
-                DetailRow(label: "Regenerable Game Caches", value: fmt(summary.gameCacheBytes), mono: false)
-                DetailRow(label: "JIT-less Signed Libraries", value: fmt(summary.jitLessBytes), mono: false)
+                DetailRow(label: "File tạm /tmp, .Trash & ROM thừa", value: fmt(summary.temporaryBytes + summary.trashBytes + summary.unusedFirmwareBytes), mono: false)
+                DetailRow(label: "Cache game (.jar-cache, shader)", value: fmt(summary.gameCacheBytes), mono: false)
+                if summary.orphanedGamesBytes > 0 {
+                    DetailRow(label: "Data game mồ côi (thiếu APK)", value: fmt(summary.orphanedGamesBytes), mono: false)
+                    ForEach(summary.orphanedGames) { orphan in
+                        DetailRow(label: "  • \(orphan.label) (không còn APK)", value: fmt(orphan.totalBytes), mono: false)
+                    }
+                }
+                DetailRow(label: "Thư viện JIT-less đã ký", value: fmt(summary.jitLessBytes), mono: false)
             } header: {
-                Text("Caches & Cleanable Space")
+                Text("Rác & Bộ nhớ tạm")
             } footer: {
                 if let lastResult { Text(lastResult) }
                 else {
-                    Text("Game caches (.jar-cache, shader cache, temporary APKs) can be safely cleaned without touching saves or settings. Keep JIT-less libraries for fastest game launch.")
+                    Text("Dọn file tạm tải dở (/tmp/CFNetworkDownload_*), thùng rác (.Trash), cache game và dữ liệu mồ côi bị kẹt khi thiếu file APK.")
                 }
             }
 
             Section {
+                if summary.orphanedGamesBytes > 0 {
+                    Button {
+                        confirmAllJunk = true
+                    } label: {
+                        Label(cleaning ? "Đang dọn…" : "Dọn tất cả rác & data mồ côi (\(fmt(summary.allReclaimableJunkBytes)))",
+                              systemImage: "trash.slash.fill")
+                    }
+                    .disabled(cleaning)
+                }
+
                 Button {
-                    runClean(includeJITLess: false)
+                    runClean(includeJITLess: false, includeOrphans: false)
                 } label: {
-                    Label(cleaning ? "Cleaning…" : "Clean Unused & Caches (\(fmt(summary.fastReclaimableBytes)))",
+                    Label(cleaning ? "Đang dọn…" : "Dọn rác tạm & cache (\(fmt(summary.fastReclaimableBytes)))",
                           systemImage: "sparkles")
                 }
                 .disabled(cleaning || summary.fastReclaimableBytes == 0)
 
                 if summary.jitLessBytes > 0 {
                     Button(role: .destructive) {
-                        runClean(includeJITLess: true)
+                        runClean(includeJITLess: true, includeOrphans: false)
                     } label: {
-                        Label("Also Clear JIT-less Cache (\(fmt(summary.jitLessBytes)))",
+                        Label("Xoá luôn bộ đệm JIT-less (\(fmt(summary.jitLessBytes)))",
                               systemImage: "trash")
                     }
                     .disabled(cleaning)
                 }
             }
+
+            if !summary.games.isEmpty {
+                Section {
+                    ForEach(summary.games) { game in
+                        Button {
+                            gameToManage = game
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(game.label)
+                                        .foregroundStyle(.primary)
+                                    Text("APK: \(fmt(game.apkBytes)) · Data: \(fmt(game.dataBytes))\(game.isActive ? " · Đang chạy" : "")")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(fmt(game.totalBytes))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                        }
+                        .disabled(cleaning || game.isActive)
+                    }
+                } header: {
+                    Text("Chi tiết dung lượng từng Game")
+                } footer: {
+                    Text("Chạm vào một game đang tắt để dọn cache hoặc xoá dữ liệu tải thêm nếu muốn giảm GB.")
+                }
+            }
         }
         .huskForm()
-        .navigationTitle("Storage & Cache")
+        .navigationTitle("Bộ nhớ & Dọn rác")
         .onAppear { refresh() }
+        .confirmationDialog("Dọn toàn bộ rác & data mồ côi?", isPresented: $confirmAllJunk, titleVisibility: .visible) {
+            Button("Dọn ngay (\(fmt(summary.allReclaimableJunkBytes)))", role: .destructive) {
+                runClean(includeJITLess: false, includeOrphans: true)
+            }
+        } message: {
+            Text("Sẽ xoá file tạm /tmp, .Trash, cache game và \(summary.orphanedGames.count) thư mục dữ liệu không còn file APK (\(fmt(summary.orphanedGamesBytes))). 3 game đang dùng và save hiện tại được giữ nguyên.")
+        }
+        .confirmationDialog(gameToManage?.label ?? "Quản lý game", isPresented: Binding(get: { gameToManage != nil }, set: { if !$0 { gameToManage = nil } }), titleVisibility: .visible) {
+            if let g = gameToManage {
+                if g.dataBytes > 0 {
+                    Button("Xoá dữ liệu tải thêm (giữ APK — giải phóng \(fmt(g.dataBytes)))", role: .destructive) {
+                        clearGamePayload(g)
+                    }
+                }
+                if let app = store.apps.first(where: { $0.id == g.id }) {
+                    Button("Xoá hẳn game & toàn bộ data (\(fmt(g.totalBytes)))", role: .destructive) {
+                        store.remove(app)
+                        lastResult = "Đã xoá hoàn toàn \(g.label) (giải phóng ~\(fmt(g.totalBytes)))."
+                        refresh()
+                    }
+                }
+            }
+        } message: {
+            if let g = gameToManage {
+                Text("APK gốc: \(fmt(g.apkBytes)) · Dữ liệu tải trong game: \(fmt(g.dataBytes)). Nếu xoá dữ liệu tải thêm, lần mở lại game sẽ tự tải tài nguyên mới.")
+            }
+        }
     }
 
     private func refresh() {
@@ -1394,16 +1659,33 @@ struct StorageSettings: View {
         }
     }
 
-    private func runClean(includeJITLess: Bool) {
+    private func clearGamePayload(_ game: StorageCleaner.GameEntry) {
         cleaning = true
         let active = activeIDs
         Task.detached(priority: .userInitiated) {
-            let freed = StorageCleaner.cleanRegenerableCaches(includeJITLess: includeJITLess, activeAppIDs: active)
+            let freed = StorageCleaner.clearDownloadedData(for: game.id, activeAppIDs: active)
             let updated = StorageCleaner.measure(activeAppIDs: active)
             await MainActor.run {
                 summary = updated
                 cleaning = false
-                lastResult = freed > 0 ? "Freed \(fmt(freed)) while keeping all saves intact." : "Nothing left to clean."
+                lastResult = freed > 0 ? "Đã xoá dữ liệu tải thêm của \(game.label), giải phóng ~\(fmt(freed))." : "Không có dữ liệu nào được xoá."
+            }
+        }
+    }
+
+    private func runClean(includeJITLess: Bool, includeOrphans: Bool) {
+        cleaning = true
+        let active = activeIDs
+        Task.detached(priority: .userInitiated) {
+            var freed = StorageCleaner.cleanRegenerableCaches(includeJITLess: includeJITLess, activeAppIDs: active)
+            if includeOrphans {
+                freed += StorageCleaner.cleanOrphanedGames(activeAppIDs: active)
+            }
+            let updated = StorageCleaner.measure(activeAppIDs: active)
+            await MainActor.run {
+                summary = updated
+                cleaning = false
+                lastResult = freed > 0 ? "Đã dọn sạch ~\(fmt(freed)); toàn bộ game đang chơi và save được giữ nguyên." : "Không còn rác hay cache thừa để dọn."
             }
         }
     }

@@ -393,8 +393,26 @@ touch(active.appendingPathComponent("base.apk"), "apk")
 touch(active.appendingPathComponent("java-data/cache/live.bin"), "livecache")
 touch(IncomingFiles.folder.appendingPathComponent("staged.apk"), "stagedapk")
 
+let orphan = TranslationLayer.root.appendingPathComponent("orphan-no-apk", isDirectory: true)
+touch(orphan.appendingPathComponent("label.txt"), "Tru Tien (old)")
+touch(orphan.appendingPathComponent("java-data/sdcard/big.pck"), "bigassetpayload")
+
+let trashFile = unique.appendingPathComponent(".Trash/old.apk")
+touch(trashFile, "trashedapk")
+let unusedFirmware = unique.appendingPathComponent("edk2-aarch64-code.fd")
+touch(unusedFirmware, "uefirom")
+let cfTmp = fm.temporaryDirectory.appendingPathComponent("CFNetworkDownload_test_husk.tmp")
+touch(cfTmp, "aborteddownload")
+defer { try? fm.removeItem(at: cfTmp) }
+
 let before = StorageCleaner.measure(activeAppIDs: ["game-active"])
 precondition(before.gameCacheBytes > 0 && before.temporaryBytes > 0)
+precondition(before.trashBytes > 0 && before.unusedFirmwareBytes > 0)
+precondition(before.orphanedGamesBytes > 0 && before.orphanedGames.count == 1)
+precondition(before.orphanedGames[0].label == "Tru Tien (old)")
+precondition(before.games.count == 2)
+let inactiveEntry = before.games.first(where: { $0.id == "game-inactive" })!
+precondition(inactiveEntry.apkBytes == 6 && inactiveEntry.dataBytes > 0)
 
 let freed = StorageCleaner.cleanRegenerableCaches(includeJITLess: false, activeAppIDs: ["game-active"])
 precondition(freed > 0)
@@ -406,15 +424,39 @@ precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/fi
 precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/shared_prefs/prefs.xml").path))
 precondition(fm.fileExists(atPath: inactive.appendingPathComponent("java-data/databases/db.sqlite").path))
 precondition(fm.fileExists(atPath: active.appendingPathComponent("java-data/cache/live.bin").path))
+// Orphaned game data stays until cleanOrphanedGames() is invoked explicitly.
+precondition(fm.fileExists(atPath: orphan.appendingPathComponent("java-data/sdcard/big.pck").path))
 
-// Regenerable caches and leftover temp files are reclaimed.
+// Regenerable caches, Trash, unused firmware ROM, and CFNetworkDownload temps are reclaimed.
 precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/cache").path))
 precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/code_cache").path))
 precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/.jar-cache").path))
 precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/files/save.dat.husk-new").path))
 precondition(!fm.fileExists(atPath: IncomingFiles.folder.path))
+precondition(!fm.fileExists(atPath: trashFile.path))
+precondition(!fm.fileExists(atPath: unusedFirmware.path))
+precondition(!fm.fileExists(atPath: cfTmp.path))
 
-print("PASS: StorageCleaner reclaims regenerable caches & temp files while protecting saves, APKs, OBBs, and active games")
+let orphanFreed = StorageCleaner.cleanOrphanedGames(activeAppIDs: ["game-active"])
+precondition(orphanFreed > 0 && !fm.fileExists(atPath: orphan.path))
+// Active or valid game with APK stays untouched.
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("base.apk").path))
+
+// Per-game downloaded payload clearing leaves the APK entry intact while freeing data.
+let payloadFreed = StorageCleaner.clearDownloadedData(for: "game-inactive", activeAppIDs: ["game-active"])
+precondition(payloadFreed > 0)
+precondition(fm.fileExists(atPath: inactive.appendingPathComponent("base.apk").path))
+precondition(!fm.fileExists(atPath: inactive.appendingPathComponent("java-data/files").path))
+
+// Firmware is NOT purged if an installed Android guest disk (> 1 MiB) exists.
+let fw2 = unique.appendingPathComponent("edk2-aarch64-code.fd")
+let vdb2 = unique.appendingPathComponent("lineage-vdb.qcow2")
+touch(fw2, "uefirom")
+try! Data(repeating: 0x41, count: 1_200_000).write(to: vdb2)
+StorageCleaner.cleanRegenerableCaches(includeJITLess: false, activeAppIDs: ["game-active"])
+precondition(fm.fileExists(atPath: fw2.path))
+
+print("PASS: StorageCleaner reclaims regenerable caches, /tmp, .Trash, unused firmware, and orphaned game folders while protecting saves, APKs, OBBs, and active games")
 ''')
 
     def test_iphone_perf_suite_model_and_evaluator(self):

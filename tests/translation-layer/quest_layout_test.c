@@ -361,6 +361,10 @@ int main(void)
     assert(bl_x == 26.0f && bl_y == -6.0f);
     tl_vhpt_bottom_left_target(177.0f, 0.0f, 177.0f, 1290.0f, true, 260.0f, 460.0f, &bl_x, &bl_y);
     assert(bl_x == 26.0f && bl_y <= -52.0f);
+    /* Real device 768p PTUi container space (cur_x = 105.6 = 177 / 1.676259): moves outward to 15px (~8.4pt). */
+    assert(tl_vhpt_panel_target_x(false, "TopLeft", 105.6f, 177.0f, 1290.0f, true, 650.0f, 748.0f) == 15.0f);
+    tl_vhpt_bottom_left_target(105.6f, 0.0f, 177.0f, 1290.0f, true, 36.5f, 201.0f, &bl_x, &bl_y);
+    assert(bl_x == 15.0f && bl_y == -3.0f);
 
     // 3b) Start/reset and glClear runtime alignment against fake VHPT AOT ELF+dup+scene fixture
     assert(tl_vhtg_quest_active()); /* switching from VHTG -> VHPT must disarm VHTG quest hook */

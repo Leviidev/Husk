@@ -90,21 +90,42 @@ static inline void tl_vhpt_cutout_band_px(float safe_l, float vis_h, float *y0, 
     *y1 = vis_h * 0.5f + half_h;
 }
 
+/* Map raw surface pixels (safe_l, vis_h) into the node's parent coordinate space.
+ * In VHPT PTUi, nodes sit under a container scaled to 768p design height (~1.676x on
+ * 1290px height), so m_root starts at safe_l / container_scale (~105.6) rather than raw
+ * surface pixels (177). Converting (safe_l, vis_h) by that factor keeps notch band and
+ * outer corner clearances identical without drifting or assuming fixed parent scales. */
+static inline void tl_vhpt_effective_space(float sample_x, float safe_l, float vis_h,
+    float *eff_safe_l, float *eff_vis_h)
+{
+    *eff_safe_l = safe_l;
+    *eff_vis_h = vis_h;
+    if (safe_l <= 0.5f || vis_h <= 0.0f || sample_x <= 1.0f) return;
+    if (fabsf(sample_x - safe_l) <= 2.0f) return;
+    float ui_scale = safe_l / sample_x;
+    if (ui_scale > 1.05f && ui_scale < 4.0f && fabsf(vis_h / ui_scale - 768.0f) <= 24.0f) {
+        *eff_safe_l = sample_x;
+        *eff_vis_h = vis_h / ui_scale;
+    }
+}
+
 /* Compute aligned m_root X in surface pixels. Never moves questlist (Nhiệm vụ),
  * never moves Right/Center-anchored panels, and avoids placing a centered-Y panel
  * directly behind the physical notch/Dynamic Island pill. */
 static inline float tl_vhpt_panel_target_x(bool keep_unchanged, const char *anchor,
     float cur_x, float safe_l, float vis_h, bool has_y_span, float min_y, float max_y)
 {
-    if (keep_unchanged || safe_l <= 0.5f || !tl_vhpt_is_left_anchor(anchor)) return cur_x;
-    if (fabsf(cur_x - safe_l) > 2.0f) return cur_x;
+    float eff_safe_l = safe_l, eff_vis_h = vis_h;
+    tl_vhpt_effective_space(cur_x, safe_l, vis_h, &eff_safe_l, &eff_vis_h);
+    if (keep_unchanged || eff_safe_l <= 0.5f || !tl_vhpt_is_left_anchor(anchor)) return cur_x;
+    if (fabsf(cur_x - eff_safe_l) > 2.0f) return cur_x;
     if (has_y_span && max_y > min_y) {
         float cy0 = 0.0f, cy1 = 0.0f;
-        tl_vhpt_cutout_band_px(safe_l, vis_h, &cy0, &cy1);
+        tl_vhpt_cutout_band_px(eff_safe_l, eff_vis_h, &cy0, &cy1);
         float ov = fminf(max_y, cy1) - fmaxf(min_y, cy0);
-        if (ov > (max_y - min_y) * 0.35f) return safe_l;
+        if (ov > (max_y - min_y) * 0.35f) return eff_safe_l;
     }
-    return tl_vhpt_outer_left_px(safe_l, vis_h);
+    return tl_vhpt_outer_left_px(eff_safe_l, eff_vis_h);
 }
 
 /* Compute target (X, Y) for VHPT's BottomLeft movement/emote icon bucket (Emote/Ride/Sit)
@@ -115,23 +136,25 @@ static inline void tl_vhpt_bottom_left_target(float base_x, float base_y,
     float safe_l, float vis_h, bool has_y_span, float child_min_dy, float child_max_dy,
     float *out_x, float *out_y)
 {
+    float eff_safe_l = safe_l, eff_vis_h = vis_h;
+    tl_vhpt_effective_space(base_x, safe_l, vis_h, &eff_safe_l, &eff_vis_h);
     *out_x = base_x;
     *out_y = base_y;
-    if (safe_l <= 0.5f || vis_h <= 0.0f) return;
-    if (fabsf(base_x - safe_l) <= 2.0f) {
-        *out_x = tl_vhpt_outer_left_px(safe_l, vis_h);
+    if (eff_safe_l <= 0.5f || eff_vis_h <= 0.0f) return;
+    if (fabsf(base_x - eff_safe_l) <= 2.0f) {
+        *out_x = tl_vhpt_outer_left_px(eff_safe_l, eff_vis_h);
     }
     if (fabsf(base_y) <= 2.0f) {
         float cy0 = 0.0f, cy1 = 0.0f;
-        tl_vhpt_cutout_band_px(safe_l, vis_h, &cy0, &cy1);
-        float gap = ceilf(vis_h * (8.0f / 430.0f));
-        float desired_down = floorf(vis_h * 0.005f);
+        tl_vhpt_cutout_band_px(eff_safe_l, eff_vis_h, &cy0, &cy1);
+        float gap = ceilf(eff_vis_h * (8.0f / 430.0f));
+        float desired_down = floorf(eff_vis_h * 0.005f);
         float top_edge = base_y + child_max_dy;
         float bot_center = base_y + child_min_dy;
         if (has_y_span && top_edge > (cy0 - gap)) {
             desired_down = fmaxf(desired_down, ceilf(top_edge - (cy0 - gap)));
         }
-        float min_center_margin = vis_h * 0.041f;
+        float min_center_margin = eff_vis_h * 0.041f;
         float avail = has_y_span ? fmaxf(0.0f, floorf(bot_center - min_center_margin)) : desired_down;
         float down = fminf(desired_down, avail);
         *out_y = base_y - down;

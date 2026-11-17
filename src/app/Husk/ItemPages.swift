@@ -116,6 +116,10 @@ private func fileBytes(_ paths: [String]) -> String {
     return ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
 }
 
+private func formatStorageBytes(_ total: Int64) -> String {
+    ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
+}
+
 @MainActor private func turnOnJIT() {
     let jit = JITCoordinator.shared
     if HuskBuiltInJIT.isAvailable { jit.method = .builtIn }
@@ -146,6 +150,7 @@ struct GamePage: View {
     @State private var confirmQuit = false
     @State private var updateMessage: String?
     @State private var updateFailed = false
+    @State private var gameStorage: StorageCleaner.GameEntry?
 
     private var currentApp: TLApp { store.apps.first { $0.id == app.id } ?? app }
 
@@ -271,7 +276,13 @@ struct GamePage: View {
                     }
                 }
                 LabeledContent("Last Played", value: currentApp.lastPlayed.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
-                LabeledContent("Size", value: fileBytes(currentApp.apks))
+                if let gameStorage {
+                    LabeledContent("Total Size", value: formatStorageBytes(gameStorage.totalBytes))
+                    LabeledContent("APK Size", value: formatStorageBytes(gameStorage.apkBytes))
+                    LabeledContent("Game Data", value: formatStorageBytes(gameStorage.dataBytes))
+                } else {
+                    LabeledContent("APK Size", value: fileBytes(currentApp.apks))
+                }
             }
 
             Section {
@@ -324,6 +335,11 @@ struct GamePage: View {
             Text("The game and everything it saved here are deleted from Husk.")
         }
         .onAppear {
+            let targetID = currentApp.id
+            Task.detached(priority: .utility) {
+                let measured = StorageCleaner.measureGame(appID: targetID)
+                await MainActor.run { gameStorage = measured }
+            }
             guard Router.shared.autoPlay == app.id, blockedBy == nil, Launcher.jitOn || JITLess.enabled else { return }
             Router.shared.autoPlay = nil
             play()
