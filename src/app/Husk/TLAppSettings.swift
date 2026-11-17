@@ -249,6 +249,11 @@ struct TLAppSettingsView: View {
                 }
                 Toggle("Performance readout", isOn: $settings.showStats)
                 Toggle("Keep the screen on", isOn: $settings.keepAwake)
+                NavigationLink {
+                    IPhonePerfSuiteView(defaultPackage: app.packageName)
+                } label: {
+                    Label("Chọn mẫu iPhone kiểm thử (8–18)", systemImage: "iphone")
+                }
             } header: {
                 Text("Display")
             } footer: {

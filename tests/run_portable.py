@@ -270,6 +270,12 @@ def main():
         run("bionic wait/yield compile", compiler + flags + [f"-I{out}",
             str(ROOT / "tests/translation-layer/bionic_wait_yield_test.c"), "-o", str(exe)])
         run("bionic timeout normalization and sched_yield spin backoff", [str(exe)])
+        keys_snippet = "#define MAX_GUEST_KEYS 512" + pthread_source.split("#define MAX_GUEST_KEYS 512", 1)[1].split("/* ---------------------------------------------------------------- threads */", 1)[0]
+        (out / "pthread_keys_under_test.h").write_text(keys_snippet + "\n", encoding="utf-8")
+        exe = out / "pthread_keys_test"
+        run("pthread keys reset compile", compiler + flags + [f"-I{out}",
+            str(ROOT / "tests/translation-layer/pthread_keys_test.c"), "-pthread", "-o", str(exe)])
+        run("pthread system vs app TLS key lifetime across switches", [str(exe)])
         jar_trim_snippet = re.search(
             r"typedef struct \{[^\n]*\} jar_cache_file;.*?void tl_jar_cache_trim\([^)]*\)\n\{.*?\n\}",
             io_source, re.S)

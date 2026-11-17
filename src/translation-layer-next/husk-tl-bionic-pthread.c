@@ -482,6 +482,7 @@ typedef struct {
 
 static struct {
     bool used;
+    bool system;
     unsigned epoch;
     uint32_t gen;
     void (*dtor)(void *);
@@ -523,7 +524,7 @@ void tl_pthread_reset_session(unsigned ended_epoch)
     if (!ended_epoch) return;
     pthread_mutex_lock(&g_guest_keys_mu);
     for (int i = 0; i < MAX_GUEST_KEYS; i++) {
-        if (g_guest_keys[i].used && g_guest_keys[i].epoch == ended_epoch) {
+        if (!g_guest_keys[i].system && g_guest_keys[i].used && g_guest_keys[i].epoch == ended_epoch) {
             g_guest_keys[i].used = false;
             g_guest_keys[i].dtor = NULL;
             g_guest_keys[i].gen++;
@@ -532,10 +533,12 @@ void tl_pthread_reset_session(unsigned ended_epoch)
     pthread_mutex_unlock(&g_guest_keys_mu);
 }
 
-static int b_key_create(int *key, void (*dtor)(void *))
+static int key_create_from(int *key, void (*dtor)(void *), const void *caller)
 {
     if (!key) return 22;
     pthread_once(&g_guest_tls_once, guest_tls_key_init);
+    bool is_app = (caller && tl_ld_is_app_code(caller))
+        || (dtor && tl_ld_is_app_code((const void *)(uintptr_t)dtor));
     pthread_mutex_lock(&g_guest_keys_mu);
     int slot = -1;
     for (int i = 0; i < MAX_GUEST_KEYS; i++) {
@@ -546,12 +549,18 @@ static int b_key_create(int *key, void (*dtor)(void *))
         return 11; /* EAGAIN */
     }
     g_guest_keys[slot].used = true;
-    g_guest_keys[slot].epoch = tl_guest_session_epoch();
+    g_guest_keys[slot].system = !is_app;
+    g_guest_keys[slot].epoch = is_app ? tl_guest_session_epoch() : 0u;
     g_guest_keys[slot].gen++;
     g_guest_keys[slot].dtor = dtor;
     pthread_mutex_unlock(&g_guest_keys_mu);
     *key = slot + 1;
     return 0;
+}
+
+static int b_key_create(int *key, void (*dtor)(void *))
+{
+    return key_create_from(key, dtor, __builtin_return_address(0));
 }
 static int b_key_delete(int key)
 {
@@ -561,6 +570,7 @@ static int b_key_delete(int key)
     int r = g_guest_keys[idx].used ? 0 : 22;
     if (r == 0) {
         g_guest_keys[idx].used = false;
+        g_guest_keys[idx].system = false;
         g_guest_keys[idx].dtor = NULL;
         g_guest_keys[idx].gen++;
     }

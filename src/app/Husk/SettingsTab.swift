@@ -30,6 +30,7 @@ struct SettingsTab: View {
                     row(DiscoverView(), "sparkle.magnifyingglass", .mint, "Discover", "Find apps in F-Droid and other repositories")
                     row(LibrarySettings(), "square.grid.2x2.fill", .blue, "Library", "Your apps and their icons")
                     row(PerformanceSettings(), "speedometer", .orange, "Performance", "Renderer, sound")
+                    row(IPhonePerfSuiteView(), "iphone", .blue, "iPhone 8–18 Test Suite", "Chọn mẫu iPhone kiểm thử hiệu năng & HUD")
                     row(StorageSettings(), "internaldrive.fill", .indigo, "Storage & Cache", "Free space and clean unused caches")
                     row(AppearanceSettings(), "paintbrush.fill", .pink, "Appearance", "Light or dark, accent colour, app icon")
                     row(FontSettings(), "textformat", .indigo, "Fonts", "Chinese, Japanese and Korean text")
@@ -324,6 +325,16 @@ struct PerformanceSettings: View {
                           value: "\(QemuRunner.lastGuestRes.w)×\(QemuRunner.lastGuestRes.h)")
             } header: {
                 Text("Now")
+            }
+
+            Section {
+                NavigationLink {
+                    IPhonePerfSuiteView()
+                } label: {
+                    Label("Chọn mẫu iPhone kiểm thử (8 → 18)", systemImage: "iphone")
+                }
+            } header: {
+                Text("Kiểm thử hiệu năng & HUD")
             }
 
             Section {

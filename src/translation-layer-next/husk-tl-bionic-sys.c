@@ -6,6 +6,7 @@
  */
 #include "husk-tl-bionic.h"
 #include "husk-tl-internal.h"
+#include "husk-tl-ld.h"
 #include "husk-tl-session.h"
 #include "husk-tl-thread-clock.h"
 
@@ -398,15 +399,16 @@ static int b_sigwaitinfo(const uint64_t *set, void *info)
 }
 
 /* thread_local destructors (libc++'s __cxa_thread_atexit): a list per thread, run when the thread ends. */
-typedef struct dtor { void (*fn)(void *); void *obj; struct dtor *next; } dtor;
+typedef struct dtor { void (*fn)(void *); void *obj; unsigned epoch; struct dtor *next; } dtor;
 static pthread_key_t g_dtor_key;
 static pthread_once_t g_dtor_once = PTHREAD_ONCE_INIT;
 static void run_dtors(void *head)
 {
     bool skip = tl_guest_thread_is_retiring();
+    unsigned cur = tl_guest_session_epoch();
     for (dtor *d = head; d;) {
         dtor *n = d->next;
-        if (!skip && d->fn) d->fn(d->obj);
+        if (!skip && d->fn && (d->epoch == 0 || d->epoch == cur)) d->fn(d->obj);
         free(d);
         d = n;
     }
@@ -418,7 +420,10 @@ static int b___cxa_thread_atexit_impl(void (*fn)(void *), void *obj, void *dso)
     pthread_once(&g_dtor_once, dtor_key);
     dtor *d = malloc(sizeof(*d));
     if (!d) return -1;
-    d->fn = fn; d->obj = obj; d->next = pthread_getspecific(g_dtor_key);
+    d->fn = fn;
+    d->obj = obj;
+    d->epoch = (fn && tl_ld_is_app_code((const void *)(uintptr_t)fn)) ? tl_guest_session_epoch() : 0u;
+    d->next = pthread_getspecific(g_dtor_key);
     pthread_setspecific(g_dtor_key, d);
     return 0;
 }

@@ -417,6 +417,31 @@ precondition(!fm.fileExists(atPath: IncomingFiles.folder.path))
 print("PASS: StorageCleaner reclaims regenerable caches & temp files while protecting saves, APKs, OBBs, and active games")
 ''')
 
+    def test_iphone_perf_suite_model_and_evaluator(self):
+        src = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
+        src = src.split("#if canImport(SwiftUI)", 1)[0]
+        self.compile_run(src, '''
+precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-8" }))
+precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-15-pro-max" }))
+precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-18-pro-max" }))
+let i18 = IPhoneTestCatalog.model(forID: "iphone-18")!
+precondition(!i18.specVerified)
+let pm = IPhoneTestCatalog.model(matchingMachine: "iPhone16,2")!
+precondition(pm.id == "iphone-15-pro-max" && pm.specVerified)
+let logs = IPhoneLogEvaluator.parse(lines: [
+    "[boot] device      : iPhone16,2",
+    "[boot] system      : iOS 26.6.1",
+    "[boot] build       : 3.3 (148) test",
+    "[switch] [2026-11-17T01:00:00Z] switch requested: from=vn.trutien.client (preState=2) -> to=com.tech3cgame.vhpt1 (retry=false)",
+    "[switch] [2026-11-17T01:00:02Z] switch committed: active=com.tech3cgame.vhpt1 postState=1",
+    "unity: java-perf: pkg=com.tech3cgame.vhpt1 fps=59.2 mean_ms=16.88 max_ms=25.00 hitch50=0 hitch100=0",
+    "unity: java-perf: pkg=com.tech3cgame.vhpt1 fps=57.5 mean_ms=17.39 max_ms=34.00 hitch50=0 hitch100=0 scenario=heavy_crowd_effects",
+])
+precondition(IPhoneLogEvaluator.conclusion(for: pm, logs: logs, currentMachine: "iPhone16,2").verdict == "đạt")
+precondition(IPhoneLogEvaluator.conclusion(for: IPhoneTestCatalog.model(forID: "iphone-8")!, logs: logs, currentMachine: "iPhone16,2").verdict == "chưa đủ dữ liệu")
+print("PASS: IPhonePerfSuite catalog (8->18) and real-device evaluator verified")
+''')
+
 
 if __name__ == "__main__":
     unittest.main()

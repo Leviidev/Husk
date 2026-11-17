@@ -438,6 +438,7 @@ def format_markdown(report: dict[str, Any]) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--list", action="store_true", help="List selectable iPhone 8 -> iPhone 18 models")
+    ap.add_argument("--interactive", action="store_true", help="Choose an iPhone model/variant interactively in terminal")
     ap.add_argument("--model", default="all", help="Comma-separated model IDs, machine IDs, or families (default: all)")
     ap.add_argument("--log-dir", action="append", default=[], type=Path, help="Real device log folder(s) containing husk.log/husk-native.log")
     ap.add_argument("--simulate", action="store_true", help="Include clearly labeled analytical simulation estimates")
@@ -446,12 +447,24 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.list:
-        for m in IPHONE_CATALOG:
+        for idx, m in enumerate(IPHONE_CATALOG, 1):
             flag = " [THIEU CAU HINH XAC MINH]" if m.spec_status != "verified" else ""
-            print(f"{m.id:20s} | {m.variant:28s} | {m.chip:26s} | {m.physical_resolution} | {m.compatible_ios}{flag}")
+            print(f"{idx:2d}. {m.id:20s} | {m.variant:28s} | {m.chip:26s} | {m.physical_resolution} | {m.compatible_ios}{flag}")
         return 0
 
-    models = select_models(args.model)
+    selector = args.model
+    if args.interactive:
+        print("=== Chon mau iPhone de kiem thu (iPhone 8 -> iPhone 18) ===")
+        for idx, m in enumerate(IPHONE_CATALOG, 1):
+            flag = " [THIEU CAU HINH XAC MINH]" if m.spec_status != "verified" else ""
+            print(f"  {idx:2d}. {m.variant} ({m.chip}, {m.physical_resolution}){flag}")
+        raw = input("Nhap so thu tu (hoac ID, bo trong = all): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(IPHONE_CATALOG):
+            selector = IPHONE_CATALOG[int(raw) - 1].id
+        elif raw:
+            selector = raw
+
+    models = select_models(selector)
     parsed = [parse_device_logs(d) for d in args.log_dir]
     report = evaluate_models(models, parsed, include_simulation=args.simulate)
     md = format_markdown(report)
