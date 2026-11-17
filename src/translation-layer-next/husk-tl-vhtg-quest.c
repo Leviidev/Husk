@@ -195,20 +195,31 @@ static void quest_render(void)
             double dx=0,dy=0;
             if (have_bounds && tl_quest_delta(Q.scene,bounds,cut,Q.pixel_w,Q.pixel_h,&dx,&dy))
                 for (unsigned i=0;i<QUEST_TARGETS;i++) if (found[i]) apply_window(i,&layout[i],dx,dy);
+            bool have_move=false;
+            tl_quest_rect mbounds={0};
             for (unsigned i=QUEST_TARGETS;i<HUD_TARGETS;i++) if (found[i]) {
-                double down=0, dx=0;
-                if (Q.scene.w>Q.scene.h && (cut.left>0 || cut.right>0)) {
-                    down=tl_quest_movement_down(Q.scene,layout[i].rect);
+                tl_quest_rect r=layout[i].rect;
+                if (!have_move) { mbounds=r; have_move=true; continue; }
+                double mr=fmax(mbounds.x+mbounds.w,r.x+r.w), mb=fmax(mbounds.y+mbounds.h,r.y+r.h);
+                mbounds.x=fmin(mbounds.x,r.x); mbounds.y=fmin(mbounds.y,r.y);
+                mbounds.w=mr-mbounds.x; mbounds.h=mb-mbounds.y;
+            }
+            if (have_move) {
+                double move_dx=0, move_dy=0;
+                tl_quest_movement_adjust(Q.scene,mbounds,cut,Q.pixel_w,Q.pixel_h,&move_dx,&move_dy);
+                for (unsigned i=QUEST_TARGETS;i<HUD_TARGETS;i++) if (found[i]) {
                     const uint8_t *bytes=Q.slots[i].window;
                     if (layout[i].parent && (!Q.slots[i].anchored || !bytes[0x469])) {
                         double room=read_int(layout[i].parent,0x438)-layout[i].rect.y-layout[i].rect.h;
-                        down=fmin(down,floor(fmax(0,room)));
+                        move_dy=fmin(move_dy,floor(fmax(0,room)));
                     }
-                    double inward = floor(fmin(20.0, fmax(12.0, Q.scene.w * (18.0 / 932.0))));
-                    double dir = (layout[i].rect.x < Q.scene.x + Q.scene.w * 0.5) ? 1.0 : -1.0;
-                    dx = dir * inward;
                 }
-                apply_window(i,&layout[i],dx,down);
+                for (unsigned i=QUEST_TARGETS;i<HUD_TARGETS;i++) if (found[i]) {
+                    double btn_dx=0, btn_dy=0;
+                    tl_quest_movement_adjust(Q.scene,layout[i].rect,cut,Q.pixel_w,Q.pixel_h,&btn_dx,&btn_dy);
+                    (void)btn_dy;
+                    apply_window(i,&layout[i],btn_dx,move_dy);
+                }
             }
         }
     }
@@ -230,10 +241,22 @@ typedef struct {
         float applied_x;
         bool logged;
     } slots[12];
+    struct {
+        void *root;
+        float base_x, base_y, applied_x, applied_y;
+        bool logged;
+    } qm_bl;
 } vhpt_hud_state;
 
 static atomic_bool v_enabled;
 static vhpt_hud_state V;
+
+static const void *vhpt_writable_view(const uint8_t *base, uint32_t offset, size_t bytes)
+{
+    const void *addr = base + offset;
+    void *dup = tl_ld_aot_writable(addr, bytes);
+    return dup ? dup : addr;
+}
 
 static uintptr_t vhpt_read_uptr(const void *p)
 {
@@ -321,6 +344,69 @@ static bool vhpt_node_y_span(const uint8_t *root, float root_y, float root_scale
     return true;
 }
 
+static void vhpt_apply_node_pos(void *node, float x, float y)
+{
+    void *const *vtable = (void *const *)vhpt_read_uptr(node);
+    if (!vtable || (uintptr_t)vtable < 0x10000ULL) return;
+    typedef void (*set_pos_fn)(void *, const float *);
+    set_pos_fn set_pos = (set_pos_fn)vhpt_read_uptr((const uint8_t *)vtable + VHPT_NODE_VTBL_SETPOS);
+    if (set_pos) {
+        float pos[2] = { x, y };
+        set_pos(node, pos);
+    }
+}
+
+static void vhpt_align_quickmenu_bottom_left(uintptr_t scene, int safe_l, float vis_h)
+{
+    uintptr_t qm = vhpt_read_uptr((const uint8_t *)scene + VHPT_QM_SCENE_OFF);
+    if (!qm || qm < 0x10000ULL) return;
+    uintptr_t begin = vhpt_read_uptr((const uint8_t *)qm + VHPT_QM_BUCKETS_VEC_OFF);
+    uintptr_t end = vhpt_read_uptr((const uint8_t *)qm + VHPT_QM_BUCKETS_VEC_OFF + sizeof(uintptr_t));
+    if (!begin || end <= begin || begin < 0x10000ULL) return;
+    size_t count = (end - begin) / VHPT_QM_BUCKET_STRIDE;
+    if (count == 0 || count > 16) return;
+    void *bucket = NULL;
+    for (size_t i = 0; i < count; i++) {
+        const uint8_t *entry = (const uint8_t *)(begin + i * VHPT_QM_BUCKET_STRIDE);
+        char buf[32];
+        const char *anchor = vhpt_read_std_string(entry + VHPT_QM_BUCKET_ANCHOR_OFF, buf, sizeof(buf));
+        if (!strcmp(anchor, "BottomLeft")) {
+            bucket = (void *)vhpt_read_uptr(entry + VHPT_QM_BUCKET_NODE_OFF);
+            break;
+        }
+    }
+    if (!bucket || (uintptr_t)bucket < 0x10000ULL) return;
+    float cur_x = vhpt_read_f32((const uint8_t *)bucket + VHPT_NODE_POSX_OFF);
+    float cur_y = vhpt_read_f32((const uint8_t *)bucket + VHPT_NODE_POSY_OFF);
+    float scale = vhpt_read_f32((const uint8_t *)bucket + VHPT_NODE_SCALEX_OFF);
+    if (V.qm_bl.root != bucket) {
+        V.qm_bl.root = bucket;
+        V.qm_bl.base_x = V.qm_bl.applied_x = cur_x;
+        V.qm_bl.base_y = V.qm_bl.applied_y = cur_y;
+        V.qm_bl.logged = false;
+    } else {
+        if (fabsf(cur_x - V.qm_bl.applied_x) > 0.5f) V.qm_bl.base_x = V.qm_bl.applied_x = cur_x;
+        if (fabsf(cur_y - V.qm_bl.applied_y) > 0.5f) V.qm_bl.base_y = V.qm_bl.applied_y = cur_y;
+    }
+    float min_y = 0.0f, max_y = 0.0f;
+    bool has_y = vhpt_node_y_span((const uint8_t *)bucket, cur_y, scale, &min_y, &max_y);
+    float child_min_dy = has_y ? (min_y - cur_y) : 0.0f;
+    float child_max_dy = has_y ? (max_y - cur_y) : 0.0f;
+    float target_x = cur_x, target_y = cur_y;
+    tl_vhpt_bottom_left_target(V.qm_bl.base_x, V.qm_bl.base_y, (float)safe_l, vis_h,
+                               has_y, child_min_dy, child_max_dy, &target_x, &target_y);
+    if (fabsf(target_x - cur_x) >= 0.5f || fabsf(target_y - cur_y) >= 0.5f) {
+        vhpt_apply_node_pos(bucket, target_x, target_y);
+    }
+    V.qm_bl.applied_x = target_x;
+    V.qm_bl.applied_y = target_y;
+    if (!V.qm_bl.logged) {
+        V.qm_bl.logged = true;
+        tl_log_line("vhpt-hud: quickmenu/BottomLeft pos=(%.1f,%.1f)->(%.1f,%.1f) safeL=%d scale=%.3f",
+                    cur_x, cur_y, target_x, target_y, safe_l, scale);
+    }
+}
+
 static void vhpt_align_hud(void)
 {
     if (!atomic_load(&v_enabled)) return;
@@ -334,13 +420,13 @@ static void vhpt_align_hud(void)
         pthread_mutex_unlock(&q_lock);
         return;
     }
-    uintptr_t scene = vhpt_read_uptr(base + VHPT_BSS_GAMESCENE_OFF);
+    uintptr_t scene = vhpt_read_uptr(vhpt_writable_view(base, VHPT_BSS_GAMESCENE_OFF, sizeof(uintptr_t)));
     if (!scene || scene < 0x10000ULL) {
         pthread_mutex_unlock(&q_lock);
         return;
     }
-    int safe_l = vhpt_read_i32(base + VHPT_BSS_SAFE_L_OFF);
-    uint32_t safe_gen = vhpt_read_u32(base + VHPT_BSS_SAFE_GEN_OFF);
+    int safe_l = vhpt_read_i32(vhpt_writable_view(base, VHPT_BSS_SAFE_L_OFF, sizeof(int32_t)));
+    uint32_t safe_gen = vhpt_read_u32(vhpt_writable_view(base, VHPT_BSS_SAFE_GEN_OFF, sizeof(uint32_t)));
     if (safe_l <= 0) safe_l = q_cut.left;
     float vis_h = (float)(V.pixel_h > 0 ? V.pixel_h : q_cut.top + q_cut.bottom);
     if (vis_h <= 0.0f) { pthread_mutex_unlock(&q_lock); return; }
@@ -350,6 +436,7 @@ static void vhpt_align_hud(void)
         V.last_gen = safe_gen;
         V.last_safe_l = safe_l;
         memset(V.slots, 0, sizeof(V.slots));
+        memset(&V.qm_bl, 0, sizeof(V.qm_bl));
     }
 
     size_t nslots = 0;
@@ -383,15 +470,7 @@ static void vhpt_align_hud(void)
 
         float target_x = tl_vhpt_panel_target_x(false, anchor, cur_x, (float)safe_l, vis_h, has_y, min_y, max_y);
         if (fabsf(target_x - cur_x) >= 0.5f) {
-            void *const *vtable = (void *const *)vhpt_read_uptr(m_root);
-            if (vtable && (uintptr_t)vtable >= 0x10000ULL) {
-                typedef void (*set_pos_fn)(void *, const float *);
-                set_pos_fn set_pos = (set_pos_fn)vhpt_read_uptr((const uint8_t *)vtable + VHPT_NODE_VTBL_SETPOS);
-                if (set_pos) {
-                    float pos[2] = { target_x, cur_y };
-                    set_pos(m_root, pos);
-                }
-            }
+            vhpt_apply_node_pos(m_root, target_x, cur_y);
         }
         V.slots[i].root = m_root;
         V.slots[i].applied_x = target_x;
@@ -402,6 +481,7 @@ static void vhpt_align_hud(void)
                         cur_x, cur_y, target_x, cur_y, safe_l, scale);
         }
     }
+    vhpt_align_quickmenu_bottom_left(scene, safe_l, vis_h);
     pthread_mutex_unlock(&q_lock);
 }
 
@@ -465,23 +545,22 @@ void tl_vhtg_quest_insets(int l,int t,int r,int b)
 {
     pthread_mutex_lock(&q_lock); q_cut=(tl_quest_cutout){l,t,r,b}; pthread_mutex_unlock(&q_lock);
 }
-void tl_vhtg_quest_reset(void)
+static void hud_reset_all_locked(bool clear_cutout)
 {
     atomic_store(&q_enabled,false);
     atomic_store(&v_enabled,false);
     pthread_mutex_lock(&q_lock);
     memset(&Q,0,sizeof(Q));
     memset(&V,0,sizeof(V));
-    memset(&q_cut,0,sizeof(q_cut));
+    if (clear_cutout) memset(&q_cut,0,sizeof(q_cut));
     pthread_mutex_unlock(&q_lock);
 }
+void tl_vhtg_quest_reset(void) { hud_reset_all_locked(true); }
 bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
-    atomic_store(&q_enabled,false);
-    atomic_store(&v_enabled,false);
-    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
-    if (!requested || !package || strcmp(package,"com.tech3cgame.vhpt1") ||
-        !insets || pixel_width<=0 || pixel_height<=0) return false;
+    if (!package || strcmp(package,"com.tech3cgame.vhpt1")) return false;
+    hud_reset_all_locked(false);
+    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) return false;
     if (!verify_mygame_profile(apk, VHPT_LIB_SIZE,
             "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44")) {
         tl_log_line("vhpt-hud: unsupported library; Vo Hiep HUD alignment disabled");
@@ -498,12 +577,10 @@ bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const 
 }
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
-    atomic_store(&q_enabled,false);
-    atomic_store(&v_enabled,false);
-    pthread_mutex_lock(&q_lock); memset(&Q,0,sizeof(Q)); memset(&V,0,sizeof(V)); pthread_mutex_unlock(&q_lock);
-    if (!requested || !package ||
-        (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")) ||
-        !insets || pixel_width<=0 || pixel_height<=0) return false;
+    if (!package || (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")))
+        return false;
+    hud_reset_all_locked(false);
+    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) return false;
     const vhtg_profile *matched = NULL;
     for (size_t i = 0; i < sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]); i++) {
         if (verify_mygame_profile(apk, vhtg_profiles[i].size, vhtg_profiles[i].hash)) {

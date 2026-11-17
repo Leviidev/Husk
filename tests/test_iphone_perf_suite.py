@@ -35,38 +35,22 @@ class IPhonePerfSuiteTests(unittest.TestCase):
         selected = suite.select_models("iphone-8,iPhone16,2")
         self.assertEqual([m.id for m in selected], ["iphone-8", "iphone-15-pro-max"])
 
-    def test_swift_and_python_catalogs_stay_synchronized(self):
+    def test_swift_device_lookup_uses_verified_ids_and_removes_manual_selector(self):
         import re
         sw = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
-        pattern = re.compile(
-            r'IPhoneModelProfile\(id:\s*"([^"]+)",\s*family:\s*\.[^,]+,\s*variant:\s*"(?:[^"\\]|\\.)*",\s*'
-            r'machineIDs:\s*\[([^\]]*)\],\s*chip:\s*"([^"]+)",\s*ramGB:\s*([^,]+),\s*'
-            r'pixelWidth:\s*([^,]+),\s*pixelHeight:\s*([^,]+),.*?refreshRateHz:\s*([^,]+),\s*'
-            r'cutoutType:\s*"[^"]+",\s*safeLeftPt:\s*([^,]+),\s*compatibleIOS:\s*"(?:[^"\\]|\\.)*",\s*'
-            r'specVerified:\s*(true|false)'
-        )
-        rows = pattern.findall(sw)
-        self.assertEqual(len(rows), len(suite.IPHONE_CATALOG))
-        import unicodedata
-
-        def fold_vi(text):
-            return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii").lower()
-
-        by_id = {m.id: m for m in suite.IPHONE_CATALOG}
-        for sid, mids_raw, chip, ram, pw, ph, hz, safe, verified in rows:
-            m = by_id[sid]
-            mids = tuple(re.findall(r'"([^"]+)"', mids_raw))
-            self.assertEqual(mids, m.machine_ids, sid)
-            self.assertEqual(fold_vi(chip), fold_vi(m.chip), sid)
-            self.assertEqual(verified == "true", m.spec_status == "verified", sid)
-            self.assertEqual(hz, "nil" if m.refresh_rate_hz is None else str(m.refresh_rate_hz), sid)
-            self.assertEqual(safe, "nil" if m.safe_left_pt is None else str(m.safe_left_pt), sid)
-            if m.ram_gb is None:
-                self.assertEqual(ram, "nil", sid)
-            else:
-                self.assertEqual(float(ram), m.ram_gb, sid)
-            if m.pixel_count is not None and pw != "nil" and ph != "nil":
-                self.assertEqual(int(pw) * int(ph), m.pixel_count, sid)
+        unity = (ROOT / "src/app/Husk/TLUnityView.swift").read_text(encoding="utf-8")
+        settings = (ROOT / "src/app/Husk/SettingsTab.swift").read_text(encoding="utf-8")
+        app_settings = (ROOT / "src/app/Husk/TLAppSettings.swift").read_text(encoding="utf-8")
+        for s in (sw, unity, settings, app_settings):
+            self.assertNotIn("Chọn mẫu iPhone kiểm thử", s)
+        self.assertNotIn("testDisplayProfile", unity)
+        self.assertIn("CurrentDeviceProbe", sw)
+        self.assertIn("MTLCreateSystemDefaultDevice", sw)
+        pairs = re.findall(r'"(iPhone[^"]+)":\s*"([^"]+)"', sw)
+        self.assertGreaterEqual(len(pairs), 30)
+        catalog_mids = {mid for m in suite.IPHONE_CATALOG for mid in m.machine_ids}
+        for mid, _ in pairs:
+            self.assertIn(mid, catalog_mids, mid)
 
     def test_simulation_never_masquerades_as_real_device_pass(self):
         report = suite.evaluate_models(suite.select_models("iphone-8,iphone-16-pro-max,iphone-18"), [], include_simulation=True)

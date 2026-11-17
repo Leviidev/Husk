@@ -32,6 +32,15 @@
 #define VHPT_NODE_VTBL_SETPOS   0x98u
 #define VHPT_INI_ANCHOR_STR_OFF 0x60u
 
+/* PTQuickMenu (scene + 0x548) AnchorBucket vector (begin/end at +0x318, stride 0x20):
+ * each entry holds std::string anchor (+0x00, 24B) and cocos2d::Node *bucket (+0x18),
+ * grouping TopRight / BottomLeft (Emote, Ride, Sit) / BottomCenter buttons. */
+#define VHPT_QM_SCENE_OFF           0x548u
+#define VHPT_QM_BUCKETS_VEC_OFF     0x318u
+#define VHPT_QM_BUCKET_STRIDE       0x20u
+#define VHPT_QM_BUCKET_ANCHOR_OFF   0x00u
+#define VHPT_QM_BUCKET_NODE_OFF     0x18u
+
 typedef struct tl_vhpt_panel_slot {
     uint32_t scene_off;
     uint32_t ini_off;
@@ -46,10 +55,6 @@ static inline const tl_vhpt_panel_slot *tl_vhpt_panel_slots(size_t *count)
         { 0x3b0u, 0x300u, 0x328u, "charinfo",   false }, /* Character box */
         { 0x3b8u, 0x300u, 0x328u, "petinfo",    false }, /* Pet box directly below Character */
         { 0x558u, 0x300u, 0x348u, "buff",       false }, /* Buff bar below Character/Pet */
-        { 0x550u, 0x300u, 0x330u, "quickequip", false }, /* Quick equip popup/button */
-        { 0x4b0u, 0x2f8u, 0x348u, "notify",     false }, /* Left notify buttons */
-        { 0x548u, 0x300u, 0x308u, "quickmenu",  false }, /* QuickMenu rail/buttons */
-        { 0x498u, 0x2f8u, 0x340u, "chat",       false }, /* Bottom-left chat bar */
         { 0x5a8u, 0x300u, 0x3f8u, "shopself",   false }, /* PlayerMenu ShopSelf (BottomLeft) */
         { 0x5f0u, 0x308u, 0x368u, "questlist",  true  }, /* Quest list (Nhiệm vụ): MUST stay unchanged */
     };
@@ -75,12 +80,12 @@ static inline float tl_vhpt_outer_left_px(float safe_l, float vis_h)
 }
 
 /* Hardware notch / Dynamic Island vertical band on the left bezel in bottom-up
- * Cocos surface pixels. Dynamic Island occupies a narrower center band (~32% of
- * height) than a wide notch (~54% of height). */
+ * Cocos surface pixels. Dynamic Island occupies a narrower center band (~33% of
+ * height) than a notch (~51% of height). */
 static inline void tl_vhpt_cutout_band_px(float safe_l, float vis_h, float *y0, float *y1)
 {
     if (safe_l <= 0.5f || vis_h <= 0.0f) { *y0 = 0.0f; *y1 = 0.0f; return; }
-    float half_h = (safe_l / vis_h >= 0.132f) ? (vis_h * 0.165f) : (vis_h * 0.270f);
+    float half_h = (safe_l / vis_h >= 0.132f) ? (vis_h * 0.165f) : (vis_h * 0.255f);
     *y0 = vis_h * 0.5f - half_h;
     *y1 = vis_h * 0.5f + half_h;
 }
@@ -100,6 +105,37 @@ static inline float tl_vhpt_panel_target_x(bool keep_unchanged, const char *anch
         if (ov > (max_y - min_y) * 0.35f) return safe_l;
     }
     return tl_vhpt_outer_left_px(safe_l, vis_h);
+}
+
+/* Compute target (X, Y) for VHPT's BottomLeft movement/emote icon bucket (Emote/Ride/Sit)
+ * from its baseline (base_x, base_y): pushes X outward to the bezel AND lowers Y slightly
+ * below the tai tho band without pushing the bottommost Sit icon off the bottom of screen.
+ * min_y/max_y must be measured at the baseline Y (or converted via child span + base_y). */
+static inline void tl_vhpt_bottom_left_target(float base_x, float base_y,
+    float safe_l, float vis_h, bool has_y_span, float child_min_dy, float child_max_dy,
+    float *out_x, float *out_y)
+{
+    *out_x = base_x;
+    *out_y = base_y;
+    if (safe_l <= 0.5f || vis_h <= 0.0f) return;
+    if (fabsf(base_x - safe_l) <= 2.0f) {
+        *out_x = tl_vhpt_outer_left_px(safe_l, vis_h);
+    }
+    if (fabsf(base_y) <= 2.0f) {
+        float cy0 = 0.0f, cy1 = 0.0f;
+        tl_vhpt_cutout_band_px(safe_l, vis_h, &cy0, &cy1);
+        float gap = ceilf(vis_h * (8.0f / 430.0f));
+        float desired_down = floorf(vis_h * 0.005f);
+        float top_edge = base_y + child_max_dy;
+        float bot_center = base_y + child_min_dy;
+        if (has_y_span && top_edge > (cy0 - gap)) {
+            desired_down = fmaxf(desired_down, ceilf(top_edge - (cy0 - gap)));
+        }
+        float min_center_margin = vis_h * 0.041f;
+        float avail = has_y_span ? fmaxf(0.0f, floorf(bot_center - min_center_margin)) : desired_down;
+        float down = fminf(desired_down, avail);
+        *out_y = base_y - down;
+    }
 }
 
 #endif

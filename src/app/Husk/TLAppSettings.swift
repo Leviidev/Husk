@@ -252,13 +252,13 @@ struct TLAppSettingsView: View {
                 NavigationLink {
                     IPhonePerfSuiteView(defaultPackage: app.packageName)
                 } label: {
-                    Label("Chọn mẫu iPhone kiểm thử (8–18)", systemImage: "iphone")
+                    Label("Chỉ số & hiệu năng thiết bị này", systemImage: "iphone")
                 }
             } header: {
                 Text("Display")
             } footer: {
                 Text("\(settings.resolution.detail) \(settings.visualQuality.detail) Orientation and resolution apply the next time the game starts, and a game already "
-                   + "running in this session needs Husk closed and opened again. Visual quality sharpens immediately, while texture filtering applies on new scenes or next start. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. VHTG's separate adjustment keeps quests clear of the camera and lowers only the walk/sit buttons slightly, leaving the avatar and 18+ logo in place.")
+                   + "running in this session needs Husk closed and opened again. Visual quality sharpens immediately, while texture filtering applies on new scenes or next start. The picture fills the screen. Games that support display cutouts use the cutout information to move their controls clear of the camera area. HUD alignment keeps quests clear of the notch and aligns Character HUD + walk/sit icons outward and clear below the cutout.")
             }
 
             Section {

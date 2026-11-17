@@ -420,37 +420,61 @@ print("PASS: StorageCleaner reclaims regenerable caches & temp files while prote
     def test_iphone_perf_suite_model_and_evaluator(self):
         full_src = (ROOT / "src/app/Husk/IPhonePerfSuite.swift").read_text(encoding="utf-8")
         unity_src = (ROOT / "src/app/Husk/TLUnityView.swift").read_text(encoding="utf-8")
-        self.assertIn("IPhoneFamilyCatalogRows", full_src)
-        self.assertIn("IPhoneSelectedSpecRows", full_src)
-        self.assertIn("IPhoneFamilyCatalogRows", unity_src)
-        self.assertIn("IPhoneSelectedSpecRows", unity_src)
+        settings_src = (ROOT / "src/app/Husk/SettingsTab.swift").read_text(encoding="utf-8")
+        app_settings_src = (ROOT / "src/app/Husk/TLAppSettings.swift").read_text(encoding="utf-8")
+        self.assertIn("CurrentDeviceSpecs", full_src)
+        self.assertIn("CurrentDeviceProbe", full_src)
+        self.assertNotIn("IPhoneFamilyCatalogRows", full_src)
+        self.assertNotIn("testDisplayProfile", unity_src)
+        self.assertNotIn("Chọn mẫu iPhone kiểm thử", settings_src)
+        self.assertNotIn("Chọn mẫu iPhone kiểm thử", app_settings_src)
         src = full_src.split("#if canImport(SwiftUI)", 1)[0]
         self.compile_run(src, '''
-precondition(IPhoneTestCatalog.all.count == 42)
-precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-8" }))
-precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-11-pro-max" }))
-precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-15-pro-max" }))
-precondition(IPhoneTestCatalog.all.contains(where: { $0.id == "iphone-18-pro-max" }))
-let i18 = IPhoneTestCatalog.model(forID: "iphone-18")!
-precondition(!i18.specVerified)
-let p18 = IPhoneTestCatalog.model(forID: "iphone-18-pro")!
-precondition(p18.machineIDs.contains("iPhone19,2") && p18.safeLeftPt == 62)
-let duo = IPhoneTestCatalog.model(forID: "iphone-duo")!
-precondition(duo.machineIDs.contains("iPhone19,4") && duo.specVerified && duo.pointWidth == nil)
-let pm = IPhoneTestCatalog.model(matchingMachine: "iPhone16,2")!
-precondition(pm.id == "iphone-15-pro-max" && pm.specVerified)
+precondition(DeviceModelLookup.friendlyName(for: "iPhone16,2") == "iPhone 15 Pro Max")
+precondition(DeviceModelLookup.friendlyName(for: "iPhone99,9") == "iPhone99,9")
+let specs = CurrentDeviceSpecs(
+    machineID: "iPhone16,2",
+    modelName: DeviceModelLookup.friendlyName(for: "iPhone16,2"),
+    chipName: "Apple A17 Pro GPU",
+    osVersion: "iOS 26.6.1",
+    ramMiB: 7653,
+    cpuCount: 6,
+    activeCPUCount: 6,
+    nativePixelWidth: 1290,
+    nativePixelHeight: 2796,
+    pointWidth: 430,
+    pointHeight: 932,
+    nativeScale: 3.0,
+    maxRefreshHz: 120,
+    safeLeftPt: 59,
+    safeRightPt: 0,
+    safeTopPt: 0,
+    safeBottomPt: 21,
+    colorGamut: "Display P3",
+    thermalStateLabel: "Bình thường",
+    lowPowerMode: false,
+    buildStamp: "3.3 (150)"
+)
+precondition(specs.landscapePixelsText == "2796×1290 px")
+precondition(specs.cutoutText.contains("Dynamic Island"))
 let logs = IPhoneLogEvaluator.parse(lines: [
     "[boot] device      : iPhone16,2",
     "[boot] system      : iOS 26.6.1",
-    "[boot] build       : 3.3 (148) test",
+    "[boot] build       : 3.3 (150) test",
     "[switch] [2026-11-17T01:00:00Z] switch requested: from=vn.trutien.client (preState=2) -> to=com.tech3cgame.vhpt1 (retry=false)",
     "[switch] [2026-11-17T01:00:02Z] switch committed: active=com.tech3cgame.vhpt1 postState=1",
     "unity: java-perf: pkg=com.tech3cgame.vhpt1 fps=59.2 mean_ms=16.88 max_ms=25.00 hitch50=0 hitch100=0",
     "unity: java-perf: pkg=com.tech3cgame.vhpt1 fps=57.5 mean_ms=17.39 max_ms=34.00 hitch50=0 hitch100=0 scenario=heavy_crowd_effects",
+    "unity: alive: 2000 frames (+172), 2450 MiB left before jetsam",
+    "unity: java-perf: pkg=com.game3c.vhtgmobile fps=60.1 mean_ms=16.60 max_ms=19.10 hitch50=0 hitch100=0",
 ])
-precondition(IPhoneLogEvaluator.conclusion(for: pm, logs: logs, currentMachine: "iPhone16,2").verdict == "đạt")
-precondition(IPhoneLogEvaluator.conclusion(for: IPhoneTestCatalog.model(forID: "iphone-8")!, logs: logs, currentMachine: "iPhone16,2").verdict == "chưa đủ dữ liệu")
-print("PASS: IPhonePerfSuite catalog (8->18) and real-device evaluator verified")
+precondition(logs.summary(for: "com.tech3cgame.vhpt1").overallVerdict == "đạt")
+precondition(logs.summary(for: "com.tech3cgame.vhpt1").lastFreeMiB == 2450)
+precondition(logs.summary(for: "com.game3c.vhtgmobile").overallVerdict == "đạt")
+precondition(logs.summary(for: "vn.other.game").overallVerdict == "chưa đủ dữ liệu")
+let rep = IPhoneLogEvaluator.reportText(specs: specs, logs: logs, focusedPackage: "com.tech3cgame.vhpt1")
+precondition(rep.contains("Apple A17 Pro GPU") && rep.contains("2796×1290 px"))
+print("PASS: CurrentDeviceSpecs auto-detection and multi-game evaluator verified")
 ''')
 
 

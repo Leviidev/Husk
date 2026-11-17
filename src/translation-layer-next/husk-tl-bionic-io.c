@@ -9,9 +9,9 @@
  */
 #define _DARWIN_C_SOURCE
 #include "husk-tl-bionic.h"
+#include "husk-tl-ld.h"
 const char *tl_ld_main_apk(void);
-bool tl_ld_aot_contains(const void *addr);
-bool tl_ld_covers(const void *addr, size_t bytes);
+bool tl_ld_is_app_code(const void *addr);
 #include "husk-tl-internal.h"
 #include "husk-tl-codewrite.h"
 #include "husk-tl-xmem.h"
@@ -857,10 +857,46 @@ static void fill_lib_standin_at(int dirfd, const char *name)
     fill_lib_standin(full);
 }
 static _Atomic unsigned g_guest_fd_epoch[4096];
+static _Atomic unsigned char g_guest_fd_persistent[4096];
+
+static bool tl_io_is_persistent_runtime_path(const char *path)
+{
+    if (!path || !path[0]) return false;
+    return strstr(path, "/java-runtime/") != NULL ||
+           strstr(path, "/android-system/") != NULL ||
+           strstr(path, "/etc/tz/") != NULL ||
+           strstr(path, "/etc/icu/") != NULL;
+}
+
+static bool tl_io_fd_is_persistent(int fd)
+{
+    if (fd < 3 || fd >= 4096) return false;
+    if (atomic_load_explicit(&g_guest_fd_persistent[fd], memory_order_acquire)) return true;
+#ifdef F_GETPATH
+    char fp[PATH_MAX];
+    if (fcntl(fd, F_GETPATH, fp) == 0 && tl_io_is_persistent_runtime_path(fp)) {
+        atomic_store_explicit(&g_guest_fd_persistent[fd], 1, memory_order_release);
+        return true;
+    }
+#endif
+    return false;
+}
+
+static void tl_io_mark_fd_persistent(int fd)
+{
+    if (fd >= 3 && fd < 4096) {
+        atomic_store_explicit(&g_guest_fd_persistent[fd], 1, memory_order_release);
+        atomic_store_explicit(&g_guest_fd_epoch[fd], 0, memory_order_release);
+    }
+}
 
 void tl_io_note_guest_fd(int fd)
 {
     if (fd >= 3 && fd < 4096) {
+        if (tl_io_fd_is_persistent(fd)) {
+            atomic_store_explicit(&g_guest_fd_epoch[fd], 0, memory_order_release);
+            return;
+        }
         unsigned ep = tl_guest_session_epoch();
         if (ep) atomic_store_explicit(&g_guest_fd_epoch[fd], ep, memory_order_release);
     }
@@ -868,7 +904,19 @@ void tl_io_note_guest_fd(int fd)
 
 void tl_io_untrack_guest_fd(int fd)
 {
-    if (fd >= 3 && fd < 4096) atomic_store_explicit(&g_guest_fd_epoch[fd], 0, memory_order_release);
+    if (fd >= 3 && fd < 4096) {
+        atomic_store_explicit(&g_guest_fd_persistent[fd], 0, memory_order_release);
+        atomic_store_explicit(&g_guest_fd_epoch[fd], 0, memory_order_release);
+    }
+}
+
+static inline int note_fd_for_path(int fd, const char *path)
+{
+    if (fd >= 0) {
+        if (tl_io_is_persistent_runtime_path(path)) tl_io_mark_fd_persistent(fd);
+        else tl_io_note_guest_fd(fd);
+    }
+    return fd;
 }
 
 static inline int note_fd(int fd)
@@ -894,7 +942,7 @@ static int b_open(const char *path, int flags, unsigned mode)
             TL_ERRNO_BEGIN(); fd = real ? open(real, O_RDONLY) : -1; TL_ERRNO_END();
         }
         ftrace_open_jar(path, fd);
-        return note_fd(fd);
+        return note_fd_for_path(fd, jar.apk);
     }
     if (tl_android_data_ancestor_mode(path)) {
         tl_set_guest_errno(13);
@@ -918,7 +966,7 @@ static int b_open(const char *path, int flags, unsigned mode)
         TL_ERRNO_END();
         if (fd >= 0 && fd < 4096) g_vfd[fd] = (vfd){ true, vf->off, vf->size, 0 };
         { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s) -> %d (virtual: %llu bytes at %llu of %s)%s", path, fd, (unsigned long long)vf->size, (unsigned long long)vf->off, vf->host, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
-        return note_fd(fd);
+        return note_fd_for_path(fd, vf->host);
     }
     int dflags = oflags_to_darwin(flags);
     TL_ERRNO_BEGIN();
@@ -929,7 +977,7 @@ static int b_open(const char *path, int flags, unsigned mode)
     TL_ERRNO_END();
     { static int tr = -1; if (tr < 0) tr = getenv("TL_FILE_TRACE") ? atoi(getenv("TL_FILE_TRACE")) : 0; if (tr) tl_log_line("file: open(%s, %#x) -> %d%s", path, flags, fd, fd < 0 ? (e == ENOENT ? " ENOENT" : " error") : ""); }
     if (fd < 0 && e == ENOENT) tl_note_missing_file(path);
-    return note_fd(fd);
+    return note_fd_for_path(fd, real);
 }
 static int b___open_2(const char *path, int flags) { return b_open(path, flags, 0); }
 static bool net_trace_fd(int fd);
@@ -1104,10 +1152,21 @@ static long b_lseek(int fd, long off, int whence)
     }
     TL_ERRNO_BEGIN(); long r = lseek(fd, off, whence); TL_ERRNO_END(); return r;
 }
-static int b_dup(int fd) { TL_ERRNO_BEGIN(); int r = dup(fd); TL_ERRNO_END(); return note_fd(r); }
+static int b_dup(int fd)
+{
+    TL_ERRNO_BEGIN(); int r = dup(fd); TL_ERRNO_END();
+    if (r >= 0 && tl_io_fd_is_persistent(fd)) { tl_io_mark_fd_persistent(r); return r; }
+    return note_fd(r);
+}
 /* The host's stdin/stdout/stderr stay the host's: apps that send stdout/stderr to logcat dup2 a pipe over them (Waze), which
  * would swallow Husk's own log. The redirect is reported done; their pipe simply stays empty. */
-static int b_dup2(int a, int b) { if (b >= 0 && b <= 2 && a != b) return b; TL_ERRNO_BEGIN(); int r = dup2(a, b); if (r >= 0 && a != b) tl_atomic_closed(b); TL_ERRNO_END(); return note_fd(r); }
+static int b_dup2(int a, int b)
+{
+    if (b >= 0 && b <= 2 && a != b) return b;
+    TL_ERRNO_BEGIN(); int r = dup2(a, b); if (r >= 0 && a != b) tl_atomic_closed(b); TL_ERRNO_END();
+    if (r >= 0 && tl_io_fd_is_persistent(a)) { tl_io_mark_fd_persistent(r); return r; }
+    return note_fd(r);
+}
 static int b_pipe(int fds[2]) { TL_ERRNO_BEGIN(); int r = pipe(fds); TL_ERRNO_END(); if (r == 0) { tl_io_note_guest_fd(fds[0]); tl_io_note_guest_fd(fds[1]); } return r; }
 static int b_fsync(int fd) { TL_ERRNO_BEGIN(); int r = fsync(fd); TL_ERRNO_END(); return r; }
 static int b_ftruncate(int fd, long n) { TL_ERRNO_BEGIN(); int r = ftruncate(fd, n); TL_ERRNO_END(); return r; }
@@ -1602,9 +1661,8 @@ static void file_mmap_remove(uintptr_t addr, size_t len)
     pthread_mutex_unlock(&g_anon_lock);
 }
 
-static void anon_add(void *addr, size_t len)
+static void anon_add_epoch(void *addr, size_t len, unsigned ep)
 {
-    unsigned ep = tl_guest_session_epoch();
     pthread_mutex_lock(&g_anon_lock);
     for (int i = 0; i < g_nanon; i++) {                      /* replace anything this overlaps */
         uintptr_t a = g_anon[i].addr, e = a + g_anon[i].len;
@@ -1617,6 +1675,11 @@ static void anon_add(void *addr, size_t len)
     }
     if (g_nanon < MAX_ANON) { g_anon[g_nanon].addr = (uintptr_t)addr; g_anon[g_nanon].len = len; g_anon_epoch[g_nanon] = ep; g_nanon++; }
     pthread_mutex_unlock(&g_anon_lock);
+}
+
+static void anon_add(void *addr, size_t len)
+{
+    anon_add_epoch(addr, len, tl_guest_session_epoch());
 }
 
 /* Mimalloc reserves a large anonymous range and munmaps the unused ends to align. Keep the list matching that. */
@@ -1850,6 +1913,7 @@ static bool shifted_unmap(void *a, int *ret)
 void *tl_ld_map_code(const char *path, uint64_t off, size_t len, void *at);
 static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long off)
 {
+    const void *caller = __builtin_return_address(0);
     if (fd >= 0 && husk_binder_is_fd(fd)) return husk_binder_mmap(fd, len);
     /* A library file mapped executable (libffi's static trampolines): for a library imported from a dylib, its own signed code */
     if ((prot & PROT_EXEC) && !(flags & 0x20) && fd >= 0 && off >= 0) {
@@ -1925,8 +1989,12 @@ static void *b_mmap(void *addr, size_t len, int prot, int flags, int fd, long of
         TL_ERRNO_BEGIN(); munmap(r, len); TL_ERRNO_END();
         tl_set_guest_errno(13); r = MAP_FAILED;
     }
-    if (r != MAP_FAILED && (flags & 0x20)) anon_add(r, len);
-    else if (r != MAP_FAILED) file_mmap_add(r, len);
+    if (r != MAP_FAILED && (flags & 0x20)) {
+        bool syslib_caller = (tl_ld_lib_of(caller) != NULL && !tl_ld_is_app_code(caller));
+        anon_add_epoch(r, len, syslib_caller ? 0u : tl_guest_session_epoch());
+    } else if (r != MAP_FAILED) {
+        if (fd < 0 || !tl_io_fd_is_persistent(fd)) file_mmap_add(r, len);
+    }
     mm_trace("mmap", r, len, prot, flags);
     if (r == MAP_FAILED) tl_log_line("mm: mmap FAILED len=%#zx prot=%d flags=%#x errno=%d", len, prot, flags, errno);
     return r;
@@ -2849,7 +2917,8 @@ void tl_io_reset_session(unsigned ended_epoch)
     if (!ended_epoch) return;
     tl_timerfd_reset_session(ended_epoch);
     for (int fd = 3; fd < 4096; fd++) {
-        if (atomic_load_explicit(&g_guest_fd_epoch[fd], memory_order_acquire) == ended_epoch) {
+        if (atomic_load_explicit(&g_guest_fd_epoch[fd], memory_order_acquire) == ended_epoch &&
+            !tl_io_fd_is_persistent(fd)) {
             b_close(fd);
         }
     }

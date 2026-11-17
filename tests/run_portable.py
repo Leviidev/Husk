@@ -285,6 +285,15 @@ def main():
         run("jar cache trim compile", compiler + flags + [f"-I{out}",
             str(ROOT / "tests/translation-layer/jar_cache_trim_test.c"), "-o", str(exe)])
         run("jar cache LRU trim contracts", [str(exe)])
+    persistent_snippet = re.search(
+        r"static bool tl_io_is_persistent_runtime_path\([^\n]*\)\n\{.*?\n\}",
+        io_source, re.S)
+    assert persistent_snippet
+    (out / "persistent_runtime_under_test.h").write_text(persistent_snippet[0] + "\n", encoding="utf-8")
+    exe = out / ("persistent_runtime_test.exe" if os.name == "nt" else "persistent_runtime_test")
+    run("persistent runtime compile", compiler + flags + [f"-I{out}",
+        str(ROOT / "tests/translation-layer/persistent_runtime_test.c"), "-o", str(exe)])
+    run("persistent java-runtime/android-system FD and mmap preservation across switches", [str(exe)])
     android_source = (ROOT / "src/translation-layer-next/husk-tl-dvm-android.c").read_text(encoding="utf-8")
     frame_copy = re.search(r"void tl_javaapp_app_pixels\([^)]*\)\n\{.*?\n\}", android_source, re.S)
     assert frame_copy

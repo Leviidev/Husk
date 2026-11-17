@@ -85,6 +85,14 @@ const char *tl_ld_lib_name(const tl_lib *lib) { (void)lib;return library; }
 static tl_lib *found_lib = (tl_lib *)1;
 tl_lib *tl_ld_find_lib(const char *name) { return name && !strcmp(name, "libMyGame.so") ? found_lib : NULL; }
 void *tl_ld_lib_base(const tl_lib *lib) { (void)lib;return (void *)fixture_base; }
+static uintptr_t dup_rx_lo, dup_rx_hi, dup_rw_base;
+void *tl_ld_aot_writable(const void *addr, size_t bytes)
+{
+    uintptr_t a = (uintptr_t)addr;
+    if (dup_rw_base && a >= dup_rx_lo && a + bytes <= dup_rx_hi)
+        return (void *)(dup_rw_base + (a - dup_rx_lo));
+    return NULL;
+}
 void tl_ld_set_plt_filter(void *(*fn)(tl_lib *,const char *,void *)) { filter=fn; }
 void tl_log_line(const char *format,...) { (void)format; }
 bool tl_zip_open(tl_zip *z,const char *p,char *e,size_t n) { (void)z;(void)p;(void)e;(void)n;return true; }
@@ -207,30 +215,36 @@ int main(void)
     // Height overflow alone does not invalidate a horizontal correction.
     put_int(quest,0x34,800);put_double(quest,0x490,10);frame(932,430);assert(get_double(quest,0x490)==75);
 
-    // Only BtnSit and BtnRun move down and inward. The enclosing popbar is never selected.
+    // BtnSit and BtnRun move outward toward the outer bezel AND down clear of the cutout.
     provide_movement=true;window_at(sit,10,320,35,40);window_at(run_button,10,365,35,40);
     begin(2796,1290,insets);frame(932,430);
-    assert(get_double(sit,0x490)==28&&get_double(sit,0x498)==340);
-    assert(get_double(run_button,0x490)==28&&get_double(run_button,0x498)==385);
+    assert(get_double(sit,0x490)==9&&get_double(sit,0x498)==340);
+    assert(get_double(run_button,0x490)==9&&get_double(run_button,0x498)==385);
     for (int i=0;i<10000;i++) frame(932,430);
-    assert(get_double(sit,0x490)==28&&get_double(sit,0x498)==340&&get_double(run_button,0x498)==385);
-    put_double(sit,0x490,20);frame(932,430); // An X edit must not accumulate the Y adjustment.
+    assert(get_double(sit,0x490)==9&&get_double(sit,0x498)==340&&get_double(run_button,0x498)==385);
+    put_double(sit,0x490,20);frame(932,430); // Game edit re-aligns outward; Y stays below cutout without drift.
+    assert(get_double(sit,0x490)==9&&get_double(sit,0x498)==340);
     tl_javaapp_set_insets(0,0,0,0,0);frame(932,430);
     assert(get_double(sit,0x490)==20&&get_double(sit,0x498)==320&&get_double(run_button,0x498)==365);
     tl_javaapp_set_insets(0,0,177,0,0);put_double(run_button,0x498,385);frame(932,430);
     assert(get_double(run_button,0x498)==390); // Only five points of room remain.
     put_double(run_button,0x498,400);frame(932,430);assert(get_double(run_button,0x498)==400);
+    // Movement controls inside the Dynamic Island bottom band push down past it AND stay outward.
+    window_at(run_button,60,260,35,40);window_at(sit,60,305,35,40);
+    tl_javaapp_set_insets(177,0,0,0,0);frame(932,430);
+    assert(get_double(run_button,0x490)==9&&get_double(sit,0x490)==9);
+    assert(get_double(run_button,0x498)>=294&&get_double(sit,0x498)==get_double(run_button,0x498)+45);
     // Old popbar layouts have a shallow parent: never clip the button or its hit region.
     memset(parent,0,sizeof(parent));put_int(parent,0x40,10);put_int(parent,0x44,300);
     put_int(parent,0x30,120);put_int(parent,0x34,32);put_int(parent,0x438,332);
     parent_ptr=parent;window_at(run_button,0,2,26,29);run_button[0x469]=0;
     memcpy(run_button+0x458,&parent_ptr,sizeof(parent_ptr));frame(932,430);
     assert(get_double(run_button,0x498)==3); // Only one point before the parent would clip.
-    wrapped(NAN,430,0,0,932,430,932,430);render_frame();assert(get_double(sit,0x498)==340);
+    wrapped(NAN,430,0,0,932,430,932,430);render_frame();
     for (unsigned i=0;i<sizeof(avatar);i++) assert(avatar[i]==0x55&&age_logo[i]==0x66&&movement[i]==0x77);
 
     // Device's downloaded UI: scene 1665x768, screen-anchored children of a
-    // 220x54 popbar. Their screen anchor, not that shallow parent, bounds movement.
+    // 220x54 popbar. They align to the outer edge (~8-9pt) and drop clear below tai tho.
     window_at(quest,66,-66,275,204);
     put_double(quest,0x478,0.5);put_double(quest,0x488,0.5);
     window_at(sit,20,170,56,62);window_at(run_button,20,100,58,65);
@@ -238,12 +252,15 @@ int main(void)
     memset(parent,0,sizeof(parent));put_int(parent,0x30,220);put_int(parent,0x34,54);
     memcpy(sit+0x458,&parent_ptr,sizeof(parent_ptr));memcpy(run_button+0x458,&parent_ptr,sizeof(parent_ptr));
     begin(2796,1290,insets);
+    // Calling tl_vhpt_hud_start with a VHTG package must NOT disarm VHTG quest mode.
+    assert(!tl_vhpt_hud_start("x","com.game3c.vhtgmobile",true,insets,2796,1290));
+    assert(tl_vhtg_quest_active());
     wrapped(1665,768,0,0,1665,768,1665,768);render_frame();
     assert(get_double(quest,0x490)==135&&get_double(quest,0x498)==-66);
-    assert(get_double(sit,0x490)==40&&get_double(sit,0x498)==205);
-    assert(get_double(run_button,0x490)==40&&get_double(run_button,0x498)==135);
+    assert(get_double(run_button,0x490)==15&&get_double(run_button,0x498)==142);
+    assert(get_double(sit,0x490)==15&&get_double(sit,0x498)==212);
     for (int i=0;i<10000;i++) render_frame();
-    assert(get_double(quest,0x490)==135&&get_double(sit,0x498)==205&&get_double(run_button,0x498)==135);
+    assert(get_double(quest,0x490)==135&&get_double(sit,0x498)==212&&get_double(run_button,0x498)==142);
 
     // Device report: text is adjusted, but its separate Mission/Team tabs are
     // still behind the left island. Reproduce the negative scene origin from
@@ -284,7 +301,7 @@ int main(void)
     assert(get_double(quest,0x490)==66&&get_double(mission_tabs[0],0x490)==25);
     tl_javaapp_set_insets(177,0,0,0,0);render_frame();
     assert(get_double(quest,0x490)==176&&get_double(mission_tabs[0],0x490)==135);
-    assert(get_double(sit,0x498)==205&&get_double(run_button,0x498)==135);
+    assert(get_double(sit,0x498)==212&&get_double(run_button,0x498)==142);
     provide_tabs=provide_tmp=false;
     // Missing groups/exports are inert; later-created script groups are retried.
     window_at(quest,66,-66,275,204);provide_groups=false;begin(2796,1290,insets);
@@ -338,40 +355,71 @@ int main(void)
     /* Notch on right (180-deg flip, safe_l == 0) keeps left-edge origin at 0 */
     assert(tl_vhpt_panel_target_x(false, "TopLeft", 0.0f, 0.0f, 860.0f, true, 720.0f, 845.0f) == 0.0f);
 
-    // 3b) Start/reset and glClear runtime alignment against fake VHPT ELF+scene fixture
+    /* QuickMenu BottomLeft bucket (Emote/Ride/Sit) moves X outward AND safely down without clipping Sit */
+    float bl_x = 0.0f, bl_y = 0.0f;
+    tl_vhpt_bottom_left_target(177.0f, 0.0f, 177.0f, 1290.0f, true, 61.3f, 385.0f, &bl_x, &bl_y);
+    assert(bl_x == 26.0f && bl_y == -6.0f);
+    tl_vhpt_bottom_left_target(177.0f, 0.0f, 177.0f, 1290.0f, true, 260.0f, 460.0f, &bl_x, &bl_y);
+    assert(bl_x == 26.0f && bl_y <= -52.0f);
+
+    // 3b) Start/reset and glClear runtime alignment against fake VHPT AOT ELF+dup+scene fixture
     assert(tl_vhtg_quest_active()); /* switching from VHTG -> VHPT must disarm VHTG quest hook */
     entry.usize = VHPT_LIB_SIZE;
     mock_sha = "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44";
-    int vhpt_insets[4] = {118, 0, 0, 0};
-    assert(tl_vhpt_hud_start("x", "com.tech3cgame.vhpt1", true, vhpt_insets, 1864, 860));
+    int vhpt_insets[4] = {177, 0, 0, 0};
+    assert(tl_vhpt_hud_start("x", "com.tech3cgame.vhpt1", true, vhpt_insets, 2796, 1290));
     assert(!tl_vhtg_quest_active()); /* native insets preserved for Quest & non-left panels */
     void (*wrapped_clear)(unsigned int) = (void (*)(unsigned int))filter((tl_lib *)1, "glClear", (void *)fake_gl_clear);
     assert(wrapped_clear != fake_gl_clear);
     uint8_t *vhpt_img = calloc(1, 0x1000000);
-    assert(vhpt_img != NULL);
+    uint8_t *vhpt_dup = calloc(1, 0x1000000);
+    assert(vhpt_img != NULL && vhpt_dup != NULL);
     memcpy(vhpt_img + VHPT_STR_ANCHOR_OFF, "Anchor", 7);
     memcpy(vhpt_img + VHPT_STR_TOPLEFT_OFF, "TopLeft", 8);
     memcpy(vhpt_img + VHPT_STR_CHARINFO_OFF, "ui_mobile/charinfo.ini", 23);
-    *(int32_t *)(vhpt_img + VHPT_BSS_SAFE_L_OFF) = 118;
-    *(uint32_t *)(vhpt_img + VHPT_BSS_SAFE_GEN_OFF) = 1;
+    /* Put live BSS ONLY in vhpt_dup (simulating AOT mixed/copied data pages while rx remains zeroed) */
+    *(int32_t *)(vhpt_dup + VHPT_BSS_SAFE_L_OFF) = 177;
+    *(uint32_t *)(vhpt_dup + VHPT_BSS_SAFE_GEN_OFF) = 1;
     _Alignas(16) uint8_t scene_mem[0x700] = {0};
-    *(uintptr_t *)(vhpt_img + VHPT_BSS_GAMESCENE_OFF) = (uintptr_t)scene_mem;
+    *(uintptr_t *)(vhpt_dup + VHPT_BSS_GAMESCENE_OFF) = (uintptr_t)scene_mem;
+    dup_rx_lo = (uintptr_t)vhpt_img + 0xe80000u;
+    dup_rx_hi = (uintptr_t)vhpt_img + 0x1000000u;
+    dup_rw_base = (uintptr_t)vhpt_dup + 0xe80000u;
     void *fake_vtable[0x30] = {0};
     fake_vtable[VHPT_NODE_VTBL_SETPOS / sizeof(void *)] = (void *)fake_setpos;
-    _Alignas(16) uint8_t char_panel[0x400] = {0}, pet_panel[0x400] = {0}, quest_panel[0x400] = {0};
+    _Alignas(16) uint8_t char_panel[0x400] = {0}, pet_panel[0x400] = {0}, quest_panel[0x400] = {0}, qm_panel[0x400] = {0};
     _Alignas(16) uint8_t ini_tl[0x80] = {0};
     ini_tl[VHPT_INI_ANCHOR_STR_OFF] = (uint8_t)(7 << 1);
     memcpy(ini_tl + VHPT_INI_ANCHOR_STR_OFF + 1, "TopLeft", 8);
-    _Alignas(16) uint8_t char_root[0x200] = {0}, pet_root[0x200] = {0}, quest_root[0x200] = {0};
+    _Alignas(16) uint8_t char_root[0x200] = {0}, pet_root[0x200] = {0}, quest_root[0x200] = {0}, bl_bucket[0x200] = {0};
+    _Alignas(16) uint8_t bl_ch_sit[0x100] = {0}, bl_ch_emote[0x100] = {0};
     *(void **)char_root = fake_vtable;
     *(void **)pet_root = fake_vtable;
     *(void **)quest_root = fake_vtable;
-    *(float *)(char_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
-    *(float *)(pet_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
-    *(float *)(quest_root + VHPT_NODE_SCALEX_OFF) = 860.0f / 720.0f;
-    *(float *)(char_root + VHPT_NODE_POSX_OFF) = 118.0f;
-    *(float *)(pet_root + VHPT_NODE_POSX_OFF) = 118.0f;
-    *(float *)(quest_root + VHPT_NODE_POSX_OFF) = 118.0f;
+    *(void **)bl_bucket = fake_vtable;
+    float sc = 1290.0f / 768.0f;
+    *(float *)(char_root + VHPT_NODE_SCALEX_OFF) = sc;
+    *(float *)(pet_root + VHPT_NODE_SCALEX_OFF) = sc;
+    *(float *)(quest_root + VHPT_NODE_SCALEX_OFF) = sc;
+    *(float *)(bl_bucket + VHPT_NODE_SCALEX_OFF) = sc;
+    *(float *)(char_root + VHPT_NODE_POSX_OFF) = 177.0f;
+    *(float *)(pet_root + VHPT_NODE_POSX_OFF) = 177.0f;
+    *(float *)(quest_root + VHPT_NODE_POSX_OFF) = 177.0f;
+    *(float *)(bl_bucket + VHPT_NODE_POSX_OFF) = 177.0f;
+    *(float *)(bl_bucket + VHPT_NODE_POSY_OFF) = 0.0f;
+    *(float *)(bl_ch_sit + VHPT_NODE_POSY_OFF) = 36.5f;
+    *(float *)(bl_ch_emote + VHPT_NODE_POSY_OFF) = 201.0f;
+    uintptr_t bl_children[2] = { (uintptr_t)bl_ch_sit, (uintptr_t)bl_ch_emote };
+    *(uintptr_t *)(bl_bucket + VHPT_NODE_CHILDREN_VEC) = (uintptr_t)bl_children;
+    *(uintptr_t *)(bl_bucket + VHPT_NODE_CHILDREN_VEC + sizeof(uintptr_t)) = (uintptr_t)(bl_children + 2);
+    _Alignas(16) uint8_t qm_buckets[VHPT_QM_BUCKET_STRIDE * 2] = {0};
+    qm_buckets[0] = (uint8_t)(8 << 1);
+    memcpy(qm_buckets + 1, "TopRight", 9);
+    qm_buckets[VHPT_QM_BUCKET_STRIDE] = (uint8_t)(10 << 1);
+    memcpy(qm_buckets + VHPT_QM_BUCKET_STRIDE + 1, "BottomLeft", 11);
+    *(uintptr_t *)(qm_buckets + VHPT_QM_BUCKET_STRIDE + VHPT_QM_BUCKET_NODE_OFF) = (uintptr_t)bl_bucket;
+    *(uintptr_t *)(qm_panel + VHPT_QM_BUCKETS_VEC_OFF) = (uintptr_t)qm_buckets;
+    *(uintptr_t *)(qm_panel + VHPT_QM_BUCKETS_VEC_OFF + sizeof(uintptr_t)) = (uintptr_t)(qm_buckets + sizeof(qm_buckets));
     *(uintptr_t *)(char_panel + 0x300) = (uintptr_t)ini_tl;
     *(uintptr_t *)(char_panel + 0x328) = (uintptr_t)char_root;
     *(uintptr_t *)(pet_panel + 0x300) = (uintptr_t)ini_tl;
@@ -381,16 +429,23 @@ int main(void)
     *(uintptr_t *)(scene_mem + 0x3b0) = (uintptr_t)char_panel;
     *(uintptr_t *)(scene_mem + 0x3b8) = (uintptr_t)pet_panel;
     *(uintptr_t *)(scene_mem + 0x5f0) = (uintptr_t)quest_panel;
+    *(uintptr_t *)(scene_mem + VHPT_QM_SCENE_OFF) = (uintptr_t)qm_panel;
     fixture_base = (uintptr_t)vhpt_img;
     library = "libMyGame.so";
     wrapped_clear(0x4000u);
     assert(vhpt_clears == 1);
-    assert(*(float *)(char_root + VHPT_NODE_POSX_OFF) == 17.0f);
-    assert(*(float *)(pet_root + VHPT_NODE_POSX_OFF) == 17.0f);
-    assert(*(float *)(quest_root + VHPT_NODE_POSX_OFF) == 118.0f); /* Quest unchanged */
-    assert(*(float *)(quest_root + VHPT_NODE_SCALEX_OFF) == 860.0f / 720.0f);
+    assert(*(float *)(char_root + VHPT_NODE_POSX_OFF) == 26.0f);
+    assert(*(float *)(pet_root + VHPT_NODE_POSX_OFF) == 26.0f);
+    assert(*(float *)(bl_bucket + VHPT_NODE_POSX_OFF) == 26.0f);
+    assert(*(float *)(bl_bucket + VHPT_NODE_POSY_OFF) == -6.0f);
+    assert(*(float *)(quest_root + VHPT_NODE_POSX_OFF) == 177.0f); /* Quest unchanged */
+    assert(*(float *)(quest_root + VHPT_NODE_SCALEX_OFF) == sc);
+    for (int i = 0; i < 1000; i++) wrapped_clear(0x4000u);
+    assert(*(float *)(bl_bucket + VHPT_NODE_POSX_OFF) == 26.0f && *(float *)(bl_bucket + VHPT_NODE_POSY_OFF) == -6.0f);
+    dup_rw_base = 0;
     tl_vhtg_quest_reset();
+    free(vhpt_dup);
     free(vhpt_img);
-    puts("PASS: selected HUD uses the registry/object ABI, moves separate Mission/Team tabs and text together at the observed negative scene origin, preserves spacing/other HUD/IME, handles missing/late groups and exports, aligns VHPT Character/below-left HUD like VHTG while keeping Quest unchanged, and avoids drift over 10000 updates");
+    puts("PASS: selected HUD uses the registry/object ABI, moves Character & BottomLeft outward (+downward clear of cutout) in both VHTG & VHPT, handles AOT dup BSS, keeps Nhiệm vụ clear/unchanged, and avoids drift over repeated updates");
     return 0;
 }

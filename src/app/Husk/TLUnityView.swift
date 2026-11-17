@@ -55,7 +55,6 @@ final class TLUnityUIView: UIView, UIKeyInput {
     var avoidUnsafeArea = true
     private var sentSafeInsets: UIEdgeInsets?
     private var keyboardInset: Int32 = 0
-    private var testDisplayProfile: IPhoneModelProfile? = IPhoneTestProfile.activeDisplayOverride(defaultMachine: HuskLog.deviceModel)
     private var gameSafeAreaInsets: UIEdgeInsets {
         guard avoidUnsafeArea, !windowed else { return .zero }
         let edge: TLGameViewport.CutoutEdge
@@ -66,14 +65,6 @@ final class TLUnityUIView: UIView, UIKeyInput {
         case .landscapeLeft: edge = .right
         case .landscapeRight: edge = .left
         default: edge = .none
-        }
-        if let prof = testDisplayProfile {
-            let safe = CGFloat(prof.safeLeftPt ?? 0)
-            if safe <= 0 { return .zero }
-            if portrait {
-                return UIEdgeInsets(top: edge == .bottom ? 0 : safe, left: 0, bottom: edge == .bottom ? safe : 0, right: 0)
-            }
-            return UIEdgeInsets(top: 0, left: edge == .right ? 0 : safe, bottom: 0, right: edge == .right ? safe : 0)
         }
         guard UIDevice.current.userInterfaceIdiom == .phone, let window else { return .zero }
         // Use UIKit's resolved inset values; querying a layout guide here can require layout
@@ -324,7 +315,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // A running engine retains its launch dimensions until its session closes.
         if !launched {
             let screen = window?.screen ?? UIScreen.main
-            let scale = testDisplayProfile?.scale.map { CGFloat($0) } ?? (nativeResolution ? screen.nativeScale : contentScaleFactor)
+            let scale = nativeResolution ? screen.nativeScale : contentScaleFactor
             if contentScaleFactor != scale { contentScaleFactor = scale }
             if let metal = layer as? CAMetalLayer, metal.contentsScale != scale { metal.contentsScale = scale }
         }
@@ -334,12 +325,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
         // swapchain disagreeing from then on.
         if !(engine == .ue4 && launched), let metal = layer as? CAMetalLayer {
-            let pixels: CGSize
-            if !launched, let prof = testDisplayProfile, let pw = prof.pixelWidth, let ph = prof.pixelHeight {
-                pixels = CGSize(width: portrait ? min(pw, ph) : max(pw, ph), height: portrait ? max(pw, ph) : min(pw, ph))
-            } else {
-                pixels = CGSize(width: w, height: h)
-            }
+            let pixels = CGSize(width: w, height: h)
             if metal.drawableSize != pixels { metal.drawableSize = pixels }
         }
         sendSafeInsetsIfNeeded()
@@ -382,32 +368,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         setNeedsLayout()
     }
 
-    private func launch(width rawWidth: Int, height rawHeight: Int) {
+    private func launch(width: Int, height: Int) {
         launched = true
-        var width = rawWidth
-        var height = rawHeight
-        if let prof = testDisplayProfile,
-           let pw = prof.pixelWidth, let ph = prof.pixelHeight,
-           let lw = prof.pointWidth, let lh = prof.pointHeight,
-           let sc = prof.scale {
-            width = portrait ? min(pw, ph) : max(pw, ph)
-            height = portrait ? max(pw, ph) : min(pw, ph)
-            let ptSize = CGSize(width: portrait ? min(lw, lh) : max(lw, lh),
-                                height: portrait ? max(lw, lh) : min(lw, lh))
-            contentScaleFactor = CGFloat(sc)
-            launchedSize = ptSize
-            bounds = CGRect(origin: .zero, size: ptSize)
-            if let metal = layer as? CAMetalLayer {
-                metal.contentsScale = CGFloat(sc)
-                metal.drawableSize = CGSize(width: width, height: height)
-            }
-            sentSafeInsets = nil
-            sendSafeInsetsIfNeeded()
-            superview?.setNeedsLayout()
-            HuskLog.log("perf-suite", "HUD display override: model=\(prof.id) pixels=\(width)x\(height) pt=\(Int(ptSize.width))x\(Int(ptSize.height)) safeLeftPt=\(prof.safeLeftPt ?? 0)")
-        } else {
-            launchedSize = bounds.size
-        }
+        launchedSize = bounds.size
         let angle = (Bundle.main.privateFrameworksPath ?? "") + "/libANGLE-shared.dylib"
         let ca = Bundle.main.path(forResource: "cacert", ofType: "pem") ?? ""
         try? FileManager.default.createDirectory(atPath: dataDir, withIntermediateDirectories: true)
@@ -1868,14 +1831,8 @@ struct TLGameSwitcherSheet: View {
     let apps: [TLApp]
     let onPick: (TLApp) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedModelID: String = UserDefaults.standard.string(forKey: IPhoneTestProfile.selectedModelIDKey) ?? ""
-    @State private var displayOverride: Bool = IPhoneTestProfile.isDisplayOverrideEnabled
-    @State private var expandedFamilies: Set<IPhoneFamily> = [.s11, .s15]
-
-    private var selectedModel: IPhoneModelProfile {
-        if let m = IPhoneTestCatalog.model(forID: selectedModelID) { return m }
-        return IPhoneTestProfile.selectedModel(defaultMachine: HuskLog.deviceModel)
-    }
+    @State private var specs = CurrentDeviceProbe.collect()
+    @State private var parsedLogs = CurrentDeviceProbe.readCurrentLogs()
 
     var body: some View {
         NavigationStack {
@@ -1889,32 +1846,21 @@ struct TLGameSwitcherSheet: View {
                     }
                 }
                 Section {
-                    IPhoneSelectedSpecRows(model: selectedModel, displayOverride: $displayOverride)
+                    DetailRow(label: "Thiết bị", value: "\(specs.modelName) (\(specs.machineID))")
+                    DetailRow(label: "Chip / RAM", value: "\(specs.chipName) · \(specs.ramText)")
+                    DetailRow(label: "Màn hình", value: "\(specs.landscapePixelsText) · \(specs.maxRefreshHz) Hz")
+                    DetailRow(label: "Hệ điều hành", value: specs.osVersion)
+                    let perf = parsedLogs.summary(for: current.packageName).combinedMetrics
+                    if perf.samples > 0 {
+                        DetailRow(label: "Hiệu năng game", value: String(format: "%.1f FPS · mean %.2f ms · max %.2f ms", perf.avgFPS, perf.meanMs, perf.maxMs))
+                    }
                     NavigationLink {
                         IPhonePerfSuiteView(defaultPackage: current.packageName)
                     } label: {
-                        Label("Xem kết quả đo thật & Xuất Markdown", systemImage: "chart.bar.doc.horizontal")
+                        Label("Xem chi tiết chỉ số & hiệu năng", systemImage: "chart.bar.doc.horizontal")
                     }
                 } header: {
-                    Text("iPhone đang chọn để test (Thông số chuẩn)")
-                } footer: {
-                    Text(displayOverride && selectedModel.pointWidth != nil
-                         ? "Đang bật mô phỏng khung hình \(selectedModel.resolutionLabel) cho lần chuyển/mở game tiếp theo."
-                         : "Các mẫu thiếu cấu hình xác minh (iPhone 18 chuẩn, 18e) được đánh dấu rõ.")
-                }
-                Section {
-                    IPhoneFamilyCatalogRows(
-                        selectedModelID: $selectedModelID,
-                        expandedFamilies: $expandedFamilies,
-                        currentMachine: HuskLog.deviceModel
-                    ) { m in
-                        selectedModelID = m.id
-                        IPhoneTestProfile.select(m, via: "switch")
-                    }
-                } header: {
-                    Text("Chọn rõ từng mẫu iPhone trong Switch (8 → 18)")
-                } footer: {
-                    Text("Mở từng dòng máy (ví dụ iPhone 11, 11 Pro, 11 Pro Max) hoặc bấm Mở tất cả 42 biến thể để chọn nhanh.")
+                    Text("Chỉ số thiết bị này (tự động)")
                 }
             }
             .navigationTitle("Switch Game")
@@ -1925,9 +1871,8 @@ struct TLGameSwitcherSheet: View {
                 }
             }
             .onAppear {
-                let m = selectedModel
-                if selectedModelID.isEmpty { selectedModelID = m.id }
-                expandedFamilies.insert(m.family)
+                specs = CurrentDeviceProbe.collect()
+                parsedLogs = CurrentDeviceProbe.readCurrentLogs()
             }
         }
         .huskDetents([.medium, .large])

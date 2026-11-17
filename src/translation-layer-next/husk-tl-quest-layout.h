@@ -50,4 +50,49 @@ static inline double tl_quest_movement_down(tl_quest_rect scene, tl_quest_rect w
     double room = scene.y + scene.h - window.y - window.h;
     return floor(fmax(0, fmin(scene.h * (20.0/430.0), room)));
 }
+
+/* Compute (dx, dy) for a movement button/cluster so it sits near the outer bezel
+ * (~8-9 pt curved-corner pad when clipped by a cutout) AND clear below the notch /
+ * Dynamic Island bottom edge without leaving the scene. */
+static inline void tl_quest_movement_adjust(tl_quest_rect scene, tl_quest_rect window,
+                                            tl_quest_cutout cut, double pixel_w, double pixel_h,
+                                            double *dx, double *dy)
+{
+    *dx = 0; *dy = 0;
+    if (!isfinite(scene.x) || !isfinite(scene.y) || !isfinite(scene.w) || !isfinite(scene.h) ||
+        !isfinite(window.x) || !isfinite(window.y) || !isfinite(window.w) || !isfinite(window.h) ||
+        !isfinite(cut.left) || !isfinite(cut.right) || !isfinite(pixel_w) || !isfinite(pixel_h) ||
+        scene.w <= 0 || scene.h <= 0 || window.w <= 0 || window.h <= 0 || pixel_w <= 0 || pixel_h <= 0) return;
+    if (scene.w <= scene.h || (cut.left <= 0 && cut.right <= 0)) return;
+
+    bool is_left = (window.x + window.w * 0.5) < (scene.x + scene.w * 0.5);
+    double active_cut_px = is_left ? cut.left : cut.right;
+    if (active_cut_px > 0) {
+        double outer_pad = floor(fmax(6.0, scene.h * 0.020) + 0.5);
+        double cut_scene = active_cut_px * scene.w / pixel_w;
+        outer_pad = fmin(outer_pad, fmax(0.0, floor(cut_scene * 0.5)));
+        if (is_left) {
+            double target_x = scene.x + outer_pad;
+            if (window.x > target_x + 0.5 || window.x < scene.x + fmin(outer_pad, 2.0))
+                *dx = floor(target_x - window.x + 0.5);
+        } else {
+            double target_r = scene.x + scene.w - outer_pad;
+            double cur_r = window.x + window.w;
+            if (cur_r < target_r - 0.5 || cur_r > scene.x + scene.w - fmin(outer_pad, 2.0))
+                *dx = floor(target_r - cur_r + 0.5);
+        }
+
+        double ratio = active_cut_px / pixel_h;
+        double band_half = (ratio >= 0.132) ? 0.165 : 0.255;
+        double band_bottom = scene.y + scene.h * (0.5 + band_half);
+        double clear_gap = ceil(scene.h * (8.0 / 430.0));
+        double min_down = tl_quest_movement_down(scene, window);
+        double clear_down = fmax(0.0, ceil((band_bottom + clear_gap) - window.y));
+        double desired_down = fmax(min_down, clear_down);
+        double room = fmax(0.0, (scene.y + scene.h) - (window.y + window.h));
+        *dy = floor(fmin(desired_down, room));
+    } else {
+        *dy = tl_quest_movement_down(scene, window);
+    }
+}
 #endif
