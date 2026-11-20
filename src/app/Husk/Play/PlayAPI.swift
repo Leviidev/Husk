@@ -8,7 +8,8 @@ import Foundation
 /// Written for Husk from how those requests look on the wire; it shares no code with any other client.
 struct PlayError: LocalizedError {
     let message: String
-    init(_ message: String) { self.message = message }
+    let statusCode: Int?
+    init(_ message: String, statusCode: Int? = nil) { self.message = message; self.statusCode = statusCode }
     var errorDescription: String? { message }
 }
 
@@ -264,7 +265,7 @@ enum PlayAPI {
     /// One /fdfe call; the reply's payload (ResponseWrapper.payload, or the prefetched one when that is where the answer is).
     @discardableResult
     static func fdfeCall(_ path: String, session s: PlaySession, query: [(String, String)] = [], body: Data? = nil,
-                         post: Bool = false) async throws -> ProtoMessage {
+                         post: Bool = false, transport: URLSession? = nil) async throws -> ProtoMessage {
         var comps = URLComponents(string: fdfe + path)!
         if !query.isEmpty { comps.queryItems = (comps.queryItems ?? []) + query.map { URLQueryItem(name: $0.0, value: $0.1) } }
         var req = URLRequest(url: comps.url!)
@@ -274,13 +275,13 @@ enum PlayAPI {
             req.httpBody = body
             req.setValue("application/x-protobuf", forHTTPHeaderField: "Content-Type")
         }
-        let (data, response) = try await urlSession.data(for: req)
+        let (data, response) = try await (transport ?? urlSession).data(for: req)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let wrapper = ProtoMessage(data)
-        if status == 401 { throw PlayError("Google Play's session has ended; signing in again.") }
+        if status == 401 { throw PlayError("Google Play's session has ended. Sign in again.", statusCode: status) }
         guard status == 200 else {
             let message = wrapper.message(5)?.string(1) ?? "HTTP \(status)"    // ServerCommands.displayErrorMessage
-            throw PlayError("Google Play said no: \(message)")
+            throw PlayError("Google Play said no: \(message)", statusCode: status)
         }
         if let payload = wrapper.message(1), !payload.fields.isEmpty { return payload }
         return wrapper.message(3)?.message(2)?.message(1) ?? ProtoMessage(Data())
@@ -451,9 +452,10 @@ enum PlayAPI {
             var apps: [PlayApp] = []
             var visited = Set<String>()
 
-            func traverse(_ msg: ProtoMessage) {
+            func traverse(_ msg: ProtoMessage, depth: Int = 0) {
+                guard depth < 32 else { return }
                 // If this is a DocV2
-                if let docid = msg.string(1), isValidPackageName(docid), !visited.contains(docid) {
+                if msg.int(3) == 1, let docid = msg.string(1), isValidPackageName(docid), !visited.contains(docid) {
                     if let app = PlayApp.from(doc: msg) {
                         visited.insert(docid)
                         apps.append(app)
@@ -461,12 +463,12 @@ enum PlayAPI {
                 }
 
                 // Recurse into child messages across all fields
-                for (_, vals) in msg.fields {
+                for (_, vals) in msg.fields.sorted(by: { $0.key < $1.key }) {
                     for val in vals {
                         if case .bytes(let d) = val {
                             let child = ProtoMessage(d)
                             if !child.fields.isEmpty {
-                                traverse(child)
+                                traverse(child, depth: depth + 1)
                             }
                         }
                     }
@@ -528,171 +530,146 @@ enum PlayAPI {
         return PlayApp.parseApps(from: payload)
     }
 
-    /// Search Google Play
-    static func search(query: String, session: PlaySession) async throws -> [PlayApp] {
+    /// Preserve complete, trusted Play search cursors; offsets and continuation tokens are part of the URL.
+    static func searchContinuationPaths(in payload: ProtoMessage) -> [String] {
+        var paths: [String] = []
+        var seen = Set<String>()
+        func visit(_ message: ProtoMessage, depth: Int) {
+            guard depth < 32 else { return }
+            for (_, values) in message.fields.sorted(by: { $0.key < $1.key }) {
+                for case .bytes(let data) in values {
+                    if let text = String(data: data, encoding: .utf8),
+                       let components = URLComponents(string: text),
+                       components.fragment == nil, components.user == nil, components.password == nil {
+                        let trusted = components.scheme == nil && components.host == nil
+                            || components.scheme == "https" && components.host == "android.clients.google.com"
+                        var path = components.path
+                        if path.hasPrefix("/fdfe/") { path.removeFirst(6) }
+                        if trusted, ["searchList", "search"].contains(path), let query = components.percentEncodedQuery {
+                            let cursor = path + "?" + query
+                            if seen.insert(cursor).inserted { paths.append(cursor) }
+                        }
+                    }
+                    let child = ProtoMessage(data)
+                    if !child.fields.isEmpty { visit(child, depth: depth + 1) }
+                }
+            }
+        }
+        visit(payload, depth: 0)
+        return paths
+    }
+
+    /// Search the native catalog first; use public Play search only when its result is incomplete or unavailable.
+    static func search(query: String, session: PlaySession, transport: URLSession? = nil) async throws -> [PlayApp] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
-
-        // Helper to extract valid Android package names from any string / HTML
-        func extractPackageNames(from text: String) -> [String] {
-            var found: [String] = []
-            let patterns = [
-                "/store/apps/details\\?id=([a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+)",
-                "id=([a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+)",
-                "\\b([a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+)\\b"
-            ]
-            for pattern in patterns {
-                guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
-                let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-                for match in matches {
-                    let rangeIdx = match.numberOfRanges > 1 ? 1 : 0
-                    if let range = Range(match.range(at: rangeIdx), in: text) {
-                        let candidate = String(text[range])
-                        if PlayApp.isValidPackageName(candidate) && !found.contains(candidate) {
-                            found.append(candidate)
-                        }
-                    }
-                }
-            }
-            return found
-        }
-
+        try Task.checkCancellation()
         var candidatePackages: [String] = []
-
-        // 1. If an exact package name was searched, prioritize it
-        if PlayApp.isValidPackageName(trimmed) {
-            candidatePackages.append(trimmed)
+        var catalogAnswered = false
+        var lastError: Error?
+        func append(_ apps: [PlayApp]) {
+            for app in apps where !candidatePackages.contains(app.id) { candidatePackages.append(app.id) }
         }
-
-        // 2. Direct fdfe/search call with ksm=1
-        let q = [
-            ("c", "3"),
-            ("q", trimmed),
-            ("ksm", "1")
-        ]
-        if let payload = try? await fdfeCall("search", session: session, query: q) {
-            let immediateApps = PlayApp.parseApps(from: payload)
-            for app in immediateApps {
-                if !candidatePackages.contains(app.id) {
-                    candidatePackages.append(app.id)
-                }
+        func native(_ path: String, query: [(String, String)] = []) async throws -> ProtoMessage? {
+            try Task.checkCancellation()
+            do {
+                let payload = try await fdfeCall(path, session: session, query: query, transport: transport)
+                catalogAnswered = true
+                return payload
+            } catch {
+                if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+                try Task.checkCancellation()
+                if (error as? PlayError)?.statusCode == 401 { throw error }
+                lastError = error
+                return nil
             }
-
-            // Follow searchList stream continuation token if present
-            for (_, vals) in payload.fields {
-                for val in vals {
-                    if case .bytes(let d) = val {
-                        let text = String(decoding: d, as: UTF8.self)
-                        let pattern = "searchList\\?q=[^\"\\s&]+"
-                        if let range = text.range(of: pattern, options: .regularExpression) {
-                            let streamPath = String(text[range])
-                            if let streamPayload = try? await fdfeCall(streamPath, session: session) {
-                                for app in PlayApp.parseApps(from: streamPayload) {
-                                    if !candidatePackages.contains(app.id) {
-                                        candidatePackages.append(app.id)
-                                    }
-                                }
-                            }
-                        }
-                    }
+        }
+        if PlayApp.isValidPackageName(trimmed) { candidatePackages.append(trimmed) }
+        if let payload = try await native("search", query: [("c", "3"), ("q", trimmed), ("ksm", "1")]) {
+            append(PlayApp.parseApps(from: payload))
+            var pending = searchContinuationPaths(in: payload)
+            var visited = Set<String>()
+            var pages = 0
+            while !pending.isEmpty, pages < 3, candidatePackages.count < 20 {
+                let path = pending.removeFirst()
+                guard visited.insert(path).inserted else { continue }
+                pages += 1
+                if let page = try await native(path) {
+                    append(PlayApp.parseApps(from: page))
+                    pending.append(contentsOf: searchContinuationPaths(in: page).filter { !visited.contains($0) })
                 }
             }
         }
-
-        // 3. fdfe/searchSuggest call
+        if candidatePackages.count < 10,
+           let suggestions = try await native("searchSuggest", query: [("q", trimmed), ("sb", "5"), ("sst", "2"), ("sst", "3")]) {
+            append(PlayApp.parseApps(from: suggestions))
+        }
         if candidatePackages.count < 10 {
-            let suggestQuery = [
-                ("q", trimmed),
-                ("sb", "5"),
-                ("sst", "2"),
-                ("sst", "3")
-            ]
-            if let suggestMsg = try? await fdfeCall("searchSuggest", session: session, query: suggestQuery) {
-                for app in PlayApp.parseApps(from: suggestMsg) {
-                    if !candidatePackages.contains(app.id) {
-                        candidatePackages.append(app.id)
-                    }
-                }
-            }
-        }
-
-        // 4. Web search fallback: query Google Play's public search catalog to obtain top ranked package IDs
-        if candidatePackages.count < 10 {
-            var comps = URLComponents(string: "https://play.google.com/store/search")!
-            comps.queryItems = [
-                URLQueryItem(name: "q", value: trimmed),
-                URLQueryItem(name: "c", value: "apps"),
-                URLQueryItem(name: "hl", value: "en"),
-                URLQueryItem(name: "gl", value: PlayDevice.country)
-            ]
-            if let webURL = comps.url {
-                var webReq = URLRequest(url: webURL)
-                webReq.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
-                if let (data, resp) = try? await urlSession.data(for: webReq),
-                   (resp as? HTTPURLResponse)?.statusCode == 200,
-                   let html = String(data: data, encoding: .utf8) {
-                    for pkg in extractPackageNames(from: html) {
-                        if !candidatePackages.contains(pkg) {
-                            candidatePackages.append(pkg)
+            try Task.checkCancellation()
+            var components = URLComponents(string: "https://play.google.com/store/search")!
+            components.queryItems = [URLQueryItem(name: "q", value: trimmed), URLQueryItem(name: "c", value: "apps"),
+                                    URLQueryItem(name: "hl", value: PlayDevice.locale.replacingOccurrences(of: "_", with: "-")),
+                                    URLQueryItem(name: "gl", value: PlayDevice.country)]
+            var request = URLRequest(url: components.url!)
+            request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+            do {
+                let (data, response) = try await (transport ?? urlSession).data(for: request)
+                if (response as? HTTPURLResponse)?.statusCode == 200, let html = String(data: data, encoding: .utf8) {
+                    catalogAnswered = true
+                    // Only app-detail links are package candidates; domains, split names and tracking strings are not apps.
+                    let regex = try NSRegularExpression(pattern: #"/store/apps/details\?id=([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]+)+)"#)
+                    for match in regex.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
+                        if let range = Range(match.range(at: 1), in: html) {
+                            let package = String(html[range])
+                            if !candidatePackages.contains(package) { candidatePackages.append(package) }
                             if candidatePackages.count >= 20 { break }
                         }
                     }
                 }
+            } catch {
+                if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+                try Task.checkCancellation()
+                lastError = error
             }
         }
-
-        // 5. Featured apps substring matching fallback
-        for pkg in featuredPackageNames {
-            if (pkg.localizedCaseInsensitiveContains(trimmed) ||
-                pkg.replacingOccurrences(of: ".", with: " ").localizedCaseInsensitiveContains(trimmed)) &&
-                !candidatePackages.contains(pkg) {
-                candidatePackages.append(pkg)
-            }
+        for package in featuredPackageNames where package.localizedCaseInsensitiveContains(trimmed)
+            || package.replacingOccurrences(of: ".", with: " ").localizedCaseInsensitiveContains(trimmed) {
+            if !candidatePackages.contains(package) { candidatePackages.append(package) }
         }
-
-        // If no candidate packages were identified, return empty
-        if candidatePackages.isEmpty {
-            return []
-        }
-
-        // Limit candidate list to top 20 to avoid excessive queries
-        let topCandidates = Array(candidatePackages.prefix(20))
-
-        // Resolve rich details concurrently for each package
-        var resolvedApps: [PlayApp] = []
-        await withTaskGroup(of: PlayApp?.self) { group in
-            for pkg in topCandidates {
+        try Task.checkCancellation()
+        if candidatePackages.isEmpty, !catalogAnswered, let error = lastError { throw error }
+        let candidates = Array(candidatePackages.prefix(20))
+        let apps = try await withThrowingTaskGroup(of: PlayApp?.self) { group in
+            for package in candidates {
                 group.addTask {
-                    try? await details(packageName: pkg, session: session)
+                    try Task.checkCancellation()
+                    do { return try await details(packageName: package, session: session, transport: transport) }
+                    catch {
+                        if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+                        try Task.checkCancellation()
+                        if (error as? PlayError)?.statusCode == 401 { throw error }
+                        return nil
+                    }
                 }
             }
-            for await app in group {
-                if let app, PlayApp.isValidPackageName(app.id) {
-                    resolvedApps.append(app)
-                }
-            }
+            var results: [PlayApp] = []
+            for try await app in group { if let app { results.append(app) } }
+            return results
         }
-
-        // Sort resolved apps to preserve the candidate package ranking order
-        resolvedApps.sort { a, b in
-            let ia = topCandidates.firstIndex(of: a.id) ?? 999
-            let ib = topCandidates.firstIndex(of: b.id) ?? 999
-            return ia < ib
-        }
-
-        return resolvedApps
+        try Task.checkCancellation()
+        return apps.sorted { (candidates.firstIndex(of: $0.id) ?? .max) < (candidates.firstIndex(of: $1.id) ?? .max) }
     }
 
     /// Get full details for a single app
-    static func details(packageName: String, session: PlaySession) async throws -> PlayApp? {
+    static func details(packageName: String, session: PlaySession, transport: URLSession? = nil) async throws -> PlayApp? {
         let q = [
             ("doc", packageName)
         ]
-        let payload = try await fdfeCall("details", session: session, query: q)
+        let payload = try await fdfeCall("details", session: session, query: q, transport: transport)
 
         // Payload -> detailsResponse (field 2) -> docV2 (field 4)
         let detResp = payload.message(2)
-        if let doc = detResp?.message(4), var app = PlayApp.from(doc: doc) {
+        if let doc = detResp?.message(4), var app = PlayApp.from(doc: doc), app.id == packageName {
             // Extract latest versionCode from prefetch/cluster info (field 6.2.11.2) if not in appDetails
             if app.versionCode <= 0, let vc = detResp?.message(6)?.message(2)?.message(11)?.int(2), vc > 0 {
                 app.versionCode = Int(vc)
@@ -701,7 +678,7 @@ enum PlayAPI {
         }
 
         let apps = PlayApp.parseApps(from: payload)
-        return apps.first(where: { $0.id == packageName }) ?? apps.first
+        return apps.first(where: { $0.id == packageName })
     }
 
     public struct DeliveryData {
@@ -726,21 +703,21 @@ enum PlayAPI {
 
     /// "Purchase" (license) a free app so Google Play allows delivery. Returns encoded delivery token if provided.
     @discardableResult
-    static func purchase(packageName: String, versionCode: Int, session: PlaySession) async throws -> String? {
+    static func purchase(packageName: String, versionCode: Int, session: PlaySession, transport: URLSession? = nil) async throws -> String? {
         let q = [
             ("doc", packageName),
             ("ot", "1"),
             ("vc", "\(versionCode)")
         ]
         // POST to fdfe/purchase
-        let payload = try await fdfeCall("purchase", session: session, query: q, post: true)
+        let payload = try await fdfeCall("purchase", session: session, query: q, post: true, transport: transport)
         // buyResponse is field 4, encodedDeliveryToken is field 55
         let buyResponse = payload.message(4)
         return buyResponse?.string(55)
     }
 
     /// Request delivery URL(s) for an app
-    static func delivery(packageName: String, versionCode: Int, deliveryToken: String? = nil, session: PlaySession) async throws -> DeliveryData {
+    static func delivery(packageName: String, versionCode: Int, deliveryToken: String? = nil, session: PlaySession, transport: URLSession? = nil) async throws -> DeliveryData {
         var q = [
             ("doc", packageName),
             ("ot", "1"),
@@ -749,7 +726,7 @@ enum PlayAPI {
         if let deliveryToken, !deliveryToken.isEmpty {
             q.append(("dtok", deliveryToken))
         }
-        let payload = try await fdfeCall("delivery", session: session, query: q)
+        let payload = try await fdfeCall("delivery", session: session, query: q, transport: transport)
 
         // Delivery response: field 21 message 2 (AndroidAppDeliveryData)
         let delivResp = payload.message(21)
@@ -815,22 +792,31 @@ enum PlayAPI {
         return data
     }
 
+    struct DownloadProgress {
+        let received: Int64
+        let total: Int64?
+        var fraction: Double? { total.flatMap { $0 > 0 ? min(1, Double(received) / Double($0)) : nil } }
+    }
+
     /// Downloads the APK (and splits if present) into a temporary directory and returns the list of file URLs.
     static func downloadApp(
         packageName: String,
         versionCode: Int,
         session: PlaySession,
         stagingDirectory: URL? = nil,
-        progress: (@MainActor (Double) -> Void)? = nil
+        transport: URLSession? = nil,
+        progress: (@MainActor (DownloadProgress) -> Void)? = nil
     ) async throws -> [URL] {
         // Purchase first to obtain delivery token, then request delivery
         var dtok: String? = nil
         do {
-            dtok = try await purchase(packageName: packageName, versionCode: versionCode, session: session)
+            dtok = try await purchase(packageName: packageName, versionCode: versionCode, session: session, transport: transport)
         } catch {
+            try Task.checkCancellation()
             // Ignore if purchase fails or already owned
         }
-        let deliveryData = try await delivery(packageName: packageName, versionCode: versionCode, deliveryToken: dtok, session: session)
+        try Task.checkCancellation()
+        let deliveryData = try await delivery(packageName: packageName, versionCode: versionCode, deliveryToken: dtok, session: session, transport: transport)
 
         var downloadsToMake: [(name: String, url: String, size: Int64)] = []
         if let base = deliveryData.downloadUrl {
@@ -848,17 +834,20 @@ enum PlayAPI {
             throw PlayError("No download URLs available for \(packageName).")
         }
 
-        let totalExpectedBytes = downloadsToMake.reduce(Int64(0)) { $0 + max(0, $1.size) }
         // stagingDirectory: a folder on the destination's disk (the Mac downloader's games go to an external one; the temporary
         // folder is always on the internal disk)
         let tempDir = (stagingDirectory ?? FileManager.default.temporaryDirectory).appendingPathComponent("PlayDownload_\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        var complete = false
+        defer { if !complete { try? FileManager.default.removeItem(at: tempDir) } }
 
         var downloadedFiles: [URL] = []
         var totalBytesWritten: Int64 = 0
+        var expectedSizes = downloadsToMake.map { $0.size }
 
-        for item in downloadsToMake {
-            guard let dlURL = URL(string: item.url) else { continue }
+        for (index, item) in downloadsToMake.enumerated() {
+            try Task.checkCancellation()
+            guard let dlURL = URL(string: item.url) else { throw PlayError("Invalid download URL for \(item.name).") }
             var req = URLRequest(url: dlURL)
             req.setValue(PlayDevice.finskyUserAgent, forHTTPHeaderField: "User-Agent")
             if let c = deliveryData.downloadAuthCookie {
@@ -866,21 +855,28 @@ enum PlayAPI {
             }
 
             let fileDest = tempDir.appendingPathComponent(item.name)
-            let status = try await FileStreamer.download(req, to: fileDest)
+            let completedBytes = totalBytesWritten
+            let sizes = expectedSizes
+            let status = try await FileStreamer.download(req, to: fileDest, configuration: transport?.configuration ?? .default) { received, expected in
+                var totals = sizes
+                if let expected { totals[index] = expected }
+                let total = totals.allSatisfy { $0 > 0 } ? totals.reduce(0, +) : nil
+                progress?(DownloadProgress(received: completedBytes + received, total: total))
+            }
             guard status == 200 else {
                 try? FileManager.default.removeItem(at: fileDest)
                 throw PlayError("Failed to download \(item.name) (HTTP \(status))")
             }
             downloadedFiles.append(fileDest)
 
-            totalBytesWritten += item.size
-            if totalExpectedBytes > 0 {
-                let frac = min(1.0, Double(totalBytesWritten) / Double(totalExpectedBytes))
-                await progress?(frac)
-            }
+            let size = Int64(try fileDest.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+            totalBytesWritten += size
+            expectedSizes[index] = size
         }
 
-        await progress?(1.0)
+        try Task.checkCancellation()
+        complete = true
+        await progress?(DownloadProgress(received: totalBytesWritten, total: totalBytesWritten))
         return downloadedFiles
     }
 }
@@ -895,18 +891,25 @@ private final class FileStreamer: NSObject, URLSessionDataDelegate {
     private var status = 0
     private var failure: Error?
     private var continuation: CheckedContinuation<Int, Error>?
+    private var received: Int64 = 0
+    private var expected: Int64?
+    private var updates: AsyncStream<(Int64, Int64?)>.Continuation?
 
     private init(handle: FileHandle) { self.handle = handle }
 
-    static func download(_ request: URLRequest, to destination: URL) async throws -> Int {
+    static func download(_ request: URLRequest, to destination: URL, configuration: URLSessionConfiguration,
+                         progress: @escaping @MainActor (Int64, Int64?) async -> Void) async throws -> Int {
+        try Task.checkCancellation()
         FileManager.default.createFile(atPath: destination.path, contents: nil)
         let handle = try FileHandle(forWritingTo: destination)
         let streamer = FileStreamer(handle: handle)
-        let session = URLSession(configuration: .default, delegate: streamer, delegateQueue: nil)
+        let updates = AsyncStream<(Int64, Int64?)>(bufferingPolicy: .bufferingNewest(1)) { streamer.updates = $0 }
+        let observer = Task { for await (received, expected) in updates { await progress(received, expected) } }
+        let session = URLSession(configuration: configuration, delegate: streamer, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate(); try? handle.close() }
         do {
             // Cancelling the download's Task (the Store's stop button) cancels the transfer
-            return try await withTaskCancellationHandler {
+            let status = try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation { continuation in
                     streamer.continuation = continuation
                     session.dataTask(with: request).resume()
@@ -914,7 +917,12 @@ private final class FileStreamer: NSObject, URLSessionDataDelegate {
             } onCancel: {
                 session.invalidateAndCancel()
             }
+            await observer.value
+            try Task.checkCancellation()
+            return status
         } catch {
+            streamer.updates?.finish()
+            await observer.value
             try? FileManager.default.removeItem(at: destination)
             throw error
         }
@@ -923,19 +931,26 @@ private final class FileStreamer: NSObject, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        expected = response.expectedContentLength > 0 ? response.expectedContentLength : nil
+        if status == 200 { updates?.yield((0, expected)) }
         completionHandler(status == 200 ? .allow : .cancel)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         guard failure == nil else { return }
-        do { try handle.write(contentsOf: data) } catch { failure = error; dataTask.cancel() }
+        do {
+            try handle.write(contentsOf: data)
+            received += Int64(data.count)
+            updates?.yield((received, expected))
+        } catch { failure = error; dataTask.cancel() }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         let c = continuation
         continuation = nil
+        updates?.finish()
         if let failure { c?.resume(throwing: failure) }
-        else if status != 200 { c?.resume(returning: status) }
+        else if status != 200 && status != 0 { c?.resume(returning: status) }
         else if let error { c?.resume(throwing: error) }
         else { c?.resume(returning: status) }
     }

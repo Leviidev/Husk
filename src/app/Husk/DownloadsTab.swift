@@ -28,7 +28,7 @@ struct DownloadsTab: View {
                             Image(systemName: "bag.fill").foregroundStyle(Color.accentColor)
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(store.downloadTitles[pkg] ?? pkg).font(.headline).lineLimit(1)
-                                ProgressView(value: store.downloadProgress[pkg] ?? 0)
+                                ProgressView(value: store.downloadProgress[pkg]?.fraction)
                                 Text("From the Store").font(.caption).foregroundStyle(.secondary)
                             }
                             Button(role: .destructive) { store.cancelDownload(pkg) } label: {

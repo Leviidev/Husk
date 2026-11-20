@@ -25,6 +25,8 @@ enum LibraryRoute: Hashable {
     @Published var home: [LibraryRoute] = []
     @Published var library: [LibraryRoute] = []
     @Published var libraryFilter: LibraryFilter = .all
+    /// Reset the Library's local search and category after an import.
+    @Published private(set) var libraryImportID = UUID()
     /// The platform chips on Home and in the Library: one choice, shared by both.
     @Published var platform: PlatformFilter = .all
     /// Downloads, as a sheet: Home's Downloads tile opens it.
@@ -76,6 +78,17 @@ enum LibraryRoute: Hashable {
 
     func showLibrary(_ filter: LibraryFilter) {
         libraryFilter = filter
+        tab = .library
+    }
+
+    /// An imported app must be visible even when the Library was left on a filtered or nested page.
+    func showLibraryAfterImport(appID: String? = nil) {
+        libraryImportID = UUID()
+        library = appID.map { [.game($0)] } ?? []
+        libraryFilter = .all
+        platform = .all
+        showDownloads = false
+        showImport = false
         tab = .library
     }
 

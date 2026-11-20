@@ -19,9 +19,6 @@ struct StoreView: View {
             Group {
                 if !manager.isSignedIn {
                     signedOutState
-                } else if manager.isLoading && manager.featuredApps.isEmpty && !manager.isSearching {
-                    ProgressView("Connecting to Google Play…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     storeContent
                 }
@@ -29,7 +26,6 @@ struct StoreView: View {
             .background(Console.page.ignoresSafeArea())
             .navigationTitle("Store")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search Google Play")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !manager.downloadProgress.isEmpty {
@@ -88,13 +84,27 @@ struct StoreView: View {
             .sheet(item: $selectedApp) { app in
                 PlayAppDetailSheet(app: app)
             }
-            .task(id: searchText) {
+            .onReceive(Router.shared.$tab) { tab in
+                if tab != .store { selectedApp = nil }
+            }
+            .onChange(of: manager.canSearch) { allowed in
+                if !allowed { searchText = ""; debouncedSearchText = ""; manager.clearSearch() }
+            }
+            .onChange(of: searchText) { value in
+                if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    debouncedSearchText = ""
+                    manager.clearSearch()
+                }
+            }
+            .task(id: [searchText, manager.canSearch ? "ready" : "signed-out"]) {
+                guard manager.canSearch else { return }
+                let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !query.isEmpty else { return }
                 do {
                     try await Task.sleep(nanoseconds: 350_000_000)
-                    debouncedSearchText = searchText
-                    if !searchText.isEmpty {
-                        await manager.search(query: searchText)
-                    }
+                    try Task.checkCancellation()
+                    debouncedSearchText = query
+                    await manager.search(query: query)
                 } catch {}
             }
             .alert("Error", isPresented: Binding(
@@ -182,9 +192,17 @@ struct StoreView: View {
 
     // MARK: - Store Content
 
-    @ViewBuilder
     private var storeContent: some View {
-        if debouncedSearchText.isEmpty { discover } else { searchList }
+        StoreSearchContent(text: $searchText, enabled: manager.canSearch) {
+            if manager.isLoading && manager.featuredApps.isEmpty && debouncedSearchText.isEmpty {
+                ProgressView("Connecting to Google Play…")
+                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+            } else if debouncedSearchText.isEmpty { discover } else { searchList }
+        }
+        .refreshable {
+            if debouncedSearchText.isEmpty { await manager.loadBrowseApps() }
+            else { await manager.search(query: debouncedSearchText) }
+        }
     }
 
     // MARK: - Discover (the Store's front page)
@@ -201,46 +219,40 @@ struct StoreView: View {
     }
 
     private var discover: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack(spacing: 8) {
-                    ForEach(StoreShelf.allCases) { s in
-                        ConsoleChip(title: s.title, selected: shelf == s) { withAnimation(.easeOut(duration: 0.18)) { shelf = s } }
-                    }
-                    Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(spacing: 8) {
+                ForEach(StoreShelf.allCases) { s in
+                    ConsoleChip(title: s.title, selected: shelf == s) { withAnimation(.easeOut(duration: 0.18)) { shelf = s } }
                 }
-                let list = shelf == .apps ? apps : shelf == .games ? games : manager.featuredApps
-                if let lead = list.first { banner(lead) }
-                if shelf != .apps, !games.isEmpty {
-                    row(shelf == .games ? "Games" : "Popular Games", games.dropFirst(shelf == .featured ? 1 : 1).map { $0 })
-                }
-                if shelf != .games, !apps.isEmpty { row("Apps", shelf == .apps ? Array(apps.dropFirst()) : apps) }
-                if shelf != .apps, !trending.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Trending Now").font(.system(size: 20, weight: .bold)).foregroundStyle(Console.text)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(alignment: .top, spacing: 14) {
-                                ForEach(trending, id: \.package) { e in
-                                    Button { open(e.package) } label: {
-                                        tile(title: e.name, icon: e.icon.flatMap { URL(string: $0, relativeTo: CompatibilityStore.site) },
-                                             status: e.status, busy: opening == e.package)
-                                    }
-                                    .buttonStyle(CardButtonStyle())
+                Spacer(minLength: 0)
+            }
+            let list = shelf == .apps ? apps : shelf == .games ? games : manager.featuredApps
+            if let lead = list.first { banner(lead) }
+            if shelf != .apps, !games.isEmpty {
+                row(shelf == .games ? "Games" : "Popular Games", games.dropFirst(shelf == .featured ? 1 : 1).map { $0 })
+            }
+            if shelf != .games, !apps.isEmpty { row("Apps", shelf == .apps ? Array(apps.dropFirst()) : apps) }
+            if shelf != .apps, !trending.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Trending Now").font(.system(size: 20, weight: .bold)).foregroundStyle(Console.text)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(trending, id: \.package) { e in
+                                Button { open(e.package) } label: {
+                                    tile(title: e.name, icon: e.icon.flatMap { URL(string: $0, relativeTo: CompatibilityStore.site) },
+                                         status: e.status, busy: opening == e.package)
                                 }
+                                .buttonStyle(CardButtonStyle())
                             }
                         }
                     }
                 }
-                if manager.featuredApps.isEmpty {
-                    Text("No featured apps right now. Search Google Play above.")
-                        .font(.subheadline).foregroundStyle(Console.textDim)
-                }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24)
+            if manager.featuredApps.isEmpty {
+                Text("No featured apps right now. Search Google Play above.")
+                    .font(.subheadline).foregroundStyle(Console.textDim)
+            }
         }
-        .background(Console.page.ignoresSafeArea())
-        .refreshable { await manager.loadBrowseApps() }
     }
 
     /// The first app of the shelf, big: its own screenshot behind "Discover new worlds."
@@ -318,53 +330,19 @@ struct StoreView: View {
     // MARK: - Search results
 
     private var searchList: some View {
-        HuskPageList {
-            if !debouncedSearchText.isEmpty {
-                Section {
-                    if manager.isSearching {
-                        HStack {
-                            Spacer()
-                            ProgressView("Searching…")
-                            Spacer()
-                        }
-                        .padding(.vertical, 12)
-                    } else if manager.searchResults.isEmpty {
-                        Text("No apps found for \"\(debouncedSearchText)\".")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textDim)
-                            .padding(.vertical, 8)
-                    } else {
-                        ForEach(manager.searchResults) { app in
-                            appRow(app)
-                        }
-                    }
-                } header: {
-                    Text("Search Results")
-                }
+        LazyVStack(alignment: .leading, spacing: 12) {
+            Text("Search Results").font(.headline).foregroundStyle(Theme.textDim)
+            if manager.isSearching {
+                ProgressView("Searching…").frame(maxWidth: .infinity).padding(.vertical, 12)
+            } else if manager.searchResults.isEmpty {
+                Text("No apps found for \"\(debouncedSearchText)\".")
+                    .font(.subheadline).foregroundStyle(Theme.textDim).padding(.vertical, 8)
             } else {
-                if !manager.featuredApps.isEmpty {
-                    Section {
-                        ForEach(manager.featuredApps) { app in
-                            appRow(app)
-                        }
-                    } header: {
-                        Text("Featured Apps")
-                    }
-                } else {
-                    Section {
-                        Text("No featured apps available. Try searching above.")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textDim)
-                    }
+                ForEach(manager.searchResults) { app in
+                    appRow(app)
+                        .padding(14)
+                        .background(Console.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .refreshable {
-            if debouncedSearchText.isEmpty {
-                await manager.loadBrowseApps()
-            } else {
-                await manager.search(query: debouncedSearchText)
             }
         }
     }
@@ -444,10 +422,12 @@ struct StoreView: View {
                     ZStack {
                         Circle()
                             .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: 3)
-                        Circle()
-                            .trim(from: 0, to: progress ?? 0.05)
-                            .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
+                        if let fraction = progress?.fraction {
+                            Circle()
+                                .trim(from: 0, to: fraction)
+                                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
                         Image(systemName: "stop.fill").font(.system(size: 10)).foregroundStyle(Color.accentColor)
                     }
                     .frame(width: 32, height: 32)
@@ -480,5 +460,49 @@ enum StoreShelf: String, CaseIterable, Identifiable {
         case .games: return "Games"
         case .apps: return "Apps"
         }
+    }
+}
+
+// MARK: - Search field
+
+/// Keep the field in the same scroll view as both discovery and results. It starts visible,
+/// scrolls out with the page, and keeps keyboard focus when a debounced search completes.
+struct StoreSearchContent<Content: View>: View {
+    @Binding var text: String
+    let enabled: Bool
+    @ViewBuilder var content: Content
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                if enabled {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("Search Google Play", text: $text)
+                            .textFieldStyle(.plain)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .submitLabel(.search)
+                            .focused($focused)
+                            .onSubmit { focused = false }
+                            .accessibilityIdentifier("husk.store.search")
+                        if !text.isEmpty {
+                            Button { text = "" } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Clear search")
+                        }
+                    }
+                    .padding(12)
+                    .background(Console.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                content
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        }
+        .onChange(of: enabled) { if !$0 { focused = false } }
     }
 }

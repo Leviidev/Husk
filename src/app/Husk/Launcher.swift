@@ -662,7 +662,7 @@ private struct DownloadsNotice: View {
     }
 }
 
-/// The first time: nothing added yet, and the two ways to start.
+/// The first time: find an app in the Store, or import a file already on the device.
 private struct WelcomeCard: View {
     @ObservedObject private var router = Router.shared
 
@@ -674,18 +674,20 @@ private struct WelcomeCard: View {
                 .frame(width: 60, height: 60)
                 .background(Console.raised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 6) {
-                Text("Add your first game")
+                Text("Add your first game or app")
                     .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(Console.text)
-                Text("Pick an APK or a bundle (.xapk, .apkm, .apks), or share one to Husk from Files or Safari. Games run "
-                   + "straight on your iPhone. Other apps run inside Android. PS4 games are extracted folders put in "
-                   + "Husk's PS4 Games folder.")
+                Text("Find an app on Google Play, or import an APK, app bundle, or PS4 game you already have.")
                     .font(.subheadline)
                     .foregroundStyle(Console.textDim)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button { router.addSomething() } label: { Text("Add a Game or App") }
+            Button { router.tab = .store } label: { Label("Browse Google Play", systemImage: "cart.fill") }
                 .buttonStyle(ConsolePlayButtonStyle())
+            Button { router.addSomething() } label: { Label("Import a File", systemImage: "square.and.arrow.down") }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Console.text)
+                .frame(maxWidth: .infinity)
         }
         .padding(20)
         .background(Console.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -853,6 +855,7 @@ struct LibraryScreen: View {
             .background(Console.page.ignoresSafeArea())
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
+            .onReceive(router.$libraryImportID) { _ in query = ""; pill = .all }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { router.addSomething() } label: { Image(systemName: "plus") }
