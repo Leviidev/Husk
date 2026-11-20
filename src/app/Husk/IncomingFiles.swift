@@ -215,11 +215,14 @@ final class IncomingFiles: ObservableObject {
 
     /// Run on the iPhone itself.
     func sendToTranslationLayer() {
+        guard !waiting.isEmpty, TranslationLayerStore.shared.busy == nil else { return }
         let urls = waiting
         waiting = []
-        guard !urls.isEmpty else { return }
+        Router.shared.showLibraryAfterImport()
         // Moved, not copied: the copy here is Husk's own, and a game can be gigabytes.
-        TranslationLayerStore.shared.add(urls, move: true)
+        TranslationLayerStore.shared.add(urls, move: true) { appID in
+            Router.shared.showLibraryAfterImport(appID: appID)
+        }
     }
 
     /// Installed into Android -- now if it is up, otherwise as soon as it is.

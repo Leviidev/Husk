@@ -99,13 +99,13 @@ struct PlayAppDetailSheet: View {
             if downloading {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(progress.map { "Downloading… \(Int($0 * 100))%" } ?? "Downloading…")
+                        Text(progress?.fraction.map { "Downloading… \(Int($0 * 100))%" } ?? "Downloading…")
                             .font(.system(size: 14, weight: .semibold)).foregroundStyle(Console.text)
                         Spacer()
                         Button("Cancel", role: .destructive) { manager.cancelDownload(app.id) }
                             .font(.system(size: 14, weight: .semibold))
                     }
-                    if let progress { ProgressView(value: progress).tint(Theme.accent) } else { ProgressView().frame(maxWidth: .infinity) }
+                    ProgressView(value: progress?.fraction).tint(Theme.accent)
                 }
                 .padding(14)
                 .background(Console.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

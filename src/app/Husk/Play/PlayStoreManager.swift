@@ -8,6 +8,9 @@ final class PlayStoreManager: ObservableObject {
     static let shared = PlayStoreManager()
 
     private static let sessionKey = "husk_play_session"
+    private let defaults: UserDefaults
+    private let searchRequest: (String, PlaySession) async throws -> [PlayAPI.PlayApp]
+    private var searchGeneration = UUID()
 
     @Published var session: PlaySession?
     @Published var isLoading = false
@@ -19,16 +22,18 @@ final class PlayStoreManager: ObservableObject {
     @Published var searchResults: [PlayAPI.PlayApp] = []
     @Published var isSearching = false
 
-    // Download progress: [packageName: fractional progress 0.0 ... 1.0]
-    @Published var downloadProgress: [String: Double] = [:]
+    // Bytes received across the base APK, splits and expansion files. Unknown totals stay indeterminate.
+    @Published var downloadProgress: [String: PlayAPI.DownloadProgress] = [:]
     // Installing packages
     @Published var installingPackages: Set<String> = []
     // Running downloads by package, so the Store can stop them; their titles for the Downloads list
     private var downloadTasks: [String: Task<Void, Never>] = [:]
+    private var downloadIDs: [String: UUID] = [:]
     @Published private(set) var downloadTitles: [String: String] = [:]
 
     /// Stops a running download; it ends without an error message.
     func cancelDownload(_ pkg: String) {
+        downloadIDs[pkg] = nil
         downloadTasks[pkg]?.cancel()
         downloadTasks[pkg] = nil
         downloadProgress.removeValue(forKey: pkg)
@@ -37,7 +42,10 @@ final class PlayStoreManager: ObservableObject {
         HuskLog.log("store", "Cancelled the download of \(pkg)")
     }
 
-    init() {
+    init(defaults: UserDefaults = .standard,
+         searchRequest: @escaping (String, PlaySession) async throws -> [PlayAPI.PlayApp] = { try await PlayAPI.search(query: $0, session: $1) }) {
+        self.defaults = defaults
+        self.searchRequest = searchRequest
         loadSavedSession()
     }
 
@@ -45,10 +53,12 @@ final class PlayStoreManager: ObservableObject {
         session != nil && !(session?.email.isEmpty ?? true)
     }
 
+    var canSearch: Bool { isSignedIn && !(session?.bearer.isEmpty ?? true) }
+
     // MARK: - Session Persistence
 
     private func loadSavedSession() {
-        if let data = UserDefaults.standard.data(forKey: Self.sessionKey),
+        if let data = defaults.data(forKey: Self.sessionKey),
            let s = try? JSONDecoder().decode(PlaySession.self, from: data) {
             self.session = s
             Task {
@@ -58,18 +68,23 @@ final class PlayStoreManager: ObservableObject {
     }
 
     func saveSession(_ s: PlaySession) {
+        if session?.email != s.email || session?.gsfID != s.gsfID || session?.isAnonymous != s.isAnonymous { clearSearch() }
         self.session = s
         if let data = try? JSONEncoder().encode(s) {
-            UserDefaults.standard.set(data, forKey: Self.sessionKey)
+            defaults.set(data, forKey: Self.sessionKey)
         }
     }
 
     func signOut() {
+        clearSearch()
+        for package in Array(downloadTasks.keys) { cancelDownload(package) }
         self.session = nil
         self.featuredApps = []
-        self.searchResults = []
         self.downloadProgress = [:]
-        UserDefaults.standard.removeObject(forKey: Self.sessionKey)
+        isLoading = false
+        statusMessage = nil
+        errorMessage = nil
+        defaults.removeObject(forKey: Self.sessionKey)
     }
 
     // MARK: - Login Flow with EmbeddedSetup oauth_token
@@ -141,13 +156,16 @@ final class PlayStoreManager: ObservableObject {
     /// Refresh Play Store bearer token if needed
     func refreshSessionIfNeeded() async {
         guard var s = session else { return }
+        let expectedSession = s
         if s.isAnonymous {
             // Refresh anonymous guest token from dispenser
             do {
                 let fresh = try await PlayAPI.fetchAuroraGuestSession()
+                guard session == expectedSession else { return }
                 saveSession(fresh)
                 await loadBrowseApps()
             } catch {
+                guard session == expectedSession else { return }
                 errorMessage = error.localizedDescription
                 HuskLog.log("store", "Failed to refresh Aurora guest token: \(error.localizedDescription)")
             }
@@ -156,10 +174,12 @@ final class PlayStoreManager: ObservableObject {
         guard !s.aasToken.isEmpty else { return }
         do {
             let bearer = try await PlayAPI.playToken(s)
+            guard session == expectedSession else { return }
             s.bearer = bearer
             saveSession(s)
             await loadBrowseApps()
         } catch {
+            guard session == expectedSession else { return }
             HuskLog.log("store", "Failed to refresh Play token: \(error.localizedDescription)")
         }
     }
@@ -181,22 +201,31 @@ final class PlayStoreManager: ObservableObject {
     }
 
     func search(query: String) async {
-        guard let s = session, !s.bearer.isEmpty else { return }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            searchResults = []
-            isSearching = false
-            return
-        }
+        guard canSearch, let s = session, !trimmed.isEmpty else { clearSearch(); return }
+        let generation = UUID()
+        searchGeneration = generation
         isSearching = true
         do {
-            let results = try await PlayAPI.search(query: trimmed, session: s)
+            try Task.checkCancellation()
+            let results = try await searchRequest(trimmed, s)
+            try Task.checkCancellation()
+            guard searchGeneration == generation, canSearch else { return }
             self.searchResults = results
             self.isSearching = false
         } catch {
+            guard searchGeneration == generation else { return }
             self.isSearching = false
+            if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled { return }
+            errorMessage = error.localizedDescription
             HuskLog.log("store", "Failed to search '\(query)': \(error.localizedDescription)")
         }
+    }
+
+    func clearSearch() {
+        searchGeneration = UUID()
+        searchResults = []
+        isSearching = false
     }
 
     func fetchDetails(for packageName: String) async -> PlayAPI.PlayApp? {
@@ -211,7 +240,9 @@ final class PlayStoreManager: ObservableObject {
         let pkg = app.id
         guard downloadProgress[pkg] == nil else { return }
 
-        downloadProgress[pkg] = 0.05
+        let downloadID = UUID()
+        downloadIDs[pkg] = downloadID
+        downloadProgress[pkg] = PlayAPI.DownloadProgress(received: 0, total: nil)
         installingPackages.insert(pkg)
         downloadTitles[pkg] = app.title
 
@@ -233,22 +264,27 @@ final class PlayStoreManager: ObservableObject {
                     versionCode: versionCode,
                     session: s
                 ) { [weak self] p in
-                    self?.downloadProgress[pkg] = p
+                    guard let self, self.downloadIDs[pkg] == downloadID else { return }
+                    self.downloadProgress[pkg] = p
                 }
 
                 try Task.checkCancellation()
+                guard self.downloadIDs[pkg] == downloadID else { return }
                 HuskLog.log("store", "Downloaded \(files.count) files for \(pkg), handing to IncomingFiles")
                 self.downloadProgress.removeValue(forKey: pkg)
                 self.installingPackages.remove(pkg)
                 self.downloadTasks[pkg] = nil
+                self.downloadIDs[pkg] = nil
                 self.downloadTitles.removeValue(forKey: pkg)
 
                 // Hand to Husk's IncomingFiles flow, which automatically presents IncomingChooser!
                 IncomingFiles.shared.receive(files)
             } catch {
+                guard self.downloadIDs[pkg] == downloadID else { return }
                 self.downloadProgress.removeValue(forKey: pkg)
                 self.installingPackages.remove(pkg)
                 self.downloadTasks[pkg] = nil
+                self.downloadIDs[pkg] = nil
                 self.downloadTitles.removeValue(forKey: pkg)
                 if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled { return }
                 self.errorMessage = "Failed to download \(app.title): \(error.localizedDescription)"

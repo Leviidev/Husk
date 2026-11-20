@@ -270,23 +270,24 @@ final class TranslationLayerStore: ObservableObject {
     /// One app's APKs (a base and its splits, or a bundle) copied in (the originals stay where they are), and the new app's folder name: the developer mass test takes its APKs
     /// from a folder of the user's this way, one per launch of Husk.
     nonisolated static func importCopy(_ urls: [URL]) -> String? {
-        let fm = FileManager.default
-        let before = Set((try? fm.contentsOfDirectory(atPath: TranslationLayer.root.path)) ?? [])
-        guard !urls.isEmpty, ingest(urls, move: false) == nil else { return nil }
-        let after = Set((try? fm.contentsOfDirectory(atPath: TranslationLayer.root.path)) ?? [])
-        return after.subtracting(before).first
+        let appID = UUID().uuidString
+        guard !urls.isEmpty, ingest(urls, move: false, appID: appID) == nil else { return nil }
+        return appID
     }
 
-    func add(_ urls: [URL], move: Bool = false) {
+    /// Notify the caller only after this exact app has been imported and published in the library.
+    func add(_ urls: [URL], move: Bool = false, onAdded: (@MainActor (String) -> Void)? = nil) {
         guard !urls.isEmpty, busy == nil else { return }
+        let appID = UUID().uuidString
         busy = urls.count == 1 ? "Adding \(urls[0].lastPathComponent)…"
                                : "Adding \(urls.count) APKs…"
         Task.detached(priority: .userInitiated) {
-            let failure = Self.ingest(urls, move: move)
+            let failure = Self.ingest(urls, move: move, appID: appID)
             await MainActor.run {
                 self.busy = nil
                 self.lastError = failure
                 self.reload()
+                if failure == nil, self.apps.contains(where: { $0.id == appID }) { onAdded?(appID) }
                 if failure == nil, move { self.adoptDroppedAPKs() }      // the next one waiting, if several were put there
             }
         }
@@ -358,9 +359,9 @@ final class TranslationLayerStore: ObservableObject {
     }
 
     /// Copy, name, scan. Returns what went wrong, if anything did.
-    nonisolated private static func ingest(_ urls: [URL], move: Bool = false) -> String? {
+    nonisolated private static func ingest(_ urls: [URL], move: Bool = false, appID: String) -> String? {
         let fm = FileManager.default
-        let dir = TranslationLayer.root.appendingPathComponent(UUID().uuidString,
+        let dir = TranslationLayer.root.appendingPathComponent(appID,
                                                                isDirectory: true)
         do {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
