@@ -44,10 +44,10 @@ enum LibraryItem: Identifiable, Hashable {
         }
     }
 
-    /// Games on the translation layer (a Flutter app is an app unless it calls itself a game), and what Android itself files as a game.
+    /// Game metadata or a recognised game engine, and what Android itself files as a game.
     var isGame: Bool {
         switch self {
-        case .game(let g): return (g.report?.nativeEngine != .flutter && g.report?.engine != "Flutter" && g.report?.webKind == nil) || g.isGameCategory
+        case .game(let g): return g.isGame
         case .app(let p): return p.category == "Game"
         case .android: return false
         case .ps4: return true

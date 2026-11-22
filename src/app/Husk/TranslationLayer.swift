@@ -163,9 +163,17 @@ struct TLApp: Identifiable {
     /// Its Android package name, once read from the APK.
     var packageName: String? = nil
 
-    /// Whether its manifest files it as a game (android:appCategory="game" or isGame): read for Flutter apps, which are apps
-    /// unless they say otherwise.
+    /// Whether its manifest files it as a game (android:appCategory="game" or isGame).
     var isGameCategory: Bool { apks.first.map { husk_apk_is_game($0) != 0 } ?? false }
+
+    /// A Java runtime can host ordinary apps too. Only game metadata or a recognised game engine warrants immersive gestures.
+    var isGame: Bool { isGameCategory || Self.isGameEngine(report?.engine) }
+
+    static func isGameEngine(_ engine: String?) -> Bool {
+        guard let engine else { return false }
+        return engine.hasPrefix("Unity") || ["Cocos", "Minecraft", "SDL", "Unreal Engine", "Rockstar",
+                                             "Godot", "NativeActivity", "GameMaker", "libGDX"].contains(engine)
+    }
 }
 
 // MARK: - Store
@@ -829,8 +837,8 @@ struct TLClassicAttemptView: View {
             }
         }
         .statusBarHidden(true)
-        .huskHideSystemOverlays()
-        .huskDefersSystemGestures(on: .all)
+        .huskHideSystemOverlays(app.isGame)
+        .huskDefersSystemGestures(on: app.isGame ? .all : [])
         .onAppear {
             HuskOrientation.set(portrait ? .portrait : .landscape)
             UIApplication.shared.isIdleTimerDisabled = settings.keepAwake

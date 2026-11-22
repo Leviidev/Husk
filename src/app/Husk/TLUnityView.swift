@@ -930,9 +930,9 @@ struct TLCocosAttemptView: View {
             }
         }
         .statusBarHidden(true)
-        .huskHideSystemOverlays()
-        // Swipes near the edges are the game's.
-        .huskDefersSystemGestures(on: .all)
+        .huskHideSystemOverlays(app.isGame)
+        // Games protect edge input; ordinary apps keep the system's first-swipe behavior.
+        .huskDefersSystemGestures(on: app.isGame ? .all : [])
         .onAppear {
             HuskOrientation.set(portrait ? .portrait : .landscape)
             UIApplication.shared.isIdleTimerDisabled = settings.keepAwake
