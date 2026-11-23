@@ -931,8 +931,11 @@ void husk_unity_touch(int phase, int id, float x, float y)
     else if (A.engine == ENGINE_GAMEACTIVITY) tl_ga_touch(phase, id, x, y);
     else if (A.engine == ENGINE_COCOS) tl_cocos_touch(phase, id, x, y); else tl_unity_touch(phase, id, x, y);
 }
+static atomic_bool g_app_paused;
+
 void husk_unity_set_paused(bool paused)
 {
+    atomic_store(&g_app_paused, paused);
     if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
     if (A.engine == ENGINE_JAVA) { tl_javaapp_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_GAMEMAKER) { tl_gm_set_paused(paused); tl_audio_set_paused(paused); }
@@ -944,6 +947,12 @@ void husk_unity_set_paused(bool paused)
     else if (A.engine == ENGINE_GAMEACTIVITY) { tl_ga_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_COCOS) { tl_cocos_set_paused(paused); tl_audio_set_paused(paused); }
     else { tl_unity_set_paused(paused); tl_audio_set_paused(paused); }
+}
+
+void husk_native_audio_resume(void)
+{
+    if (atomic_load(&A.state) != HUSK_UNITY_RUNNING || atomic_load(&g_app_paused)) return;
+    tl_audio_set_paused(false);
 }
 
 /* ------------------------------------------------------------- package name */

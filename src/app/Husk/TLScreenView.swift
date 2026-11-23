@@ -24,14 +24,14 @@ enum HuskDisplayColor {
     @MainActor static func wideColor(for traits: UITraitCollection) -> Bool {
         traits.displayGamut == .P3
     }
-    @MainActor static func colorSpace(for traits: UITraitCollection) -> CGColorSpace {
-        wideColor(for: traits) ? p3 : srgb
+    @MainActor static func colorSpace(for traits: UITraitCollection, captured: Bool = false) -> CGColorSpace {
+        (!captured && wideColor(for: traits)) ? p3 : srgb
     }
-    @MainActor static func apply(to layer: CALayer?, traits: UITraitCollection) {
+    @MainActor static func apply(to layer: CALayer?, traits: UITraitCollection, captured: Bool = false) {
         guard let metal = layer as? CAMetalLayer else { return }
-        if traits.displayGamut == .unspecified, metal.colorspace != nil { return }
-        let cs = colorSpace(for: traits)
-        if metal.colorspace != cs { metal.colorspace = cs }
+        if !captured, traits.displayGamut == .unspecified, metal.colorspace != nil { return }
+        let cs = colorSpace(for: traits, captured: captured)
+        if metal.colorspace !== cs { metal.colorspace = cs }
     }
 }
 

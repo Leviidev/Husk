@@ -1400,14 +1400,18 @@ uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, 
 {
     return tl_javaapp_app_tex_publish_with_opacity(tex, pw, ph, x, y, w, h, false);
 }
+/* Pace the producer only when it leads the screen by 2+ frames so transient
+ * CAMetalLayer nextDrawable/ReplayKit waits overlap with the 3-slot texture ring
+ * instead of stalling game ticks every frame. */
 void tl_javaapp_app_frame_pace(uint64_t prev_seq)
 {
+    uint64_t wait_target = prev_seq > 1 ? prev_seq - 1 : 0;
     pthread_mutex_lock(&E2.lk);
-    if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq) {
+    if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < wait_target) {
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 16000000L;
         if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
-        while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < prev_seq)
+        while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < wait_target)
             if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
     }
     pthread_mutex_unlock(&E2.lk);
@@ -1571,6 +1575,53 @@ static void gl_prime_screen(overlay *o, uint32_t prime_tex, int vw, int vh)
     viewport(0, 0, vw, vh);
 }
 
+static void compositor_gpu_wait(void *fences[2], int idx, bool single_flight,
+    uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t), void (*deleteSync)(void *))
+{
+    if (!clientWaitSync || !deleteSync) return;
+    int slot = single_flight ? (idx ^ 1) : idx;
+    void *fence = fences[slot];
+    if (!fence) return;
+    /* Bound GPU queue depth outside g_frame_handoff so CAMetalLayer keeps headroom
+     * during ReplayKit capture and notification blur without wedging on backgrounding. */
+    clientWaitSync(fence, 0x00000001u /* GL_SYNC_FLUSH_COMMANDS_BIT */, UINT64_C(35000000));
+    deleteSync(fence);
+    fences[slot] = NULL;
+}
+static void compositor_gpu_arm(void *fences[2], int *idx,
+    void *(*fenceSync)(uint32_t, uint32_t), void (*deleteSync)(void *))
+{
+    if (!fenceSync || !deleteSync) return;
+    int slot = *idx;
+    if (fences[slot]) { deleteSync(fences[slot]); fences[slot] = NULL; }
+    fences[slot] = fenceSync(0x9117u /* GL_SYNC_GPU_COMMANDS_COMPLETE */, 0);
+    *idx = slot ^ 1;
+}
+static void compositor_gpu_release(void *fences[2], void (*deleteSync)(void *))
+{
+    if (!deleteSync) return;
+    for (int i = 0; i < 2; i++) {
+        if (fences[i]) { deleteSync(fences[i]); fences[i] = NULL; }
+    }
+}
+static void wait_capture_cadence(int target_hz, int64_t last_swap_ns)
+{
+    if (target_hz <= 0 || last_swap_ns <= 0) return;
+    int64_t min_interval_ns = (1000000000ll / target_hz) - 2000000ll;
+    if (min_interval_ns <= 0) return;
+    pthread_mutex_lock(&E2.lk);
+    while (!atomic_load(&A.ended) && !atomic_load(&A.paused)
+        && !tl_ui_frame_pending() && !atomic_load(&A.render_requested)) {
+        int64_t rem = (last_swap_ns + min_interval_ns) - now_ns();
+        if (rem <= 0) break;
+        struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += (long)rem;
+        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec += ts.tv_nsec / 1000000000L; ts.tv_nsec %= 1000000000L; }
+        pthread_cond_timedwait(&E2.cv, &E2.lk, &ts);
+    }
+    pthread_mutex_unlock(&E2.lk);
+}
+
 static void *gl_run(void *arg)
 {
     TL_AUTORELEASE_SCOPE(thread_pool);
@@ -1639,6 +1690,10 @@ static void *gl_run(void *arg)
     uint64_t app_seq = 0;
     void (*clearColor)(float, float, float, float) = gl_fn("glClearColor");
     void (*clear)(uint32_t) = gl_fn("glClear");
+    void (*disable)(uint32_t) = gl_fn("glDisable");
+    void *(*fenceSync)(uint32_t, uint32_t) = es3 ? gl_fn("glFenceSync") : NULL;
+    uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t) = es3 ? gl_fn("glClientWaitSync") : NULL;
+    void (*deleteSync)(void *) = es3 ? gl_fn("glDeleteSync") : NULL;
     tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
 #if defined(__APPLE__)
     tl_log_line("javaapp: Objective-C temporary objects drained after each GL frame");
@@ -1651,12 +1706,20 @@ static void *gl_run(void *arg)
     tl_frame_perf_window host_perf = {0};
     uint64_t last_sampled_seq = 0;
     bool perf_paused = false;
+    void *comp_fences[2] = { NULL, NULL };
+    int comp_fence_idx = 0;
+    int64_t slow_compositor_until_ns = 0;
+    int64_t last_capture_swap_ns = 0;
     while (!atomic_load(&A.ended)) {
         if (atomic_load(&A.paused)) {
             if (!perf_paused) {
                 tl_egl_frame_perf_set_active(false);
                 tl_frame_perf_reset(&host_perf);
                 last_sampled_seq = 0;
+                last_capture_swap_ns = 0;
+                slow_compositor_until_ns = 0;
+                if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
+                compositor_gpu_release(comp_fences, deleteSync);
                 perf_paused = true;
             }
             pthread_mutex_lock(&E2.lk);
@@ -1719,14 +1782,29 @@ static void *gl_run(void *arg)
             if (cur_ctx != app) { makeCurrent(dpy, surf, surf, app); cur_ctx = app; }
             drew = java_renderer_frame(A.gl_view, A.gl_renderer, p1, fresh);
         }
+        int thermal = 0, captured = 0;
+        { extern int tl_host_thermal_state(void) __attribute__((weak)); if (tl_host_thermal_state) thermal = tl_host_thermal_state(); }
+        { extern int tl_host_screen_captured(void) __attribute__((weak)); if (tl_host_screen_captured) captured = tl_host_screen_captured(); }
+        int host_hz = (A.cfg.max_refresh_rate >= (float)TL_JAVA_DISPLAY_HZ && A.cfg.max_refresh_rate <= 240.0f)
+            ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
+        int target_hz = tl_host_compositor_target_hz(host_hz, thermal, captured);
+        if (captured <= 0) last_capture_swap_ns = 0;
         uint64_t q = app_frame_seq();
         bool app_fresh = q != app_seq;
+        if (captured > 0 && !app && app_fresh && !fresh && last_capture_swap_ns > 0) {
+            wait_capture_cadence(target_hz, last_capture_swap_ns);
+            q = app_frame_seq();
+            app_fresh = q != app_seq;
+        }
         if (drew || fresh || app_fresh) {
             int64_t compose_begin = now_ns();
             uint64_t sampled_seq = 0, handoff_ns = 0;
             bool ui_vis = tl_ui_has_frame();
             if (!app || ui_vis) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
+                compositor_gpu_wait(comp_fences, comp_fence_idx,
+                    (captured > 0) || (compose_begin < slow_compositor_until_ns),
+                    clientWaitSync, deleteSync);
                 if (!app) {
                     bool opaque_cover = !tl_web_any_visible();
                     if (opaque_cover) {
@@ -1734,25 +1812,29 @@ static void *gl_run(void *arg)
                         opaque_cover = E2.on && (E2.tex || E2.px) && E2.opaque && E2.x <= 0 && E2.y <= 0 && E2.w >= A.cfg.width && E2.h >= A.cfg.height;
                         pthread_mutex_unlock(&E2.lk);
                     }
-                    if (!opaque_cover) {
-                        clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
-                        clear(0x4000);     /* web views show through from under the screen */
+                    if (disable) disable(0x0C11);
+                    if (clearColor && clear) {
+                        /* Always clear FBO 0 before priming so ANGLE uses MTLLoadActionClear
+                         * instead of forcing TBDR MTLLoadActionLoad on a 1x1 prime draw. */
+                        clearColor(0, 0, 0, (!opaque_cover && tl_web_any_visible() && !app_frame_on()) ? 0 : 1);
+                        clear(0x4000);
                     }
                     if (opaque_cover || !tl_web_any_visible()) {
                         gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
                     }
                     sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
-                    if (opaque_cover && sampled_seq == 0) {
-                        clearColor(0, 0, 0, 1);
-                        clear(0x4000);
-                    }
                 }
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
+                compositor_gpu_arm(comp_fences, &comp_fence_idx, fenceSync, deleteSync);
             }
             int64_t swap_begin = now_ns();
             unsigned swap_ok = swapBuffers(dpy, surf);
             int64_t swap_end = now_ns();
             if (swap_ok) {
+                if (captured > 0 && !app) last_capture_swap_ns = swap_end;
+                if ((swap_end - compose_begin) > 8000000ll) {
+                    slow_compositor_until_ns = swap_end + 3000000000ll;
+                }
                 atomic_fetch_add(&A.frames, 1);
                 uint64_t now_u = (uint64_t)swap_end;
                 uint64_t prev = atomic_exchange(&A.perf_last_ns, now_u);
@@ -1794,12 +1876,6 @@ static void *gl_run(void *arg)
                 pthread_mutex_unlock(&A.q_lock);
             }
         }
-        int thermal = 0, captured = 0;
-        { extern int tl_host_thermal_state(void) __attribute__((weak)); if (tl_host_thermal_state) thermal = tl_host_thermal_state(); }
-        { extern int tl_host_screen_captured(void) __attribute__((weak)); if (tl_host_screen_captured) captured = tl_host_screen_captured(); }
-        int host_hz = (A.cfg.max_refresh_rate >= (float)TL_JAVA_DISPLAY_HZ && A.cfg.max_refresh_rate <= 240.0f)
-            ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
-        int target_hz = tl_host_compositor_target_hz(host_hz, thermal, captured);
         if (app) {
             next += 1000000000ll / target_hz;
             int64_t late = now_ns() - next;
@@ -1825,9 +1901,12 @@ static void *gl_run(void *arg)
     /* Fence cleanup needs a current member of the shared group. A separate
      * GLSurfaceView renderer may have left its private app context current. */
     bool reset_current = makeCurrent(dpy, surf, surf, ui);
-    if (reset_current && prime_tex) {
-        void (*delTex)(int32_t, const uint32_t *) = gl_fn("glDeleteTextures");
-        if (delTex) delTex(1, &prime_tex);
+    if (reset_current) {
+        compositor_gpu_release(comp_fences, deleteSync);
+        if (prime_tex) {
+            void (*delTex)(int32_t, const uint32_t *) = gl_fn("glDeleteTextures");
+            if (delTex) delTex(1, &prime_tex);
+        }
     }
     tl_egl_compositor_frame_reset(ui, reset_current);
     makeCurrent(dpy, NULL, NULL, NULL);

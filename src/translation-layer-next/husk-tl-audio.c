@@ -3,6 +3,7 @@
 #include "husk-tl-audio.h"
 
 #include <AudioToolbox/AudioToolbox.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -117,7 +118,26 @@ static void ring_write(const int16_t *samples, int frames, int channels, int rat
     if (A.failed || channels != A.channels) { pthread_mutex_unlock(&A.mu); sleep_for(frames, rate); return; }
     int done = 0;
     while (done < frames) {
-        while (!A.closing && (A.count >= RING_FRAMES || A.paused)) pthread_cond_wait(&A.cv, &A.mu);
+        while (!A.closing && (A.count >= RING_FRAMES || A.paused)) {
+            if (A.paused) {
+                pthread_cond_wait(&A.cv, &A.mu);
+            } else {
+                struct timespec ts;
+                clock_gettime(CLOCK_REALTIME, &ts);
+                ts.tv_nsec += 250000000L;
+                if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+                if (pthread_cond_timedwait(&A.cv, &A.mu, &ts) == ETIMEDOUT
+                    && !A.closing && !A.paused && A.count >= RING_FRAMES) {
+                    /* AudioQueue stopped draining during an iOS interruption or route switch:
+                     * drop one oldest block and nudge AudioQueueStart so mixer threads never wedge. */
+                    size_t drop = A.count < FRAMES_PER_BUF ? A.count : FRAMES_PER_BUF;
+                    A.head = (A.head + drop) % RING_FRAMES;
+                    A.count -= drop;
+                    if (A.q) AudioQueueStart(A.q, NULL);
+                    break;
+                }
+            }
+        }
         if (A.closing) { pthread_mutex_unlock(&A.mu); sleep_for(frames - done, rate); return; }
         size_t room = RING_FRAMES - A.count, n = (size_t)(frames - done) < room ? (size_t)(frames - done) : room;
         size_t tail = (A.head + A.count) % RING_FRAMES;

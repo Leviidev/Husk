@@ -182,6 +182,8 @@ void husk_native_memory_pressure(int level);
 void husk_native_thermal_state(int state);
 /* Report UIScreen.isCaptured (1 while screen recording or mirroring is active, else 0). */
 void husk_native_screen_captured(int captured);
+/* Re-arm AudioQueue output after an iOS audio interruption/route switch while active. */
+void husk_native_audio_resume(void);
 /* Compatibility entry point for developer tools; observes the same checks. */
 void husk_native_unload(void);
 

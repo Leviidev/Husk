@@ -136,6 +136,20 @@ static void actual_consumption_protocol(void)
     app_frame_presented(16, true, 16, true, true, &seen);
     assert(E2.drawn_seq == 15 && seen == 15);
     atomic_store(&A.ended, false);
+    /* A 1-frame lead behind the compositor overlaps CoreAnimation/ReplayKit
+     * presentation latency with the 3-slot texture ring without stalling
+     * the producer; leading by 2+ frames still bounds queue depth. */
+    E2.seq = 20; E2.drawn_seq = 19; seen = 19;
+    previous = tl_javaapp_app_tex_publish(73, 2, 2, 0, 0, 2, 2);
+    assert(previous == 20);
+    unsigned slack_waits = waits;
+    tl_javaapp_app_frame_pace(previous);
+    assert(waits == slack_waits);
+    previous = tl_javaapp_app_tex_publish(74, 2, 2, 0, 0, 2, 2);
+    assert(previous == 21);
+    tl_javaapp_app_frame_pace(previous);
+    assert(waits == slack_waits + 1);
+
     /* Session reset occurs after worker drain: a new render-loop local starts
      * at zero and may acknowledge the new low sequence without old carry. */
     E2.seq = E2.drawn_seq = seen = 0;

@@ -56,18 +56,22 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// This flag supplies HUD insets; it never shrinks the game surface.
     var avoidUnsafeArea = true
     private var sentSafeInsets: UIEdgeInsets?
+    private var sentCutoutEdge: TLGameViewport.CutoutEdge?
+    private var sentAvoidUnsafeArea: Bool?
     private var keyboardInset: Int32 = 0
+    private func resolvedCutoutEdge() -> TLGameViewport.CutoutEdge {
+        switch window?.windowScene?.interfaceOrientation {
+        case .portrait: return .top
+        case .portraitUpsideDown: return .bottom
+        // Interface orientation names describe the Home-button side; the camera is opposite.
+        case .landscapeLeft: return .right
+        case .landscapeRight: return .left
+        default: return .none
+        }
+    }
     private var gameSafeAreaInsets: UIEdgeInsets {
         guard avoidUnsafeArea, !windowed else { return .zero }
-        let edge: TLGameViewport.CutoutEdge
-        switch window?.windowScene?.interfaceOrientation {
-        case .portrait: edge = .top
-        case .portraitUpsideDown: edge = .bottom
-        // Interface orientation names describe the Home-button side; the camera is opposite.
-        case .landscapeLeft: edge = .right
-        case .landscapeRight: edge = .left
-        default: edge = .none
-        }
+        let edge = resolvedCutoutEdge()
         guard UIDevice.current.userInterfaceIdiom == .phone, let window else { return .zero }
         // Use UIKit's resolved inset values; querying a layout guide here can require layout
         // while this view is already inside layoutSubviews.
@@ -77,9 +81,20 @@ final class TLUnityUIView: UIView, UIKeyInput {
     }
 
     private func sendSafeInsetsIfNeeded() {
+        let edge = resolvedCutoutEdge()
         let inset = gameSafeAreaInsets
-        guard sentSafeInsets != inset else { return }
+        if launched, !windowed, engine != .flutter,
+           let previous = sentSafeInsets, sentAvoidUnsafeArea == avoidUnsafeArea,
+           sentCutoutEdge == edge {
+            // Once settled on this physical cutout edge, ignore transient banner/Dynamic Island
+            // safe-area oscillations that otherwise force full guest HUD relayouts mid-game.
+            let hadCutout = previous.left > 0 || previous.top > 0 || previous.right > 0 || previous.bottom > 0
+            if hadCutout || inset == previous { return }
+        }
+        guard sentSafeInsets != inset || sentAvoidUnsafeArea != avoidUnsafeArea || sentCutoutEdge != edge else { return }
         sentSafeInsets = inset
+        sentCutoutEdge = edge
+        sentAvoidUnsafeArea = avoidUnsafeArea
         let k = contentScaleFactor
         let l = Int32((inset.left * k).rounded()), t = Int32((inset.top * k).rounded())
         let r = Int32((inset.right * k).rounded()), b = Int32((inset.bottom * k).rounded())
@@ -129,6 +144,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             // ANGLE renders via Metal render passes; keeping framebufferOnly enabled
             // preserves TBDR lossless compression during ReplayKit screen recording.
             metal.framebufferOnly = true
+            metal.maximumDrawableCount = 3
             metal.presentsWithTransaction = false
             metal.contentsScale = resolvedScale
             metal.isOpaque = true
@@ -141,7 +157,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
                 "colorspace": NSNull(),
                 "contents": NSNull(),
             ]
-            HuskDisplayColor.apply(to: metal, traits: traitCollection)
+            HuskDisplayColor.apply(to: metal, traits: traitCollection, captured: isHostScreenCaptured)
         }
         let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
         threeFingers.numberOfTouchesRequired = 3
@@ -224,6 +240,27 @@ final class TLUnityUIView: UIView, UIKeyInput {
                 self?.reportHostRuntimeConditions()
             })
         }
+        notificationObservers.append(nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let kind = AVAudioSession.InterruptionType(rawValue: raw),
+                  kind == .ended else { return }
+            self.recoverAudioAfterInterruption()
+        })
+        notificationObservers.append(nc.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.recoverAudioAfterInterruption()
+        })
+    }
+
+    private func configureAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+    }
+
+    private func recoverAudioAfterInterruption() {
+        configureAudioSession()
+        husk_native_audio_resume()
     }
 
     @objc private func threeFingerTapped() { onThreeFingerTap?() }
@@ -283,7 +320,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         let covered = hiding ? 0 : min(bounds.height, max(0, bounds.maxY - keyboard.minY))
         keyboardInset = Int32((covered * contentScaleFactor).rounded())
         if engine == .java {
-            let k = contentScaleFactor, inset = gameSafeAreaInsets
+            let k = contentScaleFactor, inset = sentSafeInsets ?? gameSafeAreaInsets
             husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), keyboardInset)
             if hiding, isFirstResponder == false { husk_java_keyboard_closed() }
             return
@@ -299,12 +336,17 @@ final class TLUnityUIView: UIView, UIKeyInput {
         NotificationCenter.default.removeObserver(self)
     }
 
-    private func reportHostRuntimeConditions() {
-        let captured = (window?.screen.isCaptured == true)
+    private var isHostScreenCaptured: Bool {
+        (window?.screen.isCaptured == true)
             || UIApplication.shared.connectedScenes
                 .compactMap { ($0 as? UIWindowScene)?.screen }
                 .contains(where: \.isCaptured)
+    }
+
+    private func reportHostRuntimeConditions() {
+        let captured = isHostScreenCaptured
         husk_native_screen_captured(captured ? 1 : 0)
+        HuskDisplayColor.apply(to: layer, traits: traitCollection, captured: captured)
         husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
     }
 
@@ -334,7 +376,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
             if contentScaleFactor != scale { contentScaleFactor = scale }
             if let metal = layer as? CAMetalLayer, metal.contentsScale != scale { metal.contentsScale = scale }
         }
-        HuskDisplayColor.apply(to: layer, traits: traitCollection)
+        HuskDisplayColor.apply(to: layer, traits: traitCollection, captured: isHostScreenCaptured)
         let w = Int((bounds.width * contentScaleFactor).rounded())
         let h = Int((bounds.height * contentScaleFactor).rounded())
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
@@ -372,7 +414,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        HuskDisplayColor.apply(to: layer, traits: traitCollection)
+        HuskDisplayColor.apply(to: layer, traits: traitCollection, captured: isHostScreenCaptured)
         statsTimer?.invalidate()
         statsTimer = nil
         if window != nil {
@@ -415,11 +457,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         }
         // The game plays through the silent switch, like the guest's own audio, and mixes with other audio. Unity games too:
         // they used to be left out, from before they had sound, and played through a session that was never set up.
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try? session.setActive(true)
-        }
+        configureAudioSession()
         HuskLog.log("tl", "native: launching \(apk) at \(width)x\(height) (\(engine == .cocos ? "cocos2d-x" : engine == .minecraft ? "gameactivity" : engine == .sdl ? "sdl" : engine == .ue4 ? "ue4" : engine == .gta ? "gta" : engine == .godot ? "godot" : engine == .nativeactivity ? "nativeactivity" : engine == .flutter ? "flutter" : engine == .gamemaker ? "gamemaker" : engine == .java ? "java" : "unity"))")
         // Splits and the asset pack are part of the app, whatever its engine; the game's libraries and data may be in any of
         // them (a Google Play install keeps a Unity game's libraries in one split and its data in an asset pack).
@@ -435,7 +473,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         husk_native_set_extra_fonts(CJKFonts.directory.path)
         let hostScreen = window?.screen ?? UIScreen.main
         let wideColor = HuskDisplayColor.wideColor(for: traitCollection)
-        HuskDisplayColor.apply(to: layer, traits: traitCollection)
+        HuskDisplayColor.apply(to: layer, traits: traitCollection, captured: isHostScreenCaptured)
         husk_host_set_display_metrics(Float(contentScaleFactor), Float(hostScreen.maximumFramesPerSecond), wideColor ? 1 : 0)
         reportHostRuntimeConditions()
         HuskLog.log("tl", "host display: nativePixels=\(hostScreen.nativeBounds.size) nativeScale=\(hostScreen.nativeScale) renderScale=\(contentScaleFactor) gamut=\(wideColor ? "DisplayP3" : "sRGB") refreshCapability=\(hostScreen.maximumFramesPerSecond) Hz")
@@ -1800,15 +1838,14 @@ struct TLFloatingReopenHandle: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.95))
                     .frame(width: 34, height: 34)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(Circle().fill(.black.opacity(isDragging ? 0.30 : 0.42)))
-                    .overlay(Circle().strokeBorder(.white.opacity(isDragging ? 0.56 : 0.26), lineWidth: isDragging ? 1.2 : 0.75))
+                    .background(Circle().fill(.black.opacity(isDragging ? 0.78 : 0.66)))
+                    .overlay(Circle().strokeBorder(.white.opacity(isDragging ? 0.56 : 0.28), lineWidth: isDragging ? 1.2 : 0.75))
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Show controls")
             .scaleEffect(isDragging ? 1.08 : 1.0)
-            .shadow(color: .black.opacity(isDragging ? 0.45 : 0.22), radius: isDragging ? 8 : 4, y: 2)
+            .shadow(color: .black.opacity(isDragging ? 0.40 : 0), radius: isDragging ? 6 : 0, y: isDragging ? 2 : 0)
             .opacity(isDragging ? 1.0 : 0.88)
             .animation(.interactiveSpring(response: 0.20, dampingFraction: 0.88), value: isDragging)
             .padding(4)
