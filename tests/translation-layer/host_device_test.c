@@ -59,16 +59,24 @@ int main(void)
     assert(tl_host_compositor_target_hz(120, 3, 1) == 30);
 
     /* Thermal, telemetry, and profiler samplers stay on efficiency cores while
-     * frame and render loops stay interactive. */
+     * frame, render, gfx, and audio worker loops stay interactive. */
     assert(tl_qos_role_for_name("ThermalPoll") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("CpuSpeedHeat") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("CpuSpeedThermal") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("EnergyStat") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("StackSampler") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("HudBattery") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("AsyncWorker") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("OkHttp Dispatcher") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("BackgroundGfx") == TL_QOS_ROLE_UTILITY);
     assert(tl_qos_role_for_name("GameFrame") == TL_QOS_ROLE_INTERACTIVE);
     assert(tl_qos_role_for_name("bgfxRender") == TL_QOS_ROLE_INTERACTIVE);
     assert(tl_qos_role_for_name("GLThread") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("JobPool") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("TaskThread") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("GfxWorker") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("AMSoundStream") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("miniaudio") == TL_QOS_ROLE_INTERACTIVE);
     assert(tl_qos_role_for_name("SkinTick0") == TL_QOS_ROLE_DEFAULT);
 
     puts("PASS: real host model/board/CPU identity stays coherent, bounded and neutral on unknown devices without changing Android API or collecting unique identifiers");

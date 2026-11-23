@@ -120,6 +120,7 @@ unsigned tl_bionic_sleep(unsigned seconds);
 int   tl_bionic_pause(void);
 long  tl_bionic_readv(int fd, const struct iovec *iov, int iovcnt);
 bool  tl_bionic_wait_fd_ready(int fd, short events, bool nonblock_hint);
+int   tl_bionic_prctl(int option, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5);
 
 #ifdef __cplusplus
 }

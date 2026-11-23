@@ -655,18 +655,30 @@ static int bionic_sched_setaffinity(int pid, size_t size, const void *mask) { (v
 static int bionic_sched_getparam(int pid, int *param) { (void)pid; if (param) *param = 0; return 0; }
 static int bionic_sched_getscheduler(int pid) { (void)pid; return 0; }
 
-static int bionic_prctl(int option, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5)
+int tl_bionic_prctl(int option, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5)
 {
     (void)a3; (void)a4; (void)a5;
     switch (option) {
-    case 15: pthread_setname_np((const char *)a2); return 0;                 /* PR_SET_NAME */
-    case 16: pthread_getname_np(pthread_self(), (char *)a2, 16); return 0;   /* PR_GET_NAME */
-    case 0x53564d41: return 0;                                               /* PR_SET_VMA (naming anonymous memory) */
-    case 38: case 4: case 36: return 0;                                      /* NO_NEW_PRIVS, DUMPABLE, THP: accepted, nothing to do */
+    case 15:                                                                    /* PR_SET_NAME */
+        if (a2) {
+            pthread_setname_np((const char *)a2);
+            tl_qos_apply_name((const char *)a2);
+        }
+        return 0;
+    case 16:                                                                    /* PR_GET_NAME */
+        if (a2) pthread_getname_np(pthread_self(), (char *)a2, 16);
+        return 0;
+    case 0x53564d41: return 0;                                                  /* PR_SET_VMA (naming anonymous memory) */
+    case 38: case 4: case 36: return 0;                                         /* NO_NEW_PRIVS, DUMPABLE, THP: accepted, nothing to do */
     default:
         tl_set_guest_errno(22);
         return -1;
     }
+}
+
+static int bionic_prctl(int option, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5)
+{
+    return tl_bionic_prctl(option, a2, a3, a4, a5);
 }
 
 long tl_linux_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long nr);

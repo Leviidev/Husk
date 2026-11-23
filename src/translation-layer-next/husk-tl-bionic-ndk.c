@@ -8,6 +8,7 @@
 #include "husk-tl-guest-thread.h"
 #include "husk-tl-display-timing.h"
 #include "husk-tl-host-device.h"
+#include "husk-tl-qos.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -482,6 +483,7 @@ static void *aa_pump(void *arg)
 {
     aa_stream *s = arg;
     pthread_setname_np("aaudio-pump");
+    tl_qos_set_interactive();
     int n = s->burst;
     /* sized for the app's format (Unity asks for float: a 16-bit buffer was half what it wrote) and the full buffer capacity, as Android's is */
     size_t frame_bytes = (size_t)s->channels * (s->format == AA_FORMAT_FLOAT ? 4 : 2), cap = (size_t)(n > AA_BURST * 8 ? n : AA_BURST * 8);

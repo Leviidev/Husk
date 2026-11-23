@@ -2594,7 +2594,10 @@ static long linux_syscall_impl(long a0, long a1, long a2, long a3, long a4, long
     case 134: case 135: return 0;                                                       /* rt_sigaction, rt_sigprocmask: accepted */
     case 233: { int r = b_madvise((void *)a0, (size_t)a1, (int)a2); return r < 0 ? -*tl_guest_errno_ptr() : 0; } /* madvise */
     case 122: case 123: return 0;                                                       /* sched_setaffinity / getaffinity */
-    case 167: return 0;                                                                 /* prctl */
+    case 167: {                                                                         /* prctl */
+        int r = tl_bionic_prctl((int)a0, (unsigned long)a1, (unsigned long)a2, (unsigned long)a3, (unsigned long)a4);
+        return r < 0 ? -*tl_guest_errno_ptr() : r;
+    }
     case 160: { int tl_bionic_uname(void *); return tl_bionic_uname((void *)a0); }    /* uname: filled in, as the libc call is */
     case 47: {                                                                          /* fallocate: growing the file (Superpack maps it at its full size, then writes) */
         if (a1) return -95;

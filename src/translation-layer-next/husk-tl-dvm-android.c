@@ -1891,12 +1891,16 @@ static void *gl_run(void *arg)
             int64_t compose_begin = now_ns();
             uint64_t sampled_seq = 0, handoff_ns = 0;
             bool ui_vis = tl_ui_has_frame();
-            bool single_flight = (captured > 0) || (thermal >= 2) || (compose_begin < slow_compositor_until_ns);
+            /* The 3-drawable CAMetalLayer with N-2 fence gating already caps GPU work at <=2
+             * frames in flight (leaving one drawable free for ReplayKit). Forcing single-flight
+             * unconditionally on captured > 0 starves skill/combat VFX pipelines down to <=1
+             * frame in flight, so reserve it for sustained thermal >= 2 or genuine >22 ms stalls. */
+            bool single_flight = (thermal >= 2) || (compose_begin < slow_compositor_until_ns);
             if (!app) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 if (!compositor_gpu_ready(comp_fences, comp_fence_idx, single_flight,
                         compose_begin, &gpu_defer_since_ns, clientWaitSync, deleteSync)) {
-                    sleep_ns_uninterrupted(2000000ll);
+                    sleep_ns_uninterrupted(1000000ll);
                     continue;
                 }
                 bool opaque_cover = !tl_web_any_visible();
@@ -1915,6 +1919,12 @@ static void *gl_run(void *arg)
                 if (opaque_cover || !tl_web_any_visible()) {
                     gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
                 }
+                /* Flush FBO 0 before app_frame_draw when capturing, warm, or slow so any
+                 * CAMetalLayer nextDrawable wait settles before locking g_frame_handoff. */
+                if (captured > 0 || thermal >= 1 || compose_begin < slow_compositor_until_ns) {
+                    void (*gl_flush)(void) = gl_fn("glFlush");
+                    if (gl_flush) gl_flush();
+                }
                 sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
                 compositor_gpu_arm(comp_fences, &comp_fence_idx, fenceSync, deleteSync);
@@ -1930,10 +1940,10 @@ static void *gl_run(void *arg)
             if (swap_ok) {
                 ui_pending = false;
                 if (captured > 0 && !app) last_capture_swap_ns = swap_end;
-                if ((swap_end - compose_begin) > 8000000ll) {
-                    slow_compositor_until_ns = swap_end + 3000000000ll;
+                if ((swap_end - compose_begin) > 22000000ll) {
+                    slow_compositor_until_ns = swap_end + 1500000000ll;
                 }
-                if (!app && (swap_end - compose_begin) > 20000000ll) {
+                if (!app && (swap_end - compose_begin) > 45000000ll) {
                     next_swap_cooldown_ns = swap_end + 16000000ll;
                 }
                 atomic_fetch_add(&A.frames, 1);

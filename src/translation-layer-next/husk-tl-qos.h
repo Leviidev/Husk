@@ -75,27 +75,34 @@ enum {
     TL_QOS_ROLE_UTILITY     = 2,
 };
 
-/* Classify thread names so game/render loops stay on P-cores while async pools
- * and thermal/profiler/battery samplers run on efficiency cores. */
+/* Classify thread names so game/render/gfx/audio worker pools stay on P-cores while
+ * async background pools and thermal/profiler/battery samplers run on efficiency cores. */
 static inline int tl_qos_role_for_name(const char *name)
 {
     if (!name || !*name) return TL_QOS_ROLE_DEFAULT;
-    static const char *const utility_tokens[] = {
-        "async", "worker", "pool", "http", "download", "log",
-        "background", "finalizer", "daemon", "gc", "battery", "telemetry",
-        "metrics", "thermal", "cpuspeed", "energystat", "sampler", "hitch",
+    static const char *const telemetry_or_bg_tokens[] = {
+        "telemetry", "metrics", "thermal", "cpuspeed", "energystat", "sampler",
+        "hitch", "battery", "http", "download", "log", "background",
+        "finalizer", "daemon", "gc",
     };
-    for (size_t i = 0; i < sizeof(utility_tokens) / sizeof(utility_tokens[0]); i++) {
-        if (tl_qos_has_substr_ci(name, utility_tokens[i])) return TL_QOS_ROLE_UTILITY;
+    for (size_t i = 0; i < sizeof(telemetry_or_bg_tokens) / sizeof(telemetry_or_bg_tokens[0]); i++) {
+        if (tl_qos_has_substr_ci(name, telemetry_or_bg_tokens[i])) return TL_QOS_ROLE_UTILITY;
     }
     static const char *const interactive_tokens[] = {
         "render", "sdl", "unity", "game", "main", "rhi",
-        "bgfx", "audio", "mixer", "glthread",
+        "bgfx", "audio", "mixer", "sound", "glthread", "gfx",
+        "jobpool", "taskthread", "aaudio", "opensl",
     };
     for (size_t i = 0; i < sizeof(interactive_tokens) / sizeof(interactive_tokens[0]); i++) {
         if (tl_qos_has_substr_ci(name, interactive_tokens[i])) return TL_QOS_ROLE_INTERACTIVE;
     }
     if (name[0] == 'G' && name[1] == 'L') return TL_QOS_ROLE_INTERACTIVE;
+    static const char *const generic_utility_tokens[] = {
+        "async", "worker", "pool",
+    };
+    for (size_t i = 0; i < sizeof(generic_utility_tokens) / sizeof(generic_utility_tokens[0]); i++) {
+        if (tl_qos_has_substr_ci(name, generic_utility_tokens[i])) return TL_QOS_ROLE_UTILITY;
+    }
     return TL_QOS_ROLE_DEFAULT;
 }
 
