@@ -643,10 +643,10 @@ static void test_dynamic_elf_discovery(void)
 
     _Alignas(16) uint8_t scene_mem[0x700] = {0};
     _Alignas(16) uint8_t char_panel[0x400] = {0};
-    _Alignas(16) uint8_t char_root[0x120] = {0};
-    _Alignas(16) uint8_t ini_tl[64] = {0};
-    ini_tl[0] = (uint8_t)(7 << 1);
-    memcpy(ini_tl + 1, "TopLeft", 8);
+    _Alignas(16) uint8_t char_root[0x200] = {0};
+    _Alignas(16) uint8_t ini_tl[0x80] = {0};
+    ini_tl[VHPT_INI_ANCHOR_STR_OFF] = (uint8_t)(7 << 1);
+    memcpy(ini_tl + VHPT_INI_ANCHOR_STR_OFF + 1, "TopLeft", 8);
     void *dyn_vtable[0x30] = {0};
     dyn_vtable[VHPT_NODE_VTBL_SETPOS / sizeof(void *)] = (void *)fake_setpos;
     *(void **)(char_root) = dyn_vtable;
