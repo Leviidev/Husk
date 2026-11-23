@@ -222,16 +222,25 @@ final class TLUnityUIView: UIView, UIKeyInput {
             }
         }
         let nc = NotificationCenter.default
-        // Pause native runtime, GL compositor and audio only when entering background so
-        // notification banners, Control Center peeks and screen recording keep gameplay fluid.
+        // Keep gameplay/audio alive for notification banners while skipping CAMetalLayer
+        // nextDrawable waits when Control Center/switcher makes the scene inactive;
+        // pause runtime only when truly backgrounded.
+        notificationObservers.append(nc.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.cancelAllTouches()
+            husk_native_host_inactive(1)
+        })
         notificationObservers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             self?.cancelAllTouches()
+            husk_native_host_inactive(1)
             husk_unity_set_paused(true)
         })
         for name in [UIApplication.willEnterForegroundNotification, UIApplication.didBecomeActiveNotification] {
-            notificationObservers.append(nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+            notificationObservers.append(nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                 guard let self, self.window != nil, UIApplication.shared.applicationState != .background else { return }
                 husk_unity_set_paused(false)
+                if note.name == UIApplication.didBecomeActiveNotification || UIApplication.shared.applicationState == .active {
+                    husk_native_host_inactive(0)
+                }
                 self.reportHostRuntimeConditions()
             })
         }
@@ -336,28 +345,51 @@ final class TLUnityUIView: UIView, UIKeyInput {
         NotificationCenter.default.removeObserver(self)
     }
 
+    private var lastReportedCaptured: Bool?
+
     private var isHostScreenCaptured: Bool {
-        (window?.screen.isCaptured == true)
+        if #available(iOS 17.0, *) {
+            if traitCollection.sceneCaptureState == .active
+                || window?.traitCollection.sceneCaptureState == .active {
+                return true
+            }
+        }
+        return (window?.screen.isCaptured == true)
             || UIApplication.shared.connectedScenes
                 .compactMap { ($0 as? UIWindowScene)?.screen }
                 .contains(where: \.isCaptured)
     }
 
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 17.0, *) {
+            if previousTraitCollection?.sceneCaptureState != traitCollection.sceneCaptureState {
+                reportHostRuntimeConditions()
+            }
+        }
+    }
+
     private func reportHostRuntimeConditions() {
         let captured = isHostScreenCaptured
+        if lastReportedCaptured != captured {
+            lastReportedCaptured = captured
+            HuskLog.log("runtime", "screen capture changed: \(captured ? "active" : "inactive")")
+        }
         husk_native_screen_captured(captured ? 1 : 0)
         HuskDisplayColor.apply(to: layer, traits: traitCollection, captured: captured)
         husk_native_thermal_state(Int32(ProcessInfo.processInfo.thermalState.rawValue))
     }
 
     private func updateStats() {
+        reportHostRuntimeConditions()
+        guard let onStats else { return }
         var p = husk_unity_perf()
         husk_unity_perf_snapshot(&p)
         let text = p.fps > 0
             ? String(format: "%.0f fps · %.1f ms · max %.0f", p.fps, p.mean_ms, p.max_ms)
             : "starting"
         stats.text = text
-        onStats?(text)
+        onStats(text)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -419,8 +451,11 @@ final class TLUnityUIView: UIView, UIKeyInput {
         statsTimer = nil
         if window != nil {
             husk_unity_set_paused(false)
+            husk_native_host_inactive(UIApplication.shared.applicationState == .active ? 0 : 1)
+            reportHostRuntimeConditions()
             statsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in self?.updateStats() }
         } else {
+            husk_native_host_inactive(1)
             husk_unity_set_paused(true)
             if isFirstResponder { resignFirstResponder() }
         }
@@ -1521,7 +1556,8 @@ struct TLCocosAttemptView: View {
                     TLUnityScreen(apk: apk, extraApks: Array(app.apks.dropFirst()), dataDir: dataDir, engine: engine, portrait: portrait,
                                   scale: settings.resolution.scale, nativeResolution: settings.resolution == .native,
                                   avoidUnsafeArea: settings.avoidUnsafeArea,
-                                  onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
+                                  onStats: (!uiHidden && (showLog || settings.showStats)) ? { stats = $0 } : nil,
+                                  onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
                         .ignoresSafeArea()
                 }

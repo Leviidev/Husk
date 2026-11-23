@@ -46,6 +46,7 @@ void tl_javaapp_touch(int phase, int id, float x, float y);    /* surface pixels
 void tl_javaapp_key(int android_keycode, bool down);
 void tl_javaapp_back(void);
 void tl_javaapp_set_paused(bool paused);
+void tl_javaapp_set_host_inactive(bool inactive);
 /* The host keyboard's typing, to the focused text field: text, one delete before the cursor, the editor action (return), the
    keyboard closed by the host. */
 void tl_javaapp_text(const char *utf8);

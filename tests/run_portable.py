@@ -398,6 +398,25 @@ def main():
     run("compositor handoff compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
         str(ROOT / "tests/translation-layer/compositor_handoff_test.c"), "-o", str(exe)])
     run("compositor handoff unlock, ring slot protection, and post-swap pacing contracts", [str(exe)])
+    fence_gate_snippets = [
+        re.search(r"static (?:void|bool) " + name + r"\(.*?\)\n\{.*?\n\}", android_source, re.S)[0]
+        for name in (
+            "sleep_ns_uninterrupted",
+            "compositor_fence_signaled",
+            "compositor_gpu_drain_slot",
+            "compositor_gpu_wait",
+            "compositor_gpu_ready",
+            "compositor_gpu_arm",
+            "compositor_gpu_release",
+            "wait_compositor_deadline",
+            "wait_capture_cadence",
+        )
+    ]
+    (out / "compositor_fence_gate_under_test.h").write_text("\n\n".join(fence_gate_snippets) + "\n", encoding="utf-8")
+    exe = out / ("compositor_fence_gate_test.exe" if os.name == "nt" else "compositor_fence_gate_test")
+    run("compositor fence gate compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/compositor_fence_gate_test.c"), "-o", str(exe)])
+    run("non-blocking compositor GPU fence gate and host_inactive contracts", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

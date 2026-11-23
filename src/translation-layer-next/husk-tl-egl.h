@@ -47,6 +47,7 @@ void tl_egl_compositor_frame_end(unsigned tex);
 void tl_egl_compositor_frame_reset(void *context, bool current);
 /* Diagnostic sampling only: discard idle/old-session samples on pause/stop. */
 void tl_egl_frame_perf_set_active(bool active);
+void tl_egl_frame_perf_flush(void);
 /* Release thread-local EGL context/bindings on forced worker retirement and
  * destroy leftover guest contexts/surfaces when resetting between sessions. */
 void tl_egl_thread_detach(void);

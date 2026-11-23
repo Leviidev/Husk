@@ -62,7 +62,7 @@ static struct {
     atomic_ulong frames;
     atomic_ullong perf_last_ns, perf_since_ns, perf_total_ns, perf_max_ns;
     atomic_ulong perf_frames, perf_over50, perf_over100;
-    atomic_bool ended, paused, render_requested;
+    atomic_bool ended, paused, host_inactive, render_requested;
     atomic_bool app_done, gl_done;
     jobj *gl_view, *gl_renderer;
     int gl_version;
@@ -1052,9 +1052,13 @@ static void ov_draw(overlay *o, int vw, int vh)
     disable(0x0B71); disable(0x0B44); disable(0x0C11); disable(0x0B90);    /* depth, cull, scissor, stencil */
     enable(0x0BE2);
     blendFunc(1, 0x0303);                                                  /* premultiplied: ONE, ONE_MINUS_SRC_ALPHA */
-    useProgram(o->prog);
+    int thermal = 0, captured = 0;
+    { extern int tl_host_thermal_state(void) __attribute__((weak)); int (*volatile thermal_fn)(void) = tl_host_thermal_state; if (thermal_fn) thermal = thermal_fn(); }
+    { extern int tl_host_screen_captured(void) __attribute__((weak)); int (*volatile cap_fn)(void) = tl_host_screen_captured; if (cap_fn) captured = cap_fn(); }
+    bool use_plain = o->plain_prog != 0 && (captured > 0 || thermal >= 2);
+    useProgram(use_plain ? o->plain_prog : o->prog);
     void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
-    uniform1i(o->opaque_uniform, 0); /* Java UI always retains its premultiplied alpha. */
+    uniform1i(use_plain ? o->plain_opaque_uniform : o->opaque_uniform, 0); /* Java UI always retains its premultiplied alpha. */
     activeTex(0x84C0);
     bindTex(0x0DE1, o->tex);
     bindBuf(0x8892, o->vbo);
@@ -1402,14 +1406,14 @@ uint64_t tl_javaapp_app_tex_publish(uint32_t tex, int pw, int ph, int x, int y, 
 }
 /* Pace the producer only when it leads the screen by 2+ frames so transient
  * CAMetalLayer nextDrawable/ReplayKit waits overlap with the 3-slot texture ring
- * instead of stalling game ticks every frame. */
+ * without letting the producer outrun a temporarily stalled compositor queue. */
 void tl_javaapp_app_frame_pace(uint64_t prev_seq)
 {
     uint64_t wait_target = prev_seq > 1 ? prev_seq - 1 : 0;
     pthread_mutex_lock(&E2.lk);
     if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < wait_target) {
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_nsec += 16000000L;
+        ts.tv_nsec += 40000000L;
         if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
         while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.drawn_seq < wait_target)
             if (pthread_cond_timedwait(&E2.cv, &E2.lk, &ts)) break;
@@ -1575,18 +1579,76 @@ static void gl_prime_screen(overlay *o, uint32_t prime_tex, int vw, int vh)
     viewport(0, 0, vw, vh);
 }
 
+static void sleep_ns_uninterrupted(int64_t ns)
+{
+    if (ns <= 0) return;
+    struct timespec ts = { (time_t)(ns / 1000000000ll), (long)(ns % 1000000000ll) };
+    nanosleep(&ts, NULL);
+}
+static void host_perf_flush_if_nonempty(tl_frame_perf_window *w)
+{
+    if (!w || w->frames == 0) return;
+    char line[1024];
+    tl_frame_perf_format(line, sizeof(line), "host-fresh-game", "compose-wall", "screen-swap", "handoff", w);
+    tl_frame_perf_reset(w);
+    tl_log_line("%s", line);
+}
+static bool compositor_fence_signaled(void **slot,
+    uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t), void (*deleteSync)(void *))
+{
+    if (!*slot) return true;
+    if (!clientWaitSync || !deleteSync) { *slot = NULL; return true; }
+    /* Zero-timeout status check avoids holding ANGLE ShareGroup locks across GPU waits. */
+    if (clientWaitSync(*slot, 0u, 0u) == 0x911Bu /* GL_TIMEOUT_EXPIRED */) return false;
+    deleteSync(*slot);
+    *slot = NULL;
+    return true;
+}
+static void compositor_gpu_drain_slot(void **slot, int64_t budget_ns,
+    uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t), void (*deleteSync)(void *))
+{
+    if (!*slot || !clientWaitSync || !deleteSync) { *slot = NULL; return; }
+    int64_t deadline = now_ns() + budget_ns;
+    while (!compositor_fence_signaled(slot, clientWaitSync, deleteSync)) {
+        if (atomic_load(&A.ended) || atomic_load(&A.paused) || atomic_load(&A.host_inactive)
+            || now_ns() >= deadline) {
+            deleteSync(*slot);
+            *slot = NULL;
+            return;
+        }
+        sleep_ns_uninterrupted(1500000ll);
+    }
+}
 static void compositor_gpu_wait(void *fences[2], int idx, bool single_flight,
     uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t), void (*deleteSync)(void *))
 {
     if (!clientWaitSync || !deleteSync) return;
-    int slot = single_flight ? (idx ^ 1) : idx;
-    void *fence = fences[slot];
-    if (!fence) return;
-    /* Bound GPU queue depth outside g_frame_handoff so CAMetalLayer keeps headroom
-     * during ReplayKit capture and notification blur without wedging on backgrounding. */
-    clientWaitSync(fence, 0x00000001u /* GL_SYNC_FLUSH_COMMANDS_BIT */, UINT64_C(35000000));
-    deleteSync(fence);
-    fences[slot] = NULL;
+    compositor_gpu_drain_slot(&fences[idx], 35000000ll, clientWaitSync, deleteSync);
+    if (single_flight) {
+        compositor_gpu_drain_slot(&fences[idx ^ 1], 35000000ll, clientWaitSync, deleteSync);
+    }
+}
+static bool compositor_gpu_ready(void *fences[2], int idx, bool single_flight,
+    int64_t now, int64_t *defer_since_ns,
+    uint32_t (*clientWaitSync)(void *, uint32_t, uint64_t), void (*deleteSync)(void *))
+{
+    if (!clientWaitSync || !deleteSync) { *defer_since_ns = 0; return true; }
+    bool old_ready = compositor_fence_signaled(&fences[idx], clientWaitSync, deleteSync);
+    bool prev_ready = !single_flight || compositor_fence_signaled(&fences[idx ^ 1], clientWaitSync, deleteSync);
+    if (old_ready && prev_ready) {
+        *defer_since_ns = 0;
+        return true;
+    }
+    if (*defer_since_ns == 0) *defer_since_ns = now;
+    int64_t watchdog_ns = old_ready ? 120000000ll : 180000000ll;
+    if ((now - *defer_since_ns) >= watchdog_ns) {
+        /* Never wedge indefinitely if ReplayKit or Metal drops a completion callback. */
+        if (!old_ready && fences[idx]) { deleteSync(fences[idx]); fences[idx] = NULL; }
+        if (!prev_ready && fences[idx ^ 1]) { deleteSync(fences[idx ^ 1]); fences[idx ^ 1] = NULL; }
+        *defer_since_ns = 0;
+        return true;
+    }
+    return false;
 }
 static void compositor_gpu_arm(void *fences[2], int *idx,
     void *(*fenceSync)(uint32_t, uint32_t), void (*deleteSync)(void *))
@@ -1604,22 +1666,28 @@ static void compositor_gpu_release(void *fences[2], void (*deleteSync)(void *))
         if (fences[i]) { deleteSync(fences[i]); fences[i] = NULL; }
     }
 }
-static void wait_capture_cadence(int target_hz, int64_t last_swap_ns)
+static void wait_compositor_deadline(int64_t deadline_ns, bool wake_on_ui)
 {
-    if (target_hz <= 0 || last_swap_ns <= 0) return;
-    int64_t min_interval_ns = (1000000000ll / target_hz) - 2000000ll;
-    if (min_interval_ns <= 0) return;
+    if (deadline_ns <= 0) return;
     pthread_mutex_lock(&E2.lk);
-    while (!atomic_load(&A.ended) && !atomic_load(&A.paused)
-        && !tl_ui_frame_pending() && !atomic_load(&A.render_requested)) {
-        int64_t rem = (last_swap_ns + min_interval_ns) - now_ns();
+    while (!atomic_load(&A.ended) && !atomic_load(&A.paused) && !atomic_load(&A.host_inactive)
+        && (!wake_on_ui || !tl_ui_frame_pending()) && !atomic_load(&A.render_requested)) {
+        int64_t rem = deadline_ns - now_ns();
         if (rem <= 0) break;
         struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_nsec += (long)rem;
+        ts.tv_nsec += (long)(rem % 1000000000ll);
+        ts.tv_sec += (time_t)(rem / 1000000000ll);
         if (ts.tv_nsec >= 1000000000L) { ts.tv_sec += ts.tv_nsec / 1000000000L; ts.tv_nsec %= 1000000000L; }
         pthread_cond_timedwait(&E2.cv, &E2.lk, &ts);
     }
     pthread_mutex_unlock(&E2.lk);
+}
+static void wait_capture_cadence(int target_hz, int64_t last_swap_ns)
+{
+    if (target_hz <= 0 || last_swap_ns <= 0) return;
+    int64_t min_interval_ns = (1000000000ll / target_hz) - 500000ll;
+    if (min_interval_ns <= 0) return;
+    wait_compositor_deadline(last_swap_ns + min_interval_ns, false);
 }
 
 static void *gl_run(void *arg)
@@ -1706,31 +1774,45 @@ static void *gl_run(void *arg)
     tl_frame_perf_window host_perf = {0};
     uint64_t last_sampled_seq = 0;
     bool perf_paused = false;
+    bool perf_was_inactive = false;
+    bool ui_pending = false;
     void *comp_fences[2] = { NULL, NULL };
     int comp_fence_idx = 0;
     int64_t slow_compositor_until_ns = 0;
     int64_t last_capture_swap_ns = 0;
+    int64_t gpu_defer_since_ns = 0;
+    int64_t next_swap_cooldown_ns = 0;
     while (!atomic_load(&A.ended)) {
-        if (atomic_load(&A.paused)) {
+        bool is_paused = atomic_load(&A.paused);
+        bool is_inactive = !is_paused && atomic_load(&A.host_inactive);
+        if (is_paused || is_inactive) {
             if (!perf_paused) {
+                host_perf_flush_if_nonempty(&host_perf);
+                tl_egl_frame_perf_flush();
                 tl_egl_frame_perf_set_active(false);
-                tl_frame_perf_reset(&host_perf);
                 last_sampled_seq = 0;
                 last_capture_swap_ns = 0;
                 slow_compositor_until_ns = 0;
+                gpu_defer_since_ns = 0;
+                next_swap_cooldown_ns = 0;
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 compositor_gpu_release(comp_fences, deleteSync);
                 perf_paused = true;
             }
+            if (is_inactive) perf_was_inactive = true;
             pthread_mutex_lock(&E2.lk);
-            E2.drawn_seq = E2.seq;
-            pthread_cond_broadcast(&E2.cv);
+            if (E2.drawn_seq < E2.seq) {
+                E2.drawn_seq = E2.seq;
+                pthread_cond_broadcast(&E2.cv);
+            }
             pthread_mutex_unlock(&E2.lk);
-            usleep(20000);
+            sleep_ns_uninterrupted(is_paused ? 20000000ll : 16000000ll);
             next = now_ns();
             continue;
         }
         if (perf_paused) {
+            if (perf_was_inactive) slow_compositor_until_ns = now_ns() + 2000000000ll;
+            perf_was_inactive = false;
             tl_egl_frame_perf_set_active(true);
             perf_paused = false;
         }
@@ -1777,6 +1859,7 @@ static void *gl_run(void *arg)
                 ov.tw = ov.th = 0;
             }
             tl_ui_frame_done();
+            ui_pending = true;
         }
         if (app) {
             if (cur_ctx != app) { makeCurrent(dpy, surf, surf, app); cur_ctx = app; }
@@ -1789,51 +1872,69 @@ static void *gl_run(void *arg)
             ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
         int target_hz = tl_host_compositor_target_hz(host_hz, thermal, captured);
         if (captured <= 0) last_capture_swap_ns = 0;
+        if (!app && next_swap_cooldown_ns > 0 && (ui_pending || app_frame_seq() != app_seq)) {
+            wait_compositor_deadline(next_swap_cooldown_ns, false);
+            next_swap_cooldown_ns = 0;
+        }
         uint64_t q = app_frame_seq();
         bool app_fresh = q != app_seq;
-        if (captured > 0 && !app && app_fresh && !fresh && last_capture_swap_ns > 0) {
+        if (captured > 0 && !app && (app_fresh || ui_pending) && last_capture_swap_ns > 0) {
             wait_capture_cadence(target_hz, last_capture_swap_ns);
             q = app_frame_seq();
             app_fresh = q != app_seq;
         }
-        if (drew || fresh || app_fresh) {
+        if (atomic_load(&A.ended) || atomic_load(&A.paused) || atomic_load(&A.host_inactive)) {
+            next = now_ns();
+            continue;
+        }
+        if (drew || ui_pending || app_fresh) {
             int64_t compose_begin = now_ns();
             uint64_t sampled_seq = 0, handoff_ns = 0;
             bool ui_vis = tl_ui_has_frame();
-            if (!app || ui_vis) {
+            bool single_flight = (captured > 0) || (thermal >= 2) || (compose_begin < slow_compositor_until_ns);
+            if (!app) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
-                compositor_gpu_wait(comp_fences, comp_fence_idx,
-                    (captured > 0) || (compose_begin < slow_compositor_until_ns),
-                    clientWaitSync, deleteSync);
-                if (!app) {
-                    bool opaque_cover = !tl_web_any_visible();
-                    if (opaque_cover) {
-                        pthread_mutex_lock(&E2.lk);
-                        opaque_cover = E2.on && (E2.tex || E2.px) && E2.opaque && E2.x <= 0 && E2.y <= 0 && E2.w >= A.cfg.width && E2.h >= A.cfg.height;
-                        pthread_mutex_unlock(&E2.lk);
-                    }
-                    if (disable) disable(0x0C11);
-                    if (clearColor && clear) {
-                        /* Always clear FBO 0 before priming so ANGLE uses MTLLoadActionClear
-                         * instead of forcing TBDR MTLLoadActionLoad on a 1x1 prime draw. */
-                        clearColor(0, 0, 0, (!opaque_cover && tl_web_any_visible() && !app_frame_on()) ? 0 : 1);
-                        clear(0x4000);
-                    }
-                    if (opaque_cover || !tl_web_any_visible()) {
-                        gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
-                    }
-                    sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
+                if (!compositor_gpu_ready(comp_fences, comp_fence_idx, single_flight,
+                        compose_begin, &gpu_defer_since_ns, clientWaitSync, deleteSync)) {
+                    sleep_ns_uninterrupted(2000000ll);
+                    continue;
                 }
+                bool opaque_cover = !tl_web_any_visible();
+                if (opaque_cover) {
+                    pthread_mutex_lock(&E2.lk);
+                    opaque_cover = E2.on && (E2.tex || E2.px) && E2.opaque && E2.x <= 0 && E2.y <= 0 && E2.w >= A.cfg.width && E2.h >= A.cfg.height;
+                    pthread_mutex_unlock(&E2.lk);
+                }
+                if (disable) disable(0x0C11);
+                if (clearColor && clear) {
+                    /* Always clear FBO 0 before priming so ANGLE uses MTLLoadActionClear
+                     * instead of forcing TBDR MTLLoadActionLoad on a 1x1 prime draw. */
+                    clearColor(0, 0, 0, (!opaque_cover && tl_web_any_visible() && !app_frame_on()) ? 0 : 1);
+                    clear(0x4000);
+                }
+                if (opaque_cover || !tl_web_any_visible()) {
+                    gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
+                }
+                sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
+                compositor_gpu_arm(comp_fences, &comp_fence_idx, fenceSync, deleteSync);
+            } else if (ui_vis) {
+                if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
+                compositor_gpu_wait(comp_fences, comp_fence_idx, single_flight, clientWaitSync, deleteSync);
+                ov_draw(&ov, A.cfg.width, A.cfg.height);
                 compositor_gpu_arm(comp_fences, &comp_fence_idx, fenceSync, deleteSync);
             }
             int64_t swap_begin = now_ns();
             unsigned swap_ok = swapBuffers(dpy, surf);
             int64_t swap_end = now_ns();
             if (swap_ok) {
+                ui_pending = false;
                 if (captured > 0 && !app) last_capture_swap_ns = swap_end;
                 if ((swap_end - compose_begin) > 8000000ll) {
                     slow_compositor_until_ns = swap_end + 3000000000ll;
+                }
+                if (!app && (swap_end - compose_begin) > 20000000ll) {
+                    next_swap_cooldown_ns = swap_end + 16000000ll;
                 }
                 atomic_fetch_add(&A.frames, 1);
                 uint64_t now_u = (uint64_t)swap_end;
@@ -1886,7 +1987,8 @@ static void *gl_run(void *arg)
              * so wait 50ms between idle checks instead of waking spuriously at 120 Hz. */
             long wait_ns = 50000000L;
             pthread_mutex_lock(&E2.lk);
-            if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.seq == app_seq
+            if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && !atomic_load(&A.host_inactive)
+                && E2.seq == app_seq
                 && !__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !tl_ui_frame_pending()
                 && !atomic_load(&A.render_requested)) {
                 struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
@@ -1898,6 +2000,8 @@ static void *gl_run(void *arg)
             next = now_ns();
         }
     }
+    host_perf_flush_if_nonempty(&host_perf);
+    tl_egl_frame_perf_flush();
     /* Fence cleanup needs a current member of the shared group. A separate
      * GLSurfaceView renderer may have left its private app context current. */
     bool reset_current = makeCurrent(dpy, surf, surf, ui);
@@ -2115,6 +2219,7 @@ bool tl_javaapp_start(const tl_javaapp_config *cfg)
     }
     atomic_store(&A.ended, false);
     atomic_store(&A.paused, false);
+    atomic_store(&A.host_inactive, false);
     atomic_store(&A.frames, 0);
     atomic_store(&A.perf_last_ns, 0);
     atomic_store(&A.perf_since_ns, 0);
@@ -2380,6 +2485,7 @@ bool tl_javaapp_try_stop(unsigned timeout_ms)
     tl_jni_clear();
     javaapp_reset_subsystems();
     atomic_store(&A.paused, false);
+    atomic_store(&A.host_inactive, false);
     atomic_store(&A.frames, 0);
     atomic_store(&A.perf_last_ns, 0);
     atomic_store(&A.perf_since_ns, 0);
@@ -2425,6 +2531,12 @@ void tl_javaapp_set_paused(bool p)
 {
     if (atomic_exchange(&A.paused, p) != p) {
         tl_javaapp_touch(6, p ? 1 : 0, 0, 0);     /* the activity pauses and resumes with the host */
+        tl_javaapp_wake_gl();
+    }
+}
+void tl_javaapp_set_host_inactive(bool inactive)
+{
+    if (atomic_exchange(&A.host_inactive, inactive) != inactive) {
         tl_javaapp_wake_gl();
     }
 }

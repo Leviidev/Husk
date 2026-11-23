@@ -509,6 +509,18 @@ void tl_egl_frame_perf_set_active(bool active)
     tl_frame_perf_epoch_activate(&g_producer_perf, active);
     pthread_mutex_unlock(&g_frame_perf_lock);
 }
+void tl_egl_frame_perf_flush(void)
+{
+    char line[1024] = "";
+    pthread_mutex_lock(&g_frame_perf_lock);
+    if (g_producer_perf.active && g_producer_perf.window.frames > 0) {
+        tl_frame_perf_format(line, sizeof(line), "game-producer", "copy-publish", "pace-wait", "handoff",
+            &g_producer_perf.window);
+        tl_frame_perf_roll(&g_producer_perf.window);
+    }
+    pthread_mutex_unlock(&g_frame_perf_lock);
+    if (line[0]) tl_log_line("%s", line);
+}
 static uint64_t frame_perf_token(void)
 {
     pthread_mutex_lock(&g_frame_perf_lock);

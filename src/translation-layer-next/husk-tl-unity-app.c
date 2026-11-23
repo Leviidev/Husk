@@ -933,6 +933,8 @@ void husk_unity_touch(int phase, int id, float x, float y)
 }
 static atomic_bool g_app_paused;
 
+void tl_javaapp_set_host_inactive(bool inactive);
+
 void husk_unity_set_paused(bool paused)
 {
     atomic_store(&g_app_paused, paused);
@@ -947,6 +949,12 @@ void husk_unity_set_paused(bool paused)
     else if (A.engine == ENGINE_GAMEACTIVITY) { tl_ga_set_paused(paused); tl_audio_set_paused(paused); }
     else if (A.engine == ENGINE_COCOS) { tl_cocos_set_paused(paused); tl_audio_set_paused(paused); }
     else { tl_unity_set_paused(paused); tl_audio_set_paused(paused); }
+}
+
+void husk_native_host_inactive(int inactive)
+{
+    if (atomic_load(&A.state) != HUSK_UNITY_RUNNING) return;
+    if (A.engine == ENGINE_JAVA) tl_javaapp_set_host_inactive(inactive != 0);
 }
 
 void husk_native_audio_resume(void)
