@@ -29,8 +29,9 @@ enum HuskDisplayColor {
     }
     @MainActor static func apply(to layer: CALayer?, traits: UITraitCollection) {
         guard let metal = layer as? CAMetalLayer else { return }
+        if traits.displayGamut == .unspecified, metal.colorspace != nil { return }
         let cs = colorSpace(for: traits)
-        if metal.colorspace !== cs { metal.colorspace = cs }
+        if metal.colorspace != cs { metal.colorspace = cs }
     }
 }
 

@@ -488,7 +488,11 @@ static pthread_mutex_t g_frame_handoff = PTHREAD_MUTEX_INITIALIZER;
  * the one Android destroys after replacing a SurfaceView. Handoff protects
  * both ownership and publication, including the CPU readback fallback. */
 static EGLSurface g_published_comp_surface;
+static unsigned g_published_comp_tex;
+static unsigned g_compositor_pinned_tex;
+static bool g_handoff_released_for_draw;
 static atomic_bool g_compositor_es3;
+static _Atomic int64_t g_capture_pace_last_ns;
 
 /* Counts native game publications, not screen swaps or duplicate UI redraws.
  * The short sampler lock is never retained across GPU calls, pacing or logs. */
@@ -547,9 +551,12 @@ static void frame_clean_retired(void)
     for (int i = 0; i < MAX_COMP_SURFACES; i++) {
         comp_surf_entry *entry = &g_comp_surf[i];
         if (!entry->retired) continue;
-        bool pending = false;
-        for (int k = 0; k < 3; k++) pending |= tl_frame_sync_pending(&entry->sync[k]);
-        if (pending && !can_sync) continue;   /* UI's ES3 context can retire these later */
+        bool pinned = false, pending = false;
+        for (int k = 0; k < 3; k++) {
+            if (entry->tex[k] && entry->tex[k] == g_compositor_pinned_tex) pinned = true;
+            pending |= tl_frame_sync_pending(&entry->sync[k]);
+        }
+        if (pinned || (pending && !can_sync)) continue;   /* UI's ES3 context can retire these later */
         for (int k = 0; k < 3; k++) {
             tl_frame_sync_reset(&entry->sync[k], &k_frame_sync);
             if (entry->tex[k] && a_glDeleteTextures) a_glDeleteTextures(1, &entry->tex[k]);
@@ -581,17 +588,29 @@ void tl_egl_compositor_context(void *context, bool es3)
 void tl_egl_compositor_frame_begin(void)
 {
     pthread_mutex_lock(&g_frame_handoff);
+    g_handoff_released_for_draw = false;
     frame_clean_retired();
 }
 void tl_egl_compositor_frame_wait(unsigned tex)
 {
     tl_frame_sync *frame = frame_sync_of(tex);
     if (frame) tl_frame_sync_before_read(frame, &k_frame_sync);
+    /* Pin this slot for GPU sampling and release g_frame_handoff before GL draw /
+     * CAMetalLayer nextDrawable() so producers never block on CoreAnimation waits. */
+    g_compositor_pinned_tex = tex;
+    g_handoff_released_for_draw = true;
+    pthread_mutex_unlock(&g_frame_handoff);
 }
 void tl_egl_compositor_frame_end(unsigned tex)
 {
+    if (g_handoff_released_for_draw) {
+        pthread_mutex_lock(&g_frame_handoff);
+        g_handoff_released_for_draw = false;
+    }
     tl_frame_sync *frame = frame_sync_of(tex);
     if (frame) tl_frame_sync_after_read(frame, &k_frame_sync);
+    if (tex && g_compositor_pinned_tex == tex) g_compositor_pinned_tex = 0;
+    frame_clean_retired();
     pthread_mutex_unlock(&g_frame_handoff);
 }
 void tl_egl_compositor_frame_reset(void *context, bool current)
@@ -602,6 +621,9 @@ void tl_egl_compositor_frame_reset(void *context, bool current)
      * remain on their old off-screen surface instead of republishing a frame. */
     if (tl_javaapp_app_tex_publish) tl_javaapp_app_tex_publish(0, 0, 0, 0, 0, 0, 0);
     g_published_comp_surface = NULL;
+    g_published_comp_tex = 0;
+    g_compositor_pinned_tex = 0;
+    g_handoff_released_for_draw = false;
     bool can_sync = current && comp_ctx_can_sync(context);
     void *windows[MAX_COMP_SURFACES] = { 0 };
     pthread_mutex_lock(&g_tex_lock);
@@ -769,6 +791,7 @@ static EGLBoolean w_eglDestroySurface(EGLDisplay d, EGLSurface s)
             else if (tl_javaapp_app_tex) tl_javaapp_app_tex(0, 0, 0, 0, 0, 0, 0);
             else if (tl_javaapp_app_pixels) tl_javaapp_app_pixels(NULL, 0, 0);
             g_published_comp_surface = NULL;
+            g_published_comp_tex = 0;
         }
         if (comp_ctx_ver(a_eglGetCurrentContext()) > 0) frame_clean_retired();
         if (comp_win) tl_nwindow_release(comp_win);
@@ -827,6 +850,7 @@ void tl_egl_reset_session(void)
     g_offscreen_windows = false;
     tl_egl_es3_claim(0);
     atomic_store(&E.presented, 0);
+    atomic_store(&g_capture_pace_last_ns, 0);
     if (a_eglReleaseThread) (void)a_eglReleaseThread();
     if (ns || nc) tl_log_line("egl: reclaimed %d leaked guest context(s) and %d surface(s)", nc, ns);
 }
@@ -899,6 +923,15 @@ static void tex_swap(EGLDisplay d, EGLSurface s, void *win)
 }
 static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
 {
+    if (!s) return false;
+    bool has_comp = false;
+    pthread_mutex_lock(&g_tex_lock);
+    for (int i = 0; i < MAX_COMP_SURFACES; i++) {
+        if (g_comp_surf[i].s == s) { has_comp = true; break; }
+    }
+    pthread_mutex_unlock(&g_tex_lock);
+    if (!has_comp) return false;
+
     int slot = -1;
     void *win = NULL;
     int k = 0, tw = 0, th = 0;
@@ -908,11 +941,33 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
     pthread_mutex_lock(&g_frame_handoff);
     uint64_t perf_locked = frame_perf_now();
     pthread_mutex_lock(&g_tex_lock);
-    for (int i = 0; i < MAX_COMP_SURFACES && s; i++) {
+    for (int i = 0; i < MAX_COMP_SURFACES; i++) {
         if (g_comp_surf[i].s == s) {
             slot = i;
             win = g_comp_surf[i].win;
-            k = g_comp_surf[i].cur;
+            int cur = g_comp_surf[i].cur % 3;
+            int pick = cur;
+            /* Never overwrite the texture pinned on GPU by gl_run while handoff
+             * is released, and keep the latest published texture intact when a
+             * free slot exists. */
+            for (int step = 0; step < 3; step++) {
+                int cand = (cur + step) % 3;
+                unsigned t = g_comp_surf[i].tex[cand];
+                if (!t || (t != g_compositor_pinned_tex && t != g_published_comp_tex)) {
+                    pick = cand;
+                    break;
+                }
+            }
+            if (g_comp_surf[i].tex[pick] && g_comp_surf[i].tex[pick] == g_compositor_pinned_tex) {
+                for (int step = 0; step < 3; step++) {
+                    int cand = (cur + step) % 3;
+                    if (g_comp_surf[i].tex[cand] != g_compositor_pinned_tex) {
+                        pick = cand;
+                        break;
+                    }
+                }
+            }
+            k = pick;
             tex_id = g_comp_surf[i].tex[k];
             tw = g_comp_surf[i].tw[k];
             th = g_comp_surf[i].th[k];
@@ -988,6 +1043,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
             ? tl_javaapp_app_tex_publish_with_opacity(tex_id, cw, ch, vx, vy, vw, vh, opaque)
             : tl_javaapp_app_tex_publish(tex_id, cw, ch, vx, vy, vw, vh);
         g_published_comp_surface = s;
+        g_published_comp_tex = tex_id;
         pthread_mutex_unlock(&g_frame_handoff);
         uint64_t perf_published = frame_perf_now();
         /* Waiting for UI pacing while owning the texture handoff would stop
@@ -1023,6 +1079,7 @@ static bool comp_swap(EGLDisplay d, EGLSurface s, unsigned long n)
             perf_accepted = true;
         }
     }
+    if (perf_accepted) g_published_comp_tex = 0;
     pthread_mutex_unlock(&g_frame_handoff);
     if (perf_accepted) {
         uint64_t perf_published = frame_perf_now();
@@ -1046,8 +1103,7 @@ static void pace_captured_direct_swap(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     int64_t now = (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
-    static _Atomic int64_t last_ns;
-    int64_t prev = atomic_load(&last_ns);
+    int64_t prev = atomic_load(&g_capture_pace_last_ns);
     if (prev > 0 && now > prev && (now - prev) < interval_ns) {
         int64_t wait_ns = interval_ns - (now - prev);
         struct timespec req = { (time_t)(wait_ns / 1000000000ll), (long)(wait_ns % 1000000000ll) };
@@ -1055,7 +1111,7 @@ static void pace_captured_direct_swap(void)
         clock_gettime(CLOCK_MONOTONIC, &ts);
         now = (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
     }
-    atomic_store(&last_ns, now);
+    atomic_store(&g_capture_pace_last_ns, now);
 }
 
 static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
@@ -1077,8 +1133,12 @@ static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
         fprintf(stderr, "egl: calls so far, by function: %s\n", hist);
     }
     if (E.frame_dir[0] && (n % (unsigned long)E.frame_every == 0 || n <= 3)) save_frame(d, s, n);
-    if (!E.frame_dir[0]) pace_captured_direct_swap();
-    return E.frame_dir[0] ? EGL_TRUE : a_eglSwapBuffers(d, s);
+    if (E.frame_dir[0]) return EGL_TRUE;
+    /* Present and release the CAMetalDrawable before capture-pacing sleep so
+     * WindowServer/ReplayKit are never starved of drawables while waiting. */
+    EGLBoolean ok = a_eglSwapBuffers(d, s);
+    pace_captured_direct_swap();
+    return ok;
 }
 
 static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)

@@ -379,6 +379,24 @@ def main():
     run("thread clock compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}",
         str(ROOT / "tests/translation-layer/thread_clock_test.c"), "-o", str(exe)])
     run("per-thread CPU clock and schedstat contracts", [str(exe)])
+    egl_src = (ROOT / "src/translation-layer-next/husk-tl-egl.c").read_text(encoding="utf-8")
+    handoff_snippets = [
+        re.search(r"static void frame_clean_retired\(void\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"static tl_frame_sync \*frame_sync_of\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"void tl_egl_compositor_frame_begin\(void\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"void tl_egl_compositor_frame_wait\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"void tl_egl_compositor_frame_end\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"static bool comp_swap\([^)]*\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"static void pace_captured_direct_swap\(void\)\n\{.*?\n\}", egl_src, re.S)[0]
+            .replace("extern int tl_host_screen_captured(void) __attribute__((weak));", "")
+            .replace("extern int tl_host_thermal_state(void) __attribute__((weak));", ""),
+        re.search(r"static EGLBoolean swap_buffers\([^)]*\)\n\{.*?\n\}", egl_src, re.S)[0],
+    ]
+    (out / "compositor_handoff_under_test.h").write_text("\n\n".join(handoff_snippets) + "\n", encoding="utf-8")
+    exe = out / ("compositor_handoff_test.exe" if os.name == "nt" else "compositor_handoff_test")
+    run("compositor handoff compile", compiler + flags + [f"-I{ROOT / 'src/translation-layer-next'}", f"-I{out}",
+        str(ROOT / "tests/translation-layer/compositor_handoff_test.c"), "-o", str(exe)])
+    run("compositor handoff unlock, ring slot protection, and post-swap pacing contracts", [str(exe)])
     iconv = [sys.executable, "tests/translation-layer/run_iconv.py", "--cc", args.cc]
     if args.zig:
         iconv += ["--zig", str(args.zig)]

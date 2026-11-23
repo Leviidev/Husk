@@ -54,8 +54,8 @@ int main(void)
     assert(tl_host_compositor_target_hz(120, 3, 0) == 60);
     assert(tl_host_compositor_target_hz(120, 0, 1) == 60);
     assert(tl_host_compositor_target_hz(60, 0, 1) == 60);
-    assert(tl_host_compositor_target_hz(120, 1, 1) == 45);
-    assert(tl_host_compositor_target_hz(120, 2, 1) == 45);
+    assert(tl_host_compositor_target_hz(120, 1, 1) == 60);
+    assert(tl_host_compositor_target_hz(120, 2, 1) == 60);
     assert(tl_host_compositor_target_hz(120, 3, 1) == 30);
 
     /* Thermal, telemetry, and profiler samplers stay on efficiency cores while

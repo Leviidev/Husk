@@ -49,6 +49,8 @@ final class TLUnityUIView: UIView, UIKeyInput {
     /// The size, in points, the game was told it has as it started. Every engine but Flutter keeps it for good, so a window
     /// that is resized later scales the picture instead (TLWindowHost).
     private(set) var launchedSize: CGSize?
+    /// Pixel size locked for fixed-size engines so transient layout passes cannot reallocate CAMetalLayer drawables.
+    private var launchedDrawableSize: CGSize?
     /// In a floating window rather than full screen: no notch or home indicator to keep clear of.
     var windowed = false
     /// This flag supplies HUD insets; it never shrinks the game surface.
@@ -116,6 +118,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
         self.nativeResolution = nativeResolution
         super.init(frame: .zero)
         backgroundColor = .black
+        isOpaque = true
         isMultipleTouchEnabled = true
         // Two pixels per point unless the game's settings say otherwise: sharp enough, and a third of the pixels a 3x phone would
         // ask the game for -- a 3D game is limited by fill rate, and ANGLE's translation costs on top.
@@ -123,9 +126,21 @@ final class TLUnityUIView: UIView, UIKeyInput {
         contentScaleFactor = resolvedScale
         if let metal = layer as? CAMetalLayer {
             metal.pixelFormat = .bgra8Unorm
-            metal.framebufferOnly = true
+            // ANGLE renders into this layer and ReplayKit / CoreAnimation backdrop
+            // effects sample it directly during notifications and screen recording.
+            metal.framebufferOnly = false
+            metal.presentsWithTransaction = false
             metal.contentsScale = resolvedScale
             metal.isOpaque = true
+            metal.actions = [
+                "bounds": NSNull(),
+                "position": NSNull(),
+                "transform": NSNull(),
+                "contentsScale": NSNull(),
+                "drawableSize": NSNull(),
+                "colorspace": NSNull(),
+                "contents": NSNull(),
+            ]
             HuskDisplayColor.apply(to: metal, traits: traitCollection)
         }
         let threeFingers = UITapGestureRecognizer(target: self, action: #selector(threeFingerTapped))
@@ -325,7 +340,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         // An Unreal game draws with MoltenVK, which sizes this layer itself to the swapchain it made; sizing it back here on every layout would leave the layer and the
         // swapchain disagreeing from then on.
         if !(engine == .ue4 && launched), let metal = layer as? CAMetalLayer {
-            let pixels = CGSize(width: w, height: h)
+            let pixels = (launched && engine != .flutter)
+                ? (launchedDrawableSize ?? CGSize(width: w, height: h))
+                : CGSize(width: w, height: h)
             if metal.drawableSize != pixels { metal.drawableSize = pixels }
         }
         sendSafeInsetsIfNeeded()
@@ -371,6 +388,7 @@ final class TLUnityUIView: UIView, UIKeyInput {
     private func launch(width: Int, height: Int) {
         launched = true
         launchedSize = bounds.size
+        launchedDrawableSize = CGSize(width: width, height: height)
         let angle = (Bundle.main.privateFrameworksPath ?? "") + "/libANGLE-shared.dylib"
         let ca = Bundle.main.path(forResource: "cacert", ofType: "pem") ?? ""
         try? FileManager.default.createDirectory(atPath: dataDir, withIntermediateDirectories: true)
@@ -1263,8 +1281,10 @@ struct TLUnityScreen: UIViewRepresentable {
     }
     func updateUIView(_ host: TLWindowHost, context: Context) {
         host.game.onStats = onStats; host.game.onThreeFingerTap = onThreeFingerTap
-        host.game.avoidUnsafeArea = avoidUnsafeArea
-        host.game.setNeedsLayout()
+        if host.game.avoidUnsafeArea != avoidUnsafeArea || !host.game.launched {
+            host.game.avoidUnsafeArea = avoidUnsafeArea
+            host.game.setNeedsLayout()
+        }
     }
 }
 
@@ -1465,7 +1485,7 @@ struct TLCocosAttemptView: View {
                                   avoidUnsafeArea: settings.avoidUnsafeArea,
                                   onStats: { stats = $0 }, onThreeFingerTap: { toggleInterface() })
                         .background(Color.black)
-                        .ignoresSafeArea(.container)
+                        .ignoresSafeArea()
                 }
             }
             // Husk's own controls remain in the safe layout independently of the full-screen game background.

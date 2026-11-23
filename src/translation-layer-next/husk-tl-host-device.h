@@ -58,15 +58,16 @@ void tl_host_set_visual_quality(int preset);
 int  tl_host_visual_quality(void);
 
 /* Pure compositor pacing target: respects thermal pressure (stepping down early
- * at .fair thermal load before .serious screen dimming) and caps active screen
- * recording/mirroring to <=60 Hz so ReplayKit and CAMetalLayer retain headroom. */
+ * at .fair thermal load before .serious display dimming) and caps active screen
+ * recording/mirroring to <=60 Hz (30 Hz at .critical) so ReplayKit and
+ * CAMetalLayer keep integer-divisible cadence without 45 Hz beat-frequency judder. */
 static inline int tl_host_compositor_target_hz(int host_hz, int thermal_state, int screen_captured)
 {
     if (host_hz < 60) host_hz = 60;
     if (host_hz > 240) host_hz = 240;
     int target = thermal_state >= 3 ? 60 : thermal_state >= 1 ? (host_hz >= 120 ? 90 : host_hz) : host_hz;
     if (screen_captured > 0) {
-        int cap = thermal_state >= 3 ? 30 : thermal_state >= 1 ? 45 : 60;
+        int cap = thermal_state >= 3 ? 30 : 60;
         if (target > cap) target = cap;
     }
     return target;

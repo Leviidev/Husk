@@ -323,7 +323,9 @@ struct TLWindowScreen: UIViewRepresentable {
         TLWindowHost(game: TLUnityScreen.view(apk: apk, extraApks: extraApks, dataDir: dataDir, engine: engine,
                                               portrait: portrait, scale: scale, nativeResolution: nativeResolution))
     }
-    func updateUIView(_ view: TLWindowHost, context: Context) { view.setNeedsLayout() }
+    func updateUIView(_ view: TLWindowHost, context: Context) {
+        if !view.game.launched || view.game.engine == .flutter { view.setNeedsLayout() }
+    }
 }
 
 /// Fits the game's one surface to its whole host. Cutout avoidance belongs to the game's HUD.

@@ -28,6 +28,7 @@ static comp_surf_entry g_comp_surf[MAX_COMP_SURFACES];
 static struct { EGLSurface s; void *win; } g_tex_surf[MAX_TEX_SURFACES];
 static int g_frame_handoff, g_tex_lock;
 static EGLSurface g_published_comp_surface;
+static unsigned g_published_comp_tex, g_compositor_pinned_tex;
 static atomic_bool g_compositor_es3;
 static struct { char frame_dir[1]; int frame_every; } E;
 static unsigned publications, clears, releases, cleanups, paced, driver_destroys;
