@@ -13,7 +13,7 @@ on:
       publish_release:
         description: Publish the validated IPA and corresponding source as a release
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
@@ -156,7 +156,7 @@ jobs:
             LICENSE
       - name: Create GitHub Release with IPA
         uses: softprops/action-gh-release@v2
-        if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release
+        if: success() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release))
         with:
           tag_name: v-fixed-${{ github.run_number }}
           name: "HUNG APK PLAYER - Runtime build ${{ github.run_number }}"
