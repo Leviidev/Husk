@@ -1306,12 +1306,13 @@ static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t
         int src_w = pw > 0 ? pw : w;
         int src_h = ph > 0 ? ph : h;
         bool wide_color = tl_host_display_wide_color();
-        int thermal = 0;
+        int thermal = 0, captured = 0;
         { extern int tl_host_thermal_state(void) __attribute__((weak)); int (*volatile thermal_fn)(void) = tl_host_thermal_state; if (thermal_fn) thermal = thermal_fn(); }
+        { extern int tl_host_screen_captured(void) __attribute__((weak)); int (*volatile cap_fn)(void) = tl_host_screen_captured; if (cap_fn) captured = cap_fn(); }
         tl_visual_params vp = tl_visual_compute_params_thermal(tl_host_visual_quality(), thermal, wide_color,
                                                                src_w, src_h, w, h);
-        use_plain = o->plain_prog != 0 && !wide_color
-            && vp.sharpness <= 0.001f && vp.contrast <= 0.001f && vp.vibrance <= 0.001f;
+        use_plain = o->plain_prog != 0 && (captured > 0 || (!wide_color
+            && vp.sharpness <= 0.001f && vp.contrast <= 0.001f && vp.vibrance <= 0.001f));
         if (use_plain) {
             useProgram(o->plain_prog);
             uniform1i(o->plain_opaque_uniform, opaque ? 1 : 0);
@@ -1512,6 +1513,64 @@ static bool java_renderer_frame(jobj *view, jobj *renderer, const jvalue *gl_arg
     return true;
 }
 
+/* Trigger ANGLE's CAMetalLayer nextDrawable acquisition on FBO 0 outside
+ * g_frame_handoff so ReplayKit/CoreAnimation drawable waits never stall the
+ * game producer across shared GL handoff locks. */
+static uint32_t gl_create_prime_tex(void)
+{
+    void (*genTex)(int32_t, uint32_t *) = gl_fn("glGenTextures");
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*texParam)(uint32_t, uint32_t, int32_t) = gl_fn("glTexParameteri");
+    void (*texImage)(uint32_t, int32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, uint32_t, const void *) = gl_fn("glTexImage2D");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    if (!genTex || !bindTex || !texImage) return 0;
+    uint32_t tex = 0;
+    const uint8_t px[4] = { 0, 0, 0, 255 };
+    genTex(1, &tex);
+    if (!tex) return 0;
+    if (activeTex) activeTex(0x84C0);
+    bindTex(0x0DE1, tex);
+    if (texParam) {
+        texParam(0x0DE1, 0x2801, 0x2600);
+        texParam(0x0DE1, 0x2800, 0x2600);
+        texParam(0x0DE1, 0x2802, 0x812F);
+        texParam(0x0DE1, 0x2803, 0x812F);
+    }
+    texImage(0x0DE1, 0, 0x1908, 1, 1, 0, 0x1908, 0x1401, px);
+    return tex;
+}
+static void gl_prime_screen(overlay *o, uint32_t prime_tex, int vw, int vh)
+{
+    if (!o || !o->plain_prog || !o->vbo || !prime_tex || vw <= 0 || vh <= 0) return;
+    void (*viewport)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glViewport");
+    void (*enable)(uint32_t) = gl_fn("glEnable");
+    void (*disable)(uint32_t) = gl_fn("glDisable");
+    void (*scissor)(int32_t, int32_t, int32_t, int32_t) = gl_fn("glScissor");
+    void (*useProgram)(uint32_t) = gl_fn("glUseProgram");
+    void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
+    void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
+    void (*bindTex)(uint32_t, uint32_t) = gl_fn("glBindTexture");
+    void (*bindBuf)(uint32_t, uint32_t) = gl_fn("glBindBuffer");
+    void (*attrPtr)(uint32_t, int32_t, uint32_t, uint8_t, int32_t, const void *) = gl_fn("glVertexAttribPointer");
+    void (*enableAttr)(uint32_t) = gl_fn("glEnableVertexAttribArray");
+    void (*draw)(uint32_t, int32_t, int32_t) = gl_fn("glDrawArrays");
+    if (!viewport || !enable || !disable || !scissor || !useProgram || !uniform1i || !activeTex || !bindTex || !bindBuf || !attrPtr || !enableAttr || !draw) return;
+    viewport(0, 0, 1, 1);
+    disable(0x0B71); disable(0x0B44); disable(0x0B90); disable(0x0BE2);
+    enable(0x0C11);
+    scissor(0, 0, 1, 1);
+    useProgram(o->plain_prog);
+    uniform1i(o->plain_opaque_uniform, 1);
+    activeTex(0x84C0);
+    bindTex(0x0DE1, prime_tex);
+    bindBuf(0x8892, o->vbo);
+    attrPtr(0, 2, 0x1406, 0, 0, NULL);
+    enableAttr(0);
+    draw(0x0005, 0, 4);
+    disable(0x0C11);
+    viewport(0, 0, vw, vh);
+}
+
 static void *gl_run(void *arg)
 {
     TL_AUTORELEASE_SCOPE(thread_pool);
@@ -1570,6 +1629,7 @@ static void *gl_run(void *arg)
     ov_init(&ov);
     ov_init_flip_mode(&appov, true, true);
     ov_init_flip_mode(&appup, true, true);
+    uint32_t prime_tex = gl_create_prime_tex();
     tl_egl_compositor_context(ui, es3);
     tl_egl_frame_perf_set_active(true);
     pthread_mutex_lock(&E2.lk);
@@ -1678,6 +1738,9 @@ static void *gl_run(void *arg)
                         clearColor(0, 0, 0, tl_web_any_visible() && !app_frame_on() ? 0 : 1);
                         clear(0x4000);     /* web views show through from under the screen */
                     }
+                    if (opaque_cover || !tl_web_any_visible()) {
+                        gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
+                    }
                     sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
                     if (opaque_cover && sampled_seq == 0) {
                         clearColor(0, 0, 0, 1);
@@ -1762,6 +1825,10 @@ static void *gl_run(void *arg)
     /* Fence cleanup needs a current member of the shared group. A separate
      * GLSurfaceView renderer may have left its private app context current. */
     bool reset_current = makeCurrent(dpy, surf, surf, ui);
+    if (reset_current && prime_tex) {
+        void (*delTex)(int32_t, const uint32_t *) = gl_fn("glDeleteTextures");
+        if (delTex) delTex(1, &prime_tex);
+    }
     tl_egl_compositor_frame_reset(ui, reset_current);
     makeCurrent(dpy, NULL, NULL, NULL);
     return NULL;

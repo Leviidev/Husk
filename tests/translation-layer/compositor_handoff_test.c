@@ -12,6 +12,7 @@
 
 typedef void *EGLDisplay;
 typedef void *EGLSurface;
+typedef void *EGLContext;
 typedef int EGLBoolean;
 typedef int EGLint;
 
@@ -41,8 +42,7 @@ static int g_frame_handoff;
 static int g_tex_lock;
 static EGLSurface g_published_comp_surface;
 static unsigned g_published_comp_tex;
-static unsigned g_compositor_pinned_tex;
-static bool g_handoff_released_for_draw;
+static EGLContext g_compositor_ctx;
 static atomic_bool g_compositor_es3 = true;
 static _Atomic int64_t g_capture_pace_last_ns;
 static struct {
@@ -188,6 +188,8 @@ static void (*a_glDeleteTextures)(int, const unsigned *) = stub_glDeleteTextures
 static void (*a_glFlush)(void) = stub_glFlush;
 static void (*a_glFinish)(void) = stub_glFinish;
 
+static void comp_ctx_add(void *ctx, int ver) { (void)ctx; (void)ver; }
+static void comp_ctx_observe_current(void *ctx) { (void)ctx; }
 static int comp_ctx_ver(void *ctx) { return ctx ? 3 : 0; }
 static bool comp_ctx_can_sync(void *ctx) { return ctx != NULL; }
 static void *tex_window_of(EGLSurface s) { (void)s; return NULL; }
@@ -264,8 +266,7 @@ static void reset_test_state(void)
     g_tex_lock = 0;
     g_published_comp_surface = NULL;
     g_published_comp_tex = 0;
-    g_compositor_pinned_tex = 0;
-    g_handoff_released_for_draw = false;
+    g_compositor_ctx = NULL;
     atomic_store(&g_compositor_es3, true);
     atomic_store(&g_capture_pace_last_ns, 0);
     g_handoff_held = 0;
@@ -299,9 +300,9 @@ static void reset_test_state(void)
 
 int main(void)
 {
-    /* 1. gl_run releases g_frame_handoff during draw/nextDrawable while pinning
-     * the sampled texture, and TruTien's comp_swap advances without blocking or
-     * clobbering either the pinned texture or the newest published texture. */
+    /* 1. Producer ring rotates cleanly across 3 slots without clobbering
+     * g_published_comp_tex, and gl_run keeps g_frame_handoff locked across
+     * begin -> wait -> end so shared ANGLE ShareGroup contexts never collide. */
     reset_test_state();
     EGLDisplay dpy = (EGLDisplay)0xD0;
     EGLSurface game_surf = (EGLSurface)0xA1;
@@ -316,17 +317,20 @@ int main(void)
     assert(g_handoff_held == 0);
     assert(g_pace_wait_calls == 1);
 
-    /* gl_run begins frame and waits/pins t0; handoff MUST now be unlocked! */
+    /* gl_run holds g_frame_handoff strictly from begin -> wait -> end so
+     * shared ANGLE ShareGroup contexts never execute concurrently. */
     tl_egl_compositor_frame_begin();
     assert(g_handoff_held == 1);
     tl_egl_compositor_frame_wait(t0);
-    assert(g_handoff_held == 0);
-    assert(g_handoff_released_for_draw == true);
-    assert(g_compositor_pinned_tex == t0);
+    assert(g_handoff_held == 1);
     assert(g_wait_calls == 1);
+    tl_egl_compositor_frame_end(t0);
+    assert(g_handoff_held == 0);
+    assert(g_comp_surf[0].sync[0].sampled != NULL);
+    assert(g_flush_calls >= 1);
 
-    /* While gl_run is stalled in glDrawArrays / CAMetalLayer nextDrawable,
-     * producer swaps twice -> must pick slot 1 (101) and slot 2 (102), never t0! */
+    /* Producer advances through remaining ring slots without overwriting newest
+     * g_published_comp_tex, then wraps to t0 after waiting on gl_run's read sync. */
     assert(swap_buffers(dpy, game_surf) == EGL_TRUE);
     unsigned t1 = g_last_published_tex;
     assert(t1 == 101 && t1 != t0);
@@ -337,84 +341,91 @@ int main(void)
     assert(t2 == 102 && t2 != t0 && t2 != t1);
     assert(g_published_comp_tex == t2);
 
-    /* Even if producer produces a 4th frame while t0 is STILL pinned, it reuses
-     * slot 1 (t1=101) rather than touching pinned t0 or newest t2! */
     assert(swap_buffers(dpy, game_surf) == EGL_TRUE);
-    assert(g_last_published_tex == t1);
-    assert(g_comp_surf[0].tex[0] == t0);
-    assert(g_comp_surf[0].tex[1] == t1);
-    assert(g_comp_surf[0].tex[2] == t2);
+    assert(g_last_published_tex == t0);
+    assert(g_published_comp_tex == t0);
+    assert(g_wait_calls == 3 && g_drop_calls == 2); /* waits/drops prior written + sampled fences before reuse */
 
-    /* gl_run finishes drawing t0 -> re-acquires handoff, drops read sync, unpins. */
-    tl_egl_compositor_frame_end(t0);
-    assert(g_handoff_held == 0);
-    assert(g_handoff_released_for_draw == false);
-    assert(g_compositor_pinned_tex == 0);
-    assert(g_comp_surf[0].sync[0].sampled != NULL);
-
-    /* 2. Retiring a surface while one of its textures is pinned on GPU defers
-     * texture deletion until tl_egl_compositor_frame_end unpins it. */
-    tl_egl_compositor_frame_begin();
-    tl_egl_compositor_frame_wait(t2);
-    assert(g_compositor_pinned_tex == t2);
-    assert(g_handoff_held == 0);
-
+    /* 2. Retiring a surface frees all ring textures on frame_clean_retired. */
     g_comp_surf[0].retired = true;
     g_comp_surf[0].s = NULL;
-    frame_clean_retired();
-    assert(g_delete_calls == 0);
-    assert(g_comp_surf[0].retired == true);
-
-    tl_egl_compositor_frame_end(t2);
-    assert(g_compositor_pinned_tex == 0);
+    tl_egl_compositor_frame_begin();
     assert(g_delete_calls >= 1);
     assert(g_delete_count == 3);
     assert(g_comp_surf[0].retired == false);
+    tl_egl_compositor_frame_end(0);
+    assert(g_handoff_held == 0);
 
-    /* 3. Host compositor window (not in g_comp_surf) returns from comp_swap
-     * without locking g_frame_handoff, and sleeps for capture pacing STRICTLY
-     * AFTER a_eglSwapBuffers presents/releases the CAMetalDrawable. */
+    /* 3. Host gl_run compositor window (context == g_compositor_ctx, not in
+     * g_comp_surf) skips g_frame_handoff AND skips pace_captured_direct_swap()
+     * even while iOS Screen Recording is active. */
     reset_test_state();
     EGLSurface host_surf = (EGLSurface)0x1;
+    EGLContext host_ctx = (EGLContext)0xAA;
+    tl_egl_compositor_context(host_ctx, true);
+    assert(g_compositor_ctx == host_ctx);
+    g_current_ctx = host_ctx;
     g_screen_captured = 1;
-    g_thermal_state = 1; /* .fair while captured should now target 60 Hz (~16.67ms), not 45 Hz */
+    g_thermal_state = 2;
+
+    assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
+    g_fake_now_ns += 4000000ll;
+    assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
+    assert(g_handoff_lock_attempts == 0);
+    assert(g_present_calls == 2);
+    assert(g_sleep_calls == 0);
+
+    /* 4. Direct-EGL game context (!= g_compositor_ctx) when captured presents
+     * BEFORE nanosleep, preserves 60 Hz with 2 ms slack, and caps 120 Hz /
+     * .critical thermal with 1.5 ms wake slack. */
+    reset_test_state();
+    tl_egl_compositor_context(host_ctx, true);
+    g_current_ctx = (EGLContext)0xC0; /* direct game context */
+    g_screen_captured = 1;
+    g_thermal_state = 1; /* .fair while captured still allows 60 Hz */
     int64_t expected_60hz_ns = 1000000000ll / 60;
 
     assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
     assert(g_handoff_lock_attempts == 0);
     assert(g_present_calls == 1);
-    assert(g_sleep_calls == 0); /* first captured swap records timestamp, no prior wait */
+    assert(g_sleep_calls == 0); /* first frame records timestamp */
 
-    /* Second captured swap after only 4 ms must present FIRST, then sleep ~12.67 ms. */
+    /* 15.5 ms elapsed is within 2 ms slack of 16.67 ms -> no artificial sleep! */
+    g_fake_now_ns += 15500000ll;
+    assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
+    assert(g_present_calls == 2);
+    assert(g_sleep_calls == 0);
+
+    /* 4 ms elapsed (e.g. 120 Hz game) -> present first, sleep interval - 4 ms - 1.5 ms */
     g_fake_now_ns += 4000000ll;
     assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
-    assert(g_handoff_lock_attempts == 0);
-    assert(g_present_calls == 2);
+    assert(g_present_calls == 3);
     assert(g_sleep_calls == 1);
     assert(g_last_present_seq < g_last_sleep_seq);
-    assert(g_last_sleep_ns == expected_60hz_ns - 4000000ll);
+    assert(g_last_sleep_ns == expected_60hz_ns - 4000000ll - 1500000ll);
 
-    /* .critical thermal while captured drops to 30 Hz (33.33 ms interval). */
+    /* .critical thermal while captured drops cap to 30 Hz (33.33 ms interval) */
     g_thermal_state = 3;
     g_fake_now_ns += 5000000ll;
     assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
+    assert(g_present_calls == 4);
     assert(g_sleep_calls == 2);
     assert(g_last_present_seq < g_last_sleep_seq);
-    assert(g_last_sleep_ns == (1000000000ll / 30) - 5000000ll);
+    assert(g_last_sleep_ns == (1000000000ll / 30) - 5000000ll - 1500000ll);
 
-    /* Resetting session capture timestamp avoids spurious sleep on next frame. */
+    /* Resetting session capture timestamp avoids spurious sleep on next frame */
     atomic_store(&g_capture_pace_last_ns, 0);
     assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
     assert(g_sleep_calls == 2);
 
-    /* When screen capture ends, no pacing sleep runs. */
+    /* When screen capture ends, direct pacing stops completely */
     g_screen_captured = 0;
     g_fake_now_ns += 1000000ll;
     assert(swap_buffers(dpy, host_surf) == EGL_TRUE);
     assert(g_sleep_calls == 2);
     assert(g_handoff_lock_attempts == 0);
 
-    /* 4. CPU fallback publish clears g_published_comp_tex so no slot remains reserved. */
+    /* 5. CPU fallback publish clears g_published_comp_tex so no slot remains reserved */
     reset_test_state();
     g_comp_surf[0].s = game_surf;
     g_comp_surf[0].win = win;
@@ -425,6 +436,6 @@ int main(void)
     assert(swap_buffers(dpy, game_surf) == EGL_TRUE);
     assert(g_published_comp_tex == 0);
 
-    puts("PASS: compositor handoff releases mutex before draw/present, protects pinned/published ring slots, defers pinned retirement, and paces after swap at 60/30 Hz");
+    puts("PASS: compositor handoff holds mutex around ShareGroup draw, skips pacing for host gl_run, and paces direct-EGL captures with slack");
     return 0;
 }

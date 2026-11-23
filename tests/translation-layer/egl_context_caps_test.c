@@ -15,6 +15,7 @@ typedef int EGLint;
 typedef unsigned EGLBoolean;
 #define EGL_FALSE 0u
 static int g_tex_lock;
+static EGLContext g_compositor_ctx;
 static atomic_bool g_compositor_es3;
 static EGLContext current;
 static bool bind_ok = true;

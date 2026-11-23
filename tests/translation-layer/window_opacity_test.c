@@ -29,6 +29,8 @@ static int visual_quality = TL_VISUAL_PRO_MAX;
 static int tl_host_visual_quality(void) { return visual_quality; }
 static int host_thermal;
 __attribute__((weak)) int tl_host_thermal_state(void) { return host_thermal; }
+static int host_captured;
+__attribute__((weak)) int tl_host_screen_captured(void) { return host_captured; }
 static bool wide_color_enabled = true;
 static bool tl_host_display_wide_color(void) { return wide_color_enabled; }
 static struct {
@@ -130,12 +132,16 @@ int main(void)
     host_thermal = 2;
     assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 43);
     assert(program == 1 && last_sharp == 0.0f && draws == 5);
-    host_thermal = 0; visual_quality = TL_VISUAL_STANDARD; wide_color_enabled = false;
+    host_thermal = 0; host_captured = 1; visual_quality = TL_VISUAL_PRO_MAX; wide_color_enabled = true;
     assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 43);
     assert(program == 3 && draws == 6);
+    host_captured = 0;
+    host_thermal = 0; visual_quality = TL_VISUAL_STANDARD; wide_color_enabled = false;
+    assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 43);
+    assert(program == 3 && draws == 7);
     E2.on = false;
     assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 0);
-    assert(draws == 6 && uniform_calls == 6 && begins == ends && !E2.lk);
+    assert(draws == 7 && uniform_calls == 7 && begins == ends && !E2.lk);
     puts("PASS: SurfaceView opacity follows its composition format, is preserved for GPU/CPU frames, and never forces Java UI or TextureView alpha");
     return 0;
 }

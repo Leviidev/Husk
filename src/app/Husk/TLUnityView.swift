@@ -126,9 +126,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
         contentScaleFactor = resolvedScale
         if let metal = layer as? CAMetalLayer {
             metal.pixelFormat = .bgra8Unorm
-            // ANGLE renders into this layer and ReplayKit / CoreAnimation backdrop
-            // effects sample it directly during notifications and screen recording.
-            metal.framebufferOnly = false
+            // ANGLE renders via Metal render passes; keeping framebufferOnly enabled
+            // preserves TBDR lossless compression during ReplayKit screen recording.
+            metal.framebufferOnly = true
             metal.presentsWithTransaction = false
             metal.contentsScale = resolvedScale
             metal.isOpaque = true

@@ -383,6 +383,7 @@ def main():
     handoff_snippets = [
         re.search(r"static void frame_clean_retired\(void\)\n\{.*?\n\}", egl_src, re.S)[0],
         re.search(r"static tl_frame_sync \*frame_sync_of\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
+        re.search(r"void tl_egl_compositor_context\(void \*context, bool es3\)\n\{.*?\n\}", egl_src, re.S)[0],
         re.search(r"void tl_egl_compositor_frame_begin\(void\)\n\{.*?\n\}", egl_src, re.S)[0],
         re.search(r"void tl_egl_compositor_frame_wait\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
         re.search(r"void tl_egl_compositor_frame_end\(unsigned tex\)\n\{.*?\n\}", egl_src, re.S)[0],
