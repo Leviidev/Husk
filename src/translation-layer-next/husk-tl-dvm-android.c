@@ -1307,7 +1307,7 @@ static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t
         int src_h = ph > 0 ? ph : h;
         bool wide_color = tl_host_display_wide_color();
         int thermal = 0;
-        { extern int tl_host_thermal_state(void) __attribute__((weak)); if (&tl_host_thermal_state != NULL) thermal = tl_host_thermal_state(); }
+        { extern int tl_host_thermal_state(void) __attribute__((weak)); int (*volatile thermal_fn)(void) = tl_host_thermal_state; if (thermal_fn) thermal = thermal_fn(); }
         tl_visual_params vp = tl_visual_compute_params_thermal(tl_host_visual_quality(), thermal, wide_color,
                                                                src_w, src_h, w, h);
         use_plain = o->plain_prog != 0 && !wide_color
