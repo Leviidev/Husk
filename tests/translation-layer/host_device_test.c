@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "husk-tl-host-device.h"
+#include "husk-tl-qos.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdatomic.h>
@@ -44,15 +45,31 @@ int main(void)
     assert(strlen(info.model) == sizeof(info.model) - 1 && strlen(info.board) == sizeof(info.board) - 1);
     assert(strlen(info.soc) == sizeof(info.soc) - 1 && strlen(info.fingerprint) < 92 && strlen(info.display) < 92);
 
-    /* Compositor pacing keeps native refresh when idle, throttles under thermal
-     * load, and caps to <=60 Hz (stepping down under heat) while screen recording. */
+    /* Compositor pacing keeps native refresh when cool, steps down early at
+     * .fair heat before .serious display dimming, and caps to <=60 Hz while
+     * screen recording. */
     assert(tl_host_compositor_target_hz(120, 0, 0) == 120);
+    assert(tl_host_compositor_target_hz(120, 1, 0) == 90);
     assert(tl_host_compositor_target_hz(120, 2, 0) == 90);
     assert(tl_host_compositor_target_hz(120, 3, 0) == 60);
     assert(tl_host_compositor_target_hz(120, 0, 1) == 60);
     assert(tl_host_compositor_target_hz(60, 0, 1) == 60);
+    assert(tl_host_compositor_target_hz(120, 1, 1) == 45);
     assert(tl_host_compositor_target_hz(120, 2, 1) == 45);
     assert(tl_host_compositor_target_hz(120, 3, 1) == 30);
+
+    /* Thermal, telemetry, and profiler samplers stay on efficiency cores while
+     * frame and render loops stay interactive. */
+    assert(tl_qos_role_for_name("ThermalPoll") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("CpuSpeedHeat") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("CpuSpeedThermal") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("EnergyStat") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("StackSampler") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("HudBattery") == TL_QOS_ROLE_UTILITY);
+    assert(tl_qos_role_for_name("GameFrame") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("bgfxRender") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("GLThread") == TL_QOS_ROLE_INTERACTIVE);
+    assert(tl_qos_role_for_name("SkinTick0") == TL_QOS_ROLE_DEFAULT);
 
     puts("PASS: real host model/board/CPU identity stays coherent, bounded and neutral on unknown devices without changing Android API or collecting unique identifiers");
     return 0;

@@ -14,6 +14,10 @@ void tl_trutien_text_set_package(const char *package_name)
 {
     atomic_store(&text_enabled, package_name && !strcmp(package_name, "vn.trutien.client"));
 }
+void tl_trutien_text_enable_detected(void)
+{
+    atomic_store(&text_enabled, true);
+}
 bool tl_trutien_text_active(void) { return atomic_load(&text_enabled); }
 
 void tl_trutien_text_probe(tl_lib *lib)

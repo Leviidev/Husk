@@ -388,6 +388,7 @@ def main():
     run("Python analyzer/diagnostics/profile/bootstrap", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_hung_tools.py", "-v"])
     run("USB log mirror contracts", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_ios_logs.py", "-v"])
     run("Confirmed city performance windows", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_city_performance*.py", "-v"])
+    run("Tru Tien ELF/APK patch guards and archive preservation", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_trutien_*.py", "-v"])
     run("iPhone 8-18 performance test suite", [sys.executable, "tests/test_iphone_perf_suite.py", "-v"])
     run("Swift diagnosis and settings", [sys.executable, "tests/test_hung_swift.py", "-v"])
     run("Swift APK ordering baseline", [sys.executable, "tests/translation-layer/test_apk_order.py"])

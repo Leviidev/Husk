@@ -226,6 +226,11 @@ final class IncomingFiles: ObservableObject {
     func sendToAndroid() {
         let urls = waiting
         waiting = []
+        sendToAndroid(urls)
+    }
+
+    /// Queue already-local APKs directly for Android (QEMU) installation without duplicating files.
+    func sendToAndroid(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
         forAndroid += urls
         installForAndroidIfReady()

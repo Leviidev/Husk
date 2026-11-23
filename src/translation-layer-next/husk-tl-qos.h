@@ -69,27 +69,43 @@ static inline void tl_qos_apply_java_priority(int prio)
 #endif
 }
 
+enum {
+    TL_QOS_ROLE_DEFAULT     = 0,
+    TL_QOS_ROLE_INTERACTIVE = 1,
+    TL_QOS_ROLE_UTILITY     = 2,
+};
+
+/* Classify thread names so game/render loops stay on P-cores while async pools
+ * and thermal/profiler/battery samplers run on efficiency cores. */
+static inline int tl_qos_role_for_name(const char *name)
+{
+    if (!name || !*name) return TL_QOS_ROLE_DEFAULT;
+    static const char *const utility_tokens[] = {
+        "async", "worker", "pool", "http", "download", "log",
+        "background", "finalizer", "daemon", "gc", "battery", "telemetry",
+        "metrics", "thermal", "cpuspeed", "energystat", "sampler", "hitch",
+    };
+    for (size_t i = 0; i < sizeof(utility_tokens) / sizeof(utility_tokens[0]); i++) {
+        if (tl_qos_has_substr_ci(name, utility_tokens[i])) return TL_QOS_ROLE_UTILITY;
+    }
+    static const char *const interactive_tokens[] = {
+        "render", "sdl", "unity", "game", "main", "rhi",
+        "bgfx", "audio", "mixer", "glthread",
+    };
+    for (size_t i = 0; i < sizeof(interactive_tokens) / sizeof(interactive_tokens[0]); i++) {
+        if (tl_qos_has_substr_ci(name, interactive_tokens[i])) return TL_QOS_ROLE_INTERACTIVE;
+    }
+    if (name[0] == 'G' && name[1] == 'L') return TL_QOS_ROLE_INTERACTIVE;
+    return TL_QOS_ROLE_DEFAULT;
+}
+
 /* Promote game/render/audio loops by thread name while demoting known async background pools first. */
 static inline void tl_qos_apply_name(const char *name)
 {
 #if defined(__APPLE__)
-    if (!name || !*name) return;
-    if (tl_qos_has_substr_ci(name, "async") || tl_qos_has_substr_ci(name, "worker")
-        || tl_qos_has_substr_ci(name, "pool") || tl_qos_has_substr_ci(name, "http")
-        || tl_qos_has_substr_ci(name, "download") || tl_qos_has_substr_ci(name, "log")
-        || tl_qos_has_substr_ci(name, "background") || tl_qos_has_substr_ci(name, "finalizer")
-        || tl_qos_has_substr_ci(name, "daemon") || tl_qos_has_substr_ci(name, "gc")
-        || tl_qos_has_substr_ci(name, "battery") || tl_qos_has_substr_ci(name, "telemetry")
-        || tl_qos_has_substr_ci(name, "metrics")) {
-        pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
-    } else if (tl_qos_has_substr_ci(name, "render") || tl_qos_has_substr_ci(name, "sdl")
-               || tl_qos_has_substr_ci(name, "unity") || tl_qos_has_substr_ci(name, "game")
-               || tl_qos_has_substr_ci(name, "main") || tl_qos_has_substr_ci(name, "rhi")
-               || tl_qos_has_substr_ci(name, "bgfx") || tl_qos_has_substr_ci(name, "audio")
-               || tl_qos_has_substr_ci(name, "mixer") || tl_qos_has_substr_ci(name, "glthread")
-               || (name[0] == 'G' && name[1] == 'L')) {
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-    }
+    int role = tl_qos_role_for_name(name);
+    if (role == TL_QOS_ROLE_UTILITY) pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
+    else if (role == TL_QOS_ROLE_INTERACTIVE) pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
 #else
     (void)name;
 #endif

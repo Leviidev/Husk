@@ -1,6 +1,7 @@
 # Build outputs
 build/
 /IPA/
+/APK/
 /device-logs/
 src/app/project.hung.generated.yml
 __pycache__/

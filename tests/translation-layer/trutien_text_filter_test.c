@@ -213,6 +213,9 @@ static void *worker(void *unused)
     tl_trutien_font_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
     regs[3] = 0; regs[7] = 100; memcpy(before, regs, sizeof(regs));
     tl_trutien_font_filter(regs, NULL); assert(!memcmp(before, regs, sizeof(regs)));
+    tl_trutien_text_set_package("vn.cloned.trutien"); assert(!tl_trutien_text_active());
+    tl_trutien_text_enable_detected(); assert(tl_trutien_text_active());
+    tl_trutien_text_reset(); assert(!tl_trutien_text_active());
     cleanup();
     return NULL;
 }

@@ -2,6 +2,7 @@
 /* VHTG's selected HUD layout. No game assets or executable instructions are rewritten.
  * The object layout below is used ONLY for the SHA-256-matched arm64 library. */
 #include "husk-tl-vhtg-quest.h"
+#include "husk-tl-vhtg-elf.h"
 #include "husk-tl-quest-layout.h"
 #include "husk-tl-vhpt-layout.h"
 #include "husk-tl-internal.h"
@@ -236,6 +237,7 @@ typedef struct {
     void *last_scene;
     uint32_t last_gen;
     int last_safe_l;
+    tl_vhpt_dyn_offsets_t offs;
     struct {
         void *root;
         float applied_x;
@@ -251,7 +253,17 @@ typedef struct {
 static atomic_bool v_enabled;
 static vhpt_hud_state V;
 
-static const void *vhpt_writable_view(const uint8_t *base, uint32_t offset, size_t bytes)
+static void vhpt_set_default_offsets(tl_vhpt_dyn_offsets_t *offs)
+{
+    offs->str_anchor_off = VHPT_STR_ANCHOR_OFF;
+    offs->str_topleft_off = VHPT_STR_TOPLEFT_OFF;
+    offs->str_charinfo_off = VHPT_STR_CHARINFO_OFF;
+    offs->bss_safe_l_off = VHPT_BSS_SAFE_L_OFF;
+    offs->bss_safe_gen_off = VHPT_BSS_SAFE_GEN_OFF;
+    offs->bss_gamescene_off = VHPT_BSS_GAMESCENE_OFF;
+}
+
+static const void *vhpt_writable_view(const uint8_t *base, uintptr_t offset, size_t bytes)
 {
     const void *addr = base + offset;
     void *dup = tl_ld_aot_writable(addr, bytes);
@@ -308,9 +320,9 @@ static bool vhpt_verify_rodata(const uint8_t *base)
     if (V.rodata_checked) return V.rodata_ok;
     V.rodata_checked = true;
     V.rodata_ok =
-        !memcmp(base + VHPT_STR_ANCHOR_OFF, "Anchor", 7) &&
-        !memcmp(base + VHPT_STR_TOPLEFT_OFF, "TopLeft", 8) &&
-        !memcmp(base + VHPT_STR_CHARINFO_OFF, "ui_mobile/charinfo.ini", 23);
+        !memcmp(base + V.offs.str_anchor_off, "Anchor", 7) &&
+        !memcmp(base + V.offs.str_topleft_off, "TopLeft", 8) &&
+        !memcmp(base + V.offs.str_charinfo_off, "ui_mobile/charinfo.ini", 23);
     if (!V.rodata_ok) {
         tl_log_line("vhpt-hud: runtime rodata signature mismatch; disabling HUD realignment");
     }
@@ -420,13 +432,13 @@ static void vhpt_align_hud(void)
         pthread_mutex_unlock(&q_lock);
         return;
     }
-    uintptr_t scene = vhpt_read_uptr(vhpt_writable_view(base, VHPT_BSS_GAMESCENE_OFF, sizeof(uintptr_t)));
+    uintptr_t scene = vhpt_read_uptr(vhpt_writable_view(base, V.offs.bss_gamescene_off, sizeof(uintptr_t)));
     if (!scene || scene < 0x10000ULL) {
         pthread_mutex_unlock(&q_lock);
         return;
     }
-    int safe_l = vhpt_read_i32(vhpt_writable_view(base, VHPT_BSS_SAFE_L_OFF, sizeof(int32_t)));
-    uint32_t safe_gen = vhpt_read_u32(vhpt_writable_view(base, VHPT_BSS_SAFE_GEN_OFF, sizeof(uint32_t)));
+    int safe_l = vhpt_read_i32(vhpt_writable_view(base, V.offs.bss_safe_l_off, sizeof(int32_t)));
+    uint32_t safe_gen = vhpt_read_u32(vhpt_writable_view(base, V.offs.bss_safe_gen_off, sizeof(uint32_t)));
     if (safe_l <= 0) safe_l = q_cut.left;
     float vis_h = (float)(V.pixel_h > 0 ? V.pixel_h : q_cut.top + q_cut.bottom);
     if (vis_h <= 0.0f) { pthread_mutex_unlock(&q_lock); return; }
@@ -491,29 +503,73 @@ static void vhpt_gl_clear(unsigned int mask)
     if (V.orig_gl_clear) V.orig_gl_clear(mask);
 }
 
-static bool verify_mygame_profile(const char *apk, size_t expected_size, const char *expected_hash)
+static bool resolve_mygame_profile(const char *apk,
+                                   const vhtg_profile *profiles, size_t nprofiles,
+                                   bool allow_static,
+                                   size_t *out_size, uintptr_t *out_anchor, uintptr_t *out_render,
+                                   tl_vhpt_dyn_offsets_t *vhpt_offs, bool *out_dyn)
 {
     tl_zip zip;
     char error[160];
     if (!tl_zip_open(&zip, apk, error, sizeof(error))) return false;
     const tl_zip_entry *entry = tl_zip_find(&zip, "lib/arm64-v8a/libMyGame.so");
-    bool ok = entry && entry->usize == expected_size;
+    bool size_known = false;
+    if (allow_static && entry) {
+        for (size_t i = 0; i < nprofiles; i++) {
+            if (entry->usize == profiles[i].size) size_known = true;
+        }
+    }
+    if (!entry || (!size_known && entry->usize < 64u)) {
+        tl_zip_close(&zip);
+        return false;
+    }
+
     const uint8_t *data = NULL;
     size_t size = 0;
     bool owned = false;
-    if (ok) ok = tl_zip_data(&zip, entry, 24u << 20, &data, &size, &owned, error, sizeof(error));
+    bool ok = tl_zip_data(&zip, entry, 32u << 20, &data, &size, &owned, error, sizeof(error));
+    bool matched = false;
     if (ok && size > 0) {
-        uint8_t hash[32];
-        char hex[65];
-        CC_SHA256(data, (CC_LONG)size, hash);
-        for (unsigned i = 0; i < 32; i++) snprintf(hex + i * 2, 3, "%02x", hash[i]);
-        ok = !strcmp(hex, expected_hash);
-    } else {
-        ok = false;
+        if (allow_static && size_known) {
+            uint8_t hash[32];
+            char hex[65];
+            CC_SHA256(data, (CC_LONG)size, hash);
+            for (unsigned i = 0; i < 32; i++) snprintf(hex + i * 2, 3, "%02x", hash[i]);
+            for (size_t i = 0; i < nprofiles; i++) {
+                if (entry->usize == profiles[i].size && !strcmp(hex, profiles[i].hash)) {
+                    *out_size = profiles[i].size;
+                    if (out_anchor) *out_anchor = profiles[i].anchor_offset;
+                    if (out_render) *out_render = profiles[i].render_offset;
+                    *out_dyn = false;
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if (!matched && tl_elf_check_hdr(data, size)) {
+            if (vhpt_offs) {
+                tl_vhpt_dyn_offsets_t resolved;
+                if (tl_vhpt_resolve_dyn_offsets(data, size, &resolved)) {
+                    *vhpt_offs = resolved;
+                    *out_size = entry->usize;
+                    *out_dyn = true;
+                    matched = true;
+                }
+            } else if (out_anchor && out_render) {
+                tl_vhtg_dyn_offsets_t go;
+                if (tl_vhtg_resolve_dyn_offsets(data, size, &go)) {
+                    *out_size = entry->usize;
+                    *out_anchor = (uintptr_t)go.anchor_va;
+                    *out_render = (uintptr_t)go.render_va;
+                    *out_dyn = true;
+                    matched = true;
+                }
+            }
+        }
     }
     if (owned) free((void *)data);
     tl_zip_close(&zip);
-    return ok;
+    return matched;
 }
 
 static void *quest_plt(tl_lib *lib, const char *symbol, void *original)
@@ -558,43 +614,88 @@ static void hud_reset_all_locked(bool clear_cutout)
 void tl_vhtg_quest_reset(void) { hud_reset_all_locked(true); }
 bool tl_vhpt_hud_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
-    if (!package || strcmp(package,"com.tech3cgame.vhpt1")) return false;
-    hud_reset_all_locked(false);
-    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) return false;
-    if (!verify_mygame_profile(apk, VHPT_LIB_SIZE,
-            "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44")) {
-        tl_log_line("vhpt-hud: unsupported library; Vo Hiep HUD alignment disabled");
+    if (!package) return false;
+    bool known_vhtg = !strcmp(package,"review.com.game3c.vhtgmobile") || !strcmp(package,"com.game3c.vhtgmobile");
+    if (known_vhtg) return false;
+    bool known_vhpt = !strcmp(package,"com.tech3cgame.vhpt1");
+    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) {
+        if (known_vhpt) hud_reset_all_locked(false);
         return false;
     }
+    static const vhtg_profile vhpt_profiles[] = {
+        { VHPT_LIB_SIZE, "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44", 0, 0 },
+    };
+    tl_vhpt_dyn_offsets_t offs;
+    vhpt_set_default_offsets(&offs);
+    size_t lib_size = 0;
+    bool dyn = false;
+    if (!resolve_mygame_profile(apk, vhpt_profiles, 1, known_vhpt, &lib_size, NULL, NULL, &offs, &dyn)) {
+        if (known_vhpt) {
+            hud_reset_all_locked(false);
+            tl_log_line("vhpt-hud: unsupported library; Vo Hiep HUD alignment disabled");
+        }
+        return false;
+    }
+    hud_reset_all_locked(false);
+    V.offs = offs;
     V.pixel_w = pixel_width;
     V.pixel_h = pixel_height;
     V.enabled = true;
     tl_vhtg_quest_insets(insets[0],insets[1],insets[2],insets[3]);
     atomic_store(&v_enabled,true);
     tl_ld_set_plt_filter(quest_plt);
-    tl_log_line("vhpt-hud: verified library (%u bytes); aligning Character & below-left HUD like Vo Hiep (Quest unchanged)", VHPT_LIB_SIZE);
+    tl_log_line("vhpt-hud: %s library (%zu bytes, pkg=%s); aligning Character & below-left HUD (Quest unchanged)",
+                dyn ? "auto-resolved" : "verified", lib_size, package);
     return true;
 }
 bool tl_vhtg_quest_start(const char *apk,const char *package,bool requested,const int insets[4],int pixel_width,int pixel_height)
 {
-    if (!package || (strcmp(package,"review.com.game3c.vhtgmobile") && strcmp(package,"com.game3c.vhtgmobile")))
+    if (!package) return false;
+    bool known_vhtg = !strcmp(package,"review.com.game3c.vhtgmobile") || !strcmp(package,"com.game3c.vhtgmobile");
+    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) {
+        if (known_vhtg) hud_reset_all_locked(false);
         return false;
-    hud_reset_all_locked(false);
-    if (!requested || !insets || pixel_width<=0 || pixel_height<=0) return false;
-    const vhtg_profile *matched = NULL;
-    for (size_t i = 0; i < sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]); i++) {
-        if (verify_mygame_profile(apk, vhtg_profiles[i].size, vhtg_profiles[i].hash)) {
-            matched = &vhtg_profiles[i];
-            break;
-        }
     }
-    if (!matched) { tl_log_line("vhtg-quest: unsupported library; quest-only adjustment disabled"); return false; }
-    Q.anchor_offset = matched->anchor_offset;
-    Q.render_offset = matched->render_offset;
+    size_t lib_size = 0;
+    uintptr_t anchor_off = 0, render_off = 0;
+    bool dyn = false;
+    if (!resolve_mygame_profile(apk, vhtg_profiles, sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]),
+                                known_vhtg, &lib_size, &anchor_off, &render_off, NULL, &dyn)) {
+        if (known_vhtg) {
+            hud_reset_all_locked(false);
+            tl_log_line("vhtg-quest: unsupported library; quest-only adjustment disabled");
+        }
+        return false;
+    }
+    hud_reset_all_locked(false);
+    Q.anchor_offset = anchor_off;
+    Q.render_offset = render_off;
     Q.pixel_w=pixel_width; Q.pixel_h=pixel_height; Q.reports=48;
     tl_vhtg_quest_insets(insets[0],insets[1],insets[2],insets[3]);
     atomic_store(&q_enabled,true);
     tl_ld_set_plt_filter(quest_plt);
-    tl_log_line("vhtg-quest: verified library (%zu bytes); quest avoidance and separate walk/sit adjustment", matched->size);
+    tl_log_line("vhtg-quest: %s library (%zu bytes, pkg=%s); quest avoidance and separate walk/sit adjustment",
+                dyn ? "auto-resolved" : "verified", lib_size, package);
     return true;
+}
+int tl_apk_cutout_profile_kind(const char *apk, const char *package)
+{
+    if (!apk || !apk[0]) return 0;
+    bool known_vhtg = package && (!strcmp(package,"review.com.game3c.vhtgmobile") || !strcmp(package,"com.game3c.vhtgmobile"));
+    bool known_vhpt = package && !strcmp(package,"com.tech3cgame.vhpt1");
+    size_t lib_size = 0;
+    uintptr_t anchor_off = 0, render_off = 0;
+    tl_vhpt_dyn_offsets_t offs;
+    bool dyn = false;
+    if (resolve_mygame_profile(apk, vhtg_profiles, sizeof(vhtg_profiles)/sizeof(vhtg_profiles[0]),
+                               known_vhtg, &lib_size, &anchor_off, &render_off, NULL, &dyn)) {
+        return 1;
+    }
+    static const vhtg_profile vhpt_profiles[] = {
+        { VHPT_LIB_SIZE, "c04629c87573f99234f54e768e121c09b0ddcef3ac531e1facc82738ea967b44", 0, 0 },
+    };
+    if (resolve_mygame_profile(apk, vhpt_profiles, 1, known_vhpt, &lib_size, NULL, NULL, &offs, &dyn)) {
+        return 2;
+    }
+    return 0;
 }

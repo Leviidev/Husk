@@ -194,12 +194,20 @@ struct TLAppSettingsView: View {
     @State private var name: String
     @State private var dataSize: String = "…"
     @State private var confirmReset = false
+    @State private var cutoutKind: Int32
     @FocusState private var nameFocused: Bool
 
     init(app: TLApp) {
         self.app = app
         _settings = State(initialValue: TLAppSettings.load(app.id, packageName: app.packageName))
         _name = State(initialValue: app.label)
+        _cutoutKind = State(initialValue: Self.defaultCutoutKind(app.packageName))
+    }
+
+    private static func defaultCutoutKind(_ pkg: String?) -> Int32 {
+        if pkg == "review.com.game3c.vhtgmobile" || pkg == "com.game3c.vhtgmobile" { return 1 }
+        if pkg == "com.tech3cgame.vhpt1" { return 2 }
+        return 0
     }
 
     /// The game is loaded in this run of Husk, so what it keeps cannot be swapped from under it.
@@ -242,9 +250,9 @@ struct TLAppSettingsView: View {
                     ForEach(TLAppSettings.VisualQuality.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Keep game controls clear of screen cutouts", isOn: $settings.avoidUnsafeArea)
-                if app.packageName == "review.com.game3c.vhtgmobile" || app.packageName == "com.game3c.vhtgmobile", settings.avoidUnsafeArea {
+                if cutoutKind == 1, settings.avoidUnsafeArea {
                     Toggle("Adjust quest and walk/sit controls", isOn: $settings.questOnlyCutout)
-                } else if app.packageName == "com.tech3cgame.vhpt1" {
+                } else if cutoutKind == 2 {
                     Toggle("Align Character HUD to outer edge (Vo Hiep style)", isOn: $settings.questOnlyCutout)
                 }
                 Toggle("Performance readout", isOn: $settings.showStats)
@@ -359,6 +367,17 @@ struct TLAppSettingsView: View {
         .onChange(of: nameFocused) { focused in if !focused { rename() } }
         .onDisappear { rename() }
         .task { dataSize = await Self.measure(dataDirs) }
+        .task(id: app.id) {
+            guard let apk = app.apks.first else {
+                cutoutKind = Self.defaultCutoutKind(app.packageName)
+                return
+            }
+            let pkg = app.packageName
+            let detected = await Task.detached(priority: .utility) {
+                tl_apk_cutout_profile_kind(apk, pkg)
+            }.value
+            if detected != cutoutKind { cutoutKind = detected }
+        }
         .confirmationDialog("Reset the data of \(app.label)?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset Game Data", role: .destructive) {
                 for dir in dataDirs { try? FileManager.default.removeItem(at: dir) }

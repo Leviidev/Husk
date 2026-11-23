@@ -3007,7 +3007,7 @@ static void patch_library(tl_lib *L, size_t *t, size_t *a, size_t *ad, size_t *s
     mono_aot_code_only(L);
     patch_image(L, t, a, ad, sv);
     skip_boringssl_selfcheck(L);
-    (void)patch_trutien_text_entries(L);
+    if (patch_trutien_text_entries(L)) tl_trutien_text_enable_detected();
 }
 
 /*

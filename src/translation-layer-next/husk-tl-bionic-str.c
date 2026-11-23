@@ -743,11 +743,24 @@ static int b_mallopt(int param, int value)
 {
     (void)value;
 #ifdef __APPLE__
-    /* Bionic M_PURGE (-101) / M_PURGE_ALL (-104): relieve purgeable malloc pressure on Jetsam warnings. */
+    /* Bionic M_PURGE (-101) / M_PURGE_ALL (-104): relieve purgeable malloc pressure on Jetsam warnings,
+     * debounced so periodic guest purges don't lock every malloc zone and hitch gameplay. */
     if (param == -104 || param == -101) {
-        (void)malloc_zone_pressure_relief(NULL, 0);
-        malloc_zone_t *z = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
-        if (z) (void)malloc_zone_pressure_relief(z, 0);
+        static _Atomic long long g_last_purge_ns = 0;
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        long long now_ns = (long long)ts.tv_sec * 1000000000LL + (long long)ts.tv_nsec;
+        if (now_ns == 0) now_ns = 1;
+        long long prev_ns = atomic_load_explicit(&g_last_purge_ns, memory_order_relaxed);
+        if (prev_ns == 0 || (now_ns - prev_ns) >= 15000000000LL) {
+            if (atomic_compare_exchange_strong_explicit(
+                    &g_last_purge_ns, &prev_ns, now_ns,
+                    memory_order_relaxed, memory_order_relaxed)) {
+                (void)malloc_zone_pressure_relief(NULL, 0);
+                malloc_zone_t *z = atomic_load_explicit(&g_guest_zone, memory_order_acquire);
+                if (z) (void)malloc_zone_pressure_relief(z, 0);
+            }
+        }
     }
 #else
     (void)param;

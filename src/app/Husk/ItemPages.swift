@@ -136,6 +136,8 @@ struct GamePage: View {
     @ObservedObject private var store = TranslationLayerStore.shared
     @ObservedObject private var jit = JITCoordinator.shared
     @ObservedObject private var nativeSession = TLNativeSession.shared
+    @ObservedObject private var host = AndroidHost.shared
+    @ObservedObject private var guest = GuestImage.shared
     @Environment(\.dismiss) private var dismiss
     @State private var playing = false
     @State private var confirmRemove = false
@@ -151,6 +153,7 @@ struct GamePage: View {
     @State private var updateMessage: String?
     @State private var updateFailed = false
     @State private var gameStorage: StorageCleaner.GameEntry?
+    @State private var androidTransferMessage: String?
 
     private var currentApp: TLApp { store.apps.first { $0.id == app.id } ?? app }
 
@@ -233,6 +236,34 @@ struct GamePage: View {
                 }
                 HuskLink(value: LibraryRoute.gameReport(app.id)) {
                     Label("Technical Details", systemImage: "cpu")
+                }
+            }
+
+            if !isGeodeLauncher {
+                Section {
+                    if host.isReady {
+                        Button { tryInAndroid() } label: {
+                            Label("Install and Run in Android (QEMU)", systemImage: "apps.iphone")
+                        }
+                        .disabled(host.busy != nil || currentApp.apks.isEmpty)
+                    } else if guest.state == .ready {
+                        Button { tryInAndroid() } label: {
+                            Label("Start Android (QEMU) and Install", systemImage: "apps.iphone")
+                        }
+                        .disabled(currentApp.apks.isEmpty)
+                    } else {
+                        HuskLink(value: LibraryRoute.androidSystem) {
+                            Label("Get Android (QEMU) for Unsupported APKs", systemImage: "arrow.down.circle")
+                        }
+                    }
+                } header: {
+                    Text(!runs || GameStatusStore.shared.diagnosis(app.id) != nil ? "Fallback: Full Android VM" : "Android VM")
+                } footer: {
+                    if let androidTransferMessage {
+                        Text(androidTransferMessage)
+                    } else {
+                        Text("For games or apps that do not start on the Translation Layer (anti-cheat, missing Android APIs, x86-only or Google Play dependencies), install this APK into Husk's full Android (QEMU) system instead.")
+                    }
                 }
             }
 
@@ -491,6 +522,19 @@ struct GamePage: View {
     /// Geode's Android launcher, added as if it were a game: it is a whole Android app, which Husk does not run. On Husk Geode
     /// is turned on from Geometry Dash's own settings, and this APK only lends it a library.
     private var isGeodeLauncher: Bool { app.packageName == GeodeSupport.launcherPackage }
+
+    private func tryInAndroid() {
+        let urls = currentApp.apks.map { URL(fileURLWithPath: $0) }
+        guard !urls.isEmpty else { return }
+        IncomingFiles.shared.sendToAndroid(urls)
+        if host.isReady {
+            androidTransferMessage = "Installing \(currentApp.label) into Android…"
+            Router.shared.openGuest()
+        } else {
+            androidTransferMessage = "\(currentApp.label) queued — starting Android VM…"
+            Router.shared.startAndroid()
+        }
+    }
     private var geometryDash: TLApp? { store.apps.first { $0.packageName == GeodeSupport.gamePackage } }
 
     @ViewBuilder

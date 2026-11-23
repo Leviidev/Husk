@@ -68,6 +68,13 @@ int main(void)
     assert(pro_native.vibrance > crisp.vibrance && crisp.vibrance > stdp.vibrance);
     assert(pro_srgb.vibrance > pro_native.vibrance);
 
+    /* Thermal step-down cuts multi-tap sharpening at .fair heat and disables
+     * neighborhood fetches cleanly at .serious/.critical heat to prevent dimming. */
+    tl_visual_params pro_fair = tl_visual_compute_params_thermal(TL_VISUAL_PRO_MAX, 1, true, 1568, 724, 2796, 1290);
+    tl_visual_params pro_serious = tl_visual_compute_params_thermal(TL_VISUAL_PRO_MAX, 2, true, 1568, 724, 2796, 1290);
+    assert(pro_fair.sharpness > 0.0f && pro_fair.sharpness <= 0.40f && pro_fair.sharpness < pro_upscaled.sharpness);
+    assert(pro_serious.sharpness == 0.0f && pro_serious.contrast < pro_fair.contrast && pro_serious.vibrance < pro_fair.vibrance);
+
     /* Every display preset preserves the game's filtering decisions. In
      * particular, selecting sharpening must not silently enable AF when the
      * game reports Aniso=0/1x or replace its mipmap interpolation. */

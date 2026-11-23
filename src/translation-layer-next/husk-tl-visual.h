@@ -57,4 +57,25 @@ static inline tl_visual_params tl_visual_compute_params(int preset, bool wide_co
     return out;
 }
 
+/* Step back fragment shader cost proactively under thermal pressure so GPU power
+ * drops before iOS .serious throttling dims the display and cuts CPU clocks. */
+static inline tl_visual_params tl_visual_compute_params_thermal(int preset, int thermal_state,
+                                                                bool wide_color, int src_w, int src_h,
+                                                                int dst_w, int dst_h)
+{
+    tl_visual_params out = tl_visual_compute_params(preset, wide_color, src_w, src_h, dst_w, dst_h);
+    if (thermal_state <= 0) return out;
+    if (thermal_state == 1) {
+        out.sharpness *= 0.55f;
+        if (out.sharpness > 0.40f) out.sharpness = 0.40f;
+        out.contrast *= 0.70f;
+        out.vibrance *= 0.75f;
+        return out;
+    }
+    out.sharpness = 0.0f;
+    out.contrast *= 0.35f;
+    out.vibrance *= 0.45f;
+    return out;
+}
+
 #endif

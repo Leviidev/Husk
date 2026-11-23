@@ -165,6 +165,7 @@ static void kivy_statics(void)
 }
 
 void tl_trutien_install(void);
+static bool g_trutien_known_pkg;
 
 void tl_sdl_apps_install(const char *package)
 {
@@ -172,7 +173,8 @@ void tl_sdl_apps_install(const char *package)
     if (!strcmp(package, "org.broguece.game")) tl_jni_register_hle(k_brogue);
     if (tl_dexidx_has_class(LOVE)) { tl_jni_register_hle(k_love); tl_ld_interpose("luaL_openlibs", (void *)luajit_openlibs); }
     if (!strcmp(package, "org.pgnapps.pk2")) tl_jni_register_hle(k_pk2);
-    if (!strcmp(package, "vn.trutien.client")) tl_trutien_install();
+    g_trutien_known_pkg = package && !strcmp(package, "vn.trutien.client");
+    tl_trutien_install();
 }
 
 #if defined(__APPLE__)
@@ -233,10 +235,11 @@ void tl_trutien_on_init(tl_lib *lib)
 {
     const char *name = tl_ld_lib_name(lib);
     if (name && (strstr(name, "libmain.so") || !strcmp(name, "main"))) {
-        tl_log_line("trutien: hooking libmain.so glb_CalcFileMD5");
-        bool ok = tl_ld_hook_symbol(lib, "_Z15glb_CalcFileMD5PKcPh", (void *)tl_trutien_calc_file_md5);
-        if (!ok) {
-            tl_log_line("trutien: symbol not found, trying offset 0x1a954f8");
+        if (tl_ld_sym(lib, "_Z15glb_CalcFileMD5PKcPh")) {
+            tl_log_line("trutien: hooking libmain.so glb_CalcFileMD5 by symbol");
+            (void)tl_ld_hook_symbol(lib, "_Z15glb_CalcFileMD5PKcPh", (void *)tl_trutien_calc_file_md5);
+        } else if (g_trutien_known_pkg) {
+            tl_log_line("trutien: symbol not found, trying legacy offset 0x1a954f8");
             tl_ld_hook_offset(lib, 0x1a954f8, (void *)tl_trutien_calc_file_md5);
         }
     }

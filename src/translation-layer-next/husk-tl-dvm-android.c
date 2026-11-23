@@ -821,8 +821,8 @@ bool tl_ui_frame_pending(void);
 void tl_ui_frame_reset(void);
 
 typedef struct {
-    uint32_t prog, tex, vbo;
-    int tw, th, opaque_uniform, texel_uniform, enhance_uniform;
+    uint32_t prog, plain_prog, tex, vbo;
+    int tw, th, opaque_uniform, plain_opaque_uniform, texel_uniform, enhance_uniform;
 } overlay;
 
 static uint32_t ov_shader(uint32_t kind, const char *src)
@@ -923,7 +923,7 @@ static void ov_init_flip_mode(overlay *o, bool bottom_up, bool enhance)
         "            float gy = (lSW + 2.0 * lS + lSE) - (lNW + 2.0 * lN + lNE);"
         "            vec2 tang = vec2(gy, -gx);"
         "            float tangLen = length(tang);"
-        "            if (tangLen > 0.035 * range) {"
+        "            if (enhanceParams.x >= 0.42 && tangLen > 0.035 * range) {"
         "                vec2 dir = tang / tangLen;"
         "                vec3 cA = texture2D(s, clamp(t - dir * (invTexSize * 0.65), lo, hi)).rgb;"
         "                vec3 cB = texture2D(s, clamp(t + dir * (invTexSize * 0.65), lo, hi)).rgb;"
@@ -955,16 +955,15 @@ static void ov_init_flip_mode(overlay *o, bool bottom_up, bool enhance)
         "        e = clamp(sharp, max(rgbMin - headroom, vec3(0.0)), min(rgbMax + headroom, vec3(1.0)));"
         "    }"
         "    if (enhanceParams.w > 0.5 || enhanceParams.y > 0.001 || enhanceParams.z > 0.001) {"
-        "        vec3 linLo = e / 12.92;"
-        "        vec3 linHi = pow(max(e + vec3(0.055), vec3(0.055)) / 1.055, vec3(2.4));"
-        "        vec3 lin = mix(linLo, linHi, step(vec3(0.04045), e));"
+        "        vec3 lin = e * (e * (e * 0.305306011 + 0.682171111) + 0.012522878);"
         "        if (enhanceParams.y > 0.001) {"
         "            float lLin = dot(lin, LUMA);"
         "            if (lLin > 0.0001 && lLin < 1.0) {"
         "                const float mid = 0.21;"
-        "                float loL = pow(lLin / mid, 1.0 + enhanceParams.y * 0.85) * mid;"
-        "                float hiL = 1.0 - pow(max(1.0 - lLin, 0.0) / (1.0 - mid), 1.0 + enhanceParams.y * 0.55) * (1.0 - mid);"
-        "                float targetL = lLin < mid ? loL : hiL;"
+        "                float k = enhanceParams.y;"
+        "                float targetL = lLin < mid"
+        "                    ? lLin * (1.0 - k * 0.42 * (mid - lLin) / mid)"
+        "                    : 1.0 - (1.0 - lLin) * (1.0 - k * 0.26 * (lLin - mid) / (1.0 - mid));"
         "                lin = clamp(lin * (targetL / lLin), 0.0, 1.0);"
         "            }"
         "        }"
@@ -985,9 +984,10 @@ static void ov_init_flip_mode(overlay *o, bool bottom_up, bool enhance)
         "            );"
         "            lin = clamp(srgbToP3 * lin, 0.0, 1.0);"
         "        }"
-        "        vec3 srgbLo = lin * 12.92;"
-        "        vec3 srgbHi = 1.055 * pow(max(lin, vec3(0.0031308)), vec3(1.0 / 2.4)) - vec3(0.055);"
-        "        e = clamp(mix(srgbLo, srgbHi, step(vec3(0.0031308), lin)), 0.0, 1.0);"
+        "        vec3 s1 = sqrt(lin);"
+        "        vec3 s2 = sqrt(s1);"
+        "        vec3 s3 = sqrt(s2);"
+        "        e = clamp(0.662002687 * s1 + 0.684122060 * s2 - 0.323583601 * s3 - 0.0225411470, 0.0, 1.0);"
         "    }"
         "    gl_FragColor = vec4(e, alpha);"
         "}";
@@ -998,11 +998,13 @@ static void ov_init_flip_mode(overlay *o, bool bottom_up, bool enhance)
     void (*bufData)(uint32_t, intptr_t, const void *, uint32_t) = gl_fn("glBufferData");
     o->prog = enhance ? ov_build_program(vs, fs_enhance) : 0;
     bool using_enhance = o->prog != 0;
+    o->plain_prog = ov_build_program(vs, fs_plain);
     if (!o->prog) {
         if (enhance) tl_log_line("javaapp: compositor enhanced shader unavailable; falling back to passthrough");
-        o->prog = ov_build_program(vs, fs_plain);
+        o->prog = o->plain_prog;
     }
     o->opaque_uniform = o->prog ? uniformLocation(o->prog, "forceOpaque") : -1;
+    o->plain_opaque_uniform = o->plain_prog ? uniformLocation(o->plain_prog, "forceOpaque") : -1;
     o->texel_uniform = using_enhance ? uniformLocation(o->prog, "invTexSize") : -1;
     o->enhance_uniform = using_enhance ? uniformLocation(o->prog, "enhanceParams") : -1;
     genTex(1, &o->tex);
@@ -1298,19 +1300,32 @@ static uint64_t app_frame_draw(overlay *o, overlay *up, int vw, int vh, uint64_t
     void (*activeTex)(uint32_t) = gl_fn("glActiveTexture");
     viewport(x, vh - y - h, w, h);
     disable(0x0B71); disable(0x0B44); disable(0x0C11); disable(0x0B90); disable(0x0BE2);
-    useProgram(o->prog);
     void (*uniform1i)(int32_t, int32_t) = gl_fn("glUniform1i");
-    uniform1i(o->opaque_uniform, opaque ? 1 : 0);
+    bool use_plain = o->plain_prog != 0 && o->texel_uniform < 0;
     if (o->texel_uniform >= 0 && o->enhance_uniform >= 0) {
         int src_w = pw > 0 ? pw : w;
         int src_h = ph > 0 ? ph : h;
         bool wide_color = tl_host_display_wide_color();
-        tl_visual_params vp = tl_visual_compute_params(tl_host_visual_quality(), wide_color,
-                                                       src_w, src_h, w, h);
-        void (*uniform2f)(int32_t, float, float) = gl_fn("glUniform2f");
-        void (*uniform4f)(int32_t, float, float, float, float) = gl_fn("glUniform4f");
-        if (uniform2f) uniform2f(o->texel_uniform, src_w > 0 ? 1.0f / (float)src_w : 0.0f, src_h > 0 ? 1.0f / (float)src_h : 0.0f);
-        if (uniform4f) uniform4f(o->enhance_uniform, vp.sharpness, vp.contrast, vp.vibrance, wide_color ? 1.0f : 0.0f);
+        int thermal = 0;
+        { extern int tl_host_thermal_state(void) __attribute__((weak)); if (&tl_host_thermal_state != NULL) thermal = tl_host_thermal_state(); }
+        tl_visual_params vp = tl_visual_compute_params_thermal(tl_host_visual_quality(), thermal, wide_color,
+                                                               src_w, src_h, w, h);
+        use_plain = o->plain_prog != 0 && !wide_color
+            && vp.sharpness <= 0.001f && vp.contrast <= 0.001f && vp.vibrance <= 0.001f;
+        if (use_plain) {
+            useProgram(o->plain_prog);
+            uniform1i(o->plain_opaque_uniform, opaque ? 1 : 0);
+        } else {
+            useProgram(o->prog);
+            uniform1i(o->opaque_uniform, opaque ? 1 : 0);
+            void (*uniform2f)(int32_t, float, float) = gl_fn("glUniform2f");
+            void (*uniform4f)(int32_t, float, float, float, float) = gl_fn("glUniform4f");
+            if (uniform2f) uniform2f(o->texel_uniform, src_w > 0 ? 1.0f / (float)src_w : 0.0f, src_h > 0 ? 1.0f / (float)src_h : 0.0f);
+            if (uniform4f) uniform4f(o->enhance_uniform, vp.sharpness, vp.contrast, vp.vibrance, wide_color ? 1.0f : 0.0f);
+        }
+    } else {
+        useProgram(use_plain ? o->plain_prog : o->prog);
+        uniform1i(use_plain ? o->plain_opaque_uniform : o->opaque_uniform, opaque ? 1 : 0);
     }
     activeTex(0x84C0);
     bindTex(0x0DE1, tex ? tex : up->tex);
@@ -1728,10 +1743,9 @@ static void *gl_run(void *arg)
             if (late > 100000000ll) next = now_ns();
             else if (late < 0) { struct timespec ts = { 0, (long)(-late) }; nanosleep(&ts, NULL); }
         } else {
-            static int idle_ticks = 0;
-            if (drew || fresh || app_fresh) idle_ticks = 0;
-            else if (idle_ticks < 20) idle_ticks++;
-            long wait_ns = idle_ticks >= 10 ? 50000000L : (1000000000L / target_hz);
+            /* Both external swaps and UI invalidations broadcast E2.cv directly,
+             * so wait 50ms between idle checks instead of waking spuriously at 120 Hz. */
+            long wait_ns = 50000000L;
             pthread_mutex_lock(&E2.lk);
             if (!atomic_load(&A.ended) && !atomic_load(&A.paused) && E2.seq == app_seq
                 && !__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !tl_ui_frame_pending()

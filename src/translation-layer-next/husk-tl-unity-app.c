@@ -744,12 +744,29 @@ int tl_host_screen_captured(void) { return atomic_load(&g_screen_captured); }
 void husk_native_screen_captured(int captured) { atomic_store(&g_screen_captured, captured > 0 ? 1 : 0); }
 void husk_native_memory_pressure(int level)
 {
-    if (tl_dvm_running()) tl_host_log_memory_breakdown("game-memory-warning");
-    if (tl_dvm_graphics_trim) tl_dvm_graphics_trim();
-    if (tl_dvm_running() && tl_jar_cache_trim) tl_jar_cache_trim(level >= 2 ? 0 : (16u << 20));
-    if (java_running()) tl_javaapp_touch(10, 0, 0, 0);
+    /* Debounce repeated iOS memory-warning notifications so the guest doesn't
+     * nuke caches and stall every frame during a transient pressure spike. */
+    static _Atomic uint64_t last_heavy_ns;
+    static _Atomic uint64_t last_malloc_ns;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t now = (uint64_t)ts.tv_sec * UINT64_C(1000000000) + (uint64_t)ts.tv_nsec;
+
+    uint64_t prev_heavy = atomic_load(&last_heavy_ns);
+    if (prev_heavy == 0 || now < prev_heavy || (now - prev_heavy) >= UINT64_C(12000000000)) {
+        if (atomic_compare_exchange_strong(&last_heavy_ns, &prev_heavy, now)) {
+            if (tl_dvm_running()) tl_host_log_memory_breakdown("game-memory-warning");
+            if (tl_dvm_graphics_trim) tl_dvm_graphics_trim();
+            if (tl_dvm_running() && tl_jar_cache_trim) tl_jar_cache_trim(level >= 2 ? 0 : (16u << 20));
+            if (java_running()) tl_javaapp_touch(10, 0, 0, 0);
+        }
+    }
 #ifdef __APPLE__
-    (void)malloc_zone_pressure_relief(NULL, 0);
+    uint64_t prev_malloc = atomic_load(&last_malloc_ns);
+    if (prev_malloc == 0 || now < prev_malloc || (now - prev_malloc) >= UINT64_C(2000000000)) {
+        if (atomic_compare_exchange_strong(&last_malloc_ns, &prev_malloc, now))
+            (void)malloc_zone_pressure_relief(NULL, 0);
+    }
 #endif
 }
 void husk_java_memory_warning(void)

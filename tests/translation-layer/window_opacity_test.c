@@ -21,8 +21,14 @@ static jvalue tl_jni_get_field(void *view, const char *name, const char *sig)
 static bool tl_jni_pending(void) { return pending; }
 static void tl_jni_clear(void) { pending = false; }
 
-typedef struct { uint32_t prog, tex, vbo; int tw, th, opaque_uniform, texel_uniform, enhance_uniform; } overlay;
-static int tl_host_visual_quality(void) { return TL_VISUAL_PRO_MAX; }
+typedef struct {
+    uint32_t prog, plain_prog, tex, vbo;
+    int tw, th, opaque_uniform, plain_opaque_uniform, texel_uniform, enhance_uniform;
+} overlay;
+static int visual_quality = TL_VISUAL_PRO_MAX;
+static int tl_host_visual_quality(void) { return visual_quality; }
+static int host_thermal;
+__attribute__((weak)) int tl_host_thermal_state(void) { return host_thermal; }
 static bool wide_color_enabled = true;
 static bool tl_host_display_wide_color(void) { return wide_color_enabled; }
 static struct {
@@ -52,7 +58,7 @@ static void two_u32(uint32_t target, uint32_t value) { (void)target; (void)value
 static void attrib(uint32_t a, int32_t b, uint32_t c, uint8_t d, int32_t e, const void *f)
 { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; }
 static void uniform(int32_t location, int32_t value)
-{ assert(location == (program == 1 ? 9 : 10)); last_opaque = value; uniform_calls++; }
+{ assert(location == (program == 1 ? 9 : program == 3 ? 13 : 10)); last_opaque = value; uniform_calls++; }
 static void uniform2f(int32_t location, float x, float y)
 { assert(location == 11 && program == 1); last_inv_x = x; last_inv_y = y; }
 static void uniform4f(int32_t location, float x, float y, float z, float w)
@@ -95,9 +101,12 @@ int main(void)
     field_error = true; assert(!tl_nwindow_is_opaque(&w) && !pending); field_error = false;
     w.view = NULL; assert(!tl_nwindow_is_opaque(&w) && !tl_nwindow_is_opaque(NULL));
 
-    overlay native = { .prog = 1, .tex = 11, .vbo = 12, .tw = 2, .th = 2, .opaque_uniform = 9, .texel_uniform = 11, .enhance_uniform = 12 };
-    overlay cpu = { .tex = 13, .opaque_uniform = -1, .texel_uniform = -1, .enhance_uniform = -1 };
-    overlay ui = { .prog = 2, .tex = 21, .vbo = 22, .tw = 2, .th = 2, .opaque_uniform = 10, .texel_uniform = -1, .enhance_uniform = -1 };
+    overlay native = {
+        .prog = 1, .plain_prog = 3, .tex = 11, .vbo = 12, .tw = 2, .th = 2,
+        .opaque_uniform = 9, .plain_opaque_uniform = 13, .texel_uniform = 11, .enhance_uniform = 12
+    };
+    overlay cpu = { .tex = 13, .opaque_uniform = -1, .plain_opaque_uniform = -1, .texel_uniform = -1, .enhance_uniform = -1 };
+    overlay ui = { .prog = 2, .tex = 21, .vbo = 22, .tw = 2, .th = 2, .opaque_uniform = 10, .plain_opaque_uniform = -1, .texel_uniform = -1, .enhance_uniform = -1 };
     E2.on = true; E2.tex = 70; E2.pw = 1568; E2.ph = 724; E2.w = 2796; E2.h = 1290; E2.opaque = true;
     E2.seq = 42;
     uint64_t handoff_ns;
@@ -117,9 +126,16 @@ int main(void)
     E2.seq = 43;
     assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 43);
     assert(last_opaque == 1 && uploads == 1 && draws == 4);
+    E2.tex = 70; E2.pw = 1568; E2.ph = 724;
+    host_thermal = 2;
+    assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 43);
+    assert(program == 1 && last_sharp == 0.0f && draws == 5);
+    host_thermal = 0; visual_quality = TL_VISUAL_STANDARD; wide_color_enabled = false;
+    assert(app_frame_draw(&native, &cpu, 2796, 1290, &handoff_ns) == 43);
+    assert(program == 3 && draws == 6);
     E2.on = false;
     assert(app_frame_draw(&native, &cpu, 1864, 860, &handoff_ns) == 0);
-    assert(draws == 4 && uniform_calls == 4 && begins == ends && !E2.lk);
+    assert(draws == 6 && uniform_calls == 6 && begins == ends && !E2.lk);
     puts("PASS: SurfaceView opacity follows its composition format, is preserved for GPU/CPU frames, and never forces Java UI or TextureView alpha");
     return 0;
 }

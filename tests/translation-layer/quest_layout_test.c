@@ -9,6 +9,7 @@
 #include "husk-tl-internal.h"
 #include "husk-tl-ld.h"
 #include "husk-tl-vhtg-quest.h"
+#include "husk-tl-vhtg-elf.h"
 #include "husk-tl-quest-layout.h"
 #include "husk-tl-vhpt-layout.h"
 #include <CommonCrypto/CommonDigest.h>
@@ -36,6 +37,8 @@ static const char *library="libMyGame.so";
 static void *(*filter)(tl_lib *,const char *,void *);
 static tl_zip_entry entry={.usize=14643976};
 static const uint8_t fake_zip_data[1]={0};
+static const uint8_t *override_zip_data;
+static size_t override_zip_size;
 static void put_double(void *p,unsigned at,double v) { memcpy((uint8_t *)p+at,&v,8); }
 static double get_double(const void *p,unsigned at) { double v;memcpy(&v,(const uint8_t *)p+at,8);return v; }
 static void put_int(void *p,unsigned at,int v) { memcpy((uint8_t *)p+at,&v,4); }
@@ -100,10 +103,21 @@ void tl_zip_close(tl_zip *z) { (void)z; }
 const tl_zip_entry *tl_zip_find(const tl_zip *z,const char *name)
 { (void)z;assert(!strcmp(name,"lib/arm64-v8a/libMyGame.so"));return &entry; }
 bool tl_zip_data(const tl_zip *z,const tl_zip_entry *e,size_t limit,const uint8_t **d,size_t *n,bool *owned,char *err,size_t cap)
-{ (void)z;(void)e;(void)limit;(void)err;(void)cap;*d=fake_zip_data;*n=1;*owned=false;return true; }
+{
+    (void)z;(void)e;(void)limit;(void)err;(void)cap;
+    *d = override_zip_data ? override_zip_data : fake_zip_data;
+    *n = override_zip_data ? override_zip_size : 1u;
+    *owned = false;
+    return true;
+}
 static const char *mock_sha = "0c468ae6407377f61d33f1bbe77928b1d5c32cdede98ab163b86a897f0b60dcb";
 unsigned char *CC_SHA256(const void *data,CC_LONG size,unsigned char *out)
 {
+    if (override_zip_data) {
+        (void)data;(void)size;
+        memset(out, 0xab, 32);
+        return out;
+    }
     assert(data==fake_zip_data&&size==1);
     for (unsigned i=0;i<32;i++) { unsigned v;assert(sscanf(mock_sha+i*2,"%2x",&v)==1);out[i]=(uint8_t)v; }
     if (!hash_match) out[0]^=1;
@@ -141,6 +155,8 @@ static void begin(int pixel_w,int pixel_h,const int *clip)
     assert(tl_vhtg_quest_start("x","review.com.game3c.vhtgmobile",true,clip,pixel_w,pixel_h));
     bind_profile();
 }
+
+static void test_dynamic_elf_discovery(void);
 
 int main(void)
 {
@@ -450,6 +466,214 @@ int main(void)
     tl_vhtg_quest_reset();
     free(vhpt_dup);
     free(vhpt_img);
-    puts("PASS: selected HUD uses the registry/object ABI, moves Character & BottomLeft outward (+downward clear of cutout) in both VHTG & VHPT, handles AOT dup BSS, keeps Nhiệm vụ clear/unchanged, and avoids drift over repeated updates");
+    test_dynamic_elf_discovery();
+    puts("PASS: selected HUD uses the registry/object ABI, moves Character & BottomLeft outward (+downward clear of cutout) in both VHTG & VHPT, handles AOT dup BSS, keeps Nhiệm vụ clear/unchanged, avoids drift, and auto-discovers shifted VHTG/VHPT ELFs");
     return 0;
+}
+
+static void w16(uint8_t *p, uint16_t v) { memcpy(p, &v, sizeof(v)); }
+static void w32(uint8_t *p, uint32_t v) { memcpy(p, &v, sizeof(v)); }
+static void w64(uint8_t *p, uint64_t v) { memcpy(p, &v, sizeof(v)); }
+
+static uint32_t enc_adrp(uint32_t rd, uint64_t pc, uint64_t target)
+{
+    int64_t pages = (int64_t)(target >> 12) - (int64_t)(pc >> 12);
+    uint32_t imm21 = (uint32_t)(pages & 0x1fffff);
+    return 0x90000000u | ((imm21 & 3u) << 29) | (((imm21 >> 2) & 0x7ffffu) << 5) | (rd & 0x1fu);
+}
+
+static uint32_t enc_add_imm(uint32_t rd, uint32_t rn, uint32_t imm12)
+{
+    return 0x91000000u | ((imm12 & 0xfffu) << 10) | ((rn & 0x1fu) << 5) | (rd & 0x1fu);
+}
+
+static uint32_t enc_ldr64_uoff(uint32_t rt, uint32_t rn, uint32_t off)
+{
+    assert((off % 8u) == 0u);
+    return 0xf9400000u | (((off / 8u) & 0xfffu) << 10) | ((rn & 0x1fu) << 5) | (rt & 0x1fu);
+}
+
+typedef struct {
+    const char *name;
+    uint64_t va;
+} test_dyn_sym;
+
+static uint8_t *build_test_elf(size_t *out_len, const test_dyn_sym *syms, size_t nsyms)
+{
+    enum {
+        TEXT_OFF = 0x4000u, TEXT_SZ = 0x1000u,
+        RO_OFF = 0x2000u, RO_SZ = 0x1000u,
+        DYNSTR_OFF = 0x1000u, DYNSTR_SZ = 0x400u,
+        DYNSYM_OFF = 0x1400u, SHSTR_OFF = 0x6000u, SHDR_OFF = 0x7000u,
+        ELF_SZ = 0x10000u
+    };
+    uint8_t *elf = calloc(1, ELF_SZ);
+    assert(elf != NULL);
+    elf[0] = 0x7fu; elf[1] = 'E'; elf[2] = 'L'; elf[3] = 'F';
+    elf[4] = 2u; elf[5] = 1u; elf[6] = 1u;
+    w16(elf + 16, 3u);   /* ET_DYN */
+    w16(elf + 18, 183u); /* EM_AARCH64 */
+    w32(elf + 20, 1u);
+    w64(elf + 32, 64u);       /* e_phoff */
+    w64(elf + 40, SHDR_OFF);  /* e_shoff */
+    w16(elf + 52, 64u);
+    w16(elf + 54, 56u);
+    w16(elf + 56, 2u);
+    w16(elf + 58, 64u);
+    w16(elf + 60, 6u);
+    w16(elf + 62, 5u);
+
+    /* PT_LOAD[0]: R|X file-backed 0x0..0x10000 */
+    w32(elf + 64, 1u); w32(elf + 68, 5u);
+    w64(elf + 72, 0u); w64(elf + 80, 0u);
+    w64(elf + 96, ELF_SZ); w64(elf + 104, ELF_SZ);
+    /* PT_LOAD[1]: R|W BSS 0x10000..0x20000 */
+    w32(elf + 120, 1u); w32(elf + 124, 6u);
+    w64(elf + 128, 0u); w64(elf + 136, 0x10000u);
+    w64(elf + 152, 0u); w64(elf + 160, 0x10000u);
+
+    /* Populate .dynstr and .dynsym */
+    size_t str_cur = 1u;
+    for (size_t i = 0; i < nsyms; i++) {
+        size_t slen = strlen(syms[i].name) + 1u;
+        assert(str_cur + slen <= DYNSTR_SZ);
+        memcpy(elf + DYNSTR_OFF + str_cur, syms[i].name, slen);
+        uint8_t *ent = elf + DYNSYM_OFF + (i + 1u) * 24u;
+        w32(ent + 0, (uint32_t)str_cur);
+        ent[4] = 0x12u;
+        w64(ent + 8, syms[i].va);
+        w64(ent + 16, 64u);
+        str_cur += slen;
+    }
+
+    /* Section names in .shstrtab */
+    static const char shnames[] = "\0.dynsym\0.dynstr\0.rodata\0.text\0.shstrtab\0";
+    memcpy(elf + SHSTR_OFF, shnames, sizeof(shnames));
+    uint8_t *sh = elf + SHDR_OFF;
+    /* [1] .dynsym */
+    w32(sh + 64 * 1 + 0, 1u); w32(sh + 64 * 1 + 4, 11u);
+    w64(sh + 64 * 1 + 16, DYNSYM_OFF); w64(sh + 64 * 1 + 24, DYNSYM_OFF);
+    w64(sh + 64 * 1 + 32, (nsyms + 1u) * 24u); w32(sh + 64 * 1 + 40, 2u);
+    w64(sh + 64 * 1 + 56, 24u);
+    /* [2] .dynstr */
+    w32(sh + 64 * 2 + 0, 9u); w32(sh + 64 * 2 + 4, 3u);
+    w64(sh + 64 * 2 + 16, DYNSTR_OFF); w64(sh + 64 * 2 + 24, DYNSTR_OFF);
+    w64(sh + 64 * 2 + 32, DYNSTR_SZ);
+    /* [3] .rodata */
+    w32(sh + 64 * 3 + 0, 17u); w32(sh + 64 * 3 + 4, 1u);
+    w64(sh + 64 * 3 + 16, RO_OFF); w64(sh + 64 * 3 + 24, RO_OFF);
+    w64(sh + 64 * 3 + 32, RO_SZ);
+    /* [4] .text */
+    w32(sh + 64 * 4 + 0, 25u); w32(sh + 64 * 4 + 4, 1u);
+    w64(sh + 64 * 4 + 16, TEXT_OFF); w64(sh + 64 * 4 + 24, TEXT_OFF);
+    w64(sh + 64 * 4 + 32, TEXT_SZ);
+    /* [5] .shstrtab */
+    w32(sh + 64 * 5 + 0, 31u); w32(sh + 64 * 5 + 4, 3u);
+    w64(sh + 64 * 5 + 24, SHSTR_OFF); w64(sh + 64 * 5 + 32, sizeof(shnames));
+
+    *out_len = ELF_SZ;
+    return elf;
+}
+
+static void test_dynamic_elf_discovery(void)
+{
+    /* 1. VHTG: shifted .dynsym offsets resolved dynamically despite unknown size & SHA-256 */
+    static const test_dyn_sym vhtg_syms[6] = {
+        {"KT_SetUiAnchorSafeArea", 0x912340u},
+        {"_Z17Wnd_RenderWindowsv", 0x912580u},
+        {"g_UIManager", 0x1f00000u},
+        {"_ZN9KUIManage10GetUIGroupEPKc", 0x920000u},
+        {"_ZN8KUIGroup9GetWindowEPKc", 0x920100u},
+        {"_ZN10KWndWindow11SetPositionEii", 0x920200u},
+    };
+    size_t elf_sz = 0;
+    uint8_t *vhtg_elf = build_test_elf(&elf_sz, vhtg_syms, 6);
+    override_zip_data = vhtg_elf;
+    override_zip_size = elf_sz;
+    entry.usize = elf_sz;
+    const int insets[4] = {177, 0, 177, 63};
+    /* Package-agnostic ELF capability activation for renamed/cloned VHTG APKs */
+    assert(tl_apk_cutout_profile_kind("future.apk", "vn.vhtg.repack") == 1);
+    assert(tl_vhtg_quest_start("future.apk", "vn.vhtg.repack", true, insets, 2556, 1179));
+    fixture_base = 0x1000000ULL;
+    library = "libMyGame.so";
+    assert(filter(found_lib, "KT_SetUiAnchorSafeArea", (void *)(fixture_base + 0x912340u)) != (void *)(fixture_base + 0x912340u));
+    assert(filter(found_lib, "_Z17Wnd_RenderWindowsv", (void *)(fixture_base + 0x912580u)) != (void *)(fixture_base + 0x912580u));
+    assert(filter(found_lib, "KT_SetUiAnchorSafeArea", (void *)(fixture_base + 0x7cd9d0u)) == (void *)(fixture_base + 0x7cd9d0u));
+    tl_vhtg_quest_reset();
+
+    /* Reject ELF missing a required VHTG UI symbol */
+    uint8_t *bad_vhtg = build_test_elf(&elf_sz, vhtg_syms, 5);
+    override_zip_data = bad_vhtg;
+    override_zip_size = elf_sz;
+    assert(!tl_vhtg_quest_start("future.apk", "com.game3c.vhtgmobile", true, insets, 2556, 1179));
+    free(bad_vhtg);
+    free(vhtg_elf);
+
+    /* 2. VHPT: shifted .rodata strings + ADRP+ADD/LDR .bss offsets resolved dynamically */
+    static const test_dyn_sym vhpt_syms[1] = {
+        {"Java_org_cocos2dx_cpp_AppActivity_nativeSetSafeArea", 0x4200u},
+    };
+    uint8_t *vhpt_elf = build_test_elf(&elf_sz, vhpt_syms, 1);
+    memcpy(vhpt_elf + 0x2111u, "Anchor", 7);
+    memcpy(vhpt_elf + 0x2222u, "TopLeft", 8);
+    memcpy(vhpt_elf + 0x2333u, "ui_mobile/charinfo.ini", 23);
+    memcpy(vhpt_elf + 0x2444u, "scene.update.head", 18);
+    /* nativeSetSafeArea @ 0x4200 -> 0x11140 (.bss SAFE_L, SAFE_GEN=0x11150) */
+    w32(vhpt_elf + 0x4200u, enc_adrp(12u, 0x4200u, 0x11140u));
+    w32(vhpt_elf + 0x4204u, enc_add_imm(12u, 12u, 0x140u));
+    /* scene.update.head xref @ 0x4400 -> 0x2444, followed by s_gameScene @ 0x11880 */
+    w32(vhpt_elf + 0x4400u, enc_adrp(0u, 0x4400u, 0x2444u));
+    w32(vhpt_elf + 0x4404u, enc_add_imm(0u, 0u, 0x444u));
+    w32(vhpt_elf + 0x4420u, enc_adrp(20u, 0x4420u, 0x11880u));
+    w32(vhpt_elf + 0x4424u, enc_ldr64_uoff(8u, 20u, 0x880u));
+
+    override_zip_data = vhpt_elf;
+    override_zip_size = elf_sz;
+    entry.usize = elf_sz;
+    /* Package-agnostic ELF capability activation for renamed/cloned VHPT APKs */
+    assert(tl_apk_cutout_profile_kind("future-vhpt.apk", "com.vhpt.clone") == 2);
+    assert(tl_vhpt_hud_start("future-vhpt.apk", "com.vhpt.clone", true, insets, 2556, 1179));
+
+    uint8_t *vhpt_dyn_img = calloc(1, 0x20000u);
+    assert(vhpt_dyn_img != NULL);
+    memcpy(vhpt_dyn_img + 0x2111u, "Anchor", 7);
+    memcpy(vhpt_dyn_img + 0x2222u, "TopLeft", 8);
+    memcpy(vhpt_dyn_img + 0x2333u, "ui_mobile/charinfo.ini", 23);
+
+    _Alignas(16) uint8_t scene_mem[0x700] = {0};
+    _Alignas(16) uint8_t char_panel[0x400] = {0};
+    _Alignas(16) uint8_t char_root[0x120] = {0};
+    _Alignas(16) uint8_t ini_tl[64] = {0};
+    ini_tl[0] = (uint8_t)(7 << 1);
+    memcpy(ini_tl + 1, "TopLeft", 8);
+    void *dyn_vtable[0x30] = {0};
+    dyn_vtable[VHPT_NODE_VTBL_SETPOS / sizeof(void *)] = (void *)fake_setpos;
+    *(void **)(char_root) = dyn_vtable;
+    *(float *)(char_root + VHPT_NODE_SCALEX_OFF) = 1.0f;
+    *(float *)(char_root + VHPT_NODE_POSX_OFF) = 177.0f;
+    *(uintptr_t *)(char_panel + 0x300) = (uintptr_t)ini_tl;
+    *(uintptr_t *)(char_panel + 0x328) = (uintptr_t)char_root;
+    *(uintptr_t *)(scene_mem + 0x3b0) = (uintptr_t)char_panel;
+    *(uintptr_t *)(vhpt_dyn_img + 0x11880u) = (uintptr_t)scene_mem;
+    int32_t safe_l_val = 177;
+    uint32_t safe_gen_val = 2u;
+    memcpy(vhpt_dyn_img + 0x11140u, &safe_l_val, sizeof(safe_l_val));
+    memcpy(vhpt_dyn_img + 0x11150u, &safe_gen_val, sizeof(safe_gen_val));
+
+    void (*dyn_clear)(unsigned int) = (void (*)(unsigned int))filter(found_lib, "glClear", (void *)fake_gl_clear);
+    assert(dyn_clear != fake_gl_clear);
+    fixture_base = (uintptr_t)vhpt_dyn_img;
+    library = "libMyGame.so";
+    vhpt_clears = 0;
+    dyn_clear(0x4000u);
+    assert(vhpt_clears == 1);
+    assert(*(float *)(char_root + VHPT_NODE_POSX_OFF) == 24.0f || *(float *)(char_root + VHPT_NODE_POSX_OFF) == 26.0f);
+
+    tl_vhtg_quest_reset();
+    free(vhpt_dyn_img);
+    free(vhpt_elf);
+    override_zip_data = NULL;
+    override_zip_size = 0;
+    entry.usize = 14643976;
 }
