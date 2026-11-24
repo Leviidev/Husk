@@ -152,7 +152,12 @@ final class WebAppRuntime: NSObject {
         let replaceable = """
         ['speechSynthesis'].forEach(function (k) { try { var v = window[k]; Object.defineProperty(window, k, { value: v, writable: true, configurable: true }); } catch (x) {} });
         """
-        return errors + replaceable + bootScriptForKind()
+        // What Android's WebView gives a page and WKWebView inside Husk does not: the page has focus whenever the app is in front.
+        // Without it, engines that pause unfocused (RPG Maker MV ports such as OMORI) never draw a frame.
+        let androidLike = """
+        Document.prototype.hasFocus = function () { return !this.hidden; };
+        """
+        return errors + replaceable + androidLike + bootScriptForKind()
     }
 
     private func bootScriptForKind() -> String {
@@ -574,13 +579,16 @@ private final class SchemeHandler: NSObject, WKURLSchemeHandler {
             // server does on Android.
             return candidate.pathExtension.isEmpty ? runtime.root.appendingPathComponent("index.html") : candidate
         }
-        guard let file, let data = try? Data(contentsOf: file) else {
+        guard let file, var data = try? Data(contentsOf: file) else {
+            // An empty body, as Android's asset loader sends: ports test `status === 200 || responseText !== ""` to see whether a
+            // file exists, and a body made every missing file look present (OMORI's case-insensitive lookups never ran).
             let r = HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "text/plain"])!
             task.didReceive(r)
-            task.didReceive(Data("Not found".utf8))
+            task.didReceive(Data())
             task.didFinish()
             return
         }
+        if ["ogg", "oga"].contains(file.pathExtension.lowercased()) { data = OggEndTrim.lifted(data) }
         let mime = Self.mimeTypes[file.pathExtension.lowercased()]
             ?? UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         let headers = ["Content-Type": mime, "Content-Length": "\(data.count)", "Cache-Control": "no-cache",
@@ -598,6 +606,45 @@ private final class SchemeHandler: NSObject, WKURLSchemeHandler {
         "htm": "text/html", "json": "application/json", "map": "application/json", "wasm": "application/wasm",
         "svg": "image/svg+xml", "webmanifest": "application/manifest+json", "woff": "font/woff", "woff2": "font/woff2",
     ]
+}
+
+/// Chromium decodes an Ogg Vorbis file to its last packet and ignores the end trim in its final page's granule position; WebKit
+/// honours it. Some games ship files whose granule cuts most of the sound (OMORI's text blip: 0.035 s, the click past the mark),
+/// so on Android they play and under Husk they are silent. Moving the final granule past the end makes WebKit decode what
+/// Chromium does; it adds no samples.
+enum OggEndTrim {
+    private static let crcTable: [UInt32] = (0..<256).map { i in
+        var c = UInt32(i) << 24
+        for _ in 0..<8 { c = (c & 0x8000_0000) != 0 ? (c << 1) ^ 0x04C1_1DB7 : c << 1 }
+        return c
+    }
+
+    static func lifted(_ data: Data) -> Data {
+        var b = [UInt8](data)
+        guard b.count > 27 else { return data }
+        // The last page: the final "OggS" whose page runs to the end of the file.
+        var i = b.count - 27
+        while i >= 0 {
+            if b[i] == 0x4F, b[i + 1] == 0x67, b[i + 2] == 0x67, b[i + 3] == 0x53 { break }
+            i -= 1
+        }
+        guard i >= 0, i + 27 <= b.count else { return data }
+        let segments = Int(b[i + 26])
+        guard i + 27 + segments <= b.count else { return data }
+        let body = b[(i + 27)..<(i + 27 + segments)].reduce(0) { $0 + Int($1) }
+        let end = i + 27 + segments + body
+        guard end == b.count, b[i + 5] & 0x04 != 0 else { return data }   // a whole end-of-stream page, or leave it alone
+        var granule: UInt64 = 0
+        for k in 0..<8 { granule |= UInt64(b[i + 6 + k]) << (8 * UInt64(k)) }
+        guard granule < UInt64.max - (1 << 24) else { return data }       // -1 (no packet ends here), or no room to move it
+        granule += 1 << 24
+        for k in 0..<8 { b[i + 6 + k] = UInt8(truncatingIfNeeded: granule >> (8 * UInt64(k))) }
+        for k in 22..<26 { b[i + k] = 0 }
+        var crc: UInt32 = 0
+        for k in i..<end { crc = (crc << 8) ^ crcTable[Int(((crc >> 24) ^ UInt32(b[k])) & 0xFF)] }
+        for k in 0..<4 { b[i + 22 + k] = UInt8(truncatingIfNeeded: crc >> (8 * UInt32(k))) }
+        return Data(b)
+    }
 }
 
 /// WKUserContentController keeps its handlers strongly; this breaks the cycle with the runtime that owns the web view.
