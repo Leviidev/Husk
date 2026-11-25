@@ -10,7 +10,7 @@ public class Process {
     public static void setThreadPriority(int p) {}
     public static void setThreadPriority(int tid, int p) {}
     public static int getThreadPriority(int tid) { return 0; }
-    public static void killProcess(int pid) { husk.Native.exit(); }
+    public static void killProcess(int pid) { if (pid == myPid()) husk.AppRunner.killProcess(); }
     /* when the process started: the first use of this class, early in the app's start */
     private static final long START_NANOS = System.nanoTime(), START_ELAPSED = SystemClock.elapsedRealtime(), START_UPTIME = SystemClock.uptimeMillis();
     public static boolean is64Bit() { return true; }

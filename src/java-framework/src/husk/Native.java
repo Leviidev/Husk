@@ -45,5 +45,6 @@ public final class Native {
     public static native void vibrate(long ms);
     public static native void openUrl(String url);
     public static native void exit();
+    public static native void processRestarted();
     public static native long uptimeNanos();
 }
