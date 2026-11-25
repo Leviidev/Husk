@@ -176,25 +176,25 @@ int main(void)
     assert((uintptr_t)fences[0] == 3 && !g_deleted[3]);
     assert(defer_since == g_fake_now_ns);
 
-    /* Watchdog clears N-1-only stall at 120 ms without waiting for 180 ms */
-    g_fake_now_ns += 119000000ll;
+    /* Watchdog clears N-1-only stall at 24 ms without exceeding producer 40 ms timeout */
+    g_fake_now_ns += 23000000ll;
     assert(!compositor_gpu_ready(fences, idx, true, g_fake_now_ns, &defer_since, stub_client_wait_sync, stub_delete_sync));
     assert((uintptr_t)fences[0] == 3);
     g_fake_now_ns += 1000000ll;
     assert(compositor_gpu_ready(fences, idx, true, g_fake_now_ns, &defer_since, stub_client_wait_sync, stub_delete_sync));
     assert(fences[0] == NULL && g_deleted[3] && defer_since == 0);
 
-    /* 3. N-2 stall uses longer 180 ms watchdog before releasing both wedged slots */
+    /* 3. N-2 stall uses 36 ms watchdog before releasing both wedged slots */
     reset_test_state();
     defer_since = 0; idx = 0;
     fences[0] = fences[1] = NULL;
     compositor_gpu_arm(fences, &idx, stub_fence_sync, stub_delete_sync); /* id 1 */
     compositor_gpu_arm(fences, &idx, stub_fence_sync, stub_delete_sync); /* id 2 */
     assert(!compositor_gpu_ready(fences, idx, true, g_fake_now_ns, &defer_since, stub_client_wait_sync, stub_delete_sync));
-    g_fake_now_ns += 150000000ll;
+    g_fake_now_ns += 30000000ll;
     assert(!compositor_gpu_ready(fences, idx, true, g_fake_now_ns, &defer_since, stub_client_wait_sync, stub_delete_sync));
     assert(!g_deleted[1] && !g_deleted[2]);
-    g_fake_now_ns += 30000000ll;
+    g_fake_now_ns += 6000000ll;
     assert(compositor_gpu_ready(fences, idx, true, g_fake_now_ns, &defer_since, stub_client_wait_sync, stub_delete_sync));
     assert(fences[0] == NULL && fences[1] == NULL && g_deleted[1] && g_deleted[2] && defer_since == 0);
 

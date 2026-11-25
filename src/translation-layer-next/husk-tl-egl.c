@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@
 #include "husk-tl-gl-capabilities.h"
 #include "husk-tl-frame-perf.h"
 #include "husk-tl-host-device.h"
+#include "husk-tl-qos.h"
 #include "husk-tl-session.h"
 #include "husk-tl-visual.h"
 
@@ -1108,6 +1110,105 @@ static void pace_captured_direct_swap(void)
     atomic_store(&g_capture_pace_last_ns, now);
 }
 
+/* Per-thread RHI/GL producer phase profiler and QoS guard so any >28 ms frame stall
+ * on the guest render thread isolates wall vs thread CPU, GL buckets, swap, and ObjC pool drain. */
+enum {
+    TL_GL_PHASE_DRAW = 0,
+    TL_GL_PHASE_BUF  = 1,
+    TL_GL_PHASE_SYNC = 2,
+    TL_GL_PHASE_BLIT = 3,
+    TL_GL_PHASE_TEX  = 4,
+};
+static __thread struct {
+    bool active;
+    bool qos_done;
+    int last_cap;
+    int64_t last_swap_end_ns;
+    int64_t last_swap_cpu_ns;
+    int64_t phase_ns[5];
+    uint32_t phase_calls[5];
+} t_rhi_prof;
+
+static inline int64_t rhi_mono_ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
+}
+
+static inline int64_t rhi_cpu_ns(void)
+{
+#ifdef CLOCK_THREAD_CPUTIME_ID
+    struct timespec ts;
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0)
+        return (int64_t)ts.tv_sec * 1000000000ll + ts.tv_nsec;
+#endif
+    return 0;
+}
+
+static inline void tl_egl_prof_end(int phase, int64_t t0)
+{
+    if (!t0) return;
+    int64_t dt = rhi_mono_ns() - t0;
+    if (dt > 0) t_rhi_prof.phase_ns[phase] += dt;
+    t_rhi_prof.phase_calls[phase]++;
+}
+
+#define RHI_PROF_CALL(phase, stmt) do { \
+    int64_t _rhi_t0 = t_rhi_prof.active ? rhi_mono_ns() : 0; \
+    stmt; \
+    tl_egl_prof_end((phase), _rhi_t0); \
+} while (0)
+
+static void rhi_prof_record_swap(int64_t swap_start_ns, int64_t swap_start_cpu_ns,
+    int64_t pool_start_ns, int64_t end_ns, int64_t end_cpu_ns)
+{
+    if (!t_rhi_prof.active) return;
+    extern int tl_host_screen_captured(void) __attribute__((weak));
+    extern int tl_host_thermal_state(void) __attribute__((weak));
+    int cap = tl_host_screen_captured ? tl_host_screen_captured() : 0;
+    int therm = tl_host_thermal_state ? tl_host_thermal_state() : 0;
+    if (!t_rhi_prof.qos_done || (cap > 0 && t_rhi_prof.last_cap <= 0)) {
+        tl_qos_set_interactive();
+        t_rhi_prof.qos_done = true;
+    }
+    t_rhi_prof.last_cap = cap;
+
+    if (t_rhi_prof.last_swap_end_ns > 0) {
+        int64_t pre_wall = swap_start_ns - t_rhi_prof.last_swap_end_ns;
+        int64_t pre_cpu = swap_start_cpu_ns - t_rhi_prof.last_swap_cpu_ns;
+        int64_t swap_ns = pool_start_ns - swap_start_ns;
+        int64_t pool_ns = end_ns - pool_start_ns;
+        int64_t tot_wall = end_ns - t_rhi_prof.last_swap_end_ns;
+        int64_t tot_cpu = end_cpu_ns - t_rhi_prof.last_swap_cpu_ns;
+        if (tot_wall > 28000000ll || pool_ns > 5000000ll) {
+            static atomic_int_fast64_t s_last_hitch_ns;
+            int64_t prev_log = atomic_load(&s_last_hitch_ns);
+            if ((end_ns - prev_log) >= 250000000ll
+                && atomic_compare_exchange_strong(&s_last_hitch_ns, &prev_log, end_ns)) {
+                int64_t gl_sum = 0;
+                for (int i = 0; i < 5; i++) gl_sum += t_rhi_prof.phase_ns[i];
+                int64_t other_ns = pre_wall > gl_sum ? pre_wall - gl_sum : 0;
+                tl_log_line(
+                    "rhi-hitch: tot=%.2f cpu=%.2f pre=%.2f(cpu=%.2f) draw=%.2f(%u) buf=%.2f(%u) "
+                    "sync=%.2f(%u) blit=%.2f(%u) tex=%.2f(%u) other=%.2f swap=%.2f pool=%.2f cap=%d therm=%d",
+                    (double)tot_wall / 1e6, (double)tot_cpu / 1e6,
+                    (double)pre_wall / 1e6, (double)pre_cpu / 1e6,
+                    (double)t_rhi_prof.phase_ns[TL_GL_PHASE_DRAW] / 1e6, t_rhi_prof.phase_calls[TL_GL_PHASE_DRAW],
+                    (double)t_rhi_prof.phase_ns[TL_GL_PHASE_BUF] / 1e6, t_rhi_prof.phase_calls[TL_GL_PHASE_BUF],
+                    (double)t_rhi_prof.phase_ns[TL_GL_PHASE_SYNC] / 1e6, t_rhi_prof.phase_calls[TL_GL_PHASE_SYNC],
+                    (double)t_rhi_prof.phase_ns[TL_GL_PHASE_BLIT] / 1e6, t_rhi_prof.phase_calls[TL_GL_PHASE_BLIT],
+                    (double)t_rhi_prof.phase_ns[TL_GL_PHASE_TEX] / 1e6, t_rhi_prof.phase_calls[TL_GL_PHASE_TEX],
+                    (double)other_ns / 1e6, (double)swap_ns / 1e6, (double)pool_ns / 1e6, cap, therm);
+            }
+        }
+    }
+    memset(t_rhi_prof.phase_ns, 0, sizeof(t_rhi_prof.phase_ns));
+    memset(t_rhi_prof.phase_calls, 0, sizeof(t_rhi_prof.phase_calls));
+    t_rhi_prof.last_swap_end_ns = end_ns;
+    t_rhi_prof.last_swap_cpu_ns = end_cpu_ns;
+}
+
 static EGLBoolean swap_buffers(EGLDisplay d, EGLSurface s)
 {
     void *texwin = tex_window_of(s);
@@ -1143,8 +1244,17 @@ static EGLBoolean w_eglSwapBuffers(EGLDisplay d, EGLSurface s)
         if (tl_guest_session_force_stopping() && tl_guest_thread_is_retirable()) tl_guest_thread_retire();
         return EGL_TRUE;
     }
+    void *cur_ctx = a_eglGetCurrentContext ? a_eglGetCurrentContext() : NULL;
+    if (cur_ctx && cur_ctx != g_compositor_ctx) t_rhi_prof.active = true;
+    int64_t swap_start_ns = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    int64_t swap_start_cpu_ns = t_rhi_prof.active ? rhi_cpu_ns() : 0;
     EGLBoolean ok = swap_buffers(d, s);
+    int64_t pool_start_ns = t_rhi_prof.active ? rhi_mono_ns() : 0;
     tl_guest_pool_frame();
+    if (t_rhi_prof.active) {
+        rhi_prof_record_swap(swap_start_ns, swap_start_cpu_ns, pool_start_ns,
+            rhi_mono_ns(), rhi_cpu_ns());
+    }
     return ok;
 }
 
@@ -1169,20 +1279,20 @@ static EGLBoolean w_eglGetCompositorTimingANDROID(EGLDisplay d, EGLSurface s, EG
  */
 static void (*r_glBlitFramebuffer)(int, int, int, int, int, int, int, int, unsigned, unsigned);
 static void w_glBlitFramebuffer(int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, uint64_t mask, uint64_t filter)
-{ r_glBlitFramebuffer(a0, a1, a2, a3, a4, a5, a6, a7, (unsigned)mask, (unsigned)filter); }
+{ RHI_PROF_CALL(TL_GL_PHASE_BLIT, r_glBlitFramebuffer(a0, a1, a2, a3, a4, a5, a6, a7, (unsigned)mask, (unsigned)filter)); }
 
 static void (*r_glTexSubImage3D)(unsigned, int, int, int, int, int, int, int, unsigned, unsigned, const void *);
 static void w_glTexSubImage3D(unsigned t, int l, int x, int y, int z, int w, int h, int d, uint64_t fmt, uint64_t type, const void *px)
-{ r_glTexSubImage3D(t, l, x, y, z, w, h, d, (unsigned)fmt, (unsigned)type, px); }
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glTexSubImage3D(t, l, x, y, z, w, h, d, (unsigned)fmt, (unsigned)type, px)); }
 
 static void (*r_glCompressedTexSubImage3D)(unsigned, int, int, int, int, int, int, int, unsigned, int, const void *);
 static void w_glCompressedTexSubImage3D(unsigned t, int l, int x, int y, int z, int w, int h, int d, uint64_t fmt, uint64_t size, const void *data)
-{ r_glCompressedTexSubImage3D(t, l, x, y, z, w, h, d, (unsigned)fmt, (int)size, data); }
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glCompressedTexSubImage3D(t, l, x, y, z, w, h, d, (unsigned)fmt, (int)size, data)); }
 
 static void (*r_glCopyImageSubData)(unsigned, unsigned, int, int, int, int, unsigned, unsigned, int, int, int, int, int, int, int);
 static void w_glCopyImageSubData(unsigned sn, unsigned st, int sl, int sx, int sy, int sz, unsigned dn, unsigned dt,
                                  uint64_t dl, uint64_t dx, uint64_t dy, uint64_t dz, uint64_t w, uint64_t h, uint64_t d)
-{ r_glCopyImageSubData(sn, st, sl, sx, sy, sz, dn, dt, (int)dl, (int)dx, (int)dy, (int)dz, (int)w, (int)h, (int)d); }
+{ RHI_PROF_CALL(TL_GL_PHASE_BLIT, r_glCopyImageSubData(sn, st, sl, sx, sy, sz, dn, dt, (int)dl, (int)dx, (int)dy, (int)dz, (int)w, (int)h, (int)d)); }
 
 /* GLboolean arguments: AAPCS64 callers do not extend them, Apple's callee may assume they are. */
 static void (*r_glColorMask)(unsigned, unsigned, unsigned, unsigned);
@@ -1309,7 +1419,10 @@ static EGLint w_eglClientWaitSyncKHR(EGLDisplay d, void *s, EGLint f, uint64_t t
 {
     if (!s) return EGL_FALSE;
     if (!a_eglGetCurrentContext()) return 0x30F6;                   /* EGL_CONDITION_SATISFIED_KHR */
-    return r_eglClientWaitSyncKHR(d, s, f, t);
+    int64_t t0 = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    EGLint r = r_eglClientWaitSyncKHR(d, s, f, t);
+    tl_egl_prof_end(TL_GL_PHASE_SYNC, t0);
+    return r;
 }
 static EGLBoolean w_eglDestroySyncKHR(EGLDisplay d, void *s) { return s ? r_eglDestroySyncKHR(d, s) : EGL_FALSE; }
 static EGLBoolean w_eglGetSyncAttribKHR(EGLDisplay d, void *s, EGLint a, EGLint *v) { return s ? r_eglGetSyncAttribKHR(d, s, a, v) : EGL_FALSE; }
@@ -1317,7 +1430,10 @@ static EGLint w_eglClientWaitSync(EGLDisplay d, void *s, EGLint f, uint64_t t)
 {
     if (!s) return EGL_FALSE;
     if (!a_eglGetCurrentContext()) return 0x30F6;
-    return r_eglClientWaitSync(d, s, f, t);
+    int64_t t0 = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    EGLint r = r_eglClientWaitSync(d, s, f, t);
+    tl_egl_prof_end(TL_GL_PHASE_SYNC, t0);
+    return r;
 }
 static EGLBoolean w_eglDestroySync(EGLDisplay d, void *s) { return s ? r_eglDestroySync(d, s) : EGL_FALSE; }
 
@@ -1378,9 +1494,81 @@ static void w_glSamplerParameterf(unsigned sampler, unsigned pname, float param)
     apply_filter_param_f(sampler, true, pname, param, r_glSamplerParameterf);
 }
 
+static void (*r_glClear)(unsigned);
+static void w_glClear(unsigned mask) { RHI_PROF_CALL(TL_GL_PHASE_BLIT, r_glClear(mask)); }
+static void (*r_glFlush)(void);
+static void w_glFlush(void) { RHI_PROF_CALL(TL_GL_PHASE_SYNC, r_glFlush()); }
+static void (*r_glFinish)(void);
+static void w_glFinish(void) { RHI_PROF_CALL(TL_GL_PHASE_SYNC, r_glFinish()); }
+static unsigned (*r_glClientWaitSync)(void *, unsigned, uint64_t);
+static unsigned w_glClientWaitSync(void *sync, unsigned flags, uint64_t timeout)
+{
+    int64_t t0 = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    unsigned r = r_glClientWaitSync(sync, flags, timeout);
+    tl_egl_prof_end(TL_GL_PHASE_SYNC, t0);
+    return r;
+}
+static void (*r_glDrawElements)(unsigned, int, unsigned, const void *);
+static void w_glDrawElements(unsigned m, int c, unsigned t, const void *i)
+{ RHI_PROF_CALL(TL_GL_PHASE_DRAW, r_glDrawElements(m, c, t, i)); }
+static void (*r_glDrawArrays)(unsigned, int, int);
+static void w_glDrawArrays(unsigned m, int f, int c)
+{ RHI_PROF_CALL(TL_GL_PHASE_DRAW, r_glDrawArrays(m, f, c)); }
+static void (*r_glDrawElementsInstanced)(unsigned, int, unsigned, const void *, int);
+static void w_glDrawElementsInstanced(unsigned m, int c, unsigned t, const void *i, int inst)
+{ RHI_PROF_CALL(TL_GL_PHASE_DRAW, r_glDrawElementsInstanced(m, c, t, i, inst)); }
+static void (*r_glDrawArraysInstanced)(unsigned, int, int, int);
+static void w_glDrawArraysInstanced(unsigned m, int f, int c, int inst)
+{ RHI_PROF_CALL(TL_GL_PHASE_DRAW, r_glDrawArraysInstanced(m, f, c, inst)); }
+static void (*r_glDrawRangeElements)(unsigned, unsigned, unsigned, int, unsigned, const void *);
+static void w_glDrawRangeElements(unsigned m, unsigned s, unsigned e, int c, unsigned t, const void *i)
+{ RHI_PROF_CALL(TL_GL_PHASE_DRAW, r_glDrawRangeElements(m, s, e, c, t, i)); }
+static void *(*r_glMapBufferRange)(unsigned, ptrdiff_t, ptrdiff_t, unsigned);
+static void *w_glMapBufferRange(unsigned t, ptrdiff_t o, ptrdiff_t l, unsigned a)
+{
+    int64_t t0 = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    void *r = r_glMapBufferRange(t, o, l, a);
+    tl_egl_prof_end(TL_GL_PHASE_BUF, t0);
+    return r;
+}
+static unsigned char (*r_glUnmapBuffer)(unsigned);
+static unsigned w_glUnmapBuffer(unsigned t)
+{
+    int64_t t0 = t_rhi_prof.active ? rhi_mono_ns() : 0;
+    unsigned r = (unsigned)r_glUnmapBuffer(t) & 0xffu;
+    tl_egl_prof_end(TL_GL_PHASE_BUF, t0);
+    return r;
+}
+static void (*r_glFlushMappedBufferRange)(unsigned, ptrdiff_t, ptrdiff_t);
+static void w_glFlushMappedBufferRange(unsigned t, ptrdiff_t o, ptrdiff_t l)
+{ RHI_PROF_CALL(TL_GL_PHASE_BUF, r_glFlushMappedBufferRange(t, o, l)); }
+static void (*r_glReadPixels)(int, int, int, int, unsigned, unsigned, void *);
+static void w_glReadPixels(int x, int y, int w, int h, unsigned fmt, unsigned ty, void *d)
+{ RHI_PROF_CALL(TL_GL_PHASE_BLIT, r_glReadPixels(x, y, w, h, fmt, ty, d)); }
+static void (*r_glCopyTexSubImage2D)(unsigned, int, int, int, int, int, int, int);
+static void w_glCopyTexSubImage2D(unsigned t, int l, int x, int y, int rx, int ry, int w, int h)
+{ RHI_PROF_CALL(TL_GL_PHASE_BLIT, r_glCopyTexSubImage2D(t, l, x, y, rx, ry, w, h)); }
+static void (*r_glTexImage2D)(unsigned, int, int, int, int, int, unsigned, unsigned, const void *);
+static void w_glTexImage2D(unsigned t, int l, int ifmt, int w, int h, int b, unsigned fmt, unsigned ty, const void *px)
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glTexImage2D(t, l, ifmt, w, h, b, fmt, ty, px)); }
+static void (*r_glTexSubImage2D)(unsigned, int, int, int, int, int, unsigned, unsigned, const void *);
+static void w_glTexSubImage2D(unsigned t, int l, int x, int y, int w, int h, unsigned fmt, unsigned ty, const void *px)
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glTexSubImage2D(t, l, x, y, w, h, fmt, ty, px)); }
+static void (*r_glCompressedTexImage2D)(unsigned, int, unsigned, int, int, int, int, const void *);
+static void w_glCompressedTexImage2D(unsigned t, int l, unsigned ifmt, int w, int h, int b, int sz, const void *d)
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glCompressedTexImage2D(t, l, ifmt, w, h, b, sz, d)); }
+static void (*r_glCompressedTexSubImage2D)(unsigned, int, int, int, int, int, unsigned, int, const void *);
+static void w_glCompressedTexSubImage2D(unsigned t, int l, int x, int y, int w, int h, unsigned fmt, int sz, const void *d)
+{ RHI_PROF_CALL(TL_GL_PHASE_TEX, r_glCompressedTexSubImage2D(t, l, x, y, w, h, fmt, sz, d)); }
+
 #define ADAPT(name) { #name, (void *)w_##name, (void **)&r_##name }
 static const struct { const char *name; void *wrap; void **real; } k_adapt[] = {
     ADAPT(glBlitFramebuffer), ADAPT(glTexSubImage3D), ADAPT(glCompressedTexSubImage3D), ADAPT(glCopyImageSubData),
+    ADAPT(glClear), ADAPT(glFlush), ADAPT(glFinish), ADAPT(glClientWaitSync),
+    ADAPT(glDrawElements), ADAPT(glDrawArrays), ADAPT(glDrawElementsInstanced), ADAPT(glDrawArraysInstanced), ADAPT(glDrawRangeElements),
+    ADAPT(glMapBufferRange), ADAPT(glUnmapBuffer), ADAPT(glFlushMappedBufferRange),
+    ADAPT(glReadPixels), ADAPT(glCopyTexSubImage2D),
+    ADAPT(glTexImage2D), ADAPT(glTexSubImage2D), ADAPT(glCompressedTexImage2D), ADAPT(glCompressedTexSubImage2D),
     ADAPT(glColorMask), ADAPT(glDepthMask), ADAPT(glVertexAttribPointer), ADAPT(glUniformMatrix2fv),
     ADAPT(glUniformMatrix3fv), ADAPT(glUniformMatrix4fv), ADAPT(glSampleCoverage), ADAPT(glGetString), ADAPT(glGetStringi), ADAPT(glCompileShader), ADAPT(glShaderSource), ADAPT(glAttachShader), ADAPT(glLinkProgram), ADAPT(glGetIntegerv), ADAPT(glBindBufferBase), ADAPT(glBindBuffer), ADAPT(glBufferData), ADAPT(glBufferSubData), ADAPT(glBindBufferRange),
     ADAPT(glTexParameteri), ADAPT(glTexParameterf), ADAPT(glSamplerParameteri), ADAPT(glSamplerParameterf),

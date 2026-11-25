@@ -677,10 +677,15 @@ static int b_AThermal_getThermalHeadroomThresholds(void *m, const void **out, si
 static void *b_APerformanceHint_getManager(void) { return &g_hint_mgr; }
 static void *b_APerformanceHint_createSession(void *m, const int32_t *tids, size_t n, int64_t target) { (void)m; (void)tids; (void)n; (void)target; return calloc(1, 16); }
 static int64_t b_APerformanceHint_getPreferredUpdateRateNanos(void *m) { (void)m; float hz = tl_host_display_max_refresh(); return (int64_t)(1000000000.0 / (double)hz); }
-static int b_APerformanceHint_ok(void *s, int64_t v) { (void)s; (void)v; return 0; }
+static inline void adpf_promote_calling_thread(void)
+{
+    static __thread bool promoted = false;
+    if (!promoted) { tl_qos_set_interactive(); promoted = true; }
+}
+static int b_APerformanceHint_ok(void *s, int64_t v) { (void)s; (void)v; adpf_promote_calling_thread(); return 0; }
 static void b_APerformanceHint_closeSession(void *s) { free(s); }
-static int b_APerformanceHint_setThreads(void *s, const int32_t *tids, size_t n) { (void)s; (void)tids; (void)n; return 0; }
-static int b_APerformanceHint_reportActualWorkDuration2(void *s, void *w) { (void)s; (void)w; return 0; }
+static int b_APerformanceHint_setThreads(void *s, const int32_t *tids, size_t n) { (void)s; (void)tids; (void)n; adpf_promote_calling_thread(); return 0; }
+static int b_APerformanceHint_reportActualWorkDuration2(void *s, void *w) { (void)s; (void)w; adpf_promote_calling_thread(); return 0; }
 static void *b_AWorkDuration_create(void) { return calloc(1, 32); }
 static void b_AWorkDuration_release(void *w) { free(w); }
 static void b_AWorkDuration_set(void *w, int64_t v) { (void)w; (void)v; }

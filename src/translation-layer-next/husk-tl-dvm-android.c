@@ -1640,7 +1640,10 @@ static bool compositor_gpu_ready(void *fences[2], int idx, bool single_flight,
         return true;
     }
     if (*defer_since_ns == 0) *defer_since_ns = now;
-    int64_t watchdog_ns = old_ready ? 120000000ll : 180000000ll;
+    /* Keep watchdog deferrals strictly under tl_javaapp_app_frame_pace's 40 ms
+     * producer timeout so the compositor never starves E2.drawn_seq into an
+     * unchecked ANGLE MTLCommandQueue backlog during screen capture. */
+    int64_t watchdog_ns = old_ready ? 24000000ll : 36000000ll;
     if ((now - *defer_since_ns) >= watchdog_ns) {
         /* Never wedge indefinitely if ReplayKit or Metal drops a completion callback. */
         if (!old_ready && fences[idx]) { deleteSync(fences[idx]); fences[idx] = NULL; }
@@ -1774,14 +1777,11 @@ static void *gl_run(void *arg)
     tl_frame_perf_window host_perf = {0};
     uint64_t last_sampled_seq = 0;
     bool perf_paused = false;
-    bool perf_was_inactive = false;
     bool ui_pending = false;
     void *comp_fences[2] = { NULL, NULL };
     int comp_fence_idx = 0;
-    int64_t slow_compositor_until_ns = 0;
     int64_t last_capture_swap_ns = 0;
     int64_t gpu_defer_since_ns = 0;
-    int64_t next_swap_cooldown_ns = 0;
     while (!atomic_load(&A.ended)) {
         bool is_paused = atomic_load(&A.paused);
         bool is_inactive = !is_paused && atomic_load(&A.host_inactive);
@@ -1792,14 +1792,11 @@ static void *gl_run(void *arg)
                 tl_egl_frame_perf_set_active(false);
                 last_sampled_seq = 0;
                 last_capture_swap_ns = 0;
-                slow_compositor_until_ns = 0;
                 gpu_defer_since_ns = 0;
-                next_swap_cooldown_ns = 0;
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 compositor_gpu_release(comp_fences, deleteSync);
                 perf_paused = true;
             }
-            if (is_inactive) perf_was_inactive = true;
             pthread_mutex_lock(&E2.lk);
             if (E2.drawn_seq < E2.seq) {
                 E2.drawn_seq = E2.seq;
@@ -1811,8 +1808,6 @@ static void *gl_run(void *arg)
             continue;
         }
         if (perf_paused) {
-            if (perf_was_inactive) slow_compositor_until_ns = now_ns() + 2000000000ll;
-            perf_was_inactive = false;
             tl_egl_frame_perf_set_active(true);
             perf_paused = false;
         }
@@ -1872,10 +1867,6 @@ static void *gl_run(void *arg)
             ? (int)(A.cfg.max_refresh_rate + 0.5f) : TL_JAVA_DISPLAY_HZ;
         int target_hz = tl_host_compositor_target_hz(host_hz, thermal, captured);
         if (captured <= 0) last_capture_swap_ns = 0;
-        if (!app && next_swap_cooldown_ns > 0 && (ui_pending || app_frame_seq() != app_seq)) {
-            wait_compositor_deadline(next_swap_cooldown_ns, false);
-            next_swap_cooldown_ns = 0;
-        }
         uint64_t q = app_frame_seq();
         bool app_fresh = q != app_seq;
         if (captured > 0 && !app && (app_fresh || ui_pending) && last_capture_swap_ns > 0) {
@@ -1891,11 +1882,10 @@ static void *gl_run(void *arg)
             int64_t compose_begin = now_ns();
             uint64_t sampled_seq = 0, handoff_ns = 0;
             bool ui_vis = tl_ui_has_frame();
-            /* The 3-drawable CAMetalLayer with N-2 fence gating already caps GPU work at <=2
-             * frames in flight (leaving one drawable free for ReplayKit). Forcing single-flight
-             * unconditionally on captured > 0 starves skill/combat VFX pipelines down to <=1
-             * frame in flight, so reserve it for sustained thermal >= 2 or genuine >22 ms stalls. */
-            bool single_flight = (thermal >= 2) || (compose_begin < slow_compositor_until_ns);
+            /* Keep N-2 double-buffered fence gating through normal/captured play (matching
+             * 3 CAMetalLayer drawables) so CPU/GPU overlap stays intact; only drop to N-1
+             * single-flight under critical thermal >= 3 pressure where target drops to 30 Hz. */
+            bool single_flight = (thermal >= 3);
             if (!app) {
                 if (cur_ctx != ui) { makeCurrent(dpy, surf, surf, ui); cur_ctx = ui; }
                 if (!compositor_gpu_ready(comp_fences, comp_fence_idx, single_flight,
@@ -1919,12 +1909,6 @@ static void *gl_run(void *arg)
                 if (opaque_cover || !tl_web_any_visible()) {
                     gl_prime_screen(&appov, prime_tex, A.cfg.width, A.cfg.height);
                 }
-                /* Flush FBO 0 before app_frame_draw when capturing, warm, or slow so any
-                 * CAMetalLayer nextDrawable wait settles before locking g_frame_handoff. */
-                if (captured > 0 || thermal >= 1 || compose_begin < slow_compositor_until_ns) {
-                    void (*gl_flush)(void) = gl_fn("glFlush");
-                    if (gl_flush) gl_flush();
-                }
                 sampled_seq = app_frame_draw(&appov, &appup, A.cfg.width, A.cfg.height, &handoff_ns);
                 if (ui_vis) ov_draw(&ov, A.cfg.width, A.cfg.height);
                 compositor_gpu_arm(comp_fences, &comp_fence_idx, fenceSync, deleteSync);
@@ -1940,12 +1924,6 @@ static void *gl_run(void *arg)
             if (swap_ok) {
                 ui_pending = false;
                 if (captured > 0 && !app) last_capture_swap_ns = swap_end;
-                if ((swap_end - compose_begin) > 22000000ll) {
-                    slow_compositor_until_ns = swap_end + 1500000000ll;
-                }
-                if (!app && (swap_end - compose_begin) > 45000000ll) {
-                    next_swap_cooldown_ns = swap_end + 16000000ll;
-                }
                 atomic_fetch_add(&A.frames, 1);
                 uint64_t now_u = (uint64_t)swap_end;
                 uint64_t prev = atomic_exchange(&A.perf_last_ns, now_u);

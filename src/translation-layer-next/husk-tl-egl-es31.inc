@@ -287,9 +287,11 @@ static void w_glBindBufferBase(unsigned target, unsigned index, unsigned buffer)
 static void (*r_glBindBuffer)(unsigned, unsigned);
 static void w_glBindBuffer(unsigned t, unsigned b) { es31_note_storage("glBindBuffer", t); r_glBindBuffer(g_es31_shim ? ES31_STORAGE(t) : t, b); }
 static void (*r_glBufferData)(unsigned, long, const void *, unsigned);
-static void w_glBufferData(unsigned t, long n, const void *d, unsigned u) { es31_note_storage("glBufferData", t); r_glBufferData(g_es31_shim ? ES31_STORAGE(t) : t, n, d, u); }
+static void w_glBufferData(unsigned t, long n, const void *d, unsigned u)
+{ es31_note_storage("glBufferData", t); RHI_PROF_CALL(TL_GL_PHASE_BUF, r_glBufferData(g_es31_shim ? ES31_STORAGE(t) : t, n, d, u)); }
 static void (*r_glBufferSubData)(unsigned, long, long, const void *);
-static void w_glBufferSubData(unsigned t, long o, long n, const void *d) { es31_note_storage("glBufferSubData", t); r_glBufferSubData(g_es31_shim ? ES31_STORAGE(t) : t, o, n, d); }
+static void w_glBufferSubData(unsigned t, long o, long n, const void *d)
+{ es31_note_storage("glBufferSubData", t); RHI_PROF_CALL(TL_GL_PHASE_BUF, r_glBufferSubData(g_es31_shim ? ES31_STORAGE(t) : t, o, n, d)); }
 static void (*r_glBindBufferRange)(unsigned, unsigned, unsigned, long, long);
 static void w_glBindBufferRange(unsigned t, unsigned i, unsigned b, long o, long n)
 {
