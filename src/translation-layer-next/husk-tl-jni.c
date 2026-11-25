@@ -35,9 +35,16 @@ static uint32_t hash_str(const char *s) { uint32_t h = 2166136261u; while (*s) {
 
 /* --------------------------------------------------------------- objects */
 
+static inline void count_alloc(tl_jclass *cls, uint64_t bytes)
+{
+    if (!cls) return;
+    __atomic_add_fetch(&cls->nalloc, 1, __ATOMIC_RELAXED);
+    __atomic_add_fetch(&cls->nbytes, bytes, __ATOMIC_RELAXED);
+}
 static jobj *obj_alloc(uint8_t kind, tl_jclass *cls)
 {
     jobj *o = calloc(1, sizeof(*o));
+    count_alloc(cls, sizeof(*o));
     o->refs = 1;
     o->kind = kind;
     o->cls = cls;
@@ -153,7 +160,7 @@ jobj *tl_jni_new_object(tl_jclass *cls)
     jobj *o = obj_alloc(TL_K_OBJECT, cls);
     if (tl_dvm && cls && cls->dvm) {
         uint32_t n = tl_dvm->instance_slots(cls);
-        if (n) { o->fields = calloc(n, sizeof(jvalue)); o->nfields = n; }
+        if (n) { o->fields = calloc(n, sizeof(jvalue)); o->nfields = n; if (cls) __atomic_add_fetch(&cls->nbytes, (uint64_t)n * sizeof(jvalue), __ATOMIC_RELAXED); }
     }
     return o;
 }
@@ -162,6 +169,7 @@ jobj *tl_jni_new_string(const char *utf8)
 {
     jobj *o = obj_alloc(TL_K_STRING, tl_jni_class("java/lang/String"));
     o->str.utf8 = strdup(utf8 ? utf8 : "");
+    if (o->cls) __atomic_add_fetch(&o->cls->nbytes, strlen(o->str.utf8) + 1, __ATOMIC_RELAXED);
     return o;
 }
 
@@ -179,6 +187,7 @@ jobj *tl_jni_new_prim_array(char etype, uint32_t len)
     jobj *o = obj_alloc(TL_K_PRIM_ARRAY, tl_jni_class(cn));
     o->arr.esz = esz_of(etype); o->arr.etype = etype; o->arr.len = len;
     o->arr.data = calloc(len ? len : 1, o->arr.esz);
+    if (o->cls) __atomic_add_fetch(&o->cls->nbytes, (uint64_t)len * o->arr.esz, __ATOMIC_RELAXED);
     return o;
 }
 
@@ -189,7 +198,33 @@ jobj *tl_jni_new_obj_array(tl_jclass *elem, uint32_t len)
     jobj *o = obj_alloc(TL_K_OBJ_ARRAY, tl_jni_class(cn));
     o->oarr.len = len;
     o->oarr.v = calloc(len ? len : 1, sizeof(jobj *));
+    if (o->cls) __atomic_add_fetch(&o->cls->nbytes, (uint64_t)len * sizeof(jobj *), __ATOMIC_RELAXED);
     return o;
+}
+
+/* What the app has been allocating since the last report, by class (the runtime never frees an object: this is where memory goes). */
+void tl_jni_alloc_report(void)
+{
+    enum { TOP = 12 };
+    tl_jclass *top[TOP] = { 0 }; uint64_t topb[TOP] = { 0 }, topn[TOP] = { 0 };
+    uint64_t all_n = 0, all_b = 0;
+    for (int h = 0; h < NBUCKETS; h++)
+        for (tl_jclass *c = __atomic_load_n(&g_classes[h], __ATOMIC_ACQUIRE); c; c = c->next) {
+            uint64_t n = __atomic_load_n(&c->nalloc, __ATOMIC_RELAXED), b = __atomic_load_n(&c->nbytes, __ATOMIC_RELAXED);
+            uint64_t dn = n - c->rep_n, db = b - c->rep_b;
+            c->rep_n = n; c->rep_b = b;
+            if (!dn) continue;
+            all_n += dn; all_b += db;
+            for (int i = 0; i < TOP; i++) if (!top[i] || db > topb[i]) {
+                memmove(&top[i + 1], &top[i], (TOP - 1 - i) * sizeof(*top)); memmove(&topb[i + 1], &topb[i], (TOP - 1 - i) * sizeof(*topb));
+                memmove(&topn[i + 1], &topn[i], (TOP - 1 - i) * sizeof(*topn));
+                top[i] = c; topb[i] = db; topn[i] = dn; break;
+            }
+        }
+    if (!all_n) return;
+    tl_log_line("jalloc: +%.1f MiB in %llu objects since the last report; the most:", all_b / 1048576.0, (unsigned long long)all_n);
+    for (int i = 0; i < TOP && top[i]; i++)
+        tl_log_line("jalloc:   %8.2f MiB %9llu  %s", topb[i] / 1048576.0, (unsigned long long)topn[i], top[i]->name);
 }
 
 /* ----------------------------------------------------------- signatures */
