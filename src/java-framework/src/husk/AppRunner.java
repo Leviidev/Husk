@@ -25,10 +25,16 @@ public final class AppRunner {
     private static int down;
     private static long downTime;
     private static boolean sPausedByHost;
+    /* activities of the app's own that startActivity has posted and not yet launched, and whether the app killed its process
+       while one was on its way */
+    private static int sPendingLaunches;
+    private static boolean sRestartRequested;
 
     /** Another APK is about to start: forget this app's activities, loader and factory. */
     public static void resetSession() {
         sStack.clear();
+        synchronized (AppRunner.class) { sPendingLaunches = 0; sRestartRequested = false; }
+        ViewRoot.huskGLReset();
         sApp = null;
         sHandler = null;
         down = 0;
@@ -222,7 +228,14 @@ public final class AppRunner {
             final Activity caller = from instanceof Activity ? (Activity) from : top();
             final Intent intent = new Intent(i);
             if (intent.getComponent() == null) intent.setComponent(new ComponentName(Native.packageName(), c.name));
+            synchronized (AppRunner.class) { sPendingLaunches++; }
             sHandler.post(() -> {
+                boolean restart;
+                synchronized (AppRunner.class) { sPendingLaunches--; restart = sRestartRequested; sRestartRequested = false; }
+                /* the task is cleared for this one (NEW_TASK | CLEAR_TASK), or the app killed its process right after starting it
+                   (GameMaker's chapter switch in DELTARUNE): on Android it opens alone in a fresh task, or a fresh process */
+                final java.util.ArrayList<Activity> old = (restart || (intent.getFlags() & 0x8000 /* CLEAR_TASK */) != 0)
+                        ? new java.util.ArrayList<>(sStack) : null;
                 try {
                     if ((intent.getFlags() & Intent.FLAG_ACTIVITY_CLEAR_TOP) != 0) {
                         for (int k = sStack.size() - 1; k >= 0; k--) if (startedAs(sStack.get(k)).equals(intent.getComponent().getClassName())) {
@@ -240,6 +253,12 @@ public final class AppRunner {
                     }
                     // an <activity-alias> starts the activity it names; the intent keeps the alias as its component, as on Android
                     launch("activity-alias".equals(c.kind) && c.parentActivity != null ? c.parentActivity : c.name, intent, caller, request, c);
+                    if (old != null) {
+                        for (Activity a : old) {
+                            if (restart) { sStack.remove(a); a.huskStop(); }   /* a killed process runs none of its activities' callbacks */
+                            else finishNow(a, false);
+                        }
+                    }
                 } catch (Throwable t) {
                     android.util.Log.e("Husk", "starting " + c.name + " failed", t);
                     if (t instanceof RuntimeException) throw (RuntimeException) t;
@@ -281,6 +300,22 @@ public final class AppRunner {
             return;
         }
         throw new ActivityNotFoundException("No Activity found to handle " + i);
+    }
+    /** Process.killProcess(myPid()): with an activity of the app's own just started, Android brings that one up in a new process;
+     *  here the session goes on with it in place of the old ones. Otherwise the app ends. */
+    public static void killProcess() {
+        synchronized (AppRunner.class) {
+            if (sPendingLaunches > 0) {
+                sRestartRequested = true;
+                android.opengl.GLSurfaceView.huskProcessKilled();
+                Native.processRestarted();
+                android.util.Log.i("Husk", "killProcess with an activity of its own on the way: the app restarts into it");
+                /* returns to the caller, which on Android would be dead: GameMaker calls this from inside onDrawFrame, on Husk's
+                   one render thread, which the new activity needs (parked here, nothing drew again) */
+                return;
+            }
+        }
+        Native.exit();
     }
     /** Activity.finish: the one below comes back (with the result when it asked for one). */
     public static void finish(Activity a) { sHandler.post(() -> finishNow(a, true)); }

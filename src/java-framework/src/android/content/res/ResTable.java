@@ -302,10 +302,15 @@ public final class ResTable {
         }
         return 0;
     }
+    /* Each entry once: its name is the same in every configuration, and an app like VK has its strings in dozens of languages and its
+       drawables at several densities -- going over every configuration made millions of strings (the runtime frees nothing), and
+       VK ran out of memory before its first frame. */
     private void indexNames(Package p) {
         HashMap<String, Integer> m = new HashMap<>();
         for (Type t : p.types) {
             if (t == null) continue;
+            java.util.BitSet seen = new java.util.BitSet();
+            String prefix = t.name + "/";
             for (TypeChunk tc : t.configs) {
                 int n = tc.sparse ? tc.entryCount : tc.entryCount;
                 ByteBuffer b = tc.src.b;
@@ -313,12 +318,14 @@ public final class ResTable {
                     int e, o;
                     if (tc.sparse) { e = b.getShort(tc.indexStart + 4 * i) & 0xffff; o = tc.entriesStart + (b.getShort(tc.indexStart + 4 * i + 2) & 0xffff) * 4; }
                     else { e = i; o = entryOffset(tc, i); if (o < 0) continue; }
+                    if (seen.get(e)) continue;
+                    seen.set(e);
                     int fl = b.getShort(o + 2) & 0xffff;
                     int key = (fl & 8) != 0 ? (b.getShort(o) & 0xffff) : b.getInt(o + 4);
                     String k = tc.keys.get(key);
-                    int id = (p.id << 24) | (t.id << 16) | e;
-                    m.put(t.name + "/" + k, id);
-                    m.put(t.name + "/" + k.replace('.', '_'), id);
+                    Integer id = (p.id << 24) | (t.id << 16) | e;
+                    m.put(prefix + k, id);
+                    if (k.indexOf('.') >= 0) m.put(prefix + k.replace('.', '_'), id);
                 }
             }
         }

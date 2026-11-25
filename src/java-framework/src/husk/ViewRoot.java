@@ -61,9 +61,19 @@ public final class ViewRoot implements ViewParent {
         scheduleFrame();
         return r;
     }
+    /* the app draws with GL: Husk's EGL surface is the whole screen and the renderer's viewport starts at its corner, so the app's
+       window has the whole screen too -- inset, its views (and touches) sat off the picture by the notch and the home indicator */
+    private static boolean sGLScreen;
+    public static void huskGLReset() { sGLScreen = false; }
+    public static void huskGLTakesScreen() {
+        if (sGLScreen) return;
+        sGLScreen = true;
+        for (ViewRoot v : sRoots) v.requestApplyInsets();
+    }
     private WindowInsets computeInsets() {
         boolean full = mLp.type == WindowManager.LayoutParams.TYPE_BASE_APPLICATION || mLp.type == WindowManager.LayoutParams.TYPE_APPLICATION;
         if (!full) return WindowInsets.huskOf(0, 0, 0, 0, Math.max(0, sImeBottom - (screenH() - mY - mH)), null);
+        if (sGLScreen) return WindowInsets.huskOf(0, 0, 0, 0, sImeBottom, cutout());
         if (!barsHidden()) {
             // bars showing: the top is the status bar, the bottom the home indicator, the sides only the notch and the screen's
             // corners -- a cutout, which a window that lays out into it (short edges, always) covers. A fullscreen window (no status

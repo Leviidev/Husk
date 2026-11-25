@@ -51,6 +51,15 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public int getRenderMode() { return renderMode; }
     public void requestRender() { dirty = true; husk.Native.requestRender(); }
     public void onPause() { paused = true; }
+    /* the process this view belongs to was killed (Process.killProcess with a new activity of the app's own on its way): on Android
+       its GL thread dies with it, so its renderer never draws again -- a paused GameMaker runner blocks in onDrawFrame for good,
+       and with it Husk's one render thread */
+    private static volatile int sProcessGeneration;
+    private final int mGeneration = sProcessGeneration;
+    /** @hide */
+    public static void huskProcessKilled() { sProcessGeneration++; }
+    /** @hide Husk's GL thread: one frame, unless the view is paused or its process is gone. */
+    public final void huskDrawFrame(GL10 gl) { if (paused || renderer == null || mGeneration != sProcessGeneration) return; renderer.onDrawFrame(gl); }
     public void onResume() { paused = false; dirty = true; }
     public void queueEvent(Runnable r) { synchronized (queue) { queue.add(r); } husk.Native.requestRender(); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); start(); }
@@ -74,6 +83,7 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
             }
         }
         husk.Native.startGL(this, renderer, version);
+        husk.ViewRoot.huskGLTakesScreen();
     }
 
     private static HuskGL10 sGL;
@@ -84,6 +94,8 @@ public class GLSurfaceView extends android.view.SurfaceView implements android.v
     public final boolean huskBeginFrame() {
         ArrayList<Runnable> run;
         synchronized (queue) { run = new ArrayList<>(queue); queue.clear(); }
+        /* a killed process's GL thread is gone: what it queued never runs (a paused GameMaker runner's pause event waits for good) */
+        if (mGeneration != sProcessGeneration) return false;
         for (Runnable r : run) r.run();
         if (paused) return false;
         if (renderMode == RENDERMODE_CONTINUOUSLY) return true;

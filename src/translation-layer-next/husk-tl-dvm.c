@@ -1101,7 +1101,9 @@ static void *find_jni(dvm_method *m)
 {
     /* cached until the next RegisterNatives: Dex2C-protected apps register a class's natives from its <clinit>, which can come after
        a first lookup (#152, #174); and a miss is never final */
-    unsigned gen = tl_jni_natives_generation();
+    unsigned tl_ld_jni_epoch(void); void *tl_ld_sym_jni(const char *name);
+    /* ...and until the app restarts its process or loads a library after that (the new process's libraries answer first) */
+    unsigned gen = tl_jni_natives_generation() * 65537u + tl_ld_jni_epoch();
     if (m->jni_looked && m->jni && m->jni_gen == gen) return m->jni;
     m->jni_gen = gen;
     void *fn = tl_jni_native(m->cls->name, m->name, m->sig);
@@ -1110,11 +1112,11 @@ static void *find_jni(dvm_method *m)
         mangle(m->cls->name, cls, sizeof(cls), false);
         mangle(m->name, nm, sizeof(nm), false);
         snprintf(sym, sizeof(sym), "Java_%s_%s", cls, nm);
-        fn = tl_ld_sym(NULL, sym);
+        fn = tl_ld_sym_jni(sym);
         if (!fn) {
             mangle(m->sig + 1, sg, sizeof(sg), true);
             snprintf(sym, sizeof(sym), "Java_%s_%s__%s", cls, nm, sg);
-            fn = tl_ld_sym(NULL, sym);
+            fn = tl_ld_sym_jni(sym);
         }
     }
     if (!fn && !m->jni_looked)

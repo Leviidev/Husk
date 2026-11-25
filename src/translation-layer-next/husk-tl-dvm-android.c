@@ -275,6 +275,8 @@ NAT(N_requestRender) { (void)self; (void)a; (void)ret; atomic_store(&A.render_re
 NAT(N_setContentView) { (void)self; (void)ret; A.content = a[0].l; return true; }
 NAT(N_vibrate) { (void)self; (void)a; (void)ret; if (A.cfg.vibrate) A.cfg.vibrate((int)a[0].j); return true; }
 NAT(N_openUrl) { (void)self; (void)ret; const char *u = tl_jni_string(a[0].l); tl_log_line("javaapp: open %s", u ? u : "?"); if (A.cfg.open_url && u) A.cfg.open_url(u); return true; }
+/* Process.killProcess with an activity of the app's own on its way: JNI methods bind to the libraries loaded from here on */
+NAT(N_processRestarted) { (void)self; (void)a; (void)ret; void tl_ld_jni_restart(void); tl_ld_jni_restart(); tl_log_line("javaapp: the app restarts its process; JNI methods bind to libraries loaded from now on"); return true; }
 NAT(N_exit) { (void)self; (void)a; (void)ret; tl_log_line("javaapp: the app finished"); atomic_store(&A.ended, true); return true; }
 NAT(N_uptimeNanos) { (void)self; (void)a; struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); *ret = J((int64_t)t.tv_sec * 1000000000ll + t.tv_nsec); return true; }
 NAT(N_pollInput)
@@ -469,7 +471,10 @@ NAT(N_startGL)
 {
     void tl_thread_altstack(void); tl_thread_altstack();
     (void)self; (void)ret;
-    if (A.gl_started) return true;
+    /* a second GLSurfaceView (an activity that replaced the first: DELTARUNE's chapters) takes the screen: the render thread sees
+       the new renderer and gives it a context of its own */
+    if (A.gl_started && A.gl_view == a[0].l) return true;
+    if (A.gl_started) tl_log_line("javaapp: a new GL view takes the screen");
     A.gl_version = a[2].i; A.gl_view = a[0].l;
     A.gl_started = true;
     /* the render thread picks it up; released after the version and view, so it never sees the renderer without them */
@@ -496,6 +501,7 @@ static const struct { const char *name, *sig; dvm_native_fn fn; } k_native[] = {
     { "vibrate", "(J)V", N_vibrate },
     { "openUrl", "(Ljava/lang/String;)V", N_openUrl },
     { "exit", "()V", N_exit },
+    { "processRestarted", "()V", N_processRestarted },
     { "uptimeNanos", "()J", N_uptimeNanos },
     { "readApkFile", "(ILjava/lang/String;)[B", N_readApkFile },
     { "splitPaths", "()[Ljava/lang/String;", N_splitPaths },
@@ -938,14 +944,24 @@ static void *gl_main(void *arg)
     void (*clear)(uint32_t) = gl_fn("glClear");
     tl_log_line("javaapp: render thread ready (ES %d available), %dx%d", es3 ? 3 : 2, A.cfg.width, A.cfg.height);
 
-    jobj *gl10 = NULL;
+    jobj *gl10 = NULL, *app_renderer = NULL, *app_view = NULL;
     jvalue p1[1];
+    unsigned (*destroyContext)(EGLDisplay, EGLContext) = tl_egl_resolve("eglDestroyContext");
     int64_t next = now_ns();
     while (!atomic_load(&A.ended)) {
         if (atomic_load(&A.paused)) { usleep(20000); next = now_ns(); continue; }
         bool drew = false;
         /* the app's renderer, once its GLSurfaceView is on screen */
-        if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) && !app) {
+        jobj *want = __atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE);
+        if (want && app && want != app_renderer) {
+            /* another view's renderer: the old context goes with the old view, as with GLThread's EGL teardown */
+            makeCurrent(dpy, surf, surf, ui);
+            if (destroyContext) destroyContext(dpy, app);
+            app = NULL;
+            tl_log_line("javaapp: the previous GL context is released for the new view");
+        }
+        if (want && !app) {
+            app_renderer = want; app_view = A.gl_view;   /* the view and renderer startGL gave together */
             /* GLSurfaceView's default is OpenGL ES 1 (fixed function, through ANGLE's ES1 front end); 2 and 3 as asked */
             int es = A.gl_version >= 3 && es3 ? 3 : A.gl_version <= 1 ? 1 : 2;
             const EGLint attr[] = { 0x3098, es, EGL_NONE };
@@ -965,10 +981,10 @@ static void *gl_main(void *arg)
                 jobj *eglcfg = cfgc ? dvm_new_object(cfgc) : NULL;
                 if (eglcfg) dvm_slots(eglcfg);
                 jvalue p2[2] = { L(gl10), L(eglcfg) };
-                tl_jni_call(A.gl_renderer, "onSurfaceCreated", "(Ljavax/microedition/khronos/opengles/GL10;Ljavax/microedition/khronos/egl/EGLConfig;)V", p2);
+                tl_jni_call(app_renderer, "onSurfaceCreated", "(Ljavax/microedition/khronos/opengles/GL10;Ljavax/microedition/khronos/egl/EGLConfig;)V", p2);
                 if (tl_jni_pending()) log_pending("onSurfaceCreated");
                 jvalue p3[3] = { L(gl10), I(A.cfg.width), I(A.cfg.height) };
-                tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
+                tl_jni_call(app_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
                 if (tl_jni_pending()) log_pending("onSurfaceChanged");
                 p1[0] = L(gl10);
             }
@@ -983,22 +999,25 @@ static void *gl_main(void *arg)
         }
         if (app) {
             makeCurrent(dpy, surf, surf, app);
-            jvalue draw = tl_jni_call(A.gl_view, "huskBeginFrame", "()Z", NULL);
+            jvalue draw = tl_jni_call(app_view, "huskBeginFrame", "()Z", NULL);
             if (tl_jni_pending()) log_pending("a queued GL event");
             /* the view's surface changed size (laid out again: the app hid the bars, or turned): onSurfaceChanged again, as GLThread does */
-            jvalue rs = tl_jni_call(A.gl_view, "huskTakeResize", "()J", NULL);
+            jvalue rs = tl_jni_call(app_view, "huskTakeResize", "()J", NULL);
             if (tl_jni_pending()) log_pending("huskTakeResize");
             if (rs.j) {
                 jvalue p3[3] = { L(gl10), I((int)(rs.j >> 32)), I((int)(rs.j & 0xffffffff)) };
                 tl_log_line("javaapp: the GL view is now %dx%d", (int)(rs.j >> 32), (int)(rs.j & 0xffffffff));
-                tl_jni_call(A.gl_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
+                tl_jni_call(app_renderer, "onSurfaceChanged", "(Ljavax/microedition/khronos/opengles/GL10;II)V", p3);
                 if (tl_jni_pending()) log_pending("onSurfaceChanged");
                 draw.z = true;
             }
             /* a new frame of views needs the scene under it again: what was swapped is gone */
             if (draw.z || fresh || atomic_exchange(&A.render_requested, false)) {
-                tl_jni_call(A.gl_renderer, "onDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
-                if (tl_jni_pending()) log_pending("onDrawFrame");
+                /* through the view, which skips the frame while it is paused; and not for a view another has replaced */
+                if (__atomic_load_n(&A.gl_renderer, __ATOMIC_ACQUIRE) == app_renderer) {
+                    tl_jni_call(app_view, "huskDrawFrame", "(Ljavax/microedition/khronos/opengles/GL10;)V", p1);
+                    if (tl_jni_pending()) log_pending("onDrawFrame");
+                }
                 drew = true;
             }
         }

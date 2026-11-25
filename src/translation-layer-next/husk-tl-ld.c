@@ -599,6 +599,27 @@ void *tl_ld_sym(tl_lib *lib, const char *name)
     return NULL;
 }
 
+/* The app killed its process and goes on in a new activity (tl_ld_jni_restart): the libraries loaded until then belong to the dead
+ * process. A JNI method is looked for in the ones loaded since first -- DELTARUNE's chapters each bring their own runner library with
+ * the same Java_..._RunnerJNILib_* names, and the first one loaded answered for all of them. */
+static int g_jni_floor, g_jni_restarts;
+void tl_ld_jni_restart(void) { g_jni_floor = nlibs_acq(); __atomic_add_fetch(&g_jni_restarts, 1, __ATOMIC_RELEASE); }
+unsigned tl_ld_jni_epoch(void)
+{
+    int r = __atomic_load_n(&g_jni_restarts, __ATOMIC_ACQUIRE);
+    return r ? ((unsigned)r << 16) | (unsigned)(nlibs_acq() & 0xffff) : 0;
+}
+void *tl_ld_sym_jni(const char *name)
+{
+    int floor = g_jni_floor, n = nlibs_acq();
+    for (int i = floor; i < n; i++) {
+        if (G.libs[i]->arm32) { void *p = tl_a32_sym(G.libs[i], name); if (p) return p; continue; }
+        const elf_sym *s = lib_find(G.libs[i], name);
+        if (s) return sym_value(G.libs[i], s);
+    }
+    return floor ? tl_ld_sym(NULL, name) : NULL;
+}
+
 /* dlsym(handle) as bionic's: the library, then what it needs, breadth-first (ART finds a dependency's JNI_OnLoad this way:
  * Signal loads libringrtc, whose JNI_OnLoad is in the libringrtc_rffi it needs) */
 void *tl_ld_sym_deep(tl_lib *lib, const char *name, tl_lib **found_in)

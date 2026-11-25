@@ -46,6 +46,8 @@ struct tl_jclass {
     tl_jclass *next;
     void *dvm;                         /* the interpreter's class (husk-tl-dvm.c), or NULL */
     _Atomic bool linking;              /* declared, its bytecode still being linked (by the thread holding the link lock) */
+    uint64_t nalloc, nbytes;           /* (__atomic builtins) */   /* objects of this class made, and roughly their bytes (tl_jni_alloc_report) */
+    uint64_t rep_n, rep_b;             /* the counts at the last report */
 };
 
 /* A class another thread is still linking: wait for it (returns at once on the linking thread itself). */

@@ -178,6 +178,7 @@ static void *heartbeat_thread(void *arg)
         tl_log_line("unity: alive: %lu frames (+%lu)", f, f - last);
 #endif
         last = f;
+        { void tl_jni_alloc_report(void); if (tick >= 40 ? tick % 3 == 0 : tick % 10 == 9) tl_jni_alloc_report(); }
         { extern volatile struct { uint64_t count, x21, impl, mask; } tl_va_clobber;
           static uint64_t seen;
           if (tl_va_clobber.count != seen) {
